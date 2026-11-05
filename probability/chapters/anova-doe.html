@@ -1,0 +1,1807 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>분산 분석과 실험 계획 · 확률과 통계 · MathBooks</title>
+<meta name="description" content="일원 분산 분석과 F 검정, 투키 사후 비교, 이원 분산 분석과 교호 작용, 랜덤화·반복·블록화, 2ᵏ 요인 실험의 주효과·교호 효과, 부분 요인 실험과 교락, 반응 표면법과 중심 합성 계획까지 — 식각 조건을 직접 실험하며 최적화한다.">
+<!-- sb:seo -->
+<link rel="canonical" href="https://math.euiyun.com/probability/chapters/anova-doe.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MathBooks">
+<meta property="og:title" content="분산 분석과 실험 계획 · 확률과 통계 · MathBooks">
+<meta property="og:description" content="일원 분산 분석과 F 검정, 투키 사후 비교, 이원 분산 분석과 교호 작용, 랜덤화·반복·블록화, 2ᵏ 요인 실험의 주효과·교호 효과, 부분 요인 실험과 교락, 반응 표면법과 중심 합성 계획까지 — 식각 조건을 직접 실험하며 최적화한다.">
+<meta property="og:url" content="https://math.euiyun.com/probability/chapters/anova-doe.html">
+<meta property="og:image" content="https://math.euiyun.com/og.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "TechArticle", "name": "분산 분석과 실험 계획 · 확률과 통계 · MathBooks", "headline": "14 분산 분석과 실험 계획", "url": "https://math.euiyun.com/probability/chapters/anova-doe.html", "inLanguage": "ko", "isAccessibleForFree": true, "image": "https://math.euiyun.com/og.png", "description": "일원 분산 분석과 F 검정, 투키 사후 비교, 이원 분산 분석과 교호 작용, 랜덤화·반복·블록화, 2ᵏ 요인 실험의 주효과·교호 효과, 부분 요인 실험과 교락, 반응 표면법과 중심 합성 계획까지 — 식각 조건을 직접 실험하며 최적화한다.", "publisher": {"@type": "Organization", "name": "MathBooks", "url": "https://math.euiyun.com/"}, "learningResourceType": "interactive textbook chapter", "position": 14, "dateModified": "2026-10-22", "isPartOf": {"@type": "Book", "@id": "https://math.euiyun.com/probability/#book", "name": "확률과 통계", "url": "https://math.euiyun.com/probability/"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "MathBooks", "item": "https://math.euiyun.com/"}, {"@type": "ListItem", "position": 2, "name": "확률과 통계", "item": "https://math.euiyun.com/probability/"}, {"@type": "ListItem", "position": 3, "name": "14 분산 분석과 실험 계획", "item": "https://math.euiyun.com/probability/chapters/anova-doe.html"}]}]}</script>
+<!-- /sb:seo -->
+<link rel="stylesheet" href="../engine/css/scibook.css">
+<script src="../engine/js/scibook.js"></script>
+<script src="../course.js"></script>
+<script src="../engine/lib/stat.js"></script>
+<style>
+  .ad-legend { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.85rem; color:var(--text-dim); margin:.2rem 0 0; }
+  .ad-legend i { display:inline-block; width:.9em; height:.9em; border-radius:2px; vertical-align:-.1em; margin-right:.3em; }
+  .ad-tbl { width:100%; border-collapse:collapse; font-size:.85rem; font-variant-numeric:tabular-nums; }
+  .ad-tbl th, .ad-tbl td { padding:.2rem .45rem; border-bottom:1px solid var(--border); text-align:right; }
+  .ad-tbl th:first-child, .ad-tbl td:first-child { text-align:left; }
+  .ad-tbl tr.sig td { color:var(--bad); font-weight:600; }
+  .ad-alias { font-family:var(--mono); font-size:.85rem; line-height:1.55; padding:.4rem .2rem; overflow-wrap:anywhere; }
+  .ad-alias b { color:var(--accent-2); }
+  .ad-checks { display:flex; flex-wrap:wrap; gap:.2rem .8rem; align-items:center; }
+</style>
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="probability"></script>
+</head>
+<body data-chapter="anova-doe">
+<main class="chapter">
+  <header class="chapter-hero" data-prereq="sampling hypothesis regression">
+    <div class="eyebrow">Chapter 14</div>
+    <h1>분산 분석과 실험 계획</h1>
+    <p class="lead">같은 식각 레시피를 돌리는 챔버 네 대가 있다. 웨이퍼 몇 장씩 돌려 보니 평균 식각 속도가 조금씩 다르다. 진짜로 다른 걸까, 웨이퍼마다 원래 흔들리는 만큼일까? 두 집단이면 11장의 t 검정으로 충분하지만, 집단이 셋 이상이 되면 <b>분산 분석</b>이 필요하다. 평균들끼리의 흩어짐(집단 간)을 각 집단 안의 흩어짐(집단 내)과 견주는 방법이다. 그다음 질문은 더 실용적이다. 전력·압력·가스 유량을 어떤 조합으로, 몇 번 돌려야 가장 적은 실험으로 가장 많이 알 수 있을까? 이것이 <b>실험 계획</b>이다. 아래에서 챔버별 평균(흰 원)을 위아래로 끌어 벌리거나 모아 보고, 오른쪽 손잡이로 웨이퍼 사이 잡음을 바꿔 보자. 두 막대의 비 \(F\)가 커지면 신호등이 켜진다.</p>
+    <div class="hero-live" id="hero"><canvas id="cv-hero"></canvas><span class="hint">흰 원을 위아래로 끈다 · 빈 곳을 누르면 새 표본</span></div>
+    <ul class="objectives">
+      <li>총제곱합을 집단 간·집단 내 제곱합으로 나누고, 분산 분석표(자유도·평균 제곱·\(F\)·p 값)를 완성한다.</li>
+      <li>쌍마다 t 검정을 되풀이하면 가족별 제1종 오류가 커지는 이유를 설명하고, 투키 HSD로 어느 쌍이 다른지 판정한다.</li>
+      <li>이원 분산 분석에서 주효과와 교호 작용을 분리하고, 교호 작용 그림을 읽는다.</li>
+      <li>랜덤화·반복·블록화가 각각 무엇을 막는지 설명하고, 확률화 블록 계획을 분석한다.</li>
+      <li>2ᵏ 요인 실험의 주효과·교호 효과를 대비와 예이츠 방법으로 계산하고, 효과의 정규 확률 그림으로 활성 효과를 고른다.</li>
+      <li>부분 요인 실험의 생성자·정의 관계·별칭 구조·분해능을 구하고, 교락이 결론을 어떻게 속이는지 보인다.</li>
+      <li>중심점으로 곡률을 검출하고, 최대 경사 상승법과 중심 합성 계획, 2차 반응 표면으로 공정 최적점을 찾는다.</li>
+    </ul>
+  </header>
+
+  <!-- ============================================================ 1 -->
+  <section id="oneway">
+    <h2>일원 분산 분석: 분산을 쪼개 평균을 비교한다</h2>
+    <p>연구자가 바꾸는 조건을 <span class="term">요인</span><span class="en">(factor)</span>, 요인이 취하는 값을 <span class="term">수준</span><span class="en">(level)</span>, 실험 단위에 주는 수준(또는 수준의 조합)을 <span class="term">처리</span><span class="en">(treatment)</span>라 한다. 챔버 네 대를 비교한다면 요인은 "챔버", 수준은 1–4호기다. 요인이 하나이고 처리 \(k\)개의 평균이 같은지 묻는 방법이 <span class="term">일원 분산 분석</span><span class="en">(one-way analysis of variance, ANOVA)</span>이다.</p>
+    <div class="formula">$$H_0:\ \mu_1 = \mu_2 = \cdots = \mu_k \qquad H_1:\ \text{적어도 한 쌍의 평균이 다르다}$$</div>
+    <h3>왜 t 검정을 여러 번 하면 안 되나</h3>
+    <p>네 챔버라면 쌍이 \(\binom42 = 6\)개다. 각 쌍을 유의 수준 0.05로 t 검정하면, 실제로는 모든 챔버가 같아도 여섯 번 중 한 번이라도 "다르다"가 나올 확률이 0.05보다 훨씬 크다. 검정 여러 개를 한 묶음으로 보았을 때 하나라도 거짓 기각이 나올 확률을 <span class="term">가족별 오류율</span><span class="en">(familywise error rate, FWER)</span>이라 한다. 검정 \(m\)개가 독립이라면</p>
+    <div class="formula">$$\text{FWER} = 1 - (1 - \alpha)^m \approx m\alpha \quad(\alpha m \text{이 작을 때})$$<div class="where">\(k\)개 집단의 모든 쌍을 비교하면 \(m = k(k-1)/2\)다. 실제 쌍별 t 검정들은 같은 자료를 공유해 서로 상관되어 있으므로 FWER는 이 식보다 조금 작지만, 집단이 많아지면 여전히 급격히 커진다(11장의 본페로니 보정 참고).</div></div>
+    <figure class="mini" id="mini-fwer">
+      <div class="mini-view"><canvas id="cv-fwer"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>집단 수 k <output id="fw-k-out"></output></span><input type="range" id="fw-k" min="2" max="10" step="1" value="4"></label>
+        <button class="btn primary" id="fw-run" type="button">1000번 실험</button>
+        <span class="readout" id="fw-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>모든 집단의 참 평균이 같은 세계에서(집단당 \(n = 5\)) 실험을 1000번 되풀이한다. 매번 모든 쌍을 t 검정해 하나라도 \(p &lt; 0.05\)이면 "거짓 발견"(빨간 점)으로 센다. 같은 자료에 분산 분석 \(F\) 검정을 한 번 하면(초록 점) 거짓 기각 비율이 \(k\)와 상관없이 0.05 근처에 머문다. 점선은 독립을 가정한 \(1-0.95^m\)이다.</figcaption>
+    </figure>
+    <h3>제곱합의 분해</h3>
+    <p>처리 \(i\)의 \(j\)번째 관측값을 \(y_{ij}\)(\(i = 1,\dots,k\), \(j = 1,\dots,n_i\)), 처리 평균을 \(\bar y_{i\cdot}\), 전체 평균을 \(\bar y_{\cdot\cdot}\), 전체 관측 수를 \(N = \sum n_i\)라 하자. 각 관측값이 전체 평균에서 벗어난 양은 "자기 집단 평균에서 벗어난 양"과 "집단 평균이 전체 평균에서 벗어난 양"의 합이다: \(y_{ij} - \bar y_{\cdot\cdot} = (y_{ij} - \bar y_{i\cdot}) + (\bar y_{i\cdot} - \bar y_{\cdot\cdot})\). 양변을 제곱해 더하면 교차항이 0이 되어(집단마다 \(\sum_j (y_{ij} - \bar y_{i\cdot}) = 0\)) 깔끔하게 나뉜다.</p>
+    <div class="formula">$$\underbrace{\sum_{i}\sum_{j}(y_{ij}-\bar y_{\cdot\cdot})^2}_{SS_T} = \underbrace{\sum_i n_i(\bar y_{i\cdot}-\bar y_{\cdot\cdot})^2}_{SS_B} + \underbrace{\sum_i\sum_j (y_{ij}-\bar y_{i\cdot})^2}_{SS_W}$$<div class="where">\(SS_B\)는 <span class="term">집단 간 제곱합</span><span class="en">(between-group sum of squares, 처리 제곱합)</span>, \(SS_W\)는 <span class="term">집단 내 제곱합</span><span class="en">(within-group sum of squares, 오차 제곱합 \(SS_E\))</span>이다. 자유도도 \(N - 1 = (k - 1) + (N - k)\)로 나뉜다.</div></div>
+    <figure class="diagram steps" data-steps="5">
+      <svg viewBox="0 0 800 320" role="img" aria-label="세 챔버의 관측값 12개에서 총편차를 집단 내 편차와 집단 간 편차로 나누는 과정">
+        <line x1="70" y1="290.0" x2="770" y2="290.0" class="s-axis"/>
+        <line x1="70" y1="30.0" x2="70" y2="290.0" class="s-axis"/>
+        <text class="t t-dim t-mono" x="62" y="294.0" text-anchor="end" font-size="12">40</text>
+        <text class="t t-dim t-mono" x="62" y="207.3" text-anchor="end" font-size="12">50</text>
+        <text class="t t-dim t-mono" x="62" y="120.7" text-anchor="end" font-size="12">60</text>
+        <text class="t t-dim t-mono" x="62" y="34.0" text-anchor="end" font-size="12">70</text>
+        <text class="t" x="190" y="312" text-anchor="middle" font-size="13">챔버 1</text>
+        <text class="t" x="420" y="312" text-anchor="middle" font-size="13">챔버 2</text>
+        <text class="t" x="650" y="312" text-anchor="middle" font-size="13">챔버 3</text>
+        <g data-step="2"><line x1="80" y1="174.4" x2="770" y2="174.4" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <text class="t" x="766" y="166.4" text-anchor="end" font-size="13">전체 평균 ȳ.. = 53.33</text></g>
+        <g data-only="2"><line x1="142" y1="220.7" x2="142" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="174" y1="186.0" x2="174" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="206" y1="160.0" x2="206" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="238" y1="212.0" x2="238" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="372" y1="134.0" x2="372" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="404" y1="108.0" x2="404" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="436" y1="142.7" x2="436" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="468" y1="82.0" x2="468" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="602" y1="203.3" x2="602" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="634" y1="238.0" x2="634" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="666" y1="177.3" x2="666" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <line x1="698" y1="229.3" x2="698" y2="174.4" stroke="var(--text-dim)" stroke-width="2.2"/><text class="t" x="80" y="22" font-size="14" style="font-weight:700">SST = Σ(y − ȳ..)² = 364.67</text></g>
+        <g data-step="3"><line x1="120" y1="194.7" x2="260" y2="194.7" stroke="var(--accent)" stroke-width="2.5"/>
+        <text class="t t-acc" x="264" y="198.7" font-size="12">ȳ₁. = 51</text>
+        <line x1="142" y1="220.7" x2="142" y2="194.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="174" y1="186.0" x2="174" y2="194.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="206" y1="160.0" x2="206" y2="194.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="238" y1="212.0" x2="238" y2="194.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="350" y1="116.7" x2="490" y2="116.7" stroke="var(--accent)" stroke-width="2.5"/>
+        <text class="t t-acc" x="494" y="120.7" font-size="12">ȳ₂. = 60</text>
+        <line x1="372" y1="134.0" x2="372" y2="116.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="404" y1="108.0" x2="404" y2="116.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="436" y1="142.7" x2="436" y2="116.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="468" y1="82.0" x2="468" y2="116.7" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="580" y1="212.0" x2="720" y2="212.0" stroke="var(--accent)" stroke-width="2.5"/>
+        <text class="t t-acc" x="724" y="216.0" font-size="12">ȳ₃. = 49</text>
+        <line x1="602" y1="203.3" x2="602" y2="212.0" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="634" y1="238.0" x2="634" y2="212.0" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="666" y1="177.3" x2="666" y2="212.0" stroke="var(--accent)" stroke-width="2.2"/>
+        <line x1="698" y1="229.3" x2="698" y2="212.0" stroke="var(--accent)" stroke-width="2.2"/></g>
+        <g data-only="3"><text class="t t-acc" x="80" y="22" font-size="14" style="font-weight:700">SSW = Σ(y − ȳᵢ.)² = 90.00</text></g>
+        <g data-step="4"><line x1="108" y1="194.7" x2="108" y2="174.4" stroke="var(--accent-2)" stroke-width="5"/>
+        <line x1="338" y1="116.7" x2="338" y2="174.4" stroke="var(--accent-2)" stroke-width="5"/>
+        <line x1="568" y1="212.0" x2="568" y2="174.4" stroke="var(--accent-2)" stroke-width="5"/></g>
+        <g data-only="4"><text class="t" x="80" y="22" font-size="14" style="font-weight:700" fill="var(--accent-2)">SSB = Σ nᵢ(ȳᵢ. − ȳ..)² = 274.67</text></g>
+        <g data-only="5"><text class="t" x="80" y="22" font-size="14" style="font-weight:700">SST 364.67 = SSB 274.67 + SSW 90.00</text></g>
+        <circle cx="142" cy="220.7" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="174" cy="186.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="206" cy="160.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="238" cy="212.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="372" cy="134.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="404" cy="108.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="436" cy="142.7" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="468" cy="82.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="602" cy="203.3" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="634" cy="238.0" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="666" cy="177.3" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+        <circle cx="698" cy="229.3" r="6" fill="var(--accent)" stroke="var(--canvas-bg, #fff)" stroke-width="1.5"/>
+      </svg>
+      <ol class="steps-cap"><li>세 챔버에서 웨이퍼 4장씩, 식각 속도(임의 단위)를 쟀다.</li><li>총편차: 각 점에서 전체 평균(점선)까지의 거리. 제곱해 모두 더하면 \(SS_T\) = 364.67.</li><li>집단 내 편차(초록): 각 점에서 자기 챔버 평균까지. 제곱합 \(SS_W\) = 90 — 웨이퍼마다의 우연한 흔들림이다.</li><li>집단 간 편차(보라 막대): 챔버 평균에서 전체 평균까지. 점 4개가 같은 편차를 가지므로 \(4\times\)를 곱해 \(SS_B\) = 274.67.</li><li>\(SS_T = SS_B + SS_W\). 집단 간 몫이 집단 내 몫보다 훨씬 크면 챔버 차이가 진짜일 가능성이 크다.</li></ol>
+      <figcaption>분산 분석은 "흩어짐의 출처를 나누는" 계산이다. 평균이 다른지 묻는데 분산을 분석하는 이유가 여기 있다.</figcaption>
+    </figure>
+    <p>제곱합을 자유도로 나눈 것을 <span class="term">평균 제곱</span><span class="en">(mean square)</span>이라 한다. \(MS_B = SS_B/(k-1)\), \(MS_W = SS_W/(N-k)\). \(MS_W\)는 처리 평균이 같든 다르든 공통 분산 \(\sigma^2\)의 불편 추정량이다(각 집단의 \(S_i^2\)를 합동한 것). 반면 \(E[MS_B] = \sigma^2 + \sum n_i\tau_i^2/(k-1)\)이어서(\(\tau_i = \mu_i - \mu\)), \(H_0\)가 참일 때만 \(\sigma^2\)를 추정하고 평균이 다르면 더 커진다. 그래서 둘의 비를 본다.</p>
+    <div class="def"><span class="def-k">분산 분석의 F 검정</span>
+      <p>정규 분포·등분산·독립을 가정하면 \(H_0\) 아래에서 \(F_0 = MS_B/MS_W \sim F_{k-1,\,N-k}\)이다. \(F_0 > F_{\alpha,k-1,N-k}\)이면 \(H_0\)를 기각하고, p 값은 \(P(F_{k-1,N-k} > F_0)\)이다. 평균이 다를수록 \(F_0\)가 커지므로 기각역은 오른쪽 꼬리 하나다.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>변동 요인</th><th>제곱합</th><th>자유도</th><th>평균 제곱</th><th>\(F_0\)</th></tr></thead>
+      <tbody>
+        <tr><td>처리(집단 간)</td><td>\(SS_B\)</td><td class="num">\(k-1\)</td><td>\(MS_B = SS_B/(k-1)\)</td><td>\(MS_B/MS_W\)</td></tr>
+        <tr><td>오차(집단 내)</td><td>\(SS_W\)</td><td class="num">\(N-k\)</td><td>\(MS_W = SS_W/(N-k)\)</td><td></td></tr>
+        <tr><td>전체</td><td>\(SS_T\)</td><td class="num">\(N-1\)</td><td></td><td></td></tr>
+      </tbody>
+    </table></div>
+    <div class="tangle" id="tg-f">
+      <p>챔버 <span class="tn" data-var="k" data-min="2" data-max="8" data-step="1">4</span>대에서 웨이퍼를 <span class="tn" data-var="n" data-min="2" data-max="20" data-step="1">5</span>장씩 돌렸더니 \(SS_B\) = <span class="tn" data-var="ssb" data-min="0" data-max="5000" data-step="10">1330</span>, \(SS_W\) = <span class="tn" data-var="ssw" data-min="10" data-max="5000" data-step="10">590</span>였다. 자유도는 <span class="tn-out" data-out="df"></span>, 평균 제곱은 \(MS_B\) = <span class="tn-out" data-out="msb"></span>, \(MS_W\) = <span class="tn-out" data-out="msw"></span>이므로 \(F_0\) = <span class="tn-out" data-out="F"></span>. 기각 한계 \(F_{0.05}\) = <span class="tn-out" data-out="fc"></span>, p 값 = <span class="tn-out" data-out="p"></span> — <span class="ad-msg" data-out="msg"></span></p>
+    </div>
+    <div class="predict" data-for="sim-flab">
+      <p>네 챔버의 참 평균이 <b>모두 같을 때</b> 웨이퍼 5장씩 실험을 1000번 반복한다. \(F_0 > F_{0.05,3,16}\)으로 "챔버가 다르다"고 잘못 결론 내리는 실험은 대략 몇 번일까?</p>
+      <div class="opts"><button class="opt">0번 — 평균이 같으면 F는 늘 작다</button><button class="opt" data-correct>약 50번</button><button class="opt">약 260번 — 쌍이 6개니까</button><button class="opt">약 500번</button></div>
+      <div class="quiz-exp">\(H_0\)가 참이면 \(F_0\)는 정확히 \(F_{3,16}\) 분포를 따르고, 기각 한계는 상위 5% 점이다. 그래서 거짓 기각은 약 5%, 1000번 중 50번 안팎이다. 시뮬레이터에서 "평균 같게"를 누른 뒤 1000번 실험해 확인하라.</div>
+    </div>
+    <div class="sim" id="sim-flab">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>F 검정 실험실</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-fl1"></canvas><span class="hint top">흰 원(참 평균)을 위아래로 끈다</span></div><div><canvas id="cv-fl2"></canvas><span class="hint top">쌓인 F₀와 F 분포</span></div></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>집단 수 k</span><div class="seg" id="fl-k"><button data-value="3">3</button><button data-value="4" class="on">4</button><button data-value="5">5</button></div></div>
+          <label class="ctrl"><span>집단당 n <output id="fl-n-out"></output></span><input type="range" id="fl-n" min="2" max="20" step="1" value="5"></label>
+          <label class="ctrl"><span>잡음 σ <output id="fl-s-out"></output></span><input type="range" id="fl-s" min="2" max="20" step="1" value="8"></label>
+          <div class="ctrl"><span>반복</span><div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="fl-1" type="button">1번</button><button class="btn" id="fl-100" type="button">100번</button><button class="btn primary" id="fl-1000" type="button">1000번</button></div></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="fl-eq" type="button">평균 같게</button><button class="btn" id="fl-clr" type="button">지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이번 \(F_0\)</span><span class="v" id="fl-F">—</span></div>
+        <div class="stat"><span class="k">p 값</span><span class="v" id="fl-p">—</span></div>
+        <div class="stat"><span class="k">\(F_{0.05}\)</span><span class="v" id="fl-fc">—</span></div>
+        <div class="stat"><span class="k">실험 횟수</span><span class="v" id="fl-cnt">—</span></div>
+        <div class="stat"><span class="k">기각 비율</span><span class="v" id="fl-rej">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽은 이번 실험의 자료(초록 점)와 집단 평균(초록 막대), 흰 원은 참 평균이다. 오른쪽은 반복 실험에서 얻은 \(F_0\)의 히스토그램(초록)과 \(H_0\) 아래 이론 분포 \(F_{k-1,N-k}\)(보라), 기각역(빨강)이다. 해볼 것: ① "평균 같게" 후 1000번 — 히스토그램이 보라 곡선에 겹치고 기각 비율이 5% 근처다. ② 한 집단만 10쯤 올리고 1000번 — 히스토그램이 오른쪽으로 밀리며 기각 비율(검정력)이 오른다. \(n\)을 늘리면 같은 차이에서 검정력이 얼마나 오르는가? ③ σ를 키우면 같은 평균 차이도 \(F_0\)가 작아진다. \(F\)는 "평균 차이 ÷ 잡음"의 신호 대 잡음비다.</div>
+    </div>
+    <div class="example" data-title="챔버 네 대의 식각 속도 비교">
+      <p>같은 산화막 식각 레시피를 챔버 네 대에서 웨이퍼 5장씩 돌려 식각 속도(nm/min)를 쟀다. 챔버 1: 512, 498, 505, 520, 508 · 챔버 2: 525, 531, 518, 529, 522 · 챔버 3: 503, 497, 510, 499, 506 · 챔버 4: 515, 522, 509, 517, 511. 유의 수준 0.05에서 챔버 평균이 모두 같다고 할 수 있는가?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 처리 평균과 전체 평균으로 \(SS_B\), 각 집단의 편차 제곱합으로 \(SS_W\)를 구해 분산 분석표를 만든다.</div>
+        <div class="step"><b>풀이</b> 처리 평균 508.6, 525.0, 503.0, 514.8, 전체 평균 512.85.
+          $$SS_B = 5\big[(508.6-512.85)^2 + (525.0-512.85)^2 + (503.0-512.85)^2 + (514.8-512.85)^2\big] = 1332.55$$
+          집단 내 편차 제곱합은 챔버별로 267.2, 110.0, 110.0, 104.8이므로 \(SS_W = 592.0\). \(MS_B = 1332.55/3 = 444.18\), \(MS_W = 592.0/16 = 37.0\), \(F_0 = 12.00\). \(F_{0.05,3,16} = 3.24\)이고 p 값은 \(P(F_{3,16} > 12.00) = 0.00023\).</div>
+        <div class="answer">\(F_0 = 12.0 > 3.24\) (p ≈ 0.0002) — 챔버 평균이 모두 같다는 가설을 기각한다.</div>
+        <div class="step"><b>검토</b> \(MS_W = 37\)이므로 웨이퍼 사이 표준 편차는 약 6.1 nm/min, 챔버 평균의 표준 오차는 \(6.1/\sqrt5 \approx 2.7\)이다. 챔버 평균이 503–525로 22 nm/min 벌어진 것은 표준 오차의 8배가 넘으니 결과가 타당하다. 다만 F 검정은 "어느 챔버가" 다른지는 말해 주지 않는다 — 다음 절의 사후 비교가 필요하다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="tukey">
+    <h2>모형과 가정, 투키의 사후 비교</h2>
+    <p>일원 분산 분석의 바탕에는 다음 모형이 있다.</p>
+    <div class="formula">$$y_{ij} = \mu + \tau_i + \varepsilon_{ij},\qquad \sum_i n_i\tau_i = 0,\qquad \varepsilon_{ij} \overset{\text{iid}}{\sim} N(0, \sigma^2)$$<div class="where">\(\mu\)는 전체 평균, \(\tau_i\)는 처리 \(i\)의 <span class="term">처리 효과</span><span class="en">(treatment effect)</span>, \(\varepsilon_{ij}\)는 오차다. 비교하려는 수준을 연구자가 정해 놓았으면(이 챔버 네 대) 고정 효과 모형, 수준을 큰 모집단에서 무작위로 뽑았으면(팹의 수많은 챔버 가운데 넷) 변량 효과 모형이라 하며, 이때는 \(\sigma_\tau^2\)가 0인지를 같은 \(F\)로 검정한다.</div></div>
+    <p>가정은 세 가지다. ① <b>독립</b>: 실험 순서와 단위가 서로 영향을 주지 않는다 — 랜덤화(4절)로 지킨다. ② <b>정규성</b>: 잔차 \(e_{ij} = y_{ij} - \bar y_{i\cdot}\)의 Q–Q 그림(12장)으로 확인한다. 집단당 \(n\)이 적당하면 \(F\) 검정은 정규성 위반에 꽤 강하다. ③ <b>등분산</b>: 집단별 잔차의 퍼짐이 비슷해야 한다. 집단 크기가 같으면(균형 설계) 등분산이 조금 깨져도 견디지만, 크기가 다르고 작은 집단의 분산이 크면 거짓 기각이 크게 늘어난다. 아래 미니 실험이 그 차이를 보여 준다.</p>
+    <figure class="mini" id="mini-robust">
+      <div class="mini-view"><canvas id="cv-robust"></canvas></div>
+      <div class="mini-ctrl">
+        <div class="ctrl"><span>집단 크기</span><div class="seg" id="rb-bal"><button data-value="bal" class="on">균형 7·7·7</button><button data-value="unb">불균형 3·6·12</button></div></div>
+        <label class="ctrl"><span>첫 집단의 σ 배수 <output id="rb-r-out"></output></span><input type="range" id="rb-r" min="1" max="4" step="0.5" value="1"></label>
+        <button class="btn primary" id="rb-run" type="button">2000번 실험</button>
+        <span class="readout" id="rb-out"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>세 집단의 참 평균은 같다. 첫 집단(불균형일 때 가장 작은 집단)의 표준 편차만 키워 가며 \(F\) 검정을 2000번 해서 p 값 히스토그램을 쌓는다. 가정이 맞으면 p 값은 0–1에 고르게 퍼지고 빨간 칸(\(p &lt; 0.05\))은 전체의 5%다. 균형 설계는 σ 배수를 4로 키워도 크게 버티지만, 불균형 설계에서는 빨간 칸이 크게 부푼다.</figcaption>
+    </figure>
+    <h3>사후 비교: 투키의 HSD</h3>
+    <p>\(F\) 검정으로 "어딘가 다르다"를 얻으면 이제 어느 쌍이 다른지 묻는다. 이렇게 결과를 본 뒤 하는 쌍별 비교를 <span class="term">사후 비교</span><span class="en">(post hoc comparison)</span>라 한다. 모든 쌍을 비교하면서 가족별 오류율을 \(\alpha\)로 묶는 대표 방법이 <span class="term">투키 HSD</span><span class="en">(Tukey's honestly significant difference)</span>다. 기준은 \(k\)개 평균 중 가장 큰 것과 가장 작은 것의 차이가 따르는 <span class="term">스튜던트화 범위 분포</span><span class="en">(studentized range distribution)</span> \(q\)에서 온다.</p>
+    <div class="formula">$$\text{HSD} = q_{\alpha}(k,\,N-k)\,\sqrt{\frac{MS_W}{n}},\qquad |\bar y_{i\cdot} - \bar y_{j\cdot}| > \text{HSD} \ \Rightarrow\ \mu_i \ne \mu_j$$<div class="where">\(q_\alpha(k,\nu)\)는 스튜던트화 범위 분포의 상위 \(\alpha\) 분위수(\(q_{0.05}(4, 16) = 4.05\)). 집단 크기가 다르면 \(\sqrt{MS_W/n}\) 대신 \(\sqrt{\tfrac{MS_W}{2}\big(\tfrac1{n_i}+\tfrac1{n_j}\big)}\)를 쓴다(투키–크레이머). 동시 신뢰 구간은 \(\bar y_{i\cdot} - \bar y_{j\cdot} \pm \text{HSD}\)이다.</div></div>
+    <div class="sim" id="sim-tukey">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>투키 동시 신뢰 구간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-tk1"></canvas><span class="hint top">흰 원을 끌어 챔버 자료를 통째로 옮긴다</span></div><div><canvas id="cv-tk2"></canvas><span class="hint top">쌍별 차이의 95% 구간</span></div></div></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="tk-t"> 보정 없는 t 구간도 보기(점선)</label>
+          <label class="ctrl"><span>잡음 배수 <output id="tk-s-out"></output></span><input type="range" id="tk-s" min="0.3" max="2" step="0.1" value="1"></label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="tk-ex" type="button">예제 자료로</button><button class="btn" id="tk-new" type="button">새 표본</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">\(MS_W\)</span><span class="v" id="tk-mse">—</span></div>
+        <div class="stat"><span class="k">\(q_{0.05}(4,16)\)</span><span class="v" id="tk-q">—</span></div>
+        <div class="stat"><span class="k">HSD</span><span class="v" id="tk-hsd">—</span></div>
+        <div class="stat"><span class="k">유의한 쌍</span><span class="v" id="tk-sig">—</span></div>
+        <div class="stat"><span class="k">F 검정</span><span class="v" id="tk-F">—</span></div>
+      </div>
+      <div class="sim-note">처음 화면은 예제 14.1의 자료다. 오른쪽 구간이 0(세로선)을 넘지 않으면 그 쌍은 유의하게 다르다(보라). 해볼 것: ① 챔버 4를 위로 조금 끌어 "2–4" 쌍이 유의해지는 경계를 찾아라. 그 차이가 HSD와 같은가? ② 보정 없는 t 구간을 켜면 구간이 좁아 유의한 쌍이 더 많이 나온다. 그 대가가 1절의 가족별 오류다. ③ 잡음 배수를 키우면 \(F\) 검정과 투키 결과가 함께 약해진다. 드물게 \(F\)는 유의한데 투키로 유의한 쌍이 하나도 없는 경우도 생긴다 — 두 방법이 묻는 질문이 다르기 때문이다.</div>
+    </div>
+    <div class="example" data-title="어느 챔버가 다른가">
+      <p>예제 14.1의 자료(\(MS_W = 37.0\), 집단당 \(n = 5\), \(N - k = 16\))로 투키 HSD를 구하고, 6쌍 가운데 어느 쌍이 유의하게 다른지 판정하라. \(q_{0.05}(4,16) = 4.05\).</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> HSD 하나를 구한 뒤 평균 차이의 절댓값과 비교한다.</div>
+        <div class="step"><b>풀이</b> \(\text{HSD} = 4.05\sqrt{37.0/5} = 4.05 \times 2.720 = 11.0\) nm/min. 평균 508.6, 525.0, 503.0, 514.8의 쌍별 차이: 1–2: 16.4, 1–3: 5.6, 1–4: 6.2, 2–3: 22.0, 2–4: 10.2, 3–4: 11.8.</div>
+        <div class="answer">1–2(16.4), 2–3(22.0), 3–4(11.8) 세 쌍이 유의하다. 2–4(10.2)는 경계 바로 아래다.</div>
+        <div class="step"><b>검토</b> 챔버 2가 가장 빠르고 챔버 3이 가장 느리다. 보정 없는 t 검정의 한계 \(t_{0.025,16}\sqrt{2MS_W/n} = 2.12 \times 3.85 = 8.16\)을 썼다면 2–4도 유의로 나왔을 것이다. 투키는 여섯 비교를 함께 보장하므로 문턱이 높다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>챔버 매칭은 분산 분석 문제다</strong> 같은 레시피라도 챔버마다 식각 속도와 균일도가 조금씩 다르다. 새 챔버를 양산에 넣기 전에는 기준 챔버들과 같은 웨이퍼 묶음을 나눠 돌려 평균 차이가 매칭 규격 안인지 확인한다. 챔버를 요인으로 둔 일원 분산 분석으로 "챔버 사이 분산"이 "웨이퍼 사이 분산"보다 큰지 보고, 투키 비교로 튀는 챔버를 찾는다. 변량 효과 모형으로 \(\sigma_{\text{챔버}}^2\)를 추정하면 장비 대수가 늘 때 제품 산포가 얼마나 커질지도 예측할 수 있다. → <a href="https://semi.euiyun.com/etch/chapters/endpoint.html">EtchBook · 종말점과 균일도(챔버는 웨이퍼마다 조금씩 다르다)</a></div>
+    <div class="drill" id="drill-anova" data-title="분산 분석표 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="twoway">
+    <h2>이원 분산 분석과 교호 작용</h2>
+    <p>식각 속도는 RF 전력과 챔버 압력 둘 다에 달려 있다. 두 요인 A(\(a\)수준)와 B(\(b\)수준)의 모든 조합을 \(r\)번씩 반복해 돌리는 실험을 이원 요인 실험이라 하고, 그 자료를 <span class="term">이원 분산 분석</span><span class="en">(two-way ANOVA)</span>으로 나눈다. 핵심은 두 요인이 따로따로 더해지듯 작용하는지, 아니면 한 요인의 효과가 다른 요인의 수준에 따라 달라지는지다. 후자를 <span class="term">교호 작용</span><span class="en">(interaction)</span>이라 하고, 요인 하나가 다른 요인의 수준을 평균해서 내는 효과를 <span class="term">주효과</span><span class="en">(main effect)</span>라 한다.</p>
+    <div class="formula">$$y_{ijk} = \mu + \tau_i + \beta_j + (\tau\beta)_{ij} + \varepsilon_{ijk},\qquad i = 1..a,\ j = 1..b,\ k = 1..r$$<div class="where">\(\tau_i\), \(\beta_j\)는 주효과, \((\tau\beta)_{ij}\)는 교호 작용이다. 칸 평균 \(\bar y_{ij\cdot}\), 행 평균 \(\bar y_{i\cdot\cdot}\), 열 평균 \(\bar y_{\cdot j\cdot}\)로 추정한다: \(\widehat{(\tau\beta)}_{ij} = \bar y_{ij\cdot} - \bar y_{i\cdot\cdot} - \bar y_{\cdot j\cdot} + \bar y_{\cdot\cdot\cdot}\) — 칸 평균에서 두 주효과로 설명되는 몫을 빼고 남은 것이다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 260" role="img" aria-label="교호 작용 그림의 세 가지 모양: 평행선(교호 작용 없음), 벌어지는 선(순서 있는 교호 작용), 교차하는 선(순서 바뀌는 교호 작용)">
+        <defs><marker id="ad-ar1" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker></defs>
+        <g class="s-axis" fill="none">
+          <path d="M40 30 V190 H240"/><path d="M300 30 V190 H500"/><path d="M560 30 V190 H760"/>
+        </g>
+        <g class="t t-dim" font-size="12" text-anchor="middle">
+          <text x="80" y="208">B 낮음</text><text x="200" y="208">B 높음</text>
+          <text x="340" y="208">B 낮음</text><text x="460" y="208">B 높음</text>
+          <text x="600" y="208">B 낮음</text><text x="720" y="208">B 높음</text>
+        </g>
+        <g stroke-width="3" fill="none">
+          <path d="M80 150 L200 90" stroke="var(--accent)"/><path d="M80 110 L200 50" stroke="var(--accent-2)"/>
+          <path d="M340 150 L460 135" stroke="var(--accent)"/><path d="M340 120 L460 45" stroke="var(--accent-2)"/>
+          <path d="M600 60 L720 150" stroke="var(--accent)"/><path d="M600 150 L720 60" stroke="var(--accent-2)"/>
+        </g>
+        <g fill="var(--accent)"><circle cx="80" cy="150" r="5"/><circle cx="200" cy="90" r="5"/><circle cx="340" cy="150" r="5"/><circle cx="460" cy="135" r="5"/><circle cx="600" cy="60" r="5"/><circle cx="720" cy="150" r="5"/></g>
+        <g fill="var(--accent-2)"><circle cx="80" cy="110" r="5"/><circle cx="200" cy="50" r="5"/><circle cx="340" cy="120" r="5"/><circle cx="460" cy="45" r="5"/><circle cx="600" cy="150" r="5"/><circle cx="720" cy="60" r="5"/></g>
+        <g class="t" font-size="13" text-anchor="middle" style="font-weight:700">
+          <text x="140" y="236">교호 작용 없음: 평행</text><text x="400" y="236">순서 있는 교호 작용</text><text x="660" y="236">순서가 뒤바뀌는 교호 작용</text>
+        </g>
+        <g class="t t-dim" font-size="12" text-anchor="middle">
+          <text x="140" y="254">B의 효과가 A와 무관</text><text x="400" y="254">A 높음에서 B 효과가 더 큼</text><text x="660" y="254">A 주효과가 0이어도 A가 중요</text>
+        </g>
+        <g font-size="12"><text class="t t-acc" x="248" y="40">A 낮음</text><text class="t" x="248" y="58" fill="var(--accent-2)">A 높음</text></g>
+      </svg>
+      <figcaption>교호 작용 그림은 칸 평균을 B 수준마다 찍고 A 수준별로 선을 잇는다. 선이 평행하면 교호 작용이 없고, 기울기가 다르면 있다. 선이 엇갈리면 주효과만 보고 내린 결론이 거꾸로일 수 있다.</figcaption>
+    </figure>
+    <p>제곱합은 \(SS_T = SS_A + SS_B + SS_{AB} + SS_E\)로 나뉜다.</p>
+    <div class="formula">$$SS_A = br\sum_i(\bar y_{i\cdot\cdot}-\bar y_{\cdot\cdot\cdot})^2,\quad SS_B = ar\sum_j(\bar y_{\cdot j\cdot}-\bar y_{\cdot\cdot\cdot})^2,\quad SS_{AB} = r\sum_{i,j}\widehat{(\tau\beta)}_{ij}^{\,2},\quad SS_E = \sum_{i,j,k}(y_{ijk}-\bar y_{ij\cdot})^2$$<div class="where">자유도는 \(a-1\), \(b-1\), \((a-1)(b-1)\), \(ab(r-1)\)이고 합은 \(abr-1\)이다. 세 \(F\) 비는 모두 \(MS_E\)로 나눈다. 반복이 없으면(\(r = 1\)) \(SS_E\)의 자유도가 0이어서 교호 작용을 오차와 구별할 수 없다.</div></div>
+    <div class="tangle" id="tg-df">
+      <p>A <span class="tn" data-var="a" data-min="2" data-max="6" data-step="1">2</span>수준 × B <span class="tn" data-var="b" data-min="2" data-max="6" data-step="1">3</span>수준을 <span class="tn" data-var="r" data-min="1" data-max="6" data-step="1">3</span>번씩 반복하면 실험은 <span class="tn-out" data-out="N"></span>번이다. 자유도: A <span class="tn-out" data-out="da"></span>, B <span class="tn-out" data-out="db"></span>, AB <span class="tn-out" data-out="dab"></span>, 오차 <span class="tn-out" data-out="de"></span>, 전체 <span class="tn-out" data-out="dt"></span>. <span class="ad-msg" data-out="msg"></span></p>
+    </div>
+    <div class="predict" data-for="sim-twoway">
+      <p>아래 교호 작용 그림에서 두 선이 X자로 크게 엇갈리고, A 낮음·A 높음의 전체 평균(B 수준을 평균한 값)이 거의 같다. A의 주효과 \(F\) 검정은 어떻게 나올까?</p>
+      <div class="opts"><button class="opt">크게 유의하다 — 선이 크게 움직이니까</button><button class="opt" data-correct>유의하지 않다 — 그래도 A는 중요한 요인이다</button><button class="opt">계산할 수 없다</button></div>
+      <div class="quiz-exp">주효과는 다른 요인의 수준을 평균한 효과다. 엇갈린 선에서는 A의 효과가 B 수준마다 부호가 바뀌어 평균하면 0에 가깝다. 그러나 \(F_{AB}\)가 크고, A를 B와 함께 정해야 한다. 교호 작용이 유의하면 주효과만 해석하지 말고 칸 평균을 본다.</div>
+    </div>
+    <div class="sim" id="sim-twoway">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>교호 작용 그림과 이원 분산 분석표</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-tw"></canvas><span class="hint top">흰 원(칸 평균)을 위아래로 끈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>과녁</span><div class="seg" id="tw-goal"><button data-value="g1" class="on">A만 유의</button><button data-value="g2">AB만 유의</button><button data-value="g3">셋 다 유의</button></div></div>
+          <label class="ctrl"><span>잡음 σ <output id="tw-s-out"></output></span><input type="range" id="tw-s" min="2" max="30" step="1" value="8"></label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="tw-par" type="button">평행하게</button><button class="btn" id="tw-new" type="button">반복값 다시 뽑기</button><button class="btn" id="tw-ex" type="button">처음 상태</button></div>
+          <div id="tw-tbl"></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">A(전력) p</span><span class="v" id="tw-pa">—</span></div>
+        <div class="stat"><span class="k">B(압력) p</span><span class="v" id="tw-pb">—</span></div>
+        <div class="stat"><span class="k">AB p</span><span class="v" id="tw-pab">—</span></div>
+        <div class="stat"><span class="k">도전</span><span class="v" id="tw-goal-r">—</span></div>
+      </div>
+      <div class="sim-note">A = RF 전력 2수준(초록 낮음, 보라 높음), B = 압력 3수준, 칸마다 웨이퍼 3장(작은 점). 칸 평균을 끌면 그 칸의 세 점이 함께 움직이고 분산 분석표가 바로 바뀐다(빨간 줄은 \(p &lt; 0.05\)). <b>도전:</b> 과녁을 고르고 칸 평균을 끌어 그 상태를 만들어라. 해볼 것: ① "평행하게"를 누르면 교호 작용 제곱합이 0이 된다. ② "AB만 유의" — 엇갈린 X자를 만들되 두 선의 평균 높이와 세 압력의 평균을 맞춰야 한다. ③ σ를 키우면 같은 그림도 유의성이 사라진다.</div>
+    </div>
+    <div class="example" data-title="전력 × 압력 2² 실험의 이원 분산 분석">
+      <p>RF 전력(A: 낮음·높음)과 압력(B: 낮음·높음)의 네 조합에서 웨이퍼 3장씩 식각 속도(nm/min)를 쟀다. A 낮음·B 낮음: 410, 418, 414 · A 낮음·B 높음: 430, 436, 425 · A 높음·B 낮음: 470, 462, 466 · A 높음·B 높음: 520, 528, 515. 분산 분석표를 만들고 해석하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 칸·행·열·전체 평균을 구해 네 제곱합을 계산한다. 자유도는 1, 1, 1, \(4 \times 2 = 8\).</div>
+        <div class="step"><b>풀이</b> 칸 평균 414.0, 430.3, 466.0, 521.0. A 평균 422.17, 493.50, B 평균 440.00, 475.67, 전체 457.83.
+          \(SS_A = 2\cdot3\big[(422.17-457.83)^2+(493.50-457.83)^2\big] = 15265.3\), \(SS_B = 3816.3\), \(SS_{AB} = 1121.3\), \(SS_E = 210.7\)(칸마다 편차 제곱합의 합), \(MS_E = 26.33\).
+          \(F_A = 579.7\), \(F_B = 144.9\), \(F_{AB} = 42.6\) (\(p = 0.0002\)). \(F_{0.05,1,8} = 5.32\).</div>
+        <div class="answer">세 효과 모두 유의하다. 특히 교호 작용이 유의: 압력을 올리면 전력 낮음에서 +16.3, 전력 높음에서 +55.0 nm/min.</div>
+        <div class="step"><b>검토</b> 교호 작용 그림의 두 선 기울기가 크게 다르니 \(F_{AB}\)가 큰 것이 맞다. 이온 에너지(전력)가 충분해야 압력을 올려 늘린 라디칼이 식각에 쓰인다는 이온–라디칼 시너지와 같은 그림이다. "압력 효과는 +35.7"이라는 주효과만 보고하면 두 전력 조건 모두를 잘못 말하게 된다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="principles">
+    <h2>실험 계획의 세 원칙: 랜덤화·반복·블록화</h2>
+    <p>지금까지는 자료가 주어졌다고 보았다. 그러나 결론의 질은 자료를 <em>어떻게 얻었는가</em>에서 대부분 정해진다. 요인과 수준, 실험 횟수와 순서, 실험 단위를 미리 정하는 일을 <span class="term">실험 계획</span><span class="en">(design of experiments, DOE)</span>이라 한다. 피셔가 정리한 세 원칙은 다음과 같다.</p>
+    <ul>
+      <li><span class="term">랜덤화</span><span class="en">(randomization)</span>: 처리를 실험 단위에 배정하는 일과 실행 순서를 무작위로 정한다. 모르는 방해 요인(장비의 시간 표류, 계측기 드리프트, 웨이퍼 순서)이 한 처리에만 몰리지 않게 하여 독립 가정을 정당화한다.</li>
+      <li><span class="term">반복</span><span class="en">(replication)</span>: 같은 처리를 독립적으로 여러 번 다시 실행한다. 오차 분산 \(\sigma^2\)를 추정할 수 있게 하고, 평균의 표준 오차를 \(\sigma/\sqrt n\)로 줄인다. 같은 웨이퍼를 여러 번 재는 <em>측정 반복</em>은 계측 잡음만 줄일 뿐 반복이 아니다.</li>
+      <li><span class="term">블록화</span><span class="en">(blocking)</span>: 결과에 영향을 주지만 관심 없는 요인(웨이퍼 로트, 날짜, 장비)이 같은 단위끼리 묶어 그 안에서 처리를 비교한다. 블록 사이의 차이를 오차에서 빼내 비교를 예민하게 만든다.</li>
+    </ul>
+    <p>방해 요인을 랜덤화로 막지 못하고 처리와 함께 움직이게 두면, 둘의 효과를 자료로는 구별할 수 없다. 이를 <span class="term">교락</span><span class="en">(confounding)</span>이라 한다. 기존 레시피를 아침에 8장, 새 레시피를 오후에 8장 돌렸는데 그사이 챔버 벽 상태가 변했다면, 보이는 차이가 레시피 탓인지 시간 탓인지 알 수 없다.</p>
+    <div class="sim" id="sim-drift">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>표류하는 챔버와 실행 순서</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-drift"></canvas><span class="hint top">흰 원을 끌어 표류 기울기를 바꾼다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>실행 순서</span><div class="seg" id="dr-o"><button data-value="seq" class="on">몰아서 AAAA…BBBB</button><button data-value="alt">교대 ABAB…</button><button data-value="rnd">랜덤화</button></div></div>
+          <label class="ctrl"><span>참 레시피 효과 <output id="dr-e-out"></output></span><input type="range" id="dr-e" min="-6" max="6" step="0.5" value="0"></label>
+          <div class="ctrl"><span>반복 실험</span><div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="dr-1" type="button">1번</button><button class="btn" id="dr-100" type="button">100번</button><button class="btn primary" id="dr-1000" type="button">1000번</button><button class="btn" id="dr-clr" type="button">지우기</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이번 추정 효과</span><span class="v" id="dr-est">—</span></div>
+        <div class="stat"><span class="k">추정값 평균(편향)</span><span class="v" id="dr-bias">—</span></div>
+        <div class="stat"><span class="k">추정값 SD</span><span class="v" id="dr-sd">—</span></div>
+        <div class="stat"><span class="k">t 검정 기각 비율</span><span class="v" id="dr-rej">—</span></div>
+      </div>
+      <div class="sim-note">웨이퍼 16장을 기존(A, 초록)·신규(B, 보라) 레시피로 8장씩 돌린다. 챔버의 식각 속도가 실행 순서에 따라 점선처럼 표류한다. 위: 이번 실험의 자료. 아래: 반복 실험에서 얻은 효과 추정값 \(\bar y_B - \bar y_A\)의 히스토그램과 참 효과(보라 선). 해볼 것: ① 참 효과 0, "몰아서"로 1000번 — 추정값이 한쪽으로 크게 밀리고 t 검정이 거의 매번 "효과 있음"을 외친다(교락). ② "랜덤화"로 바꾸면 히스토그램이 참 효과를 중심으로 모인다. 대신 표류가 잡음으로 들어가 폭이 넓어진다. ③ "교대"는 편향이 작지만 0은 아니다 — B가 언제나 한 순번 늦다. 표류가 주기적이라면 더 위험하다.</div>
+    </div>
+    <p>랜덤화는 편향을 없애 주지만 방해 요인의 변동은 여전히 오차에 남는다. 방해 요인을 미리 알면 더 좋은 방법이 있다. 로트마다 막두께가 달라 식각 결과가 로트별로 통째로 오르내린다면, 로트를 블록으로 삼아 각 로트 안에서 세 레시피를 모두 돌린다. 이를 <span class="term">확률화 블록 계획</span><span class="en">(randomized complete block design, RCBD)</span>이라 한다. 블록 안에서는 처리 순서를 랜덤화한다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 250" role="img" aria-label="완전 확률화 계획과 확률화 블록 계획 비교: 블록 계획에서는 로트마다 세 레시피를 모두 돌린다">
+        <g class="t" font-size="14" text-anchor="middle" style="font-weight:700"><text x="190" y="24">완전 확률화 계획</text><text x="590" y="24">확률화 블록 계획</text></g>
+        <g class="t t-dim" font-size="12" text-anchor="middle"><text x="190" y="42">웨이퍼 12장을 아무 로트에서나 배정</text><text x="590" y="42">로트(블록)마다 R1·R2·R3 하나씩, 순서는 무작위</text></g>
+        <g font-size="12" class="t" text-anchor="end"><text x="56" y="80">로트 1</text><text x="56" y="125">로트 2</text><text x="56" y="170">로트 3</text><text x="56" y="215">로트 4</text><text x="456" y="80">로트 1</text><text x="456" y="125">로트 2</text><text x="456" y="170">로트 3</text><text x="456" y="215">로트 4</text></g>
+        <g stroke="var(--border)" fill="var(--surface)"><rect x="66" y="58" width="270" height="40" rx="6"/><rect x="66" y="103" width="270" height="40" rx="6"/><rect x="66" y="148" width="270" height="40" rx="6"/><rect x="66" y="193" width="270" height="40" rx="6"/><rect x="466" y="58" width="270" height="40" rx="6"/><rect x="466" y="103" width="270" height="40" rx="6"/><rect x="466" y="148" width="270" height="40" rx="6"/><rect x="466" y="193" width="270" height="40" rx="6"/></g>
+        <g font-size="13" text-anchor="middle" style="font-weight:700">
+          <g fill="var(--accent)"><text x="110" y="83">R1</text><text x="200" y="83">R1</text><text x="110" y="128">R1</text><text x="200" y="218">R1</text><text x="530" y="83">R1</text><text x="680" y="128">R1</text><text x="605" y="173">R1</text><text x="530" y="218">R1</text></g>
+          <g fill="var(--accent-2)"><text x="290" y="83">R2</text><text x="200" y="128">R2</text><text x="290" y="128">R2</text><text x="200" y="173">R2</text><text x="605" y="83">R2</text><text x="530" y="128">R2</text><text x="680" y="173">R2</text><text x="680" y="218">R2</text></g>
+          <g fill="var(--warn)"><text x="110" y="173">R3</text><text x="290" y="173">R3</text><text x="110" y="218">R3</text><text x="290" y="218">R3</text><text x="680" y="83">R3</text><text x="605" y="128">R3</text><text x="530" y="173">R3</text><text x="605" y="218">R3</text></g>
+        </g>
+      </svg>
+      <figcaption>왼쪽은 로트를 무시하고 배정해 R3이 로트 3·4에 몰렸다 — 로트 차이가 레시피 차이로 둔갑할 수 있다. 오른쪽은 로트마다 세 레시피가 한 번씩 들어가 로트 효과가 모든 레시피에 똑같이 더해지고, 분석에서 빼낼 수 있다.</figcaption>
+    </figure>
+    <p>RCBD의 모형은 \(y_{ij} = \mu + \tau_i + \beta_j + \varepsilon_{ij}\)(처리 \(i\), 블록 \(j\), 칸마다 1회)이고, 반복 없는 이원 분산 분석과 같다: \(SS_T = SS_{\text{처리}} + SS_{\text{블록}} + SS_E\), 자유도 \((t-1) + (b-1) + (t-1)(b-1)\). 블록을 무시하면 \(SS_{\text{블록}}\)이 오차로 들어가 \(MS_E\)가 부풀고 \(F\)가 작아진다.</p>
+    <figure class="mini" id="mini-block">
+      <div class="mini-view"><canvas id="cv-block"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>로트 간 표준 편차 <output id="bk-s-out"></output></span><input type="range" id="bk-s" min="0" max="6" step="0.5" value="3"></label>
+        <button class="btn primary" id="bk-run" type="button">500번 실험</button>
+        <span class="readout" id="bk-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>레시피 세 개의 참 평균은 0, 1.5, 3(웨이퍼 잡음 σ = 1), 로트 네 개. 왼쪽 위는 이번 실험의 자료로 같은 로트를 선으로 이었다 — 선들이 통째로 오르내린다. 왼쪽 아래 흰 원을 좌우로 끌어도 로트 간 표준 편차가 바뀐다. 500번 실험해서 같은 자료를 블록 무시(일원 분산 분석)와 블록 반영(RCBD)으로 분석해 검정력을 비교한다(오른쪽 막대).</figcaption>
+    </figure>
+    <p>반복은 효과 추정의 정밀도를 정한다. 두 수준 요인의 효과를 \(\bar y_+ - \bar y_-\)로 추정하면, 전체 \(N\)번 중 반씩 나누어 돌리므로 분산은 \(\sigma^2/(N/2)\times 2\)이다.</p>
+    <div class="formula">$$\operatorname{SE}(\text{효과}) = \sqrt{\frac{\sigma^2}{N/2} + \frac{\sigma^2}{N/2}} = \frac{2\sigma}{\sqrt N}$$</div>
+    <div class="tangle" id="tg-rep">
+      <p>웨이퍼 사이 표준 편차가 \(\sigma\) = <span class="tn" data-var="s" data-min="1" data-max="20" data-step="0.5">6</span> nm/min인 공정에서 두 수준 실험을 모두 <span class="tn" data-var="N" data-min="4" data-max="128" data-step="4">16</span>번 돌리면 효과 추정의 표준 오차는 <span class="tn-out" data-out="se"></span>이다. 효과가 대략 \(2\,\mathrm{SE}\) = <span class="tn-out" data-out="d"></span>보다 커야 잡음과 구별된다. 이 문턱을 <span class="tn" data-var="t" data-min="1" data-max="20" data-step="0.5">4</span> nm/min으로 낮추려면 <span class="tn-out" data-out="Nt"></span>번이 필요하다 — <span class="ad-msg" data-out="msg"></span></p>
+    </div>
+    <div class="example" data-title="로트를 블록으로 삼으면">
+      <p>식각 후 세정 레시피 R1–R3을 로트 네 개에서 하나씩 시험해 잔류 입자 지수를 얻었다(로트 1: 102, 105, 108 · 로트 2: 96, 100, 101 · 로트 3: 110, 112, 116 · 로트 4: 99, 104, 105, 순서대로 R1, R2, R3). (a) 로트를 블록으로 분석하라. (b) 로트를 무시한 일원 분산 분석과 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 처리 평균·블록 평균·전체 평균으로 \(SS_{\text{처리}}\), \(SS_{\text{블록}}\)을 구하고 나머지가 \(SS_E\)다.</div>
+        <div class="step"><b>풀이</b> 레시피 평균 101.75, 105.25, 107.50, 로트 평균 105.00, 99.00, 112.67, 102.67, 전체 104.83. \(SS_T = 371.67\), \(SS_{\text{처리}} = 4\sum(\bar y_{i\cdot} - \bar y)^2 = 67.17\), \(SS_{\text{블록}} = 3\sum(\bar y_{\cdot j} - \bar y)^2 = 300.33\), \(SS_E = 4.17\).
+          (a) \(MS_{\text{처리}} = 33.58\), \(MS_E = 4.17/6 = 0.694\), \(F_0 = 48.4\) (\(F_{0.05,2,6} = 5.14\), \(p = 0.0002\)).
+          (b) 블록을 무시하면 \(SS_W = 300.33 + 4.17 = 304.5\), \(MS_W = 304.5/9 = 33.83\), \(F_0 = 0.99\) (\(F_{0.05,2,9} = 4.26\), \(p = 0.41\)).</div>
+        <div class="answer">블록화하면 \(F_0 = 48.4\)로 레시피 차이가 뚜렷하고, 무시하면 \(F_0 = 0.99\)로 아무것도 보이지 않는다.</div>
+        <div class="step"><b>검토</b> 전체 변동의 81%(300.33/371.67)가 로트 차이였다. 로트 효과는 모든 레시피에 똑같이 더해지므로 비교에는 상관없지만, 블록을 무시하면 그 81%가 "잡음"으로 계산된다. 블록이 자유도를 3 빼앗아도 남는 이득이 압도적이다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>시간 추세는 가장 흔한 교락 변수다</strong> 수율이 떨어진 로트들의 공통점을 찾다 보면 "새 장비를 거친 로트"와 "새 슬러리 배치를 쓴 로트"가 같은 주에 몰려 있어 어느 쪽이 원인인지 갈라낼 수 없는 경우가 많다. 관측 자료에서는 변수들이 시간과 함께 움직이기 때문이다. 그래서 의심이 좁혀지면 로트를 반으로 나눠 한쪽만 바꾸는 분할 로트 실험 — 같은 로트(블록) 안에서 무작위로 배정하는 실험 — 으로 확인한다. → <a href="https://semi.euiyun.com/yield/chapters/commonality.html">YieldBook · 공통성 분석과 근본 원인(공범인가 동행인인가: 공선성과 시간 추세)</a></div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="factorial">
+    <h2>2ᵏ 요인 실험: 주효과와 교호 효과</h2>
+    <p>요인이 여럿일 때 가장 흔한 첫 실험은 요인마다 두 수준(낮음·높음)만 두고 모든 조합을 돌리는 <span class="term">2ᵏ 요인 실험</span><span class="en">(2ᵏ factorial design)</span>이다. 요인 3개면 \(2^3 = 8\)번. 수준을 <b>부호화</b>해 낮음 = −1, 높음 = +1로 쓴다: \(x = (\text{설정값} - \text{중심})/(\text{반 범위})\). 압력 20–40 mTorr라면 중심 30, 반 범위 10이다. 처리 조합은 높음인 요인의 소문자로 부른다: 모두 낮음은 \((1)\), A만 높음은 \(a\), A·B 높음은 \(ab\) …. 같은 기호로 그 조합의 반응(반복의 합)을 가리킨다.</p>
+    <p>2² 실험(반복 \(n\))에서 A의 효과는 "A 높음 평균 − A 낮음 평균", 교호 효과 AB는 "B 높음에서 A 효과와 B 낮음에서 A 효과의 차이의 절반"이다.</p>
+    <div class="formula">$$A = \frac{a + ab - b - (1)}{2n},\qquad B = \frac{b + ab - a - (1)}{2n},\qquad AB = \frac{ab + (1) - a - b}{2n}$$<div class="where">분자를 <span class="term">대비</span><span class="en">(contrast)</span>라 한다. 2ᵏ에서 일반적으로 \(\text{효과} = \dfrac{\text{대비}}{n\,2^{k-1}}\), \(SS = \dfrac{\text{대비}^2}{n\,2^k} = \dfrac{N}{4}\,\text{효과}^2\) (\(N = n2^k\))이고 효과마다 자유도 1이다. 회귀 모형 \(y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \beta_{12}x_1x_2 + \varepsilon\)으로 쓰면 \(\hat\beta = \text{효과}/2\)이다(13장의 최소 제곱과 같은 답).</div></div>
+    <div class="tangle" id="tg-22">
+      <p>반복 없는 2² 실험의 네 모서리 반응이 \((1)\) = <span class="tn" data-var="o" data-min="0" data-max="150" data-step="1">60</span>, \(a\) = <span class="tn" data-var="a" data-min="0" data-max="150" data-step="1">72</span>, \(b\) = <span class="tn" data-var="b" data-min="0" data-max="150" data-step="1">54</span>, \(ab\) = <span class="tn" data-var="ab" data-min="0" data-max="150" data-step="1">90</span>이면 A 효과 <span class="tn-out" data-out="A"></span>, B 효과 <span class="tn-out" data-out="B"></span>, AB 효과 <span class="tn-out" data-out="AB"></span>. B 낮음에서 A 효과는 <span class="tn-out" data-out="al"></span>, B 높음에서는 <span class="tn-out" data-out="ah"></span> — <span class="ad-msg" data-out="msg"></span></p>
+      <canvas id="cv-tg22"></canvas>
+    </div>
+    <p>2³에서는 각 효과 열의 부호가 설계 행렬의 곱으로 정해진다. 교호 열 AB는 A 열과 B 열을 곱한 것이고, 효과는 그 열의 부호를 붙여 반응을 더한 뒤 \(n2^{k-1}\)로 나눈다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>처리</th><th class="num">A</th><th class="num">B</th><th class="num">C</th><th class="num">AB</th><th class="num">AC</th><th class="num">BC</th><th class="num">ABC</th><th class="num">식각 속도</th></tr></thead>
+      <tbody>
+        <tr><td>(1)</td><td class="num">−</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">−</td><td class="num">550</td></tr>
+        <tr><td>a</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">+</td><td class="num">604</td></tr>
+        <tr><td>b</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">+</td><td class="num">568</td></tr>
+        <tr><td>ab</td><td class="num">+</td><td class="num">+</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">−</td><td class="num">650</td></tr>
+        <tr><td>c</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">531</td></tr>
+        <tr><td>ac</td><td class="num">+</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">589</td></tr>
+        <tr><td>bc</td><td class="num">−</td><td class="num">+</td><td class="num">+</td><td class="num">−</td><td class="num">−</td><td class="num">+</td><td class="num">−</td><td class="num">556</td></tr>
+        <tr><td>abc</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">+</td><td class="num">640</td></tr>
+      </tbody>
+    </table></div>
+    <div class="sim" id="sim-cube">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2³ 정육면체 그림과 효과</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-cube"></canvas><span class="hint top">모서리 값을 위아래로 끈다</span></div><div><canvas id="cv-eff"></canvas><span class="hint top">효과 크기(막대를 누르면 선택)</span></div></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>볼 효과</span><div class="seg" id="cb-e"><button data-value="A" class="on">A</button><button data-value="B">B</button><button data-value="C">C</button><button data-value="AB">AB</button><button data-value="AC">AC</button><button data-value="BC">BC</button><button data-value="ABC">ABC</button></div></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="cb-ex" type="button">예제 자료</button><button class="btn" id="cb-add" type="button">가산 모형으로</button><button class="btn" id="cb-rnd" type="button">무작위 공정</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">전체 평균</span><span class="v" id="cb-m">—</span></div>
+        <div class="stat"><span class="k">+ 면 평균</span><span class="v" id="cb-p">—</span></div>
+        <div class="stat"><span class="k">− 면 평균</span><span class="v" id="cb-n">—</span></div>
+        <div class="stat"><span class="k">선택한 효과</span><span class="v" id="cb-v">—</span></div>
+      </div>
+      <div class="sim-note">A = 압력, B = RF 전력, C = 가스 유량. 정육면체 모서리는 여덟 조합의 식각 속도다. 효과를 고르면 + 부호 모서리(보라)와 − 부호 모서리(회색)가 표시된다: 주효과는 마주 보는 두 면, 2인자 교호 효과는 대각 평면 두 개, ABC는 정사면체 두 개다. 해볼 것: ① \(ab\)와 \(abc\)만 끌어올려 보라 — A, B와 함께 AB가 커진다. ② "가산 모형으로"를 누르면 모든 교호 효과가 0이 되고, 모서리 값이 "A + B + C"의 합으로 정리된다. ③ 한 모서리만 크게 바꾸면 일곱 효과가 모두 같은 크기로 변한다. 왜일까?</div>
+    </div>
+    <p>손으로 계산할 때는 <span class="term">예이츠 방법</span><span class="en">(Yates' algorithm)</span>이 편하다. 표준 순서로 반응을 적고, 이웃한 두 값의 합을 위쪽 절반에, 차(아래 − 위)를 아래쪽 절반에 적는 일을 \(k\)번 되풀이하면 마지막 열이 대비가 된다.</p>
+    <figure class="diagram steps" data-steps="5">
+      <svg viewBox="0 0 800 330" role="img" aria-label="2의 3제곱 실험 자료로 예이츠 방법을 세 번 적용해 대비와 효과를 얻는 과정">
+        <g class="t" font-size="13" text-anchor="middle" style="font-weight:700">
+          <text x="60" y="26">처리</text><text x="150" y="26">y</text><text data-step="2" x="260" y="26">①</text><text data-step="3" x="370" y="26">②</text><text data-step="4" x="480" y="26">③ 대비</text><text data-step="5" x="610" y="26">효과 = ③/4</text><text data-step="5" x="730" y="26">이름</text>
+        </g>
+        <line x1="20" y1="36" x2="780" y2="36" class="s-axis"/>
+        <g class="t t-mono" font-size="13" text-anchor="middle">
+          <text x="60" y="62">(1)</text><text x="60" y="96">a</text><text x="60" y="130">b</text><text x="60" y="164">ab</text><text x="60" y="198">c</text><text x="60" y="232">ac</text><text x="60" y="266">bc</text><text x="60" y="300">abc</text>
+          <text x="150" y="62">550</text><text x="150" y="96">604</text><text x="150" y="130">568</text><text x="150" y="164">650</text><text x="150" y="198">531</text><text x="150" y="232">589</text><text x="150" y="266">556</text><text x="150" y="300">640</text>
+        </g>
+        <g data-step="2" class="t t-mono" font-size="13" text-anchor="middle">
+          <text x="260" y="62">1154</text><text x="260" y="96">1218</text><text x="260" y="130">1120</text><text x="260" y="164">1196</text><text x="260" y="198" fill="var(--accent-2)">54</text><text x="260" y="232" fill="var(--accent-2)">82</text><text x="260" y="266" fill="var(--accent-2)">58</text><text x="260" y="300" fill="var(--accent-2)">84</text>
+        </g>
+        <g data-only="2" fill="none" stroke="var(--accent)" stroke-width="1.4">
+          <path d="M175 58 Q205 60 230 62"/><path d="M175 92 Q205 70 230 62"/>
+          <path d="M175 58 Q205 140 232 196" stroke="var(--accent-2)"/><path d="M175 92 Q205 150 232 196" stroke="var(--accent-2)"/>
+        </g>
+        <g data-only="2"><text class="t" x="640" y="120" font-size="13" text-anchor="middle">위 절반: 550+604, 568+650, …</text><text class="t" x="640" y="144" font-size="13" text-anchor="middle" fill="var(--accent-2)">아래 절반: 604−550, 650−568, …</text></g>
+        <g data-step="3" class="t t-mono" font-size="13" text-anchor="middle">
+          <text x="370" y="62">2372</text><text x="370" y="96">2316</text><text x="370" y="130">136</text><text x="370" y="164">142</text><text x="370" y="198">64</text><text x="370" y="232">76</text><text x="370" y="266">28</text><text x="370" y="300">26</text>
+        </g>
+        <g data-step="4" class="t t-mono" font-size="13" text-anchor="middle" style="font-weight:700">
+          <text x="480" y="62">4688</text><text x="480" y="96">278</text><text x="480" y="130">140</text><text x="480" y="164">54</text><text x="480" y="198">−56</text><text x="480" y="232">6</text><text x="480" y="266">12</text><text x="480" y="300">−2</text>
+        </g>
+        <g data-step="5" class="t t-mono" font-size="13" text-anchor="middle">
+          <text x="610" y="62">586 (평균=③/8)</text><text x="610" y="96" fill="var(--accent-2)" style="font-weight:700">69.5</text><text x="610" y="130" fill="var(--accent-2)" style="font-weight:700">35.0</text><text x="610" y="164">13.5</text><text x="610" y="198">−14.0</text><text x="610" y="232">1.5</text><text x="610" y="266">3.0</text><text x="610" y="300">−0.5</text>
+          <text x="730" y="62">I</text><text x="730" y="96">A</text><text x="730" y="130">B</text><text x="730" y="164">AB</text><text x="730" y="198">C</text><text x="730" y="232">AC</text><text x="730" y="266">BC</text><text x="730" y="300">ABC</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>처리 조합을 표준 순서 (1), a, b, ab, c, ac, bc, abc로 적고 반응을 옮긴다.</li><li>① 열: 이웃한 두 값의 합을 위 절반에, 차(아래 − 위)를 아래 절반에 쓴다.</li><li>② 열: ① 열에 같은 일을 한 번 더 한다.</li><li>③ 열: 세 번째(\(k = 3\)). 맨 위는 총합, 나머지는 각 효과의 대비다.</li><li>대비를 \(n2^{k-1} = 4\)로 나누면 효과. 이름은 처리 열의 글자와 같다(a → A, ab → AB …). A와 B가 압도적이다.</li></ol>
+      <figcaption>예이츠 방법은 표준 순서만 지키면 효과 \(2^k - 1\)개를 덧셈·뺄셈만으로 한꺼번에 낸다. 정육면체 시뮬레이터의 "예제 자료"와 같은 수다.</figcaption>
+    </figure>
+    <div class="example" data-title="2³ 식각 실험의 효과">
+      <p>압력(A), RF 전력(B), 가스 유량(C)의 2³ 실험(반복 없음)에서 위 표의 식각 속도를 얻었다. 효과를 모두 구하고, 3인자 교호 작용과 작은 2인자 교호 작용(AC, BC)을 오차로 합쳐 A의 유의성을 판정하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 부호 열로 대비를 구하고 \(\text{효과} = \text{대비}/4\), \(SS = \text{대비}^2/8\). 반복이 없으므로 무시할 만한 고차 효과의 제곱합을 오차로 쓴다.</div>
+        <div class="step"><b>풀이</b> 대비 A = −550 + 604 − 568 + 650 − 531 + 589 − 556 + 640 = 278 → A = 69.5. 같은 방법으로 B = 35.0, C = −14.0, AB = 13.5, AC = 1.5, BC = 3.0, ABC = −0.5.
+          \(SS_A = 278^2/8 = 9660.5\), \(SS_E = SS_{AC} + SS_{BC} + SS_{ABC} = 4.5 + 18 + 0.5 = 23.0\) (자유도 3), \(MS_E = 7.67\). \(F_A = 9660.5/7.67 = 1260\) — \(F_{0.05,1,3} = 10.13\)을 훌쩍 넘는다.</div>
+        <div class="answer">A 69.5, B 35.0, C −14.0, AB 13.5, AC 1.5, BC 3.0, ABC −0.5 (nm/min). A, B, C, AB 모두 유의하다.</div>
+        <div class="step"><b>검토</b> 압력을 올리면 평균 69.5 nm/min 빨라지고, 그 효과는 전력이 높을 때 13.5만큼 더 크다(AB > 0). 가스 유량을 늘리면 체류 시간이 줄어 오히려 느려진다(C < 0). 어떤 효과를 오차로 합칠지는 자료를 본 뒤 고르면 편향이 생기므로, 미리 정하거나 다음의 정규 확률 그림으로 판단한다.</div>
+      </details>
+    </div>
+    <h3>반복이 없을 때: 효과의 정규 확률 그림</h3>
+    <p>요인이 4개 이상이면 반복 없이 한 번씩만 돌리는 일이 흔하다. 그러면 오차 자유도가 없다. 대니얼은 이렇게 생각했다. 실제로 중요한 효과는 몇 개뿐이고(<span class="term">효과 희소성 원리</span><span class="en">(sparsity of effects)</span>), 나머지 효과는 순전히 잡음이므로 평균 0인 정규 분포를 따른다. 그래서 \(2^k - 1\)개 효과를 크기 순으로 정규 확률 그림에 찍으면 잡음 효과들은 원점을 지나는 직선 위에 늘어서고, 진짜 효과만 직선에서 멀리 떨어진다.</p>
+    <figure class="mini" id="mini-daniel">
+      <div class="mini-view"><canvas id="cv-daniel"></canvas><span class="hint top">점을 눌러 "활성" 표시</span></div>
+      <div class="mini-ctrl">
+        <button class="btn primary" id="dn-check" type="button">판정</button>
+        <button class="btn" id="dn-new" type="button">새 공정</button>
+        <span class="readout" id="dn-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB · 효과 탐정</span>요인 네 개의 2⁴ 실험(16번, 반복 없음)에서 얻은 효과 15개를 정규 확률 그림에 찍었다. 숨은 참 모형에는 활성 효과가 2–4개 있다. 직선에서 벗어난 점을 눌러 활성으로 표시하고 "판정"을 누르면 정답과 점수가 나온다. 연속으로 맞혀 보자.</figcaption>
+    </figure>
+    <div class="callout semi"><strong>프레스턴 식은 교호 작용을 품고 있다</strong> CMP 제거율은 프레스턴 식 \(\text{MRR} = K_p P V\)처럼 압력과 상대 속도의 <em>곱</em>에 비례한다. 압력 \(P = P_0(1 + \delta_P x_1)\), 속도 \(V = V_0(1 + \delta_V x_2)\)로 부호화해 2² 실험을 하면 \(\text{MRR} \propto 1 + \delta_P x_1 + \delta_V x_2 + \delta_P\delta_V x_1x_2\)이므로 AB 효과가 반드시 나타난다. 이 교호 작용은 "곱의 구조"의 흔적이어서, 반응을 로그로 바꾸면 \(\ln \text{MRR} = \ln P + \ln V + \text{상수}\)로 가산적이 된다. 교호 효과가 클 때는 반응의 변환이 더 단순한 모형을 줄 수 있는지 먼저 본다. → <a href="https://semi.euiyun.com/cmp/chapters/preston.html">CMPBook · 프레스턴 방정식과 재료 제거(압력 × 속도: 프레스턴 식)</a></div>
+    <div class="drill" id="drill-eff" data-title="2² 효과 계산 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="fractional">
+    <h2>부분 요인 실험과 교락</h2>
+    <p>요인이 7개면 2⁷ = 128번이다. 그러나 효과 127개 가운데 쓸모 있는 것은 주효과 7개와 2인자 교호 작용 몇 개뿐인 경우가 대부분이다. 그래서 \(2^k\)의 일부(\(1/2^p\))만 골라 돌리는 <span class="term">부분 요인 실험</span><span class="en">(fractional factorial design)</span> \(2^{k-p}\)을 쓴다. 대가는 효과 몇 개가 같은 열을 공유해 구별되지 않는 것이다.</p>
+    <p>2⁴의 절반(8번)을 만들려면 2³ 완전 설계를 A, B, C에 쓰고 넷째 요인을 \(D = ABC\)로 정한다. 이 식이 <span class="term">생성자</span><span class="en">(generator)</span>다. 양변에 D를 곱하면(\(D^2 = I\)) \(I = ABCD\)가 되는데, 이를 <span class="term">정의 관계</span><span class="en">(defining relation)</span>라 한다. 어떤 효과에 정의 관계의 단어를 곱하면 그 효과와 같은 열을 쓰는 효과가 나온다: \(A \cdot ABCD = BCD\), \(AB \cdot ABCD = CD\). 이렇게 구별되지 않는 효과 쌍을 서로의 <span class="term">별칭</span><span class="en">(alias)</span>이라 하고, 8번의 자료로 "A 효과"를 계산하면 실제로는 \(A + BCD\)를 추정한다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 270" role="img" aria-label="2의 3제곱 정육면체에서 I = ABC인 반쪽 실험의 네 모서리 a, b, c, abc">
+        <g transform="translate(60,20)">
+          <g fill="none" stroke="var(--border)" stroke-width="1.5">
+            <path d="M40 200 H220 V60 H40 Z"/><path d="M110 150 H290 V10 H110 Z" stroke-dasharray="5 4"/>
+            <path d="M40 200 L110 150 M220 200 L290 150 M220 60 L290 10 M40 60 L110 10"/>
+          </g>
+          <g font-size="13" class="t t-mono">
+            <circle cx="40" cy="200" r="7" fill="var(--surface)" stroke="var(--text-dim)"/><text x="18" y="222">(1)</text>
+            <circle cx="220" cy="200" r="9" fill="var(--accent-2)"/><text x="214" y="226">a</text>
+            <circle cx="40" cy="60" r="9" fill="var(--accent-2)"/><text x="16" y="56">b</text>
+            <circle cx="220" cy="60" r="7" fill="var(--surface)" stroke="var(--text-dim)"/><text x="196" y="80">ab</text>
+            <circle cx="110" cy="150" r="9" fill="var(--accent-2)"/><text x="118" y="170">c</text>
+            <circle cx="290" cy="150" r="7" fill="var(--surface)" stroke="var(--text-dim)"/><text x="300" y="166">ac</text>
+            <circle cx="110" cy="10" r="7" fill="var(--surface)" stroke="var(--text-dim)"/><text x="118" y="8">bc</text>
+            <circle cx="290" cy="10" r="9" fill="var(--accent-2)"/><text x="300" y="14">abc</text>
+          </g>
+          <g class="t t-dim" font-size="12"><text x="120" y="244">A →</text><text x="-50" y="134">B ↑</text><text x="250" y="240">C ↗</text></g>
+        </g>
+        <g class="t" font-size="13">
+          <text x="420" y="50" style="font-weight:700">반쪽 실험 2³⁻¹, I = ABC</text>
+          <text x="420" y="78">보라 모서리 a, b, c, abc만 돌린다(4번).</text>
+          <text x="420" y="104">두 모서리가 이웃하지 않아 정육면체에 고루 퍼진다.</text>
+          <text x="420" y="138" class="t-mono">A = BC,  B = AC,  C = AB</text>
+          <text x="420" y="164">→ 주효과와 2인자 교호 작용이 겹친다: 분해능 III</text>
+          <text x="420" y="198" class="t-dim">나머지 회색 네 모서리(I = −ABC)를 더 돌리면</text>
+          <text x="420" y="222" class="t-dim">완전 2³가 되어 별칭이 풀린다(접기, fold-over).</text>
+        </g>
+      </svg>
+      <figcaption>반쪽 실험은 정의 관계의 부호가 같은 모서리만 고른다. 실행 횟수는 절반이지만 효과들이 짝지어 섞인다.</figcaption>
+    </figure>
+    <div class="def"><span class="def-k">분해능</span>
+      <p>정의 관계에서 가장 짧은 단어의 길이를 설계의 <span class="term">분해능</span><span class="en">(resolution)</span>이라 하고 로마 숫자로 쓴다. <b>III</b>: 주효과가 2인자 교호 작용과 별칭(예: \(2^{3-1}\), I = ABC). <b>IV</b>: 주효과는 2인자 교호 작용과 겹치지 않지만, 2인자 교호 작용끼리 겹친다(\(2^{4-1}\), I = ABCD). <b>V</b>: 2인자 교호 작용끼리도 겹치지 않는다(\(2^{5-1}\), I = ABCDE). 3인자 이상 교호 작용은 대개 무시할 수 있다고 보므로 분해능이 높을수록 결론이 덜 오염된다.</p>
+    </div>
+    <div class="predict" data-for="sim-frac">
+      <p>\(2^{4-1}\), \(D = ABC\)로 8번만 돌렸다. 참 공정에는 A, C, D 주효과와 <b>CD 교호 작용</b>만 있고 AB 교호 작용은 전혀 없다. 자료로 AB 효과를 계산하면?</p>
+      <div class="opts"><button class="opt">0에 가깝다 — AB가 없으니까</button><button class="opt" data-correct>CD 효과만큼 크게 나온다</button><button class="opt">A 효과와 같다</button><button class="opt">계산할 수 없다</button></div>
+      <div class="quiz-exp">I = ABCD이므로 AB와 CD는 같은 열을 쓴다. 계산한 "AB"는 사실 AB + CD다. 공학 지식(어느 교호 작용이 그럴듯한가)이나 추가 실험 없이는 둘을 가를 수 없다.</div>
+    </div>
+    <div class="sim" id="sim-frac">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>교락에 속는 실험</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-frac"></canvas><span class="hint top">위 막대(참 효과) 끝의 흰 원을 위아래로 끈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>생성자</span><div class="seg" id="fr-g"><button data-value="ABC" class="on">D = ABC (IV)</button><button data-value="AB">D = AB (III)</button></div></div>
+          <div class="ctrl"><span>반쪽</span><div class="seg" id="fr-h"><button data-value="1" class="on">+ 반쪽</button><button data-value="-1">− 반쪽</button></div></div>
+          <label class="check"><input type="checkbox" id="fr-fold"> 다른 반쪽도 돌리기(접기, 16번)</label>
+          <label class="check"><input type="checkbox" id="fr-noise"> 잡음 넣기(σ = 2)</label>
+          <button class="btn" id="fr-reset" type="button">처음 참 모형</button>
+          <div class="ad-alias" id="fr-alias"></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">실행 횟수</span><span class="v" id="fr-n">—</span></div>
+        <div class="stat"><span class="k">정의 관계</span><span class="v" id="fr-I">—</span></div>
+        <div class="stat"><span class="k">속은 효과</span><span class="v" id="fr-bad">—</span></div>
+      </div>
+      <div class="sim-note">위: 참 공정의 효과(속이 빈 막대, 끌 수 있다). 아래: 실험 자료로 계산한 추정값(채운 막대). 별칭끼리는 추정값이 똑같다. 별칭 때문에 참값과 다르게 추정된 효과가 빨강이다. 해볼 것: ① 처음 상태에서 AB가 7로 나온다 — CD가 덮어쓴 것이다. ② "− 반쪽"으로 바꾸면 AB 추정값의 부호가 뒤집힌다(I = −ABCD). ③ "다른 반쪽도 돌리기"를 켜면 16번이 되어 모든 효과가 참값으로 돌아온다. ④ D = AB로 바꾸고 AB를 끌어 보라 — 이번에는 주효과 D가 오염된다(분해능 III).</div>
+    </div>
+    <figure class="mini" id="mini-alias">
+      <div class="mini-view"><div class="ad-alias" id="al-out" style="min-height:12rem"></div></div>
+      <div class="mini-ctrl">
+        <div class="ctrl"><span>D =</span><div class="ad-checks"><label class="check"><input type="checkbox" id="al-dA" checked> A</label><label class="check"><input type="checkbox" id="al-dB" checked> B</label><label class="check"><input type="checkbox" id="al-dC"> C</label></div></div>
+        <div class="ctrl"><span>E =</span><div class="ad-checks"><label class="check"><input type="checkbox" id="al-eA" checked> A</label><label class="check"><input type="checkbox" id="al-eB"> B</label><label class="check"><input type="checkbox" id="al-eC" checked> C</label></div></div>
+        <span class="readout" id="al-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB · 별칭 계산기</span>2⁵⁻² 설계(8번)의 두 생성자를 고른다. 정의 관계 전체(생성자 단어와 그 곱), 분해능, 주효과와 2인자 교호 작용의 별칭 사슬이 바로 계산된다. 두 생성자 모두 A·B·C를 다 쓰면 분해능이 몇이 되는가? 8번으로 요인 5개를 다룰 때 분해능 IV를 만들 수 있는가?</figcaption>
+    </figure>
+    <div class="example" data-title="2⁴⁻¹ 실험의 해석">
+      <p>식각 균일도 지수에 대해 \(2^{4-1}\)(D = ABC) 실험을 했다. 처리 \((1), ad, bd, ab, cd, ac, bc, abcd\)의 반응이 52, 96, 49, 70, 77, 62, 84, 99이다. 효과를 추정하고 별칭과 함께 해석하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> A, B, C 열은 2³ 표준 순서, D 열은 \(ABC\)의 곱이다. 일곱 열의 대비를 4로 나누고, I = ABCD로 별칭을 붙인다.</div>
+        <div class="step"><b>풀이</b> 예: A 열 부호 −, +, −, +, −, +, −, + → 대비 = −52 + 96 − 49 + 70 − 77 + 62 − 84 + 99 = 65, 효과 16.25. 같은 방법으로
+          \(\ell_A = A + BCD = 16.25\), \(\ell_B = B + ACD = 3.75\), \(\ell_C = C + ABD = 13.75\), \(\ell_D = D + ABC = 13.25\), \(\ell_{AB} = AB + CD = 1.75\), \(\ell_{AC} = AC + BD = -16.25\), \(\ell_{AD} = AD + BC = 18.25\).</div>
+        <div class="answer">A, C, D 주효과(약 16, 14, 13)와 \(AC + BD\)(−16), \(AD + BC\)(18)가 크다. B와 \(AB + CD\)는 작다.</div>
+        <div class="step"><b>검토</b> 3인자 교호 작용을 무시하면 주효과는 깨끗하다(분해능 IV). 그러나 \(-16.25\)가 AC인지 BD인지 자료만으로는 모른다. B가 거의 효과가 없으니 B가 끼인 BD·BC보다 활성 요인끼리의 AC·AD일 가능성이 크다(효과 유전 원리). 확인하려면 접기 실험 8번을 더 하거나, 필요한 조합 몇 개만 추가로 돌린다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-frac" data-title="부분 요인 실험: 실행 횟수와 분해능"></div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="rsm">
+    <h2>반응 표면법과 중심 합성 계획</h2>
+    <p>선별 실험으로 중요한 요인 두세 개를 골랐다면, 이제 그 요인들의 최적 설정을 찾는다. 반응을 요인의 매끄러운 함수 \(y = f(x_1, x_2) + \varepsilon\)로 보고 이 곡면을 실험으로 더듬어 가는 방법을 <span class="term">반응 표면법</span><span class="en">(response surface methodology, RSM)</span>이라 한다. 전략은 순차적이다. ① 현재 조건 주변에서 1차 모형을 맞추고 오르막 방향으로 이동한다. ② 곡률이 보이면(정상 근처에 왔다는 신호) 2차 모형을 맞출 수 있는 설계로 바꿔 최적점을 찾는다.</p>
+    <h3>한 번에 한 요인(OFAT)의 함정</h3>
+    <p>현장에서 흔한 방법은 전력을 바꿔 가며 가장 좋은 값을 찾고, 그 전력에 고정한 채 압력을 바꾸는 <span class="term">한 번에 한 요인</span><span class="en">(one factor at a time, OFAT)</span> 실험이다. 교호 작용이 없으면 통하지만, 반응 표면이 비스듬한 능선을 이루면(교호 작용이 크면) OFAT은 능선 중간에서 멈춰 버린다. 어느 방향으로 한 요인만 움직여도 나빠지기 때문이다.</p>
+    <div class="predict" data-for="mini-ofat">
+      <p>식각 품질 지수가 전력과 압력에 대해 대각선 방향으로 길게 뻗은 능선을 이룬다. 전력부터 OFAT으로 최적화하고 이어서 압력을 최적화하면?</p>
+      <div class="opts"><button class="opt">참 최적점에 도착한다</button><button class="opt" data-correct>능선 위 엉뚱한 곳에서 멈춘다 — 둘 다 다시 바꾸면 더 좋아진다</button><button class="opt">출발점에서 움직이지 못한다</button></div>
+      <div class="quiz-exp">OFAT은 각 단계에서 "한 축 방향으로 최선"인 점을 찾는다. 능선이 축과 비스듬하면 그 점은 능선 위일 뿐 꼭대기가 아니다. 출발점을 끌어 여러 번 해 보라.</div>
+    </div>
+    <figure class="mini" id="mini-ofat">
+      <div class="mini-view"><canvas id="cv-ofat"></canvas><span class="hint top">흰 원(출발점)을 끈다</span></div>
+      <div class="mini-ctrl">
+        <button class="btn primary" id="of-run" type="button">OFAT 실행</button>
+        <button class="btn" id="of-doe" type="button">CCD + 2차 모형</button>
+        <span class="readout" id="of-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>등고선은 참 반응(높을수록 진한 보라)이다. OFAT(초록)은 전력 축을 따라 7점, 이어 압력 축을 따라 7점, 모두 14번을 돌린다. CCD + 2차 모형(주황)은 출발점 둘레에 중심 합성 계획 9번을 돌려 교호 작용까지 담은 2차 모형을 맞추고, 그 정상점에서 확인 실험 1번을 한다(모두 10번). 두 방법이 끝나는 위치와 실험 횟수를 비교하라. 출발점이 최적점에서 아주 멀면 2차 모형도 빗나간다 — 그래서 먼저 경사 상승으로 다가간다.</figcaption>
+    </figure>
+    <h3>1차 모형, 경사 상승, 곡률 검사</h3>
+    <p>2² 실험(부호화 단위)에 1차 모형 \(\hat y = \hat\beta_0 + \hat\beta_1x_1 + \hat\beta_2x_2\)을 맞추면, 반응이 가장 빨리 커지는 방향은 기울기 \((\hat\beta_1, \hat\beta_2)\)이다. 이 방향으로 일정 간격씩 실험하며 나아가는 방법이 <span class="term">최대 경사 상승법</span><span class="en">(method of steepest ascent)</span>이다. 반응이 더 이상 오르지 않으면 그 근처에서 새 실험을 한다.</p>
+    <p>1차 모형이 아직 맞는지는 설계 중심에 <span class="term">중심점</span><span class="en">(center point)</span>을 몇 번 넣어 확인한다. 1차 모형이면 요인점 평균 \(\bar y_F\)와 중심점 평균 \(\bar y_C\)가 같아야 한다. 곡률 제곱합(자유도 1)은</p>
+    <div class="formula">$$SS_{\text{곡률}} = \frac{n_F\,n_C\,(\bar y_F - \bar y_C)^2}{n_F + n_C}$$<div class="where">\(n_F\): 요인점 수, \(n_C\): 중심점 수. \(MS_E\)는 중심점 반복의 표본 분산으로 추정한다(자유도 \(n_C - 1\)). 중심점은 요인 효과 추정에는 영향을 주지 않으면서 오차와 곡률을 함께 알려 준다.</div></div>
+    <figure class="mini" id="mini-curv">
+      <div class="mini-view"><canvas id="cv-curv"></canvas><span class="hint top">흰 원을 끌어 곡률을 바꾼다</span></div>
+      <div class="mini-ctrl">
+        <button class="btn" id="cu-new" type="button">다시 측정</button>
+        <span class="readout" id="cu-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>2² 실험의 요인점 4개(초록 네모)와 중심점 4개(초록 원)를 압력 축 단면에 그렸다. 참 반응(보라 곡선)의 꼭대기를 위아래로 끌면 곡률이 바뀐다. \(\bar y_C\)가 \(\bar y_F\)보다 뚜렷이 높으면 꼭대기 근처에 온 것이다. 곡률 \(F\) 검정의 p 값이 0.05 아래로 내려가는 곡률은 어느 정도인가?</figcaption>
+    </figure>
+    <h3>2차 모형과 중심 합성 계획</h3>
+    <p>최적점 근처에서는 2차 모형을 쓴다.</p>
+    <div class="formula">$$\hat y = \hat\beta_0 + \sum_i \hat\beta_i x_i + \sum_i \hat\beta_{ii}x_i^2 + \sum_{i\lt j}\hat\beta_{ij}x_ix_j = \hat\beta_0 + \mathbf x^{\top}\mathbf b + \mathbf x^{\top}\mathbf B\,\mathbf x$$<div class="where">\(\mathbf B\)의 대각은 \(\hat\beta_{ii}\), 비대각은 \(\hat\beta_{ij}/2\). 기울기를 0으로 두면 <span class="term">정상점</span><span class="en">(stationary point)</span> \(\mathbf x_s = -\tfrac12\mathbf B^{-1}\mathbf b\), 그 예측값 \(\hat y_s = \hat\beta_0 + \tfrac12\mathbf x_s^{\top}\mathbf b\). \(\mathbf B\)의 고유값이 모두 음수면 최댓값, 모두 양수면 최솟값, 부호가 섞이면 안장점이다.</div></div>
+    <p>2차 모형의 계수 \(1 + 2k + k(k-1)/2\)개를 추정하려면 요인마다 세 수준 이상이 필요하다. 3ᵏ 설계는 \(k\)가 커지면 너무 크다. 대신 2ᵏ 요인점에 축 위의 점과 중심점을 더한 <span class="term">중심 합성 계획</span><span class="en">(central composite design, CCD)</span>을 쓴다. 1차 실험의 요인점을 그대로 재활용할 수 있어 순차 실험에 딱 맞는다.</p>
+    <figure class="diagram steps" data-steps="3">
+      <svg viewBox="0 0 800 300" role="img" aria-label="요인 수 2인 중심 합성 계획: 요인점 4개, 축점 4개, 중심점">
+        <g transform="translate(250,150)">
+          <line x1="-200" y1="0" x2="200" y2="0" class="s-axis"/><line x1="0" y1="-135" x2="0" y2="135" class="s-axis"/>
+          <text class="t t-dim" x="196" y="-8" font-size="12" text-anchor="end">x₁ (전력)</text><text class="t t-dim" x="8" y="-124" font-size="12">x₂ (압력)</text>
+          <rect x="-80" y="-80" width="160" height="160" fill="none" stroke="var(--border)" stroke-dasharray="4 4"/>
+          <g fill="var(--accent)"><circle cx="-80" cy="-80" r="8"/><circle cx="80" cy="-80" r="8"/><circle cx="-80" cy="80" r="8"/><circle cx="80" cy="80" r="8"/></g>
+          <g class="t t-mono" font-size="12"><text x="88" y="98">(+1, −1)</text><text x="88" y="-90">(+1, +1)</text><text x="-160" y="-90">(−1, +1)</text><text x="-160" y="98">(−1, −1)</text></g>
+          <g data-step="2">
+            <circle cx="0" cy="0" r="113" fill="none" stroke="var(--accent-2)" stroke-dasharray="3 5"/>
+            <g fill="var(--accent-2)"><circle cx="-113" cy="0" r="8"/><circle cx="113" cy="0" r="8"/><circle cx="0" cy="-113" r="8"/><circle cx="0" cy="113" r="8"/></g>
+            <g class="t t-mono" font-size="12" fill="var(--accent-2)"><text x="121" y="18">(+α, 0)</text><text x="-176" y="18">(−α, 0)</text><text x="10" y="-112">(0, +α)</text><text x="10" y="128">(0, −α)</text></g>
+          </g>
+          <g data-step="3">
+            <circle cx="0" cy="0" r="10" fill="var(--warn)"/><text class="t" x="16" y="-12" font-size="13" style="font-weight:700">× 5</text>
+          </g>
+        </g>
+        <g class="t" font-size="13">
+          <text x="500" y="70" style="font-weight:700">k = 2 중심 합성 계획</text>
+          <text x="500" y="100" fill="var(--accent)">요인점 2² = 4 (1차 실험 재사용)</text>
+          <text data-step="2" x="500" y="128" fill="var(--accent-2)">축점 2k = 4, α = (2²)^¼ = 1.414</text>
+          <text data-step="3" x="500" y="156" fill="var(--warn)">중심점 5 (오차·곡률)</text>
+          <text data-step="3" x="500" y="190" style="font-weight:700">합계 13번 → 2차 모형 계수 6개</text>
+          <text data-step="2" x="500" y="224" class="t-dim">모든 점이 원 위: 회전 가능</text>
+          <text data-step="3" x="500" y="248" class="t-dim">(중심에서 같은 거리면 예측 분산이 같다)</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>1차 실험의 2² 요인점 4개. 곡률 검사에서 곡률이 보였다.</li><li>축점 4개를 \(\pm\alpha\)에 더한다. \(\alpha = (2^k)^{1/4}\)이면 모든 바깥 점이 한 원 위에 놓여 <span class="term">회전성</span><span class="en">(rotatability)</span>을 갖는다.</li><li>중심점 여러 번(보통 3–5)을 더해 순수 오차를 추정하고 중심 근처의 예측을 안정시킨다.</li></ol>
+      <figcaption>중심 합성 계획은 요인마다 다섯 수준(\(-\alpha, -1, 0, 1, \alpha\))을 쓰지만 실행 횟수는 3² = 9의 완전 3수준보다 조금 많을 뿐이고, \(k\)가 커질수록 3ᵏ보다 훨씬 작다.</figcaption>
+    </figure>
+    <div class="tangle" id="tg-ccd">
+      <p>요인 <span class="tn" data-var="k" data-min="2" data-max="6" data-step="1">3</span>개, 중심점 <span class="tn" data-var="nc" data-min="1" data-max="8" data-step="1">6</span>번인 회전 가능 CCD는 요인점 <span class="tn-out" data-out="f"></span> + 축점 <span class="tn-out" data-out="ax"></span> + 중심점으로 모두 <span class="tn-out" data-out="N"></span>번이고, \(\alpha\) = <span class="tn-out" data-out="al"></span>이다. 2차 모형의 계수는 <span class="tn-out" data-out="p"></span>개, 같은 일을 3ᵏ 완전 설계로 하면 <span class="tn-out" data-out="t3"></span>번이다.</p>
+    </div>
+    <div class="example" data-title="정상점과 최적 레시피">
+      <p>전력(\(x_1\), 중심 600 W, 반 범위 100 W)과 압력(\(x_2\), 중심 40 mTorr, 반 범위 10 mTorr)의 CCD에서 식각 품질 지수의 2차 모형 \(\hat y = 80 + 4x_1 + 2.5x_2 - 3x_1^2 - 2x_2^2 - 1.5x_1x_2\)를 얻었다. 정상점과 그 종류, 예측값, 실제 단위의 레시피를 구하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\mathbf b = (4, 2.5)^\top\), \(\mathbf B = \begin{pmatrix}-3 & -0.75\\ -0.75 & -2\end{pmatrix}\)로 놓고 \(\mathbf x_s = -\tfrac12\mathbf B^{-1}\mathbf b\).</div>
+        <div class="step"><b>풀이</b> 기울기 0 조건 \(4 - 6x_1 - 1.5x_2 = 0\), \(2.5 - 1.5x_1 - 4x_2 = 0\)을 풀면 \(x_1 = 0.563\), \(x_2 = 0.414\). \(\hat y_s = 80 + \tfrac12(4 \times 0.563 + 2.5 \times 0.414) = 81.64\). \(\mathbf B\)의 고유값은 −3.40, −1.60으로 모두 음수.</div>
+        <div class="answer">최댓값: \(x_s = (0.563, 0.414)\) → 전력 656 W, 압력 44.1 mTorr, 예측 품질 지수 81.6</div>
+        <div class="step"><b>검토</b> 정상점이 실험 영역(\(|x| \le 1.414\)) 안에 있어 외삽이 아니다. 고유값 −1.60 방향(압력 쪽에 가까운 축)으로는 곡면이 덜 가파르므로, 공정 창을 넓게 잡을 수 있는 방향이다. 확인 실험을 정상점에서 몇 번 돌려 예측과 맞는지 본다.</div>
+      </details>
+    </div>
+    <div class="sim" id="sim-rsm">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>식각 레시피 최적화 게임</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-rsm"></canvas><span class="hint top">빈 곳을 누르면 실험 1번 · 흰 원은 설계 중심</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>설계 반 폭 <output id="rs-w-out"></output></span><input type="range" id="rs-w" min="20" max="120" step="5" value="60"></label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="rs-fac" type="button">2² + 중심 2 (6번)</button><button class="btn" id="rs-ccd" type="button">CCD (12번)</button></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn" id="rs-fit" type="button">2차 모형 적합</button><button class="btn" id="rs-step" type="button">경사 방향으로 중심 이동</button></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="btn primary" id="rs-sub" type="button">최적점 제출</button><button class="btn" id="rs-new" type="button">새 공정</button></div>
+          <label class="check"><input type="checkbox" id="rs-show"> 참 지도 보기(게임 종료)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">사용한 실험</span><span class="v" id="rs-used">—</span></div>
+        <div class="stat"><span class="k">최고 관측값</span><span class="v" id="rs-best">—</span></div>
+        <div class="stat"><span class="k">모형 예측 최적</span><span class="v" id="rs-pred">—</span></div>
+        <div class="stat"><span class="k">점수</span><span class="v" id="rs-score">—</span></div>
+      </div>
+      <div class="sim-note">가로축은 RF 전력(200–1000 W), 세로축은 압력(10–90 mTorr), 반응은 식각 품질 지수(속도·균일도·선택비를 합친 점수, 측정 잡음 σ = 1.5)다. 참 지도는 숨겨져 있다. 예산은 실험 30번. 흰 원을 끌어 설계 중심을 옮기고, 버튼으로 요인 실험이나 CCD를 돌리고, 2차 모형을 맞춰(보라 등고선과 ★) 최적점을 제출한다. <b>목표:</b> 제출한 점의 참 품질이 참 최댓값의 98% 이상. 해볼 것: ① 왼쪽 아래에서 2² 실험 → "경사 방향으로 중심 이동"을 몇 번 반복해 오르막을 따라간다. ② 곡률이 보이면(중심점이 요인점보다 높으면) CCD를 돌리고 2차 모형을 맞춘다. ③ 예산을 아끼려면 몇 번 만에 98%에 닿을 수 있을까?</div>
+    </div>
+    <div class="callout semi"><strong>TCAD 보정과 공정 창도 반응 표면 위에서 한다</strong> 시뮬레이션 한 번이 몇 시간씩 걸리는 TCAD에서는 매개변수 공간을 CCD나 라틴 하이퍼큐브로 채운 뒤 2차 반응 표면을 맞추고, 그 표면 위에서 최적화와 몬테카를로 산포 분석을 한다. 실제 웨이퍼 실험도 같다. 노광의 초점–노광량 행렬(FEM)은 두 요인 격자 실험이고, 그 위의 CD 반응 표면에서 규격을 만족하는 영역이 공정 창이다. → <a href="https://semi.euiyun.com/tcad/chapters/calibration.html">TCADBook · 보정과 실험 계획(실험 계획 · 반응 표면)</a>, <a href="https://semi.euiyun.com/litho/chapters/window.html">LithoBook · 공정 윈도(초점-노광량 행렬)</a></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>일원 분산 분석은 \(SS_T = SS_B + SS_W\)로 변동을 나누고 \(F_0 = MS_B/MS_W \sim F_{k-1,N-k}\)(\(H_0\) 아래)로 \(k\)개 평균이 같은지 한 번에 검정한다. \(MS_W\)는 늘 \(\sigma^2\)를, \(MS_B\)는 \(H_0\)일 때만 \(\sigma^2\)를 추정한다.</li>
+      <li>쌍별 t 검정을 되풀이하면 가족별 오류율이 \(1-(1-\alpha)^m\) 가까이 커진다. \(F\)로 "어딘가 다름"을 본 뒤, 투키 HSD \(q_\alpha(k,N-k)\sqrt{MS_W/n}\)로 어느 쌍이 다른지 가족별 \(\alpha\)를 지키며 판정한다. 가정은 독립·정규·등분산이고, 균형 설계일수록 가정 위반에 강하다.</li>
+      <li>이원 분산 분석은 \(SS_A + SS_B + SS_{AB} + SS_E\)로 나눈다. 교호 작용은 한 요인의 효과가 다른 요인 수준에 따라 달라지는 것으로, 교호 작용 그림의 선이 평행하지 않다. 교호 작용이 유의하면 주효과보다 칸 평균을 해석한다. 반복이 없으면 교호 작용을 검정할 수 없다.</li>
+      <li>랜덤화는 시간 표류 같은 미지의 방해 요인이 처리와 교락되는 것을 막고, 반복은 오차를 추정하고 \(\operatorname{SE}(\text{효과}) = 2\sigma/\sqrt N\)을 줄이며, 블록화는 알려진 방해 요인(로트·날짜)의 변동을 오차에서 빼낸다(RCBD).</li>
+      <li>2ᵏ 요인 실험에서 효과 = 대비\(/(n2^{k-1})\), \(SS = N\cdot\text{효과}^2/4\), 회귀 계수 = 효과/2. 예이츠 방법이나 부호 표로 계산하고, 반복이 없으면 효과 희소성을 이용한 정규 확률 그림으로 활성 효과를 고른다.</li>
+      <li>부분 요인 \(2^{k-p}\)은 생성자로 만들고, 정의 관계의 단어를 곱해 별칭을 구한다. 분해능(가장 짧은 단어 길이) III은 주효과가 2인자 교호 작용과, IV는 2인자 교호 작용끼리 겹친다. 별칭은 공학 지식이나 접기 실험으로 푼다.</li>
+      <li>반응 표면법은 1차 모형과 경사 상승으로 최적 근처까지 간 뒤, 중심점으로 곡률을 확인하고, 중심 합성 계획(\(2^k + 2k + n_C\), 회전 가능 \(\alpha = (2^k)^{1/4}\))으로 2차 모형을 맞춰 정상점 \(\mathbf x_s = -\tfrac12\mathbf B^{-1}\mathbf b\)를 찾는다. 교호 작용이 있는 곡면에서 OFAT은 능선에 갇힌다.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="problems" id="problems">
+    <h2>연습문제</h2>
+    <p>분포표 값은 부록 A의 계산기로 확인할 수 있다. 따로 말이 없으면 유의 수준은 0.05이고 답이 ±1% 이내면 정답이다.</p>
+    <div class="problem-set">
+      <div class="problem" data-level="1" data-topic="자유도" data-answer="3; 20" data-label="처리 자유도 =; 오차 자유도 =">
+        <div class="prob-q"><p>증착 장비 4대에서 웨이퍼를 6장씩 처리해 막두께를 비교하는 일원 분산 분석의 처리 자유도와 오차 자유도는?</p></div>
+        <div class="prob-sol"><p>\(k = 4\), \(N = 24\): 처리 \(k - 1 = 3\), 오차 \(N - k = 20\). 전체는 23이다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="F 통계량" data-answer="6.3" data-label="F₀ =">
+        <div class="prob-q"><p>처리 3개, 전체 관측 24개인 실험에서 \(SS_B = 120\), \(SS_W = 200\)이었다. \(F_0\)는?</p></div>
+        <div class="prob-sol"><p>\(MS_B = 120/2 = 60\), \(MS_W = 200/21 = 9.524\), \(F_0 = 60/9.524 = 6.30\). \(F_{0.05,2,21} = 3.47\)보다 크므로 기각(p = 0.0072).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="다중 비교">
+        <div class="prob-q"><p>다섯 공급사의 슬러리로 제거율을 비교한다. 10개 쌍을 각각 유의 수준 0.05의 t 검정으로 비교하는 대신 분산 분석을 먼저 하는 가장 중요한 이유는?</p></div>
+        <div class="prob-choices"><button>t 검정은 집단이 정규 분포일 때만 쓸 수 있어서</button><button data-correct>검정을 여러 번 하면 하나라도 거짓 기각이 나올 확률이 0.05보다 훨씬 커져서</button><button>분산 분석이 평균 차이의 크기를 더 정확히 추정해서</button><button>t 검정은 표본이 30개 이상이어야 해서</button></div>
+        <div class="prob-sol"><p>10번의 검정이 독립이라면 가족별 오류율은 \(1 - 0.95^{10} = 0.40\)에 이른다. 분산 분석의 \(F\) 검정은 "모든 평균이 같다"를 한 번에 유의 수준 0.05로 검정한다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="가족별 오류율" data-answer="0.265" data-label="FWER =">
+        <div class="prob-q"><p>네 챔버의 모든 쌍(6쌍)을 각각 유의 수준 0.05로 검정한다. 검정들이 독립이라고 보면, 모든 챔버가 실제로 같을 때 적어도 하나의 쌍을 "다르다"고 잘못 판정할 확률은?</p></div>
+        <div class="prob-sol"><p>\(1 - 0.95^6 = 1 - 0.735 = 0.265\). 실제 쌍별 검정은 서로 상관되어 이보다 조금 작지만(1절 미니 실험), 여전히 0.05의 네 배 이상이다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="분산 분석표" data-answer="2.63; 0.0764" data-tol="1%; 3%" data-label="F₀ =; p =">
+        <div class="prob-q"><p>처리 5개, 처리마다 관측 4개인 실험에서 \(SS_B = 84\), \(SS_T = 204\)였다. 분산 분석표를 완성해 \(F_0\)와 p 값을 구하라.</p></div>
+        <div class="prob-hint">\(SS_W = SS_T - SS_B\), 자유도는 4와 15.</div>
+        <div class="prob-sol"><p>\(SS_W = 120\), \(MS_B = 84/4 = 21\), \(MS_W = 120/15 = 8\), \(F_0 = 2.625\). \(p = P(F_{4,15} > 2.625) = 0.0764\) (\(F_{0.05,4,15} = 3.06\)). 유의 수준 0.05에서 기각하지 못한다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="투키 HSD" data-answer="8.08" data-label="HSD =">
+        <div class="prob-q"><p>처리 4개, 처리당 \(n = 6\), \(MS_W = 25\)인 일원 분산 분석 뒤에 투키 비교를 한다. \(q_{0.05}(4, 20) = 3.96\)일 때 HSD는?</p></div>
+        <div class="prob-sol"><p>\(\text{HSD} = 3.96\sqrt{25/6} = 3.96 \times 2.041 = 8.08\). 평균 차이가 8.08보다 큰 쌍이 유의하다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="이원 자유도" data-answer="6; 12" data-label="AB 자유도 =; 오차 자유도 =">
+        <div class="prob-q"><p>요인 A 3수준, 요인 B 4수준, 칸마다 2번 반복한 이원 요인 실험에서 교호 작용과 오차의 자유도는?</p></div>
+        <div class="prob-sol"><p>교호 작용 \((3-1)(4-1) = 6\), 오차 \(ab(r-1) = 12 \times 1 = 12\). 전체 \(24 - 1 = 23 = 2 + 3 + 6 + 12\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="교호 작용 그림">
+        <div class="prob-q"><p>어닐 온도(낮음·높음)와 시간(짧음·긺)의 2² 실험에서 시간을 늘리면 낮은 온도에서는 접촉 저항이 12 Ω 줄고 높은 온도에서는 3 Ω 는다. 바른 해석은?</p></div>
+        <div class="prob-choices"><button>시간의 주효과가 −4.5 Ω이므로 시간을 늘리면 된다</button><button>교호 작용이 없다 — 두 효과가 반대 방향이니 상쇄된다</button><button data-correct>교호 작용이 크다 — 시간의 효과는 온도에 따라 부호가 바뀌므로 온도와 함께 정해야 한다</button><button>온도의 주효과만 해석하면 된다</button></div>
+        <div class="prob-sol"><p>교호 효과 AB = (B 높음에서 A 효과 − B 낮음에서 A 효과)/2 = (3 − (−12))/2 = 7.5 Ω로, 시간의 주효과 \((−12 + 3)/2 = −4.5\)보다 크다. 순서가 뒤바뀌는 교호 작용이므로 칸 평균을 보고 조합을 고른다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="2² 효과" data-answer="30; 20; 10" data-label="A =; B =; AB =">
+        <div class="prob-q"><p>반복 없는 2² 실험에서 \((1) = 20\), \(a = 40\), \(b = 30\), \(ab = 70\)이다. A, B, AB 효과는?</p></div>
+        <div class="prob-sol"><p>\(A = (40 + 70 - 30 - 20)/2 = 30\), \(B = (30 + 70 - 40 - 20)/2 = 20\), \(AB = (70 + 20 - 40 - 30)/2 = 10\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="효과의 제곱합" data-answer="576" data-label="SS =">
+        <div class="prob-q"><p>2³ 실험을 2번 반복(모두 16번)했더니 AB 효과가 12였다. AB의 제곱합은?</p></div>
+        <div class="prob-sol"><p>\(SS = N\cdot\text{효과}^2/4 = 16 \times 144/4 = 576\). (대비 = \(n2^{k-1}\times\) 효과 = 96, \(SS = 96^2/16 = 576\).)</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="분해능" data-answer="8; 3" data-label="실행 횟수 =; 분해능 =">
+        <div class="prob-q"><p>요인 5개의 \(2^{5-2}\) 실험을 생성자 \(D = AB\), \(E = AC\)로 만든다. 실행 횟수와 분해능(숫자로)은?</p></div>
+        <div class="prob-sol"><p>\(2^3 = 8\)번. 정의 관계 \(I = ABD = ACE = BCDE\)(\(ABD \cdot ACE = A^2BCDE\)). 가장 짧은 단어 길이 3 → 분해능 III. 예컨대 \(A = BD = CE\)로 주효과가 2인자 교호 작용과 겹친다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="별칭" data-text="BD|DB" data-label="AC의 별칭 =">
+        <div class="prob-q"><p>\(2^{4-1}\) 설계, \(I = ABCD\)에서 AC 교호 작용의 별칭은? (글자로 입력)</p></div>
+        <div class="prob-sol"><p>\(AC \cdot ABCD = A^2BC^2D = BD\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="중심 합성 계획" data-answer="1.68; 20" data-label="α =; 실행 횟수 =">
+        <div class="prob-q"><p>요인 3개의 회전 가능 중심 합성 계획에 중심점 6번을 넣는다. 축점 거리 \(\alpha\)와 전체 실행 횟수는?</p></div>
+        <div class="prob-sol"><p>\(\alpha = (2^3)^{1/4} = 8^{0.25} = 1.682\). 실행 \(8 + 6 + 6 = 20\)번.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="정상점" data-answer="0.571; -0.714; 51.6" data-tol="1%; 1%; 0.5%" data-label="x₁ =; x₂ =; ŷ =">
+        <div class="prob-q"><p>부호화 단위의 2차 모형 \(\hat y = 50 + 3x_1 - 2x_2 - 2x_1^2 - x_2^2 + x_1x_2\)의 정상점과 그 예측값을 구하라. 최댓값인가?</p></div>
+        <div class="prob-hint">\(\partial\hat y/\partial x_1 = 3 - 4x_1 + x_2 = 0\), \(\partial\hat y/\partial x_2 = -2 - 2x_2 + x_1 = 0\).</div>
+        <div class="prob-sol"><p>둘째 식에서 \(x_1 = 2 + 2x_2\). 첫째에 넣으면 \(3 - 8 - 8x_2 + x_2 = 0 \Rightarrow x_2 = -5/7 = -0.714\), \(x_1 = 4/7 = 0.571\). \(\hat y_s = 50 + \tfrac12(3 \times 0.571 + (-2)(-0.714)) = 51.57\). \(\mathbf B = \begin{pmatrix}-2 & 0.5\\0.5 & -1\end{pmatrix}\)의 고유값 −2.21, −0.79가 모두 음수이므로 최댓값이다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="블록화" data-answer="6.67; 1.23" data-tol="1%; 2%" data-label="RCBD F₀ =; 블록 무시 F₀ =">
+        <div class="prob-q"><p>처리 4개를 블록(로트) 5개에서 시험한 확률화 블록 계획에서 \(SS_{\text{처리}} = 40\), \(SS_{\text{블록}} = 150\), \(SS_E = 24\)였다. 처리의 \(F_0\)를 구하라. 블록을 무시하고 일원 분산 분석을 했다면 \(F_0\)는?</p></div>
+        <div class="prob-sol"><p>RCBD: \(MS_{\text{처리}} = 40/3 = 13.33\), \(MS_E = 24/12 = 2\), \(F_0 = 6.67\) (\(F_{0.05,3,12} = 3.49\), 유의). 블록 무시: \(SS_W = 174\), 자유도 16, \(MS_W = 10.875\), \(F_0 = 1.23\) (\(F_{0.05,3,16} = 3.24\), 유의하지 않음).</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="반복 수" data-answer="8" data-label="반복 수 =">
+        <div class="prob-q"><p>웨이퍼 사이 표준 편차가 4 nm인 공정에서 2³ 실험의 효과를 표준 오차 1 nm 이하로 추정하고 싶다. 2³ 설계를 최소 몇 번 반복해야 하는가?</p></div>
+        <div class="prob-sol"><p>\(\operatorname{SE} = 2\sigma/\sqrt N \le 1 \Rightarrow N \ge (2 \times 4)^2 = 64\). 한 번 반복이 8번이므로 \(64/8 = 8\)번 반복.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="quiz-sec" id="quiz">
+    <h2>개념 확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>분산 분석에서 \(H_0\)가 참이면 \(MS_B\)와 \(MS_W\)는 각각 무엇을 추정하는가?</p><div class="opts">
+        <button class="opt">\(MS_B\)는 0, \(MS_W\)는 \(\sigma^2\)</button><button class="opt" data-correct>둘 다 \(\sigma^2\)</button><button class="opt">\(MS_B\)는 \(\sigma^2/n\), \(MS_W\)는 \(\sigma^2\)</button><button class="opt">둘 다 처리 효과의 분산</button>
+      </div><div class="quiz-exp">\(E[MS_B] = \sigma^2 + \sum n_i\tau_i^2/(k-1)\)이므로 \(\tau_i = 0\)이면 \(\sigma^2\). 그래서 \(F_0\)의 기댓값이 1 근처이고, 평균이 다르면 1보다 커진다.</div></div>
+      <div class="quiz-q"><p>교호 작용 그림에서 두 선이 거의 평행하다. 이것이 뜻하는 것은?</p><div class="opts">
+        <button class="opt">두 요인 모두 효과가 없다</button><button class="opt" data-correct>한 요인의 효과가 다른 요인의 수준과 상관없이 같다</button><button class="opt">주효과를 추정할 수 없다</button><button class="opt">반복이 부족하다</button>
+      </div><div class="quiz-exp">평행선은 B를 바꿀 때의 변화가 A 수준마다 같다는 뜻, 곧 교호 작용이 없다는 뜻이다. 선의 높이 차이(A 효과)와 기울기(B 효과)는 따로 클 수 있다.</div></div>
+      <div class="quiz-q"><p>신규 레시피를 하루의 마지막 8장에 몰아서 돌렸다. 가장 직접적인 위험은?</p><div class="opts">
+        <button class="opt">반복이 부족해 오차를 추정할 수 없다</button><button class="opt" data-correct>레시피 효과가 하루 중 장비 표류와 교락된다</button><button class="opt">제1종 오류율이 정확히 0.05가 된다</button><button class="opt">교호 작용을 추정할 수 없다</button>
+      </div><div class="quiz-exp">처리가 시간 순서와 함께 움직이면 둘을 구별할 수 없다. 랜덤화가 이 연결을 끊는다.</div></div>
+      <div class="quiz-q"><p>분해능 IV 설계에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">주효과가 2인자 교호 작용과 별칭이다</button><button class="opt" data-correct>주효과는 2인자 교호 작용과 겹치지 않지만, 2인자 교호 작용끼리는 겹친다</button><button class="opt">모든 2인자 교호 작용을 따로 추정할 수 있다</button><button class="opt">반복이 4번 필요하다</button>
+      </div><div class="quiz-exp">정의 관계의 가장 짧은 단어 길이가 4이면, 주효과(1글자)의 별칭은 3글자 이상, 2인자 교호 작용의 별칭은 2글자 이상이다. 예: \(2^{4-1}\)에서 AB = CD.</div></div>
+      <div class="quiz-q"><p>2² 실험에 중심점 4번을 넣었더니 중심점 평균이 요인점 평균보다 뚜렷이 높았다. 다음 단계로 알맞은 것은?</p><div class="opts">
+        <button class="opt">1차 모형으로 경사 상승을 계속한다</button><button class="opt">중심점을 버리고 다시 분석한다</button><button class="opt" data-correct>곡률이 있으므로 축점을 더해 중심 합성 계획으로 2차 모형을 맞춘다</button><button class="opt">요인을 하나 줄인다</button>
+      </div><div class="quiz-exp">\(\bar y_C > \bar y_F\)는 위로 볼록한 곡면, 곧 최댓값 근처라는 신호다. 1차 모형으로는 더 갈 곳을 알 수 없으니 2차 모형이 필요하다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+(function () {
+  "use strict";
+  const pal = () => SB.palette();
+  const $ = (id) => document.getElementById(id);
+  const TAU = 2 * Math.PI;
+  const handle = (ctx, x, y, col, r = 10) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const fx = (v, d = 3) => (isFinite(v) ? v.toFixed(d) : "—");
+  const pf = (p) => (!isFinite(p) ? "—" : p < 0.0001 ? "< 0.0001" : p < 0.001 ? p.toExponential(1) : p.toFixed(4));
+  const pS = (p) => (!isFinite(p) ? "—" : p < 0.0001 ? "<1e-4" : p < 0.001 ? p.toExponential(0) : p.toFixed(3));
+  const pct = (p, d = 1) => (isFinite(p) ? (100 * p).toFixed(d) + "%" : "—");
+  const sum = (a) => { let s = 0; for (const v of a) s += v; return s; };
+  const mean = (a) => sum(a) / a.length;
+  const invX = (C, xr, px) => xr[0] + ((px - C.box.x) / C.box.w) * (xr[1] - xr[0]);
+  const invY = (C, yr, py) => yr[0] + ((C.box.y + C.box.h - py) / C.box.h) * (yr[1] - yr[0]);
+  const clip = (ctx, C) => { ctx.beginPath(); ctx.rect(C.box.x, C.box.y - 1, C.box.w + 1, C.box.h + 2); ctx.clip(); };
+  const curve = (ctx, C, f, a, b, o) => { ctx.save(); clip(ctx, C); Stat.draw.curve(ctx, C, f, a, b, o); ctx.restore(); };
+  const area = (ctx, C, f, a, b, o) => { ctx.save(); clip(ctx, C); Stat.draw.area(ctx, C, f, a, b, o); ctx.restore(); };
+  const txt = (ctx, s, x, y, o = {}) => SB.label(ctx, s, x, y, Object.assign({ size: 12, align: "left" }, o));
+  const ok = (s) => `<span style="color:var(--ok)">${s}</span>`;
+  const bad = (s) => `<span style="color:var(--bad)">${s}</span>`;
+  /* F 임계값 캐시 */
+  const FC = new Map();
+  const fcrit = (d1, d2, a = 0.05) => { const k = d1 + "," + d2 + "," + a; if (!FC.has(k)) FC.set(k, Stat.qf(1 - a, d1, d2)); return FC.get(k); };
+  /* 누적 히스토그램 */
+  function Acc(lo, hi, nb) {
+    const A = { lo, hi, nb, w: (hi - lo) / nb, c: new Float64Array(nb), n: 0, out: 0, s: 0, ss: 0 };
+    A.add = (v) => { A.n++; A.s += v; A.ss += v * v; const i = Math.floor((v - A.lo) / A.w); if (i >= 0 && i < A.nb) A.c[i]++; else A.out++; };
+    A.reset = () => { A.c.fill(0); A.n = A.out = A.s = A.ss = 0; };
+    A.mean = () => (A.n ? A.s / A.n : NaN);
+    A.sd = () => (A.n > 1 ? Math.sqrt(Math.max(0, (A.ss - (A.s * A.s) / A.n) / (A.n - 1))) : NaN);
+    A.max = () => { let m = 0; for (const v of A.c) if (v > m) m = v; return m; };
+    return A;
+  }
+  function drawAcc(ctx, C, A, o = {}) {
+    const P = pal(), y0 = C.box.y + C.box.h;
+    ctx.save(); clip(ctx, C);
+    for (let i = 0; i < A.nb; i++) {
+      const v = A.c[i]; if (!(v > 0)) continue;
+      const xm = A.lo + (i + 0.5) * A.w, x0 = C.X(A.lo + i * A.w), x1 = C.X(A.lo + (i + 1) * A.w), y = Math.max(C.box.y - 2, C.Y(v));
+      ctx.globalAlpha = o.alpha || 0.6; ctx.fillStyle = typeof o.color === "function" ? o.color(xm) : o.color || P.accent;
+      ctx.fillRect(x0 + 0.5, y, Math.max(1, x1 - x0 - 1), y0 - y); ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+  /* 공통: 1차원 점 그림용 고정 지터 */
+  const JIT = Array.from({ length: 24 }, (_, i) => ((i * 0.618034) % 1) - 0.5);
+
+  /* 등고선(마칭 스퀘어) */
+  function grid(f, xr, yr, nx, ny) {
+    const G = []; let mn = Infinity, mx = -Infinity;
+    for (let j = 0; j <= ny; j++) { const row = []; for (let i = 0; i <= nx; i++) { const v = f(xr[0] + ((xr[1] - xr[0]) * i) / nx, yr[0] + ((yr[1] - yr[0]) * j) / ny); row.push(v); if (v < mn) mn = v; if (v > mx) mx = v; } G.push(row); }
+    return { G, xr, yr, nx, ny, mn, mx };
+  }
+  function shade(ctx, C, g, col, amax = 0.55, lo, hi) {
+    lo = lo == null ? g.mn : lo; hi = hi == null ? g.mx : hi;
+    ctx.save(); clip(ctx, C); ctx.fillStyle = col;
+    const dx = (g.xr[1] - g.xr[0]) / g.nx, dy = (g.yr[1] - g.yr[0]) / g.ny;
+    for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) {
+      const v = (g.G[j][i] + g.G[j][i + 1] + g.G[j + 1][i] + g.G[j + 1][i + 1]) / 4, t = SB.clamp((v - lo) / (hi - lo || 1), 0, 1);
+      ctx.globalAlpha = 0.04 + amax * t * t;
+      const x0 = C.X(g.xr[0] + i * dx), x1 = C.X(g.xr[0] + (i + 1) * dx), y0 = C.Y(g.yr[0] + j * dy), y1 = C.Y(g.yr[0] + (j + 1) * dy);
+      const X0 = Math.round(x0), X1 = Math.round(x1), Y0 = Math.round(y0), Y1 = Math.round(y1); ctx.fillRect(X0, Y1, X1 - X0, Y0 - Y1);
+    }
+    ctx.restore();
+  }
+  function isolines(ctx, C, g, levels, o = {}) {
+    const dx = (g.xr[1] - g.xr[0]) / g.nx, dy = (g.yr[1] - g.yr[0]) / g.ny;
+    ctx.save(); clip(ctx, C); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 1.4; if (o.dash) ctx.setLineDash(o.dash);
+    ctx.beginPath();
+    for (const L of levels) for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) {
+      const v = [g.G[j][i], g.G[j][i + 1], g.G[j + 1][i + 1], g.G[j + 1][i]];
+      const px = [g.xr[0] + i * dx, g.xr[0] + (i + 1) * dx, g.xr[0] + (i + 1) * dx, g.xr[0] + i * dx];
+      const py = [g.yr[0] + j * dy, g.yr[0] + j * dy, g.yr[0] + (j + 1) * dy, g.yr[0] + (j + 1) * dy];
+      const pts = [];
+      for (let e = 0; e < 4; e++) { const a = e, b = (e + 1) % 4; if ((v[a] > L) !== (v[b] > L)) { const t = (L - v[a]) / (v[b] - v[a]); pts.push([px[a] + t * (px[b] - px[a]), py[a] + t * (py[b] - py[a])]); } }
+      if (pts.length === 2) { ctx.moveTo(C.X(pts[0][0]), C.Y(pts[0][1])); ctx.lineTo(C.X(pts[1][0]), C.Y(pts[1][1])); }
+      else if (pts.length === 4) { ctx.moveTo(C.X(pts[0][0]), C.Y(pts[0][1])); ctx.lineTo(C.X(pts[1][0]), C.Y(pts[1][1])); ctx.moveTo(C.X(pts[2][0]), C.Y(pts[2][1])); ctx.lineTo(C.X(pts[3][0]), C.Y(pts[3][1])); }
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  const star = (ctx, x, y, r, col) => { ctx.save(); ctx.fillStyle = col; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); };
+
+  /* 일원 분산 분석(빠른 판): groups 배열 → {F, p, msb, msw, means} */
+  function aov1(groups, needP = true) {
+    let N = 0, tot = 0; const means = groups.map((g) => { N += g.length; const s = sum(g); tot += s; return s / g.length; });
+    const gm = tot / N, k = groups.length; let ssb = 0, ssw = 0;
+    groups.forEach((g, i) => { ssb += g.length * (means[i] - gm) ** 2; for (const v of g) ssw += (v - means[i]) ** 2; });
+    const msb = ssb / (k - 1), msw = ssw / (N - k), F = msb / msw;
+    return { F, p: needP ? 1 - Stat.pf(F, k - 1, N - k) : NaN, msb, msw, ssb, ssw, means, gm, dfb: k - 1, dfw: N - k };
+  }
+
+  /* ================================================================ 머리: 챔버 네 대의 점 그림 */
+  {
+    const R = Stat.rng(3), K = 4, n = 8;
+    const st = { mu: [506, 524, 501, 514], s: 7, z: [], zt: [], t: 0 };
+    const newZ = () => Array.from({ length: K }, () => { const z = Array.from({ length: n }, () => R.normal()); return z; });
+    st.z = newZ(); st.zt = st.z.map((r) => r.slice());
+    const yr = [460, 570];
+    const sTrack = [2, 20];
+    let last = null;
+    const cv = SB.canvas("cv-hero", (ctx, w, h, self) => {
+      const P = pal(), wide = w >= 620;
+      const pb = wide ? { x: 54, y: 30, w: w * 0.6 - 54, h: h - 30 - 50 } : { x: 48, y: 30, w: w - 48 - 44, h: h * 0.56 - 30 - 36 };
+      const C = SB.chart(ctx, pb, { x: [0, K], y: yr, xTicks: [], yLabel: "식각 속도 (nm/min)" });
+      const data = st.z.map((zr, i) => zr.map((z) => st.mu[i] + st.s * z));
+      const A = aov1(data); last = A;
+      ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.box.x, C.Y(A.gm), C.box.x + C.box.w, C.Y(A.gm), P.dim, [5, 4]); ctx.restore();
+      const hs = [];
+      data.forEach((g, i) => {
+        const cx = C.X(i + 0.45), cw = C.box.w / K;
+        ctx.fillStyle = P.accent; ctx.globalAlpha = 0.85;
+        g.forEach((v, j) => { ctx.beginPath(); ctx.arc(cx + JIT[j] * cw * 0.45, C.Y(v), 4.5, 0, TAU); ctx.fill(); });
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = P.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - cw * 0.3, C.Y(A.means[i])); ctx.lineTo(cx + cw * 0.3, C.Y(A.means[i])); ctx.stroke();
+        // 집단 간 편차 막대
+        ctx.strokeStyle = P.accent2; ctx.lineWidth = 4; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(cx + cw * 0.3, C.Y(A.means[i])); ctx.lineTo(cx + cw * 0.3, C.Y(A.gm)); ctx.stroke(); ctx.globalAlpha = 1;
+        const hx = cx + cw * 0.38, hy = C.Y(st.mu[i]);
+        handle(ctx, hx, hy, P.accent2, 9); hs.push({ id: i, x: hx, y: hy });
+        SB.label(ctx, `챔버 ${i + 1}`, cx, C.box.y + C.box.h + 14, { size: 12, color: P.dim });
+      });
+      // σ 손잡이(오른쪽 세로 트랙)
+      const tx = C.box.x + C.box.w + 22, ty0 = C.box.y + C.box.h - 10, ty1 = C.box.y + 20;
+      const sy = ty0 - ((st.s - sTrack[0]) / (sTrack[1] - sTrack[0])) * (ty0 - ty1);
+      ctx.save(); ctx.strokeStyle = P.border; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(tx, ty0); ctx.lineTo(tx, ty1); ctx.stroke();
+      ctx.strokeStyle = P.accent; ctx.beginPath(); ctx.moveTo(tx, ty0); ctx.lineTo(tx, sy); ctx.stroke(); ctx.restore();
+      SB.label(ctx, "잡음 σ", tx, ty1 - 14, { size: 11.5, bold: true });
+      handle(ctx, tx, sy, P.accent, 10); hs.push({ id: "s", x: tx, y: sy });
+      self._hs = hs; self._C = C; self._tr = [ty0, ty1];
+      // 오른쪽(아래) 패널: MS 막대와 신호등
+      const bx = wide ? w * 0.6 + 50 : 20, by = wide ? 40 : pb.y + pb.h + 38, bw = wide ? w - bx - 24 : w - 40;
+      const scale = Math.max(A.msb, A.msw) * 1.1, bar = (v) => (bw - 4) * Math.min(1, v / scale);
+      txt(ctx, `집단 간 평균 제곱 MS_B = ${fx(A.msb, 1)}`, bx, by, { bold: true, color: P.accent2 });
+      ctx.fillStyle = P.accent2; ctx.globalAlpha = 0.75; ctx.fillRect(bx, by + 12, Math.max(2, bar(A.msb)), 16); ctx.globalAlpha = 1;
+      txt(ctx, `집단 내 평균 제곱 MS_W = ${fx(A.msw, 1)}`, bx, by + 46, { bold: true, color: P.accent });
+      ctx.fillStyle = P.accent; ctx.globalAlpha = 0.75; ctx.fillRect(bx, by + 58, Math.max(2, bar(A.msw)), 16); ctx.globalAlpha = 1;
+      const fc = fcrit(A.dfb, A.dfw), sig = A.p < 0.05;
+      const ly = by + (wide ? 112 : 100);
+      ctx.fillStyle = sig ? P.bad : P.faint; ctx.beginPath(); ctx.arc(bx + 16, ly, 14, 0, TAU); ctx.fill();
+      txt(ctx, `F = MS_B / MS_W = ${fx(A.F, 2)}`, bx + 40, ly - 9, { bold: true, size: 13.5 });
+      txt(ctx, `p ${A.p < 0.0001 ? "< 0.0001" : "= " + pf(A.p)} · F₀.₀₅ = ${fc.toFixed(2)}`, bx + 40, ly + 10, { size: 12, color: P.dim });
+      txt(ctx, sig ? "H₀ 기각: 챔버 평균이 다르다" : "차이를 잡음과 구별 못 함", bx, ly + 38, { size: 12.5, bold: true, color: sig ? P.bad : P.dim });
+      const fb = { x: bx + 6, y: ly + 66, w: bw - 12, h: h - (ly + 66) - 62 };
+      if (fb.h > 60) {
+        const D = Stat.dist.f(A.dfb, A.dfw), xm = Math.max(8, fc * 2.2), pk = D.pdf(Math.max(0.05, ((A.dfb - 2) / A.dfb) * (A.dfw / (A.dfw + 2)))) || 0.8, Cf = SB.chart(ctx, fb, { x: [0, xm], y: [0, Math.min(1.2, pk * 1.15)], yTicks: [] });
+        txt(ctx, `F(${A.dfb}, ${A.dfw}) 분포와 F₀`, fb.x + fb.w * 0.35, fb.y + 4, { size: 11.5, color: P.accent2 });
+        area(ctx, Cf, D.pdf, fc, xm, { color: P.bad, alpha: 0.3 });
+        curve(ctx, Cf, D.pdf, 0.01, xm, { color: P.accent2, width: 2 });
+        const fxp = Cf.X(Math.min(A.F, xm)); ctx.strokeStyle = P.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(fxp, Cf.box.y); ctx.lineTo(fxp, Cf.box.y + Cf.box.h); ctx.stroke();
+        if (A.F > xm) SB.arrow(ctx, fxp - 30, Cf.box.y + 12, fxp - 2, Cf.box.y + 12, { color: P.accent, width: 2 });
+      }
+    }, { aspect: 0.5, minHeight: 470, maxHeight: 480 });
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._hs ? cv._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 14 })) : []),
+      down: (id) => { if (id == null) { st.zt = newZ(); st.t = 0; } },
+      move: (id, x, y) => {
+        if (id == null) return;
+        if (id === "s") { const [a, b] = cv._tr; st.s = Math.round(SB.clamp(sTrack[0] + ((a - y) / (a - b)) * (sTrack[1] - sTrack[0]), sTrack[0], sTrack[1])); }
+        else st.mu[id] = Math.round(SB.clamp(invY(cv._C, yr, y), yr[0] + 15, yr[1] - 15));
+      },
+    });
+    SB.loop("hero", (dt) => {
+      st.t += dt;
+      if (st.t > 2.2) { st.t = 0; st.zt = newZ(); }
+      const a = Math.min(1, dt * 5);
+      for (let i = 0; i < K; i++) for (let j = 0; j < n; j++) st.z[i][j] += (st.zt[i][j] - st.z[i][j]) * a;
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 1절 MINI: 가족별 오류율 */
+  {
+    const R = Stat.rng(17), n = 5, tcr = Stat.tCrit(0.05, 2 * n - 2);
+    const res = new Map();
+    const st = { k: 4, q: 0, cur: null };
+    function one(k) {
+      const G = Array.from({ length: k }, () => Array.from({ length: n }, () => R.normal()));
+      const m = G.map(mean), v = G.map((g, i) => sum(g.map((x) => (x - m[i]) ** 2)) / (n - 1));
+      let any = false;
+      for (let i = 0; i < k && !any; i++) for (let j = i + 1; j < k; j++) { const t = (m[i] - m[j]) / Math.sqrt(((v[i] + v[j]) / 2) * (2 / n)); if (Math.abs(t) > tcr) { any = true; break; } }
+      const A = aov1(G, false);
+      return [any, A.F > fcrit(k - 1, k * (n - 1))];
+    }
+    function add(k, cnt) { const r = res.get(k) || { n: 0, fw: 0, an: 0 }; for (let i = 0; i < cnt; i++) { const [a, b] = one(k); r.n++; if (a) r.fw++; if (b) r.an++; } res.set(k, r); }
+    add(4, 1000);
+    const cv = SB.canvas("cv-fwer", (ctx, w, h) => {
+      const P = pal();
+      const C = SB.chart(ctx, { x: 54, y: 16, w: w - 70, h: h - 62 }, { x: [1.5, 10.5], y: [0, 1], xTicks: [2, 3, 4, 5, 6, 7, 8, 9, 10], xLabel: "집단 수 k", yLabel: "거짓 기각 확률", hlines: [{ y: 0.05, color: P.dim, label: "α = 0.05" }] });
+      ctx.save(); clip(ctx, C); ctx.strokeStyle = P.dim; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.6; ctx.beginPath();
+      for (let k = 2; k <= 10; k += 0.05) { const m = (k * (k - 1)) / 2, y = 1 - Math.pow(0.95, m); k === 2 ? ctx.moveTo(C.X(k), C.Y(y)) : ctx.lineTo(C.X(k), C.Y(y)); }
+      ctx.stroke(); ctx.restore();
+      SB.label(ctx, "1 − 0.95^m (독립 가정)", C.X(6.2), C.Y(0.93), { size: 11, color: P.dim });
+      ctx.fillStyle = P.faint; ctx.globalAlpha = 0.25; ctx.fillRect(C.X(st.k - 0.4), C.box.y, C.X(st.k + 0.4) - C.X(st.k - 0.4), C.box.h); ctx.globalAlpha = 1;
+      res.forEach((r, k) => {
+        ctx.fillStyle = P.bad; ctx.beginPath(); ctx.arc(C.X(k), C.Y(r.fw / r.n), 6, 0, TAU); ctx.fill();
+        ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(k), C.Y(r.an / r.n), 6, 0, TAU); ctx.fill();
+      });
+      txt(ctx, "● 쌍별 t 검정 중 하나라도", C.box.x + 8, C.box.y + 12, { color: P.bad, size: 11.5 });
+      txt(ctx, "● 분산 분석 F 검정", C.box.x + 8, C.box.y + 30, { color: P.accent, size: 11.5 });
+    }, { aspect: 0.5, minHeight: 260, maxHeight: 330 });
+    const out = () => { const r = res.get(st.k), m = (st.k * (st.k - 1)) / 2; SB.stat("fw-r", r ? `k = ${st.k}, 쌍 ${m}개: 쌍별 t ${pct(r.fw / r.n)} · F ${pct(r.an / r.n)} (실험 ${r.n}번)` : `k = ${st.k}, 쌍 ${m}개: 아직 실험 전`); };
+    SB.range("fw-k", (v) => String(v), (v) => { st.k = v; out(); cv.redraw(); });
+    $("fw-run").addEventListener("click", () => { st.q += 1000; st.cur = st.k; });
+    out();
+    SB.loop("mini-fwer", () => { if (st.q <= 0) return; const c = Math.min(st.q, 50); add(st.cur, c); st.q -= c; out(); cv.redraw(); });
+  }
+
+  /* ================================================================ 1절 tangle: F 계산 */
+  SB.tangle("tg-f", (v) => {
+    const k = v.k, n = v.n, N = k * n, d1 = k - 1, d2 = N - k, msb = v.ssb / d1, msw = v.ssw / d2, F = msb / msw, fc = fcrit(d1, d2), p = 1 - Stat.pf(F, d1, d2);
+    return { df: `(${d1}, ${d2})`, msb: msb.toFixed(1), msw: msw.toFixed(2), F: F.toFixed(2), fc: fc.toFixed(2), p: pf(p), msg: p < 0.05 ? bad("평균이 모두 같다는 가설을 기각한다.") : "평균 차이를 잡음과 구별할 수 없다." };
+  });
+
+  /* ================================================================ 1절 SIM: F 검정 실험실 */
+  {
+    const R = Stat.rng(23);
+    const st = { k: 4, n: 5, s: 8, mu: [50, 56, 47, 52, 50], data: null, F: NaN, p: NaN, A: null, rej: 0, q: 0, rate: 1 };
+    const yr = [0, 100];
+    const dfs = () => [st.k - 1, st.k * st.n - st.k];
+    const fmax = () => Math.max(6, fcrit(...dfs()) * 2.6);
+    function reset() { st.A = Acc(0, fmax(), 60); st.rej = 0; }
+    function one(keep) {
+      const G = Array.from({ length: st.k }, (_, i) => Array.from({ length: st.n }, () => st.mu[i] + st.s * R.normal()));
+      const A = aov1(G, keep);
+      st.A.add(A.F); if (A.F > fcrit(...dfs())) st.rej++;
+      if (keep) { st.data = G; st.F = A.F; st.p = A.p; st.res = A; }
+    }
+    reset(); for (let i = 0; i < 200; i++) one(false); one(true);
+    const cv1 = SB.canvas("cv-fl1", (ctx, w, h, self) => {
+      const P = pal(), K = st.k;
+      const C = SB.chart(ctx, { x: 48, y: 54, w: w - 62, h: h - 54 - 40 }, { x: [0, K], y: yr, xTicks: [], yLabel: "반응" });
+      const hs = [];
+      if (st.data) {
+        ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.box.x, C.Y(st.res.gm), C.box.x + C.box.w, C.Y(st.res.gm), P.dim, [5, 4]); ctx.restore();
+        st.data.forEach((g, i) => {
+          const cx = C.X(i + 0.42), cw = C.box.w / K;
+          ctx.fillStyle = P.accent; ctx.globalAlpha = 0.8; g.forEach((v, j) => { ctx.beginPath(); ctx.arc(cx + JIT[j] * cw * 0.5, C.Y(SB.clamp(v, -5, 105)), 3.8, 0, TAU); ctx.fill(); }); ctx.globalAlpha = 1;
+          ctx.strokeStyle = P.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - cw * 0.3, C.Y(st.res.means[i])); ctx.lineTo(cx + cw * 0.3, C.Y(st.res.means[i])); ctx.stroke();
+          SB.label(ctx, String(i + 1), cx, C.box.y + C.box.h + 12, { size: 11.5, color: P.dim });
+        });
+      }
+      for (let i = 0; i < K; i++) { const hx = C.X(i + 0.42) + (C.box.w / K) * 0.36, hy = C.Y(st.mu[i]); ctx.strokeStyle = P.accent2; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(hx - 22, hy); ctx.lineTo(hx, hy); ctx.stroke(); ctx.setLineDash([]); handle(ctx, hx, hy, P.accent2, 9); hs.push({ id: i, x: hx, y: hy }); }
+      txt(ctx, `이번 실험 (집단당 n = ${st.n})`, C.box.x, 40, { bold: true });
+      self._hs = hs; self._C = C;
+    }, { aspect: 0.85, minHeight: 300, maxHeight: 380 });
+    const cv2 = SB.canvas("cv-fl2", (ctx, w, h) => {
+      const P = pal(), [d1, d2] = dfs(), fc = fcrit(d1, d2), A = st.A, xr = [0, A.hi];
+      const D = Stat.dist.f(d1, d2), peak = Math.max(D.pdf(Math.max(0.05, d1 > 2 ? ((d1 - 2) / d1) * (d2 / (d2 + 2)) : 0.05)), 0.2);
+      const ymax = Math.max(5, A.max() * 1.12, A.n * A.w * peak * 1.15);
+      const C = SB.chart(ctx, { x: 50, y: 54, w: w - 64, h: h - 54 - 46 }, { x: xr, y: [0, ymax], xLabel: "F₀", yFmt: (v) => String(Math.round(v)) });
+      area(ctx, C, (x) => A.n * A.w * D.pdf(x), fc, xr[1], { color: P.bad, alpha: 0.25 });
+      drawAcc(ctx, C, A, { color: (x) => (x > fc ? P.bad : P.accent), alpha: 0.55 });
+      if (A.n) curve(ctx, C, (x) => A.n * A.w * D.pdf(x), 0.01, xr[1], { color: P.accent2, width: 2.2 });
+      ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.X(fc), C.box.y, C.X(fc), C.box.y + C.box.h, P.bad, [4, 3]); ctx.restore();
+      SB.label(ctx, `F₀.₀₅ = ${fc.toFixed(2)}`, Math.min(C.X(fc) + 4, C.box.x + C.box.w - 70), C.box.y + 10, { size: 11, color: P.bad, align: "left" });
+      if (isFinite(st.F)) { const x = C.X(Math.min(st.F, xr[1])); ctx.fillStyle = P.accent; ctx.beginPath(); ctx.moveTo(x, C.box.y + C.box.h); ctx.lineTo(x - 7, C.box.y + C.box.h + 11); ctx.lineTo(x + 7, C.box.y + C.box.h + 11); ctx.fill(); }
+      txt(ctx, `F(${d1}, ${d2}) · 실험 ${A.n}번` + (A.out ? ` (범위 밖 ${A.out})` : ""), C.box.x, 40, { bold: true });
+    }, { aspect: 0.85, minHeight: 300, maxHeight: 380 });
+    function out() {
+      const [d1, d2] = dfs(), eq = st.mu.slice(0, st.k).every((m) => m === st.mu[0]);
+      SB.stat("fl-F", fx(st.F, 2)); SB.stat("fl-p", st.p < 0.05 ? bad(pf(st.p)) : pf(st.p)); SB.stat("fl-fc", fcrit(d1, d2).toFixed(2));
+      SB.stat("fl-cnt", String(st.A.n)); SB.stat("fl-rej", st.A.n ? pct(st.rej / st.A.n) + (eq ? " (α)" : " (검정력)") : "—");
+    }
+    const redraw = () => { cv1.redraw(); cv2.redraw(); out(); };
+    const fresh = () => { reset(); st.q = 0; one(true); redraw(); };
+    SB.seg("fl-k", (v) => { st.k = Number(v); fresh(); });
+    SB.range("fl-n", (v) => String(v), (v) => { st.n = v; fresh(); });
+    SB.range("fl-s", (v) => String(v), (v) => { st.s = v; fresh(); });
+    SB.drag(cv1, {
+      handles: () => (cv1._hs ? cv1._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 14 })) : []),
+      move: (id, x, y) => { if (id == null) return; st.mu[id] = Math.round(SB.clamp(invY(cv1._C, yr, y), 5, 95)); reset(); st.q = 0; one(true); cv2.redraw(); out(); },
+    });
+    $("fl-eq").addEventListener("click", () => { st.mu = [50, 50, 50, 50, 50]; fresh(); });
+    $("fl-clr").addEventListener("click", () => { reset(); st.q = 0; redraw(); });
+    $("fl-1").addEventListener("click", () => { one(true); redraw(); });
+    $("fl-100").addEventListener("click", () => { st.q += 100; st.rate = 4; });
+    $("fl-1000").addEventListener("click", () => { st.q += 1000; st.rate = 25; });
+    out();
+    SB.loop("sim-flab", () => { if (st.q <= 0) return; const c = Math.min(st.q, st.rate); for (let i = 0; i < c - 1; i++) one(false); one(true); st.q -= c; redraw(); });
+  }
+
+  /* ================================================================ 2절 MINI: 가정 위반과 p 값 */
+  {
+    const R = Stat.rng(29);
+    const st = { bal: "bal", r: 1, H: new Float64Array(20), n: 0, rej: 0, q: 0 };
+    const sizes = () => (st.bal === "bal" ? [7, 7, 7] : [3, 6, 12]);
+    function one() {
+      const ns = sizes(), sd = [st.r, 1, 1];
+      const G = ns.map((m, i) => Array.from({ length: m }, () => sd[i] * R.normal()));
+      const p = aov1(G).p; st.n++; if (p < 0.05) st.rej++; st.H[Math.min(19, Math.floor(p * 20))]++;
+    }
+    const reset = () => { st.H.fill(0); st.n = 0; st.rej = 0; };
+    for (let i = 0; i < 600; i++) one();
+    const cv = SB.canvas("cv-robust", (ctx, w, h) => {
+      const P = pal(), m = Math.max(10, ...st.H) * 1.15;
+      const C = SB.chart(ctx, { x: 54, y: 22, w: w - 70, h: h - 68 }, { x: [0, 1], y: [0, m], xLabel: "p 값", yLabel: "실험 수", yFmt: (v) => String(Math.round(v)) });
+      for (let i = 0; i < 20; i++) { const x0 = C.X(i / 20), x1 = C.X((i + 1) / 20), y = C.Y(st.H[i]); ctx.globalAlpha = 0.65; ctx.fillStyle = i === 0 ? P.bad : P.accent; ctx.fillRect(x0 + 0.5, y, x1 - x0 - 1, C.Y(0) - y); ctx.globalAlpha = 1; }
+      if (st.n) { ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.box.x, C.Y(st.n / 20), C.box.x + C.box.w, C.Y(st.n / 20), P.accent2, [6, 4]); ctx.restore(); SB.label(ctx, "가정이 맞을 때 기대 높이", C.box.x + C.box.w - 4, C.Y(st.n / 20) - 10, { size: 11, color: P.accent2, align: "right" }); }
+      txt(ctx, `n = ${sizes().join("·")}, σ = ${st.r}·1·1 — 실험 ${st.n}번, 실제 α = ${st.n ? pct(st.rej / st.n) : "—"}`, C.box.x, 10, { bold: true, size: 11.5 });
+    }, { aspect: 0.5, minHeight: 260, maxHeight: 330 });
+    const out = () => SB.stat("rb-out", st.n ? `거짓 기각 ${st.rej}/${st.n} = ${st.rej / st.n > 0.075 ? bad(pct(st.rej / st.n)) : pct(st.rej / st.n)}` : "");
+    SB.seg("rb-bal", (v) => { st.bal = v; reset(); st.q = 0; out(); cv.redraw(); });
+    SB.range("rb-r", (v) => v.toFixed(1) + "×", (v) => { st.r = v; reset(); st.q = 0; out(); cv.redraw(); });
+    $("rb-run").addEventListener("click", () => { st.q += 2000; });
+    out();
+    SB.loop("mini-robust", () => { if (st.q <= 0) return; const c = Math.min(st.q, 80); for (let i = 0; i < c; i++) one(); st.q -= c; out(); cv.redraw(); });
+  }
+
+  /* ================================================================ 2절 SIM: 투키 HSD */
+  {
+    const EX = [[512, 498, 505, 520, 508], [525, 531, 518, 529, 522], [503, 497, 510, 499, 506], [515, 522, 509, 517, 511]];
+    const Q4_16 = 4.0461; /* q_0.05(4, 16): scipy.stats.studentized_range 값과 Stat.qtukey(0.95, 4, 16) = 4.0461이 일치 */
+    const T16 = Stat.tCrit(0.05, 16);
+    const R = Stat.rng(31);
+    const st = { base: EX.map((g) => g.slice()), off: [0, 0, 0, 0], s: 1, showT: false };
+    const yr = [470, 560];
+    const data = () => st.base.map((g, i) => { const m = mean(g); return g.map((v) => m + st.off[i] + st.s * (v - m)); });
+    function calc() {
+      const D = data(), A = aov1(D), hsd = Q4_16 * Math.sqrt(A.msw / 5), tw = T16 * Math.sqrt((2 * A.msw) / 5), pairs = [];
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) { const d = A.means[j] - A.means[i]; pairs.push({ i, j, d, sig: Math.abs(d) > hsd, tsig: Math.abs(d) > tw }); }
+      return { D, A, hsd, tw, pairs };
+    }
+    let K = calc();
+    const cv1 = SB.canvas("cv-tk1", (ctx, w, h, self) => {
+      const P = pal(), C = SB.chart(ctx, { x: 52, y: 54, w: w - 66, h: h - 54 - 40 }, { x: [0, 4], y: yr, xTicks: [], yLabel: "식각 속도 (nm/min)" });
+      const hs = [];
+      K.D.forEach((g, i) => {
+        const cx = C.X(i + 0.45), cw = C.box.w / 4;
+        ctx.fillStyle = P.accent; g.forEach((v, j) => { ctx.beginPath(); ctx.arc(cx + JIT[j] * cw * 0.45, C.Y(v), 4.2, 0, TAU); ctx.fill(); });
+        const m = K.A.means[i], hy = C.Y(m);
+        ctx.strokeStyle = P.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - cw * 0.28, hy); ctx.lineTo(cx + cw * 0.22, hy); ctx.stroke();
+        const hx = cx + cw * 0.32; handle(ctx, hx, hy, P.accent, 9); hs.push({ id: i, x: hx, y: hy });
+        SB.label(ctx, `챔버 ${i + 1}`, cx, C.box.y + C.box.h + 12, { size: 11.5, color: P.dim });
+        SB.label(ctx, m.toFixed(1), cx - cw * 0.05, Math.max(C.box.y + 8, hy - 18), { size: 10.5, color: P.dim, mono: true });
+      });
+      txt(ctx, "자료와 챔버 평균", C.box.x, 40, { bold: true });
+      self._hs = hs; self._C = C;
+    }, { aspect: 0.85, minHeight: 300, maxHeight: 380 });
+    const cv2 = SB.canvas("cv-tk2", (ctx, w, h) => {
+      const P = pal(), lim = Math.max(35, ...K.pairs.map((p) => Math.abs(p.d) + K.hsd + 3));
+      const C = SB.chart(ctx, { x: 46, y: 54, w: w - 60, h: h - 54 - 46 }, { x: [-lim, lim], y: [0, 6.5], yTicks: [], xLabel: "평균 차이 μⱼ − μᵢ (nm/min)" });
+      ctx.save(); clip(ctx, C); ctx.strokeStyle = P.text; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(C.X(0), C.box.y); ctx.lineTo(C.X(0), C.box.y + C.box.h); ctx.stroke(); ctx.restore();
+      K.pairs.forEach((p, r) => {
+        const y = C.Y(6 - r), col = p.sig ? P.accent2 : P.dim;
+        if (st.showT) { ctx.save(); ctx.setLineDash([4, 3]); Stat.draw.interval(ctx, C, p.d - K.tw, p.d + K.tw, y + 8, { color: p.tsig ? P.bad : P.faint, width: 1.6 }); ctx.restore(); }
+        Stat.draw.interval(ctx, C, p.d - K.hsd, p.d + K.hsd, y, { color: col, width: p.sig ? 3 : 2, center: p.d });
+        SB.label(ctx, `${p.i + 1}–${p.j + 1}`, C.box.x - 22, y, { size: 11.5, bold: p.sig, color: p.sig ? P.accent2 : P.dim });
+      });
+      txt(ctx, `투키 95% 동시 구간 (± HSD ${K.hsd.toFixed(2)})`, C.box.x, 40, { bold: true });
+    }, { aspect: 0.85, minHeight: 300, maxHeight: 380 });
+    function out() {
+      SB.stat("tk-mse", K.A.msw.toFixed(2)); SB.stat("tk-q", Q4_16.toFixed(3)); SB.stat("tk-hsd", K.hsd.toFixed(2));
+      const s = K.pairs.filter((p) => p.sig).map((p) => `${p.i + 1}–${p.j + 1}`);
+      SB.stat("tk-sig", s.length ? s.join(", ") : "없음");
+      SB.stat("tk-F", `${K.A.F.toFixed(1)} (p ${K.A.p < 0.05 ? bad(pS(K.A.p)) : pS(K.A.p)})`);
+    }
+    const upd = () => { K = calc(); cv1.redraw(); cv2.redraw(); out(); };
+    SB.drag(cv1, {
+      handles: () => (cv1._hs ? cv1._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 14 })) : []),
+      move: (id, x, y) => { if (id == null) return; const m0 = mean(st.base[id]); st.off[id] = Math.round(SB.clamp(invY(cv1._C, yr, y), yr[0] + 8, yr[1] - 8) - m0); K = calc(); cv2.redraw(); out(); },
+    });
+    $("tk-t").addEventListener("change", (e) => { st.showT = e.target.checked; cv2.redraw(); });
+    SB.range("tk-s", (v) => v.toFixed(1) + "×", (v) => { st.s = v; upd(); });
+    $("tk-ex").addEventListener("click", () => { st.base = EX.map((g) => g.slice()); st.off = [0, 0, 0, 0]; upd(); });
+    $("tk-new").addEventListener("click", () => { const mus = st.base.map((g, i) => mean(g) + st.off[i]); st.base = mus.map((m) => Array.from({ length: 5 }, () => Math.round(m + 6.1 * R.normal()))); st.off = [0, 0, 0, 0]; upd(); });
+    out();
+  }
+
+  /* ================================================================ 2절 DRILL: 분산 분석표 */
+  SB.drill("drill-anova", () => {
+    const r = Stat.random, k = r.int(3, 5), n = r.int(4, 8), N = k * n, ssb = r.int(4, 40) * 10, ssw = r.int(10, 60) * 10;
+    const msb = ssb / (k - 1), msw = ssw / (N - k), F = msb / msw;
+    return {
+      q: `<p>처리 \\(k = ${k}\\)개, 처리마다 관측 \\(n = ${n}\\)개. \\(SS_B = ${ssb}\\), \\(SS_W = ${ssw}\\)일 때 \\(F_0\\)는?</p>`,
+      answer: Number(F.toPrecision(4)), label: "F₀ =", tol: "1%",
+      sol: `<p>자유도 \\(${k - 1}\\), \\(${N - k}\\). \\(MS_B = ${ssb}/${k - 1} = ${msb.toFixed(2)}\\), \\(MS_W = ${ssw}/${N - k} = ${msw.toFixed(3)}\\), \\(F_0 = ${F.toFixed(3)}\\). \\(F_{0.05,${k - 1},${N - k}} = ${fcrit(k - 1, N - k).toFixed(2)}\\)이므로 ${F > fcrit(k - 1, N - k) ? "기각" : "기각하지 못함"}.</p>`,
+    };
+  });
+
+  /* ================================================================ 3절 tangle: 이원 자유도 */
+  SB.tangle("tg-df", (v) => {
+    const N = v.a * v.b * v.r, de = v.a * v.b * (v.r - 1);
+    const msg = v.r === 1 ? bad("반복이 없어 오차 자유도가 0이다 — 교호 작용을 오차로 쓰지 않으면 아무것도 검정할 수 없다.") : de < 6 ? "오차 자유도가 작아 검정력이 낮다. 반복을 늘려라." : "교호 작용까지 검정할 수 있다.";
+    return { N: String(N), da: String(v.a - 1), db: String(v.b - 1), dab: String((v.a - 1) * (v.b - 1)), de: String(de), dt: String(N - 1), msg };
+  });
+
+  /* ================================================================ 3절 SIM: 교호 작용 그림 */
+  {
+    const DEF = [[420, 440, 455], [470, 500, 545]];
+    const st = { m: DEF.map((r) => r.slice()), s: 8, seed: 41, z: null, goal: "g1" };
+    const yr = [350, 610], PR = ["20", "40", "60"];
+    function mkZ() { const R = Stat.rng(st.seed); st.z = [0, 1].map(() => [0, 1, 2].map(() => { const z = [R.normal(), R.normal(), R.normal()], m = mean(z); return z.map((v) => v - m); })); }
+    mkZ();
+    const data = () => st.m.map((row, i) => row.map((c, j) => st.z[i][j].map((z) => c + st.s * z)));
+    let A2 = null;
+    const tbl = $("tw-tbl");
+    const cv = SB.canvas("cv-tw", (ctx, w, h, self) => {
+      const P = pal(), D = data(); A2 = Stat.anova2(D);
+      const C = SB.chart(ctx, { x: 58, y: 56, w: w - 58 - (w > 520 ? 110 : 20), h: h - 56 - 50 }, { x: [-0.4, 2.4], y: yr, xTicks: [0, 1, 2], xFmt: (v) => PR[v] + " mTorr", xLabel: "압력 (B)", yLabel: "식각 속도 (nm/min)" });
+      const cols = [P.accent, P.accent2], hs = [];
+      [0, 1].forEach((i) => {
+        ctx.strokeStyle = cols[i]; ctx.lineWidth = 2.6; ctx.beginPath(); st.m[i].forEach((c, j) => (j ? ctx.lineTo(C.X(j), C.Y(c)) : ctx.moveTo(C.X(j), C.Y(c)))); ctx.stroke();
+        D[i].forEach((cell, j) => cell.forEach((v, k) => { ctx.fillStyle = cols[i]; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.arc(C.X(j) + (i ? 9 : -9) + (k - 1) * 4, C.Y(SB.clamp(v, yr[0], yr[1])), 3.2, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }));
+      });
+      [0, 1].forEach((i) => st.m[i].forEach((c, j) => { handle(ctx, C.X(j), C.Y(c), cols[i], 9); hs.push({ id: i * 3 + j, x: C.X(j), y: C.Y(c) }); }));
+      const lx = w > 520 ? C.box.x + C.box.w + 12 : C.box.x + 8, ly = w > 520 ? C.box.y + 20 : C.box.y + 10;
+      txt(ctx, "● 전력 낮음", lx, ly, { color: P.accent, bold: true, size: 11.5 });
+      txt(ctx, "● 전력 높음", lx, ly + 18, { color: P.accent2, bold: true, size: 11.5 });
+      if (w > 520) {
+        txt(ctx, "A 평균", lx, ly + 52, { size: 11, color: P.dim });
+        A2.mA.forEach((m, i) => { const y = C.Y(m); ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.moveTo(C.box.x + C.box.w + 4, y); ctx.lineTo(C.box.x + C.box.w + 12, y - 5); ctx.lineTo(C.box.x + C.box.w + 12, y + 5); ctx.fill(); });
+      }
+      txt(ctx, "칸 평균(흰 원)과 반복 3장(점)", C.box.x, 38, { bold: true });
+      self._hs = hs; self._C = C;
+    }, { aspect: 0.62, minHeight: 330, maxHeight: 420 });
+    function out() {
+      const A = A2, rows = [["A", A.A], ["B", A.B], ["AB", A.AB]];
+      tbl.innerHTML = `<table class="ad-tbl"><thead><tr><th>요인</th><th>SS</th><th>df</th><th>F</th><th>p</th></tr></thead><tbody>` +
+        rows.map(([nm, r]) => `<tr class="${r.p < 0.05 ? "sig" : ""}"><td>${nm}</td><td>${r.ss.toFixed(0)}</td><td>${r.df}</td><td>${r.F.toFixed(1)}</td><td>${pS(r.p)}</td></tr>`).join("") +
+        `<tr><td>오차</td><td>${A.E.ss.toFixed(0)}</td><td>${A.E.df}</td><td></td><td></td></tr><tr><td>전체</td><td>${A.total.ss.toFixed(0)}</td><td>${A.total.df}</td><td></td><td></td></tr></tbody></table>`;
+      const s = (p) => (p < 0.05 ? bad(pf(p)) : pf(p));
+      SB.stat("tw-pa", s(A.A.p)); SB.stat("tw-pb", s(A.B.p)); SB.stat("tw-pab", s(A.AB.p));
+      const a = A.A.p < 0.05, b = A.B.p < 0.05, ab = A.AB.p < 0.05;
+      const done = st.goal === "g1" ? a && !b && !ab : st.goal === "g2" ? ab && !a && !b : a && b && ab;
+      SB.stat("tw-goal-r", done ? ok("달성!") : "아직");
+    }
+    const upd = () => { cv.redraw(); out(); };
+    SB.drag(cv, {
+      handles: () => (cv._hs ? cv._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 14 })) : []),
+      move: (id, x, y) => { if (id == null) return; st.m[Math.floor(id / 3)][id % 3] = Math.round(SB.clamp(invY(cv._C, yr, y), yr[0] + 10, yr[1] - 10)); cv.redraw(); out(); },
+    });
+    SB.seg("tw-goal", (v) => { st.goal = v; out(); });
+    SB.range("tw-s", (v) => String(v), (v) => { st.s = v; upd(); });
+    $("tw-par").addEventListener("click", () => { const gm = mean(st.m.flat()), mA = st.m.map(mean), mB = [0, 1, 2].map((j) => (st.m[0][j] + st.m[1][j]) / 2); st.m = [0, 1].map((i) => [0, 1, 2].map((j) => Math.round(mA[i] + mB[j] - gm))); upd(); });
+    $("tw-new").addEventListener("click", () => { st.seed++; mkZ(); upd(); });
+    $("tw-ex").addEventListener("click", () => { st.m = DEF.map((r) => r.slice()); st.seed = 41; mkZ(); upd(); });
+    out();
+  }
+
+  /* ================================================================ 4절 SIM: 표류와 실행 순서 */
+  {
+    const R = Stat.rng(53), NR = 16, SIG = 2;
+    const st = { order: "seq", eff: 0, D: 10, A: Acc(-16, 16, 64), rej: 0, cur: null, q: 0, rate: 1 };
+    const yr = [88, 124];
+    function lev() {
+      if (st.order === "seq") return Array.from({ length: NR }, (_, i) => (i < NR / 2 ? 0 : 1));
+      if (st.order === "alt") return Array.from({ length: NR }, (_, i) => i % 2);
+      return R.shuffle(Array.from({ length: NR }, (_, i) => (i < NR / 2 ? 0 : 1)));
+    }
+    const drift = (t) => (st.D * t) / (NR - 1);
+    function one(keep) {
+      const L = lev(), y = L.map((b, t) => 100 + drift(t) + st.eff * b + SIG * R.normal());
+      const a = y.filter((_, i) => !L[i]), b = y.filter((_, i) => L[i]);
+      const T = Stat.tTest2(b, a, { equalVar: true }), est = mean(b) - mean(a);
+      st.A.add(est); if (T.p < 0.05) st.rej++;
+      if (keep) st.cur = { L, y, est, p: T.p };
+    }
+    const reset = () => { st.A.reset(); st.rej = 0; st.q = 0; };
+    for (let i = 0; i < 300; i++) one(false); one(true);
+    const cv = SB.canvas("cv-drift", (ctx, w, h, self) => {
+      const P = pal(), cols = [P.accent, P.accent2];
+      const C = SB.chart(ctx, { x: 54, y: 46, w: w - 72, h: h * 0.48 - 46 - 34 }, { x: [0.3, NR + 0.7], y: yr, xTicks: [1, 4, 8, 12, 16], xLabel: "실행 순서", yLabel: "식각 속도" });
+      ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.X(1), C.Y(100), C.X(NR), C.Y(100 + st.D), P.dim, [6, 4]); ctx.restore();
+      if (st.cur) st.cur.y.forEach((v, t) => { ctx.fillStyle = cols[st.cur.L[t]]; ctx.beginPath(); ctx.arc(C.X(t + 1), C.Y(SB.clamp(v, yr[0], yr[1])), 5, 0, TAU); ctx.fill(); SB.label(ctx, st.cur.L[t] ? "B" : "A", C.X(t + 1), C.box.y + C.box.h - 9, { size: 9.5, color: cols[st.cur.L[t]], bold: true }); });
+      const hx = C.X(NR), hy = C.Y(100 + st.D); handle(ctx, hx, hy, P.dim, 10);
+      txt(ctx, `이번 실험: B − A = ${st.cur ? st.cur.est.toFixed(2) : "—"} (p = ${st.cur ? pf(st.cur.p) : "—"})`, C.box.x, 34, { bold: true, size: 11.5 });
+      self._h = [hx, hy]; self._C = C;
+      const A = st.A, ymax = Math.max(5, A.max() * 1.15);
+      const H = SB.chart(ctx, { x: 54, y: h * 0.48 + 26, w: w - 72, h: h * 0.52 - 26 - 46 }, { x: [-16, 16], y: [0, ymax], xLabel: "효과 추정값 ȳ_B − ȳ_A", yFmt: (v) => String(Math.round(v)) });
+      drawAcc(ctx, H, A, { color: P.accent });
+      ctx.save(); clip(ctx, H); ctx.strokeStyle = P.accent2; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(H.X(st.eff), H.box.y); ctx.lineTo(H.X(st.eff), H.box.y + H.box.h); ctx.stroke(); ctx.restore();
+      SB.label(ctx, "참 효과", H.X(st.eff) + 4, H.box.y + 8, { size: 11, color: P.accent2, align: "left" });
+      if (A.n > 1) { const m = A.mean(); ctx.fillStyle = P.text; ctx.beginPath(); ctx.moveTo(H.X(m), H.box.y + H.box.h); ctx.lineTo(H.X(m) - 6, H.box.y + H.box.h + 10); ctx.lineTo(H.X(m) + 6, H.box.y + H.box.h + 10); ctx.fill(); }
+      txt(ctx, `반복 실험 ${A.n}번의 추정값`, H.box.x, H.box.y - 12, { bold: true, size: 11.5 });
+    }, { aspect: 0.72, minHeight: 440, maxHeight: 520 });
+    function out() {
+      const A = st.A;
+      SB.stat("dr-est", st.cur ? st.cur.est.toFixed(2) : "—");
+      const b = A.mean() - st.eff;
+      SB.stat("dr-bias", A.n ? `${A.mean().toFixed(2)} (${Math.abs(b) > 1 ? bad("편향 " + b.toFixed(2)) : "편향 " + b.toFixed(2)})` : "—");
+      SB.stat("dr-sd", fx(A.sd(), 2)); SB.stat("dr-rej", A.n ? pct(st.rej / A.n) + (st.eff === 0 ? " (거짓)" : "") : "—");
+    }
+    const fresh = () => { reset(); one(true); cv.redraw(); out(); };
+    SB.seg("dr-o", (v) => { st.order = v; fresh(); });
+    SB.range("dr-e", (v) => (v > 0 ? "+" : "") + v.toFixed(1), (v) => { st.eff = v; fresh(); });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "d", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x, y) => { if (id !== "d") return; st.D = Math.round(SB.clamp(invY(cv._C, yr, y) - 100, -12, 22)); reset(); one(true); out(); },
+    });
+    $("dr-1").addEventListener("click", () => { one(true); cv.redraw(); out(); });
+    $("dr-100").addEventListener("click", () => { st.q += 100; st.rate = 4; });
+    $("dr-1000").addEventListener("click", () => { st.q += 1000; st.rate = 25; });
+    $("dr-clr").addEventListener("click", () => { reset(); cv.redraw(); out(); });
+    out();
+    SB.loop("sim-drift", () => { if (st.q <= 0) return; const c = Math.min(st.q, st.rate); for (let i = 0; i < c - 1; i++) one(false); one(true); st.q -= c; cv.redraw(); out(); });
+  }
+
+  /* ================================================================ 4절 MINI: 블록화 */
+  {
+    const R = Stat.rng(59), MU = [0, 1.5, 3], NB = 4;
+    const st = { sL: 3, cur: null, n: 0, crd: 0, rcbd: 0, q: 0 };
+    function one(keep) {
+      const lot = Array.from({ length: NB }, () => st.sL * R.normal());
+      const y = MU.map((m) => lot.map((L) => m + L + R.normal()));
+      const pC = aov1(y).p, pR = Stat.anova2(y.map((row) => row.map((v) => [v]))).A.p;
+      st.n++; if (pC < 0.05) st.crd++; if (pR < 0.05) st.rcbd++;
+      if (keep) st.cur = { y, pC, pR };
+    }
+    const reset = () => { st.n = st.crd = st.rcbd = 0; st.q = 0; };
+    for (let i = 0; i < 300; i++) one(false); one(true);
+    const sr = [0, 6];
+    const cv = SB.canvas("cv-block", (ctx, w, h, self) => {
+      const P = pal(), wide = w >= 520;
+      const lb = wide ? { x: 50, y: 28, w: w * 0.55 - 50, h: h - 28 - 86 } : { x: 46, y: 28, w: w - 60, h: h * 0.52 - 28 - 70 };
+      const C = SB.chart(ctx, lb, { x: [0.5, 3.5], y: [-14, 18], xTicks: [1, 2, 3], xFmt: (v) => "R" + v, yLabel: "반응" });
+      if (st.cur) for (let j = 0; j < NB; j++) {
+        ctx.strokeStyle = P.series[j % P.series.length]; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.8; ctx.beginPath();
+        for (let i = 0; i < 3; i++) { const x = C.X(i + 1), y = C.Y(SB.clamp(st.cur.y[i][j], -14, 18)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+        for (let i = 0; i < 3; i++) { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(i + 1), C.Y(SB.clamp(st.cur.y[i][j], -14, 18)), 4.2, 0, TAU); ctx.fill(); }
+      }
+      txt(ctx, "이번 실험(선 = 같은 로트)", C.box.x, 12, { bold: true, size: 11.5 });
+      // 로트 σ 트랙
+      const ty = C.box.y + C.box.h + 50, ta = C.box.x + 10, tb = C.box.x + C.box.w - 10, hx = ta + ((st.sL - sr[0]) / (sr[1] - sr[0])) * (tb - ta);
+      ctx.save(); ctx.strokeStyle = P.border; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(ta, ty); ctx.lineTo(tb, ty); ctx.stroke(); ctx.strokeStyle = P.accent; ctx.beginPath(); ctx.moveTo(ta, ty); ctx.lineTo(hx, ty); ctx.stroke(); ctx.restore();
+      SB.label(ctx, `로트 간 σ = ${st.sL.toFixed(1)}`, (ta + tb) / 2, ty - 16, { size: 11.5, bold: true });
+      handle(ctx, hx, ty, P.accent, 10); self._h = [hx, ty]; self._tr = [ta, tb];
+      // 검정력 막대
+      const bb = wide ? { x: w * 0.55 + 40, y: 28, w: w * 0.45 - 60, h: h - 28 - 50 } : { x: 46, y: h * 0.52 + 30, w: w - 60, h: h * 0.48 - 30 - 40 };
+      const B = SB.chart(ctx, bb, { x: [0, 2], y: [0, 1], xTicks: [], yLabel: "검정력", hlines: [{ y: 0.05, color: P.dim }] });
+      [[st.crd, "블록 무시"], [st.rcbd, "RCBD"]].forEach(([c, nm], i) => {
+        const v = st.n ? c / st.n : 0, x0 = B.X(i + 0.2), x1 = B.X(i + 0.8), y = B.Y(v);
+        ctx.fillStyle = i ? P.accent2 : P.accent; ctx.globalAlpha = 0.75; ctx.fillRect(x0, y, x1 - x0, B.Y(0) - y); ctx.globalAlpha = 1;
+        SB.label(ctx, nm, (x0 + x1) / 2, B.Y(0) + 13, { size: 11.5, bold: true });
+        SB.label(ctx, pct(v, 0), (x0 + x1) / 2, Math.max(B.box.y + 8, y - 10), { size: 11, mono: true });
+      });
+      txt(ctx, `실험 ${st.n}번의 기각 비율`, B.box.x, bb.y - 16, { bold: true, size: 11.5 });
+    }, { aspect: 0.55, minHeight: 330, maxHeight: 400 });
+    const out = () => SB.stat("bk-r", st.cur ? `이번: 블록 무시 p = ${pf(st.cur.pC)} · RCBD p = ${pf(st.cur.pR)}` : "");
+    const sGet = SB.range("bk-s", (v) => v.toFixed(1), (v) => { st.sL = v; reset(); one(true); cv.redraw(); out(); });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "s", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x) => { if (id !== "s") return; const [a, b] = cv._tr, v = Math.round(SB.clamp(((x - a) / (b - a)) * 6, 0, 6) * 2) / 2; if (v !== st.sL) { st.sL = v; sGet.set(v, true); reset(); one(true); out(); } },
+    });
+    $("bk-run").addEventListener("click", () => { st.q += 500; });
+    out();
+    SB.loop("mini-block", () => { if (st.q <= 0) return; const c = Math.min(st.q, 20); for (let i = 0; i < c - 1; i++) one(false); one(true); st.q -= c; cv.redraw(); out(); });
+  }
+
+  /* ================================================================ 4절 tangle: 반복과 SE */
+  SB.tangle("tg-rep", (v) => {
+    const se = (2 * v.s) / Math.sqrt(v.N), Nt = Math.ceil(((4 * v.s) / v.t) ** 2 / 2) * 2;
+    return { se: se.toFixed(2) + " nm/min", d: (2 * se).toFixed(2) + " nm/min", Nt: String(Nt), msg: Nt <= v.N ? "지금 계획으로 충분하다." : `지금의 ${(Nt / v.N).toFixed(1)}배다. 문턱을 절반으로 낮추려면 실험을 4배로 늘려야 한다.` };
+  });
+
+  /* ================================================================ 5절 tangle: 2² 효과 */
+  {
+    const tg = { o: 60, a: 72, b: 54, ab: 90 };
+    let cvt = null;
+    SB.tangle("tg-22", (v) => {
+      Object.assign(tg, v);
+      const al = v.a - v.o, ah = v.ab - v.b, A = (al + ah) / 2, B = (v.b - v.o + v.ab - v.a) / 2, AB = (ah - al) / 2;
+      return { A: A.toFixed(1), B: B.toFixed(1), AB: AB.toFixed(1), al: al.toFixed(0), ah: ah.toFixed(0), msg: Math.abs(AB) < 2 ? "두 값이 거의 같다 — 교호 작용이 작다." : `A의 효과가 B 수준에 따라 ${Math.abs(ah - al).toFixed(0)}만큼 다르다 — AB는 그 차이의 절반.` };
+    }, { onChange: () => cvt && cvt.redraw() });
+    cvt = SB.canvas("cv-tg22", (ctx, w, h) => {
+      const P = pal(), s = Math.min(h - 70, w * 0.3), x0 = Math.max(70, w * 0.5 - s * 0.9), y0 = h - 34, x1 = x0 + s, y1 = y0 - s;
+      ctx.strokeStyle = P.border; ctx.lineWidth = 1.5; ctx.strokeRect(x0, y1, s, s);
+      const al = tg.a - tg.o, ah = tg.ab - tg.b;
+      SB.arrow(ctx, x0 + 18, y0, x1 - 18, y0, { color: P.accent, width: 2 }); SB.label(ctx, `${w > 480 ? "B 낮음: " : ""}A 효과 ${al}`, (x0 + x1) / 2, y0 + 16, { size: 11.5, color: P.accent, bold: true });
+      SB.arrow(ctx, x0 + 18, y1, x1 - 18, y1, { color: P.accent2, width: 2 }); SB.label(ctx, `${w > 480 ? "B 높음: " : ""}A 효과 ${ah}`, (x0 + x1) / 2, y1 - 16, { size: 11.5, color: P.accent2, bold: true });
+      [[x0, y0, "(1)", tg.o], [x1, y0, "a", tg.a], [x0, y1, "b", tg.b], [x1, y1, "ab", tg.ab]].forEach(([x, y, nm, v]) => {
+        ctx.fillStyle = P.surface; ctx.strokeStyle = P.text; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 15, 0, TAU); ctx.fill(); ctx.stroke();
+        SB.label(ctx, String(v), x, y, { size: 11.5, mono: true, bold: true });
+        SB.label(ctx, nm, x + (x === x0 ? -32 : 32), y, { size: 12, color: P.dim, mono: true });
+      });
+      const AB = (ah - al) / 2;
+      if (w > 480) { txt(ctx, `AB = (${ah} − ${al}) / 2 = ${AB.toFixed(1)}`, x1 + 80, (y0 + y1) / 2, { size: 12.5, bold: true, color: Math.abs(AB) >= 2 ? P.accent2 : P.dim }); }
+    }, { aspect: 0.32, minHeight: 190, maxHeight: 230 });
+  }
+
+  /* ================================================================ 5절 SIM: 2³ 정육면체 */
+  {
+    const EX = [550, 604, 568, 650, 531, 589, 556, 640];
+    const X = Stat.doe.full(3), NAMES = ["A", "B", "AB", "C", "AC", "BC", "ABC"];
+    const R = Stat.rng(61);
+    const st = { y: EX.slice(), sel: "A", drag: null };
+    const sign = (i, nm) => [...nm].reduce((p, ch) => p * X[i]["ABC".indexOf(ch)], 1);
+    const effects = () => NAMES.map((nm) => ({ nm, e: (2 * sum(st.y.map((v, i) => v * sign(i, nm)))) / 8 }));
+    const LAB = ["(1)", "a", "b", "ab", "c", "ac", "bc", "abc"];
+    const cv1 = SB.canvas("cv-cube", (ctx, w, h, self) => {
+      const P = pal(), s = Math.min((w - 130) / 1.5, (h - 120) / 1.45), dx = s * 0.5, dy = -s * 0.42, ox = 66, oy = h - 46;
+      const pos = (i) => [ox + (X[i][0] > 0 ? s : 0) + (X[i][2] > 0 ? dx : 0), oy - (X[i][1] > 0 ? s : 0) + (X[i][2] > 0 ? dy : 0)];
+      const edges = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+      edges.forEach(([a, b]) => { const [x1, y1] = pos(a), [x2, y2] = pos(b); ctx.strokeStyle = P.border; ctx.lineWidth = 1.5; ctx.setLineDash(a === 4 || b === 4 ? [5, 4] : []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]); });
+      const cx0 = ox + (s + dx) / 2, cy0 = oy + (-s + dy) / 2, hs = [];
+      for (let i = 0; i < 8; i++) {
+        const [x, y] = pos(i), sg = sign(i, st.sel), ang = Math.atan2(y - cy0, x - cx0);
+        ctx.fillStyle = sg > 0 ? P.accent2 : P.surface; ctx.strokeStyle = sg > 0 ? P.accent2 : P.dim; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 17, 0, TAU); ctx.fill(); ctx.stroke();
+        SB.label(ctx, String(Math.round(st.y[i])), x, y, { size: 11, mono: true, bold: true, color: sg > 0 ? "#fff" : P.text, bg: sg > 0 ? P.accent2 : P.surface });
+        SB.label(ctx, LAB[i], x + 30 * Math.cos(ang), y + 26 * Math.sin(ang), { size: 11, color: P.dim, mono: true });
+        hs.push({ id: i, x, y });
+      }
+      SB.label(ctx, "A 압력 →", ox + s / 2, oy + 30, { size: 11.5, color: P.dim });
+      SB.label(ctx, "B ↑", ox - 30, oy - s / 2 - 8, { size: 11.5, color: P.dim }); SB.label(ctx, "전력", ox - 30, oy - s / 2 + 8, { size: 11.5, color: P.dim });
+      SB.label(ctx, "C 가스 ↗", ox + s + dx / 2 + 14, oy + dy / 2 + 4, { size: 11.5, color: P.dim, align: "left" });
+      txt(ctx, `효과 ${st.sel}: 보라 = +, 흰색 = −`, 10, 40, { bold: true });
+      self._hs = hs;
+    }, { aspect: 0.85, minHeight: 320, maxHeight: 400 });
+    const cv2 = SB.canvas("cv-eff", (ctx, w, h, self) => {
+      const P = pal(), E = effects().sort((a, b) => Math.abs(b.e) - Math.abs(a.e)), mx = Math.max(10, ...E.map((e) => Math.abs(e.e))) * 1.15;
+      const C = SB.chart(ctx, { x: 48, y: 54, w: w - 62, h: h - 54 - 46 }, { x: [0, mx], y: [0, 7], yTicks: [], xLabel: "|효과| (nm/min)" });
+      const rows = [];
+      E.forEach((e, r) => {
+        const y0 = C.Y(7 - r - 0.15), y1 = C.Y(7 - r - 0.85), on = e.nm === st.sel;
+        ctx.fillStyle = on ? P.accent2 : P.accent; ctx.globalAlpha = on ? 0.9 : 0.5; ctx.fillRect(C.X(0), y0, C.X(Math.abs(e.e)) - C.X(0), y1 - y0); ctx.globalAlpha = 1;
+        SB.label(ctx, e.nm, C.box.x - 20, (y0 + y1) / 2, { size: 12, bold: on, color: on ? P.accent2 : P.text });
+        SB.label(ctx, (e.e > 0 ? "+" : "") + e.e.toFixed(1), Math.min(C.X(Math.abs(e.e)) + 6, C.box.x + C.box.w - 40), (y0 + y1) / 2, { size: 11, mono: true, align: "left", color: P.dim });
+        rows.push({ nm: e.nm, y0, y1 });
+      });
+      txt(ctx, "효과 크기 순(파레토)", C.box.x, 40, { bold: true });
+      self._rows = rows;
+    }, { aspect: 0.85, minHeight: 320, maxHeight: 400 });
+    const seg = SB.seg("cb-e", (v) => { st.sel = v; cv1.redraw(); cv2.redraw(); out(); });
+    function out() {
+      const m = mean(st.y), p = [], n = []; st.y.forEach((v, i) => (sign(i, st.sel) > 0 ? p : n).push(v));
+      SB.stat("cb-m", m.toFixed(1)); SB.stat("cb-p", mean(p).toFixed(1)); SB.stat("cb-n", mean(n).toFixed(1)); SB.stat("cb-v", `${st.sel} = ${(mean(p) - mean(n)).toFixed(2)}`);
+    }
+    const upd = () => { cv1.redraw(); cv2.redraw(); out(); };
+    SB.drag(cv1, {
+      handles: () => (cv1._hs ? cv1._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 17 })) : []),
+      down: (id, x, y) => { st.drag = id == null ? null : { y0: y, v0: st.y[id] }; },
+      move: (id, x, y) => { if (id == null || !st.drag) return; st.y[id] = Math.round(SB.clamp(st.drag.v0 - (y - st.drag.y0) * 0.8, 400, 800)); cv2.redraw(); out(); },
+    });
+    SB.drag(cv2, { free: true, handles: () => [], down: (id, x, y) => { const r = (cv2._rows || []).find((q) => y >= q.y0 - 3 && y <= q.y1 + 3); if (r) seg.set(r.nm); } });
+    $("cb-ex").addEventListener("click", () => { st.y = EX.slice(); upd(); });
+    $("cb-add").addEventListener("click", () => { const m = mean(st.y), E = effects().filter((e) => e.nm.length === 1); st.y = st.y.map((_, i) => Math.round(m + sum(E.map((e) => (e.e / 2) * sign(i, e.nm))))); upd(); });
+    $("cb-rnd").addEventListener("click", () => {
+      const eff = { A: R.uniform(-70, 70), B: R.uniform(-70, 70), C: R.uniform(-40, 40), AB: R.uniform(-25, 25), AC: R.uniform(-10, 10), BC: R.uniform(-25, 25), ABC: 0 };
+      st.y = st.y.map((_, i) => Math.round(580 + sum(NAMES.map((nm) => (eff[nm] / 2) * sign(i, nm))) + 4 * R.normal())); upd();
+    });
+    out();
+  }
+
+  /* ================================================================ 5절 MINI: 효과 탐정(정규 확률 그림) */
+  {
+    const X = Stat.doe.full(4), Z = Stat.normalScores(15);
+    const st = { seed: 101, eff: [], truth: new Set(), pick: new Set(), judged: false, streak: 0, tot: 0, right: 0 };
+    function gen() {
+      const R = Stat.rng(st.seed), base = Stat.doe.effects(X, X.map(() => 0)).map((e) => e.name);
+      const pool = base.filter((nm) => nm.length <= 2), na = R.int(2, 4), act = R.sample(pool, na);
+      st.truth = new Set(act);
+      const coef = {}; act.forEach((nm) => (coef[nm] = (R.u() < 0.5 ? -1 : 1) * R.uniform(5, 12)));
+      const y = X.map((row) => 50 + sum(act.map((nm) => (coef[nm] / 2) * [...nm].reduce((p, ch) => p * row["ABCD".indexOf(ch)], 1))) + 1.4 * R.normal());
+      st.eff = Stat.doe.effects(X, y).map((e) => ({ nm: e.name, e: e.effect })).sort((a, b) => a.e - b.e);
+      st.eff.forEach((e, i) => (e.z = Z[i]));
+      st.pick = new Set(); st.judged = false;
+    }
+    gen();
+    const cv = SB.canvas("cv-daniel", (ctx, w, h, self) => {
+      const P = pal(), mx = Math.max(6, ...st.eff.map((e) => Math.abs(e.e))) * 1.15;
+      const C = SB.chart(ctx, { x: 54, y: 52, w: w - 70, h: h - 52 - 46 }, { x: [-mx, mx], y: [-2.3, 2.3], xLabel: "효과 추정값", yLabel: "정규 점수" });
+      const abs = st.eff.map((e) => Math.abs(e.e)).sort((a, b) => a - b), s0 = 1.5 * abs[7], pse = 1.5 * Stat.median(abs.filter((a) => a < 2.5 * s0));
+      ctx.save(); clip(ctx, C); SB.dashLine(ctx, C.X(-2.3 * pse), C.Y(-2.3), C.X(2.3 * pse), C.Y(2.3), P.accent2, [6, 4]); ctx.restore();
+      const pts = [];
+      st.eff.forEach((e) => {
+        const x = C.X(e.e), y = C.Y(e.z), picked = st.pick.has(e.nm), tr = st.truth.has(e.nm);
+        let col = P.accent;
+        if (st.judged) col = tr && picked ? P.ok : tr ? P.bad : picked ? P.bad : P.faint;
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill();
+        if (picked) { ctx.strokeStyle = P.accent2; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 11, 0, TAU); ctx.stroke(); }
+        if (st.judged && tr && !picked) { ctx.strokeStyle = P.bad; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(x, y, 11, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
+        SB.label(ctx, e.nm, x + (e.e < 0 ? -16 : 16), y - 10, { size: 10.5, mono: true, color: P.dim, align: e.e < 0 ? "right" : "left" });
+        pts.push({ nm: e.nm, x, y });
+      });
+      txt(ctx, "효과 15개의 정규 확률 그림 (점선: 잡음만 있을 때)", C.box.x, 36, { bold: true, size: 11.5 });
+      self._pts = pts;
+    }, { aspect: 0.62, minHeight: 330, maxHeight: 420 });
+    const out = (msg) => SB.stat("dn-r", (msg ? msg + " · " : "") + `점수 ${st.right}/${st.tot} · 연속 ${st.streak}`);
+    SB.drag(cv, {
+      free: true, handles: () => [],
+      down: (id, x, y) => {
+        if (st.judged) return;
+        let best = null, bd = 18; (cv._pts || []).forEach((p) => { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p.nm; } });
+        if (best) { st.pick.has(best) ? st.pick.delete(best) : st.pick.add(best); out(`활성 표시: ${[...st.pick].join(", ") || "없음"}`); }
+      },
+    });
+    $("dn-check").addEventListener("click", () => {
+      if (st.judged) return;
+      st.judged = true; st.tot++;
+      const right = [...st.truth].every((t) => st.pick.has(t)) && [...st.pick].every((p) => st.truth.has(p));
+      if (right) { st.right++; st.streak++; } else st.streak = 0;
+      out(right ? ok("정답!") + ` 활성: ${[...st.truth].join(", ")}` : bad("아쉽다") + ` 정답: ${[...st.truth].join(", ")}`); cv.redraw();
+    });
+    $("dn-new").addEventListener("click", () => { st.seed += 7; gen(); out("새 공정"); cv.redraw(); });
+    out("직선에서 벗어난 점을 눌러 보자");
+  }
+
+  /* ================================================================ 5절 DRILL: 2² 효과 */
+  SB.drill("drill-eff", () => {
+    const r = Stat.random, o = r.int(20, 60), a = r.int(20, 90), b = r.int(20, 90), ab = r.int(20, 120), n = r.pick([1, 2]), which = r.pick(["A", "B", "AB"]);
+    const mul = n, tot = (v) => v * mul;
+    const val = which === "A" ? (tot(a) + tot(ab) - tot(b) - tot(o)) / (2 * n) : which === "B" ? (tot(b) + tot(ab) - tot(a) - tot(o)) / (2 * n) : (tot(ab) + tot(o) - tot(a) - tot(b)) / (2 * n);
+    const f = which === "A" ? "a + ab - b - (1)" : which === "B" ? "b + ab - a - (1)" : "ab + (1) - a - b";
+    return {
+      q: `<p>2² 실험${n > 1 ? `을 ${n}번 반복해 처리별 <b>합계</b>` : "(반복 없음)에서 반응"}가 \\((1) = ${tot(o)}\\), \\(a = ${tot(a)}\\), \\(b = ${tot(b)}\\), \\(ab = ${tot(ab)}\\)이다. ${which} 효과는?</p>`,
+      answer: val, label: `${which} =`, tol: 0.051,
+      sol: `<p>\\(${which} = \\dfrac{${f}}{2n}\\), \\(n = ${n}\\): 분자 = ${(val * 2 * n).toFixed(0)}, 효과 = ${val.toFixed(2)}.</p>`,
+    };
+  });
+
+  /* ================================================================ 6절 SIM: 교락에 속는 실험 */
+  {
+    const TN = ["A", "B", "C", "D", "AB", "AC", "AD", "BC", "BD", "CD"];
+    const DEF = { A: 12, B: 0, C: 8, D: 6, AB: 0, AC: 0, AD: 0, BC: 0, BD: 0, CD: 7 };
+    const st = { tv: Object.assign({}, DEF), gen: "ABC", half: 1, fold: false, noise: false };
+    const NZ = (() => { const R = Stat.rng(71); return Array.from({ length: 16 }, () => R.normal()); })();
+    function design() {
+      const base = Stat.doe.full(3), runs = [];
+      const halves = st.fold ? [st.half, -st.half] : [st.half];
+      halves.forEach((s) => base.forEach((r) => runs.push(r.concat([s * [...st.gen].reduce((p, ch) => p * r["ABC".indexOf(ch)], 1)]))));
+      return runs;
+    }
+    const col = (row, nm) => [...nm].reduce((p, ch) => p * row["ABCD".indexOf(ch)], 1);
+    function estimate(noise) {
+      const D = design(), N = D.length, y = D.map((row, i) => 50 + sum(TN.map((nm) => (st.tv[nm] / 2) * col(row, nm))) + (noise ? 2 * NZ[i] : 0));
+      const est = {}; TN.forEach((nm) => (est[nm] = (2 / N) * sum(y.map((v, i) => v * col(D[i], nm))))); return { est, N };
+    }
+    const word = () => st.gen + "D";
+    const cv = SB.canvas("cv-frac", (ctx, w, h, self) => {
+      const P = pal(), E0 = estimate(false).est, E = estimate(st.noise).est, nb = TN.length;
+      const top = { x: 46, y: 54, w: w - 58, h: h * 0.5 - 54 - 18 }, bot = { x: 46, y: h * 0.5 + 26, w: w - 58, h: h * 0.5 - 26 - 30 };
+      const yr = [-16, 16];
+      const C1 = SB.chart(ctx, top, { x: [0, nb], y: yr, xTicks: [], yTicks: [-15, 0, 15], hlines: [{ y: 0, color: P.dim, dash: [] }] });
+      const C2 = SB.chart(ctx, bot, { x: [0, nb], y: yr, xTicks: [], yTicks: [-15, 0, 15], hlines: [{ y: 0, color: P.dim, dash: [] }] });
+      const hs = [], fooled = [];
+      TN.forEach((nm, i) => {
+        const x0 = C1.X(i + 0.18), x1 = C1.X(i + 0.82), v = st.tv[nm], y = C1.Y(v);
+        ctx.strokeStyle = P.text; ctx.lineWidth = 1.6; ctx.strokeRect(x0, Math.min(y, C1.Y(0)), x1 - x0, Math.abs(C1.Y(0) - y) || 1);
+        handle(ctx, (x0 + x1) / 2, y, P.accent2, 8); hs.push({ id: nm, x: (x0 + x1) / 2, y });
+        SB.label(ctx, nm, (x0 + x1) / 2, C1.box.y + C1.box.h + 10, { size: 11, mono: true, bold: true });
+        const bad0 = Math.abs(E0[nm] - v) > 0.5; if (bad0) fooled.push(nm);
+        const e = E[nm], ye = C2.Y(SB.clamp(e, yr[0], yr[1]));
+        ctx.fillStyle = bad0 ? P.bad : P.accent; ctx.globalAlpha = 0.8; ctx.fillRect(x0, Math.min(ye, C2.Y(0)), x1 - x0, Math.abs(C2.Y(0) - ye) || 1); ctx.globalAlpha = 1;
+        SB.label(ctx, e.toFixed(1), (x0 + x1) / 2, e >= 0 ? ye - 9 : ye + 9, { size: 10, mono: true, color: P.dim });
+        SB.label(ctx, nm, (x0 + x1) / 2, C2.box.y + C2.box.h + 10, { size: 11, mono: true });
+      });
+      txt(ctx, "참 공정의 효과 (끌어서 바꾼다)", top.x, 38, { bold: true, size: 11.5 });
+      txt(ctx, `실험 자료로 계산한 추정값 (${design().length}번)`, bot.x, bot.y - 14, { bold: true, size: 11.5 });
+      self._hs = hs; self._C1 = C1; self._fooled = fooled;
+    }, { aspect: 0.7, minHeight: 420, maxHeight: 500 });
+    function out() {
+      const N = design().length, W = word();
+      SB.stat("fr-n", String(N)); SB.stat("fr-I", st.fold ? "없음(완전 2⁴)" : `I = ${st.half < 0 ? "−" : ""}${W}`);
+      const f = cv._fooled || []; SB.stat("fr-bad", f.length ? bad(f.join(", ")) : ok("없음"));
+      const al = $("fr-alias");
+      if (st.fold) { al.innerHTML = "완전 2⁴: 모든 효과가 따로 추정된다."; return; }
+      const seen = new Set(), lines = [];
+      TN.forEach((nm) => { if (seen.has(nm)) return; const a = Stat.doe.alias(nm, [W])[0]; seen.add(nm); if (TN.includes(a)) seen.add(a); lines.push(`${nm} ${st.half < 0 ? "−" : "+"} ${TN.includes(a) ? "<b>" + a + "</b>" : a}`); });
+      al.innerHTML = "추정되는 것:<br>" + lines.join("<br>");
+    }
+    const upd = () => { cv.redraw(); out(); };
+    SB.drag(cv, {
+      handles: () => (cv._hs ? cv._hs.map((q) => ({ id: q.id, x: q.x, y: q.y, r: 13 })) : []),
+      move: (id, x, y) => { if (id == null) return; st.tv[id] = Math.round(SB.clamp(invY(cv._C1, [-16, 16], y), -15, 15)); cv.redraw(); out(); },
+    });
+    SB.seg("fr-g", (v) => { st.gen = v; upd(); });
+    SB.seg("fr-h", (v) => { st.half = Number(v); upd(); });
+    $("fr-fold").addEventListener("change", (e) => { st.fold = e.target.checked; upd(); });
+    $("fr-noise").addEventListener("change", (e) => { st.noise = e.target.checked; upd(); });
+    $("fr-reset").addEventListener("click", () => { st.tv = Object.assign({}, DEF); upd(); });
+    upd();
+  }
+
+  /* ================================================================ 6절 MINI: 별칭 계산기 */
+  {
+    const ROMAN = ["0", "I", "II", "III", "IV", "V", "VI"];
+    const mult = (a, b) => [...new Set([...a, ...b])].filter((c) => !(a.includes(c) && b.includes(c))).sort().join("");
+    function calc() {
+      const g1 = ["A", "B", "C"].filter((c) => $("al-d" + c).checked).join(""), g2 = ["A", "B", "C"].filter((c) => $("al-e" + c).checked).join("");
+      if (!g1 || !g2) return { err: "생성자마다 글자를 하나 이상 고르세요." };
+      const w1 = mult(g1, "D"), w2 = mult(g2, "E"), w3 = mult(w1, w2), words = [w1, w2, w3];
+      const res = Math.min(...words.map((x) => x.length));
+      const effs = ["A", "B", "C", "D", "E"], fi = []; for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) fi.push(effs[i] + effs[j]);
+      const chains = [], seen = new Set();
+      effs.concat(fi).forEach((nm) => { if (seen.has(nm)) return; const al = Stat.doe.alias(nm, words); [nm].concat(al).forEach((x) => seen.add(x)); chains.push(nm + " = " + al.map((x) => (x.length <= 2 ? "<b>" + x + "</b>" : x)).join(" = ")); });
+      return { g1, g2, words, res, chains };
+    }
+    function show() {
+      const r = calc(), el = $("al-out");
+      if (r.err) { el.innerHTML = r.err; SB.stat("al-r", ""); return; }
+      el.innerHTML = `생성자 D = ${r.g1}, E = ${r.g2}<br>정의 관계 I = ${r.words.join(" = ")}<br>분해능 <b>${ROMAN[r.res] || r.res}</b> (가장 짧은 단어 ${r.res}글자)<br><br>` + r.chains.join("<br>");
+      SB.stat("al-r", `2⁵⁻² 분해능 ${ROMAN[r.res] || r.res}` + (r.res <= 2 ? " — " + bad("주효과끼리 겹친다!") : r.res === 3 ? " — 주효과가 2인자 교호 작용과 겹친다" : ""));
+    }
+    ["dA", "dB", "dC", "eA", "eB", "eC"].forEach((k) => $("al-" + k).addEventListener("change", show));
+    show();
+  }
+
+  /* ================================================================ 6절 DRILL: 실행 횟수와 분해능 */
+  {
+    const DES = [[4, ["ABC"]], [5, ["ABCD"]], [5, ["AB", "AC"]], [6, ["ABC", "BCD"]], [6, ["AB", "AC", "BC"]], [7, ["AB", "AC", "BC", "ABC"]], [7, ["ABC", "BCD", "ACD"]], [6, ["ABCD", "ABCE"]], [8, ["BCD", "ACD", "ABC", "ABD"]]];
+    const mult = (a, b) => [...new Set([...a, ...b])].filter((c) => !(a.includes(c) && b.includes(c))).sort().join("");
+    SB.drill("drill-frac", () => {
+      const [k, gens] = Stat.random.pick(DES), p = gens.length, base = k - p;
+      const newL = Array.from({ length: p }, (_, i) => String.fromCharCode(65 + base + i));
+      const W = gens.map((g, i) => mult(g, newL[i])), all = [];
+      for (let m = 1; m < 1 << p; m++) { let w = ""; for (let i = 0; i < p; i++) if ((m >> i) & 1) w = mult(w, W[i]); all.push(w); }
+      const res = Math.min(...all.map((x) => x.length));
+      return {
+        q: `<p>요인 ${k}개의 \\(2^{${k}-${p}}\\) 설계를 생성자 ${gens.map((g, i) => `\\(${newL[i]} = ${g}\\)`).join(", ")}로 만든다. 실행 횟수와 분해능(숫자)은?</p>`,
+        answer: [1 << base, res], label: ["실행 횟수 =", "분해능 ="], tol: 0.01,
+        sol: `<p>실행 \\(2^{${base}} = ${1 << base}\\)번. 정의 관계 \\(I = ${all.join(" = ")}\\). 가장 짧은 단어 길이 ${res} → 분해능 ${["", "I", "II", "III", "IV", "V", "VI"][res]}.</p>`,
+      };
+    });
+  }
+
+  /* ================================================================ 7절 MINI: OFAT 대 요인 실험 */
+  {
+    const OPT = [1.0, 0.9], TH = (38 * Math.PI) / 180;
+    const f = (x1, x2) => { const a = x1 - OPT[0], b = x2 - OPT[1], u = a * Math.cos(TH) + b * Math.sin(TH), v = -a * Math.sin(TH) + b * Math.cos(TH); return 80 - 9 * v * v - 0.9 * u * u; };
+    const toP = (x) => 600 + 150 * x, toQ = (x) => 40 + 15 * x;
+    const xr = [toP(-2), toP(2)], yr = [toQ(-2), toQ(2)];
+    const G = grid((p, q) => f((p - 600) / 150, (q - 40) / 15), xr, yr, 60, 45);
+    const st = { s: [-1.5, -1.6], ofat: [], doe: [], show: 0, timer: 0, mode: null };
+    function runOfat() {
+      const pts = [], xs = Stat.linspace(-2, 2, 7);
+      let best = null; xs.forEach((x) => { const y = f(x, st.s[1]); pts.push([x, st.s[1], y]); if (!best || y > best[2]) best = [x, st.s[1], y]; });
+      const x1 = best[0]; let b2 = null; xs.forEach((x) => { const y = f(x1, x); pts.push([x1, x, y]); if (!b2 || y > b2[2]) b2 = [x1, x, y]; });
+      return { pts, end: b2 };
+    }
+    function runDoe() {
+      /* 중심 합성 계획 9번(요인점 ±1, 축점 ±1.41, 중심 1) → 2차 모형 → 정상점에서 확인 실험 1번 */
+      const R = Stat.rng(97), d = 1, al = 1.41, pts = [], c = st.s.slice();
+      const des = [[-d, -d], [d, -d], [-d, d], [d, d], [-al, 0], [al, 0], [0, -al], [0, al], [0, 0]];
+      des.forEach(([u, v]) => { const q = [SB.clamp(c[0] + u, -2, 2), SB.clamp(c[1] + v, -2, 2)]; pts.push([q[0], q[1], f(...q) + 0.1 * R.normal()]); });
+      const M = Stat.mlr(pts.map(([x, y]) => [x - c[0], y - c[1], (x - c[0]) ** 2, (y - c[1]) ** 2, (x - c[0]) * (y - c[1])]), pts.map((q) => q[2]));
+      const [, b1, b2, b11, b22, b12] = M.beta, det = 4 * b11 * b22 - b12 * b12;
+      let xs = [(-2 * b22 * b1 + b12 * b2) / det, (-2 * b11 * b2 + b12 * b1) / det];
+      if (!(b11 < 0 && det > 0) || !xs.every(isFinite)) xs = [Math.sign(b1) * 1.5, Math.sign(b2) * 1.5];
+      const e = [SB.clamp(c[0] + xs[0], -2, 2), SB.clamp(c[1] + xs[1], -2, 2)], ye = f(...e);
+      pts.push([e[0], e[1], ye]);
+      return { pts, end: [e[0], e[1], ye], ccd: true };
+    }
+    const cv = SB.canvas("cv-ofat", (ctx, w, h, self) => {
+      const P = pal(), C = SB.chart(ctx, { x: 56, y: 22, w: w - 72, h: h - 22 - 48 }, { x: xr, y: yr, xLabel: "RF 전력 (W)", yLabel: "압력 (mTorr)" });
+      shade(ctx, C, G, P.accent2, 0.5, 20, 80); isolines(ctx, C, G, [40, 55, 65, 72, 77], { color: P.accent2, width: 1, dash: [3, 3] });
+      star(ctx, C.X(toP(OPT[0])), C.Y(toQ(OPT[1])), 9, P.accent2);
+      const draw = (R, col, n) => {
+        if (!R) return; const pts = R.pts.slice(0, n);
+        if (R.ccd) { if (n >= R.pts.length) SB.arrow(ctx, C.X(toP(st.s[0])), C.Y(toQ(st.s[1])), C.X(toP(R.end[0])), C.Y(toQ(R.end[1])), { color: col, width: 2, dash: [5, 4] }); } else { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(C.X(toP(p[0])), C.Y(toQ(p[1]))) : ctx.moveTo(C.X(toP(p[0])), C.Y(toQ(p[1]))))); ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1; }
+        pts.forEach((p) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C.X(toP(p[0])), C.Y(toQ(p[1])), 4, 0, TAU); ctx.fill(); });
+        if (n >= R.pts.length) { const e = R.end; ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(C.X(toP(e[0])), C.Y(toQ(e[1])), 10, 0, TAU); ctx.stroke(); }
+      };
+      draw(st.ofatR, P.accent, st.mode === "ofat" ? st.show : 99); draw(st.doeR, P.warn, st.mode === "doe" ? st.show : 99);
+      const hx = C.X(toP(st.s[0])), hy = C.Y(toQ(st.s[1])); handle(ctx, hx, hy, P.dim, 10);
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.62, minHeight: 300, maxHeight: 400 });
+    function out() {
+      const a = st.ofatR, b = st.doeR, s = [];
+      if (a) s.push(`OFAT ${a.pts.length}번 → ${a.end[2].toFixed(1)}`);
+      if (b) s.push(`CCD+2차 모형 ${b.pts.length}번 → ${b.end[2].toFixed(1)}`);
+      SB.stat("of-r", (s.join(" · ") || "출발점 품질 " + f(...st.s).toFixed(1)) + " (최댓값 80)");
+    }
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "s", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x, y) => { if (id !== "s") return; st.s = [SB.clamp((invX(cv._C, xr, x) - 600) / 150, -2, 2), SB.clamp((invY(cv._C, yr, y) - 40) / 15, -2, 2)]; st.ofatR = st.doeR = null; st.mode = null; out(); },
+    });
+    $("of-run").addEventListener("click", () => { st.ofatR = runOfat(); st.mode = "ofat"; st.show = 0; out(); });
+    $("of-doe").addEventListener("click", () => { st.doeR = runDoe(); st.mode = "doe"; st.show = 0; out(); });
+    out();
+    SB.loop("mini-ofat", (dt) => { if (!st.mode) return; st.timer += dt; if (st.timer > 0.18) { st.timer = 0; const R = st.mode === "ofat" ? st.ofatR : st.doeR; if (st.show <= R.pts.length) { st.show++; cv.redraw(); } } });
+  }
+
+  /* ================================================================ 7절 MINI: 중심점과 곡률 */
+  {
+    const st = { c: 3, seed: 81 };
+    const f = (x) => 60 + 2 * x + st.c * (1 - x * x);
+    let D = null;
+    function meas() {
+      const R = Stat.rng(st.seed), F = [-1, -1, 1, 1].map((x) => [x, f(x) + 1.2 * R.normal()]), Cc = [0, 0, 0, 0].map((x) => [x, f(x) + 1.2 * R.normal()]);
+      const yF = mean(F.map((p) => p[1])), yC = mean(Cc.map((p) => p[1])), s2 = Stat.var(Cc.map((p) => p[1])), ss = (4 * 4 * (yF - yC) ** 2) / 8, Fv = ss / s2;
+      D = { F, Cc, yF, yC, s2, ss, Fv, p: 1 - Stat.pf(Fv, 1, 3) };
+    }
+    meas();
+    const yr = [48, 76];
+    const cv = SB.canvas("cv-curv", (ctx, w, h, self) => {
+      const P = pal(), C = SB.chart(ctx, { x: 54, y: 22, w: w - 70, h: h - 22 - 46 }, { x: [-1.5, 1.5], y: yr, xTicks: [-1, 0, 1], xLabel: "부호화한 압력 x", yLabel: "반응" });
+      curve(ctx, C, f, -1.5, 1.5, { color: P.accent2, width: 2.2 });
+      ctx.save(); clip(ctx, C);
+      SB.dashLine(ctx, C.box.x, C.Y(D.yF), C.box.x + C.box.w, C.Y(D.yF), P.accent, [6, 4]);
+      ctx.strokeStyle = P.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(C.X(-0.25), C.Y(D.yC)); ctx.lineTo(C.X(0.25), C.Y(D.yC)); ctx.stroke(); ctx.restore();
+      D.F.forEach(([x, y], i) => { ctx.fillStyle = P.accent; ctx.fillRect(C.X(x) + (i % 2 ? 4 : -12), C.Y(y) - 4, 8, 8); });
+      D.Cc.forEach(([x, y], i) => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(x) + (i - 1.5) * 8, C.Y(y), 4.2, 0, TAU); ctx.fill(); });
+      SB.label(ctx, `ȳ_F = ${D.yF.toFixed(2)}`, C.box.x + C.box.w - 4, C.Y(D.yF) + 12, { size: 11, color: P.accent, align: "right" });
+      SB.label(ctx, `ȳ_C = ${D.yC.toFixed(2)}`, C.X(0.3), C.Y(D.yC) - 2, { size: 11, color: P.accent, align: "left" });
+      const hx = C.X(0), hy = C.Y(f(0)); handle(ctx, hx, hy, P.accent2, 10); self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.55, minHeight: 260, maxHeight: 330 });
+    const out = () => SB.stat("cu-r", `SS곡률 = ${D.ss.toFixed(2)}, MS_E = ${D.s2.toFixed(2)}, F = ${D.Fv.toFixed(2)}, p = ${D.p < 0.05 ? bad(pf(D.p)) : pf(D.p)}`);
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "c", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x, y) => { if (id !== "c") return; st.c = Math.round(SB.clamp(invY(cv._C, yr, y) - 60, -8, 12) * 2) / 2; meas(); out(); },
+    });
+    $("cu-new").addEventListener("click", () => { st.seed++; meas(); cv.redraw(); out(); });
+    out();
+  }
+
+  /* ================================================================ 7절 tangle: CCD */
+  SB.tangle("tg-ccd", (v) => {
+    const f = 1 << v.k, ax = 2 * v.k;
+    return { f: String(f), ax: String(ax), N: String(f + ax + v.nc), al: Math.pow(f, 0.25).toFixed(3), p: String(((v.k + 1) * (v.k + 2)) / 2), t3: String(Math.pow(3, v.k)) };
+  });
+
+  /* ================================================================ 7절 SIM: 레시피 최적화 게임 */
+  {
+    const XR = [200, 1000], YR = [10, 90], BUDGET = 30, SIG = 1.5;
+    const st = { seed: 5, runs: [], c: [360, 26], w: 60, fit: null, show: false, submitted: null, msg: "" };
+    let T = null;
+    function makeTruth() {
+      const R = Stat.rng(st.seed), x0 = R.uniform(0.5, 0.82), y0 = R.uniform(0.35, 0.7), th = R.uniform(0.35, 1.05), a = R.uniform(220, 300), b = R.uniform(45, 70);
+      const fn = (P, Q) => { const X = (P - 200) / 800 - x0, Y = (Q - 10) / 80 - y0, u = X * Math.cos(th) + Y * Math.sin(th), v = -X * Math.sin(th) + Y * Math.cos(th); return 100 * Math.exp(-(a * u * u + b * v * v) / 100) - 5; };
+      T = { fn, max: 95, opt: [200 + 800 * x0, 10 + 80 * y0], G: grid(fn, XR, YR, 64, 48), R: Stat.rng(st.seed * 13 + 1) };
+    }
+    makeTruth();
+    const inDom = (p) => p[0] >= XR[0] && p[0] <= XR[1] && p[1] >= YR[0] && p[1] <= YR[1];
+    const hw = () => [st.w, st.w / 10];
+    function run(p) {
+      if (st.runs.length >= BUDGET) { st.msg = bad("예산 30번을 다 썼다."); return false; }
+      if (!inDom(p)) return true;
+      st.runs.push({ p, y: T.fn(p[0], p[1]) + SIG * T.R.normal() }); return true;
+    }
+    function design(pts) { const [a, b] = hw(); for (const [u, v] of pts) { if (!run([st.c[0] + u * a, st.c[1] + v * b])) break; } st.fit = null; out(); cv.redraw(); }
+    function fitQuad() {
+      if (st.runs.length < 6) { st.msg = "점이 6개 이상 필요하다."; return; }
+      const [a, b] = hw(), cx = st.c[0], cy = st.c[1];
+      const rows = st.runs.map((r) => { const u = (r.p[0] - cx) / a, v = (r.p[1] - cy) / b; return [u, v, u * u, v * v, u * v]; });
+      let M; try { M = Stat.mlr(rows, st.runs.map((r) => r.y)); } catch (e) { st.msg = bad("점 배치가 2차 모형을 정하기에 부족하다(CCD를 돌려 보자)."); return; }
+      if (!M.beta.every(isFinite) || M.df < 1) { st.msg = bad("자유도가 부족하다. 점을 더 찍자."); return; }
+      const [b0, b1, b2, b11, b22, b12] = M.beta, pred = (P, Q) => { const u = (P - cx) / a, v = (Q - cy) / b; return b0 + b1 * u + b2 * v + b11 * u * u + b22 * v * v + b12 * u * v; };
+      // 실험한 점들의 범위(조금 넓혀서) 안에서 최댓값
+      const xs = st.runs.map((r) => r.p[0]), ys = st.runs.map((r) => r.p[1]);
+      const lo = [Math.max(XR[0], Stat.min(xs) - 0.25 * a), Math.max(YR[0], Stat.min(ys) - 0.25 * b)], hi = [Math.min(XR[1], Stat.max(xs) + 0.25 * a), Math.min(YR[1], Stat.max(ys) + 0.25 * b)];
+      let best = null; for (let i = 0; i <= 50; i++) for (let j = 0; j <= 50; j++) { const P = lo[0] + ((hi[0] - lo[0]) * i) / 50, Q = lo[1] + ((hi[1] - lo[1]) * j) / 50, v = pred(P, Q); if (!best || v > best[2]) best = [P, Q, v]; }
+      const det = 4 * b11 * b22 - b12 * b12, kind = b11 < 0 && det > 0 ? "최대" : b11 > 0 && det > 0 ? "최소" : "안장";
+      st.fit = { pred, opt: best, kind, r2: M.r2, G: grid(pred, XR, YR, 48, 36) };
+      st.msg = `2차 모형 R² = ${M.r2.toFixed(3)}, 정상점 종류: ${kind}`;
+    }
+    function stepAscent() {
+      const [a, b] = hw(), near = st.runs.filter((r) => Math.abs(r.p[0] - st.c[0]) <= 1.5 * a + 1e-6 && Math.abs(r.p[1] - st.c[1]) <= 1.5 * b + 1e-6);
+      if (near.length < 3) { st.msg = "중심 근처에 실험이 3개 이상 필요하다(2² 실험부터)."; return; }
+      let M; try { M = Stat.mlr(near.map((r) => [(r.p[0] - st.c[0]) / a, (r.p[1] - st.c[1]) / b]), near.map((r) => r.y)); } catch (e) { st.msg = bad("점이 한 줄에 놓여 기울기를 정할 수 없다."); return; }
+      const g = [M.beta[1], M.beta[2]], gl = Math.hypot(g[0], g[1]);
+      if (!(gl > 0)) return;
+      const step = 1.6;
+      st.c = [SB.clamp(st.c[0] + ((step * g[0]) / gl) * a, XR[0] + a, XR[1] - a), SB.clamp(st.c[1] + ((step * g[1]) / gl) * b, YR[0] + b, YR[1] - b)];
+      st.msg = `1차 기울기 (${g[0].toFixed(1)}, ${g[1].toFixed(1)}) 방향으로 중심을 옮겼다.`; st.fit = null;
+    }
+    const cv = SB.canvas("cv-rsm", (ctx, w, h, self) => {
+      const P = pal(), C = SB.chart(ctx, { x: 56, y: 52, w: w - 70, h: h - 52 - 48 }, { x: XR, y: YR, xLabel: "RF 전력 (W)", yLabel: "압력 (mTorr)" });
+      const reveal = st.show || st.submitted;
+      if (reveal) { shade(ctx, C, T.G, P.accent2, 0.5, 0, 95); isolines(ctx, C, T.G, [20, 40, 60, 75, 85, 92], { color: P.accent2, width: 1, dash: [3, 3] }); star(ctx, C.X(T.opt[0]), C.Y(T.opt[1]), 9, P.accent2); }
+      if (st.fit) {
+        const g = st.fit.G, lv = []; const top = st.fit.opt[2]; for (let k = 1; k <= 6; k++) lv.push(top - k * k * 2.5);
+        isolines(ctx, C, g, lv, { color: P.accent2, width: 1.8 });
+        star(ctx, C.X(st.fit.opt[0]), C.Y(st.fit.opt[1]), 10, P.warn);
+      }
+      const [a, b] = hw();
+      ctx.save(); clip(ctx, C); ctx.strokeStyle = P.dim; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.3; ctx.strokeRect(C.X(st.c[0] - a), C.Y(st.c[1] + b), C.X(st.c[0] + a) - C.X(st.c[0] - a), C.Y(st.c[1] - b) - C.Y(st.c[1] + b)); ctx.setLineDash([]); ctx.restore();
+      const ys = st.runs.map((r) => r.y), lo = Math.min(0, ...ys), hi = Math.max(10, ...ys);
+      st.runs.forEach((r, i) => {
+        const x = C.X(r.p[0]), y = C.Y(r.p[1]), t = (r.y - lo) / (hi - lo || 1);
+        ctx.fillStyle = P.accent; ctx.globalAlpha = 0.35 + 0.65 * t; ctx.beginPath(); ctx.arc(x, y, 4 + 3 * t, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.strokeStyle = P.accent; ctx.lineWidth = 1; ctx.stroke();
+        if (i >= st.runs.length - 6) SB.label(ctx, r.y.toFixed(0), x + 8, y - 9, { size: 10, mono: true, align: "left", color: P.text });
+      });
+      if (st.submitted) { const s = st.submitted; ctx.strokeStyle = s.ok ? P.ok : P.bad; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(C.X(s.p[0]), C.Y(s.p[1]), 13, 0, TAU); ctx.stroke(); }
+      const hx = C.X(st.c[0]), hy = C.Y(st.c[1]); handle(ctx, hx, hy, P.accent2, 10);
+      if (st.msg) txt(ctx, st.msg.replace(/<[^>]+>/g, ""), C.box.x, 38, { size: 11.5, color: P.dim });
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.68, minHeight: 380, maxHeight: 520 });
+    function out() {
+      SB.stat("rs-used", `${st.runs.length} / ${BUDGET}`);
+      if (st.runs.length) { const b = st.runs.reduce((m, r) => (r.y > m.y ? r : m)); SB.stat("rs-best", `${b.y.toFixed(1)} @ ${b.p[0].toFixed(0)} W, ${b.p[1].toFixed(0)} mTorr`); } else SB.stat("rs-best", "—");
+      SB.stat("rs-pred", st.fit ? `${st.fit.opt[2].toFixed(1)} @ ${st.fit.opt[0].toFixed(0)} W, ${st.fit.opt[1].toFixed(0)} mTorr` : "—");
+      if (st.submitted) { const s = st.submitted; SB.stat("rs-score", (s.ok ? ok("성공! ") : bad("98% 미만 ")) + `${(100 * s.ratio).toFixed(1)}% (${st.runs.length}번)`); }
+      else SB.stat("rs-score", "제출 전");
+    }
+    const redo = () => { out(); cv.redraw(); };
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._h ? [{ id: "c", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      down: (id, x, y) => {
+        if (id != null || st.submitted) return; const C = cv._C;
+        if (x < C.box.x || x > C.box.x + C.box.w || y < C.box.y || y > C.box.y + C.box.h) return;
+        run([invX(C, XR, x), invY(C, YR, y)]); st.fit = null; out();
+      },
+      move: (id, x, y) => { if (id !== "c") return; const C = cv._C, [a, b] = hw(); st.c = [SB.clamp(invX(C, XR, x), XR[0] + a, XR[1] - a), SB.clamp(invY(C, YR, y), YR[0] + b, YR[1] - b)]; },
+    });
+    SB.range("rs-w", (v) => `±${v} W · ±${(v / 10).toFixed(0)} mTorr`, (v) => { st.w = v; const [a, b] = hw(); st.c = [SB.clamp(st.c[0], XR[0] + a, XR[1] - a), SB.clamp(st.c[1], YR[0] + b, YR[1] - b)]; cv.redraw(); });
+    $("rs-fac").addEventListener("click", () => { if (st.submitted) return; st.msg = ""; design([[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, 0]]); });
+    $("rs-ccd").addEventListener("click", () => { if (st.submitted) return; const al = Math.SQRT2; st.msg = ""; design([[-1, -1], [1, -1], [-1, 1], [1, 1], [-al, 0], [al, 0], [0, -al], [0, al], [0, 0], [0, 0], [0, 0], [0, 0]]); });
+    $("rs-fit").addEventListener("click", () => { fitQuad(); redo(); });
+    $("rs-step").addEventListener("click", () => { if (st.submitted) return; stepAscent(); redo(); });
+    $("rs-sub").addEventListener("click", () => {
+      if (st.submitted) return;
+      const p = st.fit ? [st.fit.opt[0], st.fit.opt[1]] : st.c.slice(), ratio = T.fn(p[0], p[1]) / T.max;
+      st.submitted = { p, ratio, ok: ratio >= 0.98 }; st.msg = `참 최적점 ${T.opt[0].toFixed(0)} W, ${T.opt[1].toFixed(0)} mTorr`; redo();
+    });
+    $("rs-new").addEventListener("click", () => { st.seed += 3; makeTruth(); st.runs = []; st.fit = null; st.submitted = null; st.c = [360, 26]; st.msg = ""; $("rs-show").checked = false; st.show = false; redo(); });
+    $("rs-show").addEventListener("change", (e) => { st.show = e.target.checked; cv.redraw(); });
+    redo();
+  }
+})();
+</script>
+</body>
+</html>

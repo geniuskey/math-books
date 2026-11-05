@@ -1,0 +1,1809 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>구간 추정 · 확률과 통계 · MathBooks</title>
+<meta name="description" content="신뢰 구간의 뜻을 구간 100개로 확인하고, 모평균의 z·t 구간, 모비율의 왈드·윌슨·정확 구간, 모분산 구간, 두 모집단 비교, 표본 크기 결정, 예측·공차 구간, 부트스트랩까지 — 수율 신뢰 구간과 측정 반복 횟수를 정한다.">
+<!-- sb:seo -->
+<link rel="canonical" href="https://math.euiyun.com/probability/chapters/confidence.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MathBooks">
+<meta property="og:title" content="구간 추정 · 확률과 통계 · MathBooks">
+<meta property="og:description" content="신뢰 구간의 뜻을 구간 100개로 확인하고, 모평균의 z·t 구간, 모비율의 왈드·윌슨·정확 구간, 모분산 구간, 두 모집단 비교, 표본 크기 결정, 예측·공차 구간, 부트스트랩까지 — 수율 신뢰 구간과 측정 반복 횟수를 정한다.">
+<meta property="og:url" content="https://math.euiyun.com/probability/chapters/confidence.html">
+<meta property="og:image" content="https://math.euiyun.com/og.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "TechArticle", "name": "구간 추정 · 확률과 통계 · MathBooks", "headline": "10 구간 추정", "url": "https://math.euiyun.com/probability/chapters/confidence.html", "inLanguage": "ko", "isAccessibleForFree": true, "image": "https://math.euiyun.com/og.png", "description": "신뢰 구간의 뜻을 구간 100개로 확인하고, 모평균의 z·t 구간, 모비율의 왈드·윌슨·정확 구간, 모분산 구간, 두 모집단 비교, 표본 크기 결정, 예측·공차 구간, 부트스트랩까지 — 수율 신뢰 구간과 측정 반복 횟수를 정한다.", "publisher": {"@type": "Organization", "name": "MathBooks", "url": "https://math.euiyun.com/"}, "learningResourceType": "interactive textbook chapter", "position": 10, "dateModified": "2026-10-22", "isPartOf": {"@type": "Book", "@id": "https://math.euiyun.com/probability/#book", "name": "확률과 통계", "url": "https://math.euiyun.com/probability/"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "MathBooks", "item": "https://math.euiyun.com/"}, {"@type": "ListItem", "position": 2, "name": "확률과 통계", "item": "https://math.euiyun.com/probability/"}, {"@type": "ListItem", "position": 3, "name": "10 구간 추정", "item": "https://math.euiyun.com/probability/chapters/confidence.html"}]}]}</script>
+<!-- /sb:seo -->
+<link rel="stylesheet" href="../engine/css/scibook.css">
+<script src="../engine/js/scibook.js"></script>
+<script src="../course.js"></script>
+<script src="../engine/lib/stat.js"></script>
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="probability"></script>
+</head>
+<body data-chapter="confidence">
+<main class="chapter">
+  <header class="chapter-hero" data-prereq="sampling estimation">
+    <div class="eyebrow">Chapter 10</div>
+    <h1>구간 추정</h1>
+    <p class="lead">"평균 막두께는 100.3 nm입니다"라는 보고에는 중요한 정보가 하나 빠져 있다. 그 숫자를 얼마나 믿을 수 있는가이다. 측정 3번의 평균인지 300번의 평균인지에 따라 같은 100.3이라도 무게가 전혀 다르다. 구간 추정은 점추정값에 오차 범위를 붙여 "참값은 아마 99.9와 100.7 사이"라고 말하는 방법이다. 아래 그림에서 가로 막대 하나가 표본 하나로 만든 95% 신뢰 구간이다. 표본마다 구간이 달라지고, 대부분은 참값(자주색 점선)을 덮지만 스무 개에 하나꼴로 놓친다. 이 "스무 개에 하나"를 미리 정해 두는 것이 신뢰 수준이다. 이 장에서는 평균, 비율, 분산, 두 집단의 차이에 대한 구간을 만들고, 원하는 정밀도에 필요한 표본 크기를 계산한다. 다음 측정값 하나가 들어갈 범위인 예측 구간, 모집단 대부분이 들어갈 범위인 공차 구간, 공식이 없는 통계량에 쓰는 부트스트랩도 다룬다.</p>
+    <div class="hero-live" id="hero"><canvas id="cv-hero"></canvas><span class="hint">흰 원을 끌어 확인할 값 μ₀를 옮기고, 위 단추로 신뢰 수준을 바꾼다</span></div>
+    <ul class="objectives">
+      <li>신뢰 구간의 95%가 구간을 만드는 절차의 성공률이라는 것을 구간 100개 실험으로 확인한다. 구간 하나가 참값을 포함할 확률이 95%라는 해석이 왜 틀렸는지 설명한다.</li>
+      <li>피벗량 \(Z\)와 \(T\)로 모평균의 z 구간과 t 구간을 유도하고, 오차 한계 \(E = z_{\alpha/2}\sigma/\sqrt n\)이 신뢰 수준, \(\sigma\), \(n\)에 따라 어떻게 변하는지 계산한다.</li>
+      <li>모비율의 왈드·윌슨·클로퍼–피어슨 구간을 계산하고, 수율이 100%에 가까울 때 왈드 구간이 실패하는 이유를 포함 확률 곡선으로 보인다. 불량 0개일 때 3의 규칙과 단측 상한을 쓴다.</li>
+      <li>카이제곱 분포로 모분산과 모표준 편차의 구간을 구한다. 구간이 비대칭이고 정규성 가정에 예민하다는 점을 확인한다.</li>
+      <li>두 모평균의 차이(합동·웰치·대응 표본)와 두 모비율의 차이에 대한 구간을 만들고, 구간이 0을 포함하는지로 차이를 판단한다.</li>
+      <li>목표 오차 한계에서 표본 크기와 측정 반복 횟수를 정한다.</li>
+      <li>신뢰 구간, 예측 구간, 공차 구간이 각각 무엇을 겨냥하는지 구분하고, \(n\)이 커질 때 폭이 어디로 가는지 비교한다.</li>
+      <li>부트스트랩 재표집으로 중앙값과 공정 능력 지수 같은 통계량의 백분위 구간을 만든다.</li>
+    </ul>
+  </header>
+
+  <!-- ============================================================ -->
+  <section id="meaning">
+    <h2>신뢰 구간의 뜻</h2>
+    <p>9장의 점추정량 \(\bar X\)는 참값 \(\mu\)에 정확히 맞는 일이 거의 없다. 연속 분포라면 \(P(\bar X = \mu) = 0\)이다. 그래서 숫자 하나 대신 범위를 내놓는다. 표본으로 계산한 두 통계량 \(L\)과 \(U\)로 범위 \([L, U]\)를 만들어 모수를 짐작하는 일을 <span class="term">구간 추정</span><span class="en">(interval estimation)</span>이라 한다. 이때 다음 조건을 만족하는 구간을 신뢰 수준 \(1-\alpha\)인 <span class="term">신뢰 구간</span><span class="en">(confidence interval, CI)</span>이라 한다.</p>
+    <div class="formula">$$P(L \le \theta \le U) = 1 - \alpha$$<div class="where">\(L\)과 \(U\)는 표본의 함수라서 확률 변수이고, \(\theta\)는 고정된 상수다. 확률은 \(\theta\)가 아니라 구간 쪽이 흔들려서 생긴다. \(1-\alpha\)를 <span class="term">신뢰 수준</span><span class="en">(confidence level)</span>이라 하며 보통 90%, 95%, 99%를 쓴다.</div></div>
+    <p>구간을 만드는 열쇠는 <span class="term">피벗량</span><span class="en">(pivotal quantity)</span>이다. 표본과 모수를 함께 담고 있으면서 분포는 모수에 의존하지 않는 양을 말한다. 정규 모집단에서 \(\sigma\)를 안다면 \(Z = (\bar X - \mu)/(\sigma/\sqrt n)\)가 바로 그런 양이다. \(\mu\)가 얼마든 \(Z\)는 언제나 \(N(0, 1)\)을 따른다. 따라서 \(Z\)에 대한 확률 문장을 하나 쓰고, 부등식을 \(\mu\)에 대해 풀면 구간이 나온다.</p>
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 300" role="img" aria-label="표준 정규 분포의 가운데 95% 넓이에서 출발해 부등식을 뮤에 대해 풀어 신뢰 구간을 얻는 네 단계">
+        <path d="M40.0,229.7 L45.4,229.5 L50.8,229.3 L56.3,228.9 L61.7,228.5 L67.1,227.8 L72.5,226.9 L78.0,225.7 L83.4,224.2 L88.8,222.2 L94.2,219.7 L99.7,216.5 L105.1,212.6 L110.5,207.9 L115.9,202.3 L121.4,195.8 L126.8,188.4 L132.2,180.1 L137.6,170.9 L143.1,161.0 L148.5,150.5 L153.9,139.8 L159.3,129.0 L164.7,118.6 L170.2,108.8 L175.6,99.9 L181.0,92.4 L186.4,86.5 L191.9,82.4 L197.3,80.3 L202.7,80.3 L208.1,82.4 L213.6,86.5 L219.0,92.4 L224.4,99.9 L229.8,108.8 L235.3,118.6 L240.7,129.0 L246.1,139.8 L251.5,150.5 L256.9,161.0 L262.4,170.9 L267.8,180.1 L273.2,188.4 L278.6,195.8 L284.1,202.3 L289.5,207.9 L294.9,212.6 L300.3,216.5 L305.8,219.7 L311.2,222.2 L316.6,224.2 L322.0,225.7 L327.5,226.9 L332.9,227.8 L338.3,228.5 L343.7,228.9 L349.2,229.3 L354.6,229.5 L360.0,229.7" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+        <line x1="30" y1="230" x2="372" y2="230" stroke="var(--text-dim)"/>
+        <text class="t" x="200" y="60" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">Z = (X̄ − μ)/(σ/√n) ~ N(0, 1)</text>
+        <text class="t t-mono" x="200" y="250" text-anchor="middle">0</text>
+        <g data-step="2">
+          <path d="M110.4,230 L110.4,208.0 L115.0,203.4 L119.6,198.1 L124.2,192.1 L128.8,185.4 L133.4,178.1 L138.0,170.3 L142.6,161.9 L147.2,153.1 L151.8,144.1 L156.3,134.9 L160.9,125.9 L165.5,117.1 L170.1,108.8 L174.7,101.3 L179.3,94.6 L183.9,89.0 L188.5,84.7 L193.1,81.7 L197.7,80.2 L202.3,80.2 L206.9,81.7 L211.5,84.7 L216.1,89.0 L220.7,94.6 L225.3,101.3 L229.9,108.8 L234.5,117.1 L239.1,125.9 L243.7,134.9 L248.2,144.1 L252.8,153.1 L257.4,161.9 L262.0,170.3 L266.6,178.1 L271.2,185.4 L275.8,192.1 L280.4,198.1 L285.0,203.4 L289.6,208.0 L289.6,230 Z" fill="var(--accent)" opacity=".28"/>
+          <text class="t t-mono" x="110" y="250" text-anchor="middle">−1.96</text>
+          <text class="t t-mono" x="290" y="250" text-anchor="middle">1.96</text>
+          <text class="t" x="200" y="190" text-anchor="middle" style="font-weight:700;fill:var(--accent)">95%</text>
+          <text class="t t-dim" x="66" y="200" text-anchor="middle" style="font-size:12px">2.5%</text>
+          <text class="t t-dim" x="334" y="200" text-anchor="middle" style="font-size:12px">2.5%</text>
+          <rect x="400" y="40" width="380" height="50" rx="10" class="f-surface" stroke="var(--border)"/>
+          <text class="t t-mono" x="590" y="70" text-anchor="middle">P(−1.96 ≤ (X̄−μ)/(σ/√n) ≤ 1.96) = 0.95</text>
+        </g>
+        <g data-step="3">
+          <line x1="590" y1="94" x2="590" y2="110" stroke="var(--text-dim)" stroke-width="1.6"/>
+          <rect x="400" y="112" width="380" height="50" rx="10" class="f-surface" stroke="var(--border)"/>
+          <text class="t t-mono" x="590" y="142" text-anchor="middle">P(X̄ − 1.96σ/√n ≤ μ ≤ X̄ + 1.96σ/√n) = 0.95</text>
+          <text class="t t-dim" x="590" y="180" text-anchor="middle" style="font-size:12px">같은 사건을 μ에 대해 다시 썼을 뿐 — 흔들리는 것은 양 끝 L, U</text>
+        </g>
+        <g data-step="4">
+          <rect x="400" y="198" width="380" height="74" rx="10" fill="var(--accent-soft, var(--surface))" stroke="var(--accent)" stroke-width="1.6"/>
+          <text class="t" x="590" y="224" text-anchor="middle" style="font-weight:700">자료를 넣으면: x̄ ± 1.96 σ/√n</text>
+          <text class="t t-mono" x="590" y="250" text-anchor="middle">예: 100.3 ± 1.96·2/√16 = [99.32, 101.28]</text>
+          <text class="t t-dim" x="590" y="266" text-anchor="middle" style="font-size:11.5px">이제 확률 변수는 없다 — 이 구간은 μ를 덮었거나 못 덮었거나</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>피벗량 \(Z\)는 \(\mu\)가 얼마든 표준 정규 분포를 따른다.</li><li>\(Z\)가 가운데 95% 범위 \([-z_{0.025}, z_{0.025}] = [-1.96, 1.96]\)에 떨어질 확률은 0.95다.</li><li>괄호 안의 부등식을 \(\mu\)에 대해 풀면 같은 사건이 "구간 \([\bar X - 1.96\sigma/\sqrt n,\ \bar X + 1.96\sigma/\sqrt n]\)이 \(\mu\)를 덮는다"로 바뀐다.</li><li>실제 자료의 \(\bar x\)를 넣으면 숫자로 된 구간이 나온다. 95%는 이 절차의 성공률이고, 이 구간 하나에 붙은 확률이 아니다.</li></ol>
+      <figcaption>피벗량에서 신뢰 구간으로. 같은 생각으로 \(T\)에서 t 구간이, \((n-1)S^2/\sigma^2\)에서 분산 구간이 나온다.</figcaption>
+    </figure>
+    <p>3단계의 사건은 "\(\bar X\)가 \(\mu\)에서 \(1.96\sigma/\sqrt n\) 안에 떨어진다"와 같은 말이다. \(\mu\)는 움직이지 않는다. \(\bar X\)가 \(\mu\) 주위의 초록 띠 안에 떨어지면 구간이 \(\mu\)를 덮고, 띠 밖에 떨어지면 놓친다. 직접 \(\bar X\)를 끌어 확인해 보자.</p>
+    <figure class="mini" id="mini-pivot">
+      <div class="mini-view"><canvas id="cv-pivot"></canvas><span class="hint top">초록 점 X̄를 좌우로 끈다</span></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>신뢰 수준 <output id="pv-c-out"></output></span><input type="range" id="pv-c" min="50" max="99.5" step="0.5" value="95"></label><span class="readout" id="pv-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>위는 \(\bar X\)의 표본 분포 \(N(\mu, \sigma^2/n)\)(\(\mu = 100\), \(\sigma/\sqrt n = 0.5\))이고, 아래 막대는 지금 \(\bar X\)로 만든 구간이다. \(\bar X\)가 초록 띠(가운데 넓이 \(1-\alpha\)) 안에 있을 때만 구간이 \(\mu\)를 덮는다. 띠의 반폭과 구간의 반폭이 같은 \(z_{\alpha/2}\sigma/\sqrt n\)이기 때문이다.</figcaption>
+    </figure>
+    <p>그렇다면 구간을 100번 만들면 몇 개가 \(\mu\)를 놓칠까? 모집단 모양, 표본 크기, \(\sigma\)를 아는지에 따라 답이 달라질까? 먼저 예측해 보자.</p>
+    <div class="predict" data-for="sim-cover">
+      <p>막두께가 \(N(100, 2^2)\)인 공정에서 \(n = 10\)개씩 재서 95% t 구간을 100개 만든다. \(\mu = 100\)을 놓치는 구간은 대략 몇 개일까?</p>
+      <div class="opts"><button class="opt">0개 — 95%면 거의 다 맞는다</button><button class="opt" data-correct>5개 안팎 — 대개 2–9개</button><button class="opt">정확히 5개</button><button class="opt">50개 — 맞거나 틀리거나 반반이다</button></div>
+      <div class="quiz-exp">놓치는 개수는 \(\mathrm{Bin}(100, 0.05)\)를 따른다. 평균 5, 표준 편차 \(\sqrt{100 \times 0.05 \times 0.95} = 2.2\)이므로 2개에서 9개 사이가 흔하다. 정확히 5개일 확률은 18%에 불과하다. 시뮬레이터에서 100개씩 여러 번 뽑아 보자.</div>
+    </div>
+    <div class="sim" id="sim-cover">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>구간 100개 실험: 포함 확률 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div style="position:relative"><canvas id="cv-cov"></canvas><span class="hint top">최근 구간 60개 · 빨강 = μ를 놓친 구간</span></div><div style="position:relative"><canvas id="cv-cov2"></canvas><span class="hint top">누적 포함 비율</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>신뢰 수준 <output id="cov-c-out"></output></span><input type="range" id="cov-c" min="80" max="99" step="1" value="95"></label>
+          <label class="ctrl"><span>표본 크기 n <output id="cov-n-out"></output></span><input type="range" id="cov-n" min="2" max="40" step="1" value="10"></label>
+          <div class="ctrl"><span>구간 공식</span><div class="seg" id="cov-m"><button data-value="z">σ 앎: z</button><button data-value="t" class="on">σ 모름: t</button><button data-value="zs">S에 z(잘못)</button></div></div>
+          <div class="ctrl"><span>모집단 (평균 100, 표준 편차 2)</span><div class="seg" id="cov-pop"><button data-value="norm" class="on">정규</button><button data-value="unif">균일</button><button data-value="exp">지수(치우침)</button></div></div>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="cov-1" type="button">1번</button><button class="btn" id="cov-10" type="button">10번</button><button class="btn" id="cov-1000" type="button">1000번</button><button class="btn primary" id="cov-play" type="button"></button></div></div>
+          <label class="ctrl"><span>게임: 다음 100개 중 놓칠 개수 <output id="cov-g-out"></output></span><input type="range" id="cov-g" min="0" max="40" step="1" value="5"></label>
+          <div class="btn-row"><button class="btn primary" id="cov-game" type="button">예측하고 100개 뽑기</button><button class="btn" id="cov-reset" type="button">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">만든 구간</span><span class="v" id="cov-k">—</span></div>
+        <div class="stat"><span class="k">μ 포함 비율</span><span class="v" id="cov-p">—</span></div>
+        <div class="stat"><span class="k">평균 구간 폭</span><span class="v" id="cov-w">—</span></div>
+        <div class="stat"><span class="k">게임</span><span class="v" id="cov-score" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note"><b>게임:</b> 지금 설정에서 구간 100개 중 몇 개가 \(\mu\)를 놓칠지 슬라이더로 정하고 단추를 누른다. 실제 개수는 우연에 흔들리므로, 예측이 이 설정의 장기 기댓값(모의 2만 번으로 계산)에서 ±2개 안이면 성공이다. 해볼 것: ① 정규·t 구간에서 신뢰 수준을 80%, 90%, 99%로 바꿔 누적 비율이 명목값(점선)에 붙는지 보자. ② "S에 z(잘못)"를 고르고 \(n = 3\)으로 두면 95%라고 부른 구간이 80%대밖에 덮지 못한다. ③ 지수 모집단에서 \(n = 5\)이면 t 구간도 88% 정도로 모자란다. \(n = 40\)으로 늘리면 중심 극한 정리 덕에 93%대로 회복된다.</div>
+    </div>
+    <div class="callout warn"><strong>"이 구간에 μ가 있을 확률이 95%"는 틀린 말이다</strong><p>자료를 넣어 \([99.32, 101.28]\)을 얻었다면 \(\mu\)는 이 안에 있거나 없거나 둘 중 하나다. 빈도론에서 \(\mu\)는 상수이므로 이 구간에 대한 확률은 0 아니면 1이다. 95%는 "이 방법으로 구간을 계속 만들면 그중 95%가 \(\mu\)를 덮는다"는 절차의 성공률이다. 실무에서는 "\(\mu\)가 99.32와 101.28 사이라고 95% 신뢰한다"라고 말한다. 신뢰라는 단어가 그 차이를 담고 있다. "\(\mu\)가 이 안에 있을 확률"을 문자 그대로 말하고 싶다면 9장의 베이즈 사후 구간을 써야 한다.</p></div>
+    <p>실제 신뢰 수준, 곧 구간이 참값을 덮는 확률을 <span class="term">포함 확률</span><span class="en">(coverage probability)</span>이라 한다. 공식의 가정이 맞으면 포함 확률이 명목 신뢰 수준과 같다. 가정이 어긋나면(\(\sigma\)를 모르는데 z를 쓰거나, 작은 표본에서 모집단이 심하게 치우쳤거나) 명목값보다 낮아진다. 이 장에서 구간 공식을 평가하는 기준은 언제나 포함 확률과 구간 폭이다. 폭이 같다면 포함 확률이 명목값에 가까운 구간이 좋고, 포함 확률이 같다면 좁은 구간이 좋다.</p>
+    <div class="quiz-q"><p>같은 자료로 90% 구간과 99% 구간을 만들면?</p><div class="opts">
+      <button class="opt">90% 구간이 더 넓다 — 더 정확하니까</button><button class="opt" data-correct>99% 구간이 더 넓다 — 더 자주 맞히려면 그물을 넓혀야 한다</button><button class="opt">폭은 같고 중심만 다르다</button>
+    </div><div class="quiz-exp">\(z_{0.05} = 1.645\), \(z_{0.005} = 2.576\)이므로 99% 구간은 90% 구간보다 57% 넓다. 신뢰와 정밀은 맞바꾸는 관계이고, 둘 다 얻으려면 \(n\)을 늘려야 한다.</div></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="mean">
+    <h2>모평균의 구간: z와 t</h2>
+    <p>앞 절의 결과를 일반 신뢰 수준으로 쓰면 다음과 같다. \(z_{\alpha/2}\)는 표준 정규 분포의 상위 \(\alpha/2\) 분위수다(90%: 1.645, 95%: 1.960, 99%: 2.576).</p>
+    <div class="formula">$$\bar x \pm z_{\alpha/2}\frac{\sigma}{\sqrt n}\qquad(\sigma\text{를 알 때})$$<div class="where">구간의 반폭 \(E = z_{\alpha/2}\sigma/\sqrt n\)을 <span class="term">오차 한계</span><span class="en">(margin of error)</span>라 한다. 모집단이 정규가 아니어도 \(n\)이 충분히 크면 중심 극한 정리로 근사적으로 성립한다.</div></div>
+    <p>오차 한계에는 세 손잡이가 있다. 신뢰 수준을 올리면 넓어지고, 공정 산포 \(\sigma\)가 크면 넓어지고, 표본을 늘리면 \(\sqrt n\)에 반비례해 좁아진다. 밑줄 친 숫자를 끌어 보자.</p>
+    <div class="tangle" id="tg-E">
+      <p>표준 편차 \(\sigma\) = <span class="tn" data-var="s" data-min="0.5" data-max="6" data-step="0.1" data-unit=" nm">2.0</span>인 공정에서 <span class="tn" data-var="n" data-min="1" data-max="400" data-step="1">16</span>점을 재 평균 100.3 nm를 얻었다. 신뢰 수준 <span class="tn" data-var="c" data-min="50" data-max="99.9" data-step="0.1" data-unit="%">95.0</span>이면 \(z_{\alpha/2}\) = <span class="tn-out" data-out="z"></span>, 오차 한계 \(E\) = <span class="tn-out" data-out="E"></span>, 구간은 <span class="tn-out" data-out="ci"></span>이다. 오차 한계를 절반으로 줄이려면 <span class="tn-out" data-out="n4"></span>점이 필요하다.</p>
+      <canvas id="cv-tgE"></canvas>
+    </div>
+    <h3>σ를 모를 때: t 구간</h3>
+    <p>현장에서 \(\sigma\)를 정확히 아는 경우는 드물다. 오래 쌓인 SPC 자료가 있다면 모를까, 대개 같은 표본으로 \(S\)를 계산해 \(\sigma\) 자리에 넣는다. 그러면 피벗량이 8장의 \(T = (\bar X - \mu)/(S/\sqrt n) \sim t_{n-1}\)로 바뀌고, 임계값도 \(t\) 분포에서 가져와야 한다.</p>
+    <div class="formula">$$\bar x \pm t_{\alpha/2,\,n-1}\frac{s}{\sqrt n}\qquad(\sigma\text{를 모를 때, 정규 모집단})$$<div class="where">\(t_{\alpha/2,n-1} > z_{\alpha/2}\)이다. \(S\)가 \(\sigma\)를 우연히 작게 볼 위험을 임계값을 키워 보상한다. \(n = 5\)이면 \(t_{0.025,4} = 2.776\)으로 1.96보다 42% 크고, \(n = 30\)이면 2.045로 4% 크다.</div></div>
+    <p>\(t\) 대신 1.96을 그대로 쓰면 얼마나 손해일까? 손해는 구간 폭이 아니라 포함 확률에서 나타난다.</p>
+    <div class="predict" data-for="sim-zt">
+      <p>정규 모집단에서 \(n = 4\)개를 재고 \(\bar x \pm 1.96\,s/\sqrt n\)으로 "95% 구간"을 만든다. 실제 포함 확률은?</p>
+      <div class="opts"><button class="opt">95% — 공식이 같으니까</button><button class="opt">약 93%</button><button class="opt" data-correct>약 86%</button><button class="opt">약 50%</button></div>
+      <div class="quiz-exp">포함 확률은 \(P(|T| \le 1.96) = 2F_{t_3}(1.96) - 1 = 0.855\)다. 95%라고 부른 구간이 일곱 번에 한 번꼴로 놓친다. \(n = 2\)이면 70%, \(n = 10\)이면 91.8%, \(n = 30\)이면 94.0%까지 회복된다. 오른쪽 곡선이 이 관계다.</div>
+    </div>
+    <div class="sim" id="sim-zt">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>같은 표본, 두 구간: 1.96 대 t</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div style="position:relative"><canvas id="cv-zt"></canvas><span class="hint top">위: 1.96·s/√n · 아래: t·s/√n</span></div><div style="position:relative"><canvas id="cv-zt2"></canvas><span class="hint top">흰 원을 끌어 n을 바꾼다</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>표본 크기 n <output id="zt-n-out"></output></span><input type="range" id="zt-n" min="2" max="40" step="1" value="4"></label>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="zt-10" type="button">10번</button><button class="btn" id="zt-1000" type="button">1000번</button><button class="btn primary" id="zt-play" type="button"></button></div></div>
+          <button class="btn" id="zt-reset" type="button">초기화</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">표본 수</span><span class="v" id="zt-k">—</span></div>
+        <div class="stat"><span class="k">1.96 구간 포함 · 이론</span><span class="v" id="zt-pz">—</span></div>
+        <div class="stat"><span class="k">t 구간 포함 · 이론</span><span class="v" id="zt-pt">—</span></div>
+        <div class="stat"><span class="k">t<sub>0.025,n−1</sub></span><span class="v" id="zt-tc">—</span></div>
+      </div>
+      <div class="sim-note">모집단은 \(N(100, 2^2)\)이고 \(\sigma\)는 쓰지 않는다. 왼쪽은 같은 표본으로 만든 두 구간의 최근 기록이다(점선: 1.96, 실선: t). 오른쪽 곡선은 1.96 구간의 이론 포함 확률 \(2F_{t_{n-1}}(1.96) - 1\)이고, 초록·빨강 점은 모의 결과다. 해볼 것: ① \(n = 2\)에서 1000번 뽑으면 1.96 구간은 70% 근처, t 구간은 95% 근처다. 대신 t 구간은 \(t_{0.025,1} = 12.7\)이라 엄청나게 넓다. ② \(s\)가 우연히 작게 나온 표본에서 1.96 구간이 특히 자주 놓치는지 왼쪽에서 보자. ③ \(n\)을 30 이상으로 끌면 두 곡선이 거의 만난다.</div>
+    </div>
+    <figure class="mini" id="mini-tcrit">
+      <div class="mini-view"><canvas id="cv-tcrit"></canvas><span class="hint top">곡선 위 흰 원을 끌어 자유도를 바꾼다</span></div>
+      <div class="mini-ctrl"><span class="readout" id="tc-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>자유도 \(\nu\)에 따른 \(t_{\alpha/2,\nu}\)(90%, 95%, 99%)와 그 극한 \(z_{\alpha/2}\)(점선). 99% 구간일수록 작은 자유도에서의 벌칙이 크다. 꼬리가 두꺼운 \(t\) 분포에서는 상위 0.5% 분위수가 정규보다 훨씬 멀리 있기 때문이다.</figcaption>
+    </figure>
+    <div class="example" data-title="σ를 아는 CD의 z 구간">
+      <p>게이트 CD를 웨이퍼 16곳에서 재 평균 45.3 nm를 얻었다. 장기 SPC 자료에서 이 공정의 \(\sigma = 1.2\) nm로 알려져 있다. 평균 CD의 95% 신뢰 구간을 구하고, 99%이면 오차 한계가 얼마인지 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\sigma\)를 알므로 z 구간 \(\bar x \pm z_{\alpha/2}\sigma/\sqrt n\)을 쓴다. 표준 오차는 \(1.2/\sqrt{16} = 0.3\) nm다.</div>
+        <div class="step"><b>풀이</b> 95%: \(E = 1.96 \times 0.3 = 0.588\), 구간 \(45.3 \pm 0.588 = [44.71,\ 45.89]\) nm.<br>99%: \(E = 2.576 \times 0.3 = 0.773\) nm.</div>
+        <div class="answer">95% 구간 [44.71, 45.89] nm, 99%이면 오차 한계 0.773 nm</div>
+        <div class="step"><b>검토</b> 99%로 올리면 오차 한계가 \(2.576/1.96 = 1.31\)배가 된다. 측정을 늘리지 않고 확신만 키우면 구간이 넓어진다.</div>
+      </details>
+    </div>
+    <div class="example" data-title="표준 시료 8회 반복 측정의 t 구간">
+      <p>막두께 표준 시료를 8번 재 100.4, 99.8, 100.9, 100.2, 99.6, 100.7, 100.1, 100.5 nm를 얻었다. 계측기가 보는 평균 두께의 95% 신뢰 구간을 구하라. 1.96을 잘못 쓰면 구간이 어떻게 되는가?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\sigma\)를 모르므로 \(t_{0.025,7}\)을 쓴다. 측정 반복의 산포는 정규에 가깝다고 본다.</div>
+        <div class="step"><b>풀이</b> \(\bar x = 802.2/8 = 100.275\), \(s = 0.440\), \(s/\sqrt8 = 0.1556\). \(t_{0.025,7} = 2.365\)이므로 \(E = 2.365 \times 0.1556 = 0.368\).<br>구간 \(100.275 \pm 0.368 = [99.91,\ 100.64]\) nm.</div>
+        <div class="answer">[99.91, 100.64] nm (오차 한계 0.368 nm)</div>
+        <div class="step"><b>검토</b> 1.96을 쓰면 오차 한계가 0.305 nm로 17% 좁아지지만, 포함 확률은 \(2F_{t_7}(1.96) - 1 = 0.909\)로 떨어진다. 좁은 구간이 정밀해 보여도 실제 신뢰 수준이 91%라면 그만큼 자주 틀린다.</div>
+      </details>
+    </div>
+    <div class="callout tip"><strong>한쪽만 궁금할 때: 단측 신뢰 한계</strong><p>"평균 누설 전류가 최대 얼마인가"처럼 한쪽 경계만 필요하면 \(\alpha\)를 한쪽 꼬리에 모두 넣는다. 95% <span class="term">신뢰 상한</span><span class="en">(upper confidence bound)</span>은 \(\bar x + t_{\alpha,n-1}s/\sqrt n\)이다. 예를 들어 \(n = 10\)이면 \(t_{0.05,9} = 1.833\)을 써서 양측 구간의 \(t_{0.025,9} = 2.262\)보다 가까운 곳에 경계가 생긴다. 어느 쪽을 볼지는 자료를 보기 전에 정한다. 자료를 보고 나서 유리한 쪽을 고르면 실제 신뢰 수준이 떨어진다.</p></div>
+    <div class="drill" id="drill-t" data-title="t 구간 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="proportion">
+    <h2>모비율의 구간: 왈드와 윌슨</h2>
+    <p>다이 \(n\)개를 검사해 \(x\)개가 양품이면 수율의 점추정값은 \(\hat p = x/n\)이다. \(\hat p\)의 표준 오차는 \(\sqrt{p(1-p)/n}\)이고, \(n\)이 크면 \(\hat p\)는 근사적으로 정규 분포를 따른다. 표준 오차의 \(p\)에 \(\hat p\)를 넣으면 교과서에서 가장 흔한 구간이 나온다. 이것을 <span class="term">왈드 구간</span><span class="en">(Wald interval)</span>이라 한다.</p>
+    <div class="formula">$$\hat p \pm z_{\alpha/2}\sqrt{\frac{\hat p(1-\hat p)}{n}}$$<div class="where">간단하지만 두 군데에서 근사를 쓴다(정규 근사, 그리고 \(p\) 대신 \(\hat p\)). \(\hat p\)가 0이나 1에 가까우면 둘 다 나빠진다. \(x = n\)이면 폭이 0인 구간 \([1, 1]\)이 나와 수율이 100%라고 확신하는 꼴이 된다.</div></div>
+    <p>더 나은 방법은 \(p\)를 \(\hat p\)로 바꾸지 않고 부등식 \(|\hat p - p| \le z\sqrt{p(1-p)/n}\)을 \(p\)에 대해 그대로 푸는 것이다. \(p\)에 대한 이차 부등식이 되고, 그 해가 <span class="term">윌슨 점수 구간</span><span class="en">(Wilson score interval)</span>이다.</p>
+    <div class="formula">$$\frac{\hat p + \dfrac{z^2}{2n}}{1 + \dfrac{z^2}{n}} \;\pm\; \frac{z}{1 + \dfrac{z^2}{n}}\sqrt{\frac{\hat p(1-\hat p)}{n} + \frac{z^2}{4n^2}}\qquad(z = z_{\alpha/2})$$<div class="where">중심이 \(\hat p\)에서 1/2 쪽으로 조금 당겨지고, \(x = 0\)이나 \(x = n\)이어도 폭이 0이 되지 않는다. 이항 분포를 정확히 거꾸로 푼 <span class="term">클로퍼–피어슨 구간</span><span class="en">(Clopper–Pearson exact interval)</span>은 포함 확률이 어느 \(p\)에서도 명목값 이상이 되도록 만든 보수적인 구간으로, 베타 분포의 분위수로 계산한다: \(\big[B_{\alpha/2}(x, n-x+1),\ B_{1-\alpha/2}(x+1, n-x)\big]\).</div></div>
+    <p>왈드 구간이 실제로 얼마나 나쁠까? 수율 99%인 공정에서 다이 100개로 95% 구간을 만드는 경우를 생각해 보자.</p>
+    <div class="predict" data-for="sim-prop">
+      <p>참 수율 \(p = 0.99\), \(n = 100\)일 때 95% 왈드 구간의 실제 포함 확률은 대략?</p>
+      <div class="opts"><button class="opt">95%</button><button class="opt">90%</button><button class="opt" data-correct>63%</button><button class="opt">99%</button></div>
+      <div class="quiz-exp">\(x = 100\)이 나올 확률이 \(0.99^{100} = 0.366\)인데 그때 왈드 구간은 \([1, 1]\)이라 0.99를 놓친다. \(x = 99\)이면 구간이 \([0.970, 1.010]\)으로 덮지만 \(x \le 97\)이면 다시 놓치기 시작한다. 모두 더하면 포함 확률이 0.633이다. 같은 조건에서 윌슨은 0.921, 클로퍼–피어슨은 0.982다.</div>
+    </div>
+    <div class="sim" id="sim-prop">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>비율 구간의 포함 확률 곡선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div style="position:relative"><canvas id="cv-prop"></canvas><span class="hint top">곡선 위 흰 원을 끌어 참 비율 p를 바꾼다</span></div><div style="position:relative"><canvas id="cv-prop2"></canvas><span class="hint top">x의 분포: 초록 = 그 x의 구간이 p를 덮음</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>표본 크기 n <output id="pr-n-out"></output></span><input type="range" id="pr-n" min="5" max="200" step="1" value="100"></label>
+          <div class="ctrl"><span>방법</span><div class="seg" id="pr-m"><button data-value="wald" class="on">왈드</button><button data-value="wilson">윌슨</button><button data-value="exact">클로퍼–피어슨</button></div></div>
+          <div class="ctrl"><span>신뢰 수준</span><div class="seg" id="pr-c"><button data-value="0.9">90%</button><button data-value="0.95" class="on">95%</button><button data-value="0.99">99%</button></div></div>
+          <div class="ctrl"><span>가로축</span><div class="seg" id="pr-r"><button data-value="all">0–1</button><button data-value="yield" class="on">수율 0.8–1</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">참 비율 p</span><span class="v" id="pr-p">—</span></div>
+        <div class="stat"><span class="k">왈드 · 윌슨 · 정확</span><span class="v" id="pr-all" style="font-size:14px">—</span></div>
+        <div class="stat"><span class="k">고른 방법의 평균 폭</span><span class="v" id="pr-w">—</span></div>
+      </div>
+      <div class="sim-note">포함 확률은 모의가 아니라 이항 확률을 모두 더해 정확히 계산했다: \(\sum_x P(X = x)\,\mathbf 1[p \in \text{구간}(x)]\). \(x\)가 정수라서 \(p\)를 조금만 움직여도 덮는 \(x\)의 집합이 바뀌고, 곡선이 톱니 모양이 된다. 해볼 것: ① 왈드에서 \(p\)를 0.95 → 0.99 → 0.999로 끌어 보자. 포함 확률이 곤두박질친다. ② 윌슨으로 바꾸면 톱니가 95% 주위에서 오르내리고, 클로퍼–피어슨은 늘 95% 위에 있다(대가로 폭이 넓다). ③ \(n = 20\)으로 줄이면 왈드는 \(p = 0.5\) 근처에서도 93% 아래로 자주 떨어진다.</div>
+    </div>
+    <div class="tangle" id="tg-wil">
+      <p>다이 <span class="tn" data-var="n" data-min="5" data-max="500" data-step="1">50</span>개 중 <span class="tn" data-var="x" data-min="0" data-max="500" data-step="1">47</span>개가 양품이면 \(\hat p\) = <span class="tn-out" data-out="p"></span>다. 95% 왈드 구간은 <span class="tn-out" data-out="wald"></span>, 윌슨 구간은 <span class="tn-out" data-out="wil"></span>, 클로퍼–피어슨 구간은 <span class="tn-out" data-out="cp"></span>이다. <span class="tn-out" data-out="note"></span></p>
+    </div>
+    <div class="example" data-title="소량 로트의 수율 구간">
+      <p>시험 로트에서 다이 50개를 검사해 47개가 양품이었다. 수율의 95% 신뢰 구간을 왈드, 윌슨, 클로퍼–피어슨 방법으로 구하고 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\hat p = 0.94\)는 1에 가깝고 \(n(1-\hat p) = 3\)으로 실패 수가 적다. 정규 근사가 의심스러운 조건이니 세 방법을 모두 계산해 비교한다.</div>
+        <div class="step"><b>풀이</b> 왈드: \(\mathrm{SE} = \sqrt{0.94 \times 0.06/50} = 0.0336\), \(0.94 \pm 1.96 \times 0.0336 = [0.874,\ 1.006]\). 상한이 1을 넘는다.<br>윌슨: \(z^2/n = 0.0768\), 중심 \((0.94 + 0.0384)/1.0768 = 0.9086\), 반폭 \(1.96\sqrt{0.001128 + 0.000384}/1.0768 = 0.0708\) → \([0.838,\ 0.979]\).<br>클로퍼–피어슨: \([B_{0.025}(47, 4),\ B_{0.975}(48, 3)] = [0.835,\ 0.987]\).</div>
+        <div class="answer">왈드 [0.874, 1.006], 윌슨 [0.838, 0.979], 정확 [0.835, 0.987]</div>
+        <div class="step"><b>검토</b> 윌슨과 정확 구간은 아래쪽으로 비대칭이다. 이항 분포가 1 근처에서 왼쪽으로 꼬리를 끌기 때문이다. 왈드 구간은 \(\hat p\)를 중심으로 대칭이어서 하한을 너무 높게 잡는다. 수율 하한을 0.874로 보고하면 실제보다 낙관적인 보고가 된다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>로트 수율은 구간으로 비교한다</strong> 웨이퍼 테스트(소트)의 빈 맵에서 양품 다이 비율이 곧 \(\hat p\)다. 웨이퍼 한 장에 다이가 수백 개 있으면 한 장의 수율 구간은 ±2–3%p 정도로 좁다. 하지만 시험 로트처럼 다이가 수십 개뿐이거나 수율이 99%를 넘는 성숙 제품에서는 왈드 구간이 쉽게 무너진다. 또 웨이퍼 안의 다이들은 결함 군집 때문에 독립이 아니어서, 이항 모형의 구간이 실제보다 좁게 나온다. 웨이퍼별 수율의 산포로 표준 오차를 직접 추정하는 편이 안전하다. → <a href="https://semi.euiyun.com/yield/chapters/sort.html">YieldBook · 웨이퍼 테스트와 빈 맵</a></div>
+    <h3>불량이 하나도 없을 때: 3의 규칙</h3>
+    <p>신뢰성 인증 시험에서는 고장이 0개인 경우가 흔하다. 이때 \(\hat p = 0\)이고 왈드 구간은 \([0, 0]\)이라 쓸모가 없다. 필요한 것은 "불량률이 아무리 커도 이 정도"라는 단측 상한이다. 불량률이 \(p\)일 때 \(n\)개 모두 합격할 확률은 \((1-p)^n\)이다. 이 확률이 \(\alpha\)가 되는 \(p\)를 상한으로 잡는다. 그보다 큰 \(p\)였다면 0개 불량이라는 결과가 \(\alpha\)보다 드문 일이었을 것이기 때문이다.</p>
+    <div class="formula">$$(1 - p_U)^n = \alpha \;\Rightarrow\; p_U = 1 - \alpha^{1/n} \approx \frac{-\ln\alpha}{n},\qquad 95\%:\ p_U \approx \frac{3}{n}$$<div class="where">\(-\ln 0.05 = 2.996 \approx 3\)이므로 95% 상한이 약 \(3/n\)이다. 이것을 <span class="term">3의 규칙</span><span class="en">(rule of three)</span>이라 한다. 90%이면 \(2.303/n\), 60%이면 \(0.916/n\)이다. 이 식은 \(x = 0\)일 때의 단측 클로퍼–피어슨 상한과 같다.</div></div>
+    <figure class="mini" id="mini-r3">
+      <div class="mini-view"><canvas id="cv-r3"></canvas><span class="hint top">흰 원을 곡선 따라 끌어 p를 바꾼다</span></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>표본 n <output id="r3-n-out"></output></span><input type="range" id="r3-n" min="10" max="500" step="1" value="231"></label><div class="seg" id="r3-c"><button data-value="0.6">60%</button><button data-value="0.9" class="on">90%</button><button data-value="0.95">95%</button></div><span class="readout" id="r3-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>곡선은 불량률 \(p\)일 때 \(n\)개 모두 합격할 확률 \((1-p)^n\)이다. 흰 원을 오른쪽으로 끌다 보면 이 확률이 \(\alpha\)(빨간 점선) 아래로 내려가는 지점이 있고, 그곳이 단측 상한 \(p_U\)다. \(n\)을 2배로 늘리면 \(p_U\)는 절반이 된다.</figcaption>
+    </figure>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 250" role="img" aria-label="양측 구간은 양쪽 꼬리에 알파의 절반씩, 단측 상한은 위쪽 꼬리에만 알파를 둔다는 비교 그림">
+        <text class="t" x="20" y="34" style="font-weight:700">양측 95% 구간</text>
+        <line x1="60" y1="80" x2="740" y2="80" stroke="var(--text-dim)"/>
+        <rect x="60" y="66" width="120" height="28" fill="var(--bad)" opacity=".18"/>
+        <rect x="620" y="66" width="120" height="28" fill="var(--bad)" opacity=".18"/>
+        <line x1="180" y1="80" x2="620" y2="80" stroke="var(--accent)" stroke-width="5"/>
+        <line x1="180" y1="66" x2="180" y2="94" stroke="var(--accent)" stroke-width="2.5"/>
+        <line x1="620" y1="66" x2="620" y2="94" stroke="var(--accent)" stroke-width="2.5"/>
+        <text class="t t-mono" x="180" y="114" text-anchor="middle">L</text>
+        <text class="t t-mono" x="620" y="114" text-anchor="middle">U</text>
+        <text class="t t-dim" x="120" y="58" text-anchor="middle" style="font-size:12px">α/2 = 2.5%</text>
+        <text class="t t-dim" x="680" y="58" text-anchor="middle" style="font-size:12px">α/2 = 2.5%</text>
+        <text class="t t-dim" x="400" y="62" text-anchor="middle" style="font-size:12px">임계값 z₀.₀₂₅ = 1.96</text>
+        <text class="t" x="20" y="158" style="font-weight:700">단측 95% 상한</text>
+        <line x1="60" y1="200" x2="740" y2="200" stroke="var(--text-dim)"/>
+        <rect x="580" y="186" width="160" height="28" fill="var(--bad)" opacity=".18"/>
+        <line x1="60" y1="200" x2="580" y2="200" stroke="var(--accent)" stroke-width="5"/>
+        <line x1="580" y1="186" x2="580" y2="214" stroke="var(--accent)" stroke-width="2.5"/>
+        <text class="t t-mono" x="580" y="234" text-anchor="middle">U₁</text>
+        <text class="t t-dim" x="660" y="178" text-anchor="middle" style="font-size:12px">α = 5% 한쪽에</text>
+        <text class="t t-dim" x="300" y="182" text-anchor="middle" style="font-size:12px">임계값 z₀.₀₅ = 1.645 → U₁ &lt; U</text>
+        <text class="t t-dim" x="60" y="234" text-anchor="middle" style="font-size:12px">0</text>
+      </svg>
+      <figcaption>양측 구간은 \(\alpha\)를 두 꼬리에 나누고, 단측 상한은 한쪽에 몰아준다. 같은 95%라도 단측 상한 \(U_1\)이 양측 상한 \(U\)보다 낮다. 불량률·고장률·누설 전류처럼 "작을수록 좋은" 양은 대개 단측 상한으로 보고한다.</figcaption>
+    </figure>
+    <div class="example" data-title="무고장 인증 시험의 불량률 상한">
+      <p>신뢰성 인증에서 세 로트 77개씩, 모두 231개를 시험해 고장이 하나도 없었다. 불량률의 90% 단측 상한과 95% 상한을 구하고 3의 규칙과 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(x = 0\)이므로 \(p_U = 1 - \alpha^{1/n}\)을 쓴다.</div>
+        <div class="step"><b>풀이</b> 90%: \(p_U = 1 - 0.1^{1/231} = 1 - e^{-2.3026/231} = 0.00992\).<br>95%: \(p_U = 1 - 0.05^{1/231} = 0.01288\). 3의 규칙: \(3/231 = 0.01299\).</div>
+        <div class="answer">90% 상한 0.99%, 95% 상한 1.29% (3의 규칙 1.30%)</div>
+        <div class="step"><b>검토</b> 고장 0개라고 불량률이 0인 것은 아니다. 231개로 말할 수 있는 것은 "불량률이 1% 이상이었다면 무고장이 나올 확률이 10% 미만"이라는 것이다. 이 숫자가 바로 LTPD 1%, 90% 신뢰라는 인증 기준이다. 더 낮은 불량률을 보증하려면 시험 수를 비례해서 늘려야 한다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>"3 로트 × 77개, 0 고장"이 말해 주는 것</strong> JEDEC 방식의 HTOL 인증은 세 로트에서 77개씩 뽑아 1000시간 시험하고 고장이 없어야 통과한다. 0/231의 90% 상한이 약 1%라서 "불량률 1% 이하를 90% 신뢰로 보장"하는 설계다. FIT를 보고할 때는 같은 생각을 시간 축으로 옮겨, 총 등가 소자·시간 \(T\)에서 고장 0개일 때 고장률 상한을 \(\chi^2_{2,\,1-\mathrm{CL}}/(2T)\)로 계산한다(60% 신뢰라면 \(0.916/T\)). 번인은 이 시험을 통과한 뒤에도 남는 초기 고장 부모집단을 출하 전에 걸러내는 단계다. → <a href="https://semi.euiyun.com/test/chapters/burnin.html">TestBook · 번인과 신뢰성 스크리닝(신뢰성 시험과 자동차 등급)</a> · <a href="https://semi.euiyun.com/memory/chapters/reliability.html">MemoryBook · 신뢰성과 오류 정정(가속 수명 시험)</a></div>
+    <div class="drill" id="drill-prop" data-title="비율 구간 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="variance">
+    <h2>모분산의 구간</h2>
+    <p>산포도 추정해야 하는 모수다. 공정 능력은 \(\sigma\)로 정해지고, 계측기의 반복성도 \(\sigma\)로 말한다. 8장에서 정규 모집단이면 \((n-1)S^2/\sigma^2 \sim \chi^2_{n-1}\)임을 보았다. 이 양이 피벗량이다. 카이제곱 분포의 하위 \(\alpha/2\)점과 상위 \(\alpha/2\)점 사이에 들 확률이 \(1-\alpha\)이므로, 부등식을 \(\sigma^2\)에 대해 뒤집으면 된다.</p>
+    <div class="formula">$$\frac{(n-1)s^2}{\chi^2_{\alpha/2,\,n-1}} \;\le\; \sigma^2 \;\le\; \frac{(n-1)s^2}{\chi^2_{1-\alpha/2,\,n-1}}$$<div class="where">상위 꼬리 관례이므로 \(\chi^2_{\alpha/2,\nu}\)가 큰 값이고 하한을 만든다. \(\sigma\)의 구간은 양 끝에 제곱근을 씌운다. 카이제곱 분포가 오른쪽으로 치우쳐 있으므로 구간은 \(s^2\)를 중심으로 대칭이 아니고 위쪽으로 길다.</div></div>
+    <p>등꼬리 구간(양쪽 꼬리에 \(\alpha/2\)씩)이 관례지만 유일한 선택은 아니다. 꼬리 두 개의 넓이 합만 \(\alpha\)이면 어떤 분할이든 포함 확률은 \(1-\alpha\)다. 분할을 바꾸면 구간 폭이 달라진다.</p>
+    <div class="sim" id="sim-var">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>카이제곱의 두 꼬리 나누기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div style="position:relative"><canvas id="cv-var"></canvas><span class="hint top">흰 원 두 개(경계 a, b)를 좌우로 끈다</span></div><div style="position:relative"><canvas id="cv-var2"></canvas><span class="hint top">σ의 구간(최근 25개) · 자주 = 참 σ</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>표본 크기 n <output id="vr-n-out"></output></span><input type="range" id="vr-n" min="3" max="40" step="1" value="10"></label>
+          <div class="ctrl"><span>신뢰 수준</span><div class="seg" id="vr-c"><button data-value="0.9">90%</button><button data-value="0.95" class="on">95%</button><button data-value="0.99">99%</button></div></div>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="vr-1" type="button">1번</button><button class="btn" id="vr-1000" type="button">1000번</button><button class="btn" id="vr-eq" type="button">등꼬리로</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">왼쪽 · 오른쪽 꼬리</span><span class="v" id="vr-tails">—</span></div>
+        <div class="stat"><span class="k">σ² 구간 폭 ÷ s² (등꼬리 대비)</span><span class="v" id="vr-wid">—</span></div>
+        <div class="stat"><span class="k">포함 비율</span><span class="v" id="vr-cov">—</span></div>
+        <div class="stat"><span class="k">과녁: 가장 짧은 σ² 구간</span><span class="v" id="vr-game" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽 경계를 끌면 오른쪽 경계가 따라 움직여 두 꼬리 넓이의 합이 언제나 \(\alpha\)로 유지된다. <b>과녁:</b> \(\sigma^2\) 구간 폭 \((n-1)s^2(1/a - 1/b)\)이 가장 짧아지는 분할을 찾아 최솟값의 1% 안으로 들어가면 성공이다. 해볼 것: ① \(n = 10\)에서 최단 구간은 왼쪽 꼬리를 거의 비우는 쪽에 있다. 등꼬리보다 16% 짧다. ② 어떤 분할에서든 1000번 뽑아 보면 포함 비율은 \(1-\alpha\) 근처다. 분할은 폭만 바꾸고 신뢰 수준은 바꾸지 않는다. ③ \(n\)을 3으로 줄이면 \(\sigma\) 구간의 상한이 \(s\)의 몇 배까지 치솟는지 보자.</div>
+    </div>
+    <div class="tangle" id="tg-vr">
+      <p>정규 공정에서 <span class="tn" data-var="n" data-min="2" data-max="200" data-step="1">10</span>개로 \(s\)를 구하면 \(\sigma\)의 95% 구간은 \(s\)의 <span class="tn-out" data-out="lo"></span>배에서 <span class="tn-out" data-out="hi"></span>배까지다. 상한을 \(s\)의 <span class="tn" data-var="r" data-min="1.05" data-max="2" data-step="0.01">1.20</span>배 안으로 묶으려면 <span class="tn-out" data-out="need"></span>개가 필요하다.</p>
+    </div>
+    <p>평균의 구간은 중심 극한 정리 덕에 모집단이 정규가 아니어도 크게 틀리지 않았다. 분산의 구간은 그렇지 않다. 카이제곱 결과가 정규 모집단의 4차 적률에 기대고 있기 때문이다.</p>
+    <figure class="mini" id="mini-vrob">
+      <div class="mini-view"><canvas id="cv-vrob"></canvas></div>
+      <div class="mini-ctrl"><div class="seg" id="vb-pop"><button data-value="norm" class="on">정규</button><button data-value="unif">균일</button><button data-value="exp">지수</button></div><label class="ctrl"><span>n <output id="vb-n-out"></output></span><input type="range" id="vb-n" min="5" max="100" step="1" value="10"></label><button class="btn" id="vb-go" type="button">1000번 더</button><span class="readout" id="vb-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>\(\sigma = 1\)인 세 모집단에서 \((n-1)S^2/\sigma^2\)의 히스토그램(초록)과 \(\chi^2_{n-1}\) 밀도(자주색), 그리고 95% 분산 구간의 실제 포함 비율. 지수 모집단은 꼬리가 두꺼워 \(S^2\)가 훨씬 넓게 흩어진다. 포함 비율이 75% 근처이고, \(n\)을 100으로 늘려도 70% 남짓으로 오히려 나빠진다.</figcaption>
+    </figure>
+    <div class="example" data-title="막두께 산포의 구간">
+      <p>새 증착 장비에서 웨이퍼 10장의 평균 두께를 재 \(s = 1.8\) nm를 얻었다. 웨이퍼 간 표준 편차 \(\sigma\)의 95% 신뢰 구간을 구하라. 두께는 정규 분포를 따른다고 본다.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\nu = 9\), \(\chi^2_{0.025,9} = 19.023\), \(\chi^2_{0.975,9} = 2.700\)을 쓰고, \(\sigma^2\) 구간에 제곱근을 씌운다.</div>
+        <div class="step"><b>풀이</b> \((n-1)s^2 = 9 \times 3.24 = 29.16\). \(\sigma^2\): \([29.16/19.023,\ 29.16/2.700] = [1.533,\ 10.80]\) nm².<br>\(\sigma\): \([1.238,\ 3.286]\) nm.</div>
+        <div class="answer">σ의 95% 구간 [1.24, 3.29] nm</div>
+        <div class="step"><b>검토</b> 상한이 \(s\)의 1.83배다. 웨이퍼 10장으로는 산포를 두 배 가까운 불확실성으로밖에 알 수 없다. 이 장비의 \(C_{pk}\)를 \(s\) 하나로 계산해 판정하면 위험하다는 뜻이다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="two-sample">
+    <h2>두 모집단 비교 구간</h2>
+    <p>공정 변경 전후, 장비 A와 B, 두 공급사의 웨이퍼처럼 엔지니어의 질문은 대개 비교다. 관심 모수는 차이 \(\mu_1 - \mu_2\)이고, 점추정값은 \(\bar x_1 - \bar x_2\)다. 독립인 두 표본이면 분산이 더해진다: \(\operatorname{Var}(\bar X_1 - \bar X_2) = \sigma_1^2/n_1 + \sigma_2^2/n_2\).</p>
+    <div class="compare">
+      <div><h4>두 분산이 같다고 볼 때</h4><p><span class="term">합동 분산</span><span class="en">(pooled variance)</span> \(s_p^2 = \dfrac{(n_1-1)s_1^2 + (n_2-1)s_2^2}{n_1 + n_2 - 2}\)을 쓴다.<br>\((\bar x_1 - \bar x_2) \pm t_{\alpha/2,\,n_1+n_2-2}\; s_p\sqrt{\dfrac1{n_1} + \dfrac1{n_2}}\)</p></div>
+      <div><h4>분산이 다를 수 있을 때</h4><p><span class="term">웰치 구간</span><span class="en">(Welch interval)</span>: 표준 오차 \(\sqrt{s_1^2/n_1 + s_2^2/n_2}\)에 자유도는 웰치–새터스웨이트 근사 \(\nu = \dfrac{(v_1 + v_2)^2}{v_1^2/(n_1-1) + v_2^2/(n_2-1)}\), \(v_i = s_i^2/n_i\).</p></div>
+    </div>
+    <p>합동 구간은 두 분산이 정말 같을 때만 정확하다. 표본 크기가 다르고 분산도 다르면 포함 확률이 크게 틀어질 수 있다. 웰치 구간은 분산이 같을 때도 손해가 거의 없으므로, 요즘 소프트웨어는 웰치를 기본으로 쓴다. 구간이 0을 포함하지 않으면 두 평균이 다르다고 판단할 근거가 된다. 11장의 두 표본 t 검정이 바로 이 판단이다.</p>
+    <div class="sim" id="sim-two">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>장비 A와 B: 차이의 구간이 0을 덮는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-two"></canvas><span class="hint top">흰 원을 끌어 각 장비의 표본 평균을 옮긴다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="tw-m"><button data-value="welch" class="on">웰치</button><button data-value="pool">합동</button></div></div>
+          <label class="ctrl"><span>n<sub>A</sub> <output id="tw-n1-out"></output></span><input type="range" id="tw-n1" min="3" max="40" step="1" value="8"></label>
+          <label class="ctrl"><span>n<sub>B</sub> <output id="tw-n2-out"></output></span><input type="range" id="tw-n2" min="3" max="40" step="1" value="10"></label>
+          <label class="ctrl"><span>s<sub>A</sub> <output id="tw-s1-out"></output></span><input type="range" id="tw-s1" min="0.3" max="4" step="0.1" value="1.4"></label>
+          <label class="ctrl"><span>s<sub>B</sub> <output id="tw-s2-out"></output></span><input type="range" id="tw-s2" min="0.3" max="4" step="0.1" value="2.3"></label>
+          <button class="btn" id="tw-new" type="button">점 배치 새로</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x̄<sub>A</sub> − x̄<sub>B</sub></span><span class="v" id="tw-d">—</span></div>
+        <div class="stat"><span class="k">SE · 자유도</span><span class="v" id="tw-se">—</span></div>
+        <div class="stat"><span class="k">95% 구간</span><span class="v" id="tw-ci">—</span></div>
+        <div class="stat"><span class="k">판단</span><span class="v" id="tw-j" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">점들은 표본 평균과 표준 편차가 정확히 설정값이 되도록 맞췄다. 처음 값은 예제 10.6과 같다. 해볼 것: ① 평균 차이를 1.5에 고정하고 \(n_A\), \(n_B\)를 늘려 구간이 0을 벗어나는 순간을 찾자. ② \(n_A = 4\), \(s_A = 3.5\), \(n_B = 30\), \(s_B = 0.5\)로 두고 합동과 웰치를 번갈아 보자. 합동은 작은 표본의 큰 분산을 큰 표본의 작은 분산으로 희석해 구간을 너무 좁게 만든다. ③ 두 분산이 같고 \(n\)도 같으면 두 방법이 거의 같다.</div>
+    </div>
+    <h3>대응 표본: 같은 웨이퍼를 두 번 잰다</h3>
+    <p>두 계측기를 비교할 때 웨이퍼 7장을 A로 재고 다른 7장을 B로 재면 웨이퍼 사이 산포가 차이에 그대로 섞인다. 같은 웨이퍼 7장을 A와 B로 모두 재면 웨이퍼마다 차이 \(d_i = x_{Ai} - x_{Bi}\)를 계산할 수 있고, 웨이퍼 사이 산포가 빼기에서 사라진다. 이런 설계를 <span class="term">대응 표본</span><span class="en">(paired samples)</span>이라 한다. 구간은 차이 \(d_i\)에 대한 단일 표본 t 구간이다: \(\bar d \pm t_{\alpha/2,n-1}\,s_d/\sqrt n\).</p>
+    <figure class="diagram steps" data-steps="3">
+      <svg viewBox="0 0 800 300" role="img" aria-label="같은 웨이퍼를 두 계측기로 잰 값을 독립 표본으로 보면 구간이 겹치지만, 짝지어 차이를 보면 구간이 0을 벗어나는 과정">
+        <line x1="70" y1="100" x2="730" y2="100" stroke="var(--border)"/>
+        <line x1="70" y1="170" x2="730" y2="170" stroke="var(--border)"/>
+        <text class="t" x="20" y="84" style="font-weight:700">장비 A</text>
+        <text class="t" x="20" y="154" style="font-weight:700">장비 B</text>
+        <g fill="var(--accent)">
+          <circle cx="374.4" cy="84" r="7"/><circle cx="566.4" cy="84" r="7"/><circle cx="195.2" cy="84" r="7"/><circle cx="464" cy="84" r="7"/><circle cx="297.6" cy="84" r="7"/><circle cx="656" cy="84" r="7"/><circle cx="259.2" cy="84" r="7"/>
+        </g>
+        <g fill="var(--accent-2)">
+          <circle cx="310.4" cy="154" r="7"/><circle cx="476.8" cy="154" r="7"/><circle cx="156.8" cy="154" r="7"/><circle cx="387.2" cy="154" r="7"/><circle cx="246.4" cy="154" r="7"/><circle cx="553.6" cy="154" r="7"/><circle cx="195.2" cy="154" r="7"/>
+        </g>
+        <g data-only="1">
+          <line x1="246.2" y1="104" x2="557.6" y2="104" stroke="var(--accent)" stroke-width="3"/>
+          <line x1="196" y1="174" x2="468.6" y2="174" stroke="var(--accent-2)" stroke-width="3"/>
+          <text class="t t-dim" x="400" y="210" text-anchor="middle" style="font-size:12.5px">두 평균의 구간이 크게 겹친다 · 웰치 구간 [−0.90, 1.99] nm는 0을 포함</text>
+        </g>
+        <g data-step="2">
+          <g stroke="var(--text-dim)" stroke-width="1.3" stroke-dasharray="3 3">
+            <line x1="374.4" y1="91" x2="310.4" y2="147"/><line x1="566.4" y1="91" x2="476.8" y2="147"/><line x1="195.2" y1="91" x2="156.8" y2="147"/><line x1="464" y1="91" x2="387.2" y2="147"/><line x1="297.6" y1="91" x2="246.4" y2="147"/><line x1="656" y1="91" x2="553.6" y2="147"/><line x1="259.2" y1="91" x2="195.2" y2="147"/>
+          </g>
+          <text class="t t-dim" x="400" y="40" text-anchor="middle" style="font-size:12.5px">같은 웨이퍼끼리 잇는다 — 선이 모두 같은 방향으로 기운다(A가 늘 조금 높다)</text>
+        </g>
+        <g data-step="3">
+          <line x1="70" y1="262" x2="730" y2="262" stroke="var(--text-dim)"/>
+          <line x1="293.3" y1="228" x2="293.3" y2="272" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <text class="t t-mono" x="293.3" y="288" text-anchor="middle" style="fill:var(--bad)">0</text>
+          <text class="t t-mono" x="506.7" y="288" text-anchor="middle">1</text>
+          <text class="t t-mono" x="720" y="288" text-anchor="middle">2 nm</text>
+          <g fill="var(--accent)">
+            <circle cx="357.3" cy="254" r="5"/><circle cx="378.7" cy="254" r="5"/><circle cx="400" cy="254" r="5"/><circle cx="400" cy="243" r="5"/><circle cx="421.3" cy="254" r="5"/><circle cx="442.7" cy="254" r="5"/><circle cx="464" cy="254" r="5"/>
+          </g>
+          <line x1="375.2" y1="228" x2="443.1" y2="228" stroke="var(--accent)" stroke-width="4"/>
+          <text class="t" x="560" y="232" style="font-size:12.5px;font-weight:700;fill:var(--accent)">차이 d의 t 구간 [0.38, 0.70]</text>
+          <text class="t t-dim" x="20" y="250" style="font-size:12.5px">차이 d</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>같은 웨이퍼 7장을 장비 A와 B로 잰 값을 독립인 두 표본처럼 다루면, 웨이퍼마다 두께가 달라 두 구간이 넓고 크게 겹친다.</li><li>같은 웨이퍼끼리 이으면 모든 선이 같은 쪽으로 기운다. 차이는 웨이퍼 두께와 상관없이 일정하다.</li><li>차이 \(d_i\)만 모으면 산포가 0.17 nm로 작아져, 단일 표본 t 구간 \([0.38, 0.70]\) nm가 0을 확실히 벗어난다. A가 B보다 약 0.5 nm 두껍게 잰다.</li></ol>
+      <figcaption>대응 설계는 웨이퍼 사이 산포를 빼기로 지운다. 같은 자료를 독립 표본으로 분석하면 정보를 버리게 된다. 반대로 짝이 없는 자료를 대응 분석해서도 안 된다.</figcaption>
+    </figure>
+    <h3>두 비율의 차이</h3>
+    <p>두 장비의 수율 비교처럼 비율의 차이는 \(\hat p_1 - \hat p_2 \pm z_{\alpha/2}\sqrt{\hat p_1(1-\hat p_1)/n_1 + \hat p_2(1-\hat p_2)/n_2}\)로 구간을 만든다. 왈드 구간과 같은 약점이 있으니 각 표본의 성공과 실패가 10개 이상일 때 쓴다. 두 분산의 비 \(\sigma_1^2/\sigma_2^2\)은 \(F\) 분포로 구간을 만든다: \(\left[\dfrac{s_1^2/s_2^2}{F_{\alpha/2,\nu_1,\nu_2}},\ \dfrac{s_1^2/s_2^2}{F_{1-\alpha/2,\nu_1,\nu_2}}\right]\). 분산 구간처럼 정규성에 예민하다.</p>
+    <figure class="mini" id="mini-p2">
+      <div class="mini-view"><canvas id="cv-p2"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>장비 A 양품 (/400) <output id="p2-a-out"></output></span><input type="range" id="p2-a" min="300" max="400" step="1" value="380"></label><label class="ctrl"><span>장비 B 양품 (/400) <output id="p2-b-out"></output></span><input type="range" id="p2-b" min="300" max="400" step="1" value="364"></label><span class="readout" id="p2-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>다이 400개씩 검사한 두 장비의 수율과 각각의 95% 구간(위), 그리고 차이 \(p_A - p_B\)의 95% 구간(아래). 두 구간이 살짝 겹치더라도 차이의 구간은 0을 벗어날 수 있다. 개별 구간이 겹치는지로 판단하는 것은 지나치게 보수적이다.</figcaption>
+    </figure>
+    <div class="example" data-title="두 식각 장비의 CD 차이(웰치)">
+      <p>장비 A에서 8장, 장비 B에서 10장을 처리해 CD 평균과 표준 편차가 A: 52.1 nm, 1.4 nm, B: 50.6 nm, 2.3 nm였다. \(\mu_A - \mu_B\)의 95% 웰치 구간을 구하고, 합동 구간과 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 표준 편차가 1.6배 차이 나고 표본 크기도 달라서 웰치 구간이 기본이다.</div>
+        <div class="step"><b>풀이</b> \(v_A = 1.96/8 = 0.245\), \(v_B = 5.29/10 = 0.529\), \(\mathrm{SE} = \sqrt{0.774} = 0.880\).<br>\(\nu = 0.774^2/(0.245^2/7 + 0.529^2/9) = 0.599/0.03967 = 15.1\), \(t_{0.025,15.1} \approx 2.130\).<br>\(1.5 \pm 2.130 \times 0.880 = [-0.37,\ 3.37]\) nm.<br>합동: \(s_p = \sqrt{(7 \times 1.96 + 9 \times 5.29)/16} = 1.958\), \(\mathrm{SE} = 1.958\sqrt{1/8 + 1/10} = 0.929\), \(t_{0.025,16} = 2.120\) → \([-0.47,\ 3.47]\) nm.</div>
+        <div class="answer">웰치 [−0.37, 3.37] nm (ν ≈ 15.1), 합동 [−0.47, 3.47] nm</div>
+        <div class="step"><b>검토</b> 두 구간 모두 0을 포함하므로, 1.5 nm 차이는 이 표본 크기로는 우연과 구별되지 않는다. 자유도를 내림해 15로 쓰는 교재도 있다(\(t = 2.131\), 결과는 거의 같다).</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-two" data-title="두 집단 비교 구간 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="sample-size">
+    <h2>표본 크기 결정</h2>
+    <p>구간 공식을 거꾸로 쓰면 실험 계획이 된다. 오차 한계를 \(E\) 이하로 만들고 싶으면 \(E = z_{\alpha/2}\sigma/\sqrt n\)을 \(n\)에 대해 푼다.</p>
+    <div class="formula">$$n = \left(\frac{z_{\alpha/2}\,\sigma}{E}\right)^2,\qquad n = \frac{z_{\alpha/2}^2\,p(1-p)}{E^2}\qquad(\text{올림})$$<div class="where">평균에는 \(\sigma\)의 사전 추정값(과거 자료, 예비 실험)이 필요하다. 비율에는 예상 \(p\)가 필요한데, 모르면 \(p(1-p)\)가 가장 큰 \(p = 0.5\)를 넣어 보수적으로 잡는다. 정밀도를 두 배로 높이려면(\(E\)를 절반으로) 표본이 네 배 필요하다.</div></div>
+    <p>\(\sigma\)를 모르고 t 구간을 쓸 계획이라면 \(t_{\alpha/2,n-1}\)이 \(n\)에 의존하므로, z 공식으로 얻은 \(n\)에서 시작해 \(t\)로 바꿔 몇 번 반복한다. 보통 1–3개가 늘어난다. 또 \(s\)는 표본마다 흔들리므로 실제 오차 한계가 목표를 넘을 확률이 절반쯤 된다. 넉넉히 잡는 이유다.</p>
+    <div class="sim" id="sim-plan">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>표본 크기 설계실</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-plan"></canvas><span class="hint top">흰 원(n)을 곡선 따라, 빨간 원(목표 E)을 위아래로 끈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>추정 대상</span><div class="seg" id="pl-m"><button data-value="prop" class="on">수율(비율)</button><button data-value="mean">평균</button></div></div>
+          <label class="ctrl"><span><span id="pl-a-name">예상 수율 p</span> <output id="pl-a-out"></output></span><input type="range" id="pl-a" min="0.5" max="0.999" step="0.001" value="0.98"></label>
+          <div class="ctrl"><span>신뢰 수준</span><div class="seg" id="pl-c"><button data-value="0.9">90%</button><button data-value="0.95" class="on">95%</button><button data-value="0.99">99%</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="pl-check" type="button">이 n으로 확정</button><button class="btn" id="pl-sim" type="button">200번 검증</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고른 n</span><span class="v" id="pl-n">—</span></div>
+        <div class="stat"><span class="k">그때 오차 한계</span><span class="v" id="pl-e">—</span></div>
+        <div class="stat"><span class="k">검증: |p̂ − p| ≤ E</span><span class="v" id="pl-v">—</span></div>
+        <div class="stat"><span class="k">과녁</span><span class="v" id="pl-g" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note"><b>과녁:</b> 예상 수율 98%인 제품에서 수율을 ±0.5%p 안으로 알려면(95%) 다이가 최소 몇 개 필요할까? 목표선과 곡선을 보며 흰 원을 끌고 "확정"을 누른다. 조건을 만족하는 가장 작은 \(n\)보다 2% 이상 크면 "낭비", 모자라면 "부족"이다. 해볼 것: ① 성공한 뒤 목표 \(E\)를 절반으로 끌어 내리면 필요한 \(n\)이 정확히 4배가 되는지 보자. ② 예상 수율을 0.5로 두면 같은 \(E\)에 \(n\)이 12배 넘게 필요하다. ③ "200번 검증"은 고른 \(n\)으로 실제 표본을 200번 뽑아 \(\hat p\)가 목표 범위 안에 든 비율을 센다.</div>
+    </div>
+    <div class="tangle" id="tg-rep">
+      <p>계측기의 반복성이 \(\sigma_m\) = <span class="tn" data-var="s" data-min="0.1" data-max="3" data-step="0.05" data-unit=" nm">0.60</span>이다. 반복 측정 평균의 95% 오차 한계를 ±<span class="tn" data-var="E" data-min="0.05" data-max="2" data-step="0.01" data-unit=" nm">0.25</span>로 만들려면 같은 지점을 <span class="tn-out" data-out="k"></span>번 재야 한다. 그때 실제 오차 한계는 ±<span class="tn-out" data-out="Ea"></span>이다. 측정 한 번이면 ±<span class="tn-out" data-out="E1"></span>, 네 번이면 ±<span class="tn-out" data-out="E4"></span>다.</p>
+    </div>
+    <div class="callout semi"><strong>측정을 몇 번 반복할까</strong> 반복 측정의 평균은 계측기 반복성 \(\sigma_m\)을 \(1/\sqrt k\)로 줄인다. 그러나 줄어드는 것은 반복성뿐이다. 재현성(작업자·날짜·장비 간 차이)과 시료 자체의 산포, 계측기의 치우침은 같은 자리를 여러 번 재도 줄지 않는다. 그래서 CD-SEM이나 막두께 계측에서는 정밀도 대 공차 비(P/T)를 먼저 보고, 반복 횟수는 반복성 몫이 지배적일 때만 늘린다. 또 반복 측정은 전자빔 손상이나 시료 오염처럼 측정 자체가 시료를 바꾸는 효과도 키운다. → <a href="https://semi.euiyun.com/litho/chapters/cd.html">LithoBook · CD 제어와 계측(계측기도 흔들린다: P/T 비)</a></div>
+    <div class="example" data-title="수율 구간과 막두께 구간에 필요한 표본">
+      <p>(가) 예상 수율이 약 90%인 제품에서 수율을 95% 신뢰로 ±2%p 안에 추정하려면 다이가 몇 개 필요한가? 예상 수율을 모를 때는? (나) \(\sigma \approx 2\) nm인 막두께의 평균을 95% 신뢰로 ±0.5 nm 안에 추정하려면 몇 점을 재야 하는가?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 비율은 \(n = z^2p(1-p)/E^2\), 평균은 \(n = (z\sigma/E)^2\)를 쓰고 올림한다.</div>
+        <div class="step"><b>풀이</b> (가) \(n = 1.96^2 \times 0.9 \times 0.1/0.02^2 = 3.8416 \times 0.09/0.0004 = 864.4\) → 865개. \(p\)를 모르면 \(p = 0.5\): \(3.8416 \times 0.25/0.0004 = 2401\)개.<br>(나) \(n = (1.96 \times 2/0.5)^2 = 7.84^2 = 61.5\) → 62점.</div>
+        <div class="answer">(가) 865개(모르면 2401개), (나) 62점</div>
+        <div class="step"><b>검토</b> 수율이 1에 가까울수록 \(p(1-p)\)가 작아 필요한 표본이 준다. 하지만 그런 영역에서는 왈드 근사도 나빠지니, 실제 구간은 윌슨으로 계산한다. (나)에서 t 구간을 쓰면 \(t_{0.025,61} = 2.000\)이라 \(n = 64\)로 조금 는다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-n" data-title="표본 크기 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="prediction">
+    <h2>예측 구간과 공차 구간</h2>
+    <p>신뢰 구간은 모평균 \(\mu\)를 겨냥한다. 그런데 엔지니어가 묻는 것은 다른 경우가 많다. "다음에 만들 웨이퍼 한 장의 두께는 어디쯤일까?" "규격을 어디에 그어야 칩의 99%가 들어올까?" 이 질문들은 각각 다른 구간이 답한다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 280" role="img" aria-label="모집단 분포 아래에 좁은 신뢰 구간, 더 넓은 예측 구간, 가장 넓은 공차 구간을 비교한 그림">
+        <path d="M80,150 C 200,150 260,30 400,30 S 600,150 720,150" fill="none" stroke="var(--accent-2)" stroke-width="2.2"/>
+        <line x1="60" y1="150" x2="740" y2="150" stroke="var(--text-dim)"/>
+        <line x1="400" y1="24" x2="400" y2="150" stroke="var(--accent-2)" stroke-dasharray="4 3"/>
+        <text class="t" x="410" y="22" style="fill:var(--accent-2);font-weight:700">μ</text>
+        <text class="t t-dim" x="612" y="106" style="font-size:12px">모집단 N(μ, σ²)</text>
+        <line x1="370" y1="182" x2="430" y2="182" stroke="var(--accent)" stroke-width="6"/>
+        <text class="t" x="450" y="187" style="font-size:12.5px"><tspan style="font-weight:700">신뢰 구간</tspan> x̄ ± t·s/√n — μ를 겨냥, n→∞이면 폭 → 0</text>
+        <line x1="245" y1="214" x2="555" y2="214" stroke="var(--accent-2)" stroke-width="6"/>
+        <text class="t" x="565" y="219" style="font-size:12.5px"><tspan style="font-weight:700">예측 구간</tspan> 다음 하나</text>
+        <text class="t t-dim" x="565" y="234" style="font-size:11.5px">x̄ ± t·s·√(1+1/n) → ±1.96σ</text>
+        <line x1="150" y1="254" x2="650" y2="254" stroke="var(--warn)" stroke-width="6"/>
+        <text class="t" x="660" y="250" style="font-size:12.5px;font-weight:700">공차 구간</text>
+        <text class="t t-dim" x="660" y="266" style="font-size:11.5px">99%를 95% 신뢰로 · x̄ ± k·s</text>
+      </svg>
+      <figcaption>같은 자료에서 세 구간. 신뢰 구간은 평균 하나의 불확실성, 예측 구간은 평균의 불확실성에 개별값의 산포를 더한 것, 공차 구간은 모집단의 정해진 비율을 덮도록 만든 것이다.</figcaption>
+    </figure>
+    <p>새 관측값 \(X_{\text{new}}\)는 표본과 독립이다. \(X_{\text{new}} - \bar X\)의 분산은 \(\sigma^2 + \sigma^2/n\)이다. 개별값의 산포 \(\sigma^2\)에 평균을 모르는 몫 \(\sigma^2/n\)이 더해진다. 여기서 \(\sigma\)를 \(s\)로 바꾸면 <span class="term">예측 구간</span><span class="en">(prediction interval, PI)</span>이 나온다.</p>
+    <div class="formula">$$\bar x \pm t_{\alpha/2,\,n-1}\, s\sqrt{1 + \frac1n}\qquad\text{(새 관측 하나에 대한 } 100(1-\alpha)\%\text{ 예측 구간)}$$<div class="where">\(n \to \infty\)이면 \(\bar x \pm z_{\alpha/2}\sigma\)로 간다. 표본을 아무리 늘려도 개별값의 산포는 사라지지 않는다. 신뢰 구간과 가장 크게 다른 점이다. 정규성 가정에 예민하다(꼬리를 겨냥하기 때문이다).</div></div>
+    <p>규격 한계를 정할 때는 "다음 하나"가 아니라 "모집단의 99%"를 덮는 범위가 필요하다. 모집단 비율 \(P\) 이상을 신뢰 수준 \(1-\alpha\)로 덮는 구간을 <span class="term">공차 구간</span><span class="en">(tolerance interval)</span>이라 하고, 정규 모집단에서는 \(\bar x \pm k\,s\) 꼴이다. 계수 \(k\)는 표에서 찾거나 하우(Howe)의 근사로 계산한다.</p>
+    <div class="formula">$$k \approx z_{(1-P)/2}\sqrt{\frac{(n-1)(1 + 1/n)}{\chi^2_{1-\alpha,\,n-1}}}$$<div class="where">\(\chi^2_{1-\alpha,n-1}\)은 하위 \(\alpha\) 점(상위 꼬리 관례로 \(1-\alpha\))이다. \(P = 0.99\), 신뢰 95%에서 \(k\)는 \(n = 10\)이면 4.44, \(n = 20\)이면 3.62, \(n = 50\)이면 3.13이고, \(n \to \infty\)이면 \(z_{0.005} = 2.576\)으로 간다. 정확한 표값과의 차이는 \(n \ge 10\)에서 0.3% 이내다.</div></div>
+    <div class="predict" data-for="sim-pti">
+      <p>표본 크기 \(n\)을 계속 늘리면 95% 예측 구간의 반폭은 어디로 갈까?</p>
+      <div class="opts"><button class="opt">0 — 신뢰 구간처럼 줄어든다</button><button class="opt" data-correct>약 1.96σ — 개별값의 산포는 남는다</button><button class="opt">무한대 — 관측이 늘수록 극단값이 많아진다</button></div>
+      <div class="quiz-exp">\(t_{\alpha/2,n-1}\, s\sqrt{1 + 1/n} \to z_{0.025}\,\sigma = 1.96\sigma\)다. 평균의 불확실성 \(\sigma^2/n\)만 사라진다. 공차 구간(99%)도 \(2.576\sigma\)라는 바닥으로 간다.</div>
+    </div>
+    <div class="sim" id="sim-pti">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 구간의 폭 겨루기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div style="position:relative"><canvas id="cv-pti"></canvas><span class="hint top">위: 이번 표본과 세 구간</span></div><div style="position:relative"><canvas id="cv-pti2"></canvas><span class="hint top">흰 원을 끌어 n을 바꾼다</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>표본 크기 n <output id="pt-n-out"></output></span><input type="range" id="pt-n" min="3" max="200" step="1" value="10"></label>
+          <div class="ctrl"><span>공차 구간이 덮을 비율 P</span><div class="seg" id="pt-P"><button data-value="0.9">90%</button><button data-value="0.95">95%</button><button data-value="0.99" class="on">99%</button></div></div>
+          <div class="btn-row"><button class="btn" id="pt-new" type="button">새 표본</button><button class="btn" id="pt-next" type="button">다음 하나 뽑기</button><button class="btn primary" id="pt-ver" type="button">1000번 검증</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반폭: CI · PI · TI</span><span class="v" id="pt-w" style="font-size:14px">—</span></div>
+        <div class="stat"><span class="k">PI가 다음 값을 덮은 비율</span><span class="v" id="pt-pc">—</span></div>
+        <div class="stat"><span class="k">TI가 P 이상 덮은 비율</span><span class="v" id="pt-tc">—</span></div>
+      </div>
+      <div class="sim-note">모집단은 \(N(450, 12^2)\) mV(문턱 전압)다. 오른쪽 그래프의 곡선은 \(s = \sigma\)로 둔 세 반폭이고, 점선은 바닥 \(1.96\sigma\)와 \(z_{(1-P)/2}\sigma\)다. 해볼 것: ① \(n\)을 3에서 200까지 끌면서 CI는 0으로, PI와 TI는 바닥으로 가는 것을 보자. ② "다음 하나 뽑기"로 새 값(다이아몬드)이 PI 안에 드는지 보자. 표본 하나를 고정하면 그 비율이 95%에서 꽤 벗어날 수 있다. 95%는 표본과 새 값을 함께 새로 뽑는 절차의 성공률이다. ③ "1000번 검증"은 표본과 새 값을 함께 새로 뽑아 PI를 확인하고, 그 표본으로 TI를 만들어 그 TI가 모집단의 \(P\) 이상을 덮었는지 센다. 결과가 95% 근처면 "P를 95% 신뢰로 덮는다"가 확인된다.</div>
+    </div>
+    <figure class="mini" id="mini-tcov">
+      <div class="mini-view"><canvas id="cv-tcov"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>n <output id="tv-n-out"></output></span><input type="range" id="tv-n" min="5" max="100" step="1" value="20"></label><div class="seg" id="tv-k"><button data-value="k" class="on">x̄ ± k·s</button><button data-value="z">x̄ ± 2.576·s (순진)</button></div><button class="btn" id="tv-go" type="button">500번 더</button><span class="readout" id="tv-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>표본마다 만든 구간이 정규 모집단의 몇 %를 실제로 덮는지 쌓은 히스토그램. 빨간 선은 \(P = 99\%\)다. 공차 계수 \(k\)를 쓰면 히스토그램의 약 95%가 선 오른쪽에 있다. \(\pm 2.576s\)를 그대로 쓰면 60% 가까이가 선 왼쪽에 떨어진다. \(s\)와 \(\bar x\)의 불확실성을 무시한 대가다.</figcaption>
+    </figure>
+    <div class="example" data-title="문턱 전압의 예측 구간과 공차 구간">
+      <p>트랜지스터 20개의 문턱 전압이 \(\bar x = 0.452\) V, \(s = 0.012\) V였다. (가) 평균의 95% 신뢰 구간, (나) 다음에 잴 트랜지스터 하나의 95% 예측 구간, (다) 모집단의 99%를 95% 신뢰로 덮는 공차 구간을 구하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 세 구간 모두 \(\bar x \pm (\text{계수}) \times s\) 꼴이고 계수만 다르다. \(t_{0.025,19} = 2.093\), \(\chi^2_{0.95,19} = 10.117\).</div>
+        <div class="step"><b>풀이</b> (가) \(2.093 \times 0.012/\sqrt{20} = 0.0056\) → \([0.4464,\ 0.4576]\) V.<br>(나) \(2.093 \times 0.012 \times \sqrt{1.05} = 0.0257\) → \([0.4263,\ 0.4777]\) V.<br>(다) \(k = 2.576\sqrt{19 \times 1.05/10.117} = 3.617\), \(3.617 \times 0.012 = 0.0434\) → \([0.4086,\ 0.4954]\) V.</div>
+        <div class="answer">CI [0.446, 0.458] V, PI [0.426, 0.478] V, TI [0.409, 0.495] V</div>
+        <div class="step"><b>검토</b> 반폭의 비가 1 : 4.6 : 7.7이다. 평균의 신뢰 구간을 규격으로 착각하면 칩 대부분이 규격 밖으로 나간다. 정확한 표값은 \(k = 3.621\)로 근사와 0.1% 차이다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>테스트 한계는 공차 구간과 가드밴드로 정한다</strong> 특성 평가 단계에서 수십 개 칩을 측정해 양산 테스트 한계를 정할 때, 측정값의 평균 ± 3s를 그대로 쓰면 표본이 작을수록 실제 모집단을 덜 덮는다. 공차 계수 \(k\)가 그 불확실성을 반영한다. 그다음 계측기 오차만큼 한계를 안쪽으로 당기는 가드밴드를 둔다. 측정 오차 때문에 불량이 합격으로 새는 유출과 양품이 떨어지는 과잉 불량 사이의 균형점이다. → <a href="https://semi.euiyun.com/test/chapters/limits.html">TestBook · 셔무, 특성 평가와 가드밴드(테스트 한계와 가드밴드)</a></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="bootstrap">
+    <h2>부트스트랩</h2>
+    <p>지금까지의 구간은 모두 피벗량의 분포를 알아야 했다. 그런데 중앙값, 절사 평균, 공정 능력 지수 \(C_{pk}\), 두 수율의 비, 상관 계수처럼 표본 분포 공식이 없거나 복잡한 통계량도 많다. <span class="term">부트스트랩</span><span class="en">(bootstrap)</span>은 이 문제를 계산으로 푼다. 모집단 대신 표본 자체를 모집단으로 보고, 표본에서 같은 크기 \(n\)을 <em>복원 추출</em>로 다시 뽑아 통계량을 계산하는 일을 수천 번 되풀이한다. 그 값들의 분포가 통계량의 표본 분포를 흉내 낸다.</p>
+    <div class="formula">$$\text{재표본 } x^*_1, \dots, x^*_n \overset{\text{복원}}{\sim} \{x_1, \dots, x_n\},\qquad \hat\theta^*_b = h(x^*_1, \dots, x^*_n),\quad b = 1, \dots, B$$<div class="where">부트스트랩 표준 오차는 \(\hat\theta^*_b\)들의 표준 편차다. 가장 간단한 <span class="term">백분위 구간</span><span class="en">(percentile interval)</span>은 \(\hat\theta^*\)들의 2.5% 분위수와 97.5% 분위수 사이다. 보통 \(B\)는 1000–10000번이다.</div></div>
+    <p>복원 추출이므로 재표본에는 같은 값이 여러 번 들어가고, 어떤 값은 빠진다. 원래 값 하나가 재표본에 한 번도 뽑히지 않을 확률은 \((1 - 1/n)^n\)이다.</p>
+    <div class="tangle" id="tg-uniq">
+      <p>자료가 <span class="tn" data-var="n" data-min="2" data-max="1000" data-step="1">15</span>개이면 원래 값 하나가 재표본에서 빠질 확률은 \((1 - 1/n)^n\) = <span class="tn-out" data-out="miss"></span>이다. 재표본은 평균적으로 서로 다른 값 <span class="tn-out" data-out="uniq"></span>개(<span class="tn-out" data-out="frac"></span>)로 이루어진다. \(n\)이 커지면 이 확률은 \(e^{-1}\) = 0.368로 간다.</p>
+    </div>
+    <figure class="mini" id="mini-rs">
+      <div class="mini-view"><canvas id="cv-rs"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>n <output id="rs-n-out"></output></span><input type="range" id="rs-n" min="4" max="30" step="1" value="10"></label><button class="btn" id="rs-go" type="button">재표본 하나</button><button class="btn" id="rs-100" type="button">100번</button><span class="readout" id="rs-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>번호 붙은 원래 자료 \(n\)개(위)에서 복원 추출로 재표본(아래)을 만든다. 숫자는 각 값이 몇 번 뽑혔는지, 빈칸은 한 번도 뽑히지 않은 값이다. 반복할수록 "서로 다른 값의 비율"의 평균이 \(1 - (1 - 1/n)^n\)으로 모인다.</figcaption>
+    </figure>
+    <div class="sim" id="sim-boot">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부트스트랩 기계</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-boot"></canvas><span class="hint top">위쪽 자료 점을 좌우로 끌 수 있다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>통계량</span><div class="seg" id="bt-s"><button data-value="mean">평균</button><button data-value="median" class="on">중앙값</button><button data-value="sd">표준 편차</button><button data-value="cpk">C<sub>pk</sub></button></div></div>
+          <div class="ctrl"><span>재표집</span><div class="btn-row"><button class="btn" id="bt-1" type="button">1번</button><button class="btn" id="bt-10" type="button">10번</button><button class="btn" id="bt-1000" type="button">1000번</button><button class="btn primary" id="bt-play" type="button"></button></div></div>
+          <div class="btn-row"><button class="btn" id="bt-out" type="button">이상값 하나 넣기</button><button class="btn" id="bt-reset" type="button">원래 자료</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">재표본 수 B</span><span class="v" id="bt-B">—</span></div>
+        <div class="stat"><span class="k">원래 통계량</span><span class="v" id="bt-th">—</span></div>
+        <div class="stat"><span class="k">부트스트랩 SE</span><span class="v" id="bt-se">—</span></div>
+        <div class="stat"><span class="k">95% 백분위 구간</span><span class="v" id="bt-ci" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">자료는 문턱 전압 15개(mV), 규격은 420–480 mV다. \(C_{pk} = \min(\mathrm{USL} - \bar x,\ \bar x - \mathrm{LSL})/(3s)\). 1번 뽑기는 공이 날아가는 모습으로 재표본을 보여 준다. 해볼 것: ① 평균을 고르고 1000번 뽑아, 백분위 구간을 t 구간(회색 막대)과 비교하자. 거의 같다. ② 중앙값의 부트스트랩 분포는 매끈하지 않고 몇 개 값에 몰린다. 자료 값 자체가 중앙값이 되기 때문이다(\(n\)이 작을 때 부트스트랩의 약점). ③ \(C_{pk}\)를 고르면 점추정값이 1.42인데 백분위 구간의 하한은 1.1 근처다. 자료 15개로는 \(C_{pk} \ge 1.33\)을 보증할 수 없다. "이상값 하나 넣기"를 누르면 어떻게 될까?</div>
+    </div>
+    <div class="callout warn"><strong>부트스트랩이 해 주지 못하는 것</strong><p>부트스트랩은 표본이 모집단을 잘 대표한다는 가정 위에 서 있다. 표본이 작으면(\(n < 15\) 정도) 재표본이 원래 값들만 섞어 쓰므로 꼬리를 보지 못하고, 백분위 구간이 너무 좁아진다. 최댓값이나 최솟값처럼 극단값에 의존하는 통계량은 특히 나쁘다. 자료가 독립이 아니면(시계열, 웨이퍼 안 다이) 개별 값이 아니라 블록이나 웨이퍼 단위로 재표집해야 한다. 치우침을 보정한 BCa 구간 같은 개선판도 있다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 330" role="img" aria-label="알고 싶은 대상에 따라 쓸 구간을 고르는 지도">
+        <rect x="300" y="12" width="200" height="40" rx="10" fill="var(--accent-soft, var(--surface))" stroke="var(--accent)" stroke-width="1.6"/>
+        <text class="t" x="400" y="37" text-anchor="middle" style="font-weight:700">무엇을 알고 싶은가?</text>
+        <g stroke="var(--text-dim)" stroke-width="1.3" fill="none">
+          <path d="M400 52 L400 70 M90 70 L710 70 M90 70 L90 88 M245 70 L245 88 M400 70 L400 88 M555 70 L555 88 M710 70 L710 88"/>
+        </g>
+        <g class="f-surface" stroke="var(--border)">
+          <rect x="20" y="88" width="140" height="40" rx="8"/><rect x="175" y="88" width="140" height="40" rx="8"/><rect x="330" y="88" width="140" height="40" rx="8"/><rect x="485" y="88" width="140" height="40" rx="8"/><rect x="640" y="88" width="140" height="40" rx="8"/>
+        </g>
+        <text class="t" x="90" y="113" text-anchor="middle" style="font-weight:700">평균 μ</text>
+        <text class="t" x="245" y="113" text-anchor="middle" style="font-weight:700">비율 p</text>
+        <text class="t" x="400" y="113" text-anchor="middle" style="font-weight:700">산포 σ</text>
+        <text class="t" x="555" y="113" text-anchor="middle" style="font-weight:700">두 집단 차이</text>
+        <text class="t" x="710" y="113" text-anchor="middle" style="font-weight:700">개별값·규격</text>
+        <g class="t" style="font-size:12px">
+          <text x="90" y="152" text-anchor="middle">σ 앎 → z 구간</text>
+          <text x="90" y="172" text-anchor="middle">σ 모름 → t 구간</text>
+          <text x="90" y="192" text-anchor="middle" class="t-dim">한쪽만 → 단측 한계</text>
+          <text x="245" y="152" text-anchor="middle">윌슨(기본)</text>
+          <text x="245" y="172" text-anchor="middle">정확(클로퍼–피어슨)</text>
+          <text x="245" y="192" text-anchor="middle" class="t-dim">0 불량 → 3/n 상한</text>
+          <text x="400" y="152" text-anchor="middle">χ² 구간</text>
+          <text x="400" y="172" text-anchor="middle" class="t-dim">정규성에 예민</text>
+          <text x="400" y="192" text-anchor="middle" class="t-dim">두 σ의 비 → F</text>
+          <text x="555" y="152" text-anchor="middle">독립 → 웰치</text>
+          <text x="555" y="172" text-anchor="middle">짝 → 차이의 t</text>
+          <text x="555" y="192" text-anchor="middle">비율 → p̂₁ − p̂₂</text>
+          <text x="710" y="152" text-anchor="middle">다음 하나 → 예측</text>
+          <text x="710" y="172" text-anchor="middle">대부분 → 공차</text>
+        </g>
+        <rect x="175" y="226" width="450" height="40" rx="10" class="f-surface" stroke="var(--border)" stroke-dasharray="5 4"/>
+        <text class="t" x="400" y="251" text-anchor="middle" style="font-size:12.5px">공식이 없는 통계량(중앙값, C<tspan baseline-shift="sub" style="font-size:9px">pk</tspan>, 비, 상관) → 부트스트랩</text>
+        <text class="t t-dim" x="400" y="300" text-anchor="middle" style="font-size:12.5px">계획 단계: 목표 오차 한계 E → n = (zσ/E)² 또는 z²p(1−p)/E²</text>
+      </svg>
+      <figcaption>이 장의 구간 고르기 지도. 어느 구간이든 "추정값 ± 임계값 × 표준 오차" 꼴이거나, 피벗량의 분포를 뒤집어 만든다. 공식이 없으면 재표집이 그 분포를 대신 만든다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>신뢰 구간 \([L, U]\)는 \(P(L \le \theta \le U) = 1-\alpha\)를 만족하는 확률 구간이다. 흔들리는 것은 구간이고 \(\theta\)는 상수다. 95%는 절차의 장기 성공률이며, 구간 100개 중 놓치는 개수는 \(\mathrm{Bin}(100, 0.05)\)를 따른다. 실제 성공률을 포함 확률이라 한다.</li>
+      <li>피벗량을 뒤집어 구간을 만든다. 평균은 \(\bar x \pm z_{\alpha/2}\sigma/\sqrt n\)(σ 앎), \(\bar x \pm t_{\alpha/2,n-1}s/\sqrt n\)(σ 모름)이다. \(s\)에 1.96을 쓰면 \(n = 4\)에서 포함 확률이 86%로 떨어진다. 한쪽만 필요하면 \(\alpha\)를 한 꼬리에 모은 단측 한계를 쓴다.</li>
+      <li>비율은 왈드 \(\hat p \pm z\sqrt{\hat p(1-\hat p)/n}\)보다 윌슨 점수 구간이나 클로퍼–피어슨 정확 구간이 낫다. 왈드는 \(p\)가 0이나 1에 가까우면 무너진다(\(p = 0.99\), \(n = 100\)에서 63%). 불량 0개이면 단측 상한 \(1 - \alpha^{1/n} \approx 3/n\)(95%)이다.</li>
+      <li>분산은 \([(n-1)s^2/\chi^2_{\alpha/2},\ (n-1)s^2/\chi^2_{1-\alpha/2}]\)이고, 위쪽으로 긴 비대칭 구간이다. \(n = 10\)이면 \(\sigma\)의 구간이 \(s\)의 0.69–1.83배다. 정규성이 깨지면 포함 확률이 크게 틀리고 \(n\)을 늘려도 고쳐지지 않는다.</li>
+      <li>두 평균의 차이는 웰치 구간(기본)이나 합동 구간으로, 짝지은 자료는 차이 \(d_i\)의 t 구간으로, 두 비율은 \(\hat p_1 - \hat p_2 \pm z\cdot\mathrm{SE}\)로 만든다. 구간이 0을 포함하지 않으면 차이가 있다는 근거다.</li>
+      <li>표본 크기는 \(n = (z\sigma/E)^2\), \(n = z^2p(1-p)/E^2\)(모르면 \(p = 0.5\))로 정한다. 정밀도를 두 배로 하려면 네 배가 든다. 반복 측정은 반복성만 \(1/\sqrt k\)로 줄인다.</li>
+      <li>예측 구간 \(\bar x \pm t\,s\sqrt{1 + 1/n}\)은 다음 하나를, 공차 구간 \(\bar x \pm k s\)는 모집단의 비율 \(P\)를 겨냥한다. \(n \to \infty\)이면 CI → 0, PI → \(1.96\sigma\), TI → \(z_{(1-P)/2}\sigma\)다. 공식이 없는 통계량은 부트스트랩 재표집의 백분위 구간으로 추정하되, 작은 표본과 극단값 통계량에서는 조심한다.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="problems" id="problems">
+    <h2>연습문제</h2>
+    <p>필요하면 부록 A의 분포 계산기를 쓴다. 따로 말이 없으면 신뢰 수준은 95%, 구간은 양측이고, 측정값은 정규 분포를 따른다고 본다. 답이 ±1% 이내면 정답이다(따로 적은 문제 제외).</p>
+    <div class="problem-set">
+      <div class="problem" data-level="1" data-topic="z 구간" data-answer="12.204; 12.596" data-label="하한 =; 상한 =">
+        <div class="prob-q"><p>\(\sigma = 0.5\)로 알려진 공정에서 25개를 재 평균 12.4를 얻었다. 모평균의 95% 신뢰 구간을 구하라.</p></div>
+        <div class="prob-hint">표준 오차는 \(0.5/\sqrt{25} = 0.1\)이다.</div>
+        <div class="prob-sol"><p>\(E = 1.96 \times 0.1 = 0.196\). 구간 \(12.4 \pm 0.196 = [12.204,\ 12.596]\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="오차 한계" data-answer="0.822" data-label="E =">
+        <div class="prob-q"><p>\(\sigma = 3\), \(n = 36\)일 때 모평균의 90% 신뢰 구간의 오차 한계 \(E\)는?</p></div>
+        <div class="prob-sol"><p>\(z_{0.05} = 1.645\). \(E = 1.645 \times 3/6 = 0.822\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="신뢰 구간의 해석">
+        <div class="prob-q"><p>막두께 평균의 95% 신뢰 구간이 [99.3, 101.3] nm로 계산되었다. 옳은 해석은?</p></div>
+        <div class="prob-choices"><button>참 평균이 이 구간에 있을 확률이 0.95다</button><button>웨이퍼의 95%가 99.3–101.3 nm 사이에 있다</button><button data-correct>같은 방법으로 구간을 거듭 만들면 그중 약 95%가 참 평균을 포함한다</button><button>다시 측정하면 표본 평균이 95% 확률로 이 구간에 들어간다</button></div>
+        <div class="prob-sol"><p>95%는 절차의 성공률이다. 계산된 구간 하나는 참 평균을 포함하거나 포함하지 않는다. 개별 웨이퍼의 95%를 덮는 것은 공차 구간의 몫이고, 다음 표본 평균의 위치는 구간의 중심(\(\bar x\))이 아니라 \(\mu\) 주위에서 흔들린다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="t 구간" data-answer="4.914; 5.486" data-label="하한 =; 상한 =">
+        <div class="prob-q"><p>10개의 측정값에서 \(\bar x = 5.2\), \(s = 0.4\)를 얻었다. 모평균의 95% 신뢰 구간은? (\(t_{0.025,9} = 2.262\))</p></div>
+        <div class="prob-sol"><p>\(E = 2.262 \times 0.4/\sqrt{10} = 0.286\). 구간 \([4.914,\ 5.486]\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="t 구간(자료)" data-answer="2.303; 2.484" data-label="하한 =; 상한 =" data-unit="nm; nm">
+        <div class="prob-q"><p>게이트 산화막 두께를 6곳에서 재 2.31, 2.45, 2.38, 2.52, 2.29, 2.41 nm를 얻었다. 평균 두께의 95% 신뢰 구간을 구하라.</p></div>
+        <div class="prob-hint">\(\bar x\)와 \(s\)를 먼저 구하고 \(t_{0.025,5} = 2.571\)을 쓴다.</div>
+        <div class="prob-sol"><p>\(\bar x = 14.36/6 = 2.3933\), \(s = 0.0864\), \(s/\sqrt6 = 0.0353\). \(E = 2.571 \times 0.0353 = 0.0907\). 구간 \([2.303,\ 2.484]\) nm.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="윌슨 구간" data-answer="0.699; 0.972" data-label="하한 =; 상한 =">
+        <div class="prob-q"><p>다이 20개 중 18개가 양품이었다. 수율의 95% 윌슨 구간을 구하라. 왈드 구간은 어떤 문제가 있는가?</p></div>
+        <div class="prob-hint">\(z^2/n = 3.8416/20 = 0.1921\). 중심은 \((\hat p + z^2/2n)/(1 + z^2/n)\).</div>
+        <div class="prob-sol"><p>\(\hat p = 0.9\). 중심 \((0.9 + 0.0960)/1.1921 = 0.8355\). 반폭 \(1.96\sqrt{0.0045 + 0.0024}/1.1921 = 1.96 \times 0.08307/1.1921 = 0.1366\). 구간 \([0.699,\ 0.972]\). 왈드는 \(0.9 \pm 0.131 = [0.769,\ 1.031]\)로 상한이 1을 넘고 하한을 너무 높게 잡는다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="3의 규칙" data-answer="0.00994" data-label="p_U =">
+        <div class="prob-q"><p>부품 300개를 시험해 불량이 하나도 없었다. 불량률의 95% 단측 상한을 정확한 식으로 구하라. 3의 규칙과 비교하라.</p></div>
+        <div class="prob-sol"><p>\(p_U = 1 - 0.05^{1/300} = 1 - e^{-2.9957/300} = 0.00994\). 3의 규칙 \(3/300 = 0.0100\)과 거의 같다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="무고장 시험 설계" data-answer="2302" data-tol="0.1%" data-label="n =" data-unit="개">
+        <div class="prob-q"><p>불량률이 0.1% 이하라는 것을 90% 신뢰로 주장하려 한다. 불량 0개를 허용하는 시험이라면 최소 몇 개를 시험해야 하는가?</p></div>
+        <div class="prob-hint">\((1 - 0.001)^n \le 0.1\)을 만족하는 가장 작은 \(n\).</div>
+        <div class="prob-sol"><p>\(n \ge \ln 0.1/\ln 0.999 = 2.3026/0.0010005 = 2301.4\) → 2302개. 근사 \(2.303/0.001 = 2303\)과 거의 같다. 불량률 목표를 10배 낮추면 시험 수도 10배가 된다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="분산 구간" data-answer="0.586; 1.262" data-label="σ 하한 =; σ 상한 =">
+        <div class="prob-q"><p>정규 공정에서 15개를 재 \(s = 0.8\)을 얻었다. \(\sigma\)의 95% 신뢰 구간은? (\(\chi^2_{0.025,14} = 26.119\), \(\chi^2_{0.975,14} = 5.629\))</p></div>
+        <div class="prob-sol"><p>\(14 s^2 = 8.96\). \(\sigma^2 \in [8.96/26.119,\ 8.96/5.629] = [0.3430,\ 1.592]\), \(\sigma \in [0.586,\ 1.262]\). \(s = 0.8\)을 중심으로 위쪽이 더 길다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="표본 크기(비율)" data-answer="1068" data-tol="0.1%" data-label="n =" data-unit="개">
+        <div class="prob-q"><p>예상 비율을 전혀 모를 때, 95% 신뢰로 오차 한계 ±3%p 안에 비율을 추정하려면 표본이 몇 개 필요한가?</p></div>
+        <div class="prob-sol"><p>\(p = 0.5\)로 두면 \(n = 1.96^2 \times 0.25/0.03^2 = 1067.1\) → 1068개.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="반복 측정 횟수" data-answer="23" data-tol="0.1%" data-label="k =" data-unit="번">
+        <div class="prob-q"><p>계측기의 반복성이 \(\sigma_m = 0.6\) nm(장기 자료로 앎)다. 같은 지점을 \(k\)번 재 평균할 때, 95% 오차 한계가 0.25 nm 이하가 되려면 최소 몇 번 재야 하는가?</p></div>
+        <div class="prob-sol"><p>\(k \ge (1.96 \times 0.6/0.25)^2 = 4.704^2 = 22.1\) → 23번. 반복 측정은 재현성이나 치우침은 줄이지 못한다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="웰치 구간" data-answer="0.0198; 0.460" data-tol="0.003; 1%" data-label="하한 =; 상한 =" data-unit="μm; μm">
+        <div class="prob-q"><p>두 공정의 접합 깊이를 쟀다. 공정 1: \(n_1 = 6\), \(\bar x_1 = 3.42\), \(s_1 = 0.21\) μm. 공정 2: \(n_2 = 9\), \(\bar x_2 = 3.18\), \(s_2 = 0.09\) μm. \(\mu_1 - \mu_2\)의 95% 웰치 구간을 구하라. 0을 포함하는가?</p></div>
+        <div class="prob-hint">\(v_1 = s_1^2/n_1\), \(v_2 = s_2^2/n_2\)로 자유도 \(\nu = (v_1 + v_2)^2/[v_1^2/5 + v_2^2/8]\)를 계산한다.</div>
+        <div class="prob-sol"><p>\(v_1 = 0.00735\), \(v_2 = 0.0009\), \(\mathrm{SE} = \sqrt{0.00825} = 0.0908\). \(\nu = 0.00825^2/(0.00735^2/5 + 0.0009^2/8) = 6.24\), \(t_{0.025,6.24} = 2.424\). \(0.24 \pm 2.424 \times 0.0908 = [0.020,\ 0.460]\) μm. 0을 겨우 벗어난다. 자유도를 6으로 내림하면 \(t = 2.447\), \([0.018,\ 0.462]\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="대응 표본" data-answer="0.389; 0.754" data-label="하한 =; 상한 =" data-unit="nm; nm">
+        <div class="prob-q"><p>웨이퍼 7장을 계측기 A와 B로 모두 쟀다. A: 101.2, 99.8, 100.5, 102.1, 100.9, 99.5, 101.6. B: 100.6, 99.5, 99.7, 101.4, 100.6, 98.8, 101.0 (nm, 같은 순서가 같은 웨이퍼). \(\mu_A - \mu_B\)의 95% 신뢰 구간을 구하라.</p></div>
+        <div class="prob-hint">차이 \(d_i = a_i - b_i\)를 먼저 구한다.</div>
+        <div class="prob-sol"><p>\(d = 0.6, 0.3, 0.8, 0.7, 0.3, 0.7, 0.6\). \(\bar d = 0.5714\), \(s_d = 0.1976\), \(t_{0.025,6} = 2.447\). \(E = 2.447 \times 0.1976/\sqrt7 = 0.183\). 구간 \([0.389,\ 0.754]\) nm. 독립 표본으로 잘못 분석하면 웨이퍼 사이 산포 때문에 구간이 \([-0.51, 1.65]\) 정도로 넓어져 0을 포함한다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="두 비율의 차이" data-answer="0.0028; 0.0692" data-tol="0.0005; 0.0005" data-label="하한 =; 상한 =">
+        <div class="prob-q"><p>장비 A의 다이 500개 중 470개, 장비 B의 다이 500개 중 452개가 양품이었다. \(p_A - p_B\)의 95% 신뢰 구간을 구하라.</p></div>
+        <div class="prob-sol"><p>\(\hat p_A = 0.940\), \(\hat p_B = 0.904\). \(\mathrm{SE} = \sqrt{0.94 \times 0.06/500 + 0.904 \times 0.096/500} = \sqrt{0.0001128 + 0.0001736} = 0.01692\). \(0.036 \pm 1.96 \times 0.01692 = [0.0028,\ 0.0692]\). 0을 아슬아슬하게 벗어난다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="예측 구간" data-answer="2.06; 0.572" data-label="PI 반폭 =; CI 반폭 =" data-unit="Ω; Ω">
+        <div class="prob-q"><p>저항 12개의 측정값이 \(\bar x = 24.6\) Ω, \(s = 0.9\) Ω이다. 다음에 만들 저항 하나에 대한 95% 예측 구간의 반폭과, 평균의 95% 신뢰 구간의 반폭을 구하라. (\(t_{0.025,11} = 2.201\))</p></div>
+        <div class="prob-sol"><p>PI: \(2.201 \times 0.9\sqrt{1 + 1/12} = 2.201 \times 0.9 \times 1.0408 = 2.06\) Ω → \([22.54,\ 26.66]\). CI: \(2.201 \times 0.9/\sqrt{12} = 0.572\) Ω. 예측 구간이 \(\sqrt{n + 1} = 3.6\)배 넓다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="구간 고르기">
+        <div class="prob-q"><p>신제품 칩 40개의 대기 전류를 측정했다. 양산 테스트 한계를 "칩의 99.9%가 들어오도록" 정하려 한다. 가장 알맞은 것은?</p></div>
+        <div class="prob-choices"><button>평균의 99.9% 신뢰 구간</button><button>다음 칩 하나에 대한 99.9% 예측 구간</button><button data-correct>99.9%를 덮는 공차 구간(예: 95% 신뢰)</button><button>평균 ± 3s</button></div>
+        <div class="prob-sol"><p>모집단의 정해진 비율을 덮는 것은 공차 구간이다. 평균의 신뢰 구간은 너무 좁고, 예측 구간은 칩 하나에 대한 진술이라 "99.9%의 칩"을 보장하지 않는다. 평균 ± 3s는 표본 불확실성을 무시해 40개로는 99.73%도 보장하지 못한다. 대기 전류는 대개 치우쳐 있으니 로그를 취해 정규성을 확인한 뒤 계산한다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="quiz-sec" id="quiz">
+    <h2>개념 확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>다른 조건은 그대로 두고 표본 크기를 4배로 늘리면 평균의 신뢰 구간 폭은?</p><div class="opts">
+        <button class="opt">1/4이 된다</button><button class="opt" data-correct>약 1/2이 된다</button><button class="opt">변하지 않는다</button><button class="opt">2배가 된다</button>
+      </div><div class="quiz-exp">폭은 \(1/\sqrt n\)에 비례한다. t 구간이라면 자유도가 늘어 \(t\)도 조금 작아지므로 절반보다 약간 더 줄어든다.</div></div>
+      <div class="quiz-q"><p>수율이 99.5%인 공정에서 다이 200개로 왈드 구간을 쓰면 안 되는 가장 큰 이유는?</p><div class="opts">
+        <button class="opt">표본이 너무 커서</button><button class="opt" data-correct>불량 수가 너무 적어 정규 근사가 맞지 않고, 불량 0개면 폭이 0인 구간이 나온다</button><button class="opt">수율은 비율이 아니라서</button><button class="opt">왈드 구간은 언제나 너무 넓어서</button>
+      </div><div class="quiz-exp">기대 불량 수 \(n(1-p) = 1\)이다. 이항 분포가 크게 치우쳐 있고, \(x = n\)이 나올 확률이 \(0.995^{200} = 37\%\)나 된다. 윌슨이나 정확 구간, 또는 단측 상한을 쓴다.</div></div>
+      <div class="quiz-q"><p>정규 모집단에서 \(\sigma^2\)의 95% 신뢰 구간이 \(s^2\)를 중심으로 대칭이 아닌 까닭은?</p><div class="opts">
+        <button class="opt">계산 실수를 보정하려고</button><button class="opt" data-correct>피벗량 \((n-1)S^2/\sigma^2\)의 카이제곱 분포가 오른쪽으로 치우쳐 있어서</button><button class="opt">분산은 음수가 될 수 있어서</button><button class="opt">표본 분산이 편향 추정량이라서</button>
+      </div><div class="quiz-exp">\(\chi^2\) 분포의 하위 2.5% 점은 0 가까이 몰려 있고 상위 2.5% 점은 멀리 있다. 뒤집으면 \(s^2\) 위쪽이 길어진다. \(S^2\)는 불편 추정량이다.</div></div>
+      <div class="quiz-q"><p>측정값을 아주 많이 모았을 때(n → ∞) 다음 중 폭이 0으로 가지 <em>않는</em> 것은?</p><div class="opts">
+        <button class="opt">평균의 신뢰 구간</button><button class="opt">비율의 윌슨 구간</button><button class="opt" data-correct>새 관측 하나의 예측 구간</button><button class="opt">두 평균 차이의 웰치 구간</button>
+      </div><div class="quiz-exp">예측 구간은 개별값의 산포 \(\sigma\)를 담고 있어 \(\pm z_{\alpha/2}\sigma\)로 간다. 모수에 대한 구간은 모두 \(1/\sqrt n\)로 줄어든다.</div></div>
+      <div class="quiz-q"><p>부트스트랩 재표본을 만드는 올바른 방법은?</p><div class="opts">
+        <button class="opt">원래 자료에서 \(n/2\)개를 비복원으로 뽑는다</button><button class="opt" data-correct>원래 자료에서 \(n\)개를 복원 추출로 뽑는다</button><button class="opt">원래 자료와 같은 평균·분산의 정규 난수 \(n\)개를 만든다</button><button class="opt">원래 자료를 섞어 순서만 바꾼다</button>
+      </div><div class="quiz-exp">같은 크기 \(n\)을 복원 추출해야 통계량의 흔들림이 원래 표본 크기에 맞게 재현된다. 비복원으로 \(n\)개를 뽑으면 원래 자료와 같아지고, 정규 난수를 쓰는 것은 모수적 부트스트랩이라는 다른 방법이다. 순서만 섞는 것은 12장의 순열 검정이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const pal = () => SB.palette();
+  const $ = (id) => document.getElementById(id);
+  const TAU = 2 * Math.PI;
+  const font = (px, mono, bold) => (bold ? "600 " : "") + px + "px " + SB.color(mono ? "mono" : "font");
+  const handle = (ctx, x, y, col, r = 9) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const diamond = (ctx, x, y, col, r = 7) => { ctx.save(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); ctx.restore(); };
+  const f3 = (x, d = 3) => (isFinite(x) ? String(Number(x.toPrecision(d))) : "—");
+  const fx = (x, d = 2) => (isFinite(x) ? x.toFixed(d) : "—");
+  const pct = (x, d = 1) => (isFinite(x) ? (100 * x).toFixed(d) + "%" : "—");
+  const invX = (C, x0, x1, px) => x0 + ((px - C.box.x) / C.box.w) * (x1 - x0);
+  const invY = (C, y0, y1, py) => y0 + ((C.box.y + C.box.h - py) / C.box.h) * (y1 - y0);
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const rnd = (a, b, step) => Number((Math.round((a + Math.random() * (b - a)) / step) * step).toFixed(6));
+  const withA = (ctx, a, fn) => { const g = ctx.globalAlpha; ctx.globalAlpha = g * a; fn(); ctx.globalAlpha = g; };
+  const clip = (ctx, C, fn) => { ctx.save(); ctx.beginPath(); ctx.rect(C.box.x, C.box.y - 1, C.box.w + 1, C.box.h + 2); ctx.clip(); fn(); ctx.restore(); };
+  const roundRect = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); };
+  const vline = (ctx, C, x, col, o = {}) => { ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = o.width || 2; if (o.dash) ctx.setLineDash(o.dash); ctx.beginPath(); ctx.moveTo(C.X(x), o.y0 != null ? o.y0 : C.box.y); ctx.lineTo(C.X(x), o.y1 != null ? o.y1 : C.box.y + C.box.h); ctx.stroke(); ctx.restore(); };
+  /** 가로 구간 막대: 픽셀 y, 양 끝 눈금 */
+  const bar = (ctx, x0, x1, y, col, o = {}) => {
+    ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = o.width || 2.5; ctx.lineCap = "butt"; if (o.dash) ctx.setLineDash(o.dash);
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); ctx.setLineDash([]);
+    const t = o.tick == null ? 5 : o.tick; if (t) { ctx.lineWidth = Math.min(2, o.width || 2); ctx.beginPath(); ctx.moveTo(x0, y - t); ctx.lineTo(x0, y + t); ctx.moveTo(x1, y - t); ctx.lineTo(x1, y + t); ctx.stroke(); }
+    ctx.restore();
+  };
+  const Z = (c) => Stat.qnorm(1 - (1 - c) / 2);
+  const TQ = (c, df) => Stat.qt(1 - (1 - c) / 2, df);
+  const okTxt = (ok, a, b) => `<span style="color:var(${ok ? "--ok" : "--bad"})">${ok ? a : b}</span>`;
+  const iv = (lo, hi, d = 3) => `[${fx(lo, d)}, ${fx(hi, d)}]`;
+
+  /** 고정 칸 누적 히스토그램 */
+  function acc(lo, hi, nb) {
+    const A = { lo, hi, nb, w: (hi - lo) / nb, c: new Float64Array(nb), n: 0 };
+    A.add = (v) => { A.n++; let i = Math.floor((v - A.lo) / A.w); if (i < 0) i = 0; if (i >= A.nb) i = A.nb - 1; A.c[i]++; };
+    A.reset = (lo2, hi2) => { if (lo2 != null) { A.lo = lo2; A.hi = hi2; A.w = (hi2 - lo2) / A.nb; } A.c.fill(0); A.n = 0; };
+    A.dens = (i) => (A.n ? A.c[i] / (A.n * A.w) : 0);
+    A.maxDens = () => { let m = 0; for (let i = 0; i < A.nb; i++) m = Math.max(m, A.dens(i)); return m; };
+    A.draw = (ctx, C, col, a = 0.5) => {
+      clip(ctx, C, () => {
+        withA(ctx, a, () => { ctx.fillStyle = col; for (let i = 0; i < A.nb; i++) { if (!A.c[i]) continue; const x0 = C.X(A.lo + i * A.w), x1 = C.X(A.lo + (i + 1) * A.w), y = C.Y(A.dens(i)); ctx.fillRect(x0, y, Math.max(1, x1 - x0 - 0.6), C.Y(0) - y); } });
+        if (A.n) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(C.X(A.lo), C.Y(0)); for (let i = 0; i < A.nb; i++) { const y = C.Y(A.dens(i)); ctx.lineTo(C.X(A.lo + i * A.w), y); ctx.lineTo(C.X(A.lo + (i + 1) * A.w), y); } ctx.lineTo(C.X(A.hi), C.Y(0)); ctx.stroke(); }
+      });
+    };
+    return A;
+  }
+  /** 반복 실험 진행기: 적은 수는 천천히, 큰 묶음은 프레임마다 batch개 */
+  function runner(onSample, o = {}) {
+    const R = { pending: 0, running: false, timer: 0, toggle() { R.running = !R.running; return R.running; } };
+    R.queue = (k) => { R.pending += k; };
+    R.tick = (dt) => {
+      if (R.pending > (o.slowMax || 12)) { const m = Math.min(R.pending, o.batch || 40); for (let i = 0; i < m; i++) onSample(i < m - 1); R.pending -= m; return true; }
+      R.timer += dt;
+      const iv2 = R.pending > 0 ? (o.interval || 0.12) : (o.playInterval || o.interval || 0.12);
+      if ((R.pending > 0 || R.running) && R.timer >= iv2) { R.timer = 0; onSample(false); if (R.pending > 0) R.pending--; return true; }
+      return false;
+    };
+    return R;
+  }
+  const bindRun = (R, ids) => {
+    if (ids.one) $(ids.one).addEventListener("click", () => R.queue(1));
+    if (ids.ten) $(ids.ten).addEventListener("click", () => R.queue(10));
+    if (ids.thou) $(ids.thou).addEventListener("click", () => R.queue(1000));
+    if (ids.play) SB.play(ids.play, R);
+  };
+  /** 칩(캔버스 안 단추) */
+  const chipRow = (ctx, items, x0, y0, isOn) => {
+    const P = pal(); ctx.font = font(12.5, false, true);
+    let x = x0; const out = [];
+    items.forEach((it) => {
+      const tw = ctx.measureText(it.name).width + 22, on = isOn(it);
+      ctx.fillStyle = on ? P.accent : P.surface; ctx.strokeStyle = on ? P.accent : P.border; ctx.lineWidth = 1.2;
+      roundRect(ctx, x, y0, tw, 28, 14); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = on ? P.bg : P.text; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(it.name, x + tw / 2, y0 + 14.5);
+      out.push(Object.assign({ x, y: y0, w: tw, h: 28 }, it)); x += tw + 7;
+    });
+    return out;
+  };
+  const hitChip = (chips, x, y) => (chips || []).find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
+
+  /* ================================================================ 머리: 구간 100개 */
+  {
+    const MU = 100, SG = 2, N = 10, XL = 96.2, XR = 103.8;
+    const st = { c: 0.95, list: [], mu0: 100, timer: 0, tot: 0, hitT: 0, paused: false, chip: false, crit: TQ(0.95, N - 1) };
+    let R = Stat.rng(1010);
+    const make = () => {
+      let s1 = 0, s2 = 0;
+      for (let i = 0; i < N; i++) { const v = R.normal(0, SG); s1 += v; s2 += v * v; }
+      const m = s1 / N, s = Math.sqrt(Math.max(0, (s2 - N * m * m) / (N - 1))), e = (st.crit * s) / Math.sqrt(N);
+      st.list.push({ lo: MU + m - e, hi: MU + m + e, age: 0 });
+      if (st.list.length > 100) st.list.shift();
+      st.tot++; if (Math.abs(m) <= e) st.hitT++;
+    };
+    const reset = () => { st.list = []; st.tot = 0; st.hitT = 0; st.crit = TQ(st.c, N - 1); R = Stat.rng(1010); for (let i = 0; i < 64; i++) make(); st.list.forEach((o) => (o.age = 5)); };
+    reset();
+    const cv = SB.canvas("cv-hero", (ctx, w, h, self) => {
+      const P = pal(), narrow = w < 640;
+      const items = [{ id: 0.9, name: "90%" }, { id: 0.95, name: "95%" }, { id: 0.99, name: "99%" }, { id: "pause", name: st.paused ? "▶ 재생" : "❚❚ 정지" }];
+      self._chips = chipRow(ctx, items, 12, 10, (it) => it.id === st.c);
+      const L = st.list, k = L.filter((o) => o.lo <= st.mu0 && st.mu0 <= o.hi).length;
+      const l1 = `μ₀를 덮은 구간 ${k} / ${L.length}`, l2 = `누적 ${st.tot}개 중 참 μ 포함 ${pct(st.hitT / Math.max(1, st.tot))}`;
+      let top;
+      if (narrow) { SB.label(ctx, l1, 14, 54, { align: "left", size: 12.5, bold: true }); SB.label(ctx, l2, 14, 72, { align: "left", size: 12, color: P.dim }); top = 86; }
+      else { SB.label(ctx, l1, w - 14, 18, { align: "right", size: 13, bold: true }); SB.label(ctx, l2, w - 14, 37, { align: "right", size: 12, color: P.dim }); top = 52; }
+      const C = SB.chart(ctx, { x: 16, y: top, w: w - 32, h: h - top - 56 }, { x: [XL, XR], y: [0, 100], yTicks: [], xFmt: (v) => v.toFixed(0) });
+      const rowH = C.box.h / 100;
+      clip(ctx, C, () => {
+        L.forEach((o, i) => {
+          const y = C.box.y + (i + 0.5) * rowH, hit = o.lo <= st.mu0 && st.mu0 <= o.hi, col = hit ? P.accent : P.bad;
+          if (!hit && o.age < 0.9) withA(ctx, 0.4 * (1 - o.age / 0.9), () => bar(ctx, C.X(o.lo), C.X(o.hi), y, P.bad, { width: rowH + 7, tick: 0 }));
+          withA(ctx, o.age < 0.25 ? 0.4 + 2.4 * o.age : 1, () => bar(ctx, C.X(o.lo), C.X(o.hi), y, col, { width: Math.max(1.2, Math.min(2.4, rowH * 0.62)), tick: 0 }));
+        });
+      });
+      vline(ctx, C, MU, P.accent2, { width: 1.8, dash: [6, 4] });
+      SB.label(ctx, "참값 μ = 100", C.X(MU) - 6, C.box.y + 8, { align: "right", size: 11.5, color: P.accent2, bold: true });
+      vline(ctx, C, st.mu0, P.text, { width: 1.6 });
+      const hx = C.X(st.mu0), hy = C.box.y + C.box.h - 14, right = hx > w * 0.6;
+      handle(ctx, hx, hy, P.text, 10);
+      SB.label(ctx, `μ₀ = ${st.mu0.toFixed(2)}`, hx + (right ? -16 : 16), hy - 2, { align: right ? "right" : "left", bold: true, size: 12 });
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.5, minHeight: 410, maxHeight: 470 });
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._h ? [{ id: "mu", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      down: (id, x, y) => {
+        st.chip = false; if (id) return;
+        const c = hitChip(cv._chips, x, y);
+        if (c) { st.chip = true; if (c.id === "pause") st.paused = !st.paused; else if (c.id !== st.c) { st.c = c.id; reset(); } }
+      },
+      move: (id, x, y) => { if (st.chip || !cv._C) return; if (id === "mu" || y > cv._C.box.y) st.mu0 = SB.clamp(invX(cv._C, XL, XR, x), XL, XR); },
+    });
+    SB.loop("hero", (dt) => {
+      st.list.forEach((o) => (o.age += dt));
+      if (!st.paused) { st.timer += dt; while (st.timer > 0.11) { st.timer -= 0.11; make(); } }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 미니: 고정된 μ, 움직이는 X̄ */
+  {
+    const MU = 100, SE = 0.5, XL = 98, XR = 102;
+    let xb = 100.6, cv = null;
+    const gC = SB.range("pv-c", (v) => v.toFixed(1) + "%", () => { cv.redraw(); out(); });
+    const out = () => {
+      const z = Z(gC() / 100), e = z * SE, hit = Math.abs(xb - MU) <= e;
+      $("pv-r").innerHTML = `X̄ = ${xb.toFixed(2)} · 구간 ${iv(xb - e, xb + e, 2)} · |X̄ − μ| = ${Math.abs(xb - MU).toFixed(2)} ${hit ? "≤" : ">"} ${e.toFixed(2)} → ${okTxt(hit, "μ 포함", "μ 놓침")}`;
+    };
+    cv = SB.canvas("cv-pivot", (ctx, w, h, self) => {
+      const P = pal(), z = Z(gC() / 100), e = z * SE, hit = Math.abs(xb - MU) <= e;
+      const C = SB.chart(ctx, { x: 20, y: 30, w: w - 40, h: h - 30 - 38 }, { x: [XL, XR], y: [-0.5, 0.9], yTicks: [], xFmt: (v) => v.toFixed(1) });
+      const f = (x) => Stat.dnorm(x, MU, SE);
+      clip(ctx, C, () => {
+        Stat.draw.area(ctx, C, f, MU - e, MU + e, { color: P.accent, alpha: 0.22 });
+        Stat.draw.curve(ctx, C, f, XL, XR, { color: P.accent2, width: 2.2 });
+      });
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(C.box.x, C.Y(0)); ctx.lineTo(C.box.x + C.box.w, C.Y(0)); ctx.stroke();
+      withA(ctx, 0.55, () => { ctx.fillStyle = P.accent; ctx.fillRect(C.X(Math.max(XL, MU - e)), C.Y(0) - 4, C.X(Math.min(XR, MU + e)) - C.X(Math.max(XL, MU - e)), 8); });
+      vline(ctx, C, MU, P.accent2, { width: 1.5, dash: [5, 4], y0: C.Y(0.86), y1: C.Y(-0.42) });
+      SB.label(ctx, "μ = 100", C.X(MU) + 6, C.Y(0.86) + 2, { align: "left", size: 11.5, color: P.accent2, bold: true });
+      SB.label(ctx, `X̄의 분포 · 초록 띠 = 가운데 ${gC().toFixed(1)}%`, C.box.x + 4, C.box.y + 6, { align: "left", size: 11, color: P.dim });
+      const y = C.Y(-0.28), col = hit ? P.accent : P.bad;
+      bar(ctx, C.X(Math.max(XL, xb - e)), C.X(Math.min(XR, xb + e)), y, col, { width: 4, tick: 7 });
+      SB.label(ctx, "x̄ ± z·σ/√n", C.X(SB.clamp(xb, XL + 0.4, XR - 0.4)), y + 16, { size: 11, color: col, bold: true });
+      SB.dashLine(ctx, C.X(xb), C.Y(0), C.X(xb), y, P.faint);
+      const hx = C.X(xb), hy = C.Y(0);
+      handle(ctx, hx, hy, P.accent, 9);
+      SB.label(ctx, "X̄", hx, hy - 17, { size: 12, color: P.accent, bold: true });
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.42, minHeight: 250, maxHeight: 320 });
+    SB.drag(cv, { handles: () => [{ id: "x", x: cv._h[0], y: cv._h[1], r: 14 }], move: (id, x) => { xb = SB.clamp(invX(cv._C, XL, XR, x), XL + 0.02, XR - 0.02); out(); } });
+    out();
+  }
+
+  /* ================================================================ 시뮬레이터: 구간 100개 실험 */
+  {
+    const MU = 100, SG = 2;
+    let R = Stat.rng(37), crit = 1.96;
+    const st = { recent: [], k: 0, hit: 0, sw: 0, trace: [], game: null };
+    let cv1 = null, cv2 = null;
+    const gC = SB.range("cov-c", (v) => v + "%", () => reset());
+    const gN = SB.range("cov-n", (v) => v, () => reset());
+    const gG = SB.range("cov-g", (v) => v + "개");
+    const gM = SB.seg("cov-m", () => reset());
+    const gP = SB.seg("cov-pop", () => reset());
+    const draw1 = (Rr, pop) => (pop === "norm" ? Rr.normal(0, SG) : pop === "unif" ? (Rr.u() - 0.5) * SG * Math.sqrt(12) : Rr.exp(1 / SG) - SG);
+    const interval = (Rr, n, cr, m, pop) => {
+      let s1 = 0, s2 = 0;
+      for (let i = 0; i < n; i++) { const v = draw1(Rr, pop); s1 += v; s2 += v * v; }
+      const xb = s1 / n, s = Math.sqrt(Math.max(0, (s2 - n * xb * xb) / (n - 1))), e = (cr * (m === "z" ? SG : s)) / Math.sqrt(n);
+      return { lo: MU + xb - e, hi: MU + xb + e, hit: Math.abs(xb) <= e };
+    };
+    const critFor = () => { const c = gC() / 100; return gM() === "t" ? TQ(c, gN() - 1) : Z(c); };
+    function finishGame() {
+      const g = st.game, ok = Math.abs(g.guess - g.exp) <= 2;
+      SB.stat("cov-score", `예측 ${g.guess} · 실제 ${g.miss} · 기댓값 ${g.exp.toFixed(1)} → ${okTxt(ok, "성공 ✓", "다시 도전")}`);
+    }
+    const one = (quiet) => {
+      const o = interval(R, gN(), crit, gM(), gP());
+      st.k++; if (o.hit) st.hit++; st.sw += o.hi - o.lo;
+      o.age = quiet ? 9 : 0;
+      st.recent.push(o); if (st.recent.length > 60) st.recent.shift();
+      st.trace.push([st.k, st.hit / st.k]);
+      if (st.trace.length > 1400) st.trace = st.trace.filter((_, i) => i % 2 === 0 || i === st.trace.length - 1);
+      if (st.game && st.game.left > 0) { st.game.left--; if (!o.hit) st.game.miss++; if (st.game.left === 0) finishGame(); else SB.stat("cov-score", `진행 ${100 - st.game.left}/100 · 놓침 ${st.game.miss}`); }
+    };
+    const run = runner(one, { slowMax: 120, interval: 0.03, playInterval: 0.1, batch: 50 });
+    bindRun(run, { one: "cov-1", ten: "cov-10", thou: "cov-1000", play: "cov-play" });
+    const out = () => {
+      $("cov-k").textContent = st.k;
+      $("cov-p").innerHTML = `${pct(st.hit / st.k)} <small style="color:var(--text-dim)">(명목 ${gC()}%)</small>`;
+      $("cov-w").textContent = fx(st.sw / st.k, 2) + " nm";
+    };
+    function reset() {
+      crit = critFor(); R = Stat.rng(37);
+      st.recent = []; st.k = 0; st.hit = 0; st.sw = 0; st.trace = []; st.game = null; run.pending = 0;
+      for (let i = 0; i < 30; i++) one(true);
+      SB.stat("cov-score", "—");
+      if (cv1) { cv1.redraw(); cv2.redraw(); out(); }
+    }
+    $("cov-game").addEventListener("click", () => {
+      if (st.game && st.game.left > 0) return;
+      const c = gC() / 100, n = gN(), m = gM(), pop = gP();
+      let ex;
+      if (pop === "norm" && m !== "zs") ex = 100 * (1 - c);
+      else if (pop === "norm") ex = 100 * (2 - 2 * Stat.pt(crit, n - 1));
+      else { const R2 = Stat.rng(999 + 7 * n); let miss = 0; for (let i = 0; i < 20000; i++) if (!interval(R2, n, crit, m, pop).hit) miss++; ex = miss / 200; }
+      st.game = { guess: gG(), left: 100, miss: 0, exp: ex };
+      SB.stat("cov-score", "진행 0/100");
+      run.queue(100);
+    });
+    $("cov-reset").addEventListener("click", reset);
+    reset();
+    cv1 = SB.canvas("cv-cov", (ctx, w, h) => {
+      const P = pal(), n = gN(), half = SB.clamp((2.4 * crit * SG) / Math.sqrt(n), 1.5, 14);
+      const C = SB.chart(ctx, { x: 16, y: 30, w: w - 32, h: h - 30 - 46 }, { x: [MU - half, MU + half], y: [0, 60], yTicks: [], xLabel: "막두께 (nm)" });
+      const rowH = C.box.h / 60, L = st.recent;
+      clip(ctx, C, () => {
+        L.forEach((o, i) => {
+          const y = C.box.y + C.box.h - (L.length - i - 0.5) * rowH, col = o.hit ? P.accent : P.bad;
+          if (o.age < 0.6) withA(ctx, 0.35 * (1 - o.age / 0.6), () => bar(ctx, C.X(o.lo), C.X(o.hi), y, col, { width: rowH + 6, tick: 0 }));
+          bar(ctx, C.X(o.lo), C.X(o.hi), y, col, { width: Math.max(1.4, Math.min(3, rowH * 0.55)), tick: Math.min(3, rowH * 0.4) });
+        });
+      });
+      vline(ctx, C, MU, P.accent2, { width: 1.8, dash: [5, 4] });
+    }, { aspect: 1.05, minHeight: 300, maxHeight: 380 });
+    cv2 = SB.canvas("cv-cov2", (ctx, w, h) => {
+      const P = pal(), c = gC() / 100, xmax = Math.max(100, st.k * 1.1);
+      const C = SB.chart(ctx, { x: 52, y: 30, w: w - 66, h: h - 30 - 46 }, { x: [1, xmax], logX: true, y: [0.5, 1], xLabel: "만든 구간 수", yFmt: (v) => (v * 100).toFixed(0) + "%",
+        hlines: [{ y: c, color: P.accent2, dash: [5, 4], label: "명목 " + gC() + "%" }], series: [{ data: st.trace, color: P.accent, width: 2 }] });
+      if (st.k) { const yv = st.hit / st.k; ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(st.k), C.Y(SB.clamp(yv, 0.5, 1)), 4.5, 0, TAU); ctx.fill(); }
+    }, { aspect: 1.05, minHeight: 300, maxHeight: 380 });
+    out();
+    SB.loop("sim-cover", (dt) => {
+      let ch = run.tick(Math.min(dt, 0.05));
+      if (st.recent.length && st.recent[st.recent.length - 1].age < 0.7) { st.recent.forEach((o) => (o.age += dt)); ch = true; }
+      if (ch) { cv1.redraw(); cv2.redraw(); out(); }
+    });
+  }
+
+  /* ================================================================ 드래그 숫자: 오차 한계 */
+  {
+    let cvE = null, cur = { s: 2, n: 16, c: 95 };
+    SB.tangle("tg-E", (v) => {
+      const z = Z(v.c / 100), E = (z * v.s) / Math.sqrt(v.n);
+      return { z: z.toFixed(3), E: E.toFixed(3) + " nm", ci: `[${(100.3 - E).toFixed(2)}, ${(100.3 + E).toFixed(2)}] nm`, n4: String(4 * v.n) };
+    }, { onChange: (v) => { cur = v; cvE && cvE.redraw(); } });
+    cvE = SB.canvas("cv-tgE", (ctx, w, h) => {
+      const P = pal(), z = Z(cur.c / 100), E = (z * cur.s) / Math.sqrt(cur.n), XL = 92.3, XR = 108.3;
+      const C = SB.chart(ctx, { x: 14, y: 8, w: w - 28, h: h - 8 - 26 }, { x: [XL, XR], y: [0, 2], yTicks: [], xFmt: (v) => v.toFixed(0) });
+      const y1 = C.Y(1.45), y2 = C.Y(0.6);
+      clip(ctx, C, () => {
+        bar(ctx, C.X(100.3 - E), C.X(100.3 + E), y1, P.accent, { width: 5, tick: 7 });
+        bar(ctx, C.X(100.3 - E / 2), C.X(100.3 + E / 2), y2, P.accent, { width: 3, tick: 6, dash: [6, 4] });
+      });
+      ctx.fillStyle = P.text; [y1, y2].forEach((y) => { ctx.beginPath(); ctx.arc(C.X(100.3), y, 3.5, 0, TAU); ctx.fill(); });
+      SB.label(ctx, `n = ${cur.n}`, C.box.x + 4, y1, { align: "left", size: 11.5, bold: true });
+      SB.label(ctx, `n = ${4 * cur.n}`, C.box.x + 4, y2, { align: "left", size: 11.5, color: P.dim });
+      if (100.3 + E > XR) SB.label(ctx, "→ 화면 밖", C.box.x + C.box.w - 4, y1 - 12, { align: "right", size: 11, color: P.dim });
+    }, { aspect: 0.16, minHeight: 92, maxHeight: 120 });
+  }
+
+  /* ================================================================ 시뮬레이터: 1.96 대 t */
+  {
+    const MU = 100, SG = 2;
+    let R = Stat.rng(57), tcrit = TQ(0.95, 3), cv1 = null, cv2 = null;
+    const st = { recent: [], k: 0, hz: 0, ht: 0 };
+    const gN = SB.range("zt-n", (v) => v, () => reset());
+    const covZ = (n) => 2 * Stat.pt(1.96, n - 1) - 1;
+    const curve = []; for (let n = 2; n <= 40; n++) curve.push([n, covZ(n)]);
+    const one = (quiet) => {
+      const n = gN(); let s1 = 0, s2 = 0;
+      for (let i = 0; i < n; i++) { const v = R.normal(0, SG); s1 += v; s2 += v * v; }
+      const xb = s1 / n, s = Math.sqrt(Math.max(0, (s2 - n * xb * xb) / (n - 1))), se = s / Math.sqrt(n);
+      const o = { xb: MU + xb, ez: 1.96 * se, et: tcrit * se, age: quiet ? 9 : 0 };
+      o.hz = Math.abs(xb) <= o.ez; o.ht = Math.abs(xb) <= o.et;
+      st.k++; if (o.hz) st.hz++; if (o.ht) st.ht++;
+      st.recent.push(o); if (st.recent.length > 22) st.recent.shift();
+    };
+    const run = runner(one, { slowMax: 12, interval: 0.12, playInterval: 0.18, batch: 50 });
+    bindRun(run, { ten: "zt-10", thou: "zt-1000", play: "zt-play" });
+    const out = () => {
+      const n = gN();
+      $("zt-k").textContent = st.k;
+      $("zt-pz").textContent = `${pct(st.hz / st.k)} · ${pct(covZ(n))}`;
+      $("zt-pt").textContent = `${pct(st.ht / st.k)} · 95.0%`;
+      $("zt-tc").textContent = tcrit.toFixed(3);
+    };
+    function reset() {
+      tcrit = TQ(0.95, gN() - 1); R = Stat.rng(57); st.recent = []; st.k = 0; st.hz = 0; st.ht = 0; run.pending = 0;
+      for (let i = 0; i < 14; i++) one(true);
+      if (cv1) { cv1.redraw(); cv2.redraw(); out(); }
+    }
+    $("zt-reset").addEventListener("click", reset);
+    reset();
+    cv1 = SB.canvas("cv-zt", (ctx, w, h) => {
+      const P = pal(), n = gN(), half = SB.clamp((2.2 * tcrit * SG) / Math.sqrt(n), 3, 20);
+      const C = SB.chart(ctx, { x: 16, y: 30, w: w - 32, h: h - 30 - 46 }, { x: [MU - half, MU + half], y: [0, 22], yTicks: [], xLabel: "nm" });
+      const rowH = C.box.h / 22, L = st.recent;
+      clip(ctx, C, () => {
+        L.forEach((o, i) => {
+          const y = C.box.y + C.box.h - (L.length - i - 0.5) * rowH;
+          const fl = o.age < 0.5 ? 1 - o.age / 0.5 : 0;
+          if (fl) withA(ctx, 0.25 * fl, () => { ctx.fillStyle = P.accent; ctx.fillRect(C.box.x, y - rowH / 2, C.box.w, rowH); });
+          bar(ctx, C.X(o.xb - o.ez), C.X(o.xb + o.ez), y - rowH * 0.2, o.hz ? P.accent : P.bad, { width: 1.6, tick: 2.5, dash: [4, 3] });
+          bar(ctx, C.X(o.xb - o.et), C.X(o.xb + o.et), y + rowH * 0.2, o.ht ? P.accent : P.bad, { width: 2.4, tick: 3 });
+        });
+      });
+      vline(ctx, C, MU, P.accent2, { width: 1.8, dash: [5, 4] });
+    }, { aspect: 1.05, minHeight: 300, maxHeight: 380 });
+    cv2 = SB.canvas("cv-zt2", (ctx, w, h, self) => {
+      const P = pal(), n = gN();
+      const C = SB.chart(ctx, { x: 52, y: 30, w: w - 66, h: h - 30 - 46 }, { x: [2, 40], y: [0.6, 1], xLabel: "표본 크기 n", yFmt: (v) => (v * 100).toFixed(0) + "%",
+        series: [{ data: curve, color: P.warn, width: 2.4 }], hlines: [{ y: 0.95, color: P.accent2, dash: [5, 4], label: "t 구간 95%" }] });
+      SB.label(ctx, "1.96·s/√n 구간", C.X(14), C.Y(covZ(14)) + 16, { size: 11, color: P.warn, bold: true, align: "left" });
+      if (st.k) {
+        [[st.hz / st.k, P.bad], [st.ht / st.k, P.accent]].forEach(([v, col]) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C.X(n) + 12, C.Y(SB.clamp(v, 0.6, 1)), 4.5, 0, TAU); ctx.fill(); });
+      }
+      const hx = C.X(n), hy = C.Y(covZ(n));
+      handle(ctx, hx, hy, P.warn, 9);
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 1.05, minHeight: 300, maxHeight: 380 });
+    SB.drag(cv2, { handles: () => [{ id: "n", x: cv2._h[0], y: cv2._h[1], r: 14 }], move: (id, x) => { const n = Math.round(SB.clamp(invX(cv2._C, 2, 40, x), 2, 40)); if (n !== gN()) gN.set(n); } });
+    out();
+    SB.loop("sim-zt", (dt) => {
+      let ch = run.tick(Math.min(dt, 0.05));
+      const last = st.recent[st.recent.length - 1];
+      if (last && last.age < 0.6) { st.recent.forEach((o) => (o.age += dt)); ch = true; }
+      if (ch) { cv1.redraw(); cv2.redraw(); out(); }
+    });
+  }
+
+  /* ================================================================ 미니: t 임계값 */
+  {
+    const CS = [0.9, 0.95, 0.99], T = CS.map((c) => Array.from({ length: 40 }, (_, i) => [i + 1, TQ(c, i + 1)]));
+    let nu = 4;
+    const out = () => {
+      const t = CS.map((c) => TQ(c, nu)), z = CS.map(Z);
+      $("tc-r").innerHTML = `ν = ${nu} · t: ${t.map((v) => v.toFixed(3)).join(" / ")} · z: ${z.map((v) => v.toFixed(3)).join(" / ")} · 95%에서 z보다 ${((t[1] / z[1] - 1) * 100).toFixed(0)}% 큼`;
+    };
+    const cv = SB.canvas("cv-tcrit", (ctx, w, h, self) => {
+      const P = pal(), cols = [P.blue, P.accent2, P.warn];
+      const C = SB.chart(ctx, { x: 50, y: 30, w: w - 66, h: h - 30 - 46 }, { x: [1, 40], logX: true, xTicks: [1, 2, 3, 5, 10, 20, 40], y: [1.4, 7], xLabel: "자유도 ν", yLabel: "임계값",
+        series: T.map((d, i) => ({ data: d, color: cols[i], width: i === 1 ? 2.6 : 1.8 })),
+        hlines: CS.map((c, i) => ({ y: Z(c), color: cols[i], dash: [4, 4] })) });
+      ["90%", "95%", "99%"].forEach((s, i) => SB.label(ctx, s, C.X(30), C.Y(T[i][29][1]) - 10, { size: 11, color: cols[i], bold: true }));
+      const t = T[1][nu - 1][1], hx = C.X(nu), hy = Math.max(C.box.y + 8, C.Y(t));
+      vline(ctx, C, nu, P.faint, { width: 1, dash: [3, 3] });
+      handle(ctx, hx, hy, P.accent2, 9);
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 0.5, minHeight: 250, maxHeight: 330 });
+    SB.drag(cv, {
+      handles: () => [{ id: "nu", x: cv._h[0], y: cv._h[1], r: 14 }],
+      move: (id, x) => { const C = cv._C, lx = ((x - C.box.x) / C.box.w) * Math.log10(40); nu = Math.round(SB.clamp(Math.pow(10, lx), 1, 40)); out(); },
+    });
+    out();
+  }
+
+  /* ================================================================ 드릴: t 구간 */
+  SB.drill("drill-t", () => {
+    const c = pick([0.9, 0.95, 0.99]), cs = Math.round(c * 100), a2 = ((1 - c) / 2).toFixed(3).replace(/0+$/, "");
+    if (Math.random() < 0.3) {
+      const n = pick([9, 16, 25, 36, 49, 64, 100]), s = rnd(0.5, 4, 0.1), z = Z(c), E = (z * s) / Math.sqrt(n);
+      return { q: `<p>\\(\\sigma = ${s}\\)로 알려진 공정에서 \\(n = ${n}\\)개를 잰다. 모평균의 ${cs}% 신뢰 구간의 오차 한계 \\(E\\)는? (\\(z_{${a2}} = ${z.toFixed(3)}\\))</p>`, answer: E, label: "E =", tol: "1%",
+        sol: `\\(E = z_{${a2}}\\sigma/\\sqrt n = ${z.toFixed(3)} \\times ${s}/${Math.sqrt(n)} = ${E.toFixed(4)}\\)` };
+    }
+    const n = pick([4, 5, 6, 8, 10, 12, 15, 20, 25]), xb = rnd(20, 120, 0.1), s = rnd(0.2, 3, 0.05), t = TQ(c, n - 1), E = (t * s) / Math.sqrt(n);
+    return { q: `<p>측정값 \\(n = ${n}\\)개에서 \\(\\bar x = ${xb}\\), \\(s = ${s}\\)를 얻었다. 모평균의 ${cs}% 신뢰 구간은? (\\(t_{${a2},${n - 1}} = ${t.toFixed(3)}\\), 소수 셋째 자리까지)</p>`,
+      answer: [xb - E, xb + E], label: ["하한 =", "상한 ="], tol: String(Number(Math.max(0.0015, 0.015 * E).toPrecision(2))),
+      sol: `\\(s/\\sqrt n = ${s}/\\sqrt{${n}} = ${(s / Math.sqrt(n)).toFixed(4)}\\), \\(E = ${t.toFixed(3)} \\times ${(s / Math.sqrt(n)).toFixed(4)} = ${E.toFixed(4)}\\). 구간 \\([${(xb - E).toFixed(3)},\\ ${(xb + E).toFixed(3)}]\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 비율 구간의 포함 확률 */
+  {
+    const METH = ["wald", "wilson", "exact"], NAME = { wald: "왈드", wilson: "윌슨", exact: "정확" };
+    const st = { p: 0.99, iv: null, lch: null, curves: null };
+    let cvA = null, cvB = null;
+    const range = () => (gR() === "all" ? [0, 1] : [0.8, 1]);
+    const colOf = (P, m) => (m === "wald" ? P.warn : m === "wilson" ? P.accent2 : P.blue);
+    const gN = SB.range("pr-n", (v) => v, () => rebuild());
+    const gM = SB.seg("pr-m", () => redraw());
+    const gC = SB.seg("pr-c", () => rebuild());
+    const gR = SB.seg("pr-r", () => { const r = range(); st.p = SB.clamp(st.p, r[0] + 0.002, r[1] - 0.002); rebuild(); });
+    const pmf = (p) => { const n = gN(), lp = Math.log(p), lq = Math.log1p(-p); return st.lch.map((l, x) => Math.exp(l + x * lp + (n - x) * lq)); };
+    const cover = (p, f) => { f = f || pmf(p); const o = {}; METH.forEach((m) => { let s = 0; const I = st.iv[m]; for (let x = 0; x < f.length; x++) if (I[x][0] <= p && p <= I[x][1]) s += f[x]; o[m] = s; }); return o; };
+    function rebuild() {
+      const n = gN(), c = Number(gC());
+      st.iv = {}; METH.forEach((m) => { st.iv[m] = Array.from({ length: n + 1 }, (_, x) => { const r = Stat.propInterval(x, n, c, m); return [r.lo, r.hi]; }); });
+      st.lch = Array.from({ length: n + 1 }, (_, x) => Stat.lchoose(n, x));
+      const [a, b] = range(), G = 360; st.curves = {}; METH.forEach((m) => (st.curves[m] = []));
+      for (let i = 1; i < G; i++) { const p = a + ((b - a) * i) / G, cv = cover(p); METH.forEach((m) => st.curves[m].push([p, cv[m]])); }
+      redraw();
+    }
+    function redraw() {
+      if (!cvA || !st.curves) return;
+      cvA.redraw(); cvB.redraw();
+      const f = pmf(st.p), cv = cover(st.p, f), m = gM(), I = st.iv[m];
+      let wsum = 0; f.forEach((q, x) => (wsum += q * (Math.min(1, I[x][1]) - Math.max(0, I[x][0]))));
+      $("pr-p").textContent = st.p.toFixed(3);
+      $("pr-all").textContent = METH.map((k) => pct(cv[k])).join(" · ");
+      $("pr-w").textContent = wsum.toFixed(4);
+    }
+    cvA = SB.canvas("cv-prop", (ctx, w, h, self) => {
+      if (!st.curves) return;
+      const P = pal(), [a, b] = range(), m = gM(), c = Number(gC());
+      const C = SB.chart(ctx, { x: 52, y: 30, w: w - 66, h: h - 30 - 46 }, { x: [a, b], y: [0.4, 1], xLabel: "참 비율 p", yFmt: (v) => (v * 100).toFixed(0) + "%",
+        hlines: [{ y: c, color: P.text, dash: [5, 4], label: "명목 " + Math.round(c * 100) + "%" }] });
+      clip(ctx, C, () => {
+        METH.forEach((k) => {
+          if (k === m) return;
+          withA(ctx, 0.35, () => { ctx.strokeStyle = colOf(P, k); ctx.lineWidth = 1.3; ctx.beginPath(); st.curves[k].forEach(([x, y], i) => (i ? ctx.lineTo(C.X(x), C.Y(y)) : ctx.moveTo(C.X(x), C.Y(y)))); ctx.stroke(); });
+        });
+        ctx.strokeStyle = colOf(P, m); ctx.lineWidth = 2; ctx.beginPath(); st.curves[m].forEach(([x, y], i) => (i ? ctx.lineTo(C.X(x), C.Y(y)) : ctx.moveTo(C.X(x), C.Y(y)))); ctx.stroke();
+      });
+      METH.forEach((k, i) => SB.label(ctx, NAME[k], C.box.x + 8 + i * 46, C.box.y + C.box.h - 12, { align: "left", size: 11.5, color: colOf(P, k), bold: k === m }));
+      const y = cover(st.p)[m], hx = C.X(st.p), hy = C.Y(SB.clamp(y, 0.4, 1));
+      vline(ctx, C, st.p, P.faint, { width: 1, dash: [3, 3] });
+      handle(ctx, hx, hy, colOf(P, m), 9);
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    cvB = SB.canvas("cv-prop2", (ctx, w, h) => {
+      if (!st.curves) return;
+      const P = pal(), n = gN(), p = st.p, m = gM(), I = st.iv[m], f = pmf(p);
+      const sd = Math.sqrt(n * p * (1 - p)); let x0 = Math.max(0, Math.floor(n * p - 4.5 * sd) - 1), x1 = Math.min(n, Math.ceil(n * p + 4.5 * sd) + 1);
+      if (x1 - x0 < 10) { x0 = Math.max(0, Math.min(x0, n - 10)); x1 = Math.min(n, x0 + 10); }
+      let ymax = 0; for (let x = x0; x <= x1; x++) ymax = Math.max(ymax, f[x]);
+      const C = SB.chart(ctx, { x: 52, y: 30, w: w - 66, h: h - 30 - 46 }, { x: [x0 - 0.6, x1 + 0.6], y: [0, ymax * 1.18], xLabel: "양품 수 x", yFmt: (v) => v.toFixed(2) });
+      const bw = Math.min(0.85, 0.85);
+      let g = 0;
+      for (let x = x0; x <= x1; x++) {
+        const ok = I[x][0] <= p && p <= I[x][1]; if (ok) g += f[x];
+        withA(ctx, 0.85, () => { ctx.fillStyle = ok ? P.ok : P.bad; const X0 = C.X(x - bw / 2), X1 = C.X(x + bw / 2); ctx.fillRect(X0, C.Y(f[x]), Math.max(1, X1 - X0), C.Y(0) - C.Y(f[x])); });
+      }
+      SB.label(ctx, `초록 합 = ${pct(g)}`, C.box.x + 6, C.box.y + 8, { align: "left", size: 12, bold: true, color: P.ok });
+      SB.label(ctx, `${NAME[m]} · n = ${n} · p = ${p.toFixed(3)}`, C.box.x + 6, C.box.y + 26, { align: "left", size: 11, color: P.dim });
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    SB.drag(cvA, {
+      handles: () => (cvA._h ? [{ id: "p", x: cvA._h[0], y: cvA._h[1], r: 14 }] : []),
+      move: (id, x) => { const [a, b] = range(); st.p = SB.clamp(invX(cvA._C, a, b, x), a + 0.0005, b - 0.0005); redraw(); },
+    });
+    rebuild();
+  }
+
+  /* ================================================================ 드래그 숫자: 윌슨 */
+  {
+    let tg = null;
+    tg = SB.tangle("tg-wil", (v) => {
+      const n = v.n, x = Math.min(v.x, n), w = Stat.propInterval(x, n, 0.95, "wald"), wi = Stat.propInterval(x, n, 0.95, "wilson"), cp = Stat.propInterval(x, n, 0.95, "exact");
+      let note = "";
+      if (x === n) note = "모두 양품이면 왈드 구간은 폭이 0인 [1, 1]이 되어 수율 100%를 확신하는 꼴이다.";
+      else if (x === 0) note = "모두 불량이면 왈드 구간은 [0, 0]이다.";
+      else if (w.hi > 1 || w.lo < 0) note = "왈드 구간이 [0, 1] 밖으로 나간다.";
+      else if (Math.min(x, n - x) < 10) note = "실패(또는 성공)가 10개 미만이라 왈드 근사가 의심스럽다.";
+      else note = "성공·실패가 모두 넉넉해 세 구간이 비슷하다.";
+      return { p: (x / n).toFixed(3), wald: iv(w.lo, w.hi), wil: iv(wi.lo, wi.hi), cp: iv(cp.lo, cp.hi), note };
+    }, { onChange: (v) => { if (tg && v.x > v.n) tg.set("x", v.n); } });
+  }
+
+  /* ================================================================ 미니: 3의 규칙 */
+  {
+    let p = 0.004, cv = null;
+    const gN = SB.range("r3-n", (v) => v + "개", () => { cv.redraw(); out(); });
+    const gC = SB.seg("r3-c", () => { cv.redraw(); out(); });
+    const out = () => {
+      const n = gN(), c = Number(gC()), a = 1 - c, pU = 1 - Math.pow(a, 1 / n);
+      $("r3-r").innerHTML = `P(0 불량 | p = ${(100 * p).toFixed(2)}%) = ${pct(Math.pow(1 - p, n))} · ${Math.round(c * 100)}% 상한 p<sub>U</sub> = ${(100 * pU).toFixed(3)}% · −ln α / n = ${(100 * -Math.log(a) / n).toFixed(3)}%`;
+    };
+    cv = SB.canvas("cv-r3", (ctx, w, h, self) => {
+      const P = pal(), n = gN(), c = Number(gC()), a = 1 - c, pU = 1 - Math.pow(a, 1 / n), xmax = Math.min(1, pU * 3.2);
+      p = SB.clamp(p, 0, xmax * 0.98);
+      const C = SB.chart(ctx, { x: 52, y: 30, w: w - 70, h: h - 30 - 46 }, { x: [0, xmax], y: [0, 1], xLabel: "불량률 p", xFmt: (v) => (v * 100).toFixed(v * 100 < 1 ? 2 : 1) + "%", yFmt: (v) => (v * 100).toFixed(0) + "%",
+        hlines: [{ y: a, color: P.bad, dash: [5, 4], label: "α = " + Math.round(a * 100) + "%" }] });
+      const f = (q) => Math.pow(1 - q, n);
+      clip(ctx, C, () => { Stat.draw.area(ctx, C, f, pU, xmax, { color: P.bad, alpha: 0.12 }); Stat.draw.curve(ctx, C, f, 0, xmax, { color: P.accent2, width: 2.4 }); });
+      vline(ctx, C, pU, P.accent, { width: 2 });
+      SB.label(ctx, `p_U = ${(100 * pU).toFixed(2)}%`, C.X(pU) + 6, C.box.y + 12, { align: "left", size: 12, color: P.accent, bold: true });
+      SB.label(ctx, "(1 − p)ⁿ = 모두 합격할 확률", C.X(xmax * 0.42), C.Y(0.86), { align: "left", size: 11.5, color: P.accent2 });
+      const hx = C.X(p), hy = C.Y(f(p)), hit = f(p) >= a;
+      vline(ctx, C, p, P.faint, { width: 1, dash: [3, 3], y0: hy });
+      handle(ctx, hx, hy, hit ? P.accent2 : P.bad, 9);
+      self._h = [hx, hy]; self._C = C; self._x = xmax;
+    }, { aspect: 0.48, minHeight: 250, maxHeight: 320 });
+    SB.drag(cv, { handles: () => [{ id: "p", x: cv._h[0], y: cv._h[1], r: 14 }], move: (id, x) => { p = SB.clamp(invX(cv._C, 0, cv._x, x), 0, cv._x * 0.98); out(); } });
+    out();
+  }
+
+  /* ================================================================ 드릴: 비율 구간 */
+  SB.drill("drill-prop", () => {
+    const t = pick(["wilson", "wilson", "wald", "zero"]);
+    if (t === "zero") {
+      const n = pick([50, 77, 100, 150, 231, 300, 500, 1000]), c = pick([0.6, 0.9, 0.95]), a = 1 - c, pU = 1 - Math.pow(a, 1 / n);
+      return { q: `<p>\\(n = ${n}\\)개를 시험해 불량이 0개였다. 불량률의 ${Math.round(c * 100)}% 단측 상한 \\(p_U\\)는?</p>`, answer: pU, label: "p<sub>U</sub> =", tol: "1%",
+        sol: `\\(p_U = 1 - \\alpha^{1/n} = 1 - ${f3(a, 2)}^{1/${n}} = ${pU.toFixed(5)}\\) (근사 \\(-\\ln\\alpha/n = ${(-Math.log(a) / n).toFixed(5)}\\))` };
+    }
+    const n = pick([20, 30, 40, 50, 60, 80, 100, 120, 150, 200]), x = Math.min(n, Math.max(1, Math.round(n * rnd(0.6, 0.98, 0.01))));
+    const p = x / n, z = 1.96;
+    if (t === "wald") {
+      const e = z * Math.sqrt((p * (1 - p)) / n);
+      return { q: `<p>다이 \\(n = ${n}\\)개 중 \\(x = ${x}\\)개가 양품이다. 수율의 95% 왈드 구간은? (소수 넷째 자리까지)</p>`, answer: [p - e, p + e], label: ["하한 =", "상한 ="], tol: "0.002",
+        sol: `\\(\\hat p = ${p.toFixed(4)}\\), \\(\\mathrm{SE} = \\sqrt{\\hat p(1-\\hat p)/n} = ${Math.sqrt((p * (1 - p)) / n).toFixed(5)}\\), \\(E = 1.96 \\times \\mathrm{SE} = ${e.toFixed(4)}\\) → \\([${(p - e).toFixed(4)},\\ ${(p + e).toFixed(4)}]\\)` };
+    }
+    const k = (z * z) / n, cen = (p + (z * z) / (2 * n)) / (1 + k), e = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / (1 + k);
+    return { q: `<p>다이 \\(n = ${n}\\)개 중 \\(x = ${x}\\)개가 양품이다. 수율의 95% 윌슨 구간은? (\\(z = 1.96\\), 소수 넷째 자리까지)</p>`, answer: [cen - e, cen + e], label: ["하한 =", "상한 ="], tol: "0.002",
+      sol: `\\(\\hat p = ${p.toFixed(4)}\\), \\(z^2/n = ${k.toFixed(5)}\\). 중심 \\(= (\\hat p + z^2/2n)/(1 + z^2/n) = ${cen.toFixed(4)}\\), 반폭 \\(= z\\sqrt{\\hat p(1-\\hat p)/n + z^2/4n^2}/(1 + z^2/n) = ${e.toFixed(4)}\\) → \\([${(cen - e).toFixed(4)},\\ ${(cen + e).toFixed(4)}]\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 카이제곱 꼬리 나누기 */
+  {
+    const SIG = 2;
+    let R = Stat.rng(88), cvA = null, cvB = null;
+    const st = { aL: 0.025, al: 0.05, recent: [], k: 0, hit: 0, D: null, Wb: 1, We: 1, last: null };
+    const gN = SB.range("vr-n", (v) => v, () => setup());
+    const gC = SB.seg("vr-c", () => setup());
+    const lim = () => [st.al * 0.004, st.al * 0.996];
+    const cuts = (aL) => [st.D.q(aL), st.D.q(1 - (st.al - aL))];
+    const width = (aL) => { const [a, b] = cuts(aL); return 1 / a - 1 / b; };
+    function setup() {
+      const n = gN(); st.al = 1 - Number(gC()); st.D = Stat.dist.chi2(n - 1); st.aL = st.al / 2;
+      const [l0, l1] = lim(); let best = Infinity;
+      for (let i = 0; i <= 160; i++) { const aL = l0 + ((l1 - l0) * i) / 160, wv = width(aL); if (wv < best) best = wv; }
+      st.Wb = best; st.We = width(st.al / 2);
+      st.recent = []; st.k = 0; st.hit = 0; R = Stat.rng(88);
+      for (let i = 0; i < 6; i++) one();
+      redraw();
+    }
+    function one() {
+      const n = gN(), nu = n - 1; let s1 = 0, s2 = 0;
+      for (let i = 0; i < n; i++) { const v = R.normal(0, SIG); s1 += v; s2 += v * v; }
+      const s2s = (s2 - (s1 * s1) / n) / nu, [a, b] = cuts(st.aL), q = (nu * s2s) / (SIG * SIG);
+      const o = { lo: Math.sqrt((nu * s2s) / b), hi: Math.sqrt((nu * s2s) / a), s: Math.sqrt(s2s), q, hit: q >= a && q <= b };
+      st.k++; if (o.hit) st.hit++; st.last = o;
+      st.recent.push(o); if (st.recent.length > 25) st.recent.shift();
+    }
+    function redraw() {
+      if (!cvA) return;
+      cvA.redraw(); cvB.redraw();
+      const W = width(st.aL), rel = W / st.Wb - 1, won = rel <= 0.01;
+      $("vr-tails").textContent = `${pct(st.aL, 2)} · ${pct(st.al - st.aL, 2)}`;
+      $("vr-wid").textContent = `${(W / st.We).toFixed(3)} (최단 ${(st.Wb / st.We).toFixed(3)})`;
+      $("vr-cov").innerHTML = `${pct(st.hit / st.k)} <small style="color:var(--text-dim)">(${st.k}개)</small>`;
+      $("vr-game").innerHTML = won ? okTxt(true, `성공 ✓ 최단의 ${(rel * 100).toFixed(1)}% 안`, "") : `최단보다 ${(rel * 100).toFixed(1)}% 김`;
+    }
+    cvA = SB.canvas("cv-var", (ctx, w, h, self) => {
+      if (!st.D) return;
+      const P = pal(), D = st.D, nu = gN() - 1, xmax = Math.max(D.q(0.9995), 6), [a, b] = cuts(st.aL);
+      let peak = 0; for (let i = 1; i <= 200; i++) peak = Math.max(peak, D.pdf((xmax * i) / 200));
+      peak = Math.min(peak, 0.6);
+      const C = SB.chart(ctx, { x: 46, y: 30, w: w - 60, h: h - 30 - 50 }, { x: [0, xmax], y: [0, peak * 1.2], xLabel: `(n−1)S²/σ² ~ χ²(${nu})`, yTicks: [], xFmt: (v) => f3(v, 3) });
+      clip(ctx, C, () => {
+        Stat.draw.area(ctx, C, D.pdf, 1e-6, a, { color: P.bad, alpha: 0.4 });
+        Stat.draw.area(ctx, C, D.pdf, b, xmax, { color: P.bad, alpha: 0.4 });
+        Stat.draw.area(ctx, C, D.pdf, a, b, { color: P.accent, alpha: 0.12 });
+        Stat.draw.curve(ctx, C, D.pdf, 1e-6, xmax, { color: P.accent2, width: 2.2 });
+      });
+      if (st.last) { const q = SB.clamp(st.last.q, 0, xmax); diamond(ctx, C.X(q), C.Y(0) - 10, st.last.hit ? P.accent : P.bad, 6); }
+      const ya = C.Y(0), ra = a > xmax * 0.12;
+      handle(ctx, C.X(a), ya, P.bad, 10); handle(ctx, C.X(b), ya, P.bad, 10);
+      SB.label(ctx, `a = ${a.toFixed(2)}`, C.X(a), ya - 24, { size: 11, color: P.bad, bold: true });
+      SB.label(ctx, `b = ${b.toFixed(2)}`, C.X(b), ya - 24, { size: 11, color: P.bad, bold: true });
+      SB.label(ctx, pct(st.aL, 1), C.X(a) + (ra ? -6 : 6), C.box.y + 12, { size: 11.5, color: P.bad, bold: true, align: ra ? "right" : "left" });
+      SB.label(ctx, pct(st.al - st.aL, 1), C.X(b) + 6, C.box.y + 12, { size: 11.5, color: P.bad, bold: true, align: "left" });
+      self._h = [[C.X(a), ya], [C.X(b), ya]]; self._C = C; self._x = xmax;
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    cvB = SB.canvas("cv-var2", (ctx, w, h) => {
+      const P = pal(), XM = 8;
+      const C = SB.chart(ctx, { x: 16, y: 30, w: w - 32, h: h - 30 - 46 }, { x: [0, XM], y: [0, 25], yTicks: [], xLabel: "σ (nm)" });
+      const rowH = C.box.h / 25, L = st.recent;
+      clip(ctx, C, () => L.forEach((o, i) => {
+        const y = C.box.y + C.box.h - (L.length - i - 0.5) * rowH, col = o.hit ? P.accent : P.bad;
+        bar(ctx, C.X(o.lo), C.X(Math.min(o.hi, XM + 1)), y, col, { width: Math.min(3, rowH * 0.5), tick: 3 });
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C.X(o.s), y, 2.6, 0, TAU); ctx.fill();
+        if (o.hi > XM) SB.label(ctx, "→", C.box.x + C.box.w - 8, y, { size: 11, color: col });
+      }));
+      vline(ctx, C, SIG, P.accent2, { width: 1.8, dash: [5, 4] });
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    SB.drag(cvA, {
+      handles: () => (cvA._h ? [{ id: "a", x: cvA._h[0][0], y: cvA._h[0][1], r: 14 }, { id: "b", x: cvA._h[1][0], y: cvA._h[1][1], r: 14 }] : []),
+      move: (id, x) => {
+        const v = SB.clamp(invX(cvA._C, 0, cvA._x, x), 1e-4, cvA._x), [l0, l1] = lim();
+        if (id === "a") st.aL = SB.clamp(st.D.cdf(v), l0, l1);
+        else if (id === "b") st.aL = SB.clamp(st.al - (1 - st.D.cdf(v)), l0, l1);
+        redraw();
+      },
+    });
+    $("vr-1").addEventListener("click", () => { one(); redraw(); });
+    $("vr-1000").addEventListener("click", () => { for (let i = 0; i < 1000; i++) one(); redraw(); });
+    $("vr-eq").addEventListener("click", () => { st.aL = st.al / 2; redraw(); });
+    setup();
+  }
+
+  /* ================================================================ 드래그 숫자: σ 구간의 배수 */
+  {
+    const ratioHi = (n) => Math.sqrt((n - 1) / Stat.qchisq(0.025, n - 1));
+    SB.tangle("tg-vr", (v) => {
+      const nu = v.n - 1, lo = Math.sqrt(nu / Stat.qchisq(0.975, nu)), hi = ratioHi(v.n);
+      let a = 2, b = 40000;
+      if (ratioHi(b) > v.r) return { lo: lo.toFixed(3), hi: hi.toFixed(3), need: "4만 개 이상" };
+      while (b - a > 1) { const m = Math.floor((a + b) / 2); if (ratioHi(m) <= v.r) b = m; else a = m; }
+      return { lo: lo.toFixed(3), hi: hi.toFixed(3), need: b.toLocaleString("ko-KR") };
+    });
+  }
+
+  /* ================================================================ 미니: 분산 구간의 정규성 의존 */
+  {
+    let R = Stat.rng(5), cv = null;
+    const st = { k: 0, hit: 0, a: 0, b: 0, A: acc(0, 30, 60) };
+    const gP = SB.seg("vb-pop", () => setup());
+    const gN = SB.range("vb-n", (v) => v, () => setup());
+    const draw1 = (pop) => (pop === "norm" ? R.normal() : pop === "unif" ? (R.u() - 0.5) * Math.sqrt(12) : R.exp(1) - 1);
+    const go = (k) => {
+      const n = gN(), pop = gP();
+      for (let j = 0; j < k; j++) {
+        let s1 = 0, s2 = 0; for (let i = 0; i < n; i++) { const v = draw1(pop); s1 += v; s2 += v * v; }
+        const q = s2 - (s1 * s1) / n; st.A.add(q); st.k++; if (q >= st.a && q <= st.b) st.hit++;
+      }
+      cv && cv.redraw(); out();
+    };
+    const out = () => { $("vb-r").innerHTML = `${st.k}번 · 95% 구간의 포함 비율 <b>${pct(st.hit / st.k)}</b>`; };
+    function setup() {
+      const nu = gN() - 1; st.a = Stat.qchisq(0.025, nu); st.b = Stat.qchisq(0.975, nu);
+      st.A.reset(0, Math.max(3 * nu, nu + 9 * Math.sqrt(2 * nu))); st.k = 0; st.hit = 0; R = Stat.rng(5 + nu);
+      go(1000);
+    }
+    $("vb-go").addEventListener("click", () => go(1000));
+    cv = SB.canvas("cv-vrob", (ctx, w, h) => {
+      const P = pal(), nu = gN() - 1, D = Stat.dist.chi2(nu), A = st.A;
+      let peak = 0; for (let i = 1; i <= 120; i++) peak = Math.max(peak, D.pdf((A.hi * i) / 120));
+      const C = SB.chart(ctx, { x: 46, y: 30, w: w - 60, h: h - 30 - 46 }, { x: [0, A.hi], y: [0, Math.max(peak, A.maxDens()) * 1.15], yTicks: [], xLabel: "(n−1)S²/σ²", xFmt: (v) => f3(v, 3) });
+      A.draw(ctx, C, P.accent, 0.45);
+      clip(ctx, C, () => Stat.draw.curve(ctx, C, D.pdf, 1e-6, A.hi, { color: P.accent2, width: 2.2 }));
+      vline(ctx, C, st.a, P.bad, { width: 1.4, dash: [4, 4] }); vline(ctx, C, st.b, P.bad, { width: 1.4, dash: [4, 4] });
+      SB.label(ctx, `포함 ${pct(st.hit / st.k)}`, C.box.x + C.box.w - 6, C.box.y + 10, { align: "right", size: 13, bold: true, color: Math.abs(st.hit / st.k - 0.95) < 0.02 ? P.accent : P.bad });
+      SB.label(ctx, "자주색 = χ² 이론", C.box.x + C.box.w - 6, C.box.y + 28, { align: "right", size: 11, color: P.accent2 });
+    }, { aspect: 0.45, minHeight: 230, maxHeight: 300 });
+    setup();
+  }
+
+  /* ================================================================ 시뮬레이터: 두 장비 비교 */
+  {
+    let seed = 21, raw = null;
+    const st = { mA: 52.1, mB: 50.6 }, XL = 38, XR = 64, DL = -8, DR = 8;
+    const gM = SB.seg("tw-m", () => redraw());
+    const g1 = SB.range("tw-n1", (v) => v, () => redraw());
+    const g2 = SB.range("tw-n2", (v) => v, () => redraw());
+    const s1g = SB.range("tw-s1", (v) => v.toFixed(1), () => redraw());
+    const s2g = SB.range("tw-s2", (v) => v.toFixed(1), () => redraw());
+    const gen = () => { const R = Stat.rng(seed); raw = [Array.from({ length: 40 }, () => R.normal()), Array.from({ length: 40 }, () => R.normal())]; };
+    const stdz = (z) => { const m = Stat.mean(z), s = Stat.sd(z); return z.map((v) => (v - m) / s); };
+    gen();
+    const calc = () => {
+      const n1 = g1(), n2 = g2(), s1 = s1g(), s2 = s2g(), d = st.mA - st.mB, v1 = (s1 * s1) / n1, v2 = (s2 * s2) / n2;
+      let se, df;
+      if (gM() === "welch") { se = Math.sqrt(v1 + v2); df = ((v1 + v2) ** 2) / ((v1 * v1) / (n1 - 1) + (v2 * v2) / (n2 - 1)); }
+      else { const sp = Math.sqrt(((n1 - 1) * s1 * s1 + (n2 - 1) * s2 * s2) / (n1 + n2 - 2)); se = sp * Math.sqrt(1 / n1 + 1 / n2); df = n1 + n2 - 2; }
+      const t = TQ(0.95, df); return { d, se, df, t, lo: d - t * se, hi: d + t * se };
+    };
+    let cv = null;
+    function redraw() {
+      if (!cv) return; cv.redraw();
+      const r = calc(), has0 = r.lo <= 0 && r.hi >= 0;
+      $("tw-d").textContent = r.d.toFixed(2) + " nm";
+      $("tw-se").textContent = `${r.se.toFixed(3)} · ν = ${r.df.toFixed(1)}`;
+      $("tw-ci").textContent = iv(r.lo, r.hi, 2) + " nm";
+      $("tw-j").innerHTML = has0 ? `<span style="color:var(--warn)">0 포함 → 차이를 말할 수 없음</span>` : okTxt(true, `0 밖 → ${r.d > 0 ? "A가 더 큼" : "B가 더 큼"}`, "");
+    }
+    cv = SB.canvas("cv-two", (ctx, w, h, self) => {
+      const P = pal(), n1 = g1(), n2 = g2(), s1 = s1g(), s2 = s2g(), r = calc();
+      const top = h * 0.6;
+      const C = SB.chart(ctx, { x: 20, y: 30, w: w - 40, h: top - 30 - 28 }, { x: [XL, XR], y: [0, 2], yTicks: [], xFmt: (v) => v.toFixed(0) });
+      const rows = [[1.5, st.mA, s1, n1, stdz(raw[0].slice(0, n1)), "장비 A", P.accent], [0.55, st.mB, s2, n2, stdz(raw[1].slice(0, n2)), "장비 B", P.accent2]];
+      self._h = [];
+      rows.forEach(([yy, m, s, n, z, nm, col], k) => {
+        const y = C.Y(yy), t = TQ(0.95, n - 1), e = (t * s) / Math.sqrt(n);
+        clip(ctx, C, () => z.forEach((v) => { withA(ctx, 0.75, () => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C.X(m + s * v), y - 10, 4, 0, TAU); ctx.fill(); }); }));
+        withA(ctx, 0.6, () => bar(ctx, C.X(m - e), C.X(m + e), y + 8, col, { width: 2.5, tick: 4 }));
+        handle(ctx, C.X(m), y - 10, col, 10);
+        SB.label(ctx, nm, C.box.x + 4, y - 30, { align: "left", size: 12, bold: true, color: col });
+        SB.label(ctx, `x̄ = ${m.toFixed(1)}`, C.X(m), y + 24, { size: 11, color: col });
+        self._h.push([C.X(m), y - 10]);
+      });
+      self._C = C;
+      const C2 = SB.chart(ctx, { x: 20, y: top + 8, w: w - 40, h: h - top - 8 - 46 }, { x: [DL, DR], y: [0, 1], yTicks: [], xLabel: "차이 μA − μB (nm)" });
+      vline(ctx, C2, 0, P.text, { width: 1.4, dash: [4, 3] });
+      const has0 = r.lo <= 0 && r.hi >= 0, col = has0 ? P.warn : P.accent, y = C2.Y(0.45);
+      clip(ctx, C2, () => bar(ctx, C2.X(r.lo), C2.X(r.hi), y, col, { width: 5, tick: 8 }));
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C2.X(SB.clamp(r.d, DL, DR)), y, 5, 0, TAU); ctx.fill();
+      SB.label(ctx, `${gM() === "welch" ? "웰치" : "합동"} 95% 구간`, C2.X(SB.clamp(r.d, DL + 2, DR - 2)), y - 18, { size: 11.5, color: col, bold: true });
+      SB.label(ctx, "0", C2.X(0) + 8, C2.box.y + 8, { align: "left", size: 11, color: P.dim });
+    }, { aspect: 0.62, minHeight: 380, maxHeight: 470 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? cv._h.map((p, i) => ({ id: i, x: p[0], y: p[1], r: 14 })) : []),
+      move: (id, x) => { const v = Math.round(SB.clamp(invX(cv._C, XL, XR, x), 42, 60) * 10) / 10; if (id === 0) st.mA = v; else if (id === 1) st.mB = v; redraw(); },
+    });
+    $("tw-new").addEventListener("click", () => { seed += 1; gen(); redraw(); });
+    redraw();
+  }
+
+  /* ================================================================ 미니: 두 수율의 차이 */
+  {
+    const N = 400; let cv = null;
+    const ga = SB.range("p2-a", (v) => `${v} (${(v / 4).toFixed(1)}%)`, () => { cv.redraw(); out(); });
+    const gb = SB.range("p2-b", (v) => `${v} (${(v / 4).toFixed(1)}%)`, () => { cv.redraw(); out(); });
+    const calc = () => {
+      const a = ga() / N, b = gb() / N, ea = 1.96 * Math.sqrt((a * (1 - a)) / N), eb = 1.96 * Math.sqrt((b * (1 - b)) / N), se = Math.sqrt((a * (1 - a) + b * (1 - b)) / N), d = a - b;
+      return { a, b, ea, eb, d, lo: d - 1.96 * se, hi: d + 1.96 * se };
+    };
+    const out = () => { const r = calc(), has0 = r.lo <= 0 && r.hi >= 0; $("p2-r").innerHTML = `p̂A − p̂B = ${r.d.toFixed(3)} · 95% ${iv(r.lo, r.hi)} · ${has0 ? '<span style="color:var(--warn)">0 포함</span>' : okTxt(true, "0 밖", "")}`; };
+    cv = SB.canvas("cv-p2", (ctx, w, h) => {
+      const P = pal(), r = calc(), half = h * 0.52;
+      const C = SB.chart(ctx, { x: 20, y: 14, w: w - 40, h: half - 14 - 22 }, { x: [0.74, 1.0], y: [0, 2], yTicks: [], xFmt: (v) => (v * 100).toFixed(0) + "%" });
+      [[1.4, r.a, r.ea, "A", P.accent], [0.55, r.b, r.eb, "B", P.accent2]].forEach(([yy, p, e, nm, col]) => {
+        const y = C.Y(yy); bar(ctx, C.X(p - e), C.X(Math.min(1, p + e)), y, col, { width: 4, tick: 6 });
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C.X(p), y, 4, 0, TAU); ctx.fill();
+        SB.label(ctx, nm, C.X(p - e) - 12, y, { size: 12, bold: true, color: col });
+      });
+      const ov = Math.min(r.a + r.ea, r.b + r.eb) - Math.max(r.a - r.ea, r.b - r.eb);
+      if (ov > 0) withA(ctx, 0.15, () => { ctx.fillStyle = P.warn; ctx.fillRect(C.X(Math.max(r.a - r.ea, r.b - r.eb)), C.box.y, C.X(Math.min(r.a + r.ea, r.b + r.eb)) - C.X(Math.max(r.a - r.ea, r.b - r.eb)), C.box.h); });
+      const C2 = SB.chart(ctx, { x: 20, y: half + 6, w: w - 40, h: h - half - 6 - 40 }, { x: [-0.12, 0.2], y: [0, 1], yTicks: [], xLabel: "pA − pB", xFmt: (v) => v.toFixed(2) });
+      vline(ctx, C2, 0, P.text, { width: 1.3, dash: [4, 3] });
+      const has0 = r.lo <= 0 && r.hi >= 0, col = has0 ? P.warn : P.accent, y = C2.Y(0.5);
+      clip(ctx, C2, () => bar(ctx, C2.X(r.lo), C2.X(r.hi), y, col, { width: 5, tick: 7 }));
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C2.X(r.d), y, 4.5, 0, TAU); ctx.fill();
+    }, { aspect: 0.42, minHeight: 240, maxHeight: 300 });
+    out();
+  }
+
+  /* ================================================================ 드릴: 두 집단 비교 */
+  SB.drill("drill-two", () => {
+    const t = pick(["welch", "pool", "prop"]);
+    if (t === "prop") {
+      const n1 = pick([200, 300, 400, 500]), n2 = n1, x1 = Math.round(n1 * rnd(0.85, 0.97, 0.01)), x2 = Math.round(n2 * rnd(0.8, 0.95, 0.01));
+      const p1 = x1 / n1, p2 = x2 / n2, se = Math.sqrt((p1 * (1 - p1)) / n1 + (p2 * (1 - p2)) / n2), d = p1 - p2, e = 1.96 * se;
+      return { q: `<p>장비 A의 다이 ${n1}개 중 ${x1}개, 장비 B의 ${n2}개 중 ${x2}개가 양품이다. \\(p_A - p_B\\)의 95% 신뢰 구간은? (소수 넷째 자리까지)</p>`, answer: [d - e, d + e], label: ["하한 =", "상한 ="], tol: "0.001",
+        sol: `\\(\\hat p_A = ${p1.toFixed(4)}\\), \\(\\hat p_B = ${p2.toFixed(4)}\\), \\(\\mathrm{SE} = ${se.toFixed(5)}\\), \\(${d.toFixed(4)} \\pm 1.96 \\times ${se.toFixed(5)} = [${(d - e).toFixed(4)},\\ ${(d + e).toFixed(4)}]\\)` };
+    }
+    const n1 = pick([5, 6, 8, 10, 12]), n2 = pick([6, 8, 10, 12, 15]), m1 = rnd(48, 54, 0.1), m2 = rnd(48, 54, 0.1), s1 = rnd(0.5, 3, 0.1), s2 = rnd(0.5, 3, 0.1), d = m1 - m2;
+    if (t === "pool") {
+      const sp = Math.sqrt(((n1 - 1) * s1 * s1 + (n2 - 1) * s2 * s2) / (n1 + n2 - 2)), se = sp * Math.sqrt(1 / n1 + 1 / n2), df = n1 + n2 - 2, tc = TQ(0.95, df), e = tc * se;
+      return { q: `<p>두 분산이 같다고 보고 합동 t 구간을 만든다. A: \\(n = ${n1}\\), \\(\\bar x = ${m1}\\), \\(s = ${s1}\\). B: \\(n = ${n2}\\), \\(\\bar x = ${m2}\\), \\(s = ${s2}\\). \\(\\mu_A - \\mu_B\\)의 95% 구간은? (\\(t_{0.025,${df}} = ${tc.toFixed(3)}\\))</p>`,
+        answer: [d - e, d + e], label: ["하한 =", "상한 ="], tol: String(Number(Math.max(0.002, 0.015 * e).toPrecision(2))),
+        sol: `\\(s_p = ${sp.toFixed(4)}\\), \\(\\mathrm{SE} = s_p\\sqrt{1/${n1} + 1/${n2}} = ${se.toFixed(4)}\\), \\(${d.toFixed(2)} \\pm ${tc.toFixed(3)} \\times ${se.toFixed(4)} = [${(d - e).toFixed(3)},\\ ${(d + e).toFixed(3)}]\\)` };
+    }
+    const v1 = (s1 * s1) / n1, v2 = (s2 * s2) / n2, se = Math.sqrt(v1 + v2), df = ((v1 + v2) ** 2) / ((v1 * v1) / (n1 - 1) + (v2 * v2) / (n2 - 1)), tc = TQ(0.95, df), e = tc * se;
+    return { q: `<p>웰치 구간을 만든다. A: \\(n = ${n1}\\), \\(\\bar x = ${m1}\\), \\(s = ${s1}\\). B: \\(n = ${n2}\\), \\(\\bar x = ${m2}\\), \\(s = ${s2}\\). \\(\\mu_A - \\mu_B\\)의 95% 구간은? (자유도 \\(\\nu = ${df.toFixed(2)}\\), \\(t_{0.025,\\nu} = ${tc.toFixed(3)}\\))</p>`,
+      answer: [d - e, d + e], label: ["하한 =", "상한 ="], tol: String(Number(Math.max(0.002, 0.015 * e).toPrecision(2))),
+      sol: `\\(\\mathrm{SE} = \\sqrt{${s1}^2/${n1} + ${s2}^2/${n2}} = ${se.toFixed(4)}\\), \\(${d.toFixed(2)} \\pm ${tc.toFixed(3)} \\times ${se.toFixed(4)} = [${(d - e).toFixed(3)},\\ ${(d + e).toFixed(3)}]\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 표본 크기 설계실 */
+  {
+    const st = { n: 600, E: { prop: 0.005, mean: 0.5 }, ver: null };
+    let cv = null;
+    const mode = () => gM();
+    const conf = () => Number(gC());
+    const Ef = (n) => { const z = Z(conf()), a = gA(); return mode() === "prop" ? z * Math.sqrt((a * (1 - a)) / n) : (z * a) / Math.sqrt(n); };
+    const nStar = () => { const c = conf(), a = gA(), E = st.E[mode()]; return mode() === "prop" ? Stat.nForProp(E, a, c) : Stat.nForMean(a, E, c); };
+    const NR = () => (mode() === "prop" ? [10, 100000] : [2, 5000]);
+    const gM = SB.seg("pl-m", () => {
+      const el = $("pl-a");
+      if (mode() === "prop") { el.min = 0.5; el.max = 0.999; el.step = 0.001; $("pl-a-name").textContent = "예상 수율 p"; gA.set(0.98, true); st.n = 600; }
+      else { el.min = 0.2; el.max = 5; el.step = 0.1; $("pl-a-name").textContent = "공정 표준 편차 σ"; gA.set(2, true); st.n = 30; }
+      st.ver = null; SB.stat("pl-g", "—"); upd();
+    });
+    const gA = SB.range("pl-a", (v) => (mode() === "prop" ? v.toFixed(3) : v.toFixed(1) + " nm"), () => { st.ver = null; upd(); });
+    const gC = SB.seg("pl-c", () => { st.ver = null; upd(); });
+    const fmtE = (E) => (mode() === "prop" ? "±" + (E * 100).toFixed(3) + "%p" : "±" + E.toFixed(3) + " nm");
+    function upd() {
+      if (!cv) return; cv.redraw();
+      const E = Ef(st.n);
+      $("pl-n").textContent = st.n.toLocaleString("ko-KR");
+      $("pl-e").innerHTML = `${fmtE(E)} ${E <= st.E[mode()] ? okTxt(true, "≤ 목표", "") : okTxt(false, "", "> 목표")}`;
+      $("pl-v").textContent = st.ver == null ? "—" : pct(st.ver);
+    }
+    cv = SB.canvas("cv-plan", (ctx, w, h, self) => {
+      const P = pal(), [n0, n1] = NR(), Et = st.E[mode()];
+      const e0 = Ef(n1) * 0.7, e1 = Ef(n0) * 1.3;
+      const C = SB.chart(ctx, { x: 66, y: 30, w: w - 84, h: h - 30 - 50 }, { x: [n0, n1], logX: true, y: [e0, e1], logY: true, xLabel: "표본 크기 n (로그)", yLabel: "오차 한계 E",
+        yFmt: (v) => (mode() === "prop" ? (v * 100).toPrecision(2) + "%" : String(Number(v.toPrecision(2)))) });
+      const pts = []; for (let i = 0; i <= 120; i++) { const n = n0 * Math.pow(n1 / n0, i / 120); pts.push([n, Ef(n)]); }
+      clip(ctx, C, () => {
+        ctx.strokeStyle = P.accent2; ctx.lineWidth = 2.4; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(C.X(x), C.Y(y)) : ctx.moveTo(C.X(x), C.Y(y)))); ctx.stroke();
+        withA(ctx, 0.08, () => { ctx.fillStyle = P.ok; ctx.fillRect(C.box.x, C.Y(Et), C.box.w, C.box.y + C.box.h - C.Y(Et)); });
+      });
+      const yt = SB.clamp(C.Y(Et), C.box.y, C.box.y + C.box.h);
+      SB.dashLine(ctx, C.box.x, yt, C.box.x + C.box.w, yt, P.bad, [6, 4]);
+      SB.label(ctx, "목표 " + fmtE(Et), C.box.x + 6, yt - 12, { align: "left", size: 12, color: P.bad, bold: true });
+      const tx = C.box.x + C.box.w - 14; handle(ctx, tx, yt, P.bad, 10);
+      const E = Ef(st.n), hx = C.X(st.n), hy = C.Y(E), ok = E <= Et;
+      SB.dashLine(ctx, hx, hy, hx, C.box.y + C.box.h, P.faint);
+      handle(ctx, hx, hy, ok ? P.ok : P.accent2, 10);
+      SB.label(ctx, `n = ${st.n.toLocaleString("ko-KR")}`, hx + (hx > w * 0.65 ? -14 : 14), hy + 18, { align: hx > w * 0.65 ? "right" : "left", size: 12, bold: true });
+      self._C = C; self._hn = [hx, hy]; self._ht = [tx, yt]; self._r = [n0, n1, e0, e1];
+    }, { aspect: 0.55, minHeight: 320, maxHeight: 420 });
+    SB.drag(cv, {
+      handles: () => (cv._hn ? [{ id: "n", x: cv._hn[0], y: cv._hn[1], r: 14 }, { id: "E", x: cv._ht[0], y: cv._ht[1], r: 14 }] : []),
+      move: (id, x, y) => {
+        const C = cv._C, [n0, n1, e0, e1] = cv._r;
+        if (id === "n") { const t = SB.clamp((x - C.box.x) / C.box.w, 0, 1); st.n = Math.max(2, Math.round(n0 * Math.pow(n1 / n0, t))); }
+        else if (id === "E") { const t = SB.clamp((C.box.y + C.box.h - y) / C.box.h, 0.02, 0.98); const E = e0 * Math.pow(e1 / e0, t); st.E[mode()] = Number(E.toPrecision(3)); SB.stat("pl-g", "—"); }
+        st.ver = null; upd();
+      },
+    });
+    $("pl-check").addEventListener("click", () => {
+      const ns = nStar(), n = st.n;
+      if (n < ns) SB.stat("pl-g", okTxt(false, "", `부족 — 최소 ${ns.toLocaleString("ko-KR")}`));
+      else if (n > ns * 1.02) SB.stat("pl-g", `<span style="color:var(--warn)">낭비 ${((n / ns - 1) * 100).toFixed(0)}% — 최소 ${ns.toLocaleString("ko-KR")}</span>`);
+      else SB.stat("pl-g", okTxt(true, `성공 ✓ 최소 n = ${ns.toLocaleString("ko-KR")}`, ""));
+    });
+    $("pl-sim").addEventListener("click", () => {
+      const R = Stat.rng(4321 + st.n), a = gA(), Et = st.E[mode()]; let ok = 0;
+      for (let i = 0; i < 200; i++) {
+        const err = mode() === "prop" ? R.binom(st.n, a) / st.n - a : R.normal(0, a / Math.sqrt(st.n));
+        if (Math.abs(err) <= Et) ok++;
+      }
+      st.ver = ok / 200; upd();
+    });
+    upd();
+  }
+
+  /* ================================================================ 드래그 숫자: 반복 측정 횟수 */
+  SB.tangle("tg-rep", (v) => {
+    const k = Math.ceil(Math.pow((1.96 * v.s) / v.E, 2) - 1e-9), Ea = (1.96 * v.s) / Math.sqrt(k);
+    return { k: String(k), Ea: Ea.toFixed(3) + " nm", E1: (1.96 * v.s).toFixed(3) + " nm", E4: ((1.96 * v.s) / 2).toFixed(3) + " nm" };
+  });
+
+  /* ================================================================ 드릴: 표본 크기 */
+  SB.drill("drill-n", () => {
+    const t = pick(["mean", "prop", "prop0", "rep"]), c = pick([0.9, 0.95, 0.99]), z = { 0.9: 1.645, 0.95: 1.96, 0.99: 2.576 }[c], cs = Math.round(c * 100);
+    if (t === "mean" || t === "rep") {
+      const s = rnd(0.5, 4, 0.1), E = rnd(0.1, 1, 0.05), n = Math.ceil(Math.pow((z * s) / E, 2) - 1e-9);
+      const q = t === "mean" ? `<p>\\(\\sigma \\approx ${s}\\) nm인 막두께의 평균을 ${cs}% 신뢰로 ±${E} nm 안에 추정하려면 몇 점을 재야 하는가? (\\(z = ${z}\\))</p>`
+        : `<p>반복성 \\(\\sigma_m = ${s}\\) nm인 계측기로 같은 지점을 반복해 잰다. 평균의 ${cs}% 오차 한계를 ${E} nm 이하로 만들려면 최소 몇 번 재야 하는가? (\\(z = ${z}\\))</p>`;
+      return { q, answer: n, label: "n =", tol: "1", sol: `\\((z\\sigma/E)^2 = (${z} \\times ${s}/${E})^2 = ${Math.pow((z * s) / E, 2).toFixed(2)}\\) → 올림 ${n}` };
+    }
+    const p = t === "prop0" ? 0.5 : pick([0.8, 0.85, 0.9, 0.95, 0.97, 0.98, 0.99]), E = pick([0.005, 0.01, 0.02, 0.03, 0.05]), n = Math.ceil((z * z * p * (1 - p)) / (E * E) - 1e-9);
+    const q = t === "prop0" ? `<p>예상 수율을 모른다. ${cs}% 신뢰로 수율을 ±${(E * 100).toFixed(1)}%p 안에 추정하려면 다이가 몇 개 필요한가? (\\(z = ${z}\\))</p>`
+      : `<p>예상 수율이 약 ${(p * 100).toFixed(0)}%다. ${cs}% 신뢰로 수율을 ±${(E * 100).toFixed(1)}%p 안에 추정하려면 다이가 몇 개 필요한가? (\\(z = ${z}\\))</p>`;
+    return { q, answer: n, label: "n =", tol: "1", sol: `\\(z^2p(1-p)/E^2 = ${z}^2 \\times ${p} \\times ${f3(1 - p, 3)}/${E}^2 = ${((z * z * p * (1 - p)) / (E * E)).toFixed(1)}\\) → 올림 ${n}${t === "prop0" ? " (p를 모르면 p = 0.5)" : ""}` };
+  });
+
+  /* ================================================================ 시뮬레이터: CI · PI · TI */
+  {
+    const MU = 450, SG = 12, XL = 380, XR = 520;
+    let R = Stat.rng(64), cvA = null, cvB = null, kTab = null;
+    const st = { x: [], m: 0, s: 0, next: [], fk: 0, fh: 0, vk: 0, vh: 0, tk: 0, th: 0 };
+    const gN = SB.range("pt-n", (v) => v, () => newSample());
+    const gP = SB.seg("pt-P", () => { buildK(); st.tk = 0; st.th = 0; redraw(); });
+    const NS = Array.from({ length: 198 }, (_, i) => i + 3);
+    const tTab = NS.map((n) => TQ(0.95, n - 1));
+    function buildK() { const P = Number(gP()); kTab = NS.map((n) => Stat.tolFactor(n, P, 0.95)); }
+    const widths = (n, s) => { const t = tTab[n - 3], k = kTab[n - 3]; return { ci: (t * s) / Math.sqrt(n), pi: t * s * Math.sqrt(1 + 1 / n), ti: k * s }; };
+    function newSample() {
+      const n = gN(); st.x = Array.from({ length: n }, () => R.normal(MU, SG)); st.m = Stat.mean(st.x); st.s = Stat.sd(st.x);
+      st.next = []; st.fk = 0; st.fh = 0; redraw();
+    }
+    function redraw() {
+      if (!cvA) return; cvA.redraw(); cvB.redraw();
+      const w = widths(gN(), st.s);
+      $("pt-w").textContent = `${w.ci.toFixed(1)} · ${w.pi.toFixed(1)} · ${w.ti.toFixed(1)} mV`;
+      $("pt-pc").innerHTML = (st.vk ? `${pct(st.vh / st.vk)} <small style="color:var(--text-dim)">(검증 ${st.vk}번)</small>` : "—") + (st.fk ? `<br><small style="color:var(--text-dim)">이 표본 고정: ${st.fh}/${st.fk}</small>` : "");
+      $("pt-tc").innerHTML = st.tk ? `${pct(st.th / st.tk)} <small style="color:var(--text-dim)">(${st.tk}번)</small>` : "—";
+    }
+    $("pt-new").addEventListener("click", newSample);
+    $("pt-next").addEventListener("click", () => {
+      const v = R.normal(MU, SG), w = widths(gN(), st.s), hit = Math.abs(v - st.m) <= w.pi;
+      st.next.push({ v, hit }); if (st.next.length > 14) st.next.shift(); st.fk++; if (hit) st.fh++; redraw();
+    });
+    $("pt-ver").addEventListener("click", () => {
+      const n = gN(), P = Number(gP()), V = Stat.rng(7000 + n);
+      for (let i = 0; i < 1000; i++) {
+        let s1 = 0, s2 = 0; for (let j = 0; j < n; j++) { const v = V.normal(0, 1); s1 += v; s2 += v * v; }
+        const m = s1 / n, s = Math.sqrt(Math.max(0, (s2 - n * m * m) / (n - 1))), w = widths(n, s), y = V.normal(0, 1);
+        st.vk++; if (Math.abs(y - m) <= w.pi) st.vh++;
+        st.tk++; if (Stat.pnorm(m + w.ti) - Stat.pnorm(m - w.ti) >= P) st.th++;
+      }
+      redraw();
+    });
+    buildK();
+    cvA = SB.canvas("cv-pti", (ctx, w, h) => {
+      const P = pal(), n = gN(), W = widths(n, st.s);
+      const C = SB.chart(ctx, { x: 16, y: 30, w: w - 32, h: h - 30 - 46 }, { x: [XL, XR], y: [0, 1], yTicks: [], xLabel: "문턱 전압 (mV)" });
+      const f = (x) => Stat.dnorm(x, MU, SG) / Stat.dnorm(MU, MU, SG) * 0.42;
+      clip(ctx, C, () => {
+        Stat.draw.curve(ctx, C, (x) => 0.52 + f(x), XL, XR, { color: P.accent2, width: 1.6 });
+        const rows = [[0.4, W.ci, P.accent, "CI"], [0.3, W.pi, P.accent2, "PI"], [0.2, W.ti, P.warn, "TI"]];
+        rows.forEach(([yy, e, col, nm]) => {
+          const y = C.Y(yy); bar(ctx, C.X(st.m - e), C.X(st.m + e), y, col, { width: 5, tick: 7 });
+          SB.label(ctx, nm, C.X(Math.max(XL + 4, st.m - e)) - 4, y, { align: "right", size: 11.5, bold: true, color: col });
+        });
+        const yb = C.Y(0.06), stacks = new Map();
+        st.x.forEach((v) => { const k = Math.round(v / 2.5), c = stacks.get(k) || 0; stacks.set(k, c + 1); ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(k * 2.5), yb - c * 6, 2.8, 0, TAU); ctx.fill(); });
+        st.next.forEach((o, i) => diamond(ctx, C.X(o.v), C.Y(0.12), o.hit ? P.accent : P.bad, i === st.next.length - 1 ? 7 : 5));
+      });
+      SB.label(ctx, "모집단 N(450, 12²)", C.box.x + 4, C.box.y + 10, { align: "left", size: 11, color: P.accent2 });
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    cvB = SB.canvas("cv-pti2", (ctx, w, h, self) => {
+      const P = pal(), n = gN(), Pc = Number(gP()), ymax = 60;
+      const C = SB.chart(ctx, { x: 50, y: 30, w: w - 64, h: h - 30 - 46 }, { x: [3, 200], logX: true, xTicks: [3, 5, 10, 20, 50, 100, 200], y: [0, ymax], xLabel: "표본 크기 n", yLabel: "반폭 (mV)",
+        hlines: [{ y: 1.96 * SG, color: P.accent2, dash: [4, 4] }, { y: Z(Pc) * SG, color: P.warn, dash: [4, 4] }] });
+      const curve = (key, col) => { clip(ctx, C, () => { ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.beginPath(); NS.forEach((m, i) => { const v = widths(m, SG)[key], X = C.X(m), Y = Math.max(C.box.y - 5, C.Y(v)); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke(); }); };
+      curve("ci", P.accent); curve("pi", P.accent2); curve("ti", P.warn);
+      const Wn = widths(n, SG), Ws = widths(n, st.s);
+      [["ci", P.accent], ["pi", P.accent2], ["ti", P.warn]].forEach(([k, col]) => { if (Ws[k] <= ymax) { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(C.X(n), C.Y(Ws[k]), 4, 0, TAU); ctx.stroke(); } });
+      SB.label(ctx, "CI", C.X(150), C.Y(widths(150, SG).ci) - 10, { size: 11, color: P.accent, bold: true });
+      SB.label(ctx, "PI", C.X(150), C.Y(widths(150, SG).pi) - 10, { size: 11, color: P.accent2, bold: true });
+      SB.label(ctx, "TI", C.X(150), C.Y(widths(150, SG).ti) - 10, { size: 11, color: P.warn, bold: true });
+      const hx = C.X(n), hy = SB.clamp(C.Y(Wn.pi), C.box.y + 8, C.box.y + C.box.h);
+      handle(ctx, hx, hy, P.accent2, 9);
+      self._h = [hx, hy]; self._C = C;
+    }, { aspect: 1.0, minHeight: 300, maxHeight: 380 });
+    SB.drag(cvB, {
+      handles: () => [{ id: "n", x: cvB._h[0], y: cvB._h[1], r: 14 }],
+      move: (id, x) => { const C = cvB._C, t = SB.clamp((x - C.box.x) / C.box.w, 0, 1), n = Math.round(3 * Math.pow(200 / 3, t)); if (n !== gN()) gN.set(n); },
+    });
+    newSample();
+  }
+
+  /* ================================================================ 미니: 공차 구간의 실제 포함 비율 */
+  {
+    let R = Stat.rng(71), cv = null;
+    const st = { A: acc(0.9, 1.0, 50), k: 0, good: 0, kf: 0 };
+    const gN = SB.range("tv-n", (v) => v, () => setup());
+    const gK = SB.seg("tv-k", () => setup());
+    const go = (m) => {
+      const n = gN();
+      for (let i = 0; i < m; i++) {
+        let s1 = 0, s2 = 0; for (let j = 0; j < n; j++) { const v = R.normal(); s1 += v; s2 += v * v; }
+        const mu = s1 / n, s = Math.sqrt(Math.max(0, (s2 - n * mu * mu) / (n - 1))), cov = Stat.pnorm(mu + st.kf * s) - Stat.pnorm(mu - st.kf * s);
+        st.A.add(cov); st.k++; if (cov >= 0.99) st.good++;
+      }
+      cv && cv.redraw(); out();
+    };
+    const out = () => { $("tv-r").innerHTML = `${st.k}개 중 <b>${pct(st.good / st.k)}</b>가 모집단의 99% 이상을 덮음 · 계수 ${st.kf.toFixed(3)}`; };
+    function setup() { st.kf = gK() === "k" ? Stat.tolFactor(gN(), 0.99, 0.95) : 2.576; st.A.reset(); st.k = 0; st.good = 0; R = Stat.rng(71 + gN()); go(500); }
+    $("tv-go").addEventListener("click", () => go(500));
+    cv = SB.canvas("cv-tcov", (ctx, w, h) => {
+      const P = pal(), A = st.A;
+      const C = SB.chart(ctx, { x: 46, y: 30, w: w - 60, h: h - 30 - 46 }, { x: [0.9, 1.0], y: [0, A.maxDens() * 1.15 || 1], yTicks: [], xLabel: "구간이 실제로 덮은 모집단 비율", xFmt: (v) => (v * 100).toFixed(0) + "%" });
+      A.draw(ctx, C, P.accent, 0.5);
+      vline(ctx, C, 0.99, P.bad, { width: 2 });
+      SB.label(ctx, "99%", C.X(0.99) - 6, C.box.y + 10, { align: "right", size: 11.5, color: P.bad, bold: true });
+      SB.label(ctx, "≤90%는 왼쪽 끝 칸", C.box.x + 4, C.box.y + 10, { align: "left", size: 10.5, color: P.dim });
+    }, { aspect: 0.42, minHeight: 230, maxHeight: 290 });
+    setup();
+  }
+
+  /* ================================================================ 드래그 숫자: 재표본에서 빠질 확률 */
+  SB.tangle("tg-uniq", (v) => {
+    const m = Math.pow(1 - 1 / v.n, v.n);
+    return { miss: m.toFixed(4), uniq: (v.n * (1 - m)).toFixed(1), frac: pct(1 - m) };
+  });
+
+  /* ================================================================ 미니: 재표본 하나 */
+  {
+    let R = Stat.rng(17), cv = null;
+    const st = { idx: [], t: 1, k: 0, sumU: 0 };
+    const gN = SB.range("rs-n", (v) => v, () => { st.k = 0; st.sumU = 0; draw1(false); });
+    function draw1(anim) {
+      const n = gN(); st.idx = Array.from({ length: n }, () => Math.floor(R.u() * n)); st.t = anim ? 0 : 1;
+      const u = new Set(st.idx).size; st.k++; st.sumU += u / n; out();
+    }
+    const out = () => {
+      const n = gN(), u = new Set(st.idx).size;
+      $("rs-r").textContent = `이번: 서로 다른 값 ${u}/${n} (${pct(u / n, 0)}) · ${st.k}번 평균 ${pct(st.sumU / st.k)} · 이론 ${pct(1 - Math.pow(1 - 1 / n, n))}`;
+    };
+    $("rs-go").addEventListener("click", () => draw1(true));
+    $("rs-100").addEventListener("click", () => { for (let i = 0; i < 99; i++) draw1(false); draw1(true); });
+    cv = SB.canvas("cv-rs", (ctx, w, h) => {
+      const P = pal(), n = gN(), gap = (w - 30) / n, r = Math.min(13, gap * 0.42), y0 = 40, y1 = h - 40;
+      const cnt = new Array(n).fill(0); st.idx.forEach((j) => cnt[j]++);
+      SB.label(ctx, "원래 자료", 14, 14, { align: "left", size: 11.5, color: P.dim });
+      SB.label(ctx, "재표본(복원 추출)", 14, y1 - r - 14, { align: "left", size: 11.5, color: P.dim });
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (let j = 0; j < n; j++) {
+        const x = 15 + gap * (j + 0.5), used = cnt[j] > 0 && st.t >= 1;
+        withA(ctx, used || st.t < 1 ? 1 : 0.3, () => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(x, y0, r, 0, TAU); ctx.fill(); });
+        ctx.fillStyle = P.bg; ctx.font = font(Math.max(9, r * 0.9), true, true); ctx.fillText(String(j + 1), x, y0 + 0.5);
+        if (st.t >= 1 && cnt[j] > 1) SB.label(ctx, "×" + cnt[j], x, y0 + r + 11, { size: 11, color: P.accent2, bold: true });
+      }
+      st.idx.forEach((j, i) => {
+        const tt = SB.clamp((st.t * 1.6 - i * (0.6 / n)) / 1, 0, 1), e = 1 - (1 - tt) * (1 - tt);
+        const xs = 15 + gap * (j + 0.5), xd = 15 + gap * (i + 0.5), x = SB.lerp(xs, xd, e), y = SB.lerp(y0, y1, e);
+        if (tt <= 0) return;
+        ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+        ctx.fillStyle = P.bg; ctx.font = font(Math.max(9, r * 0.9), true, true); ctx.fillText(String(j + 1), x, y + 0.5);
+      });
+    }, { aspect: 0.3, minHeight: 170, maxHeight: 210 });
+    draw1(false);
+    SB.loop("mini-rs", (dt) => { if (st.t < 1) { st.t = Math.min(1, st.t + dt / 1.1); cv.redraw(); if (st.t >= 1) out(); } });
+  }
+
+  /* ================================================================ 시뮬레이터: 부트스트랩 기계 */
+  {
+    const DATA0 = [443.2, 452.8, 447.5, 458.1, 449.9, 455.3, 441.6, 451.2, 460.4, 446.8, 453.7, 438.9, 456.2, 450.5, 462.0];
+    const LSL = 420, USL = 480, XL = 415, XR = 485;
+    const STAT = {
+      mean: (x) => Stat.mean(x), median: (x) => Stat.median(x), sd: (x) => Stat.sd(x),
+      cpk: (x) => { const m = Stat.mean(x), s = Stat.sd(x); return Math.min(USL - m, m - LSL) / (3 * s); },
+    };
+    const UNIT = { mean: " mV", median: " mV", sd: " mV", cpk: "" };
+    let data = DATA0.slice(), R = Stat.rng(2468), cv = null;
+    const st = { vals: [], A: acc(0, 1, 60), anim: null, th: 0 };
+    const gS = SB.seg("bt-s", () => reset());
+    const resample = () => { const n = data.length, idx = new Array(n); for (let i = 0; i < n; i++) idx[i] = Math.floor(R.u() * n); return idx; };
+    const statOf = (idx) => STAT[gS()](idx.map((i) => data[i]));
+    const commit = (v) => { if (st.vals.length < 20000) st.vals.push(v); st.A.add(v); };
+    const one = (quiet) => {
+      if (st.anim && !st.anim.done) { commit(st.anim.v); st.anim.done = true; }
+      const idx = resample(), v = statOf(idx);
+      if (quiet) commit(v); else st.anim = { idx, v, t: 0, done: false };
+    };
+    const run = runner(one, { slowMax: 12, interval: 0.25, playInterval: 1.0, batch: 100 });
+    bindRun(run, { one: "bt-1", ten: "bt-10", thou: "bt-1000", play: "bt-play" });
+    function reset() {
+      const P0 = Stat.rng(97), f = STAT[gS()], n = data.length, pil = [];
+      for (let b = 0; b < 400; b++) { const s = new Array(n); for (let i = 0; i < n; i++) s[i] = data[Math.floor(P0.u() * n)]; pil.push(f(s)); }
+      const [q0, q1] = Stat.quantile(pil, [0.002, 0.998]), pad = (q1 - q0) * 0.35 || 1;
+      st.th = f(data); st.A.reset(q0 - pad, q1 + pad); st.vals = []; st.anim = null; run.pending = 0; R = Stat.rng(2468);
+      for (let i = 0; i < 1000; i++) one(true);
+      cv && cv.redraw(); out();
+    }
+    const out = () => {
+      const k = gS(), d = k === "cpk" ? 3 : 2;
+      $("bt-B").textContent = st.vals.length;
+      $("bt-th").textContent = st.th.toFixed(d) + UNIT[k];
+      if (st.vals.length > 20) { const [a, b] = Stat.quantile(st.vals, [0.025, 0.975]); $("bt-se").textContent = Stat.sd(st.vals).toFixed(d + 1) + UNIT[k]; $("bt-ci").textContent = iv(a, b, d) + UNIT[k]; }
+      else { $("bt-se").textContent = "—"; $("bt-ci").textContent = "—"; }
+    };
+    cv = SB.canvas("cv-boot", (ctx, w, h, self) => {
+      const P = pal(), k = gS(), A = st.A, n = data.length;
+      const C1 = SB.chart(ctx, { x: 20, y: 30, w: w - 40, h: 150 }, { x: [XL, XR], y: [0, 3], yTicks: [], xFmt: (v) => v.toFixed(0) });
+      [LSL, USL].forEach((v) => vline(ctx, C1, v, P.bad, { width: 1.3, dash: [4, 4] }));
+      SB.label(ctx, "LSL", C1.X(LSL) + 4, C1.box.y + C1.box.h - 10, { align: "left", size: 10.5, color: P.bad });
+      SB.label(ctx, "USL", C1.X(USL) - 4, C1.box.y + C1.box.h - 10, { align: "right", size: 10.5, color: P.bad });
+      const yD = C1.Y(2.45), yS = C1.Y(0.35);
+      SB.label(ctx, "원래 자료", C1.box.x + 4, yD - 22, { align: "left", size: 11.5, color: P.dim, bold: true });
+      SB.label(ctx, "재표본", C1.box.x + 4, yS - 30, { align: "left", size: 11.5, color: P.dim, bold: true });
+      self._h = data.map((v) => [C1.X(v), yD]);
+      data.forEach((v) => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C1.X(v), yD, 6, 0, TAU); ctx.fill(); ctx.strokeStyle = P.bg; ctx.lineWidth = 1.5; ctx.stroke(); });
+      if (st.anim) {
+        const a = st.anim, stack = new Map();
+        a.idx.forEach((j, i) => {
+          const tt = SB.clamp(a.t * 1.8 - i * 0.05, 0, 1), e = 1 - (1 - tt) * (1 - tt);
+          const c = stack.get(j) || 0; stack.set(j, c + 1);
+          const x = C1.X(data[j]), y = SB.lerp(yD, yS - c * 9, e);
+          if (tt > 0) { ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, TAU); ctx.fill(); }
+        });
+        if (a.t > 0.9) SB.label(ctx, `→ ${k === "cpk" ? "Cpk" : k} = ${a.v.toFixed(k === "cpk" ? 3 : 2)}`, C1.box.x + C1.box.w - 4, yS - 30, { align: "right", size: 11.5, color: P.accent2, bold: true });
+      }
+      self._C1 = C1;
+      const top = C1.box.y + C1.box.h + 34, ymax = A.maxDens() * 1.18 || 1;
+      const C2 = SB.chart(ctx, { x: 20, y: top, w: w - 40, h: h - top - 46 }, { x: [A.lo, A.hi], y: [0, ymax], yTicks: [], xLabel: { mean: "평균의 부트스트랩 분포 (mV)", median: "중앙값의 부트스트랩 분포 (mV)", sd: "표준 편차의 부트스트랩 분포 (mV)", cpk: "Cpk의 부트스트랩 분포" }[k], xFmt: (v) => f3(v, 4) });
+      A.draw(ctx, C2, P.accent, 0.45);
+      vline(ctx, C2, st.th, P.text, { width: 2 });
+      if (st.vals.length > 20) {
+        const [a, b] = Stat.quantile(st.vals, [0.025, 0.975]), y = C2.box.y + 12;
+        bar(ctx, C2.X(a), C2.X(b), y, P.accent2, { width: 4, tick: 6 });
+        SB.label(ctx, "95% 백분위", C2.X((a + b) / 2), y + 14, { size: 11, color: P.accent2, bold: true });
+        if (k === "mean") { const T = Stat.tInterval(data, 0.95); bar(ctx, C2.X(T.lo), C2.X(T.hi), y + 30, P.dim, { width: 3, tick: 5 }); SB.label(ctx, "t 구간", C2.X(T.hi) + 4, y + 30, { align: "left", size: 10.5, color: P.dim }); }
+      }
+    }, { aspect: 0.8, minHeight: 470, maxHeight: 560 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? cv._h.map((p, i) => ({ id: i, x: p[0], y: p[1], r: 12 })) : []),
+      move: (id, x) => { if (id == null) return; data[id] = Math.round(SB.clamp(invX(cv._C1, XL, XR, x), XL + 1, XR - 1) * 10) / 10; st.vals = []; st.A.reset(); st.anim = null; st.th = STAT[gS()](data); out(); },
+      up: (id) => { if (id != null) reset(); },
+    });
+    $("bt-out").addEventListener("click", () => { data = DATA0.slice(); data[data.length - 1] = 478.5; reset(); });
+    $("bt-reset").addEventListener("click", () => { data = DATA0.slice(); reset(); });
+    reset();
+    SB.loop("sim-boot", (dt) => {
+      let ch = run.tick(Math.min(dt, 0.05));
+      if (st.anim && !st.anim.done) { st.anim.t += dt / 0.9; ch = true; if (st.anim.t >= 1) { commit(st.anim.v); st.anim.done = true; } }
+      if (ch) { cv.redraw(); out(); }
+    });
+  }
+})();
+</script>
+</body>
+</html>

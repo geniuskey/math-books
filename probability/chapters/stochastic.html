@@ -1,0 +1,1820 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>확률 과정 · 확률과 통계 · MathBooks</title>
+<meta name="description" content="랜덤 워크와 확산, 포아송 과정과 도착 간격, 마르코프 연쇄와 전이 행렬·정상 분포, 흡수 상태와 도달 시간, M/M/1 대기 행렬과 리틀의 법칙, 자기 상관과 백색 잡음 — 도펀트 확산, 장비 상태, 팹 대기열과 센서 노이즈를 시뮬레이션으로 본다.">
+<!-- sb:seo -->
+<link rel="canonical" href="https://math.euiyun.com/probability/chapters/stochastic.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MathBooks">
+<meta property="og:title" content="확률 과정 · 확률과 통계 · MathBooks">
+<meta property="og:description" content="랜덤 워크와 확산, 포아송 과정과 도착 간격, 마르코프 연쇄와 전이 행렬·정상 분포, 흡수 상태와 도달 시간, M/M/1 대기 행렬과 리틀의 법칙, 자기 상관과 백색 잡음 — 도펀트 확산, 장비 상태, 팹 대기열과 센서 노이즈를 시뮬레이션으로 본다.">
+<meta property="og:url" content="https://math.euiyun.com/probability/chapters/stochastic.html">
+<meta property="og:image" content="https://math.euiyun.com/og.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "TechArticle", "name": "확률 과정 · 확률과 통계 · MathBooks", "headline": "15 확률 과정", "url": "https://math.euiyun.com/probability/chapters/stochastic.html", "inLanguage": "ko", "isAccessibleForFree": true, "image": "https://math.euiyun.com/og.png", "description": "랜덤 워크와 확산, 포아송 과정과 도착 간격, 마르코프 연쇄와 전이 행렬·정상 분포, 흡수 상태와 도달 시간, M/M/1 대기 행렬과 리틀의 법칙, 자기 상관과 백색 잡음 — 도펀트 확산, 장비 상태, 팹 대기열과 센서 노이즈를 시뮬레이션으로 본다.", "publisher": {"@type": "Organization", "name": "MathBooks", "url": "https://math.euiyun.com/"}, "learningResourceType": "interactive textbook chapter", "position": 15, "dateModified": "2026-10-22", "isPartOf": {"@type": "Book", "@id": "https://math.euiyun.com/probability/#book", "name": "확률과 통계", "url": "https://math.euiyun.com/probability/"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "MathBooks", "item": "https://math.euiyun.com/"}, {"@type": "ListItem", "position": 2, "name": "확률과 통계", "item": "https://math.euiyun.com/probability/"}, {"@type": "ListItem", "position": 3, "name": "15 확률 과정", "item": "https://math.euiyun.com/probability/chapters/stochastic.html"}]}]}</script>
+<!-- /sb:seo -->
+<link rel="stylesheet" href="../engine/css/scibook.css">
+<script src="../engine/js/scibook.js"></script>
+<script src="../course.js"></script>
+<script src="../engine/lib/stat.js"></script>
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="probability"></script>
+</head>
+<body data-chapter="stochastic">
+<main class="chapter">
+  <header class="chapter-hero" data-prereq="discrete continuous limit-theorems">
+    <div class="eyebrow">Chapter 15</div>
+    <h1>확률 과정</h1>
+    <p class="lead">지금까지는 확률 변수 하나, 또는 서로 독립인 표본 여러 개를 다뤘다. 하지만 팹에서 보는 무작위는 대개 <b>시간을 따라 이어진다</b>. 붕소 원자는 실리콘 격자 속에서 한 칸씩 무작위로 뛰어 접합 깊이를 만들고, 로트는 불규칙한 간격으로 노광 장비 앞에 도착해 줄을 서며, 장비는 가동·대기·고장·예방 정비 상태를 오가고, 센서 값은 어제의 값을 조금씩 기억한다. 시간에 따라 변하는 확률 변수의 모임을 <span class="term">확률 과정</span><span class="en">(stochastic process)</span>이라 한다. 이 장은 공학에서 가장 많이 쓰는 여섯 가지 과정 — 랜덤 워크, 포아송 과정, 마르코프 연쇄, 흡수 연쇄, 대기 행렬, 자기 상관 계열 — 을 직접 돌려 보며 익힌다. 아래 점들은 한 점에서 출발해 무작위로 걷는 도펀트 원자다. 무리의 반경은 시간에 비례하지 않고 \(\sqrt t\)에 비례해 자란다.</p>
+    <div class="hero-live" id="hero"><canvas id="cv-hero"></canvas><div class="hero-ctrl"><button class="btn" id="hero-play" type="button"></button><button class="btn" id="hero-reset" type="button">다시</button></div><span class="hint top">누르면 그 자리에서 새로 퍼진다</span></div>
+    <ul class="objectives">
+      <li>단순 랜덤 워크의 위치가 이항 분포를 따르고 평균 \(n(2p-1)\), 분산 \(4np(1-p)\)임을 보이고, 퍼짐이 \(\sqrt n\)으로 자란다는 사실에서 확산 방정식의 해 \(\sigma^2 = 2Dt\)를 이끌어 낸다.</li>
+      <li>포아송 과정의 세 조건(독립 증분·정상 증분·드묾)에서 개수 \(N(t)\sim\mathrm{Poisson}(\lambda t)\), 도착 간격 \(\mathrm{Exp}(\lambda)\), \(k\)번째 도착 시각 \(\mathrm{Gamma}(k,1/\lambda)\)를 얻고, 중첩·솎아내기·검사 역설을 설명한다.</li>
+      <li>마르코프 연쇄의 전이 행렬로 \(n\)걸음 분포 \(\pi_n = \pi_0P^n\)을 계산하고, 정상 분포 \(\pi = \pi P\)를 구해 장비 가동률 같은 장기 비율로 해석한다.</li>
+      <li>흡수 연쇄의 기본 행렬 \(N=(I-Q)^{-1}\)으로 흡수 확률과 기대 도달 시간을 구하고, 첫걸음 분석으로 도박꾼의 파산 문제를 푼다.</li>
+      <li>M/M/1 대기 행렬의 \(L, L_q, W, W_q\)를 계산하고, 리틀의 법칙 \(L = \lambda W\)로 재공(WIP)·처리량·사이클 타임을 잇고, 이용률이 1에 다가갈 때 대기가 폭증하는 운영 곡선을 설명한다.</li>
+      <li>자기 상관 함수와 상관도를 읽고, 백색 잡음과 AR(1) 과정을 구분하며, 상관된 자료에서 평균의 표준 오차와 유효 표본 크기가 어떻게 달라지는지 계산한다.</li>
+    </ul>
+  </header>
+
+  <!-- ============================================================ -->
+  <section id="random-walk">
+    <h2>랜덤 워크와 확산</h2>
+    <p>동전을 던져 앞면이면 오른쪽, 뒷면이면 왼쪽으로 한 칸 움직이는 점을 생각하자. \(i\)번째 걸음 \(X_i\)는 확률 \(p\)로 \(+1\), \(1-p\)로 \(-1\)이고 서로 독립이다. \(n\)걸음 뒤의 위치</p>
+    <div class="formula">$$S_n = X_1 + X_2 + \cdots + X_n,\qquad S_0 = 0$$</div>
+    <p>을 <span class="term">랜덤 워크</span><span class="en">(random walk)</span>라 한다. 시각 \(n = 0, 1, 2, \dots\)마다 확률 변수 \(S_n\)이 하나씩 있으니, \(\{S_n\}\)은 이산 시간 확률 과정이다. 한 번 실행한 결과인 수열 \(S_0, S_1, S_2,\dots\)를 그 과정의 <b>표본 경로</b>라 부른다.</p>
+    <p>한 걸음의 평균은 \(E[X_i] = p - (1-p) = 2p-1\), 분산은 \(E[X_i^2]-(2p-1)^2 = 1-(2p-1)^2 = 4p(1-p)\)이다. 걸음이 독립이므로 6장의 선형 결합 공식이 그대로 쓰인다.</p>
+    <div class="formula">$$E[S_n] = n(2p-1),\qquad \operatorname{Var}(S_n) = 4np(1-p),\qquad \text{대칭}(p=\tfrac12)\text{이면 } E[S_n]=0,\ \operatorname{SD}(S_n)=\sqrt n$$<div class="where">오른쪽 걸음 수를 \(K\)라 하면 \(S_n = K-(n-K) = 2K-n\)이고 \(K\sim\mathrm{Bin}(n,p)\)이다. 따라서 \(S_n\)은 \(n\)과 짝·홀이 같은 값만 갖고, \(P(S_n = 2k-n) = \binom nk p^k(1-p)^{n-k}\)이다.</div></div>
+    <p>대칭 랜덤 워크는 평균적으로 제자리지만, 출발점에서 떨어진 <b>전형적인 거리</b>는 \(\sqrt n\)으로 자란다. 100걸음이면 약 10칸, 10000걸음이면 약 100칸이다. 걸음 수를 100배로 늘려도 퍼짐은 10배밖에 늘지 않는다. 중심 극한 정리(7장)에 따라 \(n\)이 크면 \(S_n\)은 \(N\big(n(2p-1),\,4np(1-p)\big)\)에 가까워진다.</p>
+    <div class="predict" data-for="sim-rw">
+      <p>대칭 랜덤 워크(\(p = 0.5\))로 100걸음을 걸었다. 출발점에서 떨어진 거리 \(|S_{100}|\)는 보통 어느 정도일까?</p>
+      <div class="opts"><button class="opt">거의 0 — 오른쪽과 왼쪽이 상쇄되니까</button><button class="opt" data-correct>10칸 안팎 — \(\sqrt{100}\)</button><button class="opt">50칸 안팎 — 걸음의 절반</button><button class="opt">100칸에 가깝다</button></div>
+      <div class="quiz-exp">평균 \(E[S_{100}]\)은 0이지만 표준 편차는 \(\sqrt{100} = 10\)이다. 경로들은 \(\pm\sqrt n\) 포락선 안팎에 부채꼴로 퍼진다. 정확히 0으로 돌아올 확률은 \(\binom{100}{50}/2^{100}\approx 0.08\)뿐이다. 시뮬레이터에서 경로 100개를 그리고 오른쪽 히스토그램의 표준 편차를 읽어 보라.</div>
+    </div>
+    <div class="sim" id="sim-rw">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>랜덤 워크의 부채꼴과 위치 분포</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-rw"></canvas><span class="hint top">흰 원을 끌어 n 바꾸기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>오른쪽 확률 p <output id="rw-p-out"></output></span><input type="range" id="rw-p" min="0.3" max="0.7" step="0.01" value="0.5"></label>
+          <div class="ctrl"><span>경로 추가</span><div class="seg" id="rw-add"><button data-value="1">+1</button><button data-value="10">+10</button><button data-value="100">+100</button></div></div>
+          <button class="btn" id="rw-play" type="button"></button>
+          <button class="btn" id="rw-clear" type="button">지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">경로 수</span><span class="v" id="rw-cnt">—</span></div>
+        <div class="stat"><span class="k">관찰 시각 n</span><span class="v" id="rw-n">—</span></div>
+        <div class="stat"><span class="k">S<sub>n</sub> 평균 (이론)</span><span class="v" id="rw-mean">—</span></div>
+        <div class="stat"><span class="k">S<sub>n</sub> 표준 편차 (이론)</span><span class="v" id="rw-sd">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽은 시각(가로)에 따른 위치(세로)의 표본 경로, 자주색 점선은 이론 평균 ± 1·2 표준 편차의 포락선 \(n(2p-1)\pm k\sqrt{4np(1-p)}\)이다. 오른쪽은 관찰 시각 \(n\)에서의 위치 히스토그램(초록)과 이항 분포에서 온 이론 pmf(자주색)다. 해볼 것: ① 재생으로 경로를 쌓으며 히스토그램이 종 모양으로 자라는 것을 본다. ② 관찰 시각을 25 → 100 → 200으로 끌면 퍼짐이 4배가 아니라 2배·√2배씩 는다. ③ \(p = 0.55\)로 바꾸면 부채꼴이 기울고(표류), 표준 편차는 거의 그대로다.</div>
+    </div>
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 300" role="img" aria-label="한 걸음 랜덤 워크에서 n이 커질수록 위치 분포가 넓고 낮은 종 모양으로 변하는 그림">
+        <line x1="60" y1="250" x2="520" y2="250" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <line x1="60.0" y1="250" x2="60.0" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="60.0" y="270" text-anchor="middle">-24</text>
+        <line x1="136.7" y1="250" x2="136.7" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="136.7" y="270" text-anchor="middle">-16</text>
+        <line x1="213.3" y1="250" x2="213.3" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="213.3" y="270" text-anchor="middle">-8</text>
+        <line x1="290.0" y1="250" x2="290.0" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="290.0" y="270" text-anchor="middle">0</text>
+        <line x1="366.7" y1="250" x2="366.7" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="366.7" y="270" text-anchor="middle">8</text>
+        <line x1="443.3" y1="250" x2="443.3" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="443.3" y="270" text-anchor="middle">16</text>
+        <line x1="520.0" y1="250" x2="520.0" y2="255" stroke="var(--text-dim)"/><text class="t t-dim" x="520.0" y="270" text-anchor="middle">24</text>
+        <text class="t t-dim" x="520" y="288" text-anchor="end">위치 Sₙ (걸음 단위 a)</text>
+        <g data-only="1">
+        <rect x="272.8" y="40.0" width="15.3" height="210.0" fill="var(--accent)" opacity="0.75"/>
+        <rect x="291.9" y="40.0" width="15.3" height="210.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t" x="68" y="44" style="font-weight:700">n = 1</text>
+        </g>
+        <g data-only="2">
+        <rect x="244.0" y="223.8" width="15.3" height="26.2" fill="var(--accent)" opacity="0.75"/>
+        <rect x="263.2" y="145.0" width="15.3" height="105.0" fill="var(--accent)" opacity="0.75"/>
+        <rect x="282.3" y="92.5" width="15.3" height="157.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="301.5" y="145.0" width="15.3" height="105.0" fill="var(--accent)" opacity="0.75"/>
+        <rect x="320.7" y="223.8" width="15.3" height="26.2" fill="var(--accent)" opacity="0.75"/>
+        <text class="t" x="68" y="44" style="font-weight:700">n = 4</text>
+        </g>
+        <g data-only="3">
+        <rect x="148.2" y="249.9" width="15.3" height="0.1" fill="var(--accent)" opacity="0.75"/>
+        <rect x="167.3" y="249.2" width="15.3" height="0.8" fill="var(--accent)" opacity="0.75"/>
+        <rect x="186.5" y="246.4" width="15.3" height="3.6" fill="var(--accent)" opacity="0.75"/>
+        <rect x="205.7" y="238.3" width="15.3" height="11.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="224.8" y="222.0" width="15.3" height="28.0" fill="var(--accent)" opacity="0.75"/>
+        <rect x="244.0" y="198.7" width="15.3" height="51.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="263.2" y="176.7" width="15.3" height="73.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="282.3" y="167.5" width="15.3" height="82.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="301.5" y="176.7" width="15.3" height="73.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="320.7" y="198.7" width="15.3" height="51.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="339.8" y="222.0" width="15.3" height="28.0" fill="var(--accent)" opacity="0.75"/>
+        <rect x="359.0" y="238.3" width="15.3" height="11.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="378.2" y="246.4" width="15.3" height="3.6" fill="var(--accent)" opacity="0.75"/>
+        <rect x="397.3" y="249.2" width="15.3" height="0.8" fill="var(--accent)" opacity="0.75"/>
+        <rect x="416.5" y="249.9" width="15.3" height="0.1" fill="var(--accent)" opacity="0.75"/>
+        <polyline points="60.0,250.0 64.8,250.0 69.6,250.0 74.4,250.0 79.2,250.0 84.0,250.0 88.8,250.0 93.5,250.0 98.3,250.0 103.1,250.0 107.9,250.0 112.7,250.0 117.5,250.0 122.3,250.0 127.1,250.0 131.9,250.0 136.7,250.0 141.5,250.0 146.2,249.9 151.0,249.9 155.8,249.8 160.6,249.7 165.4,249.6 170.2,249.4 175.0,249.1 179.8,248.7 184.6,248.1 189.4,247.3 194.2,246.3 199.0,245.0 203.8,243.3 208.5,241.2 213.3,238.7 218.1,235.6 222.9,231.9 227.7,227.6 232.5,222.8 237.3,217.4 242.1,211.6 246.9,205.5 251.7,199.2 256.5,192.9 261.2,186.8 266.0,181.1 270.8,176.1 275.6,171.9 280.4,168.8 285.2,166.9 290.0,166.2 294.8,166.9 299.6,168.8 304.4,171.9 309.2,176.1 314.0,181.1 318.8,186.8 323.5,192.9 328.3,199.2 333.1,205.5 337.9,211.6 342.7,217.4 347.5,222.8 352.3,227.6 357.1,231.9 361.9,235.6 366.7,238.7 371.5,241.2 376.2,243.3 381.0,245.0 385.8,246.3 390.6,247.3 395.4,248.1 400.2,248.7 405.0,249.1 409.8,249.4 414.6,249.6 419.4,249.7 424.2,249.8 429.0,249.9 433.8,249.9 438.5,250.0 443.3,250.0 448.1,250.0 452.9,250.0 457.7,250.0 462.5,250.0 467.3,250.0 472.1,250.0 476.9,250.0 481.7,250.0 486.5,250.0 491.2,250.0 496.0,250.0 500.8,250.0 505.6,250.0 510.4,250.0 515.2,250.0 520.0,250.0" fill="none" stroke="var(--accent-2)" stroke-width="2.5"/>
+        <line x1="251.7" y1="250" x2="251.7" y2="100" stroke="var(--text-faint)" stroke-dasharray="4 4"/><line x1="328.3" y1="250" x2="328.3" y2="100" stroke="var(--text-faint)" stroke-dasharray="4 4"/>
+        <text class="t t-dim" x="332.3" y="110">+√n = 4</text>
+        <text class="t" x="68" y="44" style="font-weight:700">n = 16</text>
+        </g>
+        <g data-only="4">
+        <rect x="14.0" y="249.9" width="15.3" height="0.1" fill="var(--accent)" opacity="0.75"/>
+        <rect x="33.2" y="249.8" width="15.3" height="0.2" fill="var(--accent)" opacity="0.75"/>
+        <rect x="52.3" y="249.6" width="15.3" height="0.4" fill="var(--accent)" opacity="0.75"/>
+        <rect x="71.5" y="249.1" width="15.3" height="0.9" fill="var(--accent)" opacity="0.75"/>
+        <rect x="90.7" y="248.2" width="15.3" height="1.8" fill="var(--accent)" opacity="0.75"/>
+        <rect x="109.8" y="246.7" width="15.3" height="3.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="129.0" y="244.3" width="15.3" height="5.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="148.2" y="240.9" width="15.3" height="9.1" fill="var(--accent)" opacity="0.75"/>
+        <rect x="167.3" y="236.3" width="15.3" height="13.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="186.5" y="230.7" width="15.3" height="19.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="205.7" y="224.5" width="15.3" height="25.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="224.8" y="218.4" width="15.3" height="31.6" fill="var(--accent)" opacity="0.75"/>
+        <rect x="244.0" y="213.1" width="15.3" height="36.9" fill="var(--accent)" opacity="0.75"/>
+        <rect x="263.2" y="209.5" width="15.3" height="40.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="282.3" y="208.3" width="15.3" height="41.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="301.5" y="209.5" width="15.3" height="40.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="320.7" y="213.1" width="15.3" height="36.9" fill="var(--accent)" opacity="0.75"/>
+        <rect x="339.8" y="218.4" width="15.3" height="31.6" fill="var(--accent)" opacity="0.75"/>
+        <rect x="359.0" y="224.5" width="15.3" height="25.5" fill="var(--accent)" opacity="0.75"/>
+        <rect x="378.2" y="230.7" width="15.3" height="19.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="397.3" y="236.3" width="15.3" height="13.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="416.5" y="240.9" width="15.3" height="9.1" fill="var(--accent)" opacity="0.75"/>
+        <rect x="435.7" y="244.3" width="15.3" height="5.7" fill="var(--accent)" opacity="0.75"/>
+        <rect x="454.8" y="246.7" width="15.3" height="3.3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="474.0" y="248.2" width="15.3" height="1.8" fill="var(--accent)" opacity="0.75"/>
+        <rect x="493.2" y="249.1" width="15.3" height="0.9" fill="var(--accent)" opacity="0.75"/>
+        <rect x="512.3" y="249.6" width="15.3" height="0.4" fill="var(--accent)" opacity="0.75"/>
+        <rect x="531.5" y="249.8" width="15.3" height="0.2" fill="var(--accent)" opacity="0.75"/>
+        <rect x="550.7" y="249.9" width="15.3" height="0.1" fill="var(--accent)" opacity="0.75"/>
+        <polyline points="60.0,249.5 64.8,249.4 69.6,249.3 74.4,249.2 79.2,249.0 84.0,248.9 88.8,248.7 93.5,248.4 98.3,248.2 103.1,247.9 107.9,247.5 112.7,247.1 117.5,246.7 122.3,246.2 127.1,245.6 131.9,245.0 136.7,244.3 141.5,243.6 146.2,242.8 151.0,241.9 155.8,240.9 160.6,239.9 165.4,238.8 170.2,237.6 175.0,236.4 179.8,235.1 184.6,233.7 189.4,232.3 194.2,230.8 199.0,229.3 203.8,227.8 208.5,226.2 213.3,224.6 218.1,223.0 222.9,221.4 227.7,219.9 232.5,218.4 237.3,216.9 242.1,215.5 246.9,214.2 251.7,213.0 256.5,211.9 261.2,211.0 266.0,210.1 270.8,209.4 275.6,208.8 280.4,208.4 285.2,208.2 290.0,208.1 294.8,208.2 299.6,208.4 304.4,208.8 309.2,209.4 314.0,210.1 318.8,211.0 323.5,211.9 328.3,213.0 333.1,214.2 337.9,215.5 342.7,216.9 347.5,218.4 352.3,219.9 357.1,221.4 361.9,223.0 366.7,224.6 371.5,226.2 376.2,227.8 381.0,229.3 385.8,230.8 390.6,232.3 395.4,233.7 400.2,235.1 405.0,236.4 409.8,237.6 414.6,238.8 419.4,239.9 424.2,240.9 429.0,241.9 433.8,242.8 438.5,243.6 443.3,244.3 448.1,245.0 452.9,245.6 457.7,246.2 462.5,246.7 467.3,247.1 472.1,247.5 476.9,247.9 481.7,248.2 486.5,248.4 491.2,248.7 496.0,248.9 500.8,249.0 505.6,249.2 510.4,249.3 515.2,249.4 520.0,249.5" fill="none" stroke="var(--accent-2)" stroke-width="2.5"/>
+        <line x1="213.3" y1="250" x2="213.3" y2="100" stroke="var(--text-faint)" stroke-dasharray="4 4"/><line x1="366.7" y1="250" x2="366.7" y2="100" stroke="var(--text-faint)" stroke-dasharray="4 4"/>
+        <text class="t t-dim" x="370.7" y="110">+√n = 8</text>
+        <text class="t" x="68" y="44" style="font-weight:700">n = 64</text>
+        </g>
+        <g class="t">
+          <g data-only="1"><text x="560" y="70" style="font-weight:700">한 걸음</text><text x="560" y="98">±1이 각각 1/2</text><text x="560" y="126">평균 0, 분산 1</text></g>
+          <g data-only="2"><text x="560" y="70" style="font-weight:700">4걸음</text><text x="560" y="98">S = 2K − 4, K ~ Bin(4, ½)</text><text x="560" y="126">값: −4, −2, 0, 2, 4</text><text x="560" y="154">분산 4 → SD 2</text></g>
+          <g data-only="3"><text x="560" y="70" style="font-weight:700">16걸음</text><text x="560" y="98">SD = √16 = 4</text><text x="560" y="126">막대 높이 ≈ 2·φ(x; 0, 16)</text><text x="560" y="154" class="t-dim">(값이 2칸마다 있으므로 ×2)</text></g>
+          <g data-only="4"><text x="560" y="70" style="font-weight:700">64걸음</text><text x="560" y="98">SD = √64 = 8 — 4배 걸어 2배</text><text x="560" y="134" style="font-weight:700">걸음 a, 시간 간격 τ라면</text><text x="560" y="162">σ² = n a² = (a²/τ) t = 2Dt</text><text x="560" y="190">D = a² / 2τ (확산 계수)</text></g>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>걸음 하나는 ±1 두 값이다.</li><li>4걸음 뒤 위치는 이항 분포를 옮겨 놓은 것이다.</li><li>16걸음이면 이미 정규 곡선(자주색)과 거의 겹친다.</li><li>퍼짐은 √n으로 자라고, 물리 단위로 쓰면 σ² = 2Dt가 된다.</li></ol>
+      <figcaption>같은 축 위에서 본 랜덤 워크 위치의 분포. 넓이(전체 확률 1)는 그대로인 채 √n 비율로 넓고 낮아진다. 이것이 잉크 한 방울이나 도펀트 한 무리가 퍼지는 모습이다.</figcaption>
+    </figure>
+    <h3>확산: 미시적 걸음에서 거시적 퍼짐으로</h3>
+    <p>걸음 길이를 \(a\), 걸음 사이 시간을 \(\tau\)라 하자. 시간 \(t\) 동안 \(n = t/\tau\)걸음을 걸으므로 대칭 워크의 위치 분산은 \(n a^2 = (a^2/\tau)\,t\)다. 물리에서는 이를 \(2Dt\)로 쓰고 \(D = a^2/2\tau\)를 <span class="term">확산 계수</span><span class="en">(diffusion coefficient)</span>라 부른다. 원자 수가 많으면 각 원자의 위치 분포가 곧 농도 분포가 되어, 한 점에서 출발한 원자 무리의 농도는</p>
+    <div class="formula">$$C(x,t) = \frac{Q}{\sqrt{4\pi Dt}}\,\exp\!\left(-\frac{x^2}{4Dt}\right),\qquad \sigma^2 = 2Dt\ (\text{1차원}),\qquad \langle r^2\rangle = 4Dt\ (\text{2차원}),\ 6Dt\ (\text{3차원})$$<div class="where">\(Q\)는 단위 넓이당 총량(도즈). 이 가우스 곡선은 확산 방정식 \(\partial C/\partial t = D\,\partial^2 C/\partial x^2\)(픽의 제2법칙)의 해이고, 동시에 평균 0·분산 \(2Dt\)인 정규 분포의 pdf에 \(Q\)를 곱한 것이다. 차원마다 독립인 1차원 워크가 하나씩 있으므로 평균 제곱 변위는 차원 수만큼 더해진다.</div></div>
+    <p>고체 속 확산의 원자 그림(빈자리와 틈새 기구, 아레니우스 온도 의존성)은 <a href="https://science.euiyun.com/solid-state/chapters/crystal-defects.html">고체물리 · 결정 결함</a>에서, 전자·정공의 확산과 아인슈타인 관계는 <a href="https://science.euiyun.com/solid-state/chapters/carrier-transport.html">고체물리 · 운반자 수송</a>에서 다룬다. 여기서 중요한 것은 확률의 언어다. <b>확산 방정식은 랜덤 워크에 중심 극한 정리를 적용한 결과</b>이고, \(\sqrt{Dt}\)는 표준 편차다.</p>
+    <figure class="mini" id="mini-msd">
+      <div class="mini-view" style="position:relative"><canvas id="cv-msd"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>걸음 길이 a <output id="msd-a-out"></output></span><input type="range" id="msd-a" min="0.5" max="2" step="0.1" value="1"></label><button class="btn" id="msd-play" type="button"></button><button class="btn" id="msd-reset" type="button">다시</button><span class="readout" id="msd-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>2차원 평면에서 원자 200개가 매 걸음 무작위 방향으로 길이 \(a\)씩 뛴다(왼쪽). 오른쪽은 평균 제곱 변위 \(\langle r^2\rangle\)(초록 점)과 이론 직선 \(na^2\)(자주색)이다. 변위 자체는 \(\sqrt n\)으로 자라지만 <b>제곱 변위는 시간에 정비례</b>하고, 기울기 \(a^2/\tau = 4D\)가 확산 계수를 준다. 걸음 길이를 2배로 하면 기울기는 4배다.</figcaption>
+    </figure>
+    <div class="tangle" id="tg-diff">
+      <p>붕소의 확산 계수가 \(D\) = <span class="tn" data-var="D" data-min="0.5" data-max="50" data-step="0.5">15</span> \(\times10^{-14}\) cm²/s인 온도에서 <span class="tn" data-var="t" data-min="1" data-max="240" data-step="1" data-unit=" 분">60</span> 동안 열처리하면, 원자 위치의 표준 편차는 \(\sqrt{2Dt}\) = <span class="tn-out" data-out="sig"></span>, 흔히 쓰는 확산 길이 \(2\sqrt{Dt}\)는 <span class="tn-out" data-out="L"></span>다. 원자가 Si 원자 간 거리 0.235 nm씩 한 방향으로만 뛴다고 보면(1차원 그림) 그동안 약 <span class="tn-out" data-out="jumps"></span>번 뛴 셈이다. 시간을 4배로 늘리면 깊이는 <span class="tn-out" data-out="four"></span>배가 된다.</p>
+    </div>
+    <figure class="mini" id="mini-dope">
+      <div class="mini-view" style="position:relative"><canvas id="cv-dope"></canvas></div>
+      <div class="mini-ctrl"><div class="ctrl"><span>온도</span><div class="seg" id="dope-T"><button data-value="1000">1000 °C</button><button data-value="1050">1050 °C</button><button data-value="1100" class="on">1100 °C</button></div></div><button class="btn" id="dope-play" type="button"></button><button class="btn" id="dope-reset" type="button">처음부터</button><span class="readout" id="dope-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>표면(왼쪽 벽)에 얕게 심은 붕소 원자 400개가 랜덤 워크로 웨이퍼 속으로 들어간다(드라이브인). 표면은 원자를 되돌려 보내는 반사벽이라 도즈 \(Q\)가 보존되고, 깊이 분포는 반쪽 가우스 \(C = \frac{Q}{\sqrt{\pi Dt}}e^{-x^2/4Dt}\)(자주색)를 따른다. 온도를 100 °C 올리면 \(D\)가 약 10배가 되어 같은 깊이에 10분의 1 시간이면 닿는다.</figcaption>
+    </figure>
+    <div class="callout semi"><strong>접합 깊이는 확산 길이로 정해진다</strong> 이온 주입 뒤의 드라이브인·활성화 열처리에서 도펀트 분포의 폭은 \(\sqrt{Dt}\)로 자라고, 배경 농도 \(N_B\)와 만나는 깊이가 접합 깊이 \(x_j = \sqrt{4Dt\,\ln\!\big(Q/(N_B\sqrt{\pi Dt})\big)}\)다. 미세 공정이 고온 장시간 열처리 대신 수 ms 이하의 스파이크·레이저 어닐을 쓰는 이유가 여기 있다. \(Dt\)를 작게 해 랜덤 워크 걸음 수를 줄이는 것이다. 실제 실리콘에서는 점결함이 도펀트의 걸음을 돕기 때문에(과도 증속 확산) 단순 \(D\)보다 빨리 퍼진다. → <a href="https://semi.euiyun.com/doping/chapters/diffusion.html">DopingBook · 확산(픽의 법칙과 과도 확산)</a></div>
+    <div class="example" data-title="400걸음 뒤 멀리 간 경로의 비율">
+      <p>대칭 랜덤 워크 \(S_{400}\)에 대해 (a) 평균과 표준 편차, (b) \(P(|S_{400}|\ge 40)\)을 정규 근사로 구하라. (c) \(P(S_{400} = 0)\)은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(S_n = 2K-n\), \(K\sim\mathrm{Bin}(400, 0.5)\). 정규 근사를 쓰되 \(S_n\)은 짝수 값만 가지므로 값 사이 간격이 2이고, 연속성 수정은 \(\pm1\)이다.</div>
+        <div class="step"><b>풀이</b> (a) \(E[S_{400}] = 0\), \(\operatorname{SD} = \sqrt{400} = 20\). (b) \(|S|\ge40\)은 \(S\ge40\) 또는 \(S\le-40\). 수정한 경계 39를 쓰면 \(P\approx 2\big(1-\Phi(39/20)\big) = 2(1-\Phi(1.95)) = 2(0.0256) = 0.0512\). 이항 분포로 정확히 계산하면 0.0510이다(수정 없이 \(z=2\)를 쓰면 0.0455로 덜 맞는다). (c) \(K = 200\)이어야 하므로 \(P = \binom{400}{200}/2^{400} = 0.0399\). 정규 근사로는 막대 폭 2를 곱해 \(2\phi(0)/20 = 0.0399\).</div>
+        <div class="answer">(a) 0, 20 (b) ≈ 0.051 (c) ≈ 0.040</div>
+        <div class="step"><b>검토</b> 400걸음 걸어도 원점에 정확히 있을 확률은 4%뿐이지만, 40칸(2σ) 넘게 벗어날 확률도 5%에 불과하다. 대부분 \(\pm 20\) 안팎에 있다.</div>
+      </details>
+    </div>
+    <div class="example" data-title="붕소 드라이브인의 확산 길이와 접합 깊이">
+      <p>1100 °C에서 붕소의 확산 계수를 \(D = 1.5\times10^{-13}\) cm²/s로 둔다. 1시간 열처리할 때 (a) \(\sqrt{2Dt}\)와 \(2\sqrt{Dt}\)는? (b) 도즈 \(Q = 10^{14}\) cm⁻²가 표면에서 시작해 반쪽 가우스로 퍼졌고 기판 농도가 \(N_B = 10^{16}\) cm⁻³이면 접합 깊이는?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 표준 편차 \(\sqrt{2Dt}\). 반쪽 가우스 \(C(x) = \frac{Q}{\sqrt{\pi Dt}}e^{-x^2/4Dt}\)가 \(N_B\)와 같아지는 \(x\)를 푼다.</div>
+        <div class="step"><b>풀이</b> (a) \(Dt = 1.5\times10^{-13}\times3600 = 5.4\times10^{-10}\) cm². \(\sqrt{2Dt} = \sqrt{1.08\times10^{-9}} = 3.29\times10^{-5}\) cm = 0.329 µm, \(2\sqrt{Dt} = 0.465\) µm. (b) 표면 농도 \(C_s = Q/\sqrt{\pi Dt} = 10^{14}/4.12\times10^{-5} = 2.43\times10^{18}\) cm⁻³. \(x_j = \sqrt{4Dt\ln(C_s/N_B)} = \sqrt{2.16\times10^{-9}\times\ln 243} = \sqrt{2.16\times10^{-9}\times5.49} = 1.09\times10^{-4}\) cm.</div>
+        <div class="answer">(a) 0.329 µm, 0.465 µm (b) \(x_j\approx\) 1.09 µm</div>
+        <div class="step"><b>검토</b> 접합 깊이는 표준 편차의 약 3.3배다. 표면 농도와 배경 농도의 비가 \(e^{x_j^2/4Dt}\)이므로, 그 비가 클수록(\(\ln\)으로 천천히) 깊어진다. 농도 비가 100배 달라져도 \(x_j\)는 \(\sqrt{\ln}\)으로만 변한다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-rw" data-title="랜덤 워크의 평균과 표준 편차 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="poisson">
+    <h2>포아송 과정과 도착 간격</h2>
+    <p>랜덤 워크는 시간이 띄엄띄엄 흐르는 과정이었다. 이번에는 연속 시간 위에서 사건이 하나씩 <b>찍히는</b> 과정을 보자. 파티클 경보, 장비 알람, 로트 도착, 우주선에 의한 소프트 오류처럼 "언제 일어날지 모르는 드문 사건"이 그렇다. 시각 \(t\)까지 일어난 사건 수를 \(N(t)\)라 하면 \(N(t)\)는 0에서 시작해 1씩 뛰어오르는 계단 함수다(셈 과정).</p>
+    <div class="def"><span class="def-k">포아송 과정 (비율 λ)</span>
+      <p>셈 과정 \(\{N(t), t\ge0\}\)이 다음을 만족하면 비율 \(\lambda\)인 <span class="term">포아송 과정</span><span class="en">(Poisson process)</span>이다. ① \(N(0) = 0\). ② <span class="term">독립 증분</span><span class="en">(independent increments)</span>: 겹치지 않는 구간의 사건 수는 서로 독립이다. ③ <span class="term">정상 증분</span><span class="en">(stationary increments)</span>: 길이 \(h\)인 구간의 사건 수 분포는 구간 위치와 무관하다. ④ 드묾: 짧은 구간 \(h\)에서 \(P(\text{사건 1개})\approx\lambda h\), \(P(\text{2개 이상}) = o(h)\).</p>
+    </div>
+    <p>이 조건에서 길이 \(t\)인 구간을 \(n\)개의 짧은 칸으로 나누면 칸마다 확률 \(\lambda t/n\)인 베르누이 시행이 되고, \(n\to\infty\)일 때 이항 분포가 포아송 분포로 간다(4장의 포아송 근사). 연속 분포는 5장에서 본 그대로다.</p>
+    <div class="formula">$$N(t)\sim\mathrm{Poisson}(\lambda t):\ P(N(t) = k) = e^{-\lambda t}\frac{(\lambda t)^k}{k!},\qquad T_i\overset{\text{iid}}{\sim}\mathrm{Exp}(\lambda),\qquad S_k = T_1+\cdots+T_k\sim\mathrm{Gamma}(k, 1/\lambda)$$<div class="where">\(T_i\)는 \(i-1\)번째와 \(i\)번째 사건 사이의 <span class="term">도착 간격</span><span class="en">(interarrival time)</span>, \(S_k\)는 \(k\)번째 사건의 시각이다. \(P(T_1>t) = P(N(t) = 0) = e^{-\lambda t}\)에서 지수 분포가 나온다. \(E[N(t)] = \operatorname{Var}(N(t)) = \lambda t\), \(E[T] = 1/\lambda\), \(E[S_k] = k/\lambda\). 또 \(P(S_k\le t) = P(N(t)\ge k)\) — "k번째 사건이 t 전에 온다"와 "t까지 k개 이상"은 같은 사건이다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 260" role="img" aria-label="포아송 과정의 도착 시각, 도착 간격, 셈 함수 N(t)">
+        <defs><marker id="st-ax" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker></defs>
+        <line x1="60" y1="200" x2="760" y2="200" stroke="var(--text-dim)" stroke-width="1.5" marker-end="url(#st-ax)"/>
+        <line x1="60" y1="200" x2="60" y2="30" stroke="var(--text-dim)" stroke-width="1.5" marker-end="url(#st-ax)"/>
+        <text class="t" x="766" y="205">t</text><text class="t" x="48" y="30" text-anchor="end">N(t)</text>
+        <g class="t t-dim" text-anchor="end"><text x="52" y="204">0</text><text x="52" y="169">1</text><text x="52" y="134">2</text><text x="52" y="99">3</text><text x="52" y="64">4</text></g>
+        <path d="M60,200 H190 V165 H260 V130 H470 V95 H530 V60 H700" fill="none" stroke="var(--accent)" stroke-width="3"/>
+        <g fill="var(--accent)"><circle cx="190" cy="165" r="5"/><circle cx="260" cy="130" r="5"/><circle cx="470" cy="95" r="5"/><circle cx="530" cy="60" r="5"/></g>
+        <g fill="var(--bad)"><circle cx="190" cy="200" r="6"/><circle cx="260" cy="200" r="6"/><circle cx="470" cy="200" r="6"/><circle cx="530" cy="200" r="6"/></g>
+        <g stroke="var(--accent-2)" stroke-width="2"><line x1="62" y1="224" x2="188" y2="224"/><line x1="192" y1="224" x2="258" y2="224"/><line x1="262" y1="224" x2="468" y2="224"/><line x1="472" y1="224" x2="528" y2="224"/></g>
+        <g class="t" text-anchor="middle" style="fill:var(--accent-2)"><text x="125" y="246">T₁</text><text x="225" y="246">T₂</text><text x="365" y="246">T₃</text><text x="500" y="246">T₄</text></g>
+        <g class="t t-dim" text-anchor="middle"><text x="190" y="190">S₁</text><text x="260" y="190">S₂</text><text x="470" y="190">S₃</text><text x="530" y="190">S₄</text></g>
+        <rect x="560" y="40" width="200" height="88" rx="8" fill="var(--surface)" stroke="var(--border)"/>
+        <g class="t"><text x="574" y="64">개수 N(t) ~ Poisson(λt)</text><text x="574" y="88" style="fill:var(--accent-2)">간격 Tᵢ ~ Exp(λ), 독립</text><text x="574" y="112" class="t-dim">k번째 시각 Sₖ ~ Gamma(k, 1/λ)</text></g>
+      </svg>
+      <figcaption>포아송 과정의 세 얼굴. 빨간 점은 사건 시각 \(S_k\), 자주색 막대는 도착 간격 \(T_i\), 초록 계단은 셈 함수 \(N(t)\)다. 같은 무작위를 개수로 보면 포아송, 간격으로 보면 지수, 누적 시각으로 보면 감마 분포다.</figcaption>
+    </figure>
+    <div class="sim" id="sim-pp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>포아송 과정: 창 속 개수와 도착 간격</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-pp"></canvas><span class="hint top">시간축 위 창의 오른쪽 손잡이로 폭을 바꾼다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>비율 λ <output id="pp-l-out"></output></span><input type="range" id="pp-l" min="0.2" max="3" step="0.1" value="1"></label>
+          <div class="ctrl"><span>아래 그래프</span><div class="seg" id="pp-view"><button data-value="count" class="on">창 속 개수</button><button data-value="gap">도착 간격</button></div></div>
+          <button class="btn" id="pp-play" type="button"></button>
+          <button class="btn" id="pp-ff" type="button">+500 단위 시간</button>
+          <button class="btn" id="pp-reset" type="button">다시 뽑기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">흐른 시간 / 사건 수</span><span class="v" id="pp-tot">—</span></div>
+        <div class="stat"><span class="k">창 폭 w, 이론 λw</span><span class="v" id="pp-w">—</span></div>
+        <div class="stat"><span class="k">창 속 개수 평균 · 분산</span><span class="v" id="pp-mv">—</span></div>
+        <div class="stat"><span class="k">간격 평균 (이론 1/λ)</span><span class="v" id="pp-gap">—</span></div>
+      </div>
+      <div class="sim-note">위 띠는 흐르는 시간축이고 빨간 눈금이 사건이다. 초록 창을 끌어 옮기거나 오른쪽 손잡이로 폭 \(w\)를 바꾸면, 지금까지의 전체 기록을 폭 \(w\)인 겹치지 않는 창으로 잘라 개수 히스토그램을 다시 만든다. 해볼 것: ① 개수의 평균과 분산이 둘 다 \(\lambda w\)에 가까운지 확인한다(포아송의 지문). ② "도착 간격"으로 바꾸면 히스토그램이 지수 곡선을 따른다 — 가장 흔한 간격은 0 근처의 짧은 간격이다. ③ 간격이 짧게 몰린 "뭉침"이 자주 보이는데, 이것은 이상이 아니라 순수한 우연이다.</div>
+    </div>
+    <p>포아송 과정은 합치고 쪼개도 포아송 과정으로 남는다. 독립인 두 포아송 과정(비율 \(\lambda_1,\lambda_2\))을 합친 <span class="term">중첩</span><span class="en">(superposition)</span>은 비율 \(\lambda_1+\lambda_2\)인 포아송 과정이고, 각 사건을 독립적으로 확률 \(p\)로만 남기는 <span class="term">솎아내기</span><span class="en">(thinning)</span>는 비율 \(p\lambda\)인 포아송 과정이다. 버려진 사건들도 비율 \((1-p)\lambda\)인 포아송 과정이며, 놀랍게도 남은 과정과 <b>독립</b>이다. 합쳐진 흐름에서 어떤 사건이 1번 과정에서 왔을 확률은 \(\lambda_1/(\lambda_1+\lambda_2)\)이다.</p>
+    <figure class="mini" id="mini-sup">
+      <div class="mini-view" style="position:relative"><canvas id="cv-sup"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>λ<sub>A</sub> <output id="sup-a-out"></output></span><input type="range" id="sup-a" min="0.2" max="2" step="0.1" value="1"></label><label class="ctrl"><span>λ<sub>B</sub> <output id="sup-b-out"></output></span><input type="range" id="sup-b" min="0.2" max="2" step="0.1" value="0.5"></label><label class="ctrl"><span>남길 확률 p <output id="sup-p-out"></output></span><input type="range" id="sup-p" min="0.05" max="1" step="0.05" value="0.3"></label><span class="readout" id="sup-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>두 장비의 알람 흐름 A, B를 합치면(세 번째 줄) 비율이 더해지고, 합친 알람 중 "킬러 결함"만 확률 \(p\)로 골라내면(네 번째 줄) 비율이 \(p\)배가 된다. 오른쪽 숫자는 지금까지 센 실측 비율과 이론값이다.</figcaption>
+    </figure>
+    <h3>검사 역설: 왜 내가 기다리는 버스는 늘 늦을까</h3>
+    <p>지수 분포의 <b>무기억성</b> \(P(T>s+t\mid T>s) = P(T>t)\)(5장)은 포아송 과정에서 이렇게 읽힌다. 어느 시각에 관찰을 시작하든, 다음 사건까지 남은 시간은 여전히 \(\mathrm{Exp}(\lambda)\)이다. 그런데 이 말은 이상한 결론으로 이어진다.</p>
+    <div class="predict" data-for="sim-bus">
+      <p>버스가 평균 10분 간격의 포아송 과정으로 온다. 아무 때나 정류장에 도착한 승객은 평균 몇 분 기다릴까?</p>
+      <div class="opts"><button class="opt">5분 — 평균 간격의 절반</button><button class="opt" data-correct>10분 — 평균 간격과 같다</button><button class="opt">2.5분 — 버스가 몰려 오니 더 짧다</button><button class="opt">20분</button></div>
+      <div class="quiz-exp">무기억성 때문에 남은 시간은 언제나 평균 10분이다. 승객은 짧은 간격보다 <b>긴 간격에 떨어질 확률이 높아서</b>(간격 길이에 비례), 승객이 떨어진 간격의 평균은 20분이나 된다. 시뮬레이터에서 승객을 끌어 놓아 보고, 재생으로 대기 시간을 수천 번 재 보라.</div>
+    </div>
+    <div class="sim" id="sim-bus">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>검사 역설: 승객이 떨어지는 간격</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-bus"></canvas><span class="hint top">승객(흰 원)을 시간축 위에서 끈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>버스 운행</span><div class="seg" id="bus-mode"><button data-value="fixed">정시(10분)</button><button data-value="pois" class="on">포아송</button><button data-value="bunch">몰려다님</button></div></div>
+          <button class="btn" id="bus-play" type="button"></button>
+          <button class="btn" id="bus-1000" type="button">+1000명</button>
+          <button class="btn" id="bus-reset" type="button">다시</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">버스 간격 평균</span><span class="v" id="bus-g">—</span></div>
+        <div class="stat"><span class="k">승객이 든 간격 평균</span><span class="v" id="bus-gs">—</span></div>
+        <div class="stat"><span class="k">평균 대기 (이론)</span><span class="v" id="bus-w">—</span></div>
+        <div class="stat"><span class="k">승객 수</span><span class="v" id="bus-n">—</span></div>
+      </div>
+      <div class="sim-note">위는 버스 도착 시각(세로 막대)과 승객(흰 원), 승객이 든 간격(노란 띠)과 대기 시간(초록 화살표)이다. 아래는 무작위로 온 승객들의 대기 시간 히스토그램이다. 세 운행 방식 모두 버스 간격의 평균은 10분이다. 해볼 것: ① 정시 운행은 평균 대기 5분, 포아송은 10분, 몰려다니는 운행(간격의 변동 계수 2)은 25분이 된다 — 일반식 \(E[\text{대기}] = \frac{E[G^2]}{2E[G]} = \frac{m}{2}(1+c_v^2)\). ② 승객을 끌며 긴 간격 위에 있는 시간이 얼마나 많은지 느껴 보라. ③ 같은 원리로, 웨이퍼를 아무 때나 골라 "지금 진행 중인 장비 정지가 얼마나 길었나"를 물으면 평균 정지 시간보다 긴 답이 나온다.</div>
+    </div>
+    <p>이처럼 길이에 비례해 뽑히는 현상을 <span class="term">검사 역설</span><span class="en">(inspection paradox)</span> 또는 길이 편향이라 한다. "현재 진행 중인 것"을 표본으로 삼으면 언제나 긴 것이 과대 대표된다. 진행 중인 고장의 지속 시간, 지금 대기 중인 로트의 체류 시간, 측정 시점에 걸린 PM 주기 길이가 모두 그렇다.</p>
+    <div class="tangle" id="tg-pp">
+      <p>파티클 경보가 시간당 <span class="tn" data-var="lam" data-min="0.5" data-max="10" data-step="0.5">3</span>회의 포아송 과정으로 울린다. <span class="tn" data-var="t" data-min="5" data-max="240" data-step="5" data-unit=" 분">30</span> 동안의 경보 수의 평균은 <span class="tn-out" data-out="m"></span>이고, 정확히 <span class="tn" data-var="k" data-min="0" data-max="15" data-step="1">2</span>번 울릴 확률은 <span class="tn-out" data-out="pk"></span>, <span data-out="k2"></span>번 이상 울릴 확률은 <span class="tn-out" data-out="pge"></span>다. 경보 사이 간격이 이 구간보다 길 확률은 \(e^{-\lambda t}\) = <span class="tn-out" data-out="p0"></span>다.</p>
+    </div>
+    <div class="example" data-title="클린룸 파티클 경보">
+      <p>파티클 계수기 경보가 시간당 \(\lambda = 3\)회의 포아송 과정이다. (a) 30분 동안 2번 이상 울릴 확률, (b) 한 경보 뒤 30분 넘게 조용할 확률, (c) 다섯 번째 경보까지 기다리는 시간의 평균과, 1시간 안에 다섯 번째 경보가 울릴 확률을 구하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> (a) \(N(0.5)\sim\mathrm{Poisson}(1.5)\). (b) 간격 \(T\sim\mathrm{Exp}(3)\) — 무기억성 덕분에 "한 경보 뒤"든 "아무 때나"든 같다. (c) \(S_5\sim\mathrm{Gamma}(5, 1/3)\), \(P(S_5\le1) = P(N(1)\ge5)\).</div>
+        <div class="step"><b>풀이</b> (a) \(1-e^{-1.5}(1+1.5) = 1-0.5578 = 0.442\). (b) \(e^{-3\times0.5} = e^{-1.5} = 0.223\). (c) \(E[S_5] = 5/3\) h = 100분. \(N(1)\sim\mathrm{Poisson}(3)\)이므로 \(P(N(1)\ge5) = 1-e^{-3}\big(1+3+\tfrac92+\tfrac{27}6+\tfrac{81}{24}\big) = 1-0.8153 = 0.185\).</div>
+        <div class="answer">(a) 0.442 (b) 0.223 (c) 100분, 0.185</div>
+        <div class="step"><b>검토</b> 평균적으로 1시간에 3번이니 1시간에 5번 이상은 드문 편(18%)이다. 이 확률이 매우 작아지는 경보 횟수를 "이상 경보 기준"으로 쓰면, 순수한 우연으로 생기는 뭉침에 과잉 반응하지 않는다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-pp" data-title="포아송 과정 확률 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="markov">
+    <h2>마르코프 연쇄와 정상 분포</h2>
+    <p>장비 한 대의 상태를 매시간 기록한다고 하자. 대기(Idle), 가동(Run), 고장(Down), 예방 정비(PM). 다음 시간의 상태는 무작위지만, 그 확률은 <b>지금 상태</b>에만 달려 있고 어떻게 지금 상태에 왔는지와는 무관하다고 가정하면 계산이 놀랍게 쉬워진다. 랜덤 워크도 이미 이런 과정이었다. 다음 위치는 지금 위치 ±1이고, 지난 경로는 상관없다.</p>
+    <div class="def"><span class="def-k">마르코프 연쇄</span>
+      <p>상태 공간 \(\{1,\dots,m\}\) 위의 과정 \(X_0, X_1, \dots\)가 <span class="term">마르코프 성질</span><span class="en">(Markov property)</span> \(P(X_{n+1}=j\mid X_n=i, X_{n-1},\dots,X_0) = P(X_{n+1}=j\mid X_n=i) = p_{ij}\)를 만족하면 (시간 동질) <span class="term">마르코프 연쇄</span><span class="en">(Markov chain)</span>라 한다. \(p_{ij}\)를 모은 \(m\times m\) 행렬 \(P\)가 <span class="term">전이 행렬</span><span class="en">(transition matrix)</span>이고, 각 행의 합은 1이다(\(i\)에서 어디론가는 간다).</p>
+    </div>
+    <p>가장 작은 예는 상태가 둘인 장비다. 가동(U) 중에 한 시간 안에 고장 날 확률이 \(a\), 고장(D) 중에 한 시간 안에 수리될 확률이 \(b\)라면</p>
+    <div class="formula">$$P = \begin{pmatrix}1-a & a\\ b & 1-b\end{pmatrix},\qquad \pi = \left(\frac{b}{a+b},\ \frac{a}{a+b}\right),\qquad P(X_n = U\mid X_0 = D) = \frac{b}{a+b}\Big(1-(1-a-b)^n\Big)$$<div class="where">고장 상태에 머무는 시간은 기하 분포이고 평균 \(1/b\)(평균 수리 시간 MTTR), 가동 상태에 머무는 시간의 평균은 \(1/a\)(평균 고장 간격 MTBF)다. 따라서 장기 가동률 \(\pi_U = \frac{1/a}{1/a+1/b} = \frac{\text{MTBF}}{\text{MTBF}+\text{MTTR}}\)이다. 처음 상태의 영향은 \((1-a-b)^n\)으로 기하급수적으로 사라진다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 220" role="img" aria-label="가동과 고장 두 상태의 마르코프 연쇄 상태 그림">
+        <defs><marker id="st-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker></defs>
+        <circle cx="200" cy="115" r="52" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="2.5"/>
+        <circle cx="520" cy="115" r="52" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2.5"/>
+        <text class="t" x="200" y="111" text-anchor="middle" style="font-weight:700">U 가동</text><text class="t t-dim" x="200" y="131" text-anchor="middle">평균 1/a 시간</text>
+        <text class="t" x="520" y="111" text-anchor="middle" style="font-weight:700">D 고장</text><text class="t t-dim" x="520" y="131" text-anchor="middle">평균 1/b 시간</text>
+        <path d="M245,90 Q360,40 475,90" fill="none" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar)"/>
+        <path d="M475,140 Q360,190 245,140" fill="none" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar)"/>
+        <text class="t" x="360" y="50" text-anchor="middle">a (고장)</text><text class="t" x="360" y="196" text-anchor="middle">b (수리)</text>
+        <path d="M168,74 C130,10 270,10 232,74" fill="none" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar)"/><text class="t" x="200" y="24" text-anchor="middle">1 − a</text>
+        <path d="M488,74 C450,10 590,10 552,74" fill="none" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar)"/><text class="t" x="520" y="24" text-anchor="middle">1 − b</text>
+        <rect x="610" y="60" width="175" height="110" rx="8" fill="var(--surface)" stroke="var(--border)"/>
+        <g class="t"><text x="624" y="86">a = 0.05, b = 0.5 이면</text><text x="624" y="112">MTBF 20 h, MTTR 2 h</text><text x="624" y="138" style="font-weight:700">가동률 π_U = 0.909</text><text x="624" y="160" class="t-dim">= 20 / (20 + 2)</text></g>
+      </svg>
+      <figcaption>두 상태 장비 모형. 화살표의 숫자는 한 시간 동안의 전이 확률이다. 상태 그림의 각 원에서 나가는 화살표 확률의 합은 1이고, 이는 전이 행렬의 각 행의 합이 1이라는 말과 같다.</figcaption>
+    </figure>
+    <div class="tangle" id="tg-two">
+      <p>가동 중 한 시간에 고장 날 확률 \(a\) = <span class="tn" data-var="a" data-min="0.005" data-max="0.3" data-step="0.005">0.05</span>, 고장 중 한 시간에 수리될 확률 \(b\) = <span class="tn" data-var="b" data-min="0.05" data-max="1" data-step="0.05">0.5</span>이면 MTBF = <span class="tn-out" data-out="mtbf"></span>, MTTR = <span class="tn-out" data-out="mttr"></span>이고 장기 가동률은 \(\pi_U = b/(a+b)\) = <span class="tn-out" data-out="pu"></span>이다. 고장 상태에서 출발한 장비가 <span class="tn" data-var="n" data-min="1" data-max="20" data-step="1">2</span>시간 뒤 가동 중일 확률은 <span class="tn-out" data-out="pn"></span>이고, 처음 상태의 흔적은 매시간 <span class="tn-out" data-out="r"></span>배로 줄어든다.</p>
+    </div>
+    <h3>n걸음 전이와 분포의 진화</h3>
+    <p>두 걸음 뒤의 확률은 중간 상태 \(k\)를 모두 거쳐 더한다. \(P(X_2 = j\mid X_0 = i) = \sum_k p_{ik}p_{kj}\), 즉 행렬 곱 \(P^2\)의 \((i,j)\) 원소다. 일반적으로 \(n\)걸음 전이 행렬은 \(P^n\)이고 \(P^{m+n} = P^mP^n\)이다(<span class="term">채프먼–콜모고로프 방정식</span><span class="en">(Chapman–Kolmogorov equation)</span>). 처음 상태가 확률 벡터 \(\pi_0\)(행 벡터)로 주어지면 \(n\)걸음 뒤의 분포는</p>
+    <div class="formula">$$\pi_n = \pi_{n-1}P = \pi_0P^n,\qquad (\pi_n)_j = \sum_i (\pi_{n-1})_i\,p_{ij}$$</div>
+    <figure class="diagram steps" data-steps="5">
+      <svg viewBox="0 0 800 280" role="img" aria-label="고장 상태에서 출발한 장비의 상태 분포가 걸음마다 정상 분포로 다가가는 막대그래프">
+        <line x1="50" y1="240" x2="516" y2="240" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <text class="t t-dim" x="44" y="244.0" text-anchor="end">0</text><line x1="50" y1="240.0" x2="516" y2="240.0" stroke="var(--grid)" />
+        <text class="t t-dim" x="44" y="144.0" text-anchor="end">0.5</text><line x1="50" y1="140.0" x2="516" y2="140.0" stroke="var(--grid)" />
+        <text class="t t-dim" x="44" y="44.0" text-anchor="end">1</text><line x1="50" y1="40.0" x2="516" y2="40.0" stroke="var(--grid)" />
+        <text class="t" x="105.0" y="260" text-anchor="middle">Idle</text>
+        <text class="t" x="219.0" y="260" text-anchor="middle">Run</text>
+        <text class="t" x="333.0" y="260" text-anchor="middle">Down</text>
+        <text class="t" x="447.0" y="260" text-anchor="middle">PM</text>
+        <g data-only="1">
+        <rect x="60" y="240.0" width="90" height="0.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="105.0" y="234.0" text-anchor="middle">0.000</text>
+        <rect x="174" y="240.0" width="90" height="0.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="219.0" y="234.0" text-anchor="middle">0.000</text>
+        <rect x="288" y="40.0" width="90" height="200.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="333.0" y="34.0" text-anchor="middle">1.000</text>
+        <rect x="402" y="240.0" width="90" height="0.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="447.0" y="234.0" text-anchor="middle">0.000</text>
+        <text class="t" x="60" y="26" style="font-weight:700">π<tspan baseline-shift="sub" font-size="10">0</tspan> = π<tspan baseline-shift="sub" font-size="10">0</tspan>P<tspan baseline-shift="super" font-size="10">0</tspan></text>
+        </g>
+        <g data-only="2">
+        <rect x="60" y="200.0" width="90" height="40.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="105.0" y="194.0" text-anchor="middle">0.200</text>
+        <rect x="174" y="240.0" width="90" height="0.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="219.0" y="234.0" text-anchor="middle">0.000</text>
+        <rect x="288" y="80.0" width="90" height="160.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="333.0" y="74.0" text-anchor="middle">0.800</text>
+        <rect x="402" y="240.0" width="90" height="0.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="447.0" y="234.0" text-anchor="middle">0.000</text>
+        <text class="t" x="60" y="26" style="font-weight:700">π<tspan baseline-shift="sub" font-size="10">1</tspan> = π<tspan baseline-shift="sub" font-size="10">0</tspan>P<tspan baseline-shift="super" font-size="10">1</tspan></text>
+        </g>
+        <g data-only="3">
+        <rect x="60" y="184.0" width="90" height="56.0" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="105.0" y="178.0" text-anchor="middle">0.280</text>
+        <rect x="174" y="224.8" width="90" height="15.2" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="219.0" y="218.8" text-anchor="middle">0.076</text>
+        <rect x="288" y="111.6" width="90" height="128.4" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="333.0" y="105.6" text-anchor="middle">0.642</text>
+        <rect x="402" y="239.6" width="90" height="0.4" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="447.0" y="233.6" text-anchor="middle">0.002</text>
+        <text class="t" x="60" y="26" style="font-weight:700">π<tspan baseline-shift="sub" font-size="10">2</tspan> = π<tspan baseline-shift="sub" font-size="10">0</tspan>P<tspan baseline-shift="super" font-size="10">2</tspan></text>
+        </g>
+        <g data-only="4">
+        <rect x="60" y="180.2" width="90" height="59.8" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="105.0" y="174.2" text-anchor="middle">0.299</text>
+        <rect x="174" y="172.3" width="90" height="67.7" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="219.0" y="166.3" text-anchor="middle">0.339</text>
+        <rect x="288" y="169.2" width="90" height="70.8" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="333.0" y="163.2" text-anchor="middle">0.354</text>
+        <rect x="402" y="238.3" width="90" height="1.7" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="447.0" y="232.3" text-anchor="middle">0.008</text>
+        <text class="t" x="60" y="26" style="font-weight:700">π<tspan baseline-shift="sub" font-size="10">5</tspan> = π<tspan baseline-shift="sub" font-size="10">0</tspan>P<tspan baseline-shift="super" font-size="10">5</tspan></text>
+        </g>
+        <g data-only="5">
+        <rect x="60" y="191.6" width="90" height="48.4" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="105.0" y="185.6" text-anchor="middle">0.242</text>
+        <rect x="174" y="118.7" width="90" height="121.3" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="219.0" y="112.7" text-anchor="middle">0.607</text>
+        <rect x="288" y="212.6" width="90" height="27.4" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="333.0" y="206.6" text-anchor="middle">0.137</text>
+        <rect x="402" y="237.2" width="90" height="2.8" fill="var(--accent)" opacity="0.75"/>
+        <text class="t t-mono" x="447.0" y="231.2" text-anchor="middle">0.014</text>
+        <text class="t" x="60" y="26" style="font-weight:700">π<tspan baseline-shift="sub" font-size="10">20</tspan> = π<tspan baseline-shift="sub" font-size="10">0</tspan>P<tspan baseline-shift="super" font-size="10">20</tspan></text>
+        </g>
+        <rect x="60" y="191.8" width="90" height="48.2" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <rect x="174" y="117.9" width="90" height="122.1" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <rect x="288" y="213.2" width="90" height="26.8" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <rect x="402" y="237.2" width="90" height="2.8" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <g class="t">
+          <g data-only="1"><text x="540" y="70" style="font-weight:700">π₀ = (0, 0, 1, 0)</text><text x="540" y="96">지금 고장(Down)이다</text><text x="540" y="130" class="t-dim">점선 = 정상 분포 π</text></g>
+          <g data-only="2"><text x="540" y="70" style="font-weight:700">π₁ = π₀P = P의 Down 행</text><text x="540" y="96">(0.2, 0, 0.8, 0)</text><text x="540" y="122">한 시간에 20%가 수리되어</text><text x="540" y="144">대기 상태로 간다</text></g>
+          <g data-only="3"><text x="540" y="70" style="font-weight:700">π₂의 Run 성분</text><text x="540" y="96">= 0.2 × p(I→R) + 0.8 × p(D→R)</text><text x="540" y="122">= 0.2 × 0.38 + 0.8 × 0 = 0.076</text><text x="540" y="148" class="t-dim">모든 경로를 더한다</text></g>
+          <g data-only="4"><text x="540" y="70" style="font-weight:700">5시간 뒤</text><text x="540" y="96">Run 0.339, Down 0.354</text><text x="540" y="122">아직 출발 상태를 기억한다</text></g>
+          <g data-only="5"><text x="540" y="70" style="font-weight:700">20시간 뒤 ≈ 정상 분포</text><text x="540" y="96">π = (0.241, 0.611, 0.134, 0.014)</text><text x="540" y="122">출발 상태를 잊었다</text><text x="540" y="148">가동률 π_I + π_R = 0.852</text></g>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>처음 분포: 확실히 고장 상태.</li><li>한 걸음: π₀P는 전이 행렬의 Down 행이다.</li><li>두 걸음: 각 상태로 오는 모든 경로의 확률을 더한다.</li><li>다섯 걸음: 분포가 정상 분포 쪽으로 움직이는 중.</li><li>스무 걸음: 정상 분포(점선)와 거의 같다.</li></ol>
+      <figcaption>4상태 장비 연쇄(아래 시뮬레이터의 기본 행렬)에서 \(\pi_n = \pi_0P^n\)의 진화. 초록 막대가 \(\pi_n\), 자주색 점선이 정상 분포다. 걸음마다 행렬을 한 번 곱할 뿐인데 분포가 한 모양으로 수렴한다.</figcaption>
+    </figure>
+    <h3>정상 분포와 장기 비율</h3>
+    <p>\(\pi P = \pi\), \(\sum_j\pi_j = 1\)을 만족하는 확률 벡터 \(\pi\)를 <span class="term">정상 분포</span><span class="en">(stationary distribution)</span>라 한다. 분포가 \(\pi\)이면 한 걸음 뒤에도 \(\pi\)이므로 영원히 \(\pi\)에 머문다. 연쇄가 <span class="term">기약</span><span class="en">(irreducible, 모든 상태가 서로 오갈 수 있음)</span>이고 <span class="term">비주기</span><span class="en">(aperiodic, 일정한 주기로만 돌아오지 않음)</span>이면 정상 분포는 하나뿐이고, 어떤 \(\pi_0\)에서 출발하든 \(\pi_n\to\pi\)이다. 게다가 한 경로를 오래 관찰했을 때 상태 \(j\)에 머문 <b>시간 비율</b>도 \(\pi_j\)로 간다(에르고드 정리). 그래서 \(\pi_j\)는 "장기적으로 장비가 \(j\) 상태에 있는 시간의 비율"로 읽고, \(1/\pi_j\)는 상태 \(j\)를 떠났다 돌아오기까지의 평균 걸음 수다.</p>
+    <p>정상 분포는 \(\pi(P-I) = 0\)의 방정식 \(m-1\)개와 \(\sum\pi_j = 1\)을 연립해 푼다. 직관적인 방법은 <b>흐름 균형</b>이다. 장기적으로 각 상태로 들어오는 확률 흐름 \(\sum_{i\ne j}\pi_ip_{ij}\)과 나가는 흐름 \(\pi_j(1-p_{jj})\)이 같아야 한다.</p>
+    <div class="predict" data-for="sim-tool">
+      <p>같은 장비 연쇄에서 하나는 고장(Down) 상태로, 다른 하나는 가동(Run) 상태로 출발한다. 100시간 뒤 둘이 가동 중일 확률은?</p>
+      <div class="opts"><button class="opt">Run에서 출발한 쪽이 훨씬 크다</button><button class="opt" data-correct>거의 같다 — 둘 다 정상 분포의 π<sub>R</sub>에 가깝다</button><button class="opt">Down에서 출발한 쪽은 영원히 가동률이 낮다</button></div>
+      <div class="quiz-exp">기약·비주기 연쇄는 처음 상태를 기하급수적으로 잊는다. 이 연쇄에서 처음 상태의 영향은 두 번째로 큰 고윳값 0.75의 거듭제곱으로 줄어, 20시간이면 0.3% 수준이다. 시뮬레이터에서 시작 상태를 바꿔 \(\pi_n\) 막대가 같은 점선으로 가는 것을 확인하라.</div>
+    </div>
+    <div class="sim" id="sim-tool">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>장비 상태 마르코프 연쇄</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-tool"></canvas><span class="hint">아래 띠의 흰 원을 끌어 선택한 행의 전이 확률을 바꾼다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>편집할 행 (현재 상태)</span><div class="seg" id="tool-row"><button data-value="0">Idle</button><button data-value="1" class="on">Run</button><button data-value="2">Down</button><button data-value="3">PM</button></div></div>
+          <div class="ctrl"><span>시작 상태</span><div class="seg" id="tool-start"><button data-value="1">Run</button><button data-value="2" class="on">Down</button></div></div>
+          <label class="ctrl"><span>속도 <output id="tool-sp-out"></output></span><input type="range" id="tool-sp" min="1" max="60" step="1" value="6"></label>
+          <button class="btn" id="tool-play" type="button"></button>
+          <button class="btn" id="tool-reset" type="button">기본 행렬로</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음(시간)</span><span class="v" id="tool-n">—</span></div>
+        <div class="stat"><span class="k">정상 분포 π</span><span class="v" id="tool-pi">—</span></div>
+        <div class="stat"><span class="k">가동률 π<sub>I</sub>+π<sub>R</sub></span><span class="v" id="tool-av">—</span></div>
+        <div class="stat"><span class="k">실측 시간 비율</span><span class="v" id="tool-emp">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽은 상태 그림이다. 화살표 굵기가 전이 확률, 노란 점이 한 대의 장비(토큰)다. 오른쪽 막대는 \(\pi_n = \pi_0P^n\)(초록 막대, 걸음마다 행렬을 한 번 곱함), 토큰이 각 상태에 머문 실측 시간 비율(작은 점), 정상 분포 \(\pi\)(자주색 점선)다. 아래 띠는 선택한 행의 확률 네 개를 길이로 나눈 것이다. 해볼 것: ① 재생하면 \(\pi_n\) 막대가 몇십 걸음 안에 점선에 붙고, 토큰의 시간 비율은 훨씬 천천히(수천 걸음) 같은 점선으로 간다. ② Run 행에서 Down 칸을 넓히면 가동률이 얼마나 떨어지나? ③ Down 행의 자기 머무름(Down→Down)을 줄여 수리를 빠르게 하면?</div>
+    </div>
+    <div class="sim" id="sim-pm">
+      <div class="sim-head"><span class="sim-tag">GAME</span><h3>예방 정비 주기 맞히기: 가동률 90% 만들기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-pm"></canvas><span class="hint top">아래 축의 흰 원을 끌어 PM 비율 m을 고른다</span></div>
+        <div class="sim-controls">
+          <p style="margin:0;font-size:14px">가동 중 한 시간에 PM에 들어갈 확률 \(m\)을 고른다. PM을 자주 하면 고장 확률 \(d(m) = 0.003+0.05\,e^{-m/0.02}\)이 줄지만 PM 시간만큼 장비가 선다. <b>목표: 가동률 \(\pi_I+\pi_R\ge 0.90\).</b></p>
+          <label class="check"><input type="checkbox" id="pm-curve"> 가동률 곡선 보기(정답 공개)</label>
+          <button class="btn" id="pm-new" type="button">다시 도전</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">PM 비율 m</span><span class="v" id="pm-m">—</span></div>
+        <div class="stat"><span class="k">고장 확률 d(m)</span><span class="v" id="pm-d">—</span></div>
+        <div class="stat"><span class="k">가동률</span><span class="v" id="pm-a">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="pm-ok">—</span></div>
+      </div>
+      <div class="sim-note">Run 행은 \((0.10,\ 0.90-m-d,\ d,\ m)\), 나머지 행은 위 시뮬레이터의 기본값(Down 평균 5시간, PM 평균 1.7시간)이다. 막대는 \(m\)에 따른 정상 분포다. 해볼 것: ① \(m = 0\)(고장 날 때까지 쓰기)의 가동률을 보라. ② \(m\)을 키우면 고장 막대는 줄고 PM 막대는 는다. 둘의 합이 가장 작아지는 곳이 최적이다. ③ 최적값의 0.1%p 안에 들면 ★이 붙는다.</div>
+    </div>
+    <div class="callout semi"><strong>가동률은 정상 분포다</strong> 팹 장비의 가용도(availability)는 "MTBF/(MTBF+MTTR)"로 흔히 쓰지만, 그 밑에 깔린 모형이 바로 위의 상태 연쇄다. 예방 정비를 넣으면 고장은 줄지만 계획된 정지가 늘어 최적 PM 주기가 생기고, 장비가 여러 대면 상태 공간이 "몇 대가 서 있나"로 커진다. 유틸리티 설비의 N+1 이중화와 고장·수리 모형은 → <a href="https://semi.euiyun.com/infra/chapters/operation.html">InfraBook · 유틸리티 운영과 신뢰성(가용도와 이중화)</a></div>
+    <figure class="mini" id="mini-two">
+      <div class="mini-view" style="position:relative"><canvas id="cv-two"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>a (U→D) <output id="two-a-out"></output></span><input type="range" id="two-a" min="0.02" max="0.9" step="0.01" value="0.1"></label><label class="ctrl"><span>b (D→U) <output id="two-b-out"></output></span><input type="range" id="two-b" min="0.02" max="1" step="0.01" value="0.3"></label><span class="readout" id="two-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>두 상태 연쇄에서 U로 출발(초록)·D로 출발(빨강)한 장비가 \(n\)걸음 뒤 가동 중일 확률. 두 곡선은 \(|1-a-b|^n\) 속도로 같은 값 \(b/(a+b)\)(자주색 점선)에 모인다. \(a+b>1\)이면 \(1-a-b<0\)이라 값이 진동하며 수렴하고, \(a+b = 1\)이면 한 걸음 만에 정상 분포에 도착한다(다음 상태가 지금 상태와 무관해지므로).</figcaption>
+    </figure>
+    <div class="example" data-title="4상태 장비의 정상 분포와 가동률">
+      <p>시간 단위 전이 행렬(상태 순서 Idle, Run, Down, PM)이 아래와 같다. 정상 분포, 가동률(Idle+Run), 시간당 고장 발생률, 지금 고장인 장비가 2시간 뒤 가동(Run) 중일 확률을 구하라.</p>
+      <div class="formula">$$P = \begin{pmatrix}0.60&0.38&0.01&0.01\\0.10&0.85&0.04&0.01\\0.20&0&0.80&0\\0.60&0&0&0.40\end{pmatrix}$$</div>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 흐름 균형을 쓴다. Down과 PM으로 들어오는 흐름은 Idle·Run에서만 오므로, 두 상태를 \(\pi_I,\pi_R\)로 나타낸 뒤 Idle의 균형식과 합 1을 쓴다.</div>
+        <div class="step"><b>풀이</b> Down: \(0.2\pi_D = 0.01\pi_I+0.04\pi_R\). PM: \(0.6\pi_M = 0.01\pi_I+0.01\pi_R\). Idle: \(0.4\pi_I = 0.1\pi_R+0.2\pi_D+0.6\pi_M = 0.02\pi_I+0.15\pi_R\)이므로 \(\pi_R = (0.38/0.15)\pi_I = 2.533\pi_I\). 그러면 \(\pi_D = 0.5567\pi_I\), \(\pi_M = 0.0589\pi_I\)이고, 합 \(4.149\pi_I = 1\)에서 \(\pi = (0.241,\ 0.611,\ 0.134,\ 0.0142)\). 가동률 \(= 0.241+0.611 = 0.852\). 고장 발생률 \(= 0.01\pi_I+0.04\pi_R = 0.0268\)/h(약 37시간에 한 번). 2시간 뒤 Run: \(\pi_1 = (0.2, 0, 0.8, 0)\), \(\pi_2\)의 Run 성분 \(= 0.2\times0.38+0.8\times0 = 0.076\).</div>
+        <div class="answer">π = (0.241, 0.611, 0.134, 0.014), 가동률 0.852, 고장 0.0268회/h, 0.076</div>
+        <div class="step"><b>검토</b> 고장 발생률 × 평균 고장 시간(\(1/0.2 = 5\) h) \(= 0.0268\times5 = 0.134 = \pi_D\)로 맞는다. "얼마나 자주 × 얼마나 오래 = 시간 비율"이라는 이 관계는 5절의 리틀의 법칙과 같은 생각이다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-mc" data-title="마르코프 연쇄 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="absorbing">
+    <h2>흡수 상태와 도달 시간</h2>
+    <p>웨이퍼는 공정과 검사, 재작업을 몇 번 오가다가 결국 <b>출하</b>되거나 <b>폐기</b>된다. 한번 들어가면 나오지 않는 상태를 <span class="term">흡수 상태</span><span class="en">(absorbing state)</span>(\(p_{jj} = 1\)), 언젠가는 떠나는 나머지 상태를 <span class="term">일시 상태</span><span class="en">(transient state)</span>라 한다. 흡수 연쇄에서는 정상 분포보다 "어느 흡수 상태로, 얼마나 걸려서 가는가"가 관심사다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 230" role="img" aria-label="웨이퍼 재작업 흐름: 공정, 검사, 재작업, 출하, 폐기">
+        <defs><marker id="st-ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker></defs>
+        <rect x="30" y="85" width="120" height="56" rx="10" fill="var(--surface)" stroke="var(--border)" stroke-width="2"/><text class="t" x="90" y="118" text-anchor="middle" style="font-weight:700">공정</text>
+        <rect x="250" y="85" width="120" height="56" rx="10" fill="var(--surface)" stroke="var(--border)" stroke-width="2"/><text class="t" x="310" y="118" text-anchor="middle" style="font-weight:700">검사</text>
+        <rect x="250" y="168" width="120" height="50" rx="10" fill="var(--surface)" stroke="var(--border)" stroke-width="2"/><text class="t" x="310" y="198" text-anchor="middle" style="font-weight:700">재작업</text>
+        <rect x="520" y="30" width="120" height="56" rx="10" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="2"/><text class="t" x="580" y="63" text-anchor="middle" style="font-weight:700">출하 (흡수)</text>
+        <rect x="520" y="140" width="120" height="56" rx="10" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/><text class="t" x="580" y="173" text-anchor="middle" style="font-weight:700">폐기 (흡수)</text>
+        <g fill="none" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar2)">
+          <path d="M150,113 H246"/><path d="M370,100 L516,62"/><path d="M370,118 L516,160"/><path d="M290,141 V166"/><path d="M335,166 V143"/><path d="M370,196 L516,180"/>
+        </g>
+        <g class="t"><text x="198" y="105" text-anchor="middle">1</text><text x="440" y="70">합격 0.80</text><text x="420" y="132">0.05</text><text x="226" y="160">0.15</text><text x="342" y="160">0.90</text><text x="440" y="206">0.10</text></g>
+        <text class="t t-dim" x="660" y="110">Q: 일시 → 일시</text><text class="t t-dim" x="660" y="132">R: 일시 → 흡수</text>
+      </svg>
+      <figcaption>웨이퍼 재작업 흐름의 흡수 연쇄. 검사에서 80%는 출하, 15%는 재작업, 5%는 폐기되고, 재작업한 웨이퍼의 90%는 다시 검사로, 10%는 폐기된다.</figcaption>
+    </figure>
+    <p>일시 상태를 앞에, 흡수 상태를 뒤에 두면 전이 행렬은 블록 꼴 \(P = \begin{pmatrix}Q & R\\ 0 & I\end{pmatrix}\)가 된다. \(Q^n\to0\)이므로(언젠가는 흡수된다) 기하급수 \(I+Q+Q^2+\cdots\)가 수렴하고, 그 합이 <span class="term">기본 행렬</span><span class="en">(fundamental matrix)</span>이다.</p>
+    <div class="formula">$$N = (I-Q)^{-1} = I + Q + Q^2+\cdots,\qquad \mathbf t = N\mathbf 1,\qquad B = NR$$<div class="where">\(N_{ij}\) = 일시 상태 \(i\)에서 출발해 흡수되기 전까지 \(j\)를 방문하는 기대 횟수(출발도 1번으로 센다). \(t_i\) = \(i\)에서 흡수까지 기대 걸음 수(행의 합). \(B_{ij}\) = \(i\)에서 출발해 흡수 상태 \(j\)로 끝날 확률.</div></div>
+    <p>이 공식은 <span class="term">첫걸음 분석</span><span class="en">(first-step analysis)</span>을 행렬로 쓴 것이다. "첫걸음에 어디로 가는지로 경우를 나누고, 그다음은 마르코프 성질에 따라 새로 시작한다." 예컨대 \(i\)에서 흡수까지의 걸음 수는 \(t_i = 1+\sum_k Q_{ik}t_k\), 즉 \((I-Q)\mathbf t = \mathbf 1\)이다.</p>
+    <div class="sim" id="sim-rework">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>재작업 루프의 흡수 확률과 방문 횟수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-rework"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>검사 합격률 s <output id="rk-s-out"></output></span><input type="range" id="rk-s" min="0.3" max="0.99" step="0.01" value="0.8"></label>
+          <label class="ctrl"><span>불합격 중 재작업 비율 f <output id="rk-f-out"></output></span><input type="range" id="rk-f" min="0" max="1" step="0.05" value="0.75"></label>
+          <label class="ctrl"><span>재작업 성공률 g <output id="rk-g-out"></output></span><input type="range" id="rk-g" min="0.3" max="1" step="0.01" value="0.9"></label>
+          <button class="btn" id="rk-play" type="button"></button>
+          <button class="btn" id="rk-1000" type="button">+1000장</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">흡수된 웨이퍼</span><span class="v" id="rk-n">—</span></div>
+        <div class="stat"><span class="k">출하 비율 (이론 B)</span><span class="v" id="rk-ship">—</span></div>
+        <div class="stat"><span class="k">장당 검사 횟수 (N)</span><span class="v" id="rk-ins">—</span></div>
+        <div class="stat"><span class="k">흡수까지 걸음 (t)</span><span class="v" id="rk-t">—</span></div>
+      </div>
+      <div class="sim-note">점 하나가 웨이퍼 한 장이다. 괄호 안이 \(N=(I-Q)^{-1}\)과 \(B = NR\)에서 계산한 이론값, 앞이 지금까지 흡수된 웨이퍼의 실측값이다. 해볼 것: ① 재작업을 끄면(f = 0) 출하 비율은 정확히 s다. ② 재작업 성공률 g를 1로 하면 불합격 웨이퍼의 일부가 끝없이 돌아올 수 있는데도 장당 검사 횟수는 유한하다 — 기하급수 \(1/(1-(1-s)fg)\). ③ 합격률이 낮을 때 재작업이 출하 비율을 얼마나 올려 주는지, 대신 검사 부하(검사 횟수)는 얼마나 느는지 비교하라.</div>
+    </div>
+    <h3>도박꾼의 파산: 장벽 사이의 랜덤 워크</h3>
+    <p>1절의 랜덤 워크를 0과 \(N\) 두 곳에 흡수 장벽이 있는 구간에 가두자. 위치 \(k\)에서 출발해 매번 확률 \(p\)로 +1, \(q = 1-p\)로 −1 움직일 때, 0보다 \(N\)에 먼저 닿을 확률 \(h_k\)와 끝날 때까지 걸음 수의 기댓값 \(D_k\)는? 돈 \(k\)원을 들고 1원씩 거는 도박꾼이 목표 \(N\)원에 먼저 닿는가 파산하는가의 문제라서 <span class="term">도박꾼의 파산</span><span class="en">(gambler's ruin)</span>이라 부른다. 공정 엔지니어에게는 "누적 드리프트가 한계선 둘 중 어디에 먼저 닿나"의 문제다.</p>
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 250" role="img" aria-label="도박꾼의 파산을 첫걸음 분석으로 푸는 단계">
+        <line x1="60" y1="70" x2="740" y2="70" stroke="var(--text-dim)" stroke-width="2"/>
+        <g fill="var(--surface)" stroke="var(--text-dim)" stroke-width="1.5">
+          <circle cx="60" cy="70" r="7"/><circle cx="145" cy="70" r="7"/><circle cx="230" cy="70" r="7"/><circle cx="315" cy="70" r="7"/><circle cx="400" cy="70" r="7"/><circle cx="485" cy="70" r="7"/><circle cx="570" cy="70" r="7"/><circle cx="655" cy="70" r="7"/><circle cx="740" cy="70" r="7"/>
+        </g>
+        <rect x="46" y="44" width="28" height="52" fill="var(--bad)" opacity="0.35"/><rect x="726" y="44" width="28" height="52" fill="var(--ok)" opacity="0.35"/>
+        <g class="t" text-anchor="middle"><text x="60" y="114">0 (파산)</text><text x="400" y="114">k</text><text x="740" y="114">N (목표)</text></g>
+        <circle cx="400" cy="70" r="9" fill="var(--accent)"/>
+        <g data-step="2"><path d="M400,58 Q442,26 482,58" fill="none" stroke="var(--accent-2)" stroke-width="2"/><path d="M400,58 Q358,26 318,58" fill="none" stroke="var(--accent-2)" stroke-width="2"/><text class="t" x="442" y="30" text-anchor="middle" style="fill:var(--accent-2)">p</text><text class="t" x="358" y="30" text-anchor="middle" style="fill:var(--accent-2)">q</text></g>
+        <g class="t">
+          <g data-only="1"><text x="60" y="160" style="font-weight:700">정의</text><text x="60" y="186">h_k = P(k에서 출발해 N에 먼저 닿음),  h_0 = 0,  h_N = 1</text><text x="60" y="212">D_k = k에서 출발해 흡수까지의 기대 걸음 수,  D_0 = D_N = 0</text></g>
+          <g data-only="2"><text x="60" y="160" style="font-weight:700">첫걸음으로 나누기</text><text x="60" y="186">h_k = p·h_(k+1) + q·h_(k−1)</text><text x="60" y="212">D_k = 1 + p·D_(k+1) + q·D_(k−1)</text></g>
+          <g data-only="3"><text x="60" y="160" style="font-weight:700">p = ½ 이면 h는 직선</text><text x="60" y="186">h_(k+1) − h_k = h_k − h_(k−1) → h_k = k / N</text><text x="60" y="212">p ≠ ½ 이면 r = q/p 로  h_k = (1 − r^k) / (1 − r^N)</text></g>
+          <g data-only="4"><text x="60" y="160" style="font-weight:700">기대 걸음 수</text><text x="60" y="186">p = ½:  D_k = k(N − k)   (가운데에서 출발하면 N²/4)</text><text x="60" y="212">p ≠ ½:  D_k = k/(q − p) − (N/(q − p))·h_k</text></g>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>구하려는 양과 경계 조건을 정한다.</li><li>첫걸음이 오른쪽(p)인지 왼쪽(q)인지로 나눈다.</li><li>점화식을 풀면 도달 확률이 나온다.</li><li>같은 방법으로 기대 걸음 수를 얻는다.</li></ol>
+      <figcaption>첫걸음 분석으로 도박꾼의 파산을 푸는 과정. 흡수 연쇄의 \(B = NR\), \(\mathbf t = N\mathbf 1\)을 손으로 푸는 것과 같다.</figcaption>
+    </figure>
+    <div class="predict" data-for="sim-ruin">
+      <p>거의 공정한 게임(\(p = 0.49\))에서 30원으로 시작해 100원을 만들 확률은? (공정한 게임이면 30/100 = 0.3)</p>
+      <div class="opts"><button class="opt">0.29쯤 — 거의 공정하니 0.3에서 조금 낮다</button><button class="opt">0.2쯤</button><button class="opt" data-correct>0.04쯤 — 거의 공정해도 길게 하면 크게 불리하다</button><button class="opt">0.49</button></div>
+      <div class="quiz-exp">\(r = q/p = 51/49\)이고 \(h_{30} = (1-r^{30})/(1-r^{100}) = 0.043\)이다. 한 걸음의 불리함 0.02는 작지만, 100에 닿기까지 평균 1000걸음 넘게 걸리는 동안 표류 \(-0.02\times n\)이 퍼짐 \(\sqrt n\)을 이긴다. 시뮬레이터에서 장벽을 넓혀 가며 확인하라.</div>
+    </div>
+    <div class="sim" id="sim-ruin">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 장벽 사이의 랜덤 워크</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-ruin"></canvas><span class="hint top">왼쪽 흰 원(출발점 k)과 위쪽 장벽 손잡이(N)를 끈다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>오르는 확률 p <output id="ru-p-out"></output></span><input type="range" id="ru-p" min="0.4" max="0.6" step="0.01" value="0.5"></label>
+          <button class="btn" id="ru-play" type="button"></button>
+          <button class="btn" id="ru-500" type="button">+500번</button>
+          <button class="btn" id="ru-clear" type="button">지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">k / N</span><span class="v" id="ru-kn">—</span></div>
+        <div class="stat"><span class="k">위 장벽 도달 비율 (이론)</span><span class="v" id="ru-h">—</span></div>
+        <div class="stat"><span class="k">평균 걸음 (이론)</span><span class="v" id="ru-d">—</span></div>
+        <div class="stat"><span class="k">실행 횟수</span><span class="v" id="ru-cnt">—</span></div>
+      </div>
+      <div class="sim-note">가로는 걸음 수, 세로는 위치다. 위 초록 선이 목표 \(N\), 아래 빨간 선이 0이다. 끝난 경로는 닿은 장벽의 색으로 남는다. 해볼 것: ① \(p = 0.5\)에서 출발점을 가운데로 두면 도달 비율 0.5, 평균 걸음 \(N^2/4\)를 확인한다. ② \(N = 40\), \(k = 20\)에서 \(p\)를 0.49 → 0.45로 낮추면 도달 비율이 어떻게 무너지는가? ③ \(p\ne\tfrac12\)이면 출발점이 목표에 가까울수록 오히려 평균 걸음이 짧아진다.</div>
+    </div>
+    <div class="tangle" id="tg-ruin">
+      <p>위치 <span class="tn" data-var="k" data-min="1" data-max="99" data-step="1">3</span>에서 출발해 확률 <span class="tn" data-var="p" data-min="0.4" data-max="0.6" data-step="0.01">0.5</span>로 +1, 나머지 확률로 −1 움직인다. 0보다 <span class="tn" data-var="N" data-min="2" data-max="100" data-step="1">10</span>에 먼저 닿을 확률은 <span class="tn-out" data-out="h"></span>, 흡수까지 평균 걸음 수는 <span class="tn-out" data-out="D"></span>이다. <span data-out="note"></span></p>
+    </div>
+    <div class="example" data-title="웨이퍼 재작업 루프의 기본 행렬">
+      <p>위 그림의 재작업 흐름에서 일시 상태 순서를 (공정, 검사, 재작업)으로 둔다. 공정에서 출발한 웨이퍼의 (a) 출하 확률, (b) 기대 검사 횟수와 재작업 횟수, (c) 흡수까지 기대 걸음 수를 구하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(Q\)와 \(R\)을 쓰고 \(N = (I-Q)^{-1}\)의 첫 행을 구한다.</div>
+        <div class="step"><b>풀이</b> \(Q = \begin{pmatrix}0&1&0\\0&0&0.15\\0&0.9&0\end{pmatrix}\), \(R = \begin{pmatrix}0&0\\0.80&0.05\\0&0.10\end{pmatrix}\)(열: 출하, 폐기). 검사↔재작업 고리만 보면, 검사에서 출발한 웨이퍼가 다시 검사로 돌아올 확률은 \(0.15\times0.9 = 0.135\)이므로 검사 방문 횟수는 기하급수 \(1/(1-0.135) = 1.156\), 재작업 방문은 \(0.15\times1.156 = 0.173\). 따라서 \(N\)의 첫 행 \(= (1,\ 1.156,\ 0.173)\). (a) \(B_{\text{공정,출하}} = 1.156\times0.80 = 0.925\), 폐기 \(= 1.156\times0.05+0.173\times0.10 = 0.075\). (c) \(t = 1+1.156+0.173 = 2.33\)걸음.</div>
+        <div class="answer">(a) 0.925 (b) 검사 1.156회, 재작업 0.173회 (c) 2.33걸음</div>
+        <div class="step"><b>검토</b> 재작업이 없으면 출하 확률은 0.80이다. 재작업으로 12.5%p를 되살리는 대가로 검사 부하가 15.6% 늘었다. 출하 + 폐기 = 0.925 + 0.075 = 1.</div>
+      </details>
+    </div>
+    <div class="example" data-title="공정한 게임과 거의 공정한 게임">
+      <p>(a) \(p = 0.5\), \(k = 3\), \(N = 10\)일 때 \(N\)에 먼저 닿을 확률과 평균 걸음 수는? (b) \(p = 0.49\)이면?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 첫걸음 분석의 해를 쓴다. (b)는 \(r = q/p = 0.51/0.49 = 1.0408\).</div>
+        <div class="step"><b>풀이</b> (a) \(h_3 = 3/10 = 0.3\), \(D_3 = 3\times7 = 21\). (b) \(h_3 = (1-r^3)/(1-r^{10}) = (1-1.1275)/(1-1.4924) = 0.259\). \(D_3 = \frac{3}{0.02}-\frac{10}{0.02}\times0.259 = 150-129.6 = 20.4\).</div>
+        <div class="answer">(a) 0.3, 21걸음 (b) 0.259, 20.4걸음</div>
+        <div class="step"><b>검토</b> 장벽이 가까우면(\(N = 10\)) 한 걸음의 불리함은 확률을 0.3 → 0.26으로 조금만 깎는다. 같은 \(p\)에서 \(N = 100\), \(k = 30\)이면 0.3 → 0.043으로 무너진다. 짧은 구간에서는 퍼짐(\(\sqrt n\))이, 긴 구간에서는 표류(\(n\))가 지배한다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="queue">
+    <h2>대기 행렬과 리틀의 법칙</h2>
+    <p>노광 장비 한 대 앞에 로트가 포아송 과정으로 도착하고, 장비는 한 번에 한 로트를 처리한다. 처리 시간도 무작위다. 장비가 바쁘면 로트는 스토커에서 기다린다. 이런 "도착 → 줄 서기 → 서비스 → 떠남"의 확률 모형을 <span class="term">대기 행렬</span><span class="en">(queue)</span>이라 하고, 도착 과정/서비스 시간 분포/서버 수를 <span class="term">켄달 기호</span><span class="en">(Kendall notation)</span>로 줄여 쓴다. M은 무기억(지수 분포, 포아송 도착), D는 일정한 값, G는 일반 분포다. M/M/1은 포아송 도착·지수 서비스·서버 1대, M/M/c는 같은 장비 \(c\)대가 한 줄을 공유하는 경우다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 210" role="img" aria-label="대기 행렬 모식도: 도착률 λ로 로트가 도착해 줄을 서고, 서비스율 μ인 장비를 거쳐 떠난다">
+        <defs><marker id="st-ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker></defs>
+        <rect x="140" y="40" width="440" height="130" rx="12" fill="none" stroke="var(--accent-2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <text class="t" x="150" y="32" style="fill:var(--accent-2);font-weight:700">계(system): 머릿수 L, 체류 시간 W</text>
+        <path d="M30,105 H150" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar3)"/><text class="t" x="40" y="92">도착 λ</text>
+        <path d="M168,78 H392 V132 H168" fill="none" stroke="var(--text-dim)" stroke-width="2"/>
+        <g fill="var(--accent)" opacity="0.85"><rect x="300" y="88" width="24" height="34" rx="4"/><rect x="330" y="88" width="24" height="34" rx="4"/><rect x="360" y="88" width="24" height="34" rx="4"/></g>
+        <text class="t t-dim" x="230" y="110" text-anchor="middle">대기열 L_q, W_q</text>
+        <rect x="430" y="70" width="120" height="70" rx="10" fill="var(--surface)" stroke="var(--border)" stroke-width="2"/>
+        <rect x="474" y="88" width="24" height="34" rx="4" fill="var(--accent)"/>
+        <text class="t" x="490" y="160" text-anchor="middle">장비 μ</text>
+        <path d="M392,105 H426" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar3)"/>
+        <path d="M550,105 H700" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#st-ar3)"/><text class="t" x="600" y="92">떠남 λ</text>
+        <text class="t" x="610" y="150" style="font-weight:700">L = λW</text><text class="t" x="610" y="174">L_q = λW_q</text><text class="t t-dim" x="610" y="196">ρ = λ/μ (이용률)</text>
+      </svg>
+      <figcaption>대기 행렬의 기본 그림. 점선 상자(대기열 + 장비)를 계로 보든, 대기열만 보든 리틀의 법칙이 성립한다. 안정한 계에서는 들어온 만큼 나가므로 떠나는 비율도 λ다.</figcaption>
+    </figure>
+    <p>M/M/1에서 계 안의 로트 수 \(N(t)\)는 +1(도착, 비율 λ)과 −1(완료, 비율 μ)만 일어나는 연속 시간 마르코프 연쇄(출생–사망 과정)다. <span class="term">이용률</span><span class="en">(utilization)</span> \(\rho = \lambda/\mu<1\)이면 정상 분포가 있고, 상태 \(n\)과 \(n+1\) 사이의 흐름 균형 \(\lambda P_n = \mu P_{n+1}\)에서 기하 분포가 나온다.</p>
+    <div class="formula">$$P_n = (1-\rho)\rho^n,\quad L = \frac{\rho}{1-\rho},\quad L_q = \frac{\rho^2}{1-\rho},\quad W = \frac{1}{\mu-\lambda} = \frac{1/\mu}{1-\rho},\quad W_q = \frac{\rho}{\mu-\lambda}$$<div class="where">\(P_0 = 1-\rho\)는 장비가 노는 시간 비율, \(\rho\)는 바쁜 시간 비율이다. \(L\), \(W\)는 계(대기 + 처리) 전체, 아래 첨자 \(q\)는 대기열만. M/M/1에서 체류 시간 자체가 \(\mathrm{Exp}(\mu-\lambda)\)를 따른다.</div></div>
+    <figure class="mini" id="mini-pn">
+      <div class="mini-view" style="position:relative"><canvas id="cv-pn"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>이용률 ρ <output id="pn-rho-out"></output></span><input type="range" id="pn-rho" min="0.1" max="0.98" step="0.01" value="0.8"></label><span class="readout" id="pn-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>M/M/1의 머릿수 분포 \(P_n = (1-\rho)\rho^n\). 가장 흔한 상태는 언제나 \(n = 0\)(빈 장비)인데도, 꼬리가 길어 평균 \(L\)은 \(\rho\to1\)에서 끝없이 커진다. 빨간 막대는 대기 로트가 10개 이상인 상태(\(P(N\ge 11) = \rho^{11}\))다.</figcaption>
+    </figure>
+    <div class="def"><span class="def-k">리틀의 법칙</span>
+      <p>안정한 계에서 장기 평균 머릿수 \(L\), 평균 도착률 \(\lambda\), 평균 체류 시간 \(W\) 사이에는 \(L = \lambda W\)가 성립한다. 도착·서비스 분포, 서버 수, 줄 서는 규칙과 무관하다.</p>
+    </div>
+    <p><span class="term">리틀의 법칙</span><span class="en">(Little's law)</span>의 직관은 이렇다. 들어오는 손님마다 머무는 동안 "1명분의 머릿수"를 낸다고 하면, 긴 시간 \(T\) 동안 쌓인 총 머릿수·시간은 \(L T\)이고, 이것은 손님 \(\lambda T\)명이 평균 \(W\)씩 머문 것과 같다. 그래서 \(LT = \lambda T\cdot W\). 팹에서는 \(\text{재공(WIP)} = \text{처리량}\times\text{사이클 타임}\)으로 쓰며, 셋 중 둘을 재면 나머지가 나온다.</p>
+    <div class="tangle" id="tg-little">
+      <p>팹의 재공이 <span class="tn" data-var="wip" data-min="1000" data-max="60000" data-step="1000">30000</span>장, 하루 출하(처리량)가 <span class="tn" data-var="th" data-min="200" data-max="4000" data-step="100">1000</span>장이면 평균 사이클 타임은 \(W = L/\lambda\) = <span class="tn-out" data-out="ct"></span>이다. 같은 처리량에서 사이클 타임을 <span class="tn" data-var="tgt" data-min="5" data-max="60" data-step="1" data-unit="일">20</span>로 줄이려면 재공을 <span class="tn-out" data-out="wip2"></span>장으로 낮춰야 한다.</p>
+    </div>
+    <div class="sim" id="sim-queue">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>노광 장비 앞의 로트 대기열</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-queue"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>도착률 λ <output id="q-lam-out"></output></span><input type="range" id="q-lam" min="1" max="9.8" step="0.1" value="4"></label>
+          <label class="ctrl"><span>장비 1대 처리율 μ <output id="q-mu-out"></output></span><input type="range" id="q-mu" min="2" max="10" step="0.1" value="5"></label>
+          <div class="ctrl"><span>장비 수 c</span><div class="seg" id="q-c"><button data-value="1" class="on">1대</button><button data-value="2">2대 (한 줄)</button></div></div>
+          <label class="ctrl"><span>배속 <output id="q-sp-out"></output></span><input type="range" id="q-sp" min="1" max="40" step="1" value="4"></label>
+          <button class="btn" id="q-play" type="button"></button>
+          <button class="btn" id="q-reset" type="button">다시</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이용률 ρ (실측 바쁜 비율)</span><span class="v" id="q-rho">—</span></div>
+        <div class="stat"><span class="k">평균 머릿수 L̂ (이론)</span><span class="v" id="q-L">—</span></div>
+        <div class="stat"><span class="k">평균 체류 Ŵ (이론)</span><span class="v" id="q-W">—</span></div>
+        <div class="stat"><span class="k">리틀 검산 λ̂Ŵ</span><span class="v" id="q-little">—</span></div>
+      </div>
+      <div class="sim-note">위는 스토커 대기열(초록 로트)과 장비(진행 막대), 가운데는 지난 시간의 머릿수 \(N(t)\)와 그 시간 평균(초록 점선)·이론 \(L\)(자주색 점선), 아래는 완료된 로트의 체류 시간 히스토그램과 M/M/1 이론 밀도 \(\mathrm{Exp}(\mu-\lambda)\)다. 시간 단위는 시간(h). 해볼 것: ① 아무 설정에서나 오래 돌린 뒤 \(\hat L\)과 \(\hat\lambda\hat W\)가 같은지 확인한다 — 리틀의 법칙. ② μ = 5에서 λ를 4 → 4.5 → 4.8로 올리면 이용률은 10%씩도 안 오르는데 대기는 폭발한다. ③ 2대 한 줄로 바꾸고 λ를 2배로 하면(이용률 같음) 체류 시간이 절반 가까이 준다 — 풀링 효과.</div>
+    </div>
+    <h3>운영 곡선: 이용률과 사이클 타임의 맞바꿈</h3>
+    <p>M/M/1의 \(W = (1/\mu)/(1-\rho)\)를 순수 처리 시간 \(1/\mu\)로 나눈 값 \(1/(1-\rho)\)를 팹에서는 <b>X-팩터</b>라 부른다. 이용률 50%면 처리 시간의 2배, 90%면 10배, 95%면 20배를 계에 머문다. 이용률을 가로축, X-팩터를 세로축에 그린 것이 팹의 <span class="term">운영 곡선</span><span class="en">(operating curve)</span>이다. 도착과 처리가 지수 분포보다 덜 들쭉날쭉하면 곡선이 내려간다. 일반 분포(G/G/1)의 근사인 킹맨 공식은</p>
+    <div class="formula">$$W_q \approx \left(\frac{c_a^2+c_s^2}{2}\right)\left(\frac{\rho}{1-\rho}\right)t_e,\qquad \text{X-팩터} = \frac{W_q+t_e}{t_e}\approx 1+\frac{c_a^2+c_s^2}{2}\cdot\frac{\rho}{1-\rho}$$<div class="where">\(t_e = 1/\mu\)는 평균 처리 시간, \(c_a\), \(c_s\)는 도착 간격과 처리 시간의 변동 계수(표준 편차/평균). 지수 분포는 \(c = 1\)이라 M/M/1과 정확히 같아진다. 변동성(V) × 이용률(U) × 시간(T)의 꼴이라 "VUT 식"이라고도 한다.</div></div>
+    <div class="predict" data-for="sim-oc">
+      <p>M/M/1 장비의 이용률을 90%에서 95%로 올리면 대기 시간 \(W_q\)는?</p>
+      <div class="opts"><button class="opt">약 5% 는다</button><button class="opt">약 50% 는다</button><button class="opt" data-correct>2배 넘게 는다</button><button class="opt">변하지 않는다 — 처리 시간이 같으니까</button></div>
+      <div class="quiz-exp">\(W_q\propto\rho/(1-\rho)\)이고 \(0.9/0.1 = 9\), \(0.95/0.05 = 19\)이므로 2.1배다. 처리량은 5.6%밖에 늘지 않는데 대기는 2배가 넘는다. 운영 곡선이 1 근처에서 수직으로 치솟기 때문이다.</div>
+    </div>
+    <div class="sim" id="sim-oc">
+      <div class="sim-head"><span class="sim-tag">GAME</span><h3>운영 곡선 게임: 처리량과 사이클 타임 둘 다 잡기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-oc"></canvas><span class="hint top">곡선 위의 흰 원을 좌우로 끌어 이용률을 정한다</span></div>
+        <div class="sim-controls">
+          <p style="margin:0;font-size:14px"><b>목표:</b> 이용률 \(\rho\ge0.85\)이면서 X-팩터 ≤ 4(초록 영역). 지수 분포 그대로(\(c_a = c_s = 1\))는 불가능하다. 무엇을 줄여야 할까?</p>
+          <label class="ctrl"><span>도착 변동 c<sub>a</sub> <output id="oc-ca-out"></output></span><input type="range" id="oc-ca" min="0" max="2" step="0.05" value="1"></label>
+          <label class="ctrl"><span>처리 변동 c<sub>s</sub> <output id="oc-cs-out"></output></span><input type="range" id="oc-cs" min="0" max="2" step="0.05" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이용률 ρ</span><span class="v" id="oc-rho">—</span></div>
+        <div class="stat"><span class="k">X-팩터</span><span class="v" id="oc-x">—</span></div>
+        <div class="stat"><span class="k">사이클 타임 (t<sub>e</sub> = 1.5 h)</span><span class="v" id="oc-ct">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="oc-ok">—</span></div>
+      </div>
+      <div class="sim-note">회색 점선은 M/M/1(\(c_a = c_s = 1\)) 곡선, 자주색이 지금 변동성의 킹맨 곡선이다. 해볼 것: ① \(c_a = c_s = 1\)에서 X-팩터 4가 되는 이용률은 0.75다. ② 처리 시간의 산포만 줄여(레시피 표준화, \(c_s\to0.5\)) 목표에 닿는가? ③ 도착을 고르게(배치 투입 대신 일정 간격 투입, \(c_a\) 감소) 하면? 둘 다 0.7까지 낮추면 0.85에서 X-팩터가 3.8이다.</div>
+    </div>
+    <figure class="mini" id="mini-pool">
+      <div class="mini-view" style="position:relative"><canvas id="cv-pool"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>이용률 ρ <output id="pool-rho-out"></output></span><input type="range" id="pool-rho" min="0.3" max="0.97" step="0.01" value="0.9"></label><div class="ctrl"><span>장비 수 c</span><div class="seg" id="pool-c"><button data-value="2" class="on">2</button><button data-value="4">4</button><button data-value="8">8</button></div></div><span class="readout" id="pool-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>같은 장비 \(c\)대에 일을 나누는 두 방식. 장비마다 따로 줄을 세우면(\(c\)개의 M/M/1) 한 장비가 바쁠 때 옆 장비가 놀 수 있다. 한 줄로 모아 빈 장비가 먼저 가져가게 하면(M/M/c) 같은 이용률에서 대기 \(W_q\)가 크게 준다. 막대 높이는 처리 시간 \(1/\mu\) 단위의 평균 대기다.</figcaption>
+    </figure>
+    <div class="callout semi"><strong>팹의 사이클 타임은 대기 시간이다</strong> 웨이퍼 한 장이 팹에 머무는 수십 일 중 실제로 장비 안에서 가공되는 시간은 일부이고, 나머지는 스토커와 반송 차량에서 기다리는 시간이다. 그래서 팹 운영은 "병목 장비의 이용률을 얼마로 둘 것인가"와 "변동성(고장, 배치 투입, 레시피 산포)을 얼마나 줄일 것인가"의 싸움이 된다. 반송 시스템의 차량 대기와 스토커 용량도 같은 M/M/c와 리틀의 법칙으로 설계한다. → <a href="https://semi.euiyun.com/infra/chapters/amhs.html">InfraBook · 물류 자동화(AMHS)(대기열 이론: 리틀의 법칙과 M/M/c)</a></div>
+    <div class="example" data-title="노광 장비의 대기와 풀링">
+      <p>(a) 팹의 재공이 30000장, 하루 출하가 1000장이다. 평균 사이클 타임은? (b) 노광 장비 한 대에 로트가 시간당 4.5개 포아송 도착하고, 처리 시간은 평균 12분인 지수 분포다. \(\rho, L, L_q, W, W_q\)를 구하라. (c) 같은 장비 두 대가 각자 이런 흐름을 받는 대신, 시간당 9개를 한 줄로 받으면(M/M/2) 평균 체류 시간은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> (a) 리틀의 법칙. (b) \(\mu = 60/12 = 5\)/h인 M/M/1. (c) M/M/2 공식(얼랑 C): \(a = \lambda/\mu\), 대기 확률 \(P_W\), \(W_q = P_W/(c\mu-\lambda)\).</div>
+        <div class="step"><b>풀이</b> (a) \(W = L/\lambda = 30000/1000 = 30\)일. (b) \(\rho = 4.5/5 = 0.9\), \(L = 0.9/0.1 = 9\)로트, \(L_q = 0.81/0.1 = 8.1\), \(W = 1/(5-4.5) = 2\) h, \(W_q = 0.9/0.5 = 1.8\) h. 검산: \(\lambda W = 4.5\times2 = 9 = L\). (c) \(a = 9/5 = 1.8\), \(\rho = 0.9\). \(P_0^{-1} = 1+1.8+\frac{1.8^2}{2(1-0.9)} = 2.8+16.2 = 19\), \(P_W = 16.2/19 = 0.853\). \(W_q = 0.853/(10-9) = 0.853\) h, \(W = 0.853+0.2 = 1.05\) h.</div>
+        <div class="answer">(a) 30일 (b) ρ = 0.9, L = 9, L_q = 8.1, W = 2 h, W_q = 1.8 h (c) W ≈ 1.05 h</div>
+        <div class="step"><b>검토</b> 장비가 같은 이용률 90%로 일하는데도, 한 줄로 모으기만 해서 체류 시간이 2 h → 1.05 h로 거의 반이 됐다. 장비를 "전용"으로 묶는 디스패칭 규칙(특정 레티클·레시피만 특정 장비)이 사이클 타임을 늘리는 이유다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-q" data-title="M/M/1과 리틀의 법칙 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="autocorrelation">
+    <h2>자기 상관과 백색 잡음</h2>
+    <p>지금까지 표본은 대부분 서로 독립이라고 가정했다. 하지만 시간 순서로 기록한 장비 센서 값, 챔버 온도, 연속 웨이퍼의 막두께는 앞의 값을 닮는 경향이 있다. 챔버 벽에 막이 조금씩 쌓이고, 냉각수 온도가 천천히 오르내리기 때문이다. 시간 순서로 얻은 확률 변수 \(X_1, X_2, \dots\)(시계열)에서 이 "기억"을 재는 도구가 자기 상관이다.</p>
+    <div class="def"><span class="def-k">정상 과정과 자기 상관 함수</span>
+      <p>평균 \(E[X_t] = \mu\)가 일정하고 공분산 \(\operatorname{Cov}(X_t, X_{t+k}) = \gamma(k)\)가 시차 \(k\)에만 달린 과정을 (약) <span class="term">정상 과정</span><span class="en">(stationary process)</span>이라 한다. \(\gamma(k)\)를 <span class="term">자기 공분산</span><span class="en">(autocovariance)</span>, \(\rho(k) = \gamma(k)/\gamma(0)\)을 <span class="term">자기 상관 함수</span><span class="en">(autocorrelation function, ACF)</span>라 한다. 자료에서는 \(r_k = \sum_{t=1}^{n-k}(x_t-\bar x)(x_{t+k}-\bar x)\big/\sum_{t=1}^n(x_t-\bar x)^2\)로 추정하고, 막대로 그린 것을 <span class="term">상관도</span><span class="en">(correlogram)</span>라 한다.</p>
+    </div>
+    <p>가장 단순한 과정은 평균 0, 분산 \(\sigma^2\)이고 서로 상관없는 값의 열인 <span class="term">백색 잡음</span><span class="en">(white noise)</span>이다. \(\rho(0) = 1\), \(k\ne0\)이면 \(\rho(k) = 0\). 모든 진동수 성분이 같은 세기로 섞여 있어 백색광에 빗댄 이름이다. 백색 잡음이라도 표본 ACF는 정확히 0이 아니고 약 \(N(0, 1/n)\)으로 흔들리므로, 상관도에 \(\pm2/\sqrt n\) 띠를 그리고 그 밖으로 나간 막대만 유의하다고 본다(시차 20개면 하나쯤은 우연히 나간다).</p>
+    <p>기억이 있는 가장 단순한 모형은 1차 <span class="term">자기 회귀 모형</span><span class="en">(autoregressive model)</span> AR(1)이다.</p>
+    <div class="formula">$$X_t = \phi X_{t-1}+\varepsilon_t,\quad \varepsilon_t\ \text{백색 잡음}(\sigma^2),\quad |\phi|<1:\qquad \operatorname{Var}(X_t) = \frac{\sigma^2}{1-\phi^2},\qquad \rho(k) = \phi^{k}$$<div class="where">정상 상태에서 \(\operatorname{Var}(X_t) = \phi^2\operatorname{Var}(X_{t-1})+\sigma^2\)이고 두 분산이 같으므로 첫 식이 나온다. \(\operatorname{Cov}(X_t, X_{t-1}) = \phi\operatorname{Var}(X_{t-1})\)이므로 \(\rho(1) = \phi\), 같은 식을 되풀이하면 \(\rho(k) = \phi^k\). \(\phi = 1\)이면 1절의 랜덤 워크가 되어 분산이 시간에 비례해 커진다(비정상).</div></div>
+    <div class="sim" id="sim-acf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>상관도 읽기: 백색 잡음에서 AR(1)까지</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-acf"></canvas><span class="hint top">상관도의 시차 1 막대 끝(흰 원)을 위아래로 끌어 φ를 바꾼다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>자료 수 n</span><div class="seg" id="acf-n"><button data-value="50">50</button><button data-value="200" class="on">200</button><button data-value="1000">1000</button></div></div>
+          <div class="ctrl"><span>바로 고르기</span><div class="seg" id="acf-pre"><button data-value="0">백색 φ = 0</button><button data-value="0.8">φ = 0.8</button><button data-value="-0.6">φ = −0.6</button></div></div>
+          <button class="btn" id="acf-new" type="button">다시 뽑기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">모형 φ</span><span class="v" id="acf-phi">—</span></div>
+        <div class="stat"><span class="k">표본 r₁ (이론 φ)</span><span class="v" id="acf-r1">—</span></div>
+        <div class="stat"><span class="k">띠 밖 막대 (k = 1–20)</span><span class="v" id="acf-out">—</span></div>
+        <div class="stat"><span class="k">표본 분산 (이론)</span><span class="v" id="acf-var">—</span></div>
+      </div>
+      <div class="sim-note">위는 시계열(초록), 왼쪽 아래는 이웃한 값의 산점도 \((x_{t-1}, x_t)\)(지연 그림), 오른쪽 아래는 상관도다. 막대는 표본 \(r_k\), 자주색 점은 이론 \(\phi^k\), 회색 띠는 \(\pm2/\sqrt n\)이다. 해볼 것: ① φ = 0에서 다시 뽑기를 여러 번 — 20개 중 0–2개가 우연히 띠를 넘는다. ② φ = 0.9로 끌면 시계열이 천천히 굽이치고, 지연 그림이 대각선으로 눕고, 상관도가 천천히 줄어든다. ③ φ = −0.6이면 값이 위아래로 번갈아 튀고 상관도가 부호를 바꾸며 줄어든다(과잉 보정하는 제어기).</div>
+    </div>
+    <h3>상관이 있으면 평균이 덜 정확해진다</h3>
+    <p>독립 표본 \(n\)개의 평균은 분산이 \(\sigma_X^2/n\)이었다. 상관이 있으면 공분산 항이 더해진다. \(\operatorname{Var}(\bar X) = \frac{\sigma_X^2}{n}\Big[1+2\sum_{k=1}^{n-1}\big(1-\tfrac kn\big)\rho(k)\Big]\)이고, AR(1)에서 \(n\)이 크면</p>
+    <div class="formula">$$\operatorname{Var}(\bar X)\approx\frac{\sigma_X^2}{n}\cdot\frac{1+\phi}{1-\phi},\qquad n_{\text{eff}} = n\,\frac{1-\phi}{1+\phi}$$<div class="where">\(n_{\text{eff}}\)는 같은 정밀도를 주는 독립 표본 수, 즉 <span class="term">유효 표본 크기</span><span class="en">(effective sample size)</span>다. \(\phi = 0.8\)이면 100개를 재도 독립 표본 11개의 가치밖에 없고, 표준 오차는 독립을 가정한 값의 3배다.</div></div>
+    <div class="tangle" id="tg-neff">
+      <p>시차 1 자기 상관이 \(\phi\) = <span class="tn" data-var="phi" data-min="-0.9" data-max="0.95" data-step="0.05">0.6</span>인 센서 값 <span class="tn" data-var="n" data-min="10" data-max="1000" data-step="10">100</span>개를 평균하면 유효 표본 크기는 <span class="tn-out" data-out="ne"></span>이고, 평균의 표준 오차는 독립이라고 가정한 값 \(\sigma/\sqrt n\)의 <span class="tn-out" data-out="f"></span>배다. <span data-out="note"></span></p>
+    </div>
+    <div class="predict" data-for="sim-avg">
+      <p>\(\phi = 0.8\)인 AR(1) 센서 값 100개를 평균했다. 평균의 표준 편차는 독립인 값 100개를 평균했을 때와 비교해 어떨까?</p>
+      <div class="opts"><button class="opt">같다 — 개수가 같으니까</button><button class="opt">약 1.8배</button><button class="opt" data-correct>약 3배</button><button class="opt">약 9배</button></div>
+      <div class="quiz-exp">분산이 \((1+\phi)/(1-\phi) = 9\)배이므로 표준 편차는 3배다(정확한 유한 \(n\) 공식으로는 8.6배, 2.93배). 시뮬레이터에서 평균 개수를 늘려 가며, 상관된 잡음의 선이 독립 잡음의 선보다 위에 평행하게 놓이는 것을 확인하라.</div>
+    </div>
+    <div class="sim" id="sim-avg">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>평균하면 잡음이 얼마나 줄어드나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view" style="position:relative"><canvas id="cv-avg"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>잡음 종류(표시할 시계열)</span><div class="seg" id="avg-type"><button data-value="white" class="on">백색</button><button data-value="ar">AR(1) 0.8</button><button data-value="pink">1/f</button><button data-value="walk">랜덤 워크</button></div></div>
+          <button class="btn" id="avg-play" type="button"></button>
+          <button class="btn" id="avg-reset" type="button">다시</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 수</span><span class="v" id="avg-rep">—</span></div>
+        <div class="stat"><span class="k">N = 64 평균의 SD: 백색</span><span class="v" id="avg-w">—</span></div>
+        <div class="stat"><span class="k">AR(1)</span><span class="v" id="avg-a">—</span></div>
+        <div class="stat"><span class="k">1/f · 랜덤 워크</span><span class="v" id="avg-p">—</span></div>
+      </div>
+      <div class="sim-note">위는 고른 잡음의 한 표본(분산을 1로 맞춘 것)이고, 아래는 연속한 값 \(N\)개의 평균을 수백 번 반복해 얻은 평균의 표준 편차를 \(N\)에 대해 그린 로그–로그 그래프다. 회색 점선은 독립일 때의 \(1/\sqrt N\)(기울기 −1/2). 해볼 것: ① 백색 잡음은 회색 선을 따라 내려간다. ② AR(1)은 \(N\)이 크면 기울기 −1/2로 내려가지만 3배 위에 있다. ③ 1/f 잡음은 기울기가 훨씬 완만해 오래 평균해도 잘 줄지 않고, 랜덤 워크는 평균할수록 오히려 커진다 — 평균이 약이 되지 않는 잡음이다.</div>
+    </div>
+    <p>전자 소자에서 흔한 <span class="term">1/f 잡음</span><span class="en">(1/f noise, 플리커 잡음)</span>은 전력 스펙트럼이 진동수에 반비례해, 느린 성분일수록 크다. 여러 시간 척도의 AR(1) 과정을 고르게 겹친 것처럼 행동해서 기억이 매우 길다. 그래서 측정 시간을 늘려 평균해도 표준 편차가 \(1/\sqrt N\)만큼 줄지 않는다. 백색 잡음(열잡음, 샷 잡음)과 1/f 잡음이 만나는 진동수를 코너 진동수라 하며, 정밀 측정에서는 신호를 코너보다 높은 진동수로 옮겨(초핑·변조) 1/f 영역을 피한다.</p>
+    <figure class="mini" id="mini-spc">
+      <div class="mini-view" style="position:relative"><canvas id="cv-spc"></canvas></div>
+      <div class="mini-ctrl"><label class="ctrl"><span>자기 상관 φ <output id="spc-phi-out"></output></span><input type="range" id="spc-phi" min="0" max="0.95" step="0.05" value="0.7"></label><button class="btn" id="spc-new" type="button">다시 뽑기</button><span class="readout" id="spc-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>특수 원인이 전혀 없는 AR(1) 공정 자료 200점에 개별값 관리도(16장)를 그렸다. 관리 한계 \(\bar x\pm3\hat\sigma\)의 \(\hat\sigma\)는 관례대로 이웃한 값의 차이(이동 범위)로 추정한다(\(\overline{MR}/1.128\)). 양의 자기 상관이 있으면 이웃 값이 비슷해 \(\hat\sigma\)가 과소 추정되고, 한계가 좁아져 <b>거짓 경보</b>(빨간 점)가 쏟아진다. 독립(φ = 0)이면 200점 중 평균 0.5개다.</figcaption>
+    </figure>
+    <div class="callout semi"><strong>센서 노이즈의 두 얼굴</strong> 아날로그 회로의 잡음 예산은 백색 잡음(저항의 열잡음 \(4kTR\), 트랜지스터 채널 열잡음)과 1/f 잡음(게이트 산화막 계면의 트랩이 전하를 잡았다 놓는 무작위 전신 잡음의 합)으로 나뉜다. 백색 잡음은 대역폭을 줄이거나 오래 평균하면 \(1/\sqrt N\)로 줄지만, 1/f 잡음은 평균 시간을 늘려도 잘 줄지 않아 초핑 같은 회로 기법을 쓴다. 이미지 센서의 시간적 노이즈와 고정 패턴 노이즈의 구분도 같은 시각이다. → <a href="https://semi.euiyun.com/analog/chapters/noise.html">AnalogBook · 잡음(열잡음과 1/f, 초핑)</a></div>
+    <div class="example" data-title="AR(1) 센서 자료의 자기 상관과 평균의 정밀도">
+      <p>챔버 압력 센서 값이 \(\phi = 0.6\)인 AR(1)을 따르고, 값 자체의 표준 편차는 \(\sigma_X = 1\) mTorr다. (a) \(\rho(1), \rho(3)\)은? (b) 연속한 100개를 평균할 때 평균의 표준 오차와 유효 표본 크기는? (c) 혁신 잡음 \(\varepsilon_t\)의 표준 편차 \(\sigma\)는?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\rho(k) = \phi^k\), \(\operatorname{Var}(\bar X)\approx\frac{\sigma_X^2}{n}\frac{1+\phi}{1-\phi}\), \(\sigma_X^2 = \sigma^2/(1-\phi^2)\).</div>
+        <div class="step"><b>풀이</b> (a) \(\rho(1) = 0.6\), \(\rho(3) = 0.6^3 = 0.216\). (b) \(\operatorname{SE}\approx\frac{1}{\sqrt{100}}\sqrt{\frac{1.6}{0.4}} = 0.1\times2 = 0.2\) mTorr, \(n_{\text{eff}} = 100\times0.4/1.6 = 25\). (c) \(\sigma = \sigma_X\sqrt{1-\phi^2} = \sqrt{0.64} = 0.8\) mTorr.</div>
+        <div class="answer">(a) 0.6, 0.216 (b) SE ≈ 0.2 mTorr, n<sub>eff</sub> = 25 (c) 0.8 mTorr</div>
+        <div class="step"><b>검토</b> 독립이라 가정하면 SE를 0.1로 보고해 신뢰 구간을 절반으로 좁게 잡게 된다. 상관된 자료에 독립 공식을 쓰면 "유의한 차이"가 실제보다 훨씬 자주 나온다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>랜덤 워크</b> \(S_n = \sum X_i\)(±1): \(E[S_n] = n(2p-1)\), \(\operatorname{Var}(S_n) = 4np(1-p)\), \(S_n = 2K-n\), \(K\sim\mathrm{Bin}(n,p)\). 대칭이면 퍼짐이 \(\sqrt n\). 걸음 \(a\), 간격 \(\tau\)이면 \(\sigma^2 = 2Dt\), \(D = a^2/2\tau\) — 확산의 가우스 분포는 랜덤 워크의 중심 극한 정리다.</li>
+      <li><b>포아송 과정</b>(독립·정상 증분, 비율 λ): \(N(t)\sim\mathrm{Poisson}(\lambda t)\), 간격 \(\mathrm{Exp}(\lambda)\) iid, \(S_k\sim\mathrm{Gamma}(k,1/\lambda)\), \(P(S_k\le t) = P(N(t)\ge k)\). 중첩하면 비율이 더해지고, 확률 \(p\)로 솎으면 \(p\lambda\). 무작위 시각에 걸린 간격은 길이 편향되어 평균이 \(2/\lambda\)(검사 역설), 평균 대기 \(\frac m2(1+c_v^2)\).</li>
+      <li><b>마르코프 연쇄</b>: 다음 상태는 지금 상태에만 의존. \(\pi_n = \pi_0P^n\), \(P^{m+n} = P^mP^n\). 기약·비주기이면 유일한 정상 분포 \(\pi = \pi P\)로 수렴하고, \(\pi_j\)는 장기 시간 비율, \(1/\pi_j\)는 평균 재방문 걸음. 두 상태: \(\pi_U = b/(a+b) = \text{MTBF}/(\text{MTBF}+\text{MTTR})\), 수렴 속도 \(|1-a-b|^n\).</li>
+      <li><b>흡수 연쇄</b>: \(P = \begin{pmatrix}Q&R\\0&I\end{pmatrix}\), \(N = (I-Q)^{-1}\)(기대 방문 횟수), \(\mathbf t = N\mathbf 1\)(기대 걸음), \(B = NR\)(흡수 확률). 첫걸음 분석: 도박꾼의 파산 \(h_k = k/N\), \(D_k = k(N-k)\)(\(p = \frac12\)), \(h_k = \frac{1-r^k}{1-r^N}\)(\(r = q/p\)).</li>
+      <li><b>M/M/1</b>(\(\rho = \lambda/\mu<1\)): \(P_n = (1-\rho)\rho^n\), \(L = \frac{\rho}{1-\rho}\), \(W = \frac1{\mu-\lambda}\), \(W_q = \frac{\rho}{\mu-\lambda}\). <b>리틀의 법칙</b> \(L = \lambda W\)(모든 안정한 계): 재공 = 처리량 × 사이클 타임. X-팩터 \(\approx1+\frac{c_a^2+c_s^2}{2}\frac{\rho}{1-\rho}\) — 이용률이 1에 다가가면 대기가 폭증하고, 변동성 감소와 풀링(M/M/c)이 곡선을 낮춘다.</li>
+      <li><b>자기 상관</b>: 정상 과정의 ACF \(\rho(k) = \gamma(k)/\gamma(0)\). 백색 잡음은 \(\rho(k) = 0\)(\(k\ne0\)), 표본 ACF는 \(\pm2/\sqrt n\) 띠 안. AR(1): \(\rho(k) = \phi^k\), \(\operatorname{Var}(X) = \sigma^2/(1-\phi^2)\). 평균의 분산 \(\approx\frac{\sigma_X^2}{n}\frac{1+\phi}{1-\phi}\), \(n_{\text{eff}} = n\frac{1-\phi}{1+\phi}\).</li>
+      <li>상관된 자료에 독립 가정의 공식을 쓰면 표준 오차를 과소 평가하고 관리도의 거짓 경보가 늘어난다. 백색 잡음만 평균으로 \(1/\sqrt N\)씩 줄고, 1/f 잡음과 랜덤 워크(드리프트)는 평균으로 잘 줄지 않는다.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="problems" id="problems">
+    <h2>연습문제</h2>
+    <p>포아송·정규 확률은 부록 A의 계산기를 써도 된다. 따로 말이 없으면 답이 ±1% 이내면 정답이다.</p>
+    <div class="problem-set">
+      <div class="problem" data-level="1" data-topic="랜덤 워크" data-answer="10" data-label="SD =" data-unit="칸">
+        <div class="prob-q"><p>대칭 랜덤 워크(±1, 각 확률 1/2)로 100걸음을 걸었다. 위치 \(S_{100}\)의 표준 편차는?</p></div>
+        <div class="prob-sol"><p>\(\operatorname{Var}(S_n) = 4np(1-p) = 4\times100\times0.25 = 100\), 표준 편차 \(= 10\)칸.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="확산" data-answer="0.190" data-label="√(2Dt) =" data-unit="µm">
+        <div class="prob-q"><p>확산 계수 \(D = 1.0\times10^{-13}\) cm²/s인 도펀트를 30분 열처리했다. 원자 위치의 표준 편차 \(\sqrt{2Dt}\)를 µm로 구하라.</p></div>
+        <div class="prob-hint">\(t = 1800\) s. 1 cm = 10⁴ µm.</div>
+        <div class="prob-sol"><p>\(2Dt = 2\times10^{-13}\times1800 = 3.6\times10^{-10}\) cm², \(\sqrt{2Dt} = 1.90\times10^{-5}\) cm = 0.190 µm.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="랜덤 워크" data-answer="20; 14.1" data-label="E[S] =; SD =">
+        <div class="prob-q"><p>오른쪽으로 갈 확률이 \(p = 0.55\)인 랜덤 워크로 200걸음을 걸었다. \(S_{200}\)의 평균과 표준 편차를 구하라.</p></div>
+        <div class="prob-sol"><p>\(E[S] = n(2p-1) = 200\times0.1 = 20\). \(\operatorname{Var}(S) = 4np(1-p) = 4\times200\times0.55\times0.45 = 198\), SD \(= 14.1\). 표류(20)가 퍼짐(14)보다 조금 크다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="포아송 과정" data-answer="0.135" data-label="P =">
+        <div class="prob-q"><p>장비 알람이 시간당 2회의 포아송 과정으로 울린다. 1시간 동안 알람이 한 번도 울리지 않을 확률은?</p></div>
+        <div class="prob-sol"><p>\(P(N(1) = 0) = e^{-2} = 0.135\). 같은 값이 "첫 알람까지 1시간 넘게 걸릴 확률" \(P(T>1)\)이다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="포아송 과정" data-answer="0.323" data-label="P =">
+        <div class="prob-q"><p>반송 중 웨이퍼 표면에 파티클이 분당 0.5개의 포아송 과정으로 떨어진다. 4분 반송 동안 3개 이상 떨어질 확률은?</p></div>
+        <div class="prob-hint">\(N(4)\sim\mathrm{Poisson}(2)\). 여사건을 쓴다.</div>
+        <div class="prob-sol"><p>\(P(N\ge3) = 1-e^{-2}(1+2+2) = 1-5e^{-2} = 1-0.677 = 0.323\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="도착 시각" data-answer="2; 0.143" data-label="E[S₄] =; P(S₄ ≤ 1 h) =" data-unit="h; ">
+        <div class="prob-q"><p>로트가 시간당 2개의 포아송 과정으로 도착한다. 네 번째 로트가 도착하는 시각 \(S_4\)의 평균과, 네 번째 로트가 1시간 안에 도착할 확률을 구하라.</p></div>
+        <div class="prob-hint">\(S_4\sim\mathrm{Gamma}(4, 1/2)\), 그리고 \(P(S_4\le1) = P(N(1)\ge4)\).</div>
+        <div class="prob-sol"><p>\(E[S_4] = 4/\lambda = 2\) h. \(N(1)\sim\mathrm{Poisson}(2)\)이므로 \(P(N(1)\ge4) = 1-e^{-2}(1+2+2+\tfrac43) = 1-0.857 = 0.143\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="무기억성">
+        <div class="prob-q"><p>포아송 과정으로 오는 경보가 지난 2시간 동안 한 번도 울리지 않았다. 다음 경보까지 남은 시간에 대한 설명으로 옳은 것은?</p></div>
+        <div class="prob-choices"><button>오래 조용했으니 곧 울릴 가능성이 높다</button><button data-correct>남은 시간의 분포는 처음과 같은 Exp(λ)다</button><button>남은 시간의 평균은 1/λ − 2시간이다</button><button>포아송 과정이 아니게 되었다</button></div>
+        <div class="prob-sol"><p>지수 분포의 무기억성 \(P(T>s+t\mid T>s) = P(T>t)\) 때문에, 얼마나 기다렸든 남은 시간은 같은 \(\mathrm{Exp}(\lambda)\)다. "이제 올 때가 됐다"는 직관은 마모처럼 고장률이 시간에 따라 커지는 과정(와이블 β > 1, 17장)에만 맞는다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="두 상태 연쇄" data-answer="0.0625" data-label="π_D =">
+        <div class="prob-q"><p>가동 중인 장비가 한 시간 안에 고장 날 확률이 0.02, 고장 중인 장비가 한 시간 안에 수리될 확률이 0.3이다. 장기적으로 장비가 고장 상태에 있는 시간 비율은?</p></div>
+        <div class="prob-sol"><p>\(\pi_D = a/(a+b) = 0.02/0.32 = 0.0625\). MTBF 50 h, MTTR 3.33 h로 보면 \(3.33/53.33 = 0.0625\)로 같다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="전이 행렬" data-answer="0.16; 0.463" data-label="P(X₂=3|X₀=1) =; π₁ =">
+        <div class="prob-q"><p>상태 1, 2, 3인 마르코프 연쇄의 전이 행렬이 \(P = \begin{pmatrix}0.7&0.2&0.1\\0.3&0.5&0.2\\0.2&0.3&0.5\end{pmatrix}\)이다. (a) \(P(X_2 = 3\mid X_0 = 1)\)과 (b) 정상 분포의 \(\pi_1\)을 구하라.</p></div>
+        <div class="prob-hint">(a) \(P^2\)의 (1, 3) 원소 \(= \sum_k p_{1k}p_{k3}\). (b) \(\pi = \pi P\)의 식 두 개와 합 1.</div>
+        <div class="prob-sol"><p>(a) \(0.7\times0.1+0.2\times0.2+0.1\times0.5 = 0.07+0.04+0.05 = 0.16\). (b) \(\pi_1 = 0.7\pi_1+0.3\pi_2+0.2\pi_3\), \(\pi_2 = 0.2\pi_1+0.5\pi_2+0.3\pi_3\), \(\pi_1+\pi_2+\pi_3 = 1\). 첫 식 \(0.3\pi_1 = 0.3\pi_2+0.2\pi_3\), 둘째 식 \(0.5\pi_2 = 0.2\pi_1+0.3\pi_3\). 풀면 \(\pi = (19, 13, 9)/41 = (0.463, 0.317, 0.220)\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="도박꾼의 파산" data-answer="0.4; 24" data-label="h₄ =; D₄ =" data-unit="; 걸음">
+        <div class="prob-q"><p>누적 드리프트가 매 로트 +1 또는 −1(각 확률 1/2)씩 변한다. 지금 값이 4이고, 0에 닿으면 하한 경보, 10에 닿으면 상한 경보다. 상한 경보가 먼저 울릴 확률과 경보까지 기대 로트 수는?</p></div>
+        <div class="prob-sol"><p>대칭 도박꾼의 파산: \(h_4 = 4/10 = 0.4\), \(D_4 = 4\times(10-4) = 24\)로트.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="흡수 연쇄" data-answer="0.875; 1.25" data-label="P(출하) =; 기대 검사 횟수 =">
+        <div class="prob-q"><p>검사에서 70%는 출하, 25%는 재작업, 5%는 폐기된다. 재작업한 웨이퍼의 80%는 다시 검사로, 20%는 폐기된다. 검사에 처음 들어온 웨이퍼가 결국 출하될 확률과, 흡수될 때까지 받는 기대 검사 횟수를 구하라.</p></div>
+        <div class="prob-hint">검사 → 재작업 → 검사로 돌아오는 확률은 \(0.25\times0.8\)이다. 검사 방문 횟수는 기하급수.</div>
+        <div class="prob-sol"><p>일시 상태 (검사, 재작업): \(Q = \begin{pmatrix}0&0.25\\0.8&0\end{pmatrix}\), \(N = (I-Q)^{-1} = \frac{1}{0.8}\begin{pmatrix}1&0.25\\0.8&1\end{pmatrix} = \begin{pmatrix}1.25&0.3125\\1&1.25\end{pmatrix}\). 출하 확률 \(= N_{11}\times0.7 = 0.875\), 기대 검사 횟수 \(= N_{11} = 1.25\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="리틀의 법칙" data-answer="4" data-label="W =" data-unit="일">
+        <div class="prob-q"><p>어느 공정 구역의 평균 재공이 1200로트이고 하루 처리량이 300로트다. 로트가 이 구역에 머무는 평균 시간은?</p></div>
+        <div class="prob-sol"><p>리틀의 법칙 \(W = L/\lambda = 1200/300 = 4\)일.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="M/M/1" data-answer="3; 1; 0.75" data-label="L =; W =; W_q =" data-unit="로트; h; h">
+        <div class="prob-q"><p>계측 장비 한 대에 로트가 시간당 3개 포아송 도착하고, 측정 시간은 평균 15분인 지수 분포다. \(L\), \(W\), \(W_q\)를 구하라.</p></div>
+        <div class="prob-sol"><p>\(\mu = 4\)/h, \(\rho = 0.75\). \(L = 0.75/0.25 = 3\), \(W = 1/(4-3) = 1\) h, \(W_q = 0.75/1 = 0.75\) h. 검산 \(\lambda W = 3 = L\).</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="운영 곡선" data-answer="4.5" data-label="λ_max =" data-unit="로트/h">
+        <div class="prob-q"><p>처리율 \(\mu = 5\)로트/h인 M/M/1 장비에서 평균 체류 시간을 2시간 이하로 유지하려 한다. 받을 수 있는 최대 도착률은? 그때 이용률은?</p></div>
+        <div class="prob-hint">\(W = 1/(\mu-\lambda)\le2\).</div>
+        <div class="prob-sol"><p>\(1/(5-\lambda)\le2\iff\lambda\le4.5\)로트/h, \(\rho = 0.9\). 체류 시간 목표를 1시간으로 줄이면 \(\lambda\le4\), \(\rho = 0.8\) — 사이클 타임을 반으로 줄이는 데 처리량 11%를 내놓아야 한다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="자기 상관" data-answer="0.49; 8.82" data-label="ρ(2) =; n_eff =">
+        <div class="prob-q"><p>\(\phi = 0.7\)인 AR(1) 계열에서 시차 2 자기 상관 \(\rho(2)\)와, 연속한 50개를 평균할 때의 유효 표본 크기 \(n_{\text{eff}} = n(1-\phi)/(1+\phi)\)를 구하라.</p></div>
+        <div class="prob-sol"><p>\(\rho(2) = 0.7^2 = 0.49\). \(n_{\text{eff}} = 50\times0.3/1.7 = 8.82\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="백색 잡음">
+        <div class="prob-q"><p>\(n = 400\)개의 자료로 그린 상관도에서 시차 1–20의 \(r_k\)가 모두 −0.08과 0.07 사이에 있었다. 가장 알맞은 해석은?</p></div>
+        <div class="prob-choices"><button>시차 1 상관이 0.07이므로 AR(1) 모형이 필요하다</button><button data-correct>모두 ±2/√400 = ±0.1 띠 안이므로 백색 잡음과 모순되지 않는다</button><button>r<sub>k</sub>가 0이 아니므로 자료는 독립이 아니다</button><button>자료가 정규 분포임이 증명되었다</button></div>
+        <div class="prob-sol"><p>백색 잡음의 표본 ACF는 대략 \(N(0, 1/n)\)으로 흔들리므로 \(\pm2/\sqrt{400} = \pm0.1\) 안의 값은 우연으로 설명된다. 독립을 "증명"하지는 않지만 상관의 증거는 없다. 정규성은 ACF와 별개의 문제다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="quiz-sec" id="quiz">
+    <h2>개념 확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>마르코프 성질이 뜻하는 것은?</p><div class="opts">
+        <button class="opt">모든 상태의 확률이 같다</button><button class="opt" data-correct>현재 상태가 주어지면 미래는 과거와 무관하다</button><button class="opt">과정이 언젠가 반드시 흡수된다</button><button class="opt">연속한 값들이 서로 독립이다</button>
+      </div><div class="quiz-exp">\(P(X_{n+1}\mid X_n, X_{n-1},\dots) = P(X_{n+1}\mid X_n)\). 값들이 독립이라는 뜻은 아니다 — 랜덤 워크의 \(S_n\)과 \(S_{n+1}\)은 강하게 상관되어 있지만 마르코프다. 과거의 정보가 모두 현재 상태에 담겨 있다는 뜻이다.</div></div>
+      <div class="quiz-q"><p>두 장비의 알람이 각각 시간당 2회, 3회인 독립 포아송 과정이다. 합친 알람 흐름에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">시간당 5회지만 더 이상 포아송 과정이 아니다</button><button class="opt" data-correct>시간당 5회의 포아송 과정이고, 각 알람이 첫 장비에서 왔을 확률은 0.4다</button><button class="opt">시간당 2.5회의 포아송 과정이다</button><button class="opt">간격이 Gamma(2) 분포를 따른다</button>
+      </div><div class="quiz-exp">독립 포아송 과정의 중첩은 비율이 더해진 포아송 과정이고, 출처는 비율에 비례해 \(2/5 = 0.4\)다. 간격은 \(\mathrm{Exp}(5)\)다.</div></div>
+      <div class="quiz-q"><p>리틀의 법칙 \(L = \lambda W\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">M/M/1 대기 행렬에서만 성립한다</button><button class="opt">도착이 포아송 과정일 때만 성립한다</button><button class="opt" data-correct>안정한 계라면 분포·서버 수·순서 규칙과 무관하게 장기 평균에 대해 성립한다</button><button class="opt">대기열에는 쓸 수 없고 계 전체에만 쓴다</button>
+      </div><div class="quiz-exp">리틀의 법칙은 거의 분포에 무관한 회계 항등식이다. 대기열만(\(L_q = \lambda W_q\)), 장비 안만(\(\rho = \lambda/\mu\)), 팹 전체(재공 = 처리량 × 사이클 타임)에 모두 쓴다.</div></div>
+      <div class="quiz-q"><p>병목 장비의 이용률을 높일수록 사이클 타임이 급격히 늘어나는 이유로 가장 알맞은 것은?</p><div class="opts">
+        <button class="opt">장비가 더 많이 일하면 처리 시간이 길어지기 때문</button><button class="opt" data-correct>도착과 처리의 무작위성 때문에 생긴 대기가 ρ/(1−ρ)로 커지기 때문</button><button class="opt">리틀의 법칙에 따라 재공이 일정하기 때문</button><button class="opt">이용률과 사이클 타임은 정비례하기 때문</button>
+      </div><div class="quiz-exp">처리 시간 자체는 그대로다. 대기 \(W_q\propto\frac{c_a^2+c_s^2}{2}\frac{\rho}{1-\rho}\)라서 \(\rho\to1\)에서 발산한다. 변동성이 0이면(\(c_a = c_s = 0\)) 대기가 없으므로, 대기는 무작위성의 대가다.</div></div>
+      <div class="quiz-q"><p>양의 자기 상관(φ = 0.8)이 있는 공정 자료로 독립을 가정해 평균의 95% 신뢰 구간을 만들면?</p><div class="opts">
+        <button class="opt">구간이 너무 넓어 보수적이다</button><button class="opt" data-correct>구간이 너무 좁아 실제 포함 확률이 95%보다 훨씬 낮다</button><button class="opt">영향이 없다 — 평균은 불편 추정량이니까</button><button class="opt">구간의 중심이 한쪽으로 치우친다</button>
+      </div><div class="quiz-exp">평균은 여전히 불편하지만 분산이 \((1+\phi)/(1-\phi) = 9\)배라 진짜 표준 오차는 3배다. 독립 공식의 구간은 너무 좁아 참값을 자주 놓친다. 같은 이유로 관리도는 거짓 경보를 쏟아낸다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  /* ================================================================ 공통 도구 */
+  const PI = Math.PI;
+  const pal = () => SB.palette();
+  const $ = (id) => document.getElementById(id);
+  const font = (px, mono, bold) => (bold ? "600 " : "") + px + "px " + SB.color(mono ? "mono" : "font");
+  const handle = (ctx, x, y, col, r = 9) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const f3 = (x) => (isFinite(x) ? String(Number(x.toPrecision(3))) : "—");
+  const fx = (x, d = 2) => (isFinite(x) ? x.toFixed(d) : "—");
+  const int = (n) => Math.round(n).toLocaleString("en-US");
+  const withA = (ctx, a, fn) => { const g = ctx.globalAlpha; ctx.globalAlpha = g * a; fn(); ctx.globalAlpha = g; };
+  const clip = (ctx, B, fn) => { ctx.save(); ctx.beginPath(); ctx.rect(B.x, B.y - 2, B.w + 2, B.h + 4); ctx.clip(); fn(); ctx.restore(); };
+  const bx = (x, y, w, h) => ({ x, y, w: Math.max(20, w), h: Math.max(20, h) });
+  /** 간단한 좌표계 */
+  const frame = (B, x0, x1, y0, y1) => ({ box: B, X: (v) => B.x + ((v - x0) / (x1 - x0)) * B.w, Y: (v) => B.y + B.h - ((v - y0) / (y1 - y0)) * B.h, ix: (px) => x0 + ((px - B.x) / B.w) * (x1 - x0), iy: (py) => y0 + ((B.y + B.h - py) / B.h) * (y1 - y0) });
+  /** 축과 눈금 */
+  function axes(ctx, F, o = {}) {
+    const P = pal(), B = F.box;
+    ctx.save(); ctx.strokeStyle = P.axis; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.lineTo(B.x, B.y + B.h); ctx.lineTo(B.x + B.w, B.y + B.h); ctx.stroke();
+    ctx.font = font(11, true); ctx.fillStyle = P.dim;
+    if (o.xt) { ctx.textAlign = "center"; ctx.textBaseline = "top"; o.xt.forEach((v) => { const x = F.X(v); ctx.strokeStyle = P.grid; ctx.beginPath(); ctx.moveTo(x, B.y); ctx.lineTo(x, B.y + B.h); ctx.stroke(); ctx.fillText(o.xf ? o.xf(v) : String(v), x, B.y + B.h + 4); }); }
+    if (o.yt) { ctx.textAlign = "right"; ctx.textBaseline = "middle"; o.yt.forEach((v) => { const y = F.Y(v); ctx.strokeStyle = P.grid; ctx.beginPath(); ctx.moveTo(B.x, y); ctx.lineTo(B.x + B.w, y); ctx.stroke(); ctx.fillText(o.yf ? o.yf(v) : String(v), B.x - 5, y); }); }
+    ctx.font = font(12); ctx.fillStyle = P.dim;
+    if (o.xl) { ctx.textAlign = "right"; ctx.textBaseline = "top"; ctx.fillText(o.xl, B.x + B.w, B.y + B.h + 20); }
+    if (o.yl) { ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(o.yl, B.x + 4, B.y - 3); }
+    ctx.restore();
+  }
+  function line(ctx, pts, col, w = 2, dash) { if (!pts.length) return; ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = w; if (dash) ctx.setLineDash(dash); ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); ctx.restore(); }
+  function toggleBtn(id, st, key = "playing", cb) {
+    const b = $(id);
+    const sync = () => (b.textContent = st[key] ? "❚❚ 정지" : "▶ 재생");
+    b.addEventListener("click", () => { st[key] = !st[key]; sync(); cb && cb(); });
+    sync();
+    return sync;
+  }
+  const narrowOf = (w) => w < 560;
+
+  /* ================================================================ 머리: 2차원 확산 */
+  {
+    const NW = 320, SIG = 1.5;
+    const st = { R: Stat.rng(15), sx: 0.5, sy: 0.5, n: 0, dx: new Float64Array(NW), dy: new Float64Array(NW), playing: true, hold: 0 };
+    const reset = (fx, fy) => { if (fx != null) { st.sx = fx; st.sy = fy; } st.n = 0; st.dx.fill(0); st.dy.fill(0); st.hold = 0; };
+    const cv = SB.canvas("cv-hero", (ctx, w, h, self) => {
+      const P = pal(), narrow = narrowOf(w);
+      const M = { x: 10, y: 10, w: w - 20, h: Math.round(h * (narrow ? 0.66 : 0.7)) - 10 };
+      const H = { x: 40, y: M.y + M.h + 22, w: w - 60, h: h - (M.y + M.h + 22) - 48 };
+      self._M = M;
+      const cx = M.x + st.sx * M.w, cy = M.y + st.sy * M.h;
+      // 이론 반경 √(<r²>) = √(2σ²n)
+      const rT = Math.sqrt(2 * SIG * SIG * st.n);
+      let s2 = 0; for (let i = 0; i < NW; i++) s2 += st.dx[i] * st.dx[i] + st.dy[i] * st.dy[i];
+      const rM = Math.sqrt(s2 / NW);
+      ctx.save(); ctx.beginPath(); ctx.rect(M.x, M.y, M.w, M.h); ctx.clip();
+      // 농도 후광(가우스)
+      if (rT > 2) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rT * 2); g.addColorStop(0, SB.color("accent-2-soft")); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rT * 2, 0, 2 * PI); ctx.fill(); }
+      ctx.fillStyle = P.accent;
+      for (let i = 0; i < NW; i++) { ctx.beginPath(); ctx.arc(cx + st.dx[i], cy + st.dy[i], 2.6, 0, 2 * PI); ctx.fill(); }
+      ctx.setLineDash([6, 5]); ctx.strokeStyle = P.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, Math.max(0.5, rT), 0, 2 * PI); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = P.text; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, Math.max(0.5, rM), 0, 2 * PI); ctx.stroke();
+      ctx.fillStyle = P.bad; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * PI); ctx.fill();
+      ctx.restore();
+      SB.label(ctx, `걸음 n = ${st.n}`, M.x + 8, M.y + 14, { align: "left", bold: true, size: 13 });
+      SB.label(ctx, `√⟨r²⟩ 실측 ${rM.toFixed(1)} px`, M.x + 8, M.y + 34, { align: "left", size: 12 });
+      SB.label(ctx, `이론 √(4Dt) = ${rT.toFixed(1)} px`, M.x + 8, M.y + 52, { align: "left", size: 12, color: P.accent2 });
+      // 아래: x 투영 히스토그램과 가우스
+      const half = H.w / 2, NB = 40, bw = H.w / NB, cnt = new Float64Array(NB);
+      const ox = cx - M.x - M.w / 2; // 출발점의 가로 치우침(px)
+      for (let i = 0; i < NW; i++) { const v = st.dx[i] + ox + half * (M.w / H.w) * 0; const j = Math.floor((st.dx[i] * (H.w / M.w) + ox * (H.w / M.w) + half) / bw); if (j >= 0 && j < NB) cnt[j]++; }
+      const sdx = Math.max(1, SIG * Math.sqrt(st.n)) * (H.w / M.w); // 막대 좌표의 표준 편차(px)
+      const peak = 1 / (Math.sqrt(2 * PI) * sdx), ymax = Math.max(peak, 1 / (bw * 2)) * 1.1;
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(H.x, H.y + H.h); ctx.lineTo(H.x + H.w, H.y + H.h); ctx.stroke();
+      ctx.fillStyle = P.accent;
+      for (let j = 0; j < NB; j++) { if (!cnt[j]) continue; const d = cnt[j] / (NW * bw), hh = Math.min(1, d / ymax) * H.h; withA(ctx, 0.55, () => ctx.fillRect(H.x + j * bw + 0.5, H.y + H.h - hh, bw - 1, hh)); }
+      const mu = ox * (H.w / M.w);
+      const pts = []; for (let i = 0; i <= 160; i++) { const u = -half + (H.w * i) / 160, z = (u - mu) / sdx; pts.push([H.x + half + u, H.y + H.h - Math.min(1.05, Math.exp(-0.5 * z * z) * peak / ymax) * H.h]); }
+      line(ctx, pts, P.accent2, 2.2);
+      SB.label(ctx, "가로 위치 분포 · 가우스 σ² = 2Dt", H.x, H.y - 8, { align: "left", size: 11, color: P.dim });
+    }, { aspect: 0.46, minHeight: 360, maxHeight: 440 });
+    SB.drag(cv, { free: true, handles: () => [], down: (id, x, y) => { const M = cv._M; if (!M) return; reset(SB.clamp((x - M.x) / M.w, 0.05, 0.95), SB.clamp((y - M.y) / M.h, 0.05, 0.95)); }, move: () => {} });
+    toggleBtn("hero-play", st);
+    $("hero-reset").addEventListener("click", () => { reset(0.5, 0.5); cv.redraw(); });
+    SB.loop("cv-hero", () => {
+      if (!st.playing) return;
+      const M = cv._M; if (!M) return;
+      if (st.hold > 0) { st.hold--; if (st.hold === 0) reset(); cv.redraw(); return; }
+      for (let s = 0; s < 2; s++) { for (let i = 0; i < NW; i++) { st.dx[i] += st.R.normal(0, SIG); st.dy[i] += st.R.normal(0, SIG); } st.n++; }
+      if (Math.sqrt(2) * SIG * Math.sqrt(st.n) > Math.min(M.w, M.h) * 0.3) st.hold = 90;
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 1절: 랜덤 워크 부채꼴 */
+  {
+    const NS = 200, MAXP = 2000;
+    const st = { p: 0.5, paths: [], grow: null, gi: 0, nObs: 100, playing: false, R: Stat.rng(7) };
+    const mkPath = () => { const a = new Int16Array(NS + 1); for (let i = 0; i < NS; i++) a[i + 1] = a[i] + (st.R.u() < st.p ? 1 : -1); return a; };
+    const add = (k) => { for (let i = 0; i < k && st.paths.length < MAXP; i++) st.paths.push(mkPath()); };
+    const restart = () => { st.R = Stat.rng(7); st.paths = []; st.grow = null; add(30); };
+    restart();
+    const yr = () => Math.max(40, Math.abs(NS * (2 * st.p - 1)) + 3 * Math.sqrt(4 * NS * st.p * (1 - st.p)));
+    const cv = SB.canvas("cv-rw", (ctx, w, h, self) => {
+      const P = pal(), Y = yr();
+      const L = bx(44, 50, w * 0.68 - 54, h - 50 - 40), Hb = bx(L.x + L.w + 12, 50, w - (L.x + L.w + 12) - 12, h - 50 - 40);
+      const F = frame(L, 0, NS, -Y, Y);
+      self._F = F;
+      axes(ctx, F, { xt: [0, 50, 100, 150, 200], yt: [-Y, -Y / 2, 0, Y / 2, Y].map((v) => Math.round(v)), xl: "걸음 n", yl: "위치 Sₙ" });
+      const n = st.nObs, p = st.p, mu = (k) => k * (2 * p - 1), sd = (k) => Math.sqrt(4 * k * p * (1 - p));
+      clip(ctx, L, () => {
+        const show = st.paths.slice(-150);
+        ctx.lineWidth = 1; ctx.strokeStyle = P.accent;
+        withA(ctx, show.length > 60 ? 0.18 : 0.35, () => show.forEach((a) => { ctx.beginPath(); for (let i = 0; i <= NS; i++) { const x = F.X(i), y = F.Y(a[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }));
+        if (st.grow) { ctx.lineWidth = 2.4; ctx.strokeStyle = P.text; ctx.beginPath(); for (let i = 0; i <= st.gi; i++) { const x = F.X(i), y = F.Y(st.grow[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+        for (const k of [1, 2]) for (const s of [1, -1]) { const pts = []; for (let i = 0; i <= NS; i += 2) pts.push([F.X(i), F.Y(mu(i) + s * k * sd(i))]); line(ctx, pts, P.accent2, k === 1 ? 2 : 1.4, k === 1 ? [6, 4] : [2, 4]); }
+      });
+      // 관찰선
+      const xo = F.X(n);
+      ctx.strokeStyle = P.text; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(xo, L.y); ctx.lineTo(xo, L.y + L.h); ctx.stroke(); ctx.setLineDash([]);
+      handle(ctx, xo, L.y + L.h - 14, P.text, 9);
+      SB.label(ctx, "n = " + n, xo, L.y + 10, { bold: true, size: 12 });
+      // 오른쪽: 위치 히스토그램(가로 막대)
+      const cnt = new Map(); let tot = 0;
+      st.paths.forEach((a) => { cnt.set(a[n], (cnt.get(a[n]) || 0) + 1); tot++; });
+      const pmf = (v) => { const k = (v + n) / 2; return Number.isInteger(k) && k >= 0 && k <= n ? Stat.dbinom(k, n, p) : 0; };
+      let pk = 0; for (let v = -n; v <= n; v += 2) pk = Math.max(pk, pmf(v));
+      const xmax = Math.max(0.05, pk * 1.3);
+      const G = frame(Hb, 0, xmax, -Y, Y);
+      ctx.strokeStyle = P.axis; ctx.beginPath(); ctx.moveTo(Hb.x, Hb.y); ctx.lineTo(Hb.x, Hb.y + Hb.h); ctx.stroke();
+      const bh = Math.max(1.5, Math.abs(G.Y(0) - G.Y(1.6)));
+      clip(ctx, Hb, () => {
+        ctx.fillStyle = P.accent;
+        cnt.forEach((c, v) => { const len = (c / tot) / xmax * Hb.w; withA(ctx, 0.6, () => ctx.fillRect(Hb.x, G.Y(v) - bh / 2, Math.min(Hb.w, len), bh)); });
+        ctx.fillStyle = P.accent2; ctx.strokeStyle = P.accent2; ctx.lineWidth = 1.6; ctx.beginPath(); let first = true;
+        for (let v = -n; v <= n; v += 2) { const q = pmf(v); if (q < 1e-4) continue; const x = G.X(q), y = G.Y(v); first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; }
+        ctx.stroke();
+      });
+      SB.label(ctx, "Sₙ 분포", Hb.x + 4, Hb.y - 12, { align: "left", size: 12, bold: true, color: P.accent });
+      ctx.fillStyle = P.dim; ctx.font = font(11, true); ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("비율 →", Hb.x + 4, Hb.y + Hb.h + 4);
+      // 읽기
+      const xs = st.paths.map((a) => a[n]);
+      SB.stat("rw-cnt", int(st.paths.length));
+      SB.stat("rw-n", String(n));
+      SB.stat("rw-mean", (xs.length ? fx(Stat.mean(xs), 2) : "—") + ` (${fx(mu(n), 1)})`);
+      SB.stat("rw-sd", (xs.length > 1 ? fx(Stat.sd(xs), 2) : "—") + ` (${fx(sd(n), 2)})`);
+    }, { aspect: 0.56, minHeight: 330, maxHeight: 460 });
+    SB.drag(cv, { handles: () => (cv._F ? [{ id: "n", x: cv._F.X(st.nObs), y: cv._F.box.y + cv._F.box.h - 14, r: 14 }] : []), move: (id, x) => { if (id === "n") st.nObs = SB.clamp(Math.round(cv._F.ix(x)), 1, NS); } });
+    const gp = SB.range("rw-p", (v) => v.toFixed(2), (v) => { st.p = v; restart(); cv.redraw(); });
+    SB.seg("rw-add", (v) => { const k = Number(v); if (k === 1) { st.grow = mkPath(); st.gi = 0; } else add(k); cv.redraw(); });
+    toggleBtn("rw-play", st);
+    $("rw-clear").addEventListener("click", () => { st.paths = []; st.grow = null; cv.redraw(); });
+    SB.loop("cv-rw", () => {
+      if (!st.grow && !st.playing) return;
+      if (!st.grow) { st.grow = mkPath(); st.gi = 0; }
+      st.gi = Math.min(NS, st.gi + 20);
+      if (st.gi >= NS) { st.paths.push(st.grow); st.grow = null; }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 1절 미니: 평균 제곱 변위 */
+  {
+    const NW = 200, NMAX = 200;
+    const st = { a: 1, n: 0, x: new Float64Array(NW), y: new Float64Array(NW), msd: [], playing: true, R: Stat.rng(3) };
+    const reset = () => { st.n = 0; st.x.fill(0); st.y.fill(0); st.msd = [[0, 0]]; st.R = Stat.rng(3); };
+    reset();
+    const cv = SB.canvas("cv-msd", (ctx, w, h) => {
+      const P = pal(), side = Math.min(h - 20, w * 0.42);
+      const S = { x: 10, y: 10, w: side, h: side }, cx = S.x + side / 2, cy = S.y + side / 2, sc = side / 110;
+      ctx.strokeStyle = P.border; ctx.strokeRect(S.x, S.y, S.w, S.h);
+      ctx.save(); ctx.beginPath(); ctx.rect(S.x, S.y, S.w, S.h); ctx.clip();
+      ctx.fillStyle = P.accent; for (let i = 0; i < NW; i++) { ctx.beginPath(); ctx.arc(cx + st.x[i] * sc, cy + st.y[i] * sc, 2.2, 0, 2 * PI); ctx.fill(); }
+      const r = Math.sqrt(st.n) * st.a * sc; ctx.strokeStyle = P.accent2; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(cx, cy, Math.max(0.5, r), 0, 2 * PI); ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+      const B = bx(S.x + side + 56, 18, w - (S.x + side + 56) - 14, h - 18 - 40), F = frame(B, 0, NMAX, 0, 850);
+      axes(ctx, F, { xt: [0, 100, 200], yt: [0, 400, 800], xl: "걸음 n", yl: "⟨r²⟩" });
+      line(ctx, [[F.X(0), F.Y(0)], [F.X(NMAX), F.Y(NMAX * st.a * st.a)]].map(([x, y]) => [x, Math.max(B.y, y)]), P.accent2, 2);
+      ctx.fillStyle = P.accent; st.msd.forEach(([n, m]) => { const y = F.Y(m); if (y < B.y) return; ctx.beginPath(); ctx.arc(F.X(n), y, 2.6, 0, 2 * PI); ctx.fill(); });
+      const last = st.msd[st.msd.length - 1];
+      $("msd-r").textContent = `n = ${st.n} · ⟨r²⟩ = ${fx(last[1], 1)} (이론 na² = ${fx(st.n * st.a * st.a, 1)})`;
+    }, { aspect: 0.42, minHeight: 200, maxHeight: 300 });
+    SB.range("msd-a", (v) => v.toFixed(1), (v) => { st.a = v; reset(); cv.redraw(); });
+    toggleBtn("msd-play", st);
+    $("msd-reset").addEventListener("click", () => { reset(); cv.redraw(); });
+    let acc = 0;
+    SB.loop("cv-msd", (dt) => {
+      if (!st.playing) return;
+      acc += dt; if (acc < 0.04) return; acc = 0;
+      if (st.n >= NMAX) { reset(); }
+      for (let i = 0; i < NW; i++) { const th = 2 * PI * st.R.u(); st.x[i] += st.a * Math.cos(th); st.y[i] += st.a * Math.sin(th); }
+      st.n++;
+      if (st.n % 4 === 0) { let s = 0; for (let i = 0; i < NW; i++) s += st.x[i] ** 2 + st.y[i] ** 2; st.msd.push([st.n, s / NW]); }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 1절 미니: 드라이브인 */
+  {
+    const NP = 400, TMAX = 120;
+    const DT = { 1000: 1.53e-14, 1050: 5.03e-14, 1100: 1.52e-13 }; // cm²/s
+    const st = { T: 1100, t: 0, x: new Float64Array(NP), playing: true, R: Stat.rng(11) };
+    const Dum = () => DT[st.T] * 1e8 * 60; // µm²/min
+    const reset = () => { st.t = 0; st.R = Stat.rng(11); for (let i = 0; i < NP; i++) st.x[i] = 0.01 * st.R.u(); };
+    reset();
+    const cv = SB.canvas("cv-dope", (ctx, w, h) => {
+      const P = pal(), B = bx(50, 22, w - 64, h - 22 - 40), XM = 1.2, YM = 8, F = frame(B, 0, XM, 0, YM);
+      axes(ctx, F, { xt: [0, 0.3, 0.6, 0.9, 1.2], yt: [0, 2, 4, 6, 8], xl: "깊이 x (µm)", yl: "상대 농도 (µm⁻¹)" });
+      ctx.fillStyle = P.surface || P.grid; withA(ctx, 0.5, () => { ctx.fillStyle = P.faint; ctx.fillRect(B.x - 8, B.y, 8, B.h); });
+      const NB = 30, bw = XM / NB, cnt = new Float64Array(NB);
+      for (let i = 0; i < NP; i++) { const j = Math.floor(st.x[i] / bw); if (j < NB) cnt[j]++; }
+      clip(ctx, B, () => {
+        ctx.fillStyle = P.accent;
+        for (let j = 0; j < NB; j++) { if (!cnt[j]) continue; const d = cnt[j] / (NP * bw); withA(ctx, 0.55, () => ctx.fillRect(F.X(j * bw) + 0.5, F.Y(d), F.X(bw) - F.X(0) - 1, F.Y(0) - F.Y(d))); }
+        const s = Math.sqrt(2 * Dum() * Math.max(st.t, 0.05));
+        const pts = []; for (let i = 0; i <= 200; i++) { const x = (XM * i) / 200; pts.push([F.X(x), Math.max(B.y - 2, F.Y((2 / (Math.sqrt(2 * PI) * s)) * Math.exp(-(x * x) / (2 * s * s))))]); }
+        line(ctx, pts, P.accent2, 2.4);
+      });
+      const s = Math.sqrt(2 * Dum() * st.t);
+      let m2 = 0; for (let i = 0; i < NP; i++) m2 += st.x[i] ** 2;
+      SB.label(ctx, `${st.T} °C · t = ${st.t.toFixed(0)}분`, B.x + B.w - 6, B.y + 12, { align: "right", bold: true });
+      $("dope-r").textContent = `√(2Dt) = ${s.toFixed(3)} µm · 실측 RMS 깊이 ${Math.sqrt(m2 / NP).toFixed(3)} µm`;
+    }, { aspect: 0.42, minHeight: 220, maxHeight: 300 });
+    SB.seg("dope-T", (v) => { st.T = Number(v); reset(); cv.redraw(); });
+    toggleBtn("dope-play", st);
+    $("dope-reset").addEventListener("click", () => { reset(); st.playing = true; $("dope-play").textContent = "❚❚ 정지"; cv.redraw(); });
+    SB.loop("cv-dope", (dt) => {
+      if (!st.playing || st.t >= TMAX) return;
+      const dtm = Math.min(TMAX - st.t, dt * 10), sg = Math.sqrt(2 * Dum() * dtm);
+      for (let i = 0; i < NP; i++) st.x[i] = Math.abs(st.x[i] + st.R.normal(0, sg));
+      st.t += dtm; cv.redraw();
+    });
+  }
+
+  /* ================================================================ 2절: 포아송 과정 */
+  {
+    const VIEW = 30, CAP = 40000;
+    const st = { lam: 1, T: 0, arr: [], next: 0, R: null, view: "count", ws: 12, w: 3, playing: true };
+    const advance = (T1) => { while (st.next <= T1 && st.arr.length < CAP) { st.arr.push(st.next); st.next += st.R.exp(st.lam); } st.T = T1; };
+    const reset = (seed = 21) => { st.R = Stat.rng(seed); st.arr = []; st.next = st.R.exp(st.lam); st.T = 0; advance(200); };
+    reset();
+    let seed = 21;
+    const cv = SB.canvas("cv-pp", (ctx, w, h, self) => {
+      const P = pal(), TL = bx(16, 40, w - 32, 34), B = bx(52, TL.y + TL.h + 50, w - 52 - 16, h - (TL.y + TL.h + 50) - 40);
+      const t0 = st.T - VIEW, TX = (t) => TL.x + ((t - t0) / VIEW) * TL.w;
+      self._TL = TL;
+      // 시간축
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(TL.x, TL.y + TL.h); ctx.lineTo(TL.x + TL.w, TL.y + TL.h); ctx.stroke();
+      // 창
+      const wx0 = TL.x + (st.ws / VIEW) * TL.w, wx1 = TL.x + ((st.ws + st.w) / VIEW) * TL.w;
+      let inWin = 0;
+      ctx.fillStyle = SB.color("accent-soft"); ctx.fillRect(wx0, TL.y - 6, wx1 - wx0, TL.h + 6);
+      ctx.strokeStyle = P.accent; ctx.lineWidth = 2; ctx.strokeRect(wx0, TL.y - 6, wx1 - wx0, TL.h + 6);
+      ctx.strokeStyle = P.bad; ctx.lineWidth = 2;
+      for (let i = st.arr.length - 1; i >= 0 && st.arr[i] >= t0; i--) { const x = TX(st.arr[i]); ctx.beginPath(); ctx.moveTo(x, TL.y + 4); ctx.lineTo(x, TL.y + TL.h); ctx.stroke(); const r = st.arr[i] - t0; if (r >= st.ws && r < st.ws + st.w) inWin++; }
+      handle(ctx, (wx0 + wx1) / 2, TL.y - 6, P.accent, 8);
+      handle(ctx, wx1, TL.y + TL.h / 2, P.accent, 9);
+      SB.label(ctx, `창 속 ${inWin}개`, (wx0 + wx1) / 2, TL.y - 22, { bold: true, color: P.accent, size: 12 });
+      ctx.fillStyle = P.dim; ctx.font = font(11, true); ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText(`t = ${st.T.toFixed(0)}`, TL.x + TL.w - 60, TL.y + TL.h + 4);
+      // 아래 그래프
+      const lw = st.lam * st.w;
+      if (st.view === "count") {
+        const K = Math.floor(st.T / st.w), cnt = new Int32Array(K);
+        for (const t of st.arr) { const j = Math.floor(t / st.w); if (j < K) cnt[j]++; }
+        const kmax = Math.max(6, Math.ceil(lw + 4 * Math.sqrt(lw) + 1)), freq = new Float64Array(kmax + 1);
+        let s = 0, s2 = 0; for (let j = 0; j < K; j++) { const c = cnt[j]; if (c <= kmax) freq[c]++; s += c; s2 += c * c; }
+        let ym = 0; for (let k = 0; k <= kmax; k++) ym = Math.max(ym, Stat.dpois(k, lw), K ? freq[k] / K : 0);
+        const F = frame(B, -0.5, kmax + 0.5, 0, ym * 1.15);
+        const step = kmax > 20 ? 5 : kmax > 10 ? 2 : 1, xt = []; for (let k = 0; k <= kmax; k += step) xt.push(k);
+        axes(ctx, F, { xt, yt: [], xl: `폭 ${st.w} 창 속 개수`, yl: `상대 도수 (창 ${K}개)` });
+        Stat.draw.bars(ctx, F, Array.from(freq, (f, k) => [k, K ? f / K : 0]), { width: 0.7, color: P.accent, alpha: 0.6 });
+        ctx.fillStyle = P.accent2; for (let k = 0; k <= kmax; k++) { const q = Stat.dpois(k, lw); ctx.beginPath(); ctx.arc(F.X(k), F.Y(q), 4, 0, 2 * PI); ctx.fill(); }
+        SB.label(ctx, `● Poisson(λw = ${lw.toFixed(2)})`, B.x + B.w - 4, B.y + 6, { align: "right", color: P.accent2, size: 12 });
+        const m = K ? s / K : NaN, v = K > 1 ? (s2 - K * m * m) / (K - 1) : NaN;
+        SB.stat("pp-mv", `${fx(m, 2)} · ${fx(v, 2)}`);
+      } else {
+        const gm = 5 / st.lam, NB = 30, bw = gm / NB, cnt = new Float64Array(NB); let n = 0, s = 0;
+        for (let i = 1; i < st.arr.length; i++) { const g = st.arr[i] - st.arr[i - 1]; s += g; n++; const j = Math.floor(g / bw); if (j < NB) cnt[j]++; }
+        const F = frame(B, 0, gm, 0, st.lam * 1.15);
+        axes(ctx, F, { xt: [0, 1, 2, 3, 4, 5].map((k) => k / st.lam), xf: (v) => fx(v, v < 10 ? 1 : 0), yt: [], xl: "도착 간격", yl: `밀도 (간격 ${int(n)}개)` });
+        clip(ctx, B, () => { ctx.fillStyle = P.accent; for (let j = 0; j < NB; j++) { const d = n ? cnt[j] / (n * bw) : 0; withA(ctx, 0.6, () => ctx.fillRect(F.X(j * bw) + 0.5, F.Y(d), F.X(bw) - F.X(0) - 1, F.Y(0) - F.Y(d))); } });
+        Stat.draw.curve(ctx, F, (x) => st.lam * Math.exp(-st.lam * x), 0, gm, { color: P.accent2, width: 2.4 });
+        SB.label(ctx, `— Exp(λ = ${st.lam})`, B.x + B.w - 4, B.y + 6, { align: "right", color: P.accent2, size: 12 });
+      }
+      SB.stat("pp-tot", `${int(st.T)} / ${int(st.arr.length)}`);
+      SB.stat("pp-w", `${st.w.toFixed(1)}, ${lw.toFixed(2)}`);
+      const n = st.arr.length; SB.stat("pp-gap", n > 1 ? `${fx((st.arr[n - 1] - st.arr[0]) / (n - 1), 3)} (${fx(1 / st.lam, 3)})` : "—");
+    }, { aspect: 0.6, minHeight: 340, maxHeight: 460 });
+    SB.drag(cv, {
+      handles: () => { const TL = cv._TL; if (!TL) return []; const wx0 = TL.x + (st.ws / VIEW) * TL.w, wx1 = TL.x + ((st.ws + st.w) / VIEW) * TL.w; return [{ id: "mv", x: (wx0 + wx1) / 2, y: TL.y - 6, r: 13 }, { id: "w", x: wx1, y: TL.y + TL.h / 2, r: 14 }]; },
+      move: (id, x) => { const TL = cv._TL, t = ((x - TL.x) / TL.w) * VIEW; if (id === "w") st.w = SB.clamp(Math.round((t - st.ws) * 2) / 2, 0.5, Math.min(10, VIEW - st.ws)); if (id === "mv") st.ws = SB.clamp(t - st.w / 2, 0, VIEW - st.w); },
+    });
+    SB.range("pp-l", (v) => v.toFixed(1) + " /단위 시간", (v) => { st.lam = v; reset(seed); cv.redraw(); });
+    SB.seg("pp-view", (v) => { st.view = v; cv.redraw(); });
+    toggleBtn("pp-play", st);
+    $("pp-ff").addEventListener("click", () => { advance(st.T + 500); cv.redraw(); });
+    $("pp-reset").addEventListener("click", () => { seed += 7; reset(seed); cv.redraw(); });
+    SB.loop("cv-pp", (dt) => { if (!st.playing) return; advance(st.T + dt * 3); cv.redraw(); });
+  }
+
+  /* ================================================================ 2절 미니: 중첩과 솎아내기 */
+  {
+    const VIEW = 20;
+    const st = { la: 1, lb: 0.5, p: 0.3, t: 0, ev: [], na: 0, nb: 0, nk: 0, T: 0, R: Stat.rng(5), nextA: 0, nextB: 0 };
+    const reset = () => { st.R = Stat.rng(5); st.t = 0; st.T = 0; st.ev = []; st.na = st.nb = st.nk = 0; st.nextA = st.R.exp(st.la); st.nextB = st.R.exp(st.lb); };
+    reset();
+    const cv = SB.canvas("cv-sup", (ctx, w, h) => {
+      const P = pal(), L = 92, lanes = ["A", "B", "A + B", "솎은 것"], lh = (h - 20) / 4, X = (t) => L + ((t - (st.t - VIEW)) / VIEW) * (w - L - 12);
+      lanes.forEach((nm, i) => {
+        const y = 10 + lh * i + lh / 2;
+        ctx.strokeStyle = P.grid; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - 12, y); ctx.stroke();
+        SB.label(ctx, nm, 8, y, { align: "left", size: 12, bold: true, color: i === 3 ? P.bad : i === 2 ? P.accent2 : P.text });
+      });
+      st.ev.forEach((e) => {
+        const x = X(e.t); if (x < L) return;
+        const col = e.src === 0 ? P.accent : P.blue;
+        const yl = (i) => 10 + lh * i + lh / 2;
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, yl(e.src), 5, 0, 2 * PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, yl(2), 5, 0, 2 * PI); ctx.fill();
+        if (e.keep) { ctx.fillStyle = P.bad; ctx.beginPath(); ctx.arc(x, yl(3), 5.5, 0, 2 * PI); ctx.fill(); }
+      });
+    }, { aspect: 0.3, minHeight: 170, maxHeight: 220 });
+    const upd = () => { const T = Math.max(st.T, 1e-9); $("sup-r").textContent = `합 λ̂ = ${fx((st.na + st.nb) / T, 2)} (이론 ${fx(st.la + st.lb, 2)}) · 솎은 λ̂ = ${fx(st.nk / T, 2)} (이론 ${fx(st.p * (st.la + st.lb), 2)}) · T = ${st.T.toFixed(0)}`; };
+    SB.range("sup-a", (v) => v.toFixed(1), (v) => { st.la = v; reset(); });
+    SB.range("sup-b", (v) => v.toFixed(1), (v) => { st.lb = v; reset(); });
+    SB.range("sup-p", (v) => v.toFixed(2), (v) => { st.p = v; reset(); });
+    SB.loop("cv-sup", (dt) => {
+      const t1 = st.t + dt * 2;
+      while (Math.min(st.nextA, st.nextB) <= t1) {
+        const a = st.nextA <= st.nextB, t = a ? st.nextA : st.nextB, keep = st.R.u() < st.p;
+        st.ev.push({ t, src: a ? 0 : 1, keep }); if (a) { st.na++; st.nextA += st.R.exp(st.la); } else { st.nb++; st.nextB += st.R.exp(st.lb); } if (keep) st.nk++;
+      }
+      st.T += t1 - st.t; st.t = t1;
+      while (st.ev.length && st.ev[0].t < st.t - VIEW) st.ev.shift();
+      upd(); cv.redraw();
+    });
+  }
+
+  /* ================================================================ 2절: 버스 역설 */
+  {
+    const TL = 20000, MEAN = 10, VIEW = 60;
+    const st = { mode: "pois", bus: [], pax: 23, waits: [], gaps: 0, gapSum: 0, n: 0, sumW: 0, sumG: 0, playing: false, R: Stat.rng(9), RP: Stat.rng(19) };
+    const gen = () => {
+      st.R = Stat.rng(9); st.RP = Stat.rng(19); const b = []; let t = st.R.u() * MEAN;
+      while (t < TL) { b.push(t); t += st.mode === "fixed" ? MEAN : st.mode === "pois" ? st.R.exp(1 / MEAN) : st.R.gamma(0.25, 40); }
+      st.bus = b; st.waits = new Float64Array(60); st.n = 0; st.sumW = 0; st.sumG = 0;
+      let s = 0; for (let i = 1; i < b.length; i++) s += b[i] - b[i - 1]; st.gapMean = s / (b.length - 1);
+    };
+    const find = (t) => { let lo = 0, hi = st.bus.length - 1; if (t < st.bus[0] || t >= st.bus[hi]) return -1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (st.bus[m] <= t) lo = m; else hi = m; } return lo; };
+    const addPax = (k) => { for (let i = 0; i < k; i++) { const t = st.bus[0] + st.RP.u() * (st.bus[st.bus.length - 1] - st.bus[0]); const j = find(t); if (j < 0) continue; const wv = st.bus[j + 1] - t, g = st.bus[j + 1] - st.bus[j]; st.n++; st.sumW += wv; st.sumG += g; const b = Math.floor(wv); if (b < 60) st.waits[b]++; } };
+    gen(); addPax(2000);
+    const theory = () => { const cv2 = st.mode === "fixed" ? 0 : st.mode === "pois" ? 1 : 4; return (MEAN / 2) * (1 + cv2); };
+    const cv = SB.canvas("cv-bus", (ctx, w, h, self) => {
+      const P = pal(), T = bx(16, 34, w - 32, 46), B = bx(52, T.y + T.h + 46, w - 68, h - (T.y + T.h + 46) - 40);
+      self._T = T;
+      const off = 200, X = (t) => T.x + ((t - off) / VIEW) * T.w;
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(T.x, T.y + T.h); ctx.lineTo(T.x + T.w, T.y + T.h); ctx.stroke();
+      const pt = off + st.pax, j = find(pt);
+      if (j >= 0) {
+        const a = Math.max(T.x, X(st.bus[j])), b = Math.min(T.x + T.w, X(st.bus[j + 1]));
+        ctx.fillStyle = SB.color("warn"); withA(ctx, 0.22, () => ctx.fillRect(a, T.y, b - a, T.h));
+        SB.arrow(ctx, X(pt), T.y + T.h * 0.55, Math.min(T.x + T.w, X(st.bus[j + 1])) - 2, T.y + T.h * 0.55, { color: P.accent, width: 2.4, head: 8 });
+        SB.label(ctx, `대기 ${(st.bus[j + 1] - pt).toFixed(1)}분 · 간격 ${(st.bus[j + 1] - st.bus[j]).toFixed(1)}분`, T.x + T.w / 2, T.y - 16, { bold: true, size: 12 });
+      }
+      ctx.strokeStyle = P.text; ctx.lineWidth = 3;
+      st.bus.forEach((t) => { if (t < off || t > off + VIEW) return; const x = X(t); ctx.beginPath(); ctx.moveTo(x, T.y + 2); ctx.lineTo(x, T.y + T.h); ctx.stroke(); });
+      handle(ctx, X(pt), T.y + T.h * 0.55, P.accent, 10);
+      ctx.fillStyle = P.dim; ctx.font = font(11, true); ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("0분", T.x, T.y + T.h + 3); ctx.textAlign = "right"; ctx.fillText(VIEW + "분", T.x + T.w, T.y + T.h + 3);
+      // 대기 시간 히스토그램
+      const ym = st.mode === "fixed" ? 0.13 : st.mode === "pois" ? 0.115 : 0.115, F = frame(B, 0, 60, 0, ym);
+      axes(ctx, F, { xt: [0, 10, 20, 30, 40, 50, 60], yt: [], xl: "대기 시간(분)", yl: `밀도 (승객 ${int(st.n)}명)` });
+      clip(ctx, B, () => { ctx.fillStyle = P.accent; for (let k = 0; k < 60; k++) { const d = st.n ? st.waits[k] / st.n : 0; withA(ctx, 0.6, () => ctx.fillRect(F.X(k) + 0.5, F.Y(d), F.X(1) - F.X(0) - 1, F.Y(0) - F.Y(d))); } });
+      const surv = st.mode === "fixed" ? (x) => (x < MEAN ? 1 : 0) : st.mode === "pois" ? (x) => Math.exp(-x / MEAN) : (x) => 1 - Stat.dist.gamma(0.25, 40).cdf(x);
+      clip(ctx, B, () => Stat.draw.curve(ctx, F, (x) => surv(x) / MEAN, 0.05, 60, { color: P.accent2, width: 2.2, n: 240 }));
+      const tw = theory(); ctx.strokeStyle = P.accent2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(F.X(Math.min(60, tw)), B.y); ctx.lineTo(F.X(Math.min(60, tw)), B.y + B.h); ctx.stroke(); ctx.setLineDash([]);
+      SB.label(ctx, `이론 평균 ${tw}분`, Math.min(F.X(tw) + 4, B.x + B.w - 70), B.y + 10, { align: "left", color: P.accent2, size: 12 });
+      SB.stat("bus-g", fx(st.gapMean, 2) + "분");
+      SB.stat("bus-gs", st.n ? fx(st.sumG / st.n, 1) + "분" : "—");
+      SB.stat("bus-w", (st.n ? fx(st.sumW / st.n, 2) : "—") + ` (${tw})`);
+      SB.stat("bus-n", int(st.n));
+    }, { aspect: 0.58, minHeight: 320, maxHeight: 440 });
+    SB.drag(cv, { handles: () => { const T = cv._T; return T ? [{ id: "p", x: T.x + (st.pax / VIEW) * T.w, y: T.y + T.h * 0.55, r: 14 }] : []; }, move: (id, x) => { const T = cv._T; st.pax = SB.clamp(((x - T.x) / T.w) * VIEW, 0.1, VIEW - 0.1); } });
+    SB.seg("bus-mode", (v) => { st.mode = v; gen(); addPax(2000); cv.redraw(); });
+    toggleBtn("bus-play", st);
+    $("bus-1000").addEventListener("click", () => { addPax(1000); cv.redraw(); });
+    $("bus-reset").addEventListener("click", () => { gen(); addPax(2000); cv.redraw(); });
+    $("sim-bus").addEventListener("unlock", () => cv.redraw());
+    SB.loop("cv-bus", () => { if (!st.playing) return; addPax(15); cv.redraw(); });
+  }
+
+  /* ================================================================ 3절: 장비 상태 연쇄 */
+  const NAMES4 = ["Idle", "Run", "Down", "PM"];
+  const P0 = [[0.60, 0.38, 0.01, 0.01], [0.10, 0.85, 0.04, 0.01], [0.20, 0, 0.80, 0], [0.60, 0, 0, 0.40]];
+  const stat4 = (P) => { try { const v = Stat.markov.stationary(P); return v.every((x) => isFinite(x) && x > -1e-9) ? v.map((x) => Math.max(0, x)) : null; } catch (e) { return null; } };
+  const stCol = (P) => [P.blue, P.ok, P.bad, P.warn];
+  {
+    const st = { P: P0.map((r) => r.slice()), row: 1, start: 2, s: 2, prev: 2, u: 1, pi: [0, 0, 1, 0], n: 0, cnt: [0, 0, 0, 0], playing: true, R: Stat.rng(31), sp: 6, acc: 0 };
+    const reset = () => { st.s = st.prev = st.start; st.u = 1; st.pi = [0, 0, 0, 0]; st.pi[st.start] = 1; st.n = 0; st.cnt = [0, 0, 0, 0]; st.R = Stat.rng(31); };
+    reset();
+    const cv = SB.canvas("cv-tool", (ctx, w, h, self) => {
+      const P = pal(), C = stCol(P), narrow = narrowOf(w);
+      const ED = { x: 20, y: h - 58, w: w - 40, h: 26 };
+      const DG = narrow ? bx(10, 10, w - 20, (ED.y - 30) * 0.58) : bx(10, 10, w * 0.56, ED.y - 34);
+      const BR = narrow ? bx(40, DG.y + DG.h + 26, w - 56, ED.y - 48 - (DG.y + DG.h + 26)) : bx(DG.x + DG.w + 44, 30, w - (DG.x + DG.w + 44) - 12, ED.y - 48 - 30);
+      self._ED = ED;
+      // 상태 그림
+      const r = Math.min(DG.w, DG.h) * 0.13, pos = [[0.25, 0.27], [0.75, 0.27], [0.75, 0.77], [0.25, 0.77]].map(([a, b]) => [DG.x + a * DG.w, DG.y + b * DG.h]);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+        const p = st.P[i][j]; if (p <= 0.0005) continue;
+        const sel = i === st.row, col = sel ? P.accent2 : P.faint;
+        if (i === j) { const [x, y] = pos[i], dy = y < DG.y + DG.h / 2 ? -1 : 1; ctx.strokeStyle = col; ctx.lineWidth = 1 + 9 * p; ctx.beginPath(); ctx.arc(x, y + dy * (r + 10), 10, 0, 2 * PI); ctx.stroke(); if (sel) SB.label(ctx, p.toFixed(2), x + 24, y + dy * (r + 14), { size: 11, color: P.accent2 }); continue; }
+        const [x1, y1] = pos[i], [x2, y2] = pos[j], L = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / L, uy = (y2 - y1) / L, nx = -uy * 7, ny = ux * 7;
+        SB.arrow(ctx, x1 + ux * r + nx, y1 + uy * r + ny, x2 - ux * (r + 2) + nx, y2 - uy * (r + 2) + ny, { color: col, width: 1 + 9 * p, head: 8 + 4 * p });
+        if (sel) SB.label(ctx, p.toFixed(2), (x1 + x2) / 2 + nx * 2.6, (y1 + y2) / 2 + ny * 2.6, { size: 11, bold: true, color: P.accent2 });
+      }
+      pos.forEach(([x, y], i) => { ctx.fillStyle = P.bg; ctx.strokeStyle = C[i]; ctx.lineWidth = i === st.row ? 4 : 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fill(); ctx.stroke(); SB.label(ctx, NAMES4[i], x, y, { bold: true, size: 12, color: C[i] }); });
+      // 토큰
+      const e = Math.min(1, st.u), [ax, ay] = pos[st.prev], [bx2, by] = pos[st.s];
+      const tx = ax + (bx2 - ax) * e, ty = ay + (by - ay) * e - (st.prev === st.s ? Math.sin(e * PI) * r * 0.8 : 0);
+      ctx.fillStyle = SB.color("warn"); ctx.strokeStyle = P.text; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tx, ty, 7, 0, 2 * PI); ctx.fill(); ctx.stroke();
+      // 막대
+      const pi = stat4(st.P), F = frame(BR, -0.5, 3.5, 0, 1);
+      axes(ctx, F, { yt: [0, 0.5, 1], yl: "확률" });
+      const tot = st.cnt.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < 4; i++) {
+        const x0 = F.X(i - 0.35), x1 = F.X(i + 0.35);
+        ctx.fillStyle = P.accent; withA(ctx, 0.7, () => ctx.fillRect(x0, F.Y(st.pi[i]), x1 - x0, F.Y(0) - F.Y(st.pi[i])));
+        if (pi) { ctx.strokeStyle = P.accent2; ctx.lineWidth = 2.2; ctx.setLineDash([5, 4]); ctx.strokeRect(x0, F.Y(pi[i]), x1 - x0, F.Y(0) - F.Y(pi[i])); ctx.setLineDash([]); }
+        if (tot) { ctx.fillStyle = P.text; ctx.beginPath(); ctx.arc((x0 + x1) / 2, F.Y(st.cnt[i] / tot), 4.5, 0, 2 * PI); ctx.fill(); }
+        SB.label(ctx, NAMES4[i], (x0 + x1) / 2, BR.y + BR.h + 10, { size: 11, color: C[i], bold: true });
+      }
+      SB.label(ctx, `π${st.n > 99 ? "ₙ" : ""} (n = ${st.n})`, BR.x + BR.w, BR.y - 10, { align: "right", size: 11, color: P.accent });
+      // 행 편집 띠
+      const row = st.P[st.row]; let c = 0;
+      SB.label(ctx, `${NAMES4[st.row]} 행: 다음 상태 확률`, ED.x, ED.y - 12, { align: "left", size: 12, bold: true });
+      for (let j = 0; j < 4; j++) {
+        const x0 = ED.x + c * ED.w, x1 = ED.x + (c + row[j]) * ED.w; c += row[j];
+        ctx.fillStyle = C[j]; withA(ctx, 0.35, () => ctx.fillRect(x0, ED.y, x1 - x0, ED.h));
+        if (x1 - x0 > 34) SB.label(ctx, `${NAMES4[j]} ${row[j].toFixed(2)}`, (x0 + x1) / 2, ED.y + ED.h / 2, { size: 11 });
+      }
+      ctx.strokeStyle = P.border; ctx.strokeRect(ED.x, ED.y, ED.w, ED.h);
+      c = 0; for (let j = 0; j < 3; j++) { c += row[j]; handle(ctx, ED.x + c * ED.w, ED.y + ED.h / 2, P.accent2, 9); }
+      // 읽기
+      SB.stat("tool-n", int(st.n));
+      SB.stat("tool-pi", pi ? "(" + pi.map((v) => v.toFixed(3)).join(", ") + ")" : "유일하지 않음");
+      SB.stat("tool-av", pi ? (pi[0] + pi[1]).toFixed(3) : "—");
+      SB.stat("tool-emp", tot ? ((st.cnt[0] + st.cnt[1]) / tot).toFixed(3) : "—");
+    }, { get aspect() { const e = document.getElementById("cv-tool"); return e && e.parentElement.clientWidth < 560 ? 1.65 : 0.62; }, minHeight: 470, maxHeight: 620 });
+    SB.drag(cv, {
+      handles: () => { const ED = cv._ED; if (!ED) return []; const row = st.P[st.row]; let c = 0; return [0, 1, 2].map((j) => { c += row[j]; return { id: j, x: ED.x + c * ED.w, y: ED.y + ED.h / 2, r: 13 }; }); },
+      move: (id, x) => {
+        const ED = cv._ED, row = st.P[st.row]; const cum = [0, row[0], row[0] + row[1], row[0] + row[1] + row[2], 1];
+        const v = Math.round(SB.clamp((x - ED.x) / ED.w, cum[id], cum[id + 2]) * 100) / 100; cum[id + 1] = v;
+        for (let j = 0; j < 4; j++) row[j] = Math.max(0, Math.round((cum[j + 1] - cum[j]) * 100) / 100);
+        const s = row.reduce((a, b) => a + b, 0); row[3] = Math.max(0, Math.round((row[3] + 1 - s) * 100) / 100);
+      },
+    });
+    SB.seg("tool-row", (v) => { st.row = Number(v); cv.redraw(); });
+    SB.seg("tool-start", (v) => { st.start = Number(v); reset(); cv.redraw(); });
+    SB.range("tool-sp", (v) => v + " 걸음/초", (v) => (st.sp = v));
+    toggleBtn("tool-play", st);
+    $("tool-reset").addEventListener("click", () => { st.P = P0.map((r) => r.slice()); reset(); cv.redraw(); });
+    $("sim-tool").addEventListener("unlock", () => cv.redraw());
+    SB.loop("cv-tool", (dt) => {
+      if (!st.playing) return;
+      st.u += dt * st.sp;
+      while (st.u >= 1) {
+        st.u -= 1; if (st.sp > 20) st.u = 1;
+        st.prev = st.s; st.s = st.R.choice(st.P[st.s]); st.cnt[st.s]++; st.n++;
+        st.pi = Stat.markov.step(st.pi, st.P);
+        if (st.sp > 20) break;
+      }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 3절 게임: PM 정책 */
+  {
+    const dOf = (m) => 0.003 + 0.05 * Math.exp(-m / 0.02);
+    const Pm = (m) => [P0[0], [0.10, 0.90 - m - dOf(m), dOf(m), m], P0[2], P0[3]];
+    const A = (m) => { const v = Stat.markov.stationary(Pm(m)); return v[0] + v[1]; };
+    let best = 0, mBest = 0; for (let m = 0; m <= 0.12; m += 0.0002) { const a = A(m); if (a > best) { best = a; mBest = m; } }
+    const MX = 0.12;
+    const st = { m: 0.005, trail: [] };
+    const cv = SB.canvas("cv-pm", (ctx, w, h, self) => {
+      const P = pal(), C = stCol(P), narrow = narrowOf(w);
+      const G = narrow ? bx(56, 26, w - 72, h * 0.55 - 26 - 30) : bx(56, 26, w * 0.62 - 56, h - 26 - 46);
+      const BR = narrow ? bx(56, G.y + G.h + 56, w - 72, h - (G.y + G.h + 56) - 26) : bx(G.x + G.w + 40, 64, w - (G.x + G.w + 40) - 12, h - 64 - 46);
+      const F = frame(G, 0, MX, 0.8, 0.92); self._F = F;
+      axes(ctx, F, { xt: [0, 0.03, 0.06, 0.09, 0.12], yt: [0.8, 0.84, 0.88, 0.92], yf: (v) => v.toFixed(2), xl: "PM 비율 m (/h)", yl: "가동률" });
+      ctx.fillStyle = SB.color("ok-soft"); ctx.fillRect(G.x, G.y, G.w, F.Y(0.9) - G.y);
+      ctx.strokeStyle = P.ok; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(G.x, F.Y(0.9)); ctx.lineTo(G.x + G.w, F.Y(0.9)); ctx.stroke(); ctx.setLineDash([]);
+      SB.label(ctx, "목표 0.90", G.x + G.w - 4, F.Y(0.9) - 10, { align: "right", size: 11, color: P.ok, bold: true });
+      if ($("pm-curve").checked) { clip(ctx, G, () => Stat.draw.curve(ctx, F, A, 0, MX, { color: P.accent2, width: 2.2, n: 160 })); ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(F.X(mBest), F.Y(best), 4, 0, 2 * PI); ctx.fill(); }
+      clip(ctx, G, () => { ctx.fillStyle = P.dim; st.trail.forEach(([m, a]) => { ctx.beginPath(); ctx.arc(F.X(m), F.Y(a), 2.5, 0, 2 * PI); ctx.fill(); }); });
+      const a = A(st.m), ok = a >= 0.9;
+      ctx.strokeStyle = P.faint; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(F.X(st.m), F.Y(Math.max(0.8, Math.min(0.92, a)))); ctx.lineTo(F.X(st.m), G.y + G.h); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = ok ? P.ok : P.bad; ctx.beginPath(); ctx.arc(F.X(st.m), F.Y(Math.max(0.8, Math.min(0.92, a))), 6, 0, 2 * PI); ctx.fill();
+      handle(ctx, F.X(st.m), G.y + G.h, P.accent2, 10);
+      // 정상 분포 막대
+      const pi = Stat.markov.stationary(Pm(st.m)), B = frame(BR, -0.5, 3.5, 0, 0.8);
+      axes(ctx, B, { yt: [0, 0.4, 0.8], yl: "정상 분포" });
+      for (let i = 0; i < 4; i++) { const x0 = B.X(i - 0.35), x1 = B.X(i + 0.35); ctx.fillStyle = C[i]; withA(ctx, 0.7, () => ctx.fillRect(x0, B.Y(pi[i]), x1 - x0, B.Y(0) - B.Y(pi[i]))); SB.label(ctx, pi[i].toFixed(3), (x0 + x1) / 2, B.Y(pi[i]) - 9, { size: 10 }); SB.label(ctx, NAMES4[i], (x0 + x1) / 2, BR.y + BR.h + 10, { size: 11, bold: true, color: C[i] }); }
+      SB.stat("pm-m", st.m.toFixed(3));
+      SB.stat("pm-d", dOf(st.m).toFixed(4));
+      SB.stat("pm-a", a.toFixed(4));
+      const star = Math.abs(a - best) < 0.001;
+      $("pm-ok").innerHTML = ok ? `<span style="color:var(--ok)">성공 ✓${star ? " ★ 최적!" : ""}</span>` : `<span style="color:var(--bad)">아직 (${(0.9 - a).toFixed(3)} 부족)</span>`;
+    }, { aspect: 0.5, minHeight: 330, maxHeight: 420 });
+    SB.drag(cv, { handles: () => (cv._F ? [{ id: "m", x: cv._F.X(st.m), y: cv._F.box.y + cv._F.box.h, r: 14 }] : []), move: (id, x) => { st.m = Math.round(SB.clamp(cv._F.ix(x), 0, MX) * 1000) / 1000; st.trail.push([st.m, A(st.m)]); if (st.trail.length > 400) st.trail.shift(); } });
+    $("pm-curve").addEventListener("change", () => cv.redraw());
+    $("pm-new").addEventListener("click", () => { st.m = 0.005; st.trail = []; $("pm-curve").checked = false; cv.redraw(); });
+  }
+
+  /* ================================================================ 3절 미니: 두 상태 수렴 */
+  {
+    const st = { a: 0.1, b: 0.3 };
+    const cv = SB.canvas("cv-two", (ctx, w, h) => {
+      const P = pal(), B = bx(48, 20, w - 62, h - 20 - 40), N = 30, F = frame(B, 0, N, 0, 1);
+      axes(ctx, F, { xt: [0, 10, 20, 30], yt: [0, 0.5, 1], xl: "걸음 n", yl: "P(Xₙ = U)" });
+      const pu = st.b / (st.a + st.b), r = 1 - st.a - st.b;
+      ctx.strokeStyle = P.accent2; ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(B.x, F.Y(pu)); ctx.lineTo(B.x + B.w, F.Y(pu)); ctx.stroke(); ctx.setLineDash([]);
+      for (const [s, col] of [[1, P.ok], [0, P.bad]]) {
+        const pts = []; for (let n = 0; n <= N; n++) pts.push([F.X(n), F.Y(pu + (s - pu) * Math.pow(r, n))]);
+        line(ctx, pts, col, 1.6); ctx.fillStyle = col; pts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * PI); ctx.fill(); });
+      }
+      $("two-r").textContent = `π_U = ${pu.toFixed(3)} · 1−a−b = ${r.toFixed(2)} · 흔적 1% 남는 걸음 ≈ ${Math.abs(r) < 1e-9 ? 1 : Math.abs(r) >= 0.999 ? "∞" : Math.ceil(Math.log(0.01) / Math.log(Math.abs(r)))}`;
+    }, { aspect: 0.36, minHeight: 200, maxHeight: 280 });
+    SB.range("two-a", (v) => v.toFixed(2), (v) => { st.a = v; cv.redraw(); });
+    SB.range("two-b", (v) => v.toFixed(2), (v) => { st.b = v; cv.redraw(); });
+  }
+
+  /* ================================================================ 4절: 재작업 루프 */
+  {
+    const st = { s: 0.8, f: 0.75, g: 0.9, wafers: [], n: 0, ship: 0, ins: 0, steps: 0, playing: true, R: Stat.rng(41), acc: 0 };
+    const theory = () => { const fail = 1 - st.s, P = [[0, 1, 0, 0, 0], [0, 0, fail * st.f, st.s, fail * (1 - st.f)], [0, st.g, 0, 0, 1 - st.g], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]; return Stat.markov.absorb(P, [0, 1, 2], [3, 4]); };
+    const nextOf = (node) => { const u = st.R.u(), fail = 1 - st.s; if (node === 0) return 1; if (node === 1) return u < st.s ? 3 : u < st.s + fail * st.f ? 2 : 4; return u < st.g ? 1 : 4; };
+    const resetStats = () => { st.n = st.ship = st.ins = st.steps = 0; };
+    const fast = (k) => { for (let i = 0; i < k; i++) { let node = 0, ins = 0, steps = 0; while (node < 3 && steps < 10000) { node = nextOf(node); steps++; if (node === 1) ins++; } st.n++; st.steps += steps; st.ins += ins; if (node === 3) st.ship++; } };
+    const cv = SB.canvas("cv-rework", (ctx, w, h, self) => {
+      const P = pal(), narrow = narrowOf(w);
+      const pos = narrow ? [[0.12, 0.42], [0.45, 0.42], [0.45, 0.85], [0.86, 0.15], [0.86, 0.72]] : [[0.1, 0.42], [0.42, 0.42], [0.42, 0.85], [0.84, 0.15], [0.84, 0.7]];
+      const XY = pos.map(([a, b]) => [a * w, b * h]); self._XY = XY;
+      const names = ["공정", "검사", "재작업", "출하", "폐기"], cols = [P.text, P.accent2, P.warn, P.ok, P.bad];
+      const fail = 1 - st.s, pr = [[0, 1, 1], [1, 3, st.s], [1, 2, fail * st.f], [1, 4, fail * (1 - st.f)], [2, 1, st.g], [2, 4, 1 - st.g]];
+      pr.forEach(([i, j, p], k) => {
+        if (p <= 0.001) return;
+        const [x1, y1] = XY[i], [x2, y2] = XY[j], L = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / L, uy = (y2 - y1) / L, off = (i === 1 && j === 2) || (i === 2 && j === 1) ? 12 * (i === 1 ? 1 : -1) : 0;
+        const nx = -uy * off, ny = ux * off;
+        SB.arrow(ctx, x1 + ux * 34 + nx, y1 + uy * 22 + ny, x2 - ux * 36 + nx, y2 - uy * 24 + ny, { color: P.faint, width: 1 + 5 * p, head: 8 });
+        SB.label(ctx, p.toFixed(2), (x1 + x2) / 2 + nx * 2.2 + (off ? 0 : -uy * 12), (y1 + y2) / 2 + ny * 2.2 + (off ? 0 : ux * 12), { size: 11, color: P.dim });
+      });
+      XY.forEach(([x, y], i) => { const bw = narrow ? 58 : 76; ctx.fillStyle = P.bg; ctx.strokeStyle = cols[i]; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - bw / 2, y - 18, bw, 36, 8) : ctx.rect(x - bw / 2, y - 18, bw, 36); ctx.fill(); ctx.stroke(); SB.label(ctx, names[i], x, y, { bold: true, size: 12, color: cols[i] }); });
+      SB.label(ctx, int(st.ship), XY[3][0], XY[3][1] + 30, { bold: true, color: P.ok });
+      SB.label(ctx, int(st.n - st.ship), XY[4][0], XY[4][1] + 30, { bold: true, color: P.bad });
+      ctx.fillStyle = P.accent;
+      st.wafers.forEach((wf) => { const [x1, y1] = XY[wf.from], [x2, y2] = XY[wf.to], e = Math.min(1, wf.u); ctx.beginPath(); ctx.arc(x1 + (x2 - x1) * e, y1 + (y2 - y1) * e, 4.5, 0, 2 * PI); ctx.fill(); });
+      const T = theory();
+      SB.stat("rk-n", int(st.n));
+      SB.stat("rk-ship", (st.n ? (st.ship / st.n).toFixed(3) : "—") + ` (${T.B[0][0].toFixed(3)})`);
+      SB.stat("rk-ins", (st.n ? (st.ins / st.n).toFixed(3) : "—") + ` (${T.N[0][1].toFixed(3)})`);
+      SB.stat("rk-t", (st.n ? (st.steps / st.n).toFixed(2) : "—") + ` (${T.t[0].toFixed(2)})`);
+    }, { aspect: 0.5, minHeight: 280, maxHeight: 380 });
+    const onP = () => { resetStats(); st.wafers = []; cv.redraw(); };
+    SB.range("rk-s", (v) => v.toFixed(2), (v) => { st.s = v; onP(); });
+    SB.range("rk-f", (v) => v.toFixed(2), (v) => { st.f = v; onP(); });
+    SB.range("rk-g", (v) => v.toFixed(2), (v) => { st.g = v; onP(); });
+    toggleBtn("rk-play", st);
+    $("rk-1000").addEventListener("click", () => { fast(1000); cv.redraw(); });
+    SB.loop("cv-rework", (dt) => {
+      if (!st.playing) return;
+      st.acc += dt; if (st.acc > 0.25 && st.wafers.length < 120) { st.acc = 0; st.wafers.push({ from: 0, to: 1, u: 0, ins: 1, steps: 1 }); }
+      st.wafers.forEach((wf) => {
+        wf.u += dt * 1.6;
+        if (wf.u >= 1) {
+          if (wf.to >= 3) { wf.done = true; st.n++; st.ins += wf.ins; st.steps += wf.steps; if (wf.to === 3) st.ship++; return; }
+          const nx = nextOf(wf.to); wf.from = wf.to; wf.to = nx; wf.u = 0; wf.steps++; if (nx === 1) wf.ins++;
+        }
+      });
+      st.wafers = st.wafers.filter((wf) => !wf.done);
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 4절: 도박꾼의 파산 */
+  const ruinTh = (k, N, p) => { if (Math.abs(p - 0.5) < 1e-9) return { h: k / N, D: k * (N - k) }; const r = (1 - p) / p, h = (1 - Math.pow(r, k)) / (1 - Math.pow(r, N)); return { h, D: k / (1 - 2 * p) - (N / (1 - 2 * p)) * h }; };
+  {
+    const YM = 40;
+    const st = { k: 10, N: 20, p: 0.5, done: [], cur: null, runs: 0, hits: 0, steps: 0, playing: true, R: Stat.rng(51) };
+    const clear = () => { st.done = []; st.cur = null; st.runs = st.hits = st.steps = 0; st.R = Stat.rng(51); };
+    const finish = (path) => { const last = path[path.length - 1]; st.runs++; st.steps += path.length - 1; if (last === st.N) st.hits++; st.done.push(path); if (st.done.length > 20) st.done.shift(); };
+    const fast = (m) => { for (let i = 0; i < m; i++) { let x = st.k, n = 0; while (x > 0 && x < st.N && n < 200000) { x += st.R.u() < st.p ? 1 : -1; n++; } st.runs++; st.steps += n; if (x === st.N) st.hits++; } };
+    const tmax = () => { const th = ruinTh(st.k, st.N, st.p); return SB.clamp(Math.ceil(th.D * 3 / 50) * 50, 50, 2500); };
+    const cv = SB.canvas("cv-ruin", (ctx, w, h, self) => {
+      const P = pal(), B = bx(48, 26, w - 66, h - 26 - 40), TM = tmax(), F = frame(B, 0, TM, 0, YM); self._F = F;
+      axes(ctx, F, { xt: [0, TM / 2, TM].map(Math.round), yt: [0, 10, 20, 30, 40], xl: "걸음", yl: "위치" });
+      ctx.fillStyle = SB.color("ok-soft"); ctx.fillRect(B.x, B.y, B.w, F.Y(st.N) - B.y);
+      ctx.fillStyle = SB.color("bad-soft"); ctx.fillRect(B.x, F.Y(0) - 4, B.w, 4);
+      ctx.strokeStyle = P.ok; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(B.x, F.Y(st.N)); ctx.lineTo(B.x + B.w, F.Y(st.N)); ctx.stroke();
+      ctx.strokeStyle = P.bad; ctx.beginPath(); ctx.moveTo(B.x, F.Y(0)); ctx.lineTo(B.x + B.w, F.Y(0)); ctx.stroke();
+      const draw = (path, col, wd, a) => { ctx.strokeStyle = col; ctx.lineWidth = wd; withA(ctx, a, () => { ctx.beginPath(); const step = Math.max(1, Math.floor(path.length / 600)); for (let i = 0; i < path.length; i += step) { const x = F.X(i), y = F.Y(path[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } const i = path.length - 1; ctx.lineTo(F.X(i), F.Y(path[i])); ctx.stroke(); }); };
+      clip(ctx, B, () => { st.done.forEach((pth) => draw(pth, pth[pth.length - 1] === st.N ? P.ok : P.bad, 1.2, 0.45)); if (st.cur) draw(st.cur, P.text, 2.2, 1); });
+      handle(ctx, B.x, F.Y(st.k), P.accent, 10);
+      handle(ctx, B.x + B.w * 0.5, F.Y(st.N), P.ok, 10);
+      SB.label(ctx, `N = ${st.N}`, B.x + B.w * 0.5 + 16, F.Y(st.N) - 12, { align: "left", bold: true, color: P.ok, size: 12 });
+      SB.label(ctx, `k = ${st.k}`, B.x + 16, F.Y(st.k) - 12, { align: "left", bold: true, color: P.accent, size: 12 });
+      const th = ruinTh(st.k, st.N, st.p);
+      SB.stat("ru-kn", `${st.k} / ${st.N}`);
+      SB.stat("ru-h", (st.runs ? (st.hits / st.runs).toFixed(3) : "—") + ` (${th.h.toFixed(3)})`);
+      SB.stat("ru-d", (st.runs ? (st.steps / st.runs).toFixed(1) : "—") + ` (${th.D.toFixed(1)})`);
+      SB.stat("ru-cnt", int(st.runs));
+    }, { aspect: 0.55, minHeight: 300, maxHeight: 420 });
+    SB.drag(cv, {
+      handles: () => { const F = cv._F; if (!F) return []; return [{ id: "k", x: F.box.x, y: F.Y(st.k), r: 14 }, { id: "N", x: F.box.x + F.box.w * 0.5, y: F.Y(st.N), r: 14 }]; },
+      move: (id, x, y) => { const v = Math.round(cv._F.iy(y)); if (id === "k") st.k = SB.clamp(v, 1, st.N - 1); if (id === "N") st.N = SB.clamp(v, Math.max(2, st.k + 1), YM); clear(); },
+    });
+    SB.range("ru-p", (v) => v.toFixed(2), (v) => { st.p = v; clear(); cv.redraw(); });
+    toggleBtn("ru-play", st);
+    $("ru-500").addEventListener("click", () => { fast(500); cv.redraw(); });
+    $("ru-clear").addEventListener("click", () => { clear(); cv.redraw(); });
+    $("sim-ruin").addEventListener("unlock", () => cv.redraw());
+    SB.loop("cv-ruin", () => {
+      if (!st.playing) return;
+      if (!st.cur) st.cur = [st.k];
+      const per = Math.max(2, Math.ceil(tmax() / 90));
+      for (let i = 0; i < per; i++) { const x = st.cur[st.cur.length - 1]; if (x <= 0 || x >= st.N) { finish(st.cur); st.cur = null; break; } st.cur.push(x + (st.R.u() < st.p ? 1 : -1)); if (st.cur.length > 200000) { st.cur = null; break; } }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 5절 미니: P_n */
+  {
+    let rho = 0.8;
+    const cv = SB.canvas("cv-pn", (ctx, w, h) => {
+      const P = pal(), B = bx(48, 20, w - 62, h - 20 - 40), NMAX = 25, F = frame(B, -0.6, NMAX + 0.6, 0, Math.max(0.1, (1 - rho) * 1.15));
+      axes(ctx, F, { xt: [0, 5, 10, 15, 20, 25], yt: [], xl: "계 안의 로트 수 n", yl: "Pₙ" });
+      Stat.draw.bars(ctx, F, Array.from({ length: NMAX + 1 }, (_, n) => [n, (1 - rho) * Math.pow(rho, n)]), { width: 0.75, color: (x) => (x >= 11 ? P.bad : P.accent), alpha: 0.75 });
+      const L = rho / (1 - rho);
+      if (L <= NMAX) { ctx.strokeStyle = P.accent2; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(F.X(L), B.y); ctx.lineTo(F.X(L), B.y + B.h); ctx.stroke(); ctx.setLineDash([]); SB.label(ctx, `L = ${L.toFixed(1)}`, F.X(L) + 6, B.y + 10, { align: "left", color: P.accent2, bold: true, size: 12 }); }
+      $("pn-r").textContent = `P₀ = ${(1 - rho).toFixed(2)} · L = ${L.toFixed(2)} · L_q = ${(rho * rho / (1 - rho)).toFixed(2)} · P(N ≥ 11) = ${Math.pow(rho, 11).toFixed(3)}`;
+    }, { aspect: 0.36, minHeight: 200, maxHeight: 280 });
+    SB.range("pn-rho", (v) => v.toFixed(2), (v) => { rho = v; cv.redraw(); });
+  }
+
+  /* ================================================================ 5절: 대기열 시뮬레이터 */
+  {
+    const st = { lam: 4, mu: 5, c: 1, sp: 4, t: 0, q: [], srv: [null], nextA: 0, R: Stat.rng(61), playing: true, stat: null, trace: [] };
+    const resetStats = () => { st.stat = { t0: st.t, area: 0, busy: 0, arr: 0, dep: 0, wsum: 0, hist: new Float64Array(40) }; };
+    const resetAll = () => { st.t = 0; st.q = []; st.srv = Array(st.c).fill(null); st.R = Stat.rng(61); st.nextA = st.R.exp(st.lam); st.trace = []; resetStats(); };
+    resetAll();
+    const th = () => (st.c === 1 ? Stat.mm1(st.lam, st.mu) : Stat.mmc(st.lam, st.mu, st.c));
+    const wmax = () => { const T = th(); return T.stable ? Math.min(40, Math.max(1, T.W * 5)) : 10; };
+    const inSys = () => st.q.length + st.srv.filter(Boolean).length;
+    function step(dtS) {
+      const tEnd = st.t + dtS;
+      for (let guard = 0; guard < 5000; guard++) {
+        let tn = st.nextA, kind = "a", si = -1;
+        st.srv.forEach((s, i) => { if (s && s.end < tn) { tn = s.end; kind = "d"; si = i; } });
+        if (tn > tEnd) break;
+        const n = inSys(), S = st.stat; S.area += n * (tn - st.t); S.busy += (st.srv.filter(Boolean).length / st.c) * (tn - st.t); st.t = tn;
+        if (kind === "a") {
+          S.arr++; st.nextA = st.t + st.R.exp(st.lam);
+          if (st.q.length < 400) { const lot = { arr: st.t }; const fi = st.srv.indexOf(null); if (fi >= 0) { lot.start = st.t; lot.end = st.t + st.R.exp(st.mu); st.srv[fi] = lot; } else st.q.push(lot); }
+        } else {
+          const lot = st.srv[si], W = st.t - lot.arr; S.dep++; S.wsum += W; const b = Math.floor((W / wmax()) * 40); if (b < 40) S.hist[b]++;
+          st.srv[si] = null;
+          if (st.q.length) { const nx = st.q.shift(); nx.start = st.t; nx.end = st.t + st.R.exp(st.mu); st.srv[si] = nx; }
+        }
+      }
+      const n = inSys(), S = st.stat; S.area += n * (tEnd - st.t); S.busy += (st.srv.filter(Boolean).length / st.c) * (tEnd - st.t); st.t = tEnd;
+      st.trace.push([st.t, n]); while (st.trace.length && st.trace[0][0] < st.t - 24) st.trace.shift();
+    }
+    const cv = SB.canvas("cv-queue", (ctx, w, h) => {
+      const P = pal(), A = bx(12, 10, w - 24, 64), Tb = bx(48, A.y + A.h + 26, w - 62, (h - A.y - A.h - 26) * 0.42 - 28), Hb = bx(48, Tb.y + Tb.h + 50, w - 62, h - (Tb.y + Tb.h + 50) - 36);
+      // 애니메이션 띠
+      const toolW = 64, gap = 8, tx0 = A.x + A.w - st.c * (toolW + gap);
+      st.srv.forEach((s, i) => {
+        const x = tx0 + i * (toolW + gap); ctx.strokeStyle = P.border; ctx.lineWidth = 2; ctx.strokeRect(x, A.y + 4, toolW, A.h - 8);
+        SB.label(ctx, st.c > 1 ? `장비 ${i + 1}` : "노광 장비", x + toolW / 2, A.y + 14, { size: 10, color: P.dim });
+        if (s) { ctx.fillStyle = P.accent; ctx.fillRect(x + toolW / 2 - 9, A.y + 24, 18, 22); const e = SB.clamp((st.t - s.start) / Math.max(1e-6, s.end - s.start), 0, 1); ctx.fillStyle = P.accent2; ctx.fillRect(x + 6, A.y + A.h - 12, (toolW - 12) * e, 4); }
+      });
+      const lotW = 13, maxShow = Math.max(1, Math.floor((tx0 - A.x - 20) / (lotW + 3)));
+      ctx.fillStyle = P.accent;
+      for (let i = 0; i < Math.min(st.q.length, maxShow); i++) ctx.fillRect(tx0 - 10 - (i + 1) * (lotW + 3), A.y + 24, lotW, 22);
+      if (st.q.length > maxShow) SB.label(ctx, `+${st.q.length - maxShow}`, A.x + 16, A.y + 35, { bold: true, color: P.bad });
+      SB.label(ctx, `대기 ${st.q.length}`, A.x + 4, A.y + 10, { align: "left", size: 11, color: P.dim });
+      // N(t) 추이
+      const T = th(), S = st.stat, el = st.t - S.t0;
+      const Lhat = el > 0 ? S.area / el : NaN, ymax = Math.max(5, Math.ceil(Math.max(T.stable ? T.L * 2.5 : 10, ...st.trace.map((v) => v[1])) / 5) * 5);
+      const F = frame(Tb, st.t - 24, st.t, 0, ymax);
+      axes(ctx, F, { yt: [0, ymax / 2, ymax].map(Math.round), yl: "계 안의 로트 수 N(t) · 지난 24 h" });
+      clip(ctx, Tb, () => {
+        ctx.strokeStyle = P.accent; ctx.lineWidth = 1.6; ctx.beginPath(); st.trace.forEach(([t, n], i) => { const x = F.X(t), y = F.Y(n); if (i) { ctx.lineTo(x, F.Y(st.trace[i - 1][1])); ctx.lineTo(x, y); } else ctx.moveTo(x, y); }); ctx.stroke();
+        if (isFinite(Lhat)) { ctx.strokeStyle = P.accent; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(Tb.x, F.Y(Lhat)); ctx.lineTo(Tb.x + Tb.w, F.Y(Lhat)); ctx.stroke(); }
+        if (T.stable) { ctx.strokeStyle = P.accent2; ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(Tb.x, F.Y(T.L)); ctx.lineTo(Tb.x + Tb.w, F.Y(T.L)); ctx.stroke(); }
+        ctx.setLineDash([]);
+      });
+      // 체류 시간 히스토그램
+      const WM = wmax(), G = frame(Hb, 0, WM, 0, 1);
+      const dens = Array.from(S.hist, (c) => (S.dep ? c / (S.dep * (WM / 40)) : 0));
+      const ym2 = Math.max(...dens, st.c === 1 && T.stable ? (st.mu - st.lam) : 0.1) * 1.1, G2 = frame(Hb, 0, WM, 0, ym2);
+      axes(ctx, G2, { xt: [0, WM / 4, WM / 2, (3 * WM) / 4, WM], xf: (v) => fx(v, v < 10 ? 1 : 0), yt: [], xl: "체류 시간 W (h)", yl: `완료 로트 ${int(S.dep)}개` });
+      clip(ctx, Hb, () => { ctx.fillStyle = P.accent; dens.forEach((d, i) => withA(ctx, 0.6, () => ctx.fillRect(G2.X((i * WM) / 40) + 0.5, G2.Y(d), G2.X(WM / 40) - G2.X(0) - 1, G2.Y(0) - G2.Y(d)))); });
+      if (st.c === 1 && T.stable) Stat.draw.curve(ctx, G2, (x) => (st.mu - st.lam) * Math.exp(-(st.mu - st.lam) * x), 0, WM, { color: P.accent2, width: 2.2 });
+      // 읽기
+      const lh = el > 0 ? S.arr / el : NaN, Wh = S.dep ? S.wsum / S.dep : NaN;
+      SB.stat("q-rho", `${fx(st.lam / (st.c * st.mu), 3)} (${el > 0 ? fx(S.busy / el, 3) : "—"})`);
+      SB.stat("q-L", `${fx(Lhat, 2)} (${T.stable ? fx(T.L, 2) : "∞"})`);
+      SB.stat("q-W", `${fx(Wh, 2)} h (${T.stable ? fx(T.W, 2) : "∞"})`);
+      SB.stat("q-little", T.stable ? fx(lh * Wh, 2) : `<span style="color:var(--bad)">불안정 ρ ≥ 1</span>`);
+    }, { aspect: 0.78, minHeight: 470, maxHeight: 600 });
+    SB.range("q-lam", (v) => v.toFixed(1) + " 로트/h", (v) => { st.lam = v; st.nextA = st.t + st.R.exp(st.lam); resetStats(); });
+    SB.range("q-mu", (v) => v.toFixed(1) + " 로트/h", (v) => { st.mu = v; resetStats(); });
+    SB.range("q-sp", (v) => v + " h/초", (v) => (st.sp = v));
+    SB.seg("q-c", (v) => { st.c = Number(v); resetAll(); cv.redraw(); });
+    toggleBtn("q-play", st);
+    $("q-reset").addEventListener("click", () => { resetAll(); cv.redraw(); });
+    SB.loop("cv-queue", (dt) => { if (!st.playing) return; const tot = dt * st.sp, k = Math.ceil(tot / 0.05); for (let i = 0; i < k; i++) step(tot / k); cv.redraw(); });
+  }
+
+  /* ================================================================ 5절 게임: 운영 곡선 */
+  {
+    const st = { rho: 0.6, ca: 1, cs: 1 };
+    const xf = (r, ca = st.ca, cs = st.cs) => 1 + ((ca * ca + cs * cs) / 2) * (r / (1 - r));
+    const cv = SB.canvas("cv-oc", (ctx, w, h, self) => {
+      const P = pal(), B = bx(50, 24, w - 66, h - 24 - 42), F = frame(B, 0, 1, 0, 16); self._F = F;
+      axes(ctx, F, { xt: [0, 0.2, 0.4, 0.6, 0.8, 1], yt: [1, 4, 8, 12, 16], xl: "이용률 ρ", yl: "X-팩터 (사이클 타임 ÷ 처리 시간)" });
+      ctx.fillStyle = SB.color("ok-soft"); ctx.fillRect(F.X(0.85), F.Y(4), F.X(1) - F.X(0.85), F.Y(1) - F.Y(4));
+      ctx.strokeStyle = P.ok; ctx.lineWidth = 1.5; ctx.strokeRect(F.X(0.85), F.Y(4), F.X(1) - F.X(0.85), F.Y(1) - F.Y(4));
+      SB.label(ctx, "목표", F.X(0.925), F.Y(2.5), { bold: true, color: P.ok, size: 12 });
+      clip(ctx, B, () => {
+        Stat.draw.curve(ctx, F, (r) => xf(r, 1, 1), 0, 0.995, { color: P.dim, width: 1.6, dash: [5, 4], n: 400 });
+        Stat.draw.curve(ctx, F, (r) => xf(r), 0, 0.995, { color: P.accent2, width: 2.6, n: 400 });
+      });
+      const x = xf(st.rho), ok = st.rho >= 0.85 && x <= 4;
+      const py = F.Y(Math.min(16, x));
+      handle(ctx, F.X(st.rho), py, ok ? P.ok : P.accent2, 10);
+      SB.label(ctx, `(${st.rho.toFixed(2)}, ${x.toFixed(2)})`, F.X(st.rho) - 14, py - 18, { align: "right", bold: true, size: 12 });
+      SB.stat("oc-rho", st.rho.toFixed(3));
+      SB.stat("oc-x", x.toFixed(2));
+      SB.stat("oc-ct", (x * 1.5).toFixed(2) + " h");
+      $("oc-ok").innerHTML = ok ? '<span style="color:var(--ok)">성공 ✓</span>' : st.rho < 0.85 ? '<span style="color:var(--bad)">이용률 부족</span>' : '<span style="color:var(--bad)">사이클 타임 초과</span>';
+    }, { aspect: 0.55, minHeight: 300, maxHeight: 420 });
+    SB.drag(cv, { handles: () => (cv._F ? [{ id: "r", x: cv._F.X(st.rho), y: cv._F.Y(Math.min(16, xf(st.rho))), r: 14 }] : []), move: (id, x) => { st.rho = Math.round(SB.clamp(cv._F.ix(x), 0.05, 0.98) * 100) / 100; } });
+    SB.range("oc-ca", (v) => v.toFixed(2), (v) => { st.ca = v; cv.redraw(); });
+    SB.range("oc-cs", (v) => v.toFixed(2), (v) => { st.cs = v; cv.redraw(); });
+    $("sim-oc").addEventListener("unlock", () => cv.redraw());
+  }
+
+  /* ================================================================ 5절 미니: 풀링 */
+  {
+    const st = { rho: 0.9, c: 2 };
+    const cv = SB.canvas("cv-pool", (ctx, w, h) => {
+      const P = pal(), B = bx(52, 24, w - 66, h - 24 - 36);
+      const sep = st.rho / (1 - st.rho), pool = Stat.mmc(st.c * st.rho, 1, st.c).Wq;
+      const ym = Math.max(sep, 1) * 1.2, F = frame(B, -0.5, 1.5, 0, ym);
+      axes(ctx, F, { yt: [0, ym / 2, ym].map((v) => Math.round(v * 10) / 10), yl: "평균 대기 W_q (처리 시간 단위)" });
+      [[0, sep, P.bad, `따로 줄 서기 (${st.c} × M/M/1)`], [1, pool, P.ok, `한 줄 (M/M/${st.c})`]].forEach(([i, v, col, nm]) => {
+        const x0 = F.X(i - 0.3), x1 = F.X(i + 0.3); ctx.fillStyle = col; withA(ctx, 0.6, () => ctx.fillRect(x0, F.Y(v), x1 - x0, F.Y(0) - F.Y(v)));
+        SB.label(ctx, v.toFixed(2), (x0 + x1) / 2, F.Y(v) - 10, { bold: true, size: 12 }); SB.label(ctx, nm, (x0 + x1) / 2, B.y + B.h + 14, { size: 11 });
+      });
+      $("pool-r").textContent = `한 줄로 모으면 대기가 ${(sep / pool).toFixed(1)}배 짧다`;
+    }, { aspect: 0.4, minHeight: 210, maxHeight: 280 });
+    SB.range("pool-rho", (v) => v.toFixed(2), (v) => { st.rho = v; cv.redraw(); });
+    SB.seg("pool-c", (v) => { st.c = Number(v); cv.redraw(); });
+  }
+
+  /* ================================================================ 6절: 상관도 */
+  {
+    const st = { phi: 0.6, n: 200, seed: 71, x: [], r: [] };
+    const gen = () => { st.x = Stat.ar1(st.n, st.phi, 1, Stat.rng(st.seed)); st.r = Stat.acf(st.x, 20); };
+    gen();
+    const cv = SB.canvas("cv-acf", (ctx, w, h, self) => {
+      const P = pal(), narrow = narrowOf(w), sdT = 1 / Math.sqrt(1 - st.phi * st.phi), ym = Math.max(3.5, 3.2 * sdT);
+      const S = bx(40, 18, w - 54, narrow ? h * 0.24 : h * 0.34);
+      const top2 = S.y + S.h + 40;
+      const LG = narrow ? bx(40, top2, Math.min(w - 54, h * 0.3), Math.min(w - 54, h * 0.3)) : bx(40, top2, Math.min(w * 0.32, h - top2 - 40), Math.min(w * 0.32, h - top2 - 40));
+      const AC = narrow ? bx(40, LG.y + LG.h + 46, w - 54, h - (LG.y + LG.h + 46) - 40) : bx(LG.x + LG.w + 56, top2, w - (LG.x + LG.w + 56) - 14, h - top2 - 40);
+      // 시계열
+      const FS = frame(S, 0, st.n - 1, -ym, ym);
+      axes(ctx, FS, { yt: [-Math.round(ym), 0, Math.round(ym)], yl: `xₜ (n = ${st.n})` });
+      clip(ctx, S, () => line(ctx, st.x.map((v, i) => [FS.X(i), FS.Y(v)]), P.accent, st.n > 500 ? 1 : 1.5));
+      // 지연 그림
+      const FL = frame(LG, -ym, ym, -ym, ym);
+      axes(ctx, FL, { xt: [-Math.round(ym), 0, Math.round(ym)], yt: [-Math.round(ym), 0, Math.round(ym)], xl: "xₜ₋₁", yl: "xₜ" });
+      clip(ctx, LG, () => { ctx.fillStyle = P.accent; for (let i = 1; i < st.n; i++) withA(ctx, 0.55, () => { ctx.beginPath(); ctx.arc(FL.X(st.x[i - 1]), FL.Y(st.x[i]), 2.2, 0, 2 * PI); ctx.fill(); }); line(ctx, [[FL.X(-ym), FL.Y(-ym * st.phi)], [FL.X(ym), FL.Y(ym * st.phi)]], P.accent2, 2); });
+      // 상관도
+      const FA = frame(AC, -0.5, 20.5, -1, 1); self._FA = FA;
+      axes(ctx, FA, { xt: [0, 5, 10, 15, 20], yt: [-1, -0.5, 0, 0.5, 1], xl: "시차 k", yl: "자기 상관 rₖ" });
+      const band = 2 / Math.sqrt(st.n);
+      ctx.fillStyle = P.grid; withA(ctx, 0.9, () => ctx.fillRect(AC.x, FA.Y(band), AC.w, FA.Y(-band) - FA.Y(band)));
+      ctx.strokeStyle = P.axis; ctx.beginPath(); ctx.moveTo(AC.x, FA.Y(0)); ctx.lineTo(AC.x + AC.w, FA.Y(0)); ctx.stroke();
+      let out = 0;
+      st.r.forEach((r, k) => { const o = k > 0 && Math.abs(r) > band; if (o) out++; ctx.strokeStyle = o ? P.bad : P.accent; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(FA.X(k), FA.Y(0)); ctx.lineTo(FA.X(k), FA.Y(r)); ctx.stroke(); });
+      ctx.fillStyle = P.accent2; for (let k = 0; k <= 20; k++) { ctx.beginPath(); ctx.arc(FA.X(k), FA.Y(Math.pow(st.phi, k)), 3.2, 0, 2 * PI); ctx.fill(); }
+      handle(ctx, FA.X(1), FA.Y(st.phi), P.accent2, 10);
+      SB.stat("acf-phi", st.phi.toFixed(2));
+      SB.stat("acf-r1", `${st.r[1].toFixed(3)} (${st.phi.toFixed(2)})`);
+      SB.stat("acf-out", `${out} / 20`);
+      SB.stat("acf-var", `${Stat.var(st.x).toFixed(2)} (${(sdT * sdT).toFixed(2)})`);
+    }, { get aspect() { const e = document.getElementById("cv-acf"); return e && e.parentElement.clientWidth < 560 ? 1.9 : 0.62; }, minHeight: 440, maxHeight: 680 });
+    SB.drag(cv, { handles: () => (cv._FA ? [{ id: "phi", x: cv._FA.X(1), y: cv._FA.Y(st.phi), r: 14 }] : []), move: (id, x, y) => { st.phi = Math.round(SB.clamp(cv._FA.iy(y), -0.95, 0.98) * 100) / 100; gen(); } });
+    SB.seg("acf-n", (v) => { st.n = Number(v); gen(); cv.redraw(); });
+    SB.seg("acf-pre", (v) => { st.phi = Number(v); gen(); cv.redraw(); });
+    $("acf-new").addEventListener("click", () => { st.seed += 13; gen(); cv.redraw(); });
+  }
+
+  /* ================================================================ 6절: 평균과 잡음 */
+  {
+    const NS = [1, 2, 4, 8, 16, 32, 64, 128, 256], LEN = 256, TYPES = ["white", "ar", "pink", "walk"];
+    const PHIS = Array.from({ length: 8 }, (_, j) => 1 - Math.pow(2, -(j + 1)));
+    const st = { type: "white", reps: 0, ss: {}, playing: true, R: Stat.rng(81), sample: null };
+    const series = (type, R) => {
+      const x = new Float64Array(LEN);
+      if (type === "white") for (let i = 0; i < LEN; i++) x[i] = R.normal();
+      else if (type === "ar") { let v = R.normal(); for (let i = 0; i < LEN; i++) { v = 0.8 * v + R.normal(0, 0.6); x[i] = v; } }
+      else if (type === "pink") { const c = PHIS.map(() => R.normal()); for (let i = 0; i < LEN; i++) { let s = 0; for (let j = 0; j < 8; j++) { c[j] = PHIS[j] * c[j] + R.normal(0, Math.sqrt(1 - PHIS[j] * PHIS[j])); s += c[j]; } x[i] = s / Math.sqrt(8); } }
+      else { let v = 0; for (let i = 0; i < LEN; i++) { v += R.normal(0, 0.25); x[i] = v; } }
+      return x;
+    };
+    const reset = () => { st.reps = 0; st.R = Stat.rng(81); TYPES.forEach((t) => (st.ss[t] = new Float64Array(NS.length))); st.sample = series(st.type, Stat.rng(82)); };
+    reset();
+    const arTh = (N) => { let s = 1; for (let k = 1; k < N; k++) s += 2 * (1 - k / N) * Math.pow(0.8, k); return Math.sqrt(s / N); };
+    const cols = (P) => ({ white: P.accent, ar: P.accent2, pink: SB.color("warn"), walk: P.bad });
+    const nm = { white: "백색", ar: "AR(1) φ = 0.8", pink: "1/f", walk: "랜덤 워크" };
+    const cv = SB.canvas("cv-avg", (ctx, w, h) => {
+      const P = pal(), C = cols(P), S = bx(44, 16, w - 58, h * 0.22), B = bx(52, S.y + S.h + 40, w - 66, h - (S.y + S.h + 40) - 42);
+      const FS = frame(S, 0, LEN - 1, -3.5, 3.5);
+      axes(ctx, FS, { yt: [-3, 0, 3], yl: `${nm[st.type]} 잡음의 한 표본` });
+      clip(ctx, S, () => line(ctx, Array.from(st.sample, (v, i) => [FS.X(i), FS.Y(v)]), C[st.type], 1.3));
+      const lx = (n) => Math.log10(n), F = frame(B, 0, lx(256), -2, 1), Y = (v) => F.Y(Math.log10(v));
+      axes(ctx, F, { xt: [0, lx(4), lx(16), lx(64), lx(256)], xf: (v) => String(Math.round(Math.pow(10, v))), yt: [-2, -1, 0, 1], yf: (v) => String(Math.pow(10, v)), xl: "평균에 쓴 연속 값 수 N (로그)", yl: "평균의 표준 편차 (로그)" });
+      clip(ctx, B, () => {
+        line(ctx, NS.map((n) => [F.X(lx(n)), Y(1 / Math.sqrt(n))]), P.dim, 1.5, [5, 4]);
+        line(ctx, NS.map((n) => [F.X(lx(n)), Y(arTh(n))]), P.accent2, 1.2, [2, 3]);
+        TYPES.forEach((t) => {
+          if (!st.reps) return;
+          const pts = NS.map((n, i) => [F.X(lx(n)), Y(Math.sqrt(st.ss[t][i] / st.reps))]);
+          line(ctx, pts, C[t], t === st.type ? 3 : 1.6); ctx.fillStyle = C[t]; pts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, t === st.type ? 4 : 2.8, 0, 2 * PI); ctx.fill(); });
+        });
+      });
+      let ly = B.y + 10; TYPES.forEach((t) => { SB.label(ctx, "● " + nm[t], B.x + 8, ly, { align: "left", size: 11, color: C[t], bold: t === st.type }); ly += 16; });
+      SB.label(ctx, "-- 1/√N (독립)", B.x + 8, B.y + B.h - 12, { align: "left", size: 11, color: P.dim });
+      const at = (t) => (st.reps ? Math.sqrt(st.ss[t][6] / st.reps).toFixed(3) : "—");
+      SB.stat("avg-rep", int(st.reps)); SB.stat("avg-w", `${at("white")} (0.125)`); SB.stat("avg-a", `${at("ar")} (${arTh(64).toFixed(3)})`); SB.stat("avg-p", `${at("pink")} · ${at("walk")}`);
+    }, { aspect: 0.62, minHeight: 380, maxHeight: 500 });
+    SB.seg("avg-type", (v) => { st.type = v; st.sample = series(v, Stat.rng(82)); cv.redraw(); });
+    toggleBtn("avg-play", st);
+    $("avg-reset").addEventListener("click", () => { reset(); cv.redraw(); });
+    $("sim-avg").addEventListener("unlock", () => cv.redraw());
+    SB.loop("cv-avg", () => {
+      if (!st.playing || st.reps >= 3000) return;
+      for (let r = 0; r < 6; r++) {
+        TYPES.forEach((t) => { const x = series(t, st.R); let s = 0, k = 0; for (let i = 0; i < LEN; i++) { s += x[i]; if (i + 1 === NS[k]) { const m = s / (i + 1); st.ss[t][k] += m * m; k++; } } });
+        st.reps++;
+      }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 6절 미니: 자기 상관과 관리도 거짓 경보 */
+  {
+    const st = { phi: 0.7, seed: 91 };
+    const cv = SB.canvas("cv-spc", (ctx, w, h) => {
+      const P = pal(), n = 200, x = Stat.ar1(n, st.phi, Math.sqrt(1 - st.phi * st.phi), Stat.rng(st.seed));
+      const m = Stat.mean(x); let mr = 0; for (let i = 1; i < n; i++) mr += Math.abs(x[i] - x[i - 1]); mr /= n - 1;
+      const sh = mr / 1.128, ucl = m + 3 * sh, lcl = m - 3 * sh;
+      const B = bx(44, 16, w - 80, h - 16 - 30), F = frame(B, 0, n - 1, -4, 4);
+      axes(ctx, F, { yt: [-4, -2, 0, 2, 4], yl: "공정 값 (σ = 1)" });
+      [[ucl, "UCL"], [m, "CL"], [lcl, "LCL"]].forEach(([v, lab]) => { ctx.strokeStyle = lab === "CL" ? P.dim : P.bad; ctx.setLineDash(lab === "CL" ? [] : [6, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(B.x, F.Y(v)); ctx.lineTo(B.x + B.w, F.Y(v)); ctx.stroke(); ctx.setLineDash([]); SB.label(ctx, lab, B.x + B.w + 4, F.Y(v), { align: "left", size: 10, color: lab === "CL" ? P.dim : P.bad }); });
+      let out = 0;
+      clip(ctx, B, () => { line(ctx, x.map((v, i) => [F.X(i), F.Y(v)]), P.faint, 1); x.forEach((v, i) => { const o = v > ucl || v < lcl; if (o) out++; ctx.fillStyle = o ? P.bad : P.accent; ctx.beginPath(); ctx.arc(F.X(i), F.Y(v), o ? 3.6 : 2.2, 0, 2 * PI); ctx.fill(); }); });
+      $("spc-r").textContent = `σ̂(MR) = ${sh.toFixed(2)} (참 σ = 1, √(1−φ) = ${Math.sqrt(1 - st.phi).toFixed(2)}) · 거짓 경보 ${out}개 / 200`;
+    }, { aspect: 0.36, minHeight: 220, maxHeight: 290 });
+    SB.range("spc-phi", (v) => v.toFixed(2), (v) => { st.phi = v; cv.redraw(); });
+    $("spc-new").addEventListener("click", () => { st.seed += 17; cv.redraw(); });
+  }
+
+  /* ================================================================ 드래그 숫자 문단 */
+  const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+  const sciK = (x) => { const e = Math.floor(Math.log10(x)); return (x / Math.pow(10, e)).toFixed(2) + "×10" + String(e).split("").map((c) => SUP[c] || c).join(""); };
+  SB.tangle("tg-diff", (v) => {
+    const D = v.D * 1e-14, t = v.t * 60, s = Math.sqrt(2 * D * t) * 1e4, L = 2 * Math.sqrt(D * t) * 1e4, a = 2.35e-8;
+    return { sig: s.toFixed(3) + " µm", L: L.toFixed(3) + " µm", jumps: sciK(2 * D * t / (a * a)), four: "2" };
+  });
+  SB.tangle("tg-pp", (v) => {
+    const m = v.lam * v.t / 60, d = Stat.dist.poisson(m);
+    return { m: m.toFixed(2) + "회", pk: f3(d.pmf(v.k)), k2: String(v.k), pge: f3(v.k === 0 ? 1 : 1 - d.cdf(v.k - 1)), p0: f3(Math.exp(-m)) };
+  });
+  SB.tangle("tg-two", (v) => {
+    const pu = v.b / (v.a + v.b), r = 1 - v.a - v.b;
+    return { mtbf: (1 / v.a).toFixed(1) + " h", mttr: (1 / v.b).toFixed(2) + " h", pu: pu.toFixed(4), pn: (pu * (1 - Math.pow(r, v.n))).toFixed(4), r: r.toFixed(3) };
+  });
+  SB.tangle("tg-ruin", (v) => {
+    const k = Math.min(v.k, v.N - 1), th = ruinTh(k, v.N, v.p);
+    return { h: th.h < 1e-3 ? th.h.toExponential(2) : th.h.toFixed(4), D: th.D.toFixed(1) + "걸음", note: v.k >= v.N ? "(출발점은 N보다 작아야 하므로 k = N − 1로 계산했다.)" : Math.abs(v.p - 0.5) < 1e-9 ? "공정하면 h = k/N, D = k(N − k)다." : `r = q/p = ${((1 - v.p) / v.p).toFixed(3)}.` };
+  });
+  SB.tangle("tg-little", (v) => ({ ct: (v.wip / v.th).toFixed(1) + "일", wip2: int(v.th * v.tgt) }));
+  SB.tangle("tg-neff", (v) => {
+    const ne = (v.n * (1 - v.phi)) / (1 + v.phi), f = Math.sqrt((1 + v.phi) / (1 - v.phi));
+    return { ne: ne.toFixed(1), f: f.toFixed(2), note: v.phi < 0 ? "음의 상관(번갈아 튐)이면 평균이 오히려 독립일 때보다 정확하다." : v.phi === 0 ? "백색 잡음이면 독립 공식 그대로다." : "양의 상관은 정보를 중복시킨다." };
+  });
+
+  /* ================================================================ 드릴 */
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  SB.drill("drill-rw", () => {
+    const n = pick([50, 100, 200, 400, 900]), p = pick([0.5, 0.45, 0.55, 0.6, 0.4]);
+    const m = n * (2 * p - 1), s = Math.sqrt(4 * n * p * (1 - p));
+    return { q: `<p>오른쪽 확률 \\(p = ${p}\\)인 ±1 랜덤 워크로 \\(n = ${n}\\)걸음 걸었다. \\(E[S_n]\\)과 \\(\\operatorname{SD}(S_n)\\)은?</p>`, answer: [m, s], label: ["E[S] =", "SD ="], tol: "1%", sol: `\\(E = n(2p-1) = ${n}\\times${(2 * p - 1).toFixed(2)} = ${fx(m, 1)}\\), \\(\\operatorname{SD} = \\sqrt{4np(1-p)} = \\sqrt{${fx(4 * n * p * (1 - p), 1)}} = ${fx(s, 2)}\\)` };
+  });
+  SB.drill("drill-pp", () => {
+    const lam = pick([1, 2, 3, 4, 6]), tmin = pick([10, 15, 20, 30, 45, 60]), m = lam * tmin / 60, kind = pick(["zero", "ge2", "gap"]);
+    if (kind === "zero") return { q: `<p>사건이 시간당 \\(\\lambda = ${lam}\\)회의 포아송 과정으로 일어난다. ${tmin}분 동안 한 번도 일어나지 않을 확률은?</p>`, answer: Math.exp(-m), label: "P =", tol: "1%", sol: `\\(\\lambda t = ${fx(m, 3)}\\), \\(P = e^{-${fx(m, 3)}} = ${f3(Math.exp(-m))}\\)` };
+    if (kind === "ge2") { const p = 1 - Math.exp(-m) * (1 + m); return { q: `<p>사건이 시간당 \\(\\lambda = ${lam}\\)회의 포아송 과정으로 일어난다. ${tmin}분 동안 2번 이상 일어날 확률은?</p>`, answer: p, label: "P =", tol: "1%", sol: `\\(1-e^{-${fx(m, 3)}}(1+${fx(m, 3)}) = ${f3(p)}\\)` }; }
+    const k = pick([2, 3, 4, 5]); return { q: `<p>사건이 시간당 \\(\\lambda = ${lam}\\)회의 포아송 과정으로 일어난다. ${k}번째 사건까지 기다리는 시간의 평균(분)은?</p>`, answer: (k / lam) * 60, label: "E[S] =", unit: "분", tol: "1%", sol: `\\(S_${k}\\sim\\mathrm{Gamma}(${k}, 1/\\lambda)\\), \\(E[S_${k}] = ${k}/${lam}\\) h \\(= ${fx((k / lam) * 60, 1)}\\)분` };
+  });
+  SB.drill("drill-mc", () => {
+    if (Math.random() < 0.5) {
+      const a = pick([0.01, 0.02, 0.05, 0.1]), b = pick([0.2, 0.25, 0.4, 0.5]);
+      return { q: `<p>두 상태 장비: 가동 → 고장 확률 \\(a = ${a}\\), 고장 → 가동 확률 \\(b = ${b}\\)(시간당). 장기 가동률 \\(\\pi_U\\)는?</p>`, answer: b / (a + b), label: "π_U =", tol: "0.5%", sol: `\\(\\pi_U = b/(a+b) = ${b}/${fx(a + b, 2)} = ${(b / (a + b)).toFixed(4)}\\)` };
+    }
+    const a = pick([0.1, 0.2, 0.3]), b = pick([0.3, 0.4, 0.5]), n = pick([2, 3]);
+    const P = [[1 - a, a], [b, 1 - b]], v = Stat.markov.step([0, 1], P, n)[0];
+    return { q: `<p>두 상태 연쇄 \\(P = \\begin{pmatrix}${fx(1 - a, 1)} & ${a}\\\\ ${b} & ${fx(1 - b, 1)}\\end{pmatrix}\\)(상태 U, D)에서 지금 D다. ${n}걸음 뒤 U에 있을 확률은?</p>`, answer: v, label: "P =", tol: "0.5%", sol: `\\(P(X_n = U\\mid X_0 = D) = \\frac{b}{a+b}\\big(1-(1-a-b)^n\\big) = ${(b / (a + b)).toFixed(4)}\\times(1-${fx(1 - a - b, 2)}^{${n}}) = ${v.toFixed(4)}\\)` };
+  });
+  SB.drill("drill-q", () => {
+    const mu = pick([4, 5, 6, 8, 10]), rho = pick([0.5, 0.6, 0.75, 0.8, 0.9]), lam = mu * rho, kind = pick(["L", "W", "Wq"]);
+    const L = rho / (1 - rho), W = 1 / (mu - lam), Wq = rho / (mu - lam);
+    const q = `<p>M/M/1 장비: 도착률 \\(\\lambda = ${fx(lam, 2)}\\)로트/h, 처리율 \\(\\mu = ${mu}\\)로트/h.`;
+    if (kind === "L") return { q: q + ` 계 안의 평균 로트 수 \\(L\\)은?</p>`, answer: L, label: "L =", tol: "1%", sol: `\\(\\rho = ${rho}\\), \\(L = \\rho/(1-\\rho) = ${fx(L, 3)}\\)` };
+    if (kind === "W") return { q: q + ` 평균 체류 시간 \\(W\\)(분)는?</p>`, answer: W * 60, label: "W =", unit: "분", tol: "1%", sol: `\\(W = 1/(\\mu-\\lambda) = 1/${fx(mu - lam, 2)}\\) h \\(= ${fx(W * 60, 1)}\\)분. 검산: \\(\\lambda W = ${fx(lam * W, 3)} = L\\)` };
+    return { q: q + ` 평균 대기 시간 \\(W_q\\)(분)는?</p>`, answer: Wq * 60, label: "W_q =", unit: "분", tol: "1%", sol: `\\(W_q = \\rho/(\\mu-\\lambda) = ${rho}/${fx(mu - lam, 2)}\\) h \\(= ${fx(Wq * 60, 1)}\\)분` };
+  });
+})();
+</script>
+</body>
+</html>

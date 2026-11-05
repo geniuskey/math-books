@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>행렬은 선형 변환이다 · LinearBook</title>
+<meta name="description" content="선형성의 정의에서 출발해 행렬이 곧 선형 변환인 이유, Ax의 열 그림과 행 그림, 행렬 곱의 네 가지 방법과 합성, 전치, 특수 행렬, 3차원 변환, 동차 좌표와 로봇 팔, 블록 행렬과 행렬 곱의 계산 비용까지 직접 끌고 돌려 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .mx-m { display: inline-grid; grid-template-columns: repeat(var(--c, 2), auto); gap: 1px 10px; padding: 2px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 5px; font: 600 13.5px var(--mono); text-align: right; vertical-align: middle; }
+  .mx-m > span { padding: 1px 3px; border-radius: 4px; }
+  .mx-m > span.hl { background: var(--accent-soft); color: var(--accent); }
+  .mx-m > span.hl2 { background: var(--accent-2-soft); color: var(--accent-2); }
+  .mx-m > span.dim { color: var(--text-faint); }
+  .mx-four { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; padding: 20px 14px 14px; background: var(--canvas-bg); }
+  .mx-four .op { font: 700 18px var(--mono); color: var(--text-dim); }
+  .mx-four figure { margin: 0; text-align: center; }
+  .mx-four figcaption { font-size: 12px; color: var(--text-dim); margin-top: 4px; font-family: var(--mono); }
+  .mx-four .mx-m { font-size: 16px; gap: 3px 12px; padding: 4px 9px; }
+  .mx-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .mx-msg b { color: var(--text); }
+  .mx-msg.ok { color: var(--ok); font-weight: 600; }
+  .mx-msg.bad { color: var(--bad); font-weight: 600; }
+  .mx-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .mx-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .mx-badges { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .sim-readout .stat .v .mx-m { font-size: 12.5px; }
+  .mx-pair { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="matrices">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 02</div>
+    <h1 data-no-glossary>행렬은 선형 변환이다</h1>
+    <p class="lead">1장에서 벡터를 더하고 늘이며 선형 결합을 만들었습니다. 이 장은 그 선형 결합을 <b>통째로 실어 나르는 함수</b>, 선형 변환을 다룹니다. 놀라운 사실은 유클리드 공간 사이의 선형 변환이 <b>예외 없이 행렬 하나</b>로 적힌다는 것입니다. 그러니 행렬은 숫자 표가 아니라 함수이고, 행렬–벡터 곱은 함수에 값을 넣는 일, 행렬 곱은 함수를 이어 붙이는 일, 전치는 내적을 반대편으로 옮기는 일입니다. 이 관점 하나로 곱셈 규칙이 왜 그렇게 생겼는지, 왜 \(AB \ne BA\)인지, 왜 게임 엔진은 3×3이 아니라 4×4 행렬을 쓰는지, 왜 GPU가 행렬 곱에 목숨을 거는지가 한 줄로 이어집니다.</p>
+    <ul class="objectives">
+      <li>선형성(가법성·동차성)을 정의대로 검사하고, 평행이동·제곱·절댓값이 왜 선형이 아닌지 설명한다.</li>
+      <li>\(\mathbb{R}^n \to \mathbb{R}^m\)의 모든 선형 변환이 \(m\times n\) 행렬이며 그 \(j\)열이 \(T(\mathbf{e}_j)\)임을 증명하고, 주어진 변환의 행렬을 직접 구한다.</li>
+      <li>\(A\mathbf{x}\)를 열 그림(열의 선형 결합)과 행 그림(행과의 내적)으로 모두 계산하고, 각 그림이 어떤 질문에 유리한지 안다.</li>
+      <li>행렬 곱을 성분·열·행·외적의 합 네 가지로 계산하고, 곱이 곧 합성임에서 결합법칙과 비가환성을 이끌어 낸다.</li>
+      <li>전치의 성질 \((AB)^\mathsf{T} = B^\mathsf{T}A^\mathsf{T}\), \(A\mathbf{x}\cdot\mathbf{y} = \mathbf{x}\cdot A^\mathsf{T}\mathbf{y}\)를 증명하고, 대각·삼각·치환·대칭·직교·사영 행렬을 모양과 성질로 구별한다.</li>
+      <li>동차 좌표로 평행이동을 행렬 곱에 넣어 로봇 팔의 정기구학을 계산하고, 행렬 곱의 연산량 \(2n^3\)과 메모리 이동이 성능을 정하는 이유를 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>실시간 3D 그래픽</b></div>
+      <div class="o-body"><p>게임 화면의 캐릭터는 수만 개에서 수백만 개의 꼭짓점(정점)으로 만든 다면체입니다. 매 프레임 이 정점들을 캐릭터 자신의 좌표에서 세계 좌표로, 세계에서 카메라 좌표로, 다시 원근 투영을 거쳐 화면 좌표로 옮겨야 합니다. 회전, 크기 조절, 이동, 투영을 정점마다 따로 공식으로 계산한다면 한 프레임에 해야 할 일이 감당할 수 없이 늘어납니다.</p>
+        <p>해법은 모든 단계를 <b>4×4 행렬</b>로 쓰고, 미리 곱해 <b>행렬 하나</b>로 합치는 것입니다. 정점 셰이더는 그 행렬 하나를 각 정점에 곱할 뿐입니다. 평행이동처럼 원래는 선형이 아닌 동작도 동차 좌표라는 요령으로 행렬 곱 안에 들어옵니다. 그래서 그래픽 하드웨어는 처음부터 "작은 행렬과 벡터를 엄청나게 많이 곱하는 기계"로 설계되었고, 같은 하드웨어가 오늘날 신경망의 거대한 행렬 곱을 맡고 있습니다.</p>
+        <div class="o-chain"><span>정점마다 회전·이동·투영</span><i>→</i><span>공식이 단계마다 따로</span><i>→</i><span class="tool">변환 = 행렬, 합성 = 곱</span><i>→</i><span>정점당 4×4 곱 한 번</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="linear-map">
+    <h2>선형 변환: 선형 결합을 보존하는 함수</h2>
+    <div class="problem"><strong>함수 하나를 알려면 입력을 몇 개나 넣어 봐야 할까</strong>
+      <p>블랙박스 장치가 하나 있습니다. 2차원 벡터를 넣으면 2차원 벡터가 나옵니다. 장치의 동작을 완전히 알아내려면 평면의 모든 점(무한히 많은 점)을 넣어 봐야 할까요? 일반적인 함수라면 그렇습니다. 그런데 장치가 "입력을 더해서 넣으면 출력도 더해져서 나오고, 입력을 2배 하면 출력도 2배"라는 성질만 갖는다면 이야기가 완전히 달라집니다.</p></div>
+    <div class="callout deep"><strong>정의 2.1 (선형 변환)</strong> 함수 \(T:\mathbb{R}^n\to\mathbb{R}^m\)이 모든 벡터 \(\mathbf{u},\mathbf{v}\)와 모든 실수 \(c\)에 대해
+      <div class="formula">$$T(\mathbf{u}+\mathbf{v}) = T(\mathbf{u}) + T(\mathbf{v}) \quad(\text{가법성}), \qquad T(c\,\mathbf{u}) = c\,T(\mathbf{u}) \quad(\text{동차성})$$</div>
+      를 만족하면 <span class="term">선형 변환</span><span class="en">(linear transformation, linear map)</span>이라 한다. 두 조건을 합쳐 \(T(a\mathbf{u}+b\mathbf{v}) = aT(\mathbf{u})+bT(\mathbf{v})\) 하나로 써도 같다. 즉 <b>선형 결합을 넣으면 출력의 같은 선형 결합이 나온다.</b></div>
+    <p>정의에서 곧바로 나오는 사실 두 개가 검사에 유용합니다. 첫째, \(c=0\)을 넣으면 \(T(\mathbf{0}) = \mathbf{0}\)입니다. <b>원점을 움직이는 함수는 선형이 아닙니다.</b> 둘째, 직선 \(\mathbf{p}+t\mathbf{d}\)는 \(T(\mathbf{p})+tT(\mathbf{d})\)로 가므로 직선은 직선(또는 한 점)으로, 평행선은 평행선으로, 등간격 눈금은 등간격 눈금으로 갑니다. 격자가 휘지 않는다는 것이 선형 변환의 시각적 정의입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 300" role="img" aria-label="선형 변환은 평행사변형 규칙을 보존한다"><defs><marker id="mx-ah-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker><marker id="mx-ah-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker><marker id="mx-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="mx-ah-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <rect x="20" y="40" width="340" height="250" rx="8" class="f-surface"/>
+        <line x1="40" y1="240" x2="340" y2="240" class="s-axis"/><line x1="80" y1="280" x2="80" y2="60" class="s-axis"/>
+        <polygon points="80,240 160,220 180,140 100,160" class="f-acc-soft" style="stroke-width:1"/>
+        <line x1="80" y1="240" x2="160" y2="220" style="stroke:var(--green);stroke-width:3" marker-end="url(#mx-ah-g)"/>
+        <line x1="80" y1="240" x2="100" y2="160" style="stroke:var(--red);stroke-width:3" marker-end="url(#mx-ah-r)"/>
+        <line x1="80" y1="240" x2="180" y2="140" style="stroke:var(--accent);stroke-width:3" marker-end="url(#mx-ah-a)"/>
+        <line x1="160" y1="220" x2="180" y2="140" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:5 4"/>
+        <line x1="100" y1="160" x2="180" y2="140" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:5 4"/>
+        <text x="166" y="232" class="t" style="fill:var(--green);font-weight:700">u</text>
+        <text x="88" y="152" class="t" style="fill:var(--red);font-weight:700">v</text>
+        <text x="186" y="136" class="t-acc">u + v</text>
+        <text x="30" y="28" class="t" style="font-weight:700">입력 공간</text>
+        <line x1="368" y1="165" x2="428" y2="165" style="stroke:var(--text-dim);stroke-width:2" marker-end="url(#mx-ah-t)"/><text x="398" y="152" text-anchor="middle" class="t" style="font-weight:700">T</text>
+        <rect x="440" y="40" width="340" height="250" rx="8" class="f-surface"/>
+        <line x1="460" y1="240" x2="760" y2="240" class="s-axis"/><line x1="500" y1="280" x2="500" y2="60" class="s-axis"/>
+        <polygon points="500,240 568,188 540,100 472,152" class="f-acc-soft" style="stroke-width:1"/>
+        <line x1="500" y1="240" x2="568" y2="188" style="stroke:var(--green);stroke-width:3" marker-end="url(#mx-ah-g)"/>
+        <line x1="500" y1="240" x2="472" y2="152" style="stroke:var(--red);stroke-width:3" marker-end="url(#mx-ah-r)"/>
+        <line x1="500" y1="240" x2="540" y2="100" style="stroke:var(--accent);stroke-width:3" marker-end="url(#mx-ah-a)"/>
+        <line x1="568" y1="188" x2="540" y2="100" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:5 4"/>
+        <line x1="472" y1="152" x2="540" y2="100" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:5 4"/>
+        <text x="576" y="196" class="t" style="fill:var(--green);font-weight:700">T(u)</text>
+        <text x="420" y="146" class="t" style="fill:var(--red);font-weight:700">T(v)</text>
+        <text x="548" y="94" class="t-acc">T(u + v) = T(u) + T(v)</text>
+        <text x="450" y="28" class="t" style="font-weight:700">출력 공간</text>
+        <text x="450" y="280" class="t-dim">평행사변형은 평행사변형으로 간다</text>
+      </svg>
+      <figcaption><b>그림 2-1.</b> 가법성의 그림. 입력에서 u와 v로 만든 평행사변형의 대각선 u + v는, 선형 변환 뒤에도 T(u)와 T(v)로 만든 평행사변형의 대각선이 된다. "더하고 나서 보내기"와 "보내고 나서 더하기"가 같다는 뜻이다(여기서 T는 행렬 [1 −0.6; 0.4 1]).</figcaption>
+    </figure>
+    <p>이제 문제의 답입니다. 평면의 모든 벡터는 \(\mathbf{x} = x_1\mathbf{e}_1 + x_2\mathbf{e}_2\)로 쓸 수 있으므로, 선형이라면 \(T(\mathbf{x}) = x_1T(\mathbf{e}_1) + x_2T(\mathbf{e}_2)\)입니다. <b>입력 두 개, \(\mathbf{e}_1\)과 \(\mathbf{e}_2\)만 넣어 보면 장치의 모든 것을 안다</b>는 뜻입니다. 이것을 일반 차원에서 정리로 적으면 다음과 같습니다.</p>
+    <div class="callout deep"><strong>정리 2.2 (선형 변환의 표준 행렬)</strong> \(T:\mathbb{R}^n\to\mathbb{R}^m\)이 선형이면 모든 \(\mathbf{x}\)에 대해 \(T(\mathbf{x}) = A\mathbf{x}\)인 \(m\times n\) 행렬 \(A\)가 꼭 하나 있다. 그 행렬의 \(j\)열은 \(T(\mathbf{e}_j)\)이다.
+      <div class="formula">$$A = \Big[\; T(\mathbf{e}_1) \;\; T(\mathbf{e}_2) \;\; \cdots \;\; T(\mathbf{e}_n) \;\Big]$$</div>
+      <p><b>증명.</b> \(\mathbf{x} = \sum_j x_j\mathbf{e}_j\)이므로 선형성에 의해 \(T(\mathbf{x}) = \sum_j x_j T(\mathbf{e}_j)\)이고, 이것은 열이 \(T(\mathbf{e}_j)\)인 행렬과 \(\mathbf{x}\)의 곱의 정의(다음 절의 열 그림) 그 자체다. 거꾸로 어떤 행렬 \(A\)든 \(\mathbf{x}\mapsto A\mathbf{x}\)는 선형이다(분배법칙). 유일성: \(A\mathbf{x} = B\mathbf{x}\)가 모든 \(\mathbf{x}\)에서 성립하면 \(\mathbf{x}=\mathbf{e}_j\)를 넣어 두 행렬의 \(j\)열이 같다. ∎</p></div>
+    <p>그러니 "선형 변환"과 "행렬"은 같은 대상의 두 이름입니다. 행렬은 기저 벡터가 어디로 가는지 적어 둔 기록이고, MathBook의 <a href="../../foundations/chapters/linalg.html#basis">격자를 휘는 기계</a>가 바로 이 정리를 그림으로 보여 줍니다. 여기서는 한 걸음 더 나가 정의 자체를 시험해 봅시다.</p>
+
+    <div class="sim" id="sim-mx-linear">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>선형성 검사기: 더하고 보내기 = 보내고 더하기?</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-lin"></canvas><span class="tag-tl">u, v를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>변환 T</span><select id="mx-l-map">
+            <option value="mat">행렬 [1 −0.6; 0.4 1]</option>
+            <option value="rot">40° 회전</option>
+            <option value="proj">직선 y = x/2 위로 정사영</option>
+            <option value="shift">평행이동 (x+1, y+0.5)</option>
+            <option value="square">성분 제곱 (x², y²)</option>
+            <option value="abs">성분 절댓값 (|x|, |y|)</option>
+            <option value="bend">휘기 (x, y + 0.15x²)</option>
+          </select></label>
+          <label class="ctrl"><span>스칼라 c <output id="mx-l-c-out"></output></span><input type="range" id="mx-l-c" min="-2" max="2" value="1.5" step="0.1"></label>
+          <label class="check"><input type="checkbox" id="mx-l-grid" checked> 격자의 상(像) 그리기</label>
+          <label class="check"><input type="checkbox" id="mx-l-in" checked> 입력 벡터 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="mx-legend"><span><i style="background:var(--green)"></i>T(u)</span><span><i style="background:var(--red)"></i>T(v)</span><span><i style="background:var(--accent)"></i>T(u + v)</span><span><i style="background:var(--accent-2)"></i>T(u) + T(v) 끝점(고리)</span><span><i style="background:var(--text-faint)"></i>입력 u, v</span></div>
+      <div class="mx-msg" id="mx-l-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">‖T(u+v) − T(u) − T(v)‖</span><span class="v" id="mx-l-add">—</span></div>
+        <div class="stat"><span class="k">‖T(cu) − c·T(u)‖</span><span class="v" id="mx-l-scl">—</span></div>
+        <div class="stat"><span class="k">T(0)</span><span class="v" id="mx-l-zero">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '평행이동'을 고르면 T(0) ≠ 0이고, 파란 화살표 끝과 주황 고리가 늘 (1, 0.5)만큼 어긋납니다. ② '성분 제곱'에서 u, v를 모두 제1사분면에 두면 차이가 2(u₁v₁, u₂v₂)로 나타납니다. 격자의 상이 휘는 것도 보세요. ③ '절댓값'은 u, v가 모두 제1사분면에 있을 때 우연히 가법성을 통과합니다. 한 점만 통과해서는 선형이 아닙니다. 정의는 "모든" u, v, c에 대한 요구입니다. 모델: 오차가 10⁻⁹ 미만이면 같다고 판정합니다.</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 2.1 · 변환의 행렬 구하기</strong> 평면에서 "직선 \(y=x\)에 대한 반사 후, 가로 방향으로 3배 늘이기"의 행렬을 구하라.
+      <p><b>풀이.</b> \(\mathbf{e}_1=(1,0)\)은 반사로 \((0,1)\)이 되고 가로 늘이기는 \(x\)성분만 바꾸므로 그대로 \((0,1)\). \(\mathbf{e}_2=(0,1)\)은 반사로 \((1,0)\), 늘이기로 \((3,0)\). 두 결과를 열로 세우면</p>
+      <div class="formula">$$A = \begin{bmatrix}0 & 3\\ 1 & 0\end{bmatrix}, \qquad A\begin{bmatrix}2\\5\end{bmatrix} = 2\begin{bmatrix}0\\1\end{bmatrix} + 5\begin{bmatrix}3\\0\end{bmatrix} = \begin{bmatrix}15\\2\end{bmatrix}.$$</div>
+      <p>확인: 점 \((2,5)\)를 반사하면 \((5,2)\), 가로 3배면 \((15,2)\). 공식 없이 "기저가 가는 곳"만으로 끝났다.</p></div>
+    <div class="callout warn"><strong>"직선을 직선으로 보낸다"만으로는 부족하다</strong> 평행이동도 직선을 직선으로 보내지만 원점을 움직이므로 선형이 아닙니다. 이런 변환(선형 변환 + 평행이동)을 <span class="term">아핀 변환</span><span class="en">(affine transformation)</span>이라 하고, 7절에서 동차 좌표로 행렬 곱 안에 넣습니다.</div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="column-row">
+    <h2>Ax의 두 그림: 열의 결합과 행과의 내적</h2>
+    <div class="problem"><strong>같은 곱셈, 다른 질문</strong>
+      <p>공장에서 제품 1, 2를 각각 \(x_1\), \(x_2\)개 만든다고 합시다. 제품 1 하나에는 철 1kg과 전력 3kWh, 제품 2 하나에는 철 2kg이 들고 대신 폐열 회수로 전력 1kWh가 돌아옵니다. 총 철 소비와 총 전력 소비는? 이 질문은 "제품별 자원 벡터를 생산량만큼 더하기"로도, "자원별로 생산량과의 내적 구하기"로도 답할 수 있습니다. 두 계산은 같은 숫자를 내지만 서로 다른 것을 보여 줍니다.</p></div>
+    <p>\(m\times n\) 행렬 \(A\)와 \(\mathbf{x}\in\mathbb{R}^n\)의 곱 \(A\mathbf{x}\in\mathbb{R}^m\)은 두 가지로 계산됩니다. 열을 \(\mathbf{a}_1,\dots,\mathbf{a}_n\), 행을 \(\mathbf{r}_1^\mathsf{T},\dots,\mathbf{r}_m^\mathsf{T}\)라 하면</p>
+    <div class="formula">$$\underbrace{A\mathbf{x} = x_1\mathbf{a}_1 + x_2\mathbf{a}_2 + \cdots + x_n\mathbf{a}_n}_{\text{열 그림: 열의 선형 결합}} \qquad\qquad \underbrace{(A\mathbf{x})_i = \mathbf{r}_i\cdot\mathbf{x} = \sum_{j} a_{ij}x_j}_{\text{행 그림: 행과의 내적}}$$
+      <div class="where">크기 규칙: \((m\times n)\)과 \((n\times 1)\)의 곱은 \((m\times 1)\). 안쪽 차원 \(n\)이 같아야 한다. 열 그림은 출력 공간 \(\mathbb{R}^m\)에서, 행 그림은 입력 공간 \(\mathbb{R}^n\)에서 그린다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 310" role="img" aria-label="Ax의 열 그림과 행 그림"><defs><marker id="mx-ah2-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="mx-ah2-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="mx-ah2-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+        <rect x="20" y="40" width="360" height="262" rx="8" class="f-surface"/>
+        <g class="s-axis" style="opacity:.3"><line x1="30" y1="220" x2="370" y2="220"/><line x1="30" y1="190" x2="370" y2="190"/><line x1="30" y1="160" x2="370" y2="160"/><line x1="30" y1="130" x2="370" y2="130"/><line x1="30" y1="100" x2="370" y2="100"/><line x1="30" y1="70" x2="370" y2="70"/><line x1="30" y1="280" x2="370" y2="280"/><line x1="90" y1="50" x2="90" y2="296"/><line x1="120" y1="50" x2="120" y2="296"/><line x1="150" y1="50" x2="150" y2="296"/><line x1="180" y1="50" x2="180" y2="296"/><line x1="210" y1="50" x2="210" y2="296"/><line x1="240" y1="50" x2="240" y2="296"/><line x1="30" y1="50" x2="30" y2="296"/></g>
+        <line x1="30" y1="250" x2="370" y2="250" class="s-axis"/><line x1="60" y1="296" x2="60" y2="50" class="s-axis"/>
+        <line x1="60" y1="250" x2="90" y2="160" style="stroke:var(--accent);stroke-width:3" marker-end="url(#mx-ah2-a)"/>
+        <line x1="60" y1="250" x2="120" y2="280" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#mx-ah2-b)"/>
+        <line x1="90" y1="160" x2="120" y2="70" style="stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4" marker-end="url(#mx-ah2-a)"/>
+        <line x1="120" y1="70" x2="180" y2="100" style="stroke:var(--accent-2);stroke-width:3;stroke-dasharray:6 4" marker-end="url(#mx-ah2-b)"/>
+        <line x1="60" y1="250" x2="180" y2="100" style="stroke:var(--text);stroke-width:2.5" marker-end="url(#mx-ah2-t)"/>
+        <text x="96" y="176" class="t" style="fill:var(--accent);font-weight:700">a₁ = (1, 3)</text>
+        <text x="126" y="290" class="t" style="fill:var(--accent-2);font-weight:700">a₂ = (2, −1)</text>
+        <text x="128" y="62" class="t-mono">2a₁</text>
+        <text x="188" y="100" class="t" style="font-weight:700">Ax = 2a₁ + 1a₂ = (4, 5)</text>
+        <text x="30" y="28" class="t" style="font-weight:700">열 그림 (출력 공간)</text>
+        <rect x="420" y="40" width="360" height="262" rx="8" class="f-surface"/>
+        <line x1="420" y1="250" x2="780" y2="250" class="s-axis"/><line x1="470" y1="296" x2="470" y2="50" class="s-axis"/>
+        <line x1="440" y1="175" x2="620" y2="265" style="stroke:var(--accent);stroke-width:2.5"/>
+        <line x1="485" y1="265" x2="560" y2="130" style="stroke:var(--accent-2);stroke-width:2.5"/>
+        <line x1="470" y1="250" x2="500" y2="190" style="stroke:var(--accent);stroke-width:3" marker-end="url(#mx-ah2-a)"/>
+        <line x1="470" y1="250" x2="560" y2="280" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#mx-ah2-b)"/>
+        <circle cx="530" cy="220" r="6" style="fill:var(--text)"/>
+        <text x="540" y="214" class="t" style="font-weight:700">x = (2, 1)</text>
+        <text x="600" y="246" class="t" style="fill:var(--accent);font-weight:700">r₁·x = x₁ + 2x₂ = 4</text>
+        <text x="566" y="126" class="t" style="fill:var(--accent-2);font-weight:700">r₂·x = 3x₁ − x₂ = 5</text>
+        <text x="486" y="186" class="t-mono" style="fill:var(--accent)">r₁</text>
+        <text x="566" y="292" class="t-mono" style="fill:var(--accent-2)">r₂</text>
+        <text x="430" y="28" class="t" style="font-weight:700">행 그림 (입력 공간)</text>
+      </svg>
+      <figcaption><b>그림 2-2.</b> \(A = \begin{bmatrix}1 & 2\\ 3 & -1\end{bmatrix}\), \(\mathbf{x} = (2, 1)\). 왼쪽: 열 a₁을 2번, a₂를 1번 이어 붙이면 Ax = (4, 5)에 닿는다. 오른쪽: 출력의 i번째 성분은 행 rᵢ와 x의 내적이다. "rᵢ·z = 그 값"인 점 z들은 rᵢ에 수직인 직선을 이루고, x는 두 직선의 교점이다. 이 그림이 3장의 연립방정식으로 이어진다.</figcaption>
+    </figure>
+    <p>열 그림은 <b>"어떤 출력이 가능한가"</b>에 답하기 좋습니다. \(A\mathbf{x}\)는 언제나 열들의 선형 결합이므로, 가능한 출력 전체는 열들이 생성하는 공간(5장의 열공간)입니다. 행 그림은 <b>"출력의 각 성분이 입력의 무엇을 재는가"</b>에 답합니다. \(i\)번째 출력은 입력을 행 \(\mathbf{r}_i\) 방향으로 잰 값(에 \(\|\mathbf{r}_i\|\)를 곱한 것)입니다. 신경망 층의 각 뉴런, 센서 배열의 각 측정, 회계의 각 계정 합계가 행 그림입니다.</p>
+
+    <div class="sim" id="sim-mx-colrow">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>같은 곱, 두 그림: 열 그림 ↔ 행 그림</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-cr"></canvas><span class="tag-tl">점 x를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A</span>
+            <div class="mat" style="--n:2"><input id="mx-c11" value="1" inputmode="decimal" aria-label="a11"><input id="mx-c12" value="2" inputmode="decimal" aria-label="a12"><input id="mx-c21" value="3" inputmode="decimal" aria-label="a21"><input id="mx-c22" value="-1" inputmode="decimal" aria-label="a22"></div></div>
+          <div class="ctrl"><span>보기</span><div class="seg" id="mx-c-view"><button data-value="col" class="on">열 그림</button><button data-value="row">행 그림</button></div></div>
+          <label class="check"><input type="checkbox" id="mx-c-span"> 열의 정수 결합 격자 보이기</label>
+        </div>
+      </div>
+      <div class="mx-msg" id="mx-c-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x</span><span class="v" id="mx-c-x">—</span></div>
+        <div class="stat"><span class="k">열 그림: x₁a₁ + x₂a₂</span><span class="v" id="mx-c-col">—</span></div>
+        <div class="stat"><span class="k">행 그림: (r₁·x, r₂·x)</span><span class="v" id="mx-c-row">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 열 그림에서 x를 끌면 x₁a₁(보라)과 x₂a₂(청록)가 꼬리를 물고 Ax에 닿습니다. x₁을 음수로 만들면 a₁ 반대 방향으로 갑니다. ② 행 그림으로 바꾸면 같은 x를 지나는 두 직선이 보입니다. 직선을 따라 x를 끌면 그 행의 출력은 변하지 않습니다. ③ 행렬을 [1 2; 2 4]로 바꾸면 두 열이 한 직선 위에 놓여, x를 어디로 끌어도 Ax는 그 직선을 벗어나지 못합니다. 모델: 입력 x(점)와 출력 Ax를 같은 좌표평면에 함께 그렸습니다.</div>
+    </div>
+    <div class="callout tip"><strong>예제 2.2 · 3×3을 두 방법으로</strong> \(A = \begin{bmatrix}2 & 0 & 1\\ -1 & 3 & 0\\ 0 & 1 & 4\end{bmatrix}\), \(\mathbf{x} = (1, 2, -1)\)일 때 \(A\mathbf{x}\)를 구하라.
+      <p><b>열 그림.</b> \(1\cdot(2,-1,0) + 2\cdot(0,3,1) + (-1)\cdot(1,0,4) = (2-1,\; -1+6,\; 2-4) = (1, 5, -2)\).</p>
+      <p><b>행 그림.</b> \((2,0,1)\cdot\mathbf{x} = 2+0-1 = 1\), \((-1,3,0)\cdot\mathbf{x} = -1+6 = 5\), \((0,1,4)\cdot\mathbf{x} = 2-4 = -2\). 같은 9번의 곱셈과 6번의 덧셈을 순서만 바꿔 한 것이다. 컴퓨터에서는 이 순서가 메모리 접근 패턴을 바꾸어 속도 차이를 낸다(8절).</p></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="multiply">
+    <h2>행렬 곱을 계산하는 네 가지 방법</h2>
+    <div class="problem"><strong>"행 곱하기 열"은 왜 그렇게 생겼나</strong>
+      <p>행렬 곱 \(C = AB\)의 성분 공식 \(c_{ij} = \sum_k a_{ik}b_{kj}\)는 보통 규칙으로 외웁니다. 그런데 같은 곱을 열 단위, 행 단위, 심지어 "열 곱하기 행"의 합으로도 계산할 수 있고, 각 방법이 서로 다른 응용의 언어가 됩니다. 규칙은 하나가 아니라 넷입니다.</p></div>
+    <p>먼저 정의부터. \(B\)의 열을 \(\mathbf{b}_1,\dots,\mathbf{b}_p\)라 할 때 \(AB\)는 "먼저 \(B\), 다음 \(A\)"인 합성 변환의 행렬입니다. 정리 2.2에 따라 그 \(j\)열은 \(\mathbf{e}_j\)가 최종적으로 가는 곳 \(A(B\mathbf{e}_j) = A\mathbf{b}_j\)입니다. 이 한 줄에서 네 가지 계산법이 모두 나옵니다.</p>
+    <div class="callout deep"><strong>정리 2.3 (행렬 곱의 네 얼굴)</strong> \(A\)가 \(m\times n\), \(B\)가 \(n\times p\)이면 \(C=AB\)는 \(m\times p\)이고 다음 넷은 모두 같다.
+      <div class="formula">$$\text{① 성분: } c_{ij} = \mathbf{r}_i\cdot\mathbf{b}_j = \sum_{k=1}^{n} a_{ik}b_{kj} \qquad \text{② 열: } C = \big[\,A\mathbf{b}_1 \;\cdots\; A\mathbf{b}_p\,\big]$$
+      $$\text{③ 행: } (C\text{의 } i\text{행}) = \mathbf{r}_i^\mathsf{T}B \qquad \text{④ 외적의 합: } C = \sum_{k=1}^{n} \mathbf{a}_k\,\boldsymbol\beta_k^\mathsf{T}$$</div>
+      여기서 \(\mathbf{r}_i^\mathsf{T}\)는 \(A\)의 \(i\)행, \(\mathbf{a}_k\)는 \(A\)의 \(k\)열, \(\boldsymbol\beta_k^\mathsf{T}\)는 \(B\)의 \(k\)행이다. ④의 각 항 \(\mathbf{a}_k\boldsymbol\beta_k^\mathsf{T}\)는 \(m\times p\) 행렬이고 계수가 1이다(모든 열이 \(\mathbf{a}_k\)의 배수).</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 160" role="img" aria-label="행렬 곱의 네 가지 계산법"><text x="105" y="34" text-anchor="middle" class="t" style="font-weight:700">① 성분</text><rect x="10" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="23" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="36" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="23" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="36" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="10" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="23" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="36" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="54" y="82" class="t-mono">×</text><rect x="68" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="81" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="94" y="60" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="68" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="81" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="94" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="68" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="81" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="94" y="86" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><text x="112" y="82" class="t-mono">=</text><rect x="126" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="139" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="152" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="126" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="139" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="152" y="73" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="126" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="139" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="152" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="26" y="116" text-anchor="middle" class="t-mono">A</text><text x="87" y="116" text-anchor="middle" class="t-mono">B</text><text x="145" y="116" text-anchor="middle" class="t-mono">C</text><text x="105" y="142" text-anchor="middle" class="t-dim">c₂₃ = (2행)·(3열)</text><text x="305" y="34" text-anchor="middle" class="t" style="font-weight:700">② 열</text><rect x="210" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="223" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="236" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="210" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="223" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="236" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="210" y="86" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="223" y="86" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="236" y="86" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><text x="254" y="82" class="t-mono">×</text><rect x="268" y="60" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="281" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="294" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="268" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="281" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="294" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="268" y="86" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="281" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="294" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="312" y="82" class="t-mono">=</text><rect x="326" y="60" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="339" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="352" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="326" y="73" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="339" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="352" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="326" y="86" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="339" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="352" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="226" y="116" text-anchor="middle" class="t-mono">A</text><text x="287" y="116" text-anchor="middle" class="t-mono">B</text><text x="345" y="116" text-anchor="middle" class="t-mono">C</text><text x="305" y="142" text-anchor="middle" class="t-dim">C의 1열 = A·b₁</text><text x="505" y="34" text-anchor="middle" class="t" style="font-weight:700">③ 행</text><rect x="410" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="423" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="436" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="410" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="436" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="410" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="436" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="454" y="82" class="t-mono">×</text><rect x="468" y="60" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="481" y="60" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="494" y="60" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="468" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="481" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="494" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="468" y="86" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="481" y="86" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="494" y="86" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><text x="512" y="82" class="t-mono">=</text><rect x="526" y="60" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="539" y="60" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="552" y="60" width="11" height="11" rx="2" class="f-acc" style="stroke-width:1"/><rect x="526" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="539" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="552" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="526" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="539" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="552" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="426" y="116" text-anchor="middle" class="t-mono">A</text><text x="487" y="116" text-anchor="middle" class="t-mono">B</text><text x="545" y="116" text-anchor="middle" class="t-mono">C</text><text x="505" y="142" text-anchor="middle" class="t-dim">C의 1행 = (A의 1행)·B</text><text x="705" y="34" text-anchor="middle" class="t" style="font-weight:700">④ 외적의 합</text><rect x="610" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="623" y="60" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="636" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="610" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="623" y="73" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="636" y="73" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="610" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="623" y="86" width="11" height="11" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="636" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="654" y="82" class="t-mono">×</text><rect x="668" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="681" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="694" y="60" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="668" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="681" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="694" y="73" width="11" height="11" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="668" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="681" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><rect x="694" y="86" width="11" height="11" rx="2" class="f-surface" style="stroke-width:1"/><text x="712" y="82" class="t-mono">=</text><rect x="726" y="60" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="739" y="60" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="752" y="60" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="726" y="73" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="739" y="73" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="752" y="73" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="726" y="86" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="739" y="86" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><rect x="752" y="86" width="11" height="11" rx="2" class="f-elev" style="stroke-width:1"/><text x="626" y="116" text-anchor="middle" class="t-mono">A</text><text x="687" y="116" text-anchor="middle" class="t-mono">B</text><text x="745" y="116" text-anchor="middle" class="t-mono">C</text><text x="705" y="142" text-anchor="middle" class="t-dim">C = Σ (k열)(k행)</text></svg>
+      <figcaption><b>그림 2-3.</b> 같은 곱 C = AB의 네 가지 읽기. 색칠한 칸이 한 번에 쓰는 재료와 만들어지는 결과다. ① 행 하나와 열 하나로 성분 하나, ② A 전체와 B의 열 하나로 C의 열 하나, ③ A의 행 하나와 B 전체로 C의 행 하나, ④ A의 열 하나와 B의 행 하나로 C 전체 크기의 계수 1 행렬 하나를 만들어 n개를 더한다.</figcaption>
+    </figure>
+    <p>네 방법은 쓰임이 다릅니다. ②는 "\(B\)의 각 열에 같은 변환 \(A\)를 적용"하므로 정점 수천 개를 한 행렬의 열로 모아 한 번에 변환하는 그래픽스와 같습니다. ③은 데이터의 각 행(표본 하나)에 같은 가중치를 곱하는 신경망의 일괄 처리입니다. ④는 계수 1 조각의 합이라는 관점으로, 14장의 SVD와 저랭크 근사가 정확히 이 꼴 \(A = \sum \sigma_k\mathbf{u}_k\mathbf{v}_k^\mathsf{T}\)입니다.</p>
+
+    <div class="sim" id="sim-mx-four">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>한 단계씩 곱하기: 성분 · 열 · 행 · 외적</h3></div>
+      <div class="mx-four">
+        <figure><div id="mx-f-A"></div><figcaption>A (2×3)</figcaption></figure>
+        <span class="op">×</span>
+        <figure><div id="mx-f-B"></div><figcaption>B (3×2)</figcaption></figure>
+        <span class="op">=</span>
+        <figure><div id="mx-f-C"></div><figcaption>C = AB (2×2)</figcaption></figure>
+      </div>
+      <div class="sim-controls">
+        <div class="ctrl"><span>계산 방법</span><div class="seg" id="mx-f-way"><button data-value="entry" class="on">① 성분</button><button data-value="col">② 열</button><button data-value="row">③ 행</button><button data-value="outer">④ 외적</button></div></div>
+        <div class="btn-row"><button class="btn primary" id="mx-f-step">다음 단계 ▶</button><button class="btn" id="mx-f-reset">처음부터</button><button class="btn" id="mx-f-rand">새 행렬</button></div>
+      </div>
+      <div class="mx-msg" id="mx-f-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">진행</span><span class="v" id="mx-f-prog">—</span></div>
+        <div class="stat"><span class="k">지금까지 곱셈 횟수</span><span class="v" id="mx-f-mults">—</span></div>
+        <div class="stat"><span class="k">완성된 C</span><span class="v" id="mx-f-final">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 네 방법 모두 끝까지 진행해 C가 같은지, 곱셈 횟수가 모두 2·3·2 = 12인지 확인하세요. ② ④ 외적 방법에서 한 단계 뒤의 C는 계수 1 행렬입니다(두 행이 서로 배수). 세 조각을 더해야 일반적인 C가 됩니다. ③ '새 행렬'을 눌러 다른 정수 행렬로 연습하세요. 모델: 정수 성분 2×3 · 3×2 곱.</div>
+    </div>
+    <div class="callout tip"><strong>예제 2.3 · 외적의 합으로</strong> \(\begin{bmatrix}1 & 2\\ 3 & 4\end{bmatrix}\begin{bmatrix}5 & 6\\ 7 & 8\end{bmatrix}\)을 ④로 계산하라.
+      <div class="formula">$$\begin{bmatrix}1\\3\end{bmatrix}\begin{bmatrix}5 & 6\end{bmatrix} + \begin{bmatrix}2\\4\end{bmatrix}\begin{bmatrix}7 & 8\end{bmatrix} = \begin{bmatrix}5 & 6\\ 15 & 18\end{bmatrix} + \begin{bmatrix}14 & 16\\ 28 & 32\end{bmatrix} = \begin{bmatrix}19 & 22\\ 43 & 50\end{bmatrix}$$</div>
+      <p>①로 확인하면 \(c_{11} = 1\cdot5+2\cdot7 = 19\), \(c_{22} = 3\cdot6+4\cdot8 = 50\). 같다.</p></div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="composition">
+    <h2>곱은 합성이다: 결합법칙과 순서</h2>
+    <div class="problem"><strong>세 변환을 미리 합치면 어느 쪽부터 곱해도 되나</strong>
+      <p>정점 백만 개에 모델 행렬 \(M\), 뷰 행렬 \(V\), 투영 행렬 \(P\)를 차례로 적용한다고 합시다. 정점마다 \(P(V(M\mathbf{x}))\)를 계산하면 행렬–벡터 곱이 정점당 세 번입니다. 미리 \(PVM\)을 만들어 두면 한 번이죠. 그런데 \((PV)M\)과 \(P(VM)\)은 같을까요? 그리고 \(MVP\)처럼 순서를 바꾸면?</p></div>
+    <div class="callout deep"><strong>정리 2.4 (결합법칙)</strong> 크기가 맞으면 \((AB)C = A(BC)\).
+      <p><b>증명.</b> 두 행렬이 같은 함수임을 보이면 된다(정리 2.2의 유일성). 임의의 \(\mathbf{x}\)에 대해 \(((AB)C)\mathbf{x} = (AB)(C\mathbf{x}) = A(B(C\mathbf{x}))\)이고 \((A(BC))\mathbf{x} = A((BC)\mathbf{x}) = A(B(C\mathbf{x}))\). 둘 다 "C, 다음 B, 다음 A"다. 성분 계산 \(\sum_k\sum_l a_{ik}b_{kl}c_{lj}\)으로 해도 되지만, 함수 합성의 결합법칙을 빌리면 한 줄이다. ∎</p></div>
+    <p>그래서 괄호는 자유롭게 옮길 수 있습니다. 하지만 <b>순서는 바꿀 수 없습니다.</b> \(AB\)는 "먼저 \(B\)"이고 \(BA\)는 "먼저 \(A\)"입니다. 양말을 신고 신발을 신는 것과 신발을 신고 양말을 신는 것이 다르듯, 일반적으로 \(AB\ne BA\)입니다. 크기조차 안 맞을 수 있고(\(2\times3\)과 \(3\times 5\)), 맞아도 결과가 다릅니다.</p>
+    <div class="formula">$$\underbrace{\begin{bmatrix}1 & 1\\ 0 & 1\end{bmatrix}}_{\text{전단 }S}\underbrace{\begin{bmatrix}0 & -1\\ 1 & 0\end{bmatrix}}_{90^\circ\text{ 회전 }R} = \begin{bmatrix}1 & -1\\ 1 & 0\end{bmatrix} \;\ne\; \begin{bmatrix}0 & -1\\ 1 & 1\end{bmatrix} = RS$$
+      <div class="where">\(SR\mathbf{e}_1\): 먼저 돌려서 \((0,1)\), 그다음 전단으로 \((1,1)\). \(RS\mathbf{e}_1\): 전단은 \(\mathbf{e}_1\)을 그대로 두고, 돌려서 \((0,1)\). 첫 열부터 다르다.</div>
+    </div>
+
+    <div class="sim" id="sim-mx-compose">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>합성 실험실: BA(먼저 A)와 AB(먼저 B)</h3></div>
+      <div class="split">
+        <div><canvas id="mx-cv-o1"></canvas><span class="cap">BA: 먼저 A → 다음 B</span></div>
+        <div><canvas id="mx-cv-o2"></canvas><span class="cap">AB: 먼저 B → 다음 A</span></div>
+      </div>
+      <div class="sim-controls">
+        <label class="ctrl"><span>변환 A</span><select id="mx-o-a"></select></label>
+        <label class="ctrl"><span>변환 B</span><select id="mx-o-b"></select></label>
+        <label class="ctrl"><span>진행 <output id="mx-o-t-out"></output></span><input type="range" id="mx-o-t" min="0" max="2" value="2" step="0.01"></label>
+        <div class="btn-row"><button class="btn primary" id="mx-o-play">▶ 두 단계 재생</button><button class="btn" id="mx-o-swap">A ↔ B 바꾸기</button></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">BA</span><span class="v" id="mx-o-ba">—</span></div>
+        <div class="stat"><span class="k">AB</span><span class="v" id="mx-o-ab">—</span></div>
+        <div class="stat"><span class="k">교환자 AB − BA</span><span class="v" id="mx-o-cm">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① A = 90° 회전, B = 가로 전단에서 두 F가 다른 곳에 도착하는 것을 보세요(점선은 반대편 결과). ② B를 '1.5배 확대'로 바꾸면 교환자가 0이 됩니다. 스칼라 배 행렬은 무엇과도 교환됩니다. ③ A = 45° 회전, B = 30° 회전처럼 같은 종류의 회전끼리는 교환됩니다(각이 더해질 뿐). ④ A = x축 사영, B = y축 사영이면 AB = BA = 0입니다. 영행렬이 아닌 두 행렬의 곱이 0일 수 있습니다. 모델: 회전은 각도를, 나머지는 성분을 단위 행렬에서 선형 보간해 중간 단계를 그렸습니다.</div>
+    </div>
+    <p>시뮬레이터의 ④가 보여 주듯 행렬 곱은 실수 곱과 다른 점이 더 있습니다. \(AB = 0\)이어도 \(A=0\)이나 \(B=0\)이라는 보장이 없고, 따라서 \(AB = AC\)에서 \(A\)를 "약분"해 \(B=C\)라고 할 수도 없습니다(\(A\)가 역행렬을 가질 때만 가능, 4장). 반면 다음은 실수처럼 성립합니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>법칙</th><th>식</th><th>성립?</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>결합법칙</td><td>\((AB)C = A(BC)\)</td><td>항상</td><td>함수 합성의 결합법칙</td></tr>
+        <tr><td>분배법칙</td><td>\(A(B+C) = AB+AC\)</td><td>항상</td><td>\(A\)가 선형</td></tr>
+        <tr><td>단위원</td><td>\(I_mA = A = AI_n\)</td><td>항상</td><td>"아무것도 안 하기"</td></tr>
+        <tr><td>교환법칙</td><td>\(AB = BA\)</td><td>일반적으로 아님</td><td>합성 순서가 다르다</td></tr>
+        <tr><td>소거법칙</td><td>\(AB = AC \Rightarrow B = C\)</td><td>일반적으로 아님</td><td>\(A\)가 정보를 지울 수 있다</td></tr>
+        <tr><td>거듭제곱</td><td>\(A^pA^q = A^{p+q}\)</td><td>항상</td><td>같은 변환끼리는 교환</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><strong>연산 순서는 결과가 아니라 비용을 바꾼다</strong> \((AB)\mathbf{x}\)와 \(A(B\mathbf{x})\)는 같은 벡터지만 비용이 다릅니다. \(n\times n\) 행렬이면 앞쪽은 행렬 곱(\(\approx 2n^3\) 연산) 뒤 행렬–벡터 곱, 뒤쪽은 행렬–벡터 곱 두 번(\(\approx 4n^2\))입니다. \(n = 1000\)이면 20억 대 400만입니다. 같은 변환을 벡터 백만 개에 적용할 때는 반대로 미리 곱해 두는 쪽이 이깁니다. 결합법칙은 이런 최적화를 허락해 주는 정리입니다.</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="transpose">
+    <h2>전치: 행과 열을 바꾸면 내적이 반대편으로 건너간다</h2>
+    <div class="problem"><strong>출력에서 잰 값을 입력에서 재려면</strong>
+      <p>로봇 팔 끝에 힘 센서가 있습니다. 관절 각속도 \(\dot{\boldsymbol\theta}\)가 끝점 속도 \(\mathbf{v} = J\dot{\boldsymbol\theta}\)를 만든다고 할 때(\(J\)는 야코비 행렬), 끝점에 힘 \(\mathbf{f}\)가 걸리면 각 관절 모터는 얼마의 토크를 버텨야 할까요? 일률 \(\mathbf{f}\cdot\mathbf{v}\)는 관절 쪽에서 계산해도 같아야 합니다. 이 "같은 내적을 반대편에서 재기"가 전치입니다.</p></div>
+    <p>\(m\times n\) 행렬 \(A\)의 <span class="term">전치</span><span class="en">(transpose)</span> \(A^\mathsf{T}\)는 \(n\times m\) 행렬로 \((A^\mathsf{T})_{ij} = a_{ji}\)입니다. 행이 열이 되고 열이 행이 됩니다. 열벡터 \(\mathbf{x}\)의 전치 \(\mathbf{x}^\mathsf{T}\)는 행벡터이고, 내적은 \(\mathbf{x}\cdot\mathbf{y} = \mathbf{x}^\mathsf{T}\mathbf{y}\)라는 행렬 곱이 됩니다.</p>
+    <div class="callout deep"><strong>정리 2.5 (전치의 성질)</strong>
+      <div class="formula">$$(A^\mathsf{T})^\mathsf{T} = A, \qquad (A+B)^\mathsf{T} = A^\mathsf{T}+B^\mathsf{T}, \qquad (AB)^\mathsf{T} = B^\mathsf{T}A^\mathsf{T}, \qquad (A\mathbf{x})\cdot\mathbf{y} = \mathbf{x}\cdot(A^\mathsf{T}\mathbf{y})$$</div>
+      <p><b>증명(곱).</b> \(((AB)^\mathsf{T})_{ij} = (AB)_{ji} = \sum_k a_{jk}b_{ki} = \sum_k (B^\mathsf{T})_{ik}(A^\mathsf{T})_{kj} = (B^\mathsf{T}A^\mathsf{T})_{ij}\). 마지막 성질은 \((A\mathbf{x})^\mathsf{T}\mathbf{y} = \mathbf{x}^\mathsf{T}A^\mathsf{T}\mathbf{y}\)로 곱의 전치를 적용한 것이다. 순서가 뒤집히는 이유는 양말과 신발과 같다. 벗을 때는 신발부터 벗는다. ∎</p></div>
+    <p>로봇 팔 문제의 답이 마지막 성질입니다. \(\mathbf{f}\cdot(J\dot{\boldsymbol\theta}) = (J^\mathsf{T}\mathbf{f})\cdot\dot{\boldsymbol\theta}\)이므로 관절 토크는 \(\boldsymbol\tau = J^\mathsf{T}\mathbf{f}\)입니다. 속도를 앞으로 보내는 행렬이 \(J\)라면 힘을 뒤로 보내는 행렬은 \(J^\mathsf{T}\)입니다. 신경망의 역전파에서 기울기가 가중치 행렬의 전치를 타고 거꾸로 흐르는 것도 정확히 같은 구조입니다.</p>
+    <div class="callout tip"><strong>예제 2.4 · \(A^\mathsf{T}A\)는 언제나 대칭</strong> 임의의 \(m\times n\) 행렬 \(A\)에 대해 \(A^\mathsf{T}A\)는 \(n\times n\) 대칭 행렬이고, 대각 성분은 음수가 아니다.
+      <p><b>풀이.</b> \((A^\mathsf{T}A)^\mathsf{T} = A^\mathsf{T}(A^\mathsf{T})^\mathsf{T} = A^\mathsf{T}A\). 성분으로 보면 \((A^\mathsf{T}A)_{ij} = \mathbf{a}_i\cdot\mathbf{a}_j\)(열끼리의 내적)이므로 대칭이고, 대각 성분 \(\mathbf{a}_i\cdot\mathbf{a}_i = \|\mathbf{a}_i\|^2 \ge 0\)이다. 예: \(A = \begin{bmatrix}1 & 2\\ 0 & 1\\ 1 & 0\end{bmatrix}\)이면 \(A^\mathsf{T}A = \begin{bmatrix}2 & 2\\ 2 & 5\end{bmatrix}\). 이 행렬(그람 행렬)은 8장 최소제곱의 정규 방정식 \(A^\mathsf{T}A\hat{\mathbf{x}} = A^\mathsf{T}\mathbf{b}\)의 주인공이다.</p></div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="special">
+    <h2>특수 행렬: 모양이 성질을 말한다</h2>
+    <div class="problem"><strong>백만 × 백만 행렬을 저장할 수 있을까</strong>
+      <p>원소가 \(10^{12}\)개면 배정밀도로 8테라바이트입니다. 그런데 회로 시뮬레이션이나 구조 해석에서 나오는 큰 행렬은 대부분의 칸이 0이거나, 대각선 근처에만 값이 있거나, 위아래가 대칭입니다. 행렬의 <b>모양</b>을 알면 저장도 계산도 수천 배 줄어듭니다. 그리고 모양은 대개 물리적 성질(국소성, 상호성, 보존)에서 옵니다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 170" role="img" aria-label="특수 행렬의 모양"><text x="61" y="26" text-anchor="middle" class="t" style="font-weight:700">대각</text><rect x="10" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="27" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="44" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="61" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="78" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="95" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="27" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="44" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="61" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="78" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="95" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="27" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="44" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="61" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="78" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="95" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="27" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="44" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="61" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="78" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="95" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="27" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="44" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="61" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="78" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="95" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="10" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="27" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="44" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="61" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="78" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="95" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><text x="61" y="160" text-anchor="middle" class="t-dim">D</text><text x="193" y="26" text-anchor="middle" class="t" style="font-weight:700">위삼각</text><rect x="142" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="159" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="176" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="193" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="210" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="227" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="142" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="159" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="176" y="57" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="193" y="57" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="210" y="57" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="227" y="57" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="142" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="159" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="176" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="193" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="210" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="227" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="142" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="159" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="176" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="193" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="210" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="227" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="142" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="159" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="176" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="193" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="210" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="227" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="142" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="159" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="176" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="193" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="210" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="227" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><text x="193" y="160" text-anchor="middle" class="t-dim">U</text><text x="325" y="26" text-anchor="middle" class="t" style="font-weight:700">아래삼각</text><rect x="274" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="291" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="308" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="325" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="342" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="359" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="274" y="57" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="291" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="308" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="325" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="342" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="359" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="274" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="291" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="308" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="325" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="342" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="359" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="274" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="291" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="308" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="325" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="342" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="359" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="274" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="291" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="308" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="325" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="342" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="359" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="274" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="291" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="308" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="325" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="342" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="359" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><text x="325" y="160" text-anchor="middle" class="t-dim">L</text><text x="457" y="26" text-anchor="middle" class="t" style="font-weight:700">치환</text><rect x="406" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="440" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="457" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="474" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="491" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="406" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="423" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="440" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="457" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="474" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="491" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="406" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="440" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="457" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="474" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="491" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="406" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="440" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="457" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="474" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="491" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="406" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="440" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="457" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="474" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="491" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="406" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="423" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="440" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="457" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="474" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="491" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><text x="457" y="160" text-anchor="middle" class="t-dim">P</text><text x="589" y="26" text-anchor="middle" class="t" style="font-weight:700">대칭</text><rect x="538" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="555" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="572" y="40" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="589" y="40" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="606" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="623" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="538" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="555" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="572" y="57" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="589" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="606" y="57" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="623" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="538" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="555" y="74" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="572" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="589" y="74" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="606" y="74" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="623" y="74" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="538" y="91" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="555" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="572" y="91" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="589" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="606" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="623" y="91" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="538" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="555" y="108" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="572" y="108" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="589" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="606" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="623" y="108" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="538" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="555" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="572" y="125" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="589" y="125" width="15" height="15" rx="2" class="f-acc-soft" style="stroke-width:1"/><rect x="606" y="125" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="623" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><text x="589" y="160" text-anchor="middle" class="t-dim">Aᵀ = A</text><text x="721" y="26" text-anchor="middle" class="t" style="font-weight:700">삼중대각</text><rect x="670" y="40" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="687" y="40" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="704" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="721" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="738" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="755" y="40" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="670" y="57" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="687" y="57" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="704" y="57" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="721" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="738" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="755" y="57" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="670" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="687" y="74" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="704" y="74" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="721" y="74" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="738" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="755" y="74" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="670" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="687" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="704" y="91" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="721" y="91" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="738" y="91" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="755" y="91" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="670" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="687" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="704" y="108" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="721" y="108" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="738" y="108" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><rect x="755" y="108" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="670" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="687" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="704" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="721" y="125" width="15" height="15" rx="2" class="f-surface" style="stroke-width:1"/><rect x="738" y="125" width="15" height="15" rx="2" class="f-acc2-soft" style="stroke-width:1"/><rect x="755" y="125" width="15" height="15" rx="2" class="f-acc" style="stroke-width:1"/><text x="721" y="160" text-anchor="middle" class="t-dim">띠 행렬</text></svg>
+      <figcaption><b>그림 2-4.</b> 6×6 행렬에서 0이 아닐 수 있는 칸(색칠)의 모양. 대칭 행렬은 대각선을 사이에 두고 같은 색끼리 값이 같다. 삼중대각(띠) 행렬은 1차원 열전도·스프링 사슬·전송선처럼 "이웃끼리만 상호작용"하는 계에서 나온다.</figcaption>
+    </figure>
+    <div class="table-wrap"><table>
+      <thead><tr><th>이름</th><th>정의</th><th>변환으로서의 뜻</th><th>핵심 성질</th></tr></thead>
+      <tbody>
+        <tr><td>대각 행렬</td><td>\(i\ne j\)이면 \(a_{ij}=0\)</td><td>축마다 따로 늘이기</td><td>곱·거듭제곱이 성분별: \(D^k = \operatorname{diag}(d_i^k)\)</td></tr>
+        <tr><td>위(아래)삼각 행렬</td><td>\(i>j\) (\(i\lt j\))이면 \(a_{ij}=0\)</td><td>\(x_n\)은 \(x_n\)에만, … 순차 의존</td><td>삼각끼리의 곱은 삼각. 후진 대입으로 바로 푼다(3장)</td></tr>
+        <tr><td>치환 행렬</td><td>\(I\)의 행 순서를 바꾼 것</td><td>좌표 이름 바꾸기</td><td>\(P^\mathsf{T} = P^{-1}\). 행 교환(3장)의 기록</td></tr>
+        <tr><td>대칭 행렬</td><td>\(A^\mathsf{T} = A\)</td><td>서로 수직인 축을 따라 늘이기</td><td>실수 고유값, 직교 고유벡터(13장)</td></tr>
+        <tr><td>직교 행렬</td><td>\(Q^\mathsf{T}Q = I\)</td><td>회전·반사(길이 보존)</td><td>\(Q^{-1} = Q^\mathsf{T}\), \(\|Q\mathbf{x}\| = \|\mathbf{x}\|\) (9장)</td></tr>
+        <tr><td>사영 행렬</td><td>\(P^2 = P\)</td><td>한 번 그림자를 내리면 끝</td><td>직교 사영이면 추가로 \(P^\mathsf{T}=P\) (8장)</td></tr>
+        <tr><td>멱영 행렬</td><td>어떤 \(k\)에서 \(N^k = 0\)</td><td>몇 번 적용하면 모두 소멸</td><td>대각 성분이 0인 순삼각 행렬이 대표 예</td></tr>
+      </tbody>
+    </table></div>
+    <p>직교 행렬의 정의 \(Q^\mathsf{T}Q = I\)를 성분으로 읽으면 "열끼리의 내적이 \(i=j\)면 1, 아니면 0", 즉 <b>열들이 서로 수직인 단위 벡터</b>라는 뜻입니다. 길이 보존은 전치 성질 한 줄로 나옵니다. \(\|Q\mathbf{x}\|^2 = (Q\mathbf{x})\cdot(Q\mathbf{x}) = \mathbf{x}\cdot(Q^\mathsf{T}Q\mathbf{x}) = \|\mathbf{x}\|^2\).</p>
+
+    <div class="sim" id="sim-mx-special">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>특수 행렬 도감: 모양과 성질 확인하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-sp"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>종류</span><div class="seg" id="mx-s-kind"><button data-value="diag" class="on">대각</button><button data-value="upper">위삼각</button><button data-value="perm">치환</button><button data-value="sym">대칭</button><button data-value="rot">회전</button><button data-value="refl">반사</button><button data-value="proj">사영</button><button data-value="nil">멱영</button></div></div>
+          <label class="ctrl"><span id="mx-s-plabel">매개변수 s</span><output id="mx-s-p-out"></output><input type="range" id="mx-s-p" min="-1" max="1" value="0.5" step="0.05" aria-label="매개변수 s"></label>
+          <label class="check"><input type="checkbox" id="mx-s-twice"> 두 번 적용(A²) 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="mx-msg" id="mx-s-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">A</span><span class="v" id="mx-s-a">—</span></div>
+        <div class="stat"><span class="k">Aᵀ</span><span class="v" id="mx-s-at">—</span></div>
+        <div class="stat"><span class="k">det A</span><span class="v" id="mx-s-det">—</span></div>
+        <div class="stat"><span class="k">성질</span><span class="v"><span class="mx-badges" id="mx-s-props">—</span></span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '대칭'에서 점선 두 축(서로 수직)은 방향이 바뀌지 않고 늘거나 줄기만 합니다. 단위원은 그 축에 맞춘 타원이 됩니다. ② '사영'에 'A² 겹쳐 보기'를 켜면 A²의 상이 A의 상과 정확히 겹칩니다(P² = P). ③ '멱영'은 한 번이면 평면이 직선으로, 두 번이면 원점 하나로 무너집니다. ④ '회전'과 '반사'는 단위원을 단위원으로 보냅니다(직교). 반사는 F를 거울상으로 뒤집습니다(det = −1). 모델: 2×2 행렬. 점선 원은 단위원, 실선은 그 상입니다.</div>
+    </div>
+
+    <p>2차원에서 본 성질은 3차원에서도 그대로입니다. 3×3 회전 행렬은 세 좌표축 회전 \(R_x, R_y, R_z\)의 곱으로 만들 수 있고, 곱의 순서에 따라 결과가 달라집니다(비행기의 요·피치·롤 순서 규약이 중요한 이유). 회전 뒤에 크기 조절·전단·사영을 붙이면 단위 정육면체는 평행육면체로 바뀌고, 그 부피 배율이 3×3 행렬식입니다(10장).</p>
+    <div class="formula">$$R_z(\gamma) = \begin{bmatrix}\cos\gamma & -\sin\gamma & 0\\ \sin\gamma & \cos\gamma & 0\\ 0 & 0 & 1\end{bmatrix},\quad R_y(\beta) = \begin{bmatrix}\cos\beta & 0 & \sin\beta\\ 0 & 1 & 0\\ -\sin\beta & 0 & \cos\beta\end{bmatrix},\quad R_x(\alpha) = \begin{bmatrix}1 & 0 & 0\\ 0 & \cos\alpha & -\sin\alpha\\ 0 & \sin\alpha & \cos\alpha\end{bmatrix}$$
+      <div class="where">각 행렬의 열은 세 축 단위 벡터가 가는 곳이다. 예를 들어 \(R_z\)는 \(\mathbf{e}_3\)(z축)을 그대로 두므로 3열이 \((0,0,1)\)이다. 세 행렬 모두 직교 행렬이고 det = 1이다.</div>
+    </div>
+    <div class="sim" id="sim-mx-cube">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>3×3 행렬로 정육면체 돌리고 찌그러뜨리기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-cube"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>x축 회전 α <output id="mx-q-ax-out"></output></span><input type="range" id="mx-q-ax" min="-180" max="180" value="0" step="1"></label>
+          <label class="ctrl"><span>y축 회전 β <output id="mx-q-ay-out"></output></span><input type="range" id="mx-q-ay" min="-180" max="180" value="0" step="1"></label>
+          <label class="ctrl"><span>z축 회전 γ <output id="mx-q-az-out"></output></span><input type="range" id="mx-q-az" min="-180" max="180" value="30" step="1"></label>
+          <label class="ctrl"><span>추가 변환 S</span><select id="mx-q-s">
+            <option value="none">없음 (S = I)</option>
+            <option value="scalez">z 방향 0.4배</option>
+            <option value="shear">전단 (x += 0.8z)</option>
+            <option value="proj">xy평면으로 사영 (z = 0)</option>
+            <option value="refl">xy평면 거울 (z → −z)</option>
+            <option value="stretch">축별 확대 (1.5, 1, 0.6)</option>
+          </select></label>
+          <div class="ctrl"><span>순서</span><div class="seg" id="mx-q-ord"><button data-value="SR" class="on">회전 R 먼저 → S</button><button data-value="RS">S 먼저 → R</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="mx-q-spin">▶ 자동 회전</button></div>
+        </div>
+      </div>
+      <div class="mx-legend"><span><i style="background:var(--red)"></i>Me₁</span><span><i style="background:var(--green)"></i>Me₂</span><span><i style="background:var(--blue)"></i>Me₃</span><span><i style="background:var(--text-faint)"></i>원래 정육면체</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">M = R<sub>z</sub>R<sub>y</sub>R<sub>x</sub> 와 S의 곱</span><span class="v" id="mx-q-m">—</span></div>
+        <div class="stat"><span class="k">det M (부피 배율)</span><span class="v" id="mx-q-det">—</span></div>
+        <div class="stat"><span class="k">MᵀM = I ? (직교)</span><span class="v" id="mx-q-orth">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① S = 없음일 때 어떤 각도에서도 MᵀM = I, det = 1입니다. 회전은 모양을 바꾸지 않습니다. ② '전단'을 고르고 순서를 바꿔 보세요. 같은 R과 S인데 정육면체가 다른 평행육면체가 됩니다. ③ '사영'은 순서와 상관없이 det = 0입니다. 부피가 사라지면 3차원 정보가 하나 사라진 것입니다. 모델: 3×3 선형 변환을 고정된 관찰 방향에서 정사영으로 그렸습니다(원근 없음). 회전 순서는 x → y → z (M = R<sub>z</sub>R<sub>y</sub>R<sub>x</sub>).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="homogeneous">
+    <h2>동차 좌표: 평행이동까지 행렬 곱으로</h2>
+    <div class="problem"><strong>로봇 팔 끝은 어디에 있나</strong>
+      <p>평면 로봇 팔의 첫 관절이 \(\theta_1\) 돌고, 길이 \(L_1\)인 첫 팔 끝에서 둘째 관절이 \(\theta_2\) 돌고, 길이 \(L_2\)인 둘째 팔 끝에 집게가 있습니다. 집게의 위치와 방향은? 관절이 여섯 개인 산업용 로봇이라면? 회전과 이동이 번갈아 나오는데, 이동은 선형이 아니라서(원점을 옮김) 행렬 곱의 사슬로 쓸 수 없습니다. 이대로라면 단계마다 "돌리고 더하기"를 손으로 이어 붙여야 합니다.</p></div>
+    <p>요령은 차원을 하나 올리는 것입니다. 평면의 점 \((x, y)\)를 3차원 벡터 \((x, y, 1)\)로 씁니다. 그러면 평행이동이 3×3 행렬 곱이 됩니다.</p>
+    <div class="formula">$$\begin{bmatrix}1 & 0 & t_x\\ 0 & 1 & t_y\\ 0 & 0 & 1\end{bmatrix}\begin{bmatrix}x\\ y\\ 1\end{bmatrix} = \begin{bmatrix}x+t_x\\ y+t_y\\ 1\end{bmatrix}, \qquad \begin{bmatrix}A & \mathbf{t}\\ \mathbf{0}^\mathsf{T} & 1\end{bmatrix}\begin{bmatrix}\mathbf{x}\\ 1\end{bmatrix} = \begin{bmatrix}A\mathbf{x}+\mathbf{t}\\ 1\end{bmatrix}$$
+      <div class="where">3차원 공간에서 보면 이 행렬은 평면 \(z=1\)을 미끄러뜨리는 <b>전단</b>, 즉 진짜 선형 변환이다. 평면 위에서는 그것이 평행이동으로 보일 뿐이다. 오른쪽은 일반 아핀 변환 \(\mathbf{x}\mapsto A\mathbf{x}+\mathbf{t}\)의 블록 표기(8절).</div>
+    </div>
+    <p>이렇게 쓰면 아핀 변환의 합성도 행렬 곱이 되고, 결합법칙과 "오른쪽이 먼저" 규칙이 그대로 적용됩니다. 3차원 그래픽스는 같은 방식으로 \((x,y,z,1)\)과 4×4 행렬을 씁니다. 원근 투영은 마지막 성분 \(w\)에 깊이를 실어 보낸 뒤 화면에서 \((x/w, y/w)\)로 나누는 방식으로 처리합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 200" role="img" aria-label="그래픽스 변환 파이프라인"><defs><marker id="mx-ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g><rect x="10" y="50" width="120" height="70" rx="10" class="f-surface"/><text x="70" y="80" text-anchor="middle" class="t" style="font-weight:700">모델 좌표</text><text x="70" y="100" text-anchor="middle" class="t-dim">캐릭터 기준</text></g>
+        <line x1="134" y1="85" x2="176" y2="85" class="s-acc" marker-end="url(#mx-ah5)"/><text x="155" y="74" text-anchor="middle" class="t-mono">M</text>
+        <g><rect x="180" y="50" width="120" height="70" rx="10" class="f-surface"/><text x="240" y="80" text-anchor="middle" class="t" style="font-weight:700">세계 좌표</text><text x="240" y="100" text-anchor="middle" class="t-dim">장면 기준</text></g>
+        <line x1="304" y1="85" x2="346" y2="85" class="s-acc" marker-end="url(#mx-ah5)"/><text x="325" y="74" text-anchor="middle" class="t-mono">V</text>
+        <g><rect x="350" y="50" width="120" height="70" rx="10" class="f-surface"/><text x="410" y="80" text-anchor="middle" class="t" style="font-weight:700">카메라 좌표</text><text x="410" y="100" text-anchor="middle" class="t-dim">눈 기준</text></g>
+        <line x1="474" y1="85" x2="516" y2="85" class="s-acc" marker-end="url(#mx-ah5)"/><text x="495" y="74" text-anchor="middle" class="t-mono">P</text>
+        <g><rect x="520" y="50" width="120" height="70" rx="10" class="f-surface"/><text x="580" y="80" text-anchor="middle" class="t" style="font-weight:700">클립 좌표</text><text x="580" y="100" text-anchor="middle" class="t-dim">(x, y, z, w)</text></g>
+        <line x1="644" y1="85" x2="686" y2="85" class="s-acc" marker-end="url(#mx-ah5)"/><text x="665" y="74" text-anchor="middle" class="t-mono">÷w</text>
+        <g><rect x="690" y="50" width="100" height="70" rx="10" class="f-acc-soft"/><text x="740" y="80" text-anchor="middle" class="t" style="font-weight:700">화면</text><text x="740" y="100" text-anchor="middle" class="t-dim">픽셀 위치</text></g>
+        <text x="400" y="160" text-anchor="middle" class="t-acc">정점마다: clip = (P·V·M) · [x y z 1]ᵀ — 세 4×4 행렬은 프레임마다 한 번 미리 곱한다</text>
+        <text x="400" y="184" text-anchor="middle" class="t-dim">M·V: 회전·이동(아핀), P: 원근 투영(마지막 행이 w에 깊이를 싣는다). 나눗셈 ÷w만 행렬 곱 밖에 있다.</text>
+      </svg>
+      <figcaption><b>그림 2-5.</b> 실시간 그래픽스의 정점 변환 사슬. 각 화살표가 4×4 동차 행렬이고, 오른쪽에 쓴 행렬이 먼저 적용되므로 식은 P·V·M 순서다. 원근 나눗셈(÷w)만 선형이 아니다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-mx-arm">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2관절 로봇 팔: 동차 행렬의 사슬</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-arm"></canvas><span class="tag-tl">받침(사각 점)을 끌 수 있습니다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>관절 1 θ₁ <output id="mx-a-t1-out"></output></span><input type="range" id="mx-a-t1" min="-180" max="180" value="35" step="1"></label>
+          <label class="ctrl"><span>관절 2 θ₂ <output id="mx-a-t2-out"></output></span><input type="range" id="mx-a-t2" min="-160" max="160" value="60" step="1"></label>
+          <label class="ctrl"><span>팔 길이 L₁ <output id="mx-a-l1-out"></output></span><input type="range" id="mx-a-l1" min="0.5" max="3" value="2" step="0.1"></label>
+          <label class="ctrl"><span>팔 길이 L₂ <output id="mx-a-l2-out"></output></span><input type="range" id="mx-a-l2" min="0.5" max="2.5" value="1.5" step="0.1"></label>
+          <div class="ctrl"><span>한 마디의 행렬</span><div class="seg" id="mx-a-ord"><button data-value="RT" class="on">R(θ)·T(L) 올바름</button><button data-value="TR">T(L)·R(θ) 뒤바뀜</button></div></div>
+        </div>
+      </div>
+      <div class="mx-msg" id="mx-a-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">T₀₁ (첫 마디)</span><span class="v" id="mx-a-m1">—</span></div>
+        <div class="stat"><span class="k">T₁₂ (둘째 마디)</span><span class="v" id="mx-a-m2">—</span></div>
+        <div class="stat"><span class="k">T₀₂ = T₀₁T₁₂</span><span class="v" id="mx-a-m">—</span></div>
+        <div class="stat"><span class="k">집게 위치</span><span class="v" id="mx-a-end">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① T₀₂의 왼쪽 위 2×2 블록이 각 θ₁ + θ₂ 회전이고, 오른쪽 열이 집게 위치(받침 기준)인지 확인하세요. ② '뒤바뀜'을 고르면 "먼저 회전, 그다음 이동"이 되어 θ₁을 바꿔도 첫 관절이 제자리에서 돌기만 하고 팔은 늘 가로로 뻗습니다. 회전 중심이 틀린 것입니다. ③ 받침을 끌면 전체 사슬 앞에 평행이동 행렬 하나가 곱해질 뿐, T₀₂는 그대로입니다. 모델: 평면 2자유도 직렬 팔, 각 마디 T = R(θ)·Tr(L, 0), 집게 모양은 끝 좌표계에서 그린 도형을 전체 행렬로 옮긴 것입니다.</div>
+    </div>
+    <div class="callout tip"><strong>예제 2.5 · 강체 변환의 역</strong> \(T = \begin{bmatrix}R & \mathbf{t}\\ \mathbf{0}^\mathsf{T} & 1\end{bmatrix}\)(\(R\)은 회전)의 역행렬을 구하라.
+      <p><b>풀이.</b> \(\mathbf{y} = R\mathbf{x}+\mathbf{t}\)를 \(\mathbf{x}\)에 대해 풀면 \(\mathbf{x} = R^{-1}(\mathbf{y}-\mathbf{t}) = R^\mathsf{T}\mathbf{y} - R^\mathsf{T}\mathbf{t}\)(회전은 직교 행렬이므로 \(R^{-1}=R^\mathsf{T}\)). 따라서</p>
+      <div class="formula">$$T^{-1} = \begin{bmatrix}R^\mathsf{T} & -R^\mathsf{T}\mathbf{t}\\ \mathbf{0}^\mathsf{T} & 1\end{bmatrix}.$$</div>
+      <p>카메라의 위치·자세 \(T\)를 알 때 뷰 행렬 \(V = T^{-1}\)을 역행렬 계산 없이 전치와 곱 하나로 얻는 공식이다.</p></div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="cost">
+    <h2>블록 행렬과 계산 비용: GPU가 행렬 곱을 사랑하는 이유</h2>
+    <div class="problem"><strong>계산보다 운반이 비싸다</strong>
+      <p>\(4096\times 4096\) 행렬 두 개를 곱하는 데는 약 1,370억 번의 부동소수점 연산이 필요합니다. 그런데 현대의 프로세서에서 숫자 하나를 메모리에서 가져오는 시간은 곱셈 한 번보다 훨씬 깁니다. 곱셈마다 재료를 새로 가져온다면 계산 장치는 대부분 놀고 있겠지요. 어떻게 하면 한 번 가져온 숫자로 여러 번 계산할 수 있을까요?</p></div>
+    <p>먼저 셈입니다. \(n\times n\) 행렬 곱에서 성분 하나는 곱셈 \(n\)번, 덧셈 \(n-1\)번이고 성분이 \(n^2\)개이므로 모두 \(n^2(2n-1)\approx 2n^3\) 연산입니다. 반면 재료(두 행렬)는 \(2n^2\)개뿐입니다. 숫자 하나당 평균 \(n\)번 쓰이는 셈이라, 재사용만 잘하면 메모리 이동은 거의 무시할 수 있습니다. 그 재사용을 조직하는 도구가 블록 행렬입니다.</p>
+    <div class="callout deep"><strong>정리 2.6 (블록 곱)</strong> 행렬을 크기가 맞는 블록으로 나누면 블록을 성분처럼 곱해도 된다.
+      <div class="formula">$$\begin{bmatrix}A_{11} & A_{12}\\ A_{21} & A_{22}\end{bmatrix}\begin{bmatrix}B_{11} & B_{12}\\ B_{21} & B_{22}\end{bmatrix} = \begin{bmatrix}A_{11}B_{11}+A_{12}B_{21} & A_{11}B_{12}+A_{12}B_{22}\\ A_{21}B_{11}+A_{22}B_{21} & A_{21}B_{12}+A_{22}B_{22}\end{bmatrix}$$</div>
+      조건은 \(A\)의 열 분할과 \(B\)의 행 분할이 일치하는 것뿐이다(그래야 \(A_{ik}B_{kj}\)의 크기가 맞는다). 증명은 성분 합 \(\sum_k a_{ik}b_{kj}\)를 블록 경계에서 끊어 묶는 것이다. 블록 곱에서는 \(A_{12}B_{21}\ne B_{21}A_{12}\)이므로 순서를 지켜야 한다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 210" role="img" aria-label="블록 행렬 곱"><text x="20" y="22" class="t" style="font-weight:700">C₂₃ = A₂₁B₁₃ + A₂₂B₂₃ + A₂₃B₃₃ + A₂₄B₄₃</text><rect x="40" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="70" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="100" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="130" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="40" y="70" width="28" height="28" rx="3" class="f-acc-soft" style="stroke-width:1"/><rect x="70" y="70" width="28" height="28" rx="3" class="f-acc-soft" style="stroke-width:1"/><rect x="100" y="70" width="28" height="28" rx="3" class="f-acc-soft" style="stroke-width:1"/><rect x="130" y="70" width="28" height="28" rx="3" class="f-acc-soft" style="stroke-width:1"/><rect x="40" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="70" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="100" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="130" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="40" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="70" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="100" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="130" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><text x="100" y="180" text-anchor="middle" class="t-mono">A (행 블록 2)</text><text x="190" y="105" class="t-mono" style="font-size:20px">×</text><rect x="230" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="260" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="290" y="40" width="28" height="28" rx="3" class="f-acc2-soft" style="stroke-width:1"/><rect x="320" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="230" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="260" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="290" y="70" width="28" height="28" rx="3" class="f-acc2-soft" style="stroke-width:1"/><rect x="320" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="230" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="260" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="290" y="100" width="28" height="28" rx="3" class="f-acc2-soft" style="stroke-width:1"/><rect x="320" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="230" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="260" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="290" y="130" width="28" height="28" rx="3" class="f-acc2-soft" style="stroke-width:1"/><rect x="320" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><text x="290" y="180" text-anchor="middle" class="t-mono">B (열 블록 3)</text><text x="380" y="105" class="t-mono" style="font-size:20px">=</text><rect x="420" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="450" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="480" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="510" y="40" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="420" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="450" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="480" y="70" width="28" height="28" rx="3" class="f-acc" style="stroke-width:1"/><rect x="510" y="70" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="420" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="450" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="480" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="510" y="100" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="420" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="450" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="480" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><rect x="510" y="130" width="28" height="28" rx="3" class="f-surface" style="stroke-width:1"/><text x="480" y="180" text-anchor="middle" class="t-mono">C (블록 2,3)</text><g transform="translate(580,40)"><rect width="200" height="122" rx="10" class="f-surface"/><text x="100" y="28" text-anchor="middle" class="t" style="font-weight:700">빠른 메모리 한 번에</text><text x="100" y="52" text-anchor="middle" class="t-mono">A 타일 b×b + B 타일 b×b</text><text x="100" y="74" text-anchor="middle" class="t-mono">= 2b² 개 숫자</text><text x="100" y="98" text-anchor="middle" class="t-acc">→ 2b³ 연산</text></g></svg>
+      <figcaption><b>그림 2-6.</b> 타일(블록) 곱. C의 한 타일을 만들려면 A의 같은 줄 타일들과 B의 같은 열 타일들을 차례로 곱해 더한다. 크기 b×b인 타일 두 개를 빠른 메모리에 올리면 2b²개의 숫자로 2b³번 계산하므로, 숫자 하나가 b번 재사용된다.</figcaption>
+    </figure>
+    <p>타일 크기 \(b\)가 클수록 재사용이 늘어납니다. 이 "연산 수 ÷ 옮긴 바이트 수"를 <span class="term">산술 강도</span><span class="en">(arithmetic intensity)</span>라 하고, 기계의 최고 연산 속도와 메모리 대역폭의 비보다 산술 강도가 낮으면 계산은 <b>메모리에 묶이고</b>, 높으면 <b>연산에 묶입니다</b>(루프라인 모델). 행렬 곱은 타일만 잘 짜면 산술 강도를 얼마든지 올릴 수 있는 드문 계산이라, 수천 개의 연산 장치를 가진 GPU의 성능을 거의 다 뽑아낼 수 있습니다. 행렬–벡터 곱은 그렇지 않습니다. 행렬의 숫자 하나가 딱 한 번만 쓰이기 때문입니다.</p>
+
+    <div class="sim" id="sim-mx-cost">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>루프라인: 행렬 곱은 연산에, 행렬–벡터 곱은 메모리에 묶인다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mx-cv-cost"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>크기 n <output id="mx-k-n-out"></output></span><input type="range" id="mx-k-n" min="6" max="14" value="12" step="1"></label>
+          <div class="ctrl"><span>계산</span><div class="seg" id="mx-k-op"><button data-value="mm" class="on">행렬 × 행렬</button><button data-value="mv">행렬 × 벡터</button></div></div>
+          <div class="ctrl"><span>타일 크기 b</span><div class="seg" id="mx-k-b"><button data-value="1">1 (재사용 없음)</button><button data-value="16">16</button><button data-value="64" class="on">64</button><button data-value="256">256</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">연산 수</span><span class="v" id="mx-k-fl">—</span></div>
+        <div class="stat"><span class="k">메모리 이동 (추정)</span><span class="v" id="mx-k-by">—</span></div>
+        <div class="stat"><span class="k">산술 강도</span><span class="v" id="mx-k-ai">—</span></div>
+        <div class="stat"><span class="k">예상 시간 · 한계</span><span class="v" id="mx-k-t">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 타일 1(재사용 없음)에서는 행렬 곱도 메모리 한계에 걸립니다. 타일을 키우면 점이 오른쪽으로 이동해 지붕(최고 연산 속도)에 닿습니다. ② '행렬 × 벡터'는 타일을 아무리 키워도 산술 강도가 약 0.5에 머뭅니다. ③ n을 두 배로 하면 행렬 곱의 연산 수는 8배, 행렬–벡터 곱은 4배가 됩니다. 모델: 최고 연산 속도 20 TFLOP/s, 메모리 대역폭 1 TB/s인 <b>가상의 가속기</b>, 단정밀도(4바이트). 타일 곱의 메모리 이동은 2n³/b + 2n²개 숫자로 근사했고, 캐시 크기 제한·실제 하드웨어 효율은 무시했습니다.</div>
+    </div>
+    <div class="callout deep"><strong>2n³보다 빠를 수 있나</strong> 1969년 슈트라센은 2×2 블록 곱을 곱셈 8번이 아니라 7번으로 하는 방법을 찾았고, 이를 재귀적으로 쓰면 연산량이 \(O(n^{\log_2 7})\approx O(n^{2.807})\)이 됩니다. 이후 지수는 이론적으로 2.4 아래까지 내려갔지만, 상수가 크거나 수치 안정성이 나빠 실무 라이브러리는 대부분 \(2n^3\) 알고리즘을 타일링과 하드웨어 최적화로 다듬어 씁니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"변환 = 행렬, 합성 = 곱"은 이 서가와 시리즈 곳곳에서 계산의 기본 단위입니다.</p>
+    <div class="uses">
+      <a href="../../foundations/chapters/linalg.html#basis"><small>MATHBOOK</small>격자를 휘는 기계<br><span>기저 벡터를 끌어 2×2 변환을 직관으로 익히는 출발점, CCM과 SVD 맛보기.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>다중 회귀의 행렬 표기<br><span>설계 행렬 X, 정규 방정식 XᵀXβ = Xᵀy. 전치와 대칭 행렬이 바로 쓰인다.</span></a>
+      <a href="https://aibook.euiyun.com/"><small>AIBOOK</small>신경망 층 = 행렬 곱<br><span>일괄 처리는 행 그림, 역전파는 전치 행렬을 타고 흐르는 기울기.</span></a>
+      <a href="https://computerbook.euiyun.com/"><small>COMPUTERBOOK</small>캐시와 메모리 계층<br><span>타일링, 행 우선·열 우선 저장, 산술 강도와 성능.</span></a>
+      <a href="https://semi.euiyun.com/optics/"><small>OPTICSBOOK</small>광선 전달 행렬<br><span>렌즈와 빈 공간을 지날 때마다 2×2 ABCD 행렬을 곱한다. 곱의 순서가 광학계의 순서다.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>희소·띠 행렬<br><span>격자 위 편미분 방정식은 이웃끼리만 연결된 거대한 희소 행렬이 된다.</span></a>
+      <a href="https://carbook.euiyun.com/"><small>CARBOOK</small>좌표계 변환<br><span>차체·센서·지도 좌표를 잇는 회전 행렬과 동차 변환, 센서 융합.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>선형 변환</b>은 \(T(a\mathbf{u}+b\mathbf{v}) = aT(\mathbf{u})+bT(\mathbf{v})\)를 만족하는 함수다. \(T(\mathbf{0})=\mathbf{0}\)이 필요조건이므로 평행이동은 선형이 아니다(아핀).</li>
+      <li>\(\mathbb{R}^n\to\mathbb{R}^m\)의 선형 변환은 꼭 하나의 \(m\times n\) 행렬과 같고, 그 \(j\)열은 \(T(\mathbf{e}_j)\)다. 행렬은 기저가 가는 곳의 기록이다.</li>
+      <li>\(A\mathbf{x}\)는 <b>열의 선형 결합</b>(출력 공간의 그림)이자 <b>행과의 내적</b>(입력 공간의 그림)이다.</li>
+      <li>행렬 곱 \(AB\)의 \(j\)열은 \(A\mathbf{b}_j\). 성분·열·행·외적의 합 네 방법이 모두 같고, 외적의 합은 계수 1 행렬들의 합이라는 관점을 준다.</li>
+      <li><b>곱 = 합성</b>(오른쪽이 먼저). 그래서 결합법칙·분배법칙은 성립하지만 교환법칙·소거법칙은 일반적으로 성립하지 않는다.</li>
+      <li>\((AB)^\mathsf{T} = B^\mathsf{T}A^\mathsf{T}\), \(A\mathbf{x}\cdot\mathbf{y} = \mathbf{x}\cdot A^\mathsf{T}\mathbf{y}\). \(A^\mathsf{T}A\)는 언제나 대칭이다. 힘·기울기는 전치를 타고 거꾸로 흐른다.</li>
+      <li>대각·삼각·치환·대칭·직교(\(Q^\mathsf{T}Q=I\))·사영(\(P^2=P\))·멱영 행렬은 모양이 곧 성질이고, 앞으로 모든 분해(LU, QR, 고유값 분해, SVD)의 재료가 된다.</li>
+      <li><b>동차 좌표</b> \((\mathbf{x},1)\)로 아핀 변환이 행렬 곱이 된다. 그래픽스의 P·V·M, 로봇 팔의 관절 사슬이 이 구조다.</li>
+      <li>\(n\times n\) 행렬 곱은 약 \(2n^3\) 연산에 재료는 \(2n^2\)개. 블록(타일) 곱으로 재사용을 늘리면 연산에 묶이는 계산이 되어 GPU가 빛을 낸다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 다음 중 선형 변환인 것은?</p><div class="opts">
+        <button class="opt">\(T(x, y) = (x+1,\; y)\)</button>
+        <button class="opt">\(T(x, y) = (xy,\; y)\)</button>
+        <button class="opt" data-correct>\(T(x, y) = (3y,\; x-y)\)</button>
+        <button class="opt">\(T(x, y) = (|x|,\; y)\)</button>
+      </div><div class="quiz-exp">\((3y, x-y) = \begin{bmatrix}0 & 3\\ 1 & -1\end{bmatrix}\begin{bmatrix}x\\y\end{bmatrix}\)로 행렬 곱이므로 선형이다. 첫째는 T(0) = (1, 0) ≠ 0, 둘째는 T(2u) ≠ 2T(u)(xy가 4배), 넷째는 T(−u) ≠ −T(u)다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 선형 변환 \(T:\mathbb{R}^2\to\mathbb{R}^3\)이 \(T(\mathbf{e}_1) = (1, 0, 2)\), \(T(\mathbf{e}_2) = (0, 1, -1)\)을 만족한다. \(T(3, -2)\)는?</p><div class="opts">
+        <button class="opt">\((3, -2, 0)\)</button>
+        <button class="opt" data-correct>\((3, -2, 8)\)</button>
+        <button class="opt">\((3, 2, 4)\)</button>
+        <button class="opt">정보가 부족하다</button>
+      </div><div class="quiz-exp">\(T(3,-2) = 3T(\mathbf{e}_1) - 2T(\mathbf{e}_2) = (3, 0, 6) + (0, -2, 2) = (3, -2, 8)\). 기저의 상 두 개면 선형 변환이 완전히 정해진다(정리 2.2). 행렬은 3×2다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(A\)가 3×4, \(B\)가 4×2 행렬이다. 옳은 것은?</p><div class="opts">
+        <button class="opt">\(AB\)와 \(BA\) 모두 정의된다</button>
+        <button class="opt" data-correct>\(AB\)는 3×2이고 \(BA\)는 정의되지 않는다</button>
+        <button class="opt">\(AB\)는 4×4이다</button>
+        <button class="opt">\(B^\mathsf{T}A^\mathsf{T}\)는 정의되지 않는다</button>
+      </div><div class="quiz-exp">안쪽 차원(4 = 4)이 맞아 AB는 바깥 차원 3×2. BA는 4×2와 3×4라 안쪽(2 ≠ 3)이 안 맞는다. \(B^\mathsf{T}A^\mathsf{T}\)는 2×4와 4×3의 곱으로 정의되고 \((AB)^\mathsf{T}\)와 같은 2×3 행렬이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 행렬 곱 \(C = AB\)를 "외적의 합" \(\sum_k \mathbf{a}_k\boldsymbol\beta_k^\mathsf{T}\)로 쓸 때, 각 항 \(\mathbf{a}_k\boldsymbol\beta_k^\mathsf{T}\)에 대한 옳은 설명은?</p><div class="opts">
+        <button class="opt">스칼라이다</button>
+        <button class="opt">C의 성분 하나이다</button>
+        <button class="opt" data-correct>C와 같은 크기이고 계수가 (0이 아니면) 1인 행렬이다</button>
+        <button class="opt">A의 행과 B의 열의 내적이다</button>
+      </div><div class="quiz-exp">A의 k열(m×1)과 B의 k행(1×p)의 곱은 m×p 행렬이다. 모든 열이 \(\mathbf{a}_k\)의 배수라 계수가 1이다. 내적(행·열)은 성분 하나를 주는 ① 방법이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 정점에 "먼저 회전 R, 그다음 이동 T, 마지막으로 투영 P"를 적용하는 하나의 행렬은?</p><div class="opts">
+        <button class="opt">\(RTP\)</button>
+        <button class="opt" data-correct>\(PTR\)</button>
+        <button class="opt">\(TRP\)</button>
+        <button class="opt">순서는 상관없다</button>
+      </div><div class="quiz-exp">\(P(T(R\mathbf{x})) = (PTR)\mathbf{x}\). 오른쪽 행렬이 벡터에 가장 가까워 먼저 적용된다. 회전과 이동은 일반적으로 교환되지 않으므로 순서가 중요하다(로봇 팔 시뮬레이터의 '뒤바뀜').</div></div>
+
+      <div class="quiz-q"><p>Q6. \((ABC)^\mathsf{T}\)와 같은 것은?</p><div class="opts">
+        <button class="opt">\(A^\mathsf{T}B^\mathsf{T}C^\mathsf{T}\)</button>
+        <button class="opt" data-correct>\(C^\mathsf{T}B^\mathsf{T}A^\mathsf{T}\)</button>
+        <button class="opt">\(C^\mathsf{T}A^\mathsf{T}B^\mathsf{T}\)</button>
+        <button class="opt">\(ABC\)</button>
+      </div><div class="quiz-exp">\((ABC)^\mathsf{T} = ((AB)C)^\mathsf{T} = C^\mathsf{T}(AB)^\mathsf{T} = C^\mathsf{T}B^\mathsf{T}A^\mathsf{T}\). 전치는 순서를 뒤집는다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 2×2 행렬 \(P\)가 \(P^2 = P\)이고 \(P\ne I\), \(P\ne 0\)이다. \(P\)에 대해 반드시 옳은 것은?</p><div class="opts">
+        <button class="opt">\(P\)는 직교 행렬이다</button>
+        <button class="opt">\(\det P = 1\)이다</button>
+        <button class="opt" data-correct>\(\det P = 0\)이고, 평면을 직선 위로 보낸다</button>
+        <button class="opt">\(P\)는 대칭 행렬이다</button>
+      </div><div class="quiz-exp">\(\det(P)^2 = \det(P^2) = \det P\)이므로 det는 0 또는 1. det = 1이면 역행렬이 있어 \(P = P^{-1}P^2 = P^{-1}P = I\)가 되어 모순이다. 그래서 det = 0이고 상은 직선이다(사영). 대칭은 직교 사영일 때만 성립한다. 예: \(\begin{bmatrix}1 & 1\\ 0 & 0\end{bmatrix}\)은 사영이지만 대칭이 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(n\times n\) 행렬 \(A, B\)와 벡터 \(\mathbf{x}\)가 있다. \(n\)이 클 때 \(AB\mathbf{x}\)를 가장 적은 연산으로 계산하는 방법은?</p><div class="opts">
+        <button class="opt">\((AB)\mathbf{x}\): 먼저 행렬 곱</button>
+        <button class="opt" data-correct>\(A(B\mathbf{x})\): 행렬–벡터 곱 두 번</button>
+        <button class="opt">두 방법의 연산 수는 같다</button>
+        <button class="opt">결과가 다르므로 비교할 수 없다</button>
+      </div><div class="quiz-exp">결합법칙으로 결과는 같다. 비용은 (AB)x ≈ 2n³ + 2n², A(Bx) ≈ 4n²로 차이가 크다. 다만 같은 AB를 수많은 벡터에 적용할 때는 미리 곱해 두는 편이 낫다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const MX = {
+  ap: (M, x, y) => [M[0][0] * x + M[0][1] * y, M[1][0] * x + M[1][1] * y],
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  T: (A) => A[0].map((_, j) => A.map((r) => r[j])),
+  I: (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))),
+  add: (A, B, s = 1) => A.map((r, i) => r.map((v, j) => v + s * B[i][j])),
+  lerpM: (A, B, t) => A.map((r, i) => r.map((v, j) => v + (B[i][j] - v) * t)),
+  rot: (t) => [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]],
+  det2: (M) => M[0][0] * M[1][1] - M[0][1] * M[1][0],
+  det3: (M) => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]),
+  norm: (A) => Math.hypot(...A.flat()),
+  num(v, d = 2) {
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  vec: (v, d = 2) => "(" + v.map((x) => MX.num(x, d)).join(", ") + ")",
+  /** HTML 행렬. hl(i, j) → "" | "hl" | "hl2" | "dim" */
+  mat(M, d = 2, hl, show) {
+    const cells = M.map((r, i) => r.map((v, j) => `<span class="${hl ? hl(i, j) : ""}">${show ? show(v, i, j) : MX.num(v, d)}</span>`).join("")).join("");
+    return `<span class="mx-m" style="--c:${M[0].length}">${cells}</span>`;
+  },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : null; },
+  F: [[0.2, 0], [0.4, 0], [0.4, 0.4], [0.7, 0.4], [0.7, 0.58], [0.4, 0.58], [0.4, 0.8], [0.8, 0.8], [0.8, 1], [0.2, 1]],
+  fill(P, pts, color, alpha) {
+    const ctx = P.ctx; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y))));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  shape(P, M, color, alpha = 0.85) { MX.fill(P, MX.F.map(([x, y]) => MX.ap(M, x, y)), color, alpha); },
+  /** 선형 변환된 격자선 */
+  grid(P, M, o = {}) {
+    const n = o.n || 12, ctx = P.ctx;
+    ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 1; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.beginPath();
+    for (let i = -n; i <= n; i++) {
+      let [x1, y1] = MX.ap(M, i, -n), [x2, y2] = MX.ap(M, i, n);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+      [x1, y1] = MX.ap(M, -n, i); [x2, y2] = MX.ap(M, n, i);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  /** 아무 함수 f로 보낸 격자(곡선이 될 수 있다) */
+  warp(P, f, o = {}) {
+    const n = o.n || 4, ctx = P.ctx, N = 48;
+    ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = 1; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.beginPath();
+    for (let i = -n; i <= n; i += 0.5) {
+      for (const dir of [0, 1]) {
+        for (let k = 0; k <= N; k++) {
+          const s = -n + (2 * n * k) / N, [x, y] = f(dir ? [i, s] : [s, i]);
+          k ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y));
+        }
+      }
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  tween(ms, step, done) {
+    let t0 = null, id = 0, alive = true;
+    const f = (ts) => { if (!alive) return; if (t0 === null) t0 = ts; const u = Math.min(1, (ts - t0) / ms); step(u); if (u < 1) id = requestAnimationFrame(f); else done && done(); };
+    id = requestAnimationFrame(f);
+    return () => { alive = false; cancelAnimationFrame(id); };
+  },
+  badge: (ok, text) => `<span class="badge ${ok ? "ok" : ""}">${ok ? "✓ " : "✗ "}${text}</span>`,
+};
+
+/* ================================================================ 1. 선형성 검사기 */
+(function () {
+  const A0 = [[1, -0.6], [0.4, 1]], R40 = MX.rot((40 * Math.PI) / 180), PR = [[0.8, 0.4], [0.4, 0.2]];
+  const MAPS = {
+    mat: { f: ([x, y]) => MX.ap(A0, x, y), lin: true },
+    rot: { f: ([x, y]) => MX.ap(R40, x, y), lin: true },
+    proj: { f: ([x, y]) => MX.ap(PR, x, y), lin: true },
+    shift: { f: ([x, y]) => [x + 1, y + 0.5], lin: false, why: "원점이 (1, 0.5)로 움직였습니다. T(0) ≠ 0이면 선형이 아닙니다(아핀 변환)." },
+    square: { f: ([x, y]) => [x * x, y * y], lin: false, why: "(u₁ + v₁)² = u₁² + v₁² + 2u₁v₁. 교차항 2u₁v₁이 가법성을 깨뜨립니다." },
+    abs: { f: ([x, y]) => [Math.abs(x), Math.abs(y)], lin: false, why: "부호가 다른 성분을 더하면 |a + b| ≠ |a| + |b|. c가 음수일 때 동차성도 깨집니다." },
+    bend: { f: ([x, y]) => [x, y + 0.15 * x * x], lin: false, why: "직선 y = 0이 포물선으로 휩니다. 격자가 휘면 선형이 아닙니다." },
+  };
+  const sel = document.getElementById("mx-l-map");
+  const cc = MB.range("mx-l-c", (v) => v.toFixed(1), () => upd());
+  const gridOn = MB.check("mx-l-grid", () => upd());
+  const inOn = MB.check("mx-l-in", () => upd());
+  const pl = MB.plane("#mx-cv-lin", {
+    x: [-4.5, 4.5], aspect: 0.78, maxHeight: 520, minHeight: 300,
+    points: [{ x: 1.5, y: 0.5, snap: 0.1, label: "u" }, { x: 0.5, y: 1.5, snap: 0.1, label: "v" }],
+    draw(P, api) {
+      const C = P.P, m = MAPS[sel.value], f = m.f, [u, v] = api.points.map((p) => [p.x, p.y]), c = cc();
+      api.points[0].color = C.dim; api.points[1].color = C.dim;
+      if (gridOn()) MX.warp(P, f, { color: C.accent, alpha: 0.28, n: 4 });
+      const Tu = f(u), Tv = f(v), Tuv = f([u[0] + v[0], u[1] + v[1]]), sum = [Tu[0] + Tv[0], Tu[1] + Tv[1]];
+      const Tcu = f([c * u[0], c * u[1]]), cTu = [c * Tu[0], c * Tu[1]], T0 = f([0, 0]);
+      if (inOn()) {
+        P.arrow(0, 0, u[0], u[1], { color: C.faint, width: 2 });
+        P.arrow(0, 0, v[0], v[1], { color: C.faint, width: 2 });
+        P.line(u[0], u[1], u[0] + v[0], u[1] + v[1], { color: C.faint, width: 1, dash: [4, 4] });
+        P.line(v[0], v[1], u[0] + v[0], u[1] + v[1], { color: C.faint, width: 1, dash: [4, 4] });
+      }
+      // 보내고 더하기: T(u) + T(v)의 평행사변형
+      P.line(Tu[0], Tu[1], sum[0], sum[1], { color: C.red, width: 1.5, dash: [5, 4] });
+      P.line(Tv[0], Tv[1], sum[0], sum[1], { color: C.green, width: 1.5, dash: [5, 4] });
+      P.arrow(0, 0, Tu[0], Tu[1], { color: C.green, width: 3 });
+      P.arrow(0, 0, Tv[0], Tv[1], { color: C.red, width: 3 });
+      P.arrow(0, 0, Tuv[0], Tuv[1], { color: C.accent, width: 3 });
+      P.circle(sum[0], sum[1], 9 / P.unit, { color: C.accent2, width: 2.5 });
+      // 스칼라배: T(cu)와 c·T(u)
+      P.line(0, 0, cTu[0], cTu[1], { color: C.green, width: 1.5, dash: [3, 4], alpha: 0.8 });
+      P.dot(Tcu[0], Tcu[1], { r: 4, color: C.accent, label: "T(cu)" });
+      P.circle(cTu[0], cTu[1], 7 / P.unit, { color: C.accent2, width: 2 });
+      if (Math.hypot(T0[0], T0[1]) > 1e-9) P.dot(T0[0], T0[1], { r: 5, color: C.bad, label: "T(0)" });
+      P.text("T(u)", Tu[0], Tu[1], { color: C.green, dx: 8, dy: 12, bold: true });
+      P.text("T(v)", Tv[0], Tv[1], { color: C.red, dx: 8, dy: 12, bold: true });
+      P.text("T(u+v)", Tuv[0], Tuv[1], { color: C.accent, dx: 10, dy: -10, bold: true });
+    },
+    onDrag: () => upd(),
+  });
+  function upd() {
+    pl.redraw();
+    const m = MAPS[sel.value], f = m.f, [u, v] = pl.points.map((p) => [p.x, p.y]), c = cc();
+    const Tu = f(u), Tv = f(v), Tuv = f([u[0] + v[0], u[1] + v[1]]), Tcu = f([c * u[0], c * u[1]]), T0 = f([0, 0]);
+    const ea = Math.hypot(Tuv[0] - Tu[0] - Tv[0], Tuv[1] - Tu[1] - Tv[1]), es = Math.hypot(Tcu[0] - c * Tu[0], Tcu[1] - c * Tu[1]);
+    MB.stat("mx-l-add", MX.num(ea, 3) + (ea < 1e-9 ? ' <span class="badge ok">같음</span>' : ' <span class="badge bad">다름</span>'));
+    MB.stat("mx-l-scl", MX.num(es, 3) + (es < 1e-9 ? ' <span class="badge ok">같음</span>' : ' <span class="badge bad">다름</span>'));
+    MB.stat("mx-l-zero", MX.vec(T0));
+    const msg = document.getElementById("mx-l-msg");
+    if (m.lin) { msg.className = "mx-msg ok"; msg.textContent = "선형입니다. u, v, c를 어떻게 바꿔도 두 오차가 0이고, 격자의 상이 곧은 평행선으로 남습니다."; }
+    else if (ea < 1e-9 && es < 1e-9) { msg.className = "mx-msg"; msg.innerHTML = "<b>이 u, v, c에서는 우연히 통과했습니다.</b> 하지만 선형이 아닙니다. " + m.why; }
+    else { msg.className = "mx-msg bad"; msg.textContent = "선형이 아닙니다. " + m.why; }
+  }
+  sel.addEventListener("change", upd);
+  upd();
+})();
+
+/* ================================================================ 2. 열 그림과 행 그림 */
+(function () {
+  const ids = ["mx-c11", "mx-c12", "mx-c21", "mx-c22"].map((id) => document.getElementById(id));
+  let A = [[1, 2], [3, -1]];
+  const view = MB.seg("mx-c-view", () => upd());
+  const spanOn = MB.check("mx-c-span", () => upd());
+  const pl = MB.plane("#mx-cv-cr", {
+    x: [-3, 7], cy: 2.4, aspect: 0.8, maxHeight: 520, minHeight: 300,
+    points: [{ x: 2, y: 1, snap: 0.1, label: "x" }],
+    draw(P, api) {
+      const C = P.P, p = api.points[0], x = [p.x, p.y];
+      p.color = C.text;
+      const a1 = [A[0][0], A[1][0]], a2 = [A[0][1], A[1][1]], b = MX.ap(A, x[0], x[1]);
+      if (view() === "col") {
+        if (spanOn()) MX.grid(P, A, { color: C.accent, alpha: 0.22, n: 12 });
+        P.arrow(0, 0, a1[0], a1[1], { color: C.accent, width: 2, alpha: 0.45, label: "a₁" });
+        P.arrow(0, 0, a2[0], a2[1], { color: C.accent2, width: 2, alpha: 0.45, label: "a₂" });
+        const m = [x[0] * a1[0], x[0] * a1[1]];
+        P.arrow(0, 0, m[0], m[1], { color: C.accent, width: 3.5 });
+        P.arrow(m[0], m[1], b[0], b[1], { color: C.accent2, width: 3.5 });
+        P.dot(b[0], b[1], { r: 6, color: C.ok, label: "Ax" });
+        P.text(`${MX.num(x[0], 1)}a₁`, m[0] / 2, m[1] / 2, { color: C.accent, dx: -10, dy: -10, align: "right", bold: true });
+        P.text(`${MX.num(x[1], 1)}a₂`, (m[0] + b[0]) / 2, (m[1] + b[1]) / 2, { color: C.accent2, dx: 10, dy: 10, bold: true });
+      } else {
+        const rows = [[A[0][0], A[0][1]], [A[1][0], A[1][1]]], cols = [C.accent, C.accent2];
+        rows.forEach((r, i) => {
+          const n2 = r[0] * r[0] + r[1] * r[1];
+          if (n2 < 1e-12) return;
+          const bi = r[0] * x[0] + r[1] * x[1], foot = [(bi / n2) * r[0], (bi / n2) * r[1]], d = [-r[1], r[0]];
+          P.line(foot[0] - 20 * d[0], foot[1] - 20 * d[1], foot[0] + 20 * d[0], foot[1] + 20 * d[1], { color: cols[i], width: 2 });
+          P.line(0, 0, 30 * r[0] / Math.sqrt(n2), 30 * r[1] / Math.sqrt(n2), { color: cols[i], width: 1, alpha: 0.35, dash: [2, 5] });
+          P.line(x[0], x[1], foot[0], foot[1], { color: cols[i], width: 1.5, dash: [4, 4] });
+          P.arrow(0, 0, r[0], r[1], { color: cols[i], width: 3, label: i ? "r₂" : "r₁" });
+          P.text(`r${i ? "₂" : "₁"}·x = ${MX.num(bi, 2)}`, foot[0] + 1.6 * d[0] / Math.sqrt(n2), foot[1] + 1.6 * d[1] / Math.sqrt(n2), { color: cols[i], bold: true, dx: 6 });
+        });
+      }
+    },
+    onDrag: () => upd(),
+  });
+  function readA() {
+    const v = ids.map(MX.parse);
+    if (v.every((x) => x !== null)) A = [[v[0], v[1]], [v[2], v[3]]];
+  }
+  function upd() {
+    readA(); pl.redraw();
+    const p = pl.points[0], x = [p.x, p.y], b = MX.ap(A, x[0], x[1]);
+    MB.stat("mx-c-x", MX.vec(x, 1));
+    MB.stat("mx-c-col", `${MX.num(x[0], 1)}·${MX.vec([A[0][0], A[1][0]], 1)} + ${MX.num(x[1], 1)}·${MX.vec([A[0][1], A[1][1]], 1)} = <b>${MX.vec(b)}</b>`);
+    MB.stat("mx-c-row", `(${MX.num(A[0][0] * x[0] + A[0][1] * x[1])}, ${MX.num(A[1][0] * x[0] + A[1][1] * x[1])})`);
+    const d = MX.det2(A), msg = document.getElementById("mx-c-msg");
+    if (Math.abs(d) < 1e-9) { msg.className = "mx-msg bad"; msg.textContent = "두 열이 한 직선 위에 있습니다(det = 0). 열 그림에서 Ax는 그 직선을 벗어나지 못하고, 행 그림에서 두 직선은 평행(또는 일치)합니다."; }
+    else { msg.className = "mx-msg"; msg.innerHTML = view() === "col" ? "<b>열 그림:</b> Ax는 열 a₁을 x₁번, a₂를 x₂번 이어 붙인 끝점입니다. 질문: 이 열들로 어디까지 갈 수 있나?" : "<b>행 그림:</b> 출력의 i번째 성분은 행 rᵢ와 x의 내적입니다. 각 직선 위의 점들은 그 성분 값이 모두 같습니다."; }
+  }
+  ids.forEach((el) => el.addEventListener("input", upd));
+  upd();
+})();
+
+/* ================================================================ 3. 행렬 곱 네 가지 방법 */
+(function () {
+  let A = [[1, 2, 0], [-1, 3, 1]], B = [[2, 1], [0, -1], [4, 2]];
+  let step = 0;
+  const way = MB.seg("mx-f-way", () => { step = 0; upd(); });
+  const N = { entry: 4, col: 2, row: 2, outer: 3 };
+  const MULTS = { entry: 3, col: 6, row: 6, outer: 4 };
+  const sub = ["₁", "₂", "₃"];
+  const p = (v) => (v < 0 ? `(${MX.num(v)})` : MX.num(v));
+  function upd() {
+    const w = way(), n = N[w], C = MX.mul(A, B);
+    let hlA = () => "", hlB = () => "", hlC = () => "", Cshow = C.map((r) => r.map(() => null)), msg = "";
+    if (w === "entry") {
+      for (let s = 0; s < step; s++) { const i = Math.floor(s / 2), j = s % 2; Cshow[i][j] = C[i][j]; }
+      if (step > 0) {
+        const s = step - 1, i = Math.floor(s / 2), j = s % 2;
+        hlA = (r) => (r === i ? "hl" : "dim"); hlB = (r, c) => (c === j ? "hl2" : "dim"); hlC = (r, c) => (r === i && c === j ? "hl" : "");
+        msg = `<b>c${sub[i]}${sub[j]}</b> = (A의 ${i + 1}행)·(B의 ${j + 1}열) = ` + [0, 1, 2].map((k) => `${p(A[i][k])}·${p(B[k][j])}`).join(" + ") + ` = <b>${MX.num(C[i][j])}</b>`;
+      }
+    } else if (w === "col") {
+      for (let j = 0; j < step; j++) for (let i = 0; i < 2; i++) Cshow[i][j] = C[i][j];
+      if (step > 0) {
+        const j = step - 1;
+        hlB = (r, c) => (c === j ? "hl2" : "dim"); hlA = () => "hl"; hlC = (r, c) => (c === j ? "hl" : "");
+        msg = `<b>C의 ${j + 1}열</b> = A·(B의 ${j + 1}열) = ` + [0, 1, 2].map((k) => `${p(B[k][j])}·${MX.vec([A[0][k], A[1][k]], 0)}`).join(" + ") + ` = <b>${MX.vec([C[0][j], C[1][j]], 0)}</b> (A의 열들의 선형 결합)`;
+      }
+    } else if (w === "row") {
+      for (let i = 0; i < step; i++) for (let j = 0; j < 2; j++) Cshow[i][j] = C[i][j];
+      if (step > 0) {
+        const i = step - 1;
+        hlA = (r) => (r === i ? "hl" : "dim"); hlB = () => "hl2"; hlC = (r) => (r === i ? "hl" : "");
+        msg = `<b>C의 ${i + 1}행</b> = (A의 ${i + 1}행)·B = ` + [0, 1, 2].map((k) => `${p(A[i][k])}·[${B[k].map((v) => MX.num(v)).join(" ")}]`).join(" + ") + ` = <b>[${C[i].map((v) => MX.num(v)).join(" ")}]</b> (B의 행들의 선형 결합)`;
+      }
+    } else {
+      const S = [[0, 0], [0, 0]];
+      for (let k = 0; k < step; k++) for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) S[i][j] += A[i][k] * B[k][j];
+      Cshow = S;
+      if (step > 0) {
+        const k = step - 1, O = [0, 1].map((i) => [0, 1].map((j) => A[i][k] * B[k][j]));
+        hlA = (r, c) => (c === k ? "hl" : "dim"); hlB = (r) => (r === k ? "hl2" : "dim"); hlC = () => "hl";
+        msg = `<b>${k + 1}번째 조각</b> = (A의 ${k + 1}열)(B의 ${k + 1}행) = ${MX.vec([A[0][k], A[1][k]], 0)}ᵀ·[${B[k].map((v) => MX.num(v)).join(" ")}] = ${MX.mat(O, 0)} → 지금까지의 합을 C에 표시`;
+      } else msg = "C를 영행렬에서 시작해, 계수 1 행렬 조각을 하나씩 더합니다.";
+    }
+    if (step === 0 && w !== "outer") msg = "‘다음 단계’를 누르면 색칠한 재료로 결과의 한 부분을 만듭니다.";
+    if (step === n) msg += ` · <b>완성!</b>`;
+    document.getElementById("mx-f-A").innerHTML = MX.mat(A, 0, hlA);
+    document.getElementById("mx-f-B").innerHTML = MX.mat(B, 0, hlB);
+    document.getElementById("mx-f-C").innerHTML = MX.mat(Cshow, 0, hlC, (v) => (v === null ? "?" : MX.num(v)));
+    document.getElementById("mx-f-msg").innerHTML = msg;
+    MB.stat("mx-f-prog", `${step} / ${n} 단계`);
+    MB.stat("mx-f-mults", `${step * MULTS[w]} / 12`);
+    MB.stat("mx-f-final", step === n ? MX.mat(C, 0) : "…");
+    document.getElementById("mx-f-step").disabled = step >= n;
+  }
+  document.getElementById("mx-f-step").addEventListener("click", () => { const n = N[way()]; if (step < n) step++; upd(); });
+  document.getElementById("mx-f-reset").addEventListener("click", () => { step = 0; upd(); });
+  document.getElementById("mx-f-rand").addEventListener("click", () => {
+    const r = () => Math.floor(Math.random() * 8) - 3;
+    A = [[r(), r(), r()], [r(), r(), r()]]; B = [[r(), r()], [r(), r()], [r(), r()]]; step = 0; upd();
+  });
+  upd();
+})();
+
+/* ================================================================ 4. 합성 실험실 */
+(function () {
+  const deg = Math.PI / 180;
+  const PRE = {
+    rot90: { name: "90° 회전", ang: 90 }, rot45: { name: "45° 회전", ang: 45 }, rot30: { name: "30° 회전", ang: 30 },
+    shear: { name: "가로 전단 [1 1; 0 1]", M: [[1, 1], [0, 1]] }, shearY: { name: "세로 전단 [1 0; 1 1]", M: [[1, 0], [1, 1]] },
+    reflX: { name: "x축 거울 [1 0; 0 −1]", M: [[1, 0], [0, -1]] }, reflD: { name: "y = x 거울 [0 1; 1 0]", M: [[0, 1], [1, 0]] },
+    projX: { name: "x축 사영 [1 0; 0 0]", M: [[1, 0], [0, 0]] }, projY: { name: "y축 사영 [0 0; 0 1]", M: [[0, 0], [0, 1]] },
+    stretch: { name: "축별 확대 [2 0; 0 0.5]", M: [[2, 0], [0, 0.5]] }, scale: { name: "1.5배 확대 1.5I", M: [[1.5, 0], [0, 1.5]] },
+  };
+  const selA = document.getElementById("mx-o-a"), selB = document.getElementById("mx-o-b");
+  const opts = Object.entries(PRE).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+  selA.innerHTML = opts; selB.innerHTML = opts; selA.value = "rot90"; selB.value = "shear";
+  const I = MX.I(2);
+  const at = (key, t) => { const p = PRE[key]; return p.ang != null ? MX.rot(p.ang * deg * t) : MX.lerpM(I, p.M, t); };
+  let tt = 2, cancel = null;
+  const tS = MB.range("mx-o-t", (v) => (v <= 1 ? "1단계 " + Math.round(v * 100) + "%" : "2단계 " + Math.round((v - 1) * 100) + "%"), (v) => { tt = v; if (cancel) { cancel(); cancel = null; } upd(); });
+  const left = (t) => (t <= 1 ? at(selA.value, t) : MX.mul(at(selB.value, t - 1), at(selA.value, 1)));
+  const right = (t) => (t <= 1 ? at(selB.value, t) : MX.mul(at(selA.value, t - 1), at(selB.value, 1)));
+  const mk = (sel, fn, other) => MB.plane(sel, {
+    x: [-3.2, 3.2], aspect: 0.9, maxHeight: 380, minHeight: 240,
+    draw(P) {
+      const C = P.P, M = fn(tt), O = other(2);
+      MX.grid(P, M, { color: C.accent, alpha: 0.35, n: 10 });
+      MX.fill(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => MX.ap(M, x, y)), C.accent, 0.12);
+      MX.shape(P, M, C.accent2, 0.85);
+      P.poly(MX.F.map(([x, y]) => MX.ap(O, x, y)), { color: C.text, width: 1.5, dash: [4, 4], alpha: 0.7 });
+      P.arrow(0, 0, M[0][0], M[1][0], { color: C.green, width: 3 });
+      P.arrow(0, 0, M[0][1], M[1][1], { color: C.red, width: 3 });
+    },
+  });
+  const p1 = mk("#mx-cv-o1", left, right), p2 = mk("#mx-cv-o2", right, left);
+  function upd() {
+    p1.redraw(); p2.redraw();
+    const BA = left(2), AB = right(2), Cm = MX.add(AB, BA, -1), z = MX.norm(Cm) < 1e-9;
+    MB.stat("mx-o-ba", MX.mat(BA));
+    MB.stat("mx-o-ab", MX.mat(AB));
+    MB.stat("mx-o-cm", MX.mat(Cm) + (z ? ' <span class="badge ok">교환</span>' : ' <span class="badge bad">비교환</span>'));
+  }
+  [selA, selB].forEach((s) => s.addEventListener("change", () => { tt = 2; tS.set(2, false); upd(); }));
+  document.getElementById("mx-o-swap").addEventListener("click", () => { const a = selA.value; selA.value = selB.value; selB.value = a; upd(); });
+  document.getElementById("mx-o-play").addEventListener("click", () => {
+    if (cancel) cancel();
+    cancel = MX.tween(2600, (u) => { tt = 2 * MB.smooth(0, 1, u); tS.set(tt, false); upd(); }, () => { cancel = null; });
+  });
+  upd();
+})();
+
+/* ================================================================ 5. 특수 행렬 도감 */
+(function () {
+  const kind = MB.seg("mx-s-kind", () => upd());
+  const sp = MB.range("mx-s-p", (v) => v.toFixed(2), () => upd());
+  const twice = MB.check("mx-s-twice", () => upd());
+  const H = Math.PI;
+  const KINDS = {
+    diag: { M: (s) => [[1.5, 0], [0, s]], label: "d₂ = s", note: "축마다 따로 늘입니다. s = 0이면 y 방향이 사라지고, s < 0이면 y축 방향이 뒤집힙니다." },
+    upper: { M: (s) => [[1, 2 * s], [0, 1.2]], label: "위 성분 = 2s", note: "x₂는 자기 자신에만 의존하고, x₁은 x₂까지 섞습니다. x축 위의 점은 x축에 남습니다(삼각 구조)." },
+    perm: { M: () => [[0, 1], [1, 0]], label: "(매개변수 없음)", note: "좌표의 이름만 바꿉니다. Pᵀ = P⁻¹ 이고, 두 번 바꾸면 제자리(P² = I)입니다." },
+    sym: { M: (s) => [[1.2, s], [s, 0.6]], label: "비대각 = s", note: "점선 두 축은 서로 수직이고, 그 방향은 늘거나 줄기만 합니다(13장의 스펙트럼 정리 미리 보기)." },
+    rot: { M: (s) => MX.rot(s * H), label: "각 = s·180°", note: "길이와 각을 보존합니다. 열들이 서로 수직인 단위 벡터, QᵀQ = I, det = 1." },
+    refl: { M: (s) => { const a = s * H; return [[Math.cos(a), Math.sin(a)], [Math.sin(a), -Math.cos(a)]]; }, label: "거울 각 = s·90°", note: "점선 직선에 대한 거울입니다. 직교이면서 대칭, det = −1, 두 번이면 제자리." },
+    proj: { M: (s) => { const a = (s * H) / 2, c = Math.cos(a), n = Math.sin(a); return [[c * c, c * n], [c * n, n * n]]; }, label: "직선 각 = s·90°", note: "점선 직선 위로 수직 그림자를 내립니다. P² = P, Pᵀ = P, det = 0." },
+    nil: { M: (s) => [[0, 2 * s], [0, 0]], label: "위 성분 = 2s", note: "한 번이면 평면이 x축 위로, 두 번이면 원점 하나로 무너집니다(N² = 0)." },
+  };
+  const pl = MB.plane("#mx-cv-sp", {
+    x: [-3, 3], aspect: 0.8, maxHeight: 460, minHeight: 280,
+    draw(P) {
+      const C = P.P, k = kind(), A = KINDS[k].M(sp()), A2 = MX.mul(A, A);
+      MX.grid(P, MX.I(2), { color: C.dim, alpha: 0.12, n: 6 });
+      MX.grid(P, A, { color: C.accent, alpha: 0.4, n: 8 });
+      P.circle(0, 0, 1, { color: C.text, width: 1.2, dash: [4, 4], alpha: 0.6 });
+      P.param((t) => MX.ap(A, Math.cos(t), Math.sin(t)), 0, 2 * Math.PI, { color: C.accent, width: 2.5 });
+      if (k === "sym") {
+        const a = 0.5 * Math.atan2(2 * A[0][1], A[0][0] - A[1][1]);
+        [a, a + Math.PI / 2].forEach((t) => P.line(-4 * Math.cos(t), -4 * Math.sin(t), 4 * Math.cos(t), 4 * Math.sin(t), { color: C.warn, width: 1.5, dash: [6, 4] }));
+      }
+      if (k === "refl" || k === "proj") {
+        const t = k === "refl" ? (sp() * Math.PI) / 2 : (sp() * Math.PI) / 2;
+        P.line(-4 * Math.cos(t), -4 * Math.sin(t), 4 * Math.cos(t), 4 * Math.sin(t), { color: C.warn, width: 1.5, dash: [6, 4] });
+      }
+      MX.shape(P, MX.I(2), C.faint, 0.35);
+      MX.shape(P, A, C.accent2, 0.85);
+      if (twice()) { MX.shape(P, A2, C.text, 0.35); P.param((t) => MX.ap(A2, Math.cos(t), Math.sin(t)), 0, 2 * Math.PI, { color: C.text, width: 1.5, dash: [3, 3] }); }
+      P.arrow(0, 0, A[0][0], A[1][0], { color: C.green, width: 3 });
+      P.arrow(0, 0, A[0][1], A[1][1], { color: C.red, width: 3 });
+    },
+  });
+  function upd() {
+    pl.redraw();
+    const k = kind(), K = KINDS[k], A = K.M(sp()), At = MX.T(A), A2 = MX.mul(A, A), I = MX.I(2);
+    document.getElementById("mx-s-plabel").textContent = "매개변수 s · " + K.label;
+    MB.stat("mx-s-a", MX.mat(A));
+    MB.stat("mx-s-at", MX.mat(At));
+    MB.stat("mx-s-det", MX.num(MX.det2(A), 3));
+    const tol = 1e-9, isDiag = Math.abs(A[0][1]) < tol && Math.abs(A[1][0]) < tol;
+    const props = [
+      MX.badge(isDiag, "대각"),
+      MX.badge(Math.abs(A[1][0]) < tol, "위삼각"),
+      MX.badge(MX.norm(MX.add(A, At, -1)) < tol, "대칭 Aᵀ = A"),
+      MX.badge(MX.norm(MX.add(MX.mul(At, A), I, -1)) < 1e-9, "직교 AᵀA = I"),
+      MX.badge(MX.norm(MX.add(A2, A, -1)) < 1e-9, "멱등 A² = A"),
+      MX.badge(MX.norm(A2) < tol, "멱영 A² = 0"),
+    ];
+    MB.stat("mx-s-props", props.join(""));
+    document.getElementById("mx-s-msg").textContent = K.note;
+  }
+  upd();
+})();
+
+/* ================================================================ 6. 3×3 정육면체 */
+(function () {
+  const deg = Math.PI / 180;
+  const ax = MB.range("mx-q-ax", (v) => v + "°", () => upd());
+  const ay = MB.range("mx-q-ay", (v) => v + "°", () => upd());
+  const az = MB.range("mx-q-az", (v) => v + "°", () => upd());
+  const ord = MB.seg("mx-q-ord", () => upd());
+  const sSel = document.getElementById("mx-q-s");
+  const S_ = {
+    none: MX.I(3), scalez: [[1, 0, 0], [0, 1, 0], [0, 0, 0.4]], shear: [[1, 0, 0.8], [0, 1, 0], [0, 0, 1]],
+    proj: [[1, 0, 0], [0, 1, 0], [0, 0, 0]], refl: [[1, 0, 0], [0, 1, 0], [0, 0, -1]], stretch: [[1.5, 0, 0], [0, 1, 0], [0, 0, 0.6]],
+  };
+  const Rx = (a) => [[1, 0, 0], [0, Math.cos(a), -Math.sin(a)], [0, Math.sin(a), Math.cos(a)]];
+  const Ry = (a) => [[Math.cos(a), 0, Math.sin(a)], [0, 1, 0], [-Math.sin(a), 0, Math.cos(a)]];
+  const Rz = (a) => [[Math.cos(a), -Math.sin(a), 0], [Math.sin(a), Math.cos(a), 0], [0, 0, 1]];
+  const ap3 = (M, v) => M.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  // 관찰 방향: z축을 위로, 방위각 −35°, 앙각 25°에서 본 정사영
+  const VIEW = MX.mul(Rx(-65 * deg), Rz(-35 * deg));
+  const M = () => {
+    const R = MX.mul(Rz(az() * deg), MX.mul(Ry(ay() * deg), Rx(ax() * deg))), S = S_[sSel.value];
+    return ord() === "SR" ? MX.mul(S, R) : MX.mul(R, S);
+  };
+  const V = [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5], [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]].map((v) => v.map((c) => c + 0.5));
+  const E = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+  const cv = MB.canvas("#mx-cv-cube", (ctx, w, h) => {
+    const C = MB.palette(), m = M(), u = Math.min(w, h) / 4.4, ox = w / 2, oy = h * 0.62;
+    const scr = (p) => { const q = ap3(VIEW, p); return [ox + q[0] * u, oy - q[1] * u]; };
+    const seg = (a, b, col, wd, dash, alpha = 1) => { const [x1, y1] = scr(a), [x2, y2] = scr(b); ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); };
+    const arrow = (v, col, lab) => {
+      const [x1, y1] = scr([0, 0, 0]), [x2, y2] = scr(v), L = Math.hypot(x2 - x1, y2 - y1);
+      seg([0, 0, 0], v, col, 3.5);
+      if (L > 4) { const ux = (x2 - x1) / L, uy = (y2 - y1) / L, hd = 10; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - ux * hd - uy * hd * 0.45, y2 - uy * hd + ux * hd * 0.45); ctx.lineTo(x2 - ux * hd + uy * hd * 0.45, y2 - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = col; ctx.font = "700 13px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.fillText(lab, x2 + 6, y2 - 6);
+    };
+    // 바닥 격자와 축
+    for (let i = -2; i <= 2; i++) { seg([i, -2, 0], [i, 2, 0], C.grid, 1); seg([-2, i, 0], [2, i, 0], C.grid, 1); }
+    seg([0, 0, 0], [2.2, 0, 0], C.axis, 1.2); seg([0, 0, 0], [0, 2.2, 0], C.axis, 1.2); seg([0, 0, 0], [0, 0, 2], C.axis, 1.2);
+    E.forEach(([a, b]) => seg(V[a], V[b], C.faint, 1.2, [4, 4], 0.8));
+    const W = V.map((p) => ap3(m, p));
+    // 윗면(원래 z = 1인 면)을 살짝 칠해 방향을 알 수 있게
+    ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = C.accent; ctx.beginPath(); [4, 5, 6, 7].forEach((k, i) => { const [x, y] = scr(W[k]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.fill(); ctx.restore();
+    E.forEach(([a, b]) => seg(W[a], W[b], C.accent, 2));
+    arrow(ap3(m, [1, 0, 0]), C.red, "Me₁"); arrow(ap3(m, [0, 1, 0]), C.green, "Me₂"); arrow(ap3(m, [0, 0, 1]), C.blue, "Me₃");
+  }, { aspect: 0.8, maxHeight: 460, minHeight: 280 });
+  let spinning = false;
+  const lp = MB.loop(cv.canvas, (dt) => {
+    if (!spinning) return;
+    let v = az() + 40 * dt; if (v > 180) v -= 360; az.set(Math.round(v * 10) / 10, false);
+    let w2 = ax() + 15 * dt; if (w2 > 180) w2 -= 360; ax.set(Math.round(w2 * 10) / 10, false);
+    upd();
+  });
+  const btn = document.getElementById("mx-q-spin");
+  btn.addEventListener("click", () => { spinning = !spinning; btn.textContent = spinning ? "■ 멈춤" : "▶ 자동 회전"; if (spinning) lp.start(); });
+  sSel.addEventListener("change", () => upd());
+  function upd() {
+    cv.redraw();
+    const m = M(), d = MX.det3(m), orth = MX.norm(MX.add(MX.mul(MX.T(m), m), MX.I(3), -1)) < 1e-9;
+    MB.stat("mx-q-m", MX.mat(m));
+    MB.stat("mx-q-det", MX.num(d, 3) + (Math.abs(d) < 1e-9 ? ' <span class="badge bad">부피 0</span>' : d < 0 ? ' <span class="badge warn">뒤집힘</span>' : ""));
+    MB.stat("mx-q-orth", orth ? '<span class="badge ok">예 · 회전(또는 반사)</span>' : '<span class="badge">아니요 · 모양이 바뀜</span>');
+  }
+  upd();
+})();
+
+/* ================================================================ 7. 로봇 팔 */
+(function () {
+  const deg = Math.PI / 180;
+  const t1 = MB.range("mx-a-t1", (v) => v + "°", () => upd());
+  const t2 = MB.range("mx-a-t2", (v) => v + "°", () => upd());
+  const l1 = MB.range("mx-a-l1", (v) => v.toFixed(1), () => upd());
+  const l2 = MB.range("mx-a-l2", (v) => v.toFixed(1), () => upd());
+  const ord = MB.seg("mx-a-ord", () => upd());
+  const R = (a) => [[Math.cos(a), -Math.sin(a), 0], [Math.sin(a), Math.cos(a), 0], [0, 0, 1]];
+  const Tr = (x, y) => [[1, 0, x], [0, 1, y], [0, 0, 1]];
+  const ap = (M, x, y) => [M[0][0] * x + M[0][1] * y + M[0][2], M[1][0] * x + M[1][1] * y + M[1][2]];
+  const link = (a, L) => (ord() === "RT" ? MX.mul(R(a), Tr(L, 0)) : MX.mul(Tr(L, 0), R(a)));
+  const GRIP = [[0, 0.25], [0.35, 0.25], [0.35, 0.12], [0.12, 0.12], [0.12, -0.12], [0.35, -0.12], [0.35, -0.25], [0, -0.25]];
+  const chain = (base) => { const B = Tr(base.x, base.y), T01 = link(t1() * deg, l1()), T12 = link(t2() * deg, l2()); return { B, T01, T12, T02: MX.mul(T01, T12) }; };
+  const pl = MB.plane("#mx-cv-arm", {
+    x: [-4.5, 4.5], cy: 0.8, aspect: 0.8, maxHeight: 520, minHeight: 300,
+    points: [{ x: -1.2, y: -0.8, snap: 0.1 }],
+    draw(P, api) {
+      const C = P.P, base = api.points[0]; base.color = C.text;
+      const { B, T01, T02 } = chain(base);
+      const W1 = MX.mul(B, T01), W2 = MX.mul(B, T02);
+      const J0 = [base.x, base.y], J1 = ap(W1, 0, 0), J2 = ap(W2, 0, 0);
+      // 도달 가능 영역(올바른 순서일 때 반지름 L1 ± L2 고리)
+      if (ord() === "RT") { P.circle(J0[0], J0[1], l1() + l2(), { color: C.faint, width: 1, dash: [3, 5] }); if (Math.abs(l1() - l2()) > 0.05) P.circle(J0[0], J0[1], Math.abs(l1() - l2()), { color: C.faint, width: 1, dash: [3, 5] }); }
+      const frame = (M, s = 0.6) => { const o = ap(M, 0, 0), ex = ap(M, s, 0), ey = ap(M, 0, s); P.arrow(o[0], o[1], ex[0], ex[1], { color: C.red, width: 1.8, head: 7 }); P.arrow(o[0], o[1], ey[0], ey[1], { color: C.green, width: 1.8, head: 7 }); };
+      P.line(J0[0], J0[1], J1[0], J1[1], { color: C.accent, width: 9, alpha: 0.85 });
+      P.line(J1[0], J1[1], J2[0], J2[1], { color: C.accent2, width: 7, alpha: 0.85 });
+      frame(B); frame(W1); frame(W2, 0.5);
+      MX.fill(P, GRIP.map(([x, y]) => ap(W2, x, y)), C.text, 0.8);
+      P.dot(J1[0], J1[1], { r: 6, color: C.bg, stroke: C.text });
+      P.dot(J2[0], J2[1], { r: 4, color: C.ok });
+      P.text("집게", J2[0], J2[1], { color: C.text, bold: true, dx: 16, dy: -18 });
+      const ctx = P.ctx; ctx.save(); ctx.fillStyle = C.text; ctx.fillRect(P.X(base.x) - 9, P.Y(base.y) - 9, 18, 18); ctx.restore();
+      P.text("받침", base.x, base.y, { color: C.text, bold: true, dx: -14, dy: 22, align: "right" });
+    },
+    onDrag: () => upd(),
+  });
+  function upd() {
+    pl.redraw();
+    const base = pl.points[0], { T01, T12, T02 } = chain(base), E = MX.mul(Tr(base.x, base.y), T02);
+    MB.stat("mx-a-m1", MX.mat(T01));
+    MB.stat("mx-a-m2", MX.mat(T12));
+    MB.stat("mx-a-m", MX.mat(T02));
+    MB.stat("mx-a-end", MX.vec([E[0][2], E[1][2]]) + ` · 방향 ${MX.num(Math.atan2(E[1][0], E[0][0]) / deg, 0)}°`);
+    const msg = document.getElementById("mx-a-msg");
+    if (ord() === "RT") { msg.className = "mx-msg"; msg.innerHTML = `T₀₂의 회전 블록은 <b>${MX.num(t1() + t2(), 0)}°</b> 회전, 오른쪽 열 (${MX.num(T02[0][2])}, ${MX.num(T02[1][2])})은 받침 기준 집게 위치 = L₁(cos θ₁, sin θ₁) + L₂(cos(θ₁+θ₂), sin(θ₁+θ₂)).`; }
+    else { msg.className = "mx-msg bad"; msg.textContent = "T(L)·R(θ)는 '먼저 제자리에서 돌고, 그다음 원래 x축 방향으로 L만큼 이동'입니다. 관절이 팔 끝이 아니라 엉뚱한 곳을 중심으로 돌아, 첫 팔은 θ₁과 상관없이 가로로 뻗습니다."; }
+  }
+  upd();
+})();
+
+/* ================================================================ 8. 계산 비용과 루프라인 */
+(function () {
+  const PEAK = 20e12, BW = 1e12, WORD = 4;
+  const nn = MB.range("mx-k-n", (v) => String(Math.pow(2, v)), () => upd());
+  const op = MB.seg("mx-k-op", () => upd());
+  const bb = MB.seg("mx-k-b", () => upd());
+  const fmt = (v) => { const u = [["", 1], ["천", 1e3], ["백만", 1e6], ["십억", 1e9], ["조", 1e12], ["천조", 1e15]]; let k = 0; while (k < u.length - 1 && v >= u[k + 1][1]) k++; return MX.num(v / u[k][1], 2) + (u[k][0] ? " " + u[k][0] : ""); };
+  const fmtB = (v) => { const u = ["B", "KB", "MB", "GB", "TB", "PB"]; let k = 0; while (k < u.length - 1 && v >= 1000) { v /= 1000; k++; } return MX.num(v, 2) + " " + u[k]; };
+  const fmtT = (s) => (s < 1e-3 ? MX.num(s * 1e6, 1) + " µs" : s < 1 ? MX.num(s * 1e3, 1) + " ms" : MX.num(s, 2) + " s");
+  function model() {
+    const n = Math.pow(2, nn()), b = Math.min(Number(bb()), n);
+    if (op() === "mm") { const fl = 2 * n * n * n, words = (2 * n * n * n) / b + 2 * n * n; return { n, b, fl, bytes: words * WORD }; }
+    const fl = 2 * n * n, words = n * n + 2 * n; return { n, b, fl, bytes: words * WORD };
+  }
+  const cv = MB.canvas("#mx-cv-cost", (ctx, w, h) => {
+    const C = MB.palette(), m = model(), ai = m.fl / m.bytes;
+    const roof = (I) => Math.min(PEAK, BW * I) / 1e9;
+    const data = []; for (let e = -2; e <= 3; e += 0.05) { const I = Math.pow(10, e); data.push([I, roof(I)]); }
+    MB.chart(ctx, null, {
+      x: [0.01, 1000], y: [10, 1e5], logX: true, logY: true, xLabel: "산술 강도 (연산 / 바이트)", yLabel: "GFLOP/s",
+      series: [{ data, color: C.accent, width: 2.5 }],
+      vlines: [{ x: PEAK / BW, color: C.faint, dash: [4, 4] }],
+      points: [{ x: Math.max(0.011, Math.min(990, ai)), y: Math.max(11, roof(ai)), r: 7, color: C.accent2, label: op() === "mm" ? "행렬 곱" : "행렬–벡터" }],
+    });
+  }, { aspect: 0.62, maxHeight: 420, minHeight: 240 });
+  function upd() {
+    cv.redraw();
+    const m = model(), ai = m.fl / m.bytes, tc = m.fl / PEAK, tm = m.bytes / BW;
+    MB.stat("mx-k-fl", fmt(m.fl) + " 회");
+    MB.stat("mx-k-by", fmtB(m.bytes));
+    MB.stat("mx-k-ai", MX.num(ai, 2) + " 연산/B");
+    MB.stat("mx-k-t", fmtT(Math.max(tc, tm)) + (tm > tc ? ' <span class="badge warn">메모리 한계</span>' : ' <span class="badge ok">연산 한계</span>'));
+    document.getElementById("mx-k-b").style.opacity = op() === "mm" ? 1 : 0.45;
+  }
+  upd();
+})();
+</script>
+</body>
+</html>

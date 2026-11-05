@@ -1,0 +1,1873 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>점추정 · 확률과 통계 · MathBooks</title>
+<meta name="description" content="추정량과 추정값, 불편성·효율성·일치성, 평균 제곱 오차와 편향–분산 분해, 적률법, 최대 가능도 추정과 가능도 곡면, 피셔 정보와 크라메르–라오 하한, 베이즈 추정까지 — 결함 밀도와 고장률을 표본 수천 개를 다시 뽑으며 추정한다.">
+<!-- sb:seo -->
+<link rel="canonical" href="https://math.euiyun.com/probability/chapters/estimation.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MathBooks">
+<meta property="og:title" content="점추정 · 확률과 통계 · MathBooks">
+<meta property="og:description" content="추정량과 추정값, 불편성·효율성·일치성, 평균 제곱 오차와 편향–분산 분해, 적률법, 최대 가능도 추정과 가능도 곡면, 피셔 정보와 크라메르–라오 하한, 베이즈 추정까지 — 결함 밀도와 고장률을 표본 수천 개를 다시 뽑으며 추정한다.">
+<meta property="og:url" content="https://math.euiyun.com/probability/chapters/estimation.html">
+<meta property="og:image" content="https://math.euiyun.com/og.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "TechArticle", "name": "점추정 · 확률과 통계 · MathBooks", "headline": "09 점추정", "url": "https://math.euiyun.com/probability/chapters/estimation.html", "inLanguage": "ko", "isAccessibleForFree": true, "image": "https://math.euiyun.com/og.png", "description": "추정량과 추정값, 불편성·효율성·일치성, 평균 제곱 오차와 편향–분산 분해, 적률법, 최대 가능도 추정과 가능도 곡면, 피셔 정보와 크라메르–라오 하한, 베이즈 추정까지 — 결함 밀도와 고장률을 표본 수천 개를 다시 뽑으며 추정한다.", "publisher": {"@type": "Organization", "name": "MathBooks", "url": "https://math.euiyun.com/"}, "learningResourceType": "interactive textbook chapter", "position": 9, "dateModified": "2026-10-22", "isPartOf": {"@type": "Book", "@id": "https://math.euiyun.com/probability/#book", "name": "확률과 통계", "url": "https://math.euiyun.com/probability/"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "MathBooks", "item": "https://math.euiyun.com/"}, {"@type": "ListItem", "position": 2, "name": "확률과 통계", "item": "https://math.euiyun.com/probability/"}, {"@type": "ListItem", "position": 3, "name": "09 점추정", "item": "https://math.euiyun.com/probability/chapters/estimation.html"}]}]}</script>
+<!-- /sb:seo -->
+<link rel="stylesheet" href="../engine/css/scibook.css">
+<script src="../engine/js/scibook.js"></script>
+<script src="../course.js"></script>
+<script src="../engine/lib/stat.js"></script>
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="probability"></script>
+</head>
+<body data-chapter="estimation">
+<main class="chapter">
+  <header class="chapter-hero" data-prereq="sampling limit-theorems">
+    <div class="eyebrow">Chapter 09</div>
+    <h1>점추정</h1>
+    <p class="lead">엔지니어가 정말 알고 싶은 값은 손에 잡히지 않는다. 막두께의 참 평균, 웨이퍼의 결함 밀도 \(D_0\), 칩 고장률 \(\lambda\)가 그렇다. 손에 있는 것은 측정값 몇 개뿐이고, 그것으로 숫자 하나를 만들어야 한다. 측정값에서 숫자를 만드는 규칙을 추정량이라 한다. 같은 규칙이라도 표본을 새로 뽑으면 다른 숫자가 나오니, 추정은 과녁에 다트를 던지는 일과 닮았다. 아래 과녁에서 다트 한 개가 표본 하나로 만든 추정값이다. 좋은 추정량은 다트 구름의 중심이 과녁 한가운데에 있고(편향이 작고) 구름이 좁다(분산이 작다). 이 장에서는 그런 규칙을 고르는 기준을 세우고, 규칙을 만드는 일반적인 방법인 적률법, 최대 가능도, 베이즈 추정을 차례로 다룬다.</p>
+    <div class="hero-live" id="hero"><canvas id="cv-hero"></canvas><span class="hint">위 단추로 추정량을 바꾸고, 흰 원(기준점)을 끌어 본다</span></div>
+    <ul class="objectives">
+      <li>모수, 통계량, 추정량, 추정값을 구분한다. 추정량은 표본의 함수라서 그 자체가 확률 변수이고 표본 분포를 가진다는 것을 반복 추출로 확인한다.</li>
+      <li>편향 \(E[\hat\theta] - \theta\)를 계산해 불편성을 판정한다. 표본 분산을 \(n-1\)로 나누는 이유를 자유도로 설명한다.</li>
+      <li>평균 제곱 오차를 \(\mathrm{MSE} = \operatorname{Var}(\hat\theta) + [\mathrm{Bias}]^2\)로 분해하고, 편향이 있는 수축 추정량이 MSE에서 이길 수 있음을 보인다.</li>
+      <li>상대 효율로 평균과 중앙값을 비교하고(정규 자료에서 약 0.64, 꼬리가 두꺼우면 역전), MSE가 0으로 가는 일치 추정량을 판정한다.</li>
+      <li>적률법으로 지수·균일·감마 분포의 모수를 추정한다.</li>
+      <li>가능도와 로그 가능도를 세워 최대 가능도 추정량을 유도한다(정규·포아송·지수·중도 절단 수명). 불변성으로 \(D_0\), MTTF, FIT를 추정한다.</li>
+      <li>피셔 정보를 로그 가능도의 곡률로 이해하고, 크라메르–라오 하한 \(\operatorname{Var}(\hat\theta) \ge 1/nI(\theta)\)로 표준 오차를 어림한다.</li>
+      <li>베타 사전 분포와 이항 자료로 사후 분포를 구하고, 사후 평균이 사전 평균과 MLE의 가중 평균임을 보인다.</li>
+    </ul>
+  </header>
+
+  <!-- ============================================================ -->
+  <section id="estimators">
+    <h2>추정량과 추정값</h2>
+    <p>모집단 분포를 정하는 상수를 <span class="term">모수</span><span class="en">(parameter)</span>라 하고 \(\theta\)로 쓴다. 정규 분포의 \(\mu\)와 \(\sigma^2\), 포아송 분포의 \(\lambda\), 이항 분포의 \(p\)가 모수다. 모수는 고정된 값이지만 우리는 그 값을 모른다. 8장에서 본 대로 표본 \(X_1, \dots, X_n\)의 함수를 통계량이라 한다. 모수를 짐작하려고 쓰는 통계량을 <span class="term">추정량</span><span class="en">(estimator)</span> \(\hat\theta = h(X_1, \dots, X_n)\)이라 하고, 실제 자료 \(x_1, \dots, x_n\)을 넣어 얻은 숫자 \(h(x_1, \dots, x_n)\)을 <span class="term">추정값</span><span class="en">(estimate)</span>이라 한다. 숫자 하나로 모수를 짐작하므로 이 일을 <span class="term">점추정</span><span class="en">(point estimation)</span>이라 한다. 다음 장에서는 구간으로 짐작하는 구간 추정을 다룬다.</p>
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 280" role="img" aria-label="모집단에서 표본을 뽑고 추정량 함수에 넣어 추정값을 얻고, 표본을 다시 뽑으면 추정값이 달라져 표본 분포가 생기는 과정">
+        <defs>
+          <marker id="es-ar1" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="var(--text-dim)"/></marker>
+        </defs>
+        <rect x="20" y="60" width="170" height="150" rx="12" class="f-surface" stroke="var(--border)"/>
+        <text class="t" x="105" y="84" text-anchor="middle" style="font-weight:700">모집단</text>
+        <path d="M40 190 C 70 190, 80 110, 105 110 S 140 190, 170 190" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+        <line x1="105" y1="104" x2="105" y2="190" stroke="var(--accent-2)" stroke-dasharray="4 3"/>
+        <text class="t" x="105" y="203" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">θ = ?</text>
+        <g data-step="2">
+          <line x1="195" y1="135" x2="255" y2="135" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#es-ar1)"/>
+          <text class="t t-dim" x="225" y="124" text-anchor="middle">뽑기</text>
+          <rect x="262" y="90" width="150" height="90" rx="10" class="f-surface" stroke="var(--border)"/>
+          <text class="t" x="337" y="112" text-anchor="middle" style="font-weight:700">표본 (n = 5)</text>
+          <g fill="var(--accent)"><circle cx="290" cy="150" r="6"/><circle cx="314" cy="150" r="6"/><circle cx="338" cy="150" r="6"/><circle cx="362" cy="150" r="6"/><circle cx="386" cy="150" r="6"/></g>
+          <text class="t t-mono" x="337" y="172" text-anchor="middle" style="font-size:11px">x₁ … x₅</text>
+        </g>
+        <g data-step="3">
+          <line x1="417" y1="135" x2="467" y2="135" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#es-ar1)"/>
+          <rect x="474" y="96" width="150" height="78" rx="10" fill="var(--accent-soft, var(--surface))" stroke="var(--accent)" stroke-width="1.6"/>
+          <text class="t" x="549" y="122" text-anchor="middle" style="font-weight:700">추정량 h(·)</text>
+          <text class="t t-mono" x="549" y="148" text-anchor="middle">θ̂ = (x₁+…+x₅)/5</text>
+          <text class="t t-dim" x="549" y="166" text-anchor="middle" style="font-size:11px">규칙(함수)</text>
+          <line x1="628" y1="135" x2="668" y2="135" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#es-ar1)"/>
+          <text class="t" x="728" y="128" text-anchor="middle" style="font-weight:700">추정값</text>
+          <text class="t t-mono" x="728" y="150" text-anchor="middle" style="fill:var(--accent);font-weight:700">100.3 nm</text>
+        </g>
+        <g data-step="4">
+          <text class="t t-dim" x="337" y="232" text-anchor="middle">다시 뽑으면 다른 x₁ … x₅</text>
+          <text class="t t-dim" x="549" y="232" text-anchor="middle">→ 다른 추정값</text>
+          <g fill="var(--accent)" opacity=".75">
+            <rect x="660" y="236" width="12" height="10"/><rect x="674" y="222" width="12" height="24"/><rect x="688" y="204" width="12" height="42"/><rect x="702" y="196" width="12" height="50"/><rect x="716" y="208" width="12" height="38"/><rect x="730" y="226" width="12" height="20"/><rect x="744" y="238" width="12" height="8"/>
+          </g>
+          <line x1="655" y1="246" x2="762" y2="246" stroke="var(--text-dim)"/>
+          <text class="t" x="708" y="266" text-anchor="middle" style="font-size:12px">θ̂의 표본 분포</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>모집단의 모수 \(\theta\)(예: 막두께의 참 평균)는 정해져 있지만 모른다.</li><li>모집단에서 표본 \(n\)개를 뽑는다. 뽑기 전의 \(X_1, \dots, X_n\)은 확률 변수다.</li><li>추정량은 표본을 숫자 하나로 바꾸는 규칙이고, 이번 자료를 넣은 결과가 추정값이다.</li><li>표본을 다시 뽑으면 추정값이 달라진다. 따라서 추정량 \(\hat\theta\)는 확률 변수이고, 그 분포가 추정량의 표본 분포다. 추정량이 좋은지 나쁜지는 이 분포를 보고 판단한다.</li></ol>
+      <figcaption>추정량은 규칙이고 추정값은 그 규칙이 이번 자료에서 내놓은 숫자다. 이 구분은 대문자 \(\hat\Theta = h(X_1,\dots,X_n)\)와 소문자 \(\hat\theta = h(x_1,\dots,x_n)\)로 나타내기도 하지만, 이 책에서는 둘 다 \(\hat\theta\)로 쓰고 맥락으로 구분한다.</figcaption>
+    </figure>
+    <p>같은 모수를 추정하는 규칙은 여러 가지다. 막두께 측정값 9개로 평균 두께 \(\mu\)를 추정할 때 표본 평균 \(\bar X\)도 되고, 표본 중앙값도 되고, 가장 작은 값과 가장 큰 값의 가운데인 중간 범위 \((X_{(1)} + X_{(n)})/2\)도 된다. 양쪽 끝 몇 개를 버리고 평균하는 절사 평균도 있다. 자료가 잘 행동할 때는 이 값들이 거의 같다. 측정값 하나가 튀면 어떻게 될까?</p>
+    <figure class="mini" id="mini-est">
+      <div class="mini-view"><canvas id="cv-est"></canvas><span class="hint top">점을 좌우로 끈다</span></div>
+      <div class="mini-ctrl"><button class="btn" id="est-out" type="button">측정값 하나 튀게</button><button class="btn" id="est-reset" type="button">되돌리기</button><span class="readout" id="est-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>막두께 측정값 9개(nm)와 네 추정량. 가장 오른쪽 점을 120 nm 쪽으로 끌어 보자. 평균과 중간 범위는 따라 움직이지만 중앙값은 그대로 있고, 절사 평균은 조금만 움직인다. 이상값 하나에 얼마나 흔들리는지가 추정량마다 다르다.</figcaption>
+    </figure>
+    <p>이 예는 자료 한 묶음만 보았다. 추정량을 공정하게 비교하려면 표본을 수없이 다시 뽑아 추정값이 어떻게 흩어지는지 보아야 한다. 아래 시뮬레이터는 평균 100 nm, 표준 편차 4 nm인 정규 모집단에서 표본을 거듭 뽑아 네 추정량의 값을 모두 기록한다. 추정량 단추를 바꾸면 같은 표본들로 만든 그 추정량의 히스토그램이 나온다.</p>
+    <div class="sim" id="sim-sd">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>추정값의 표본 분포 쌓기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-sd"></canvas><span class="hint top">위: 모집단과 이번 표본 · 아래: 쌓인 추정값</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>추정량</span><div class="seg" id="sd-e"><button data-value="mean" class="on">평균 X̄</button><button data-value="med">중앙값</button><button data-value="mid">중간 범위</button><button data-value="x1">첫 값 X₁</button></div></div>
+          <label class="ctrl"><span>표본 크기 n <output id="sd-n-out"></output></span><input type="range" id="sd-n" min="2" max="30" step="1" value="5"></label>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="sd-1" type="button">1번</button><button class="btn" id="sd-10" type="button">10번</button><button class="btn" id="sd-1000" type="button">1000번</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="sd-play" type="button"></button><button class="btn" id="sd-reset" type="button">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="sd-k">—</span></div>
+        <div class="stat"><span class="k">추정값의 평균</span><span class="v" id="sd-m">—</span></div>
+        <div class="stat"><span class="k">추정값의 표준 편차</span><span class="v" id="sd-s">—</span></div>
+        <div class="stat"><span class="k">X̄의 이론 SE σ/√n</span><span class="v" id="sd-se">—</span></div>
+      </div>
+      <div class="sim-note">자주색 곡선은 모집단 \(N(100, 4^2)\)(위)과 \(\bar X\)의 이론 표본 분포 \(N(100, 4^2/n)\)(아래)이다. 해볼 것: ① 1000번 뽑은 뒤 추정량 단추를 차례로 눌러 보자. 네 히스토그램 모두 중심이 100 근처지만 폭이 다르다. 평균이 가장 좁고 첫 값 \(X_1\)이 가장 넓다. ② \(n\)을 5에서 20으로 늘리면 \(X_1\)을 뺀 세 추정량의 폭이 줄어든다. \(X_1\)은 \(n\)과 상관없이 표준 편차가 4 그대로다. ③ 추정값의 표준 편차를 \(\sigma/\sqrt n\)과 비교해 보자. 평균에서는 거의 같고, 중앙값은 그보다 약 20% 크다.</div>
+    </div>
+    <p>이 실험에서 판단 기준 두 가지가 보인다. 히스토그램의 중심이 참값에 있는가(편향), 그리고 폭이 얼마나 좁은가(분산)이다. 다음 두 절에서 이 두 기준을 정의하고 하나의 수로 묶는다.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="unbiased">
+    <h2>불편성과 표본 분산의 n − 1</h2>
+    <p>추정량의 기댓값과 참값의 차이를 <span class="term">편향</span><span class="en">(bias)</span>이라 한다.</p>
+    <div class="formula">$$\operatorname{Bias}(\hat\theta) = E[\hat\theta] - \theta$$<div class="where">모든 \(\theta\)에서 편향이 0인 추정량, 곧 \(E[\hat\theta] = \theta\)인 추정량을 <span class="term">불편 추정량</span><span class="en">(unbiased estimator)</span>이라 한다. 불편성은 추정값 하나가 맞는다는 뜻이 아니다. 표본을 거듭 뽑았을 때 추정값들의 평균이 참값에 맞는다는 뜻이다.</div></div>
+    <p>표본 평균은 어떤 모집단에서든 \(\mu\)의 불편 추정량이다. 기댓값이 선형이어서 \(E[\bar X] = \frac1n\sum E[X_i] = \mu\)이기 때문이다. 같은 이유로 \(X_1\) 하나만 써도, \((X_1 + 2X_2 + X_3)/4\)처럼 계수의 합이 1인 가중 평균을 써도 불편이다. 따라서 불편 추정량은 여러 개 있고, 불편성만으로는 추정량을 고를 수 없다. 표본 비율 \(\hat p = X/n\)도 \(E[\hat p] = p\)이므로 불편이다.</p>
+    <p>분산은 사정이 다르다. 편차 제곱의 평균을 그대로 쓰는 추정량 \(S_n^2 = \frac1n\sum(X_i - \bar X)^2\)을 생각하자. 직관적이지만 평균적으로 \(\sigma^2\)보다 작게 나온다. 얼마나 작을지 먼저 예측해 보자.</p>
+    <div class="predict" data-for="sim-s2">
+      <p>정규 모집단(\(\sigma^2 = 4\))에서 크기 \(n = 4\)인 표본을 수천 번 뽑아 \(n\)으로 나눈 분산 \(S_n^2\)을 계산하고 평균을 내면 어떤 값에 가까울까?</p>
+      <div class="opts"><button class="opt">4 — 표본을 충분히 많이 뽑으면 결국 참값에 맞는다</button><button class="opt" data-correct>3 — 참값의 \((n-1)/n = 3/4\)배</button><button class="opt">5.33 — 참값의 \(n/(n-1)\)배</button><button class="opt">2 — 참값의 절반</button></div>
+      <div class="quiz-exp">\(E[S_n^2] = \frac{n-1}{n}\sigma^2 = 3\)이다. 반복 횟수를 늘려도 이 값으로 수렴할 뿐 4에 가까워지지 않는다. 표본 하나의 크기 \(n\)이 작은 것이 원인이고, 반복 횟수와는 관계없다. \(n - 1\)로 나눈 \(S^2\)는 평균이 정확히 4가 된다. 아래에서 확인하자.</div>
+    </div>
+    <div class="sim" id="sim-s2">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>n으로 나눌까, n − 1로 나눌까</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-s2a"></canvas><span class="hint top">실행 평균의 수렴</span></div><div><canvas id="cv-s2b"></canvas><span class="hint top">두 추정값의 분포</span></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>표본 크기 n <output id="s2-n-out"></output></span><input type="range" id="s2-n" min="2" max="20" step="1" value="4"></label>
+          <div class="ctrl"><span>모집단 (σ² = 4)</span><div class="seg" id="s2-pop"><button data-value="norm" class="on">정규</button><button data-value="exp">지수</button><button data-value="unif">균일</button></div></div>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="s2-1" type="button">1번</button><button class="btn" id="s2-10" type="button">10번</button><button class="btn" id="s2-1000" type="button">1000번</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="s2-play" type="button"></button><button class="btn" id="s2-reset" type="button">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="s2-k">—</span></div>
+        <div class="stat"><span class="k">S² 평균 (n − 1)</span><span class="v" id="s2-a">—</span></div>
+        <div class="stat"><span class="k">S<sub>n</sub>² 평균 (n)</span><span class="v" id="s2-b">—</span></div>
+        <div class="stat"><span class="k">이론 (n−1)σ²/n</span><span class="v" id="s2-t">—</span></div>
+        <div class="stat"><span class="k">S 평균 (이론 c₄σ)</span><span class="v" id="s2-s">—</span></div>
+      </div>
+      <div class="sim-note">초록은 \(S^2\)(\(n-1\)로 나눔), 주황은 \(S_n^2\)(\(n\)으로 나눔), 점선은 참값 \(\sigma^2 = 4\)이다. 정규 모집단에서는 오른쪽에 \((n-1)S^2/\sigma^2 \sim \chi^2_{n-1}\)에서 나온 이론 곡선(자주)을 겹친다. 해볼 것: ① \(n = 2\)에서 1000번 뽑아 보자. \(S_n^2\)의 평균이 2(참값의 절반)로 간다. ② 모집단을 지수나 균일로 바꿔도 \(S^2\)의 평균은 4로 간다. 불편성에는 정규성이 필요 없다. ③ \(S\)의 평균은 2보다 조금 작다. \(S^2\)가 불편이어도 그 제곱근 \(S\)는 \(\sigma\)를 작게 추정한다.</div>
+    </div>
+    <h3>왜 n − 1인가: 자유도</h3>
+    <p>원인은 편차를 참 평균 \(\mu\)가 아니라 같은 자료로 구한 \(\bar X\)에서 잰다는 데 있다. \(\bar X\)는 자료의 한가운데로 끌려가 있으므로 \(\sum(X_i - \bar X)^2\)는 \(\sum(X_i - \mu)^2\)보다 언제나 작거나 같다. 아래 그림에서 단계를 따라가 보자.</p>
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 260" role="img" aria-label="세 측정값의 편차가 합이 0이 되어 자유도가 2이고, 표본 평균에서 잰 제곱합이 참 평균에서 잰 제곱합보다 작다는 것을 보이는 그림">
+        <line x1="60" y1="170" x2="520" y2="170" stroke="var(--text-dim)" stroke-width="1.4"/>
+        <g class="t t-dim" style="font-size:12px"><text x="100" y="192" text-anchor="middle">96</text><text x="200" y="192" text-anchor="middle">98</text><text x="300" y="192" text-anchor="middle">100</text><text x="400" y="192" text-anchor="middle">102</text><text x="500" y="192" text-anchor="middle">104</text></g>
+        <g fill="var(--accent)"><circle cx="150" cy="170" r="8"/><circle cx="250" cy="170" r="8"/><circle cx="450" cy="170" r="8"/></g>
+        <g class="t t-mono" style="font-size:12px"><text x="150" y="150" text-anchor="middle">97</text><text x="250" y="150" text-anchor="middle">99</text><text x="450" y="150" text-anchor="middle">103</text></g>
+        <g data-step="1">
+          <line x1="283" y1="60" x2="283" y2="176" stroke="var(--accent)" stroke-width="2"/>
+          <text class="t" x="283" y="52" text-anchor="middle" style="fill:var(--accent);font-weight:700">x̄ = 99.67</text>
+        </g>
+        <g data-step="2">
+          <line x1="150" y1="110" x2="283" y2="110" stroke="var(--bad)" stroke-width="3"/>
+          <line x1="250" y1="122" x2="283" y2="122" stroke="var(--bad)" stroke-width="3"/>
+          <line x1="283" y1="98" x2="450" y2="98" stroke="var(--ok)" stroke-width="3"/>
+          <text class="t" x="560" y="96" style="font-size:13px">편차: −2.67, −0.67, +3.33</text>
+          <text class="t" x="560" y="118" style="font-size:13px;font-weight:700">합 = 0 (항상)</text>
+        </g>
+        <g data-step="3">
+          <text class="t" x="560" y="146" style="font-size:13px">두 편차를 알면 셋째는 정해진다</text>
+          <text class="t" x="560" y="168" style="font-size:13px;font-weight:700;fill:var(--accent)">자유롭게 움직이는 편차 = n − 1 = 2개</text>
+        </g>
+        <g data-step="4">
+          <line x1="300" y1="40" x2="300" y2="176" stroke="var(--accent-2)" stroke-width="2" stroke-dasharray="5 4"/>
+          <text class="t" x="318" y="36" style="fill:var(--accent-2);font-weight:700">μ = 100</text>
+          <text class="t" x="560" y="200" style="font-size:12.5px">Σ(xᵢ − x̄)² = 18.67</text>
+          <text class="t" x="560" y="220" style="font-size:12.5px">Σ(xᵢ − μ)² = 19.00 = 18.67 + 3(x̄ − μ)²</text>
+          <text class="t t-dim" x="560" y="242" style="font-size:12px">x̄에서 잰 제곱합이 늘 더 작다</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>측정값 97, 99, 103의 표본 평균은 99.67이다.</li><li>표본 평균에서 잰 편차는 합이 늘 0이다. \(\sum(x_i - \bar x) = \sum x_i - n\bar x = 0\).</li><li>그래서 편차 \(n\)개 가운데 자유롭게 정해지는 것은 \(n-1\)개다. 이 수를 <span class="term">자유도</span><span class="en">(degrees of freedom)</span>라 한다. 평균 하나를 자료로 추정하느라 자유도 하나를 썼다.</li><li>참 평균 \(\mu\)에서 재면 제곱합이 \(n(\bar x - \mu)^2\)만큼 더 크다. 이 항의 기댓값이 \(n\cdot\sigma^2/n = \sigma^2\)이므로, \(\bar x\)에서 잰 제곱합의 기댓값은 \(n\sigma^2 - \sigma^2 = (n-1)\sigma^2\)이다.</li></ol>
+      <figcaption>자유도. \(\bar X\)는 자료에 가장 가깝도록 놓인 점이라 제곱합을 최소로 만든다. 그만큼 덜 흩어져 보이는 것을 \(n-1\)로 나누어 보정한다.</figcaption>
+    </figure>
+    <p>4단계의 항등식 \(\sum(X_i - \mu)^2 = \sum(X_i - \bar X)^2 + n(\bar X - \mu)^2\)의 양변에 기댓값을 취하면 다음을 얻는다.</p>
+    <div class="formula">$$E\Big[\sum_{i=1}^n (X_i - \bar X)^2\Big] = n\sigma^2 - n\cdot\frac{\sigma^2}{n} = (n-1)\sigma^2 \quad\Longrightarrow\quad E[S^2] = \sigma^2,\qquad E[S_n^2] = \frac{n-1}{n}\sigma^2$$<div class="where">이 계산에는 독립성과 \(\operatorname{Var}(\bar X) = \sigma^2/n\)만 쓰였고 정규성은 쓰이지 않았다. 따라서 \(S^2 = \frac{1}{n-1}\sum(X_i - \bar X)^2\)는 분산이 유한한 모든 모집단에서 \(\sigma^2\)의 불편 추정량이다. 반면 \(S_n^2\)의 편향은 \(-\sigma^2/n\)이고, \(n\)이 커지면 0으로 간다.</div></div>
+    <div class="tangle" id="tg-bias">
+      <p>표본 크기 <span class="tn" data-var="n" data-min="2" data-max="50" data-step="1">5</span>, 모분산 <span class="tn" data-var="s2" data-min="0.5" data-max="25" data-step="0.5">4.0</span>이면 \(n\)으로 나눈 분산의 기댓값은 <span class="tn-out" data-out="en"></span>이고 편향은 <span class="tn-out" data-out="b"></span>(참값의 <span class="tn-out" data-out="rel"></span>)이다. 불편인 \(S^2\)의 제곱근 \(S\)도 \(\sigma\) = <span class="tn-out" data-out="sig"></span>를 평균 <span class="tn-out" data-out="es"></span>로 작게 본다(\(c_4\) = <span class="tn-out" data-out="c4"></span>).</p>
+    </div>
+    <p>마지막 줄의 \(c_4\)는 정규 모집단에서 \(E[S] = c_4\sigma\)를 만족하는 상수다. \(c_4 = \sqrt{2/(n-1)}\,\Gamma(n/2)/\Gamma((n-1)/2)\)이고 \(n = 5\)에서 0.9400, \(n = 25\)에서 0.9896이다. 제곱근이 오목 함수여서 \(E[\sqrt{S^2}] < \sqrt{E[S^2]}\)이 되기 때문이다(옌센 부등식). 일반적으로 \(\hat\theta\)가 \(\theta\)의 불편 추정량이어도 \(g(\hat\theta)\)는 \(g(\theta)\)의 불편 추정량이 아니다.</p>
+    <p>아래 실험은 이 사실을 시뮬레이션 없이 정확하게 보여 준다. 값이 세 개뿐인 모집단에서 크기 2인 표본(복원 추출)은 9가지뿐이므로, 모든 표본을 나열해 평균을 내면 기댓값이 정확히 나온다.</p>
+    <figure class="mini" id="mini-enum">
+      <div class="mini-view"><canvas id="cv-enum"></canvas><span class="hint">위쪽 흰 점 세 개를 끈다</span></div>
+      <div class="mini-ctrl"><span class="readout" id="enum-r"></span></div>
+      <figcaption><span class="mini-tag">MINI LAB</span>모집단 \(\{a, b, c\}\)(각 확률 1/3)에서 가능한 표본 9개와 그 \(S^2\). 모집단 값을 어떻게 끌어도 9개 \(S^2\)의 평균은 모분산 \(\sigma^2 = \frac13\sum(v - \mu)^2\)과 정확히 같고, \(n\)으로 나눈 값의 평균은 정확히 그 절반이다.</figcaption>
+    </figure>
+    <div class="example" data-title="막두께 측정값으로 산포 추정">
+      <p>한 웨이퍼의 다섯 위치에서 막두께를 재어 101.2, 98.7, 100.4, 102.1, 99.1 nm를 얻었다. 표본 평균, 표본 분산 \(S^2\), 표본 표준 편차 \(S\), \(n\)으로 나눈 분산 \(S_n^2\)을 구하라. 정규 모집단을 가정하고 \(c_4\)로 보정한 \(\sigma\)의 불편 추정값 \(S/c_4\)도 구하라(\(c_4(5) = 0.9400\)).</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 편차 제곱합을 구한 뒤 \(n-1\)과 \(n\)으로 각각 나눈다.</div>
+        <div class="step"><b>풀이</b> \(\bar x = 501.5/5 = 100.3\) nm. 편차는 0.9, −1.6, 0.1, 1.8, −1.2이고 제곱합은 \(0.81 + 2.56 + 0.01 + 3.24 + 1.44 = 8.06\)이다. \(S^2 = 8.06/4 = 2.015\) nm², \(S = 1.4195\) nm, \(S_n^2 = 8.06/5 = 1.612\) nm². \(S/c_4 = 1.4195/0.9400 = 1.510\) nm.</div>
+        <div class="answer">\(\bar x = 100.3\) nm, \(S^2 = 2.015\) nm², \(S = 1.42\) nm, \(S_n^2 = 1.61\) nm², \(S/c_4 = 1.51\) nm</div>
+        <div class="step"><b>검토</b> \(S_n^2/S^2 = 4/5\)로 \(n - 1\)과 \(n\)의 비와 같다. \(n = 5\)에서는 차이가 20%나 되지만 \(n = 100\)이면 1%로 줄어든다. 공정 산포를 작은 표본으로 볼 때일수록 나눗수를 정확히 써야 한다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>관리도는 σ를 \(\bar s/c_4\)나 \(\bar R/d_2\)로 추정한다</strong> \(\bar X\)–\(s\) 관리도는 부분군(보통 4–5개 측정값)마다 \(S\)를 구해 평균 \(\bar s\)를 내는데, \(S\)가 \(\sigma\)를 작게 보므로 공정 표준 편차를 \(\hat\sigma = \bar s/c_4\)로 추정한다. \(n = 5\)라면 \(c_4 = 0.940\)이므로 보정하지 않으면 \(\sigma\)를 6% 작게 보고, 관리 한계가 그만큼 좁아져 거짓 경보가 는다. \(\bar X\)–\(R\) 관리도의 \(\hat\sigma = \bar R/d_2\)도 같은 생각으로, 범위 \(R\)의 기댓값 \(d_2\sigma\)로 나누어 편향을 없앤다. 16장에서 이 상수들을 다시 쓴다. 팹의 계측과 SPC 화면이 어떻게 연결되는지는 → <a href="https://semi.euiyun.com/process/chapters/metrology.html">ProcessBook · 계측·결함·수율(SPC: 숫자로 공정을 지키기)</a></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="mse">
+    <h2>평균 제곱 오차와 편향–분산 분해</h2>
+    <p>불편 추정량이라도 흩어짐이 크면 쓸모가 적다. \(X_1\) 하나만 쓰는 추정량은 불편이지만 표본을 아무리 많이 모아도 나머지를 버린다. 반대로 약간 편향되어 있어도 흩어짐이 아주 작다면 실제로는 더 자주 참값 가까이에 떨어진다. 두 성질을 한 번에 재는 척도가 <span class="term">평균 제곱 오차</span><span class="en">(mean squared error, MSE)</span>다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 820 270" role="img" aria-label="과녁 네 개: 편향과 분산이 모두 작은 경우, 편향은 작고 분산이 큰 경우, 편향은 크고 분산이 작은 경우, 둘 다 큰 경우">
+        <g fill="none" stroke="var(--border)" stroke-width="1.4">
+          <circle cx="130" cy="150" r="80"/><circle cx="130" cy="150" r="52"/><circle cx="130" cy="150" r="24"/>
+          <circle cx="320" cy="150" r="80"/><circle cx="320" cy="150" r="52"/><circle cx="320" cy="150" r="24"/>
+          <circle cx="510" cy="150" r="80"/><circle cx="510" cy="150" r="52"/><circle cx="510" cy="150" r="24"/>
+          <circle cx="700" cy="150" r="80"/><circle cx="700" cy="150" r="52"/><circle cx="700" cy="150" r="24"/>
+        </g>
+        <g fill="var(--accent-2)"><circle cx="130" cy="150" r="4"/><circle cx="320" cy="150" r="4"/><circle cx="510" cy="150" r="4"/><circle cx="700" cy="150" r="4"/></g>
+        <g fill="var(--accent)" opacity=".85">
+          <circle cx="148" cy="127" r="4"/> <circle cx="134" cy="145" r="4"/> <circle cx="126" cy="148" r="4"/> <circle cx="112" cy="148" r="4"/> <circle cx="122" cy="168" r="4"/> <circle cx="132" cy="147" r="4"/> <circle cx="127" cy="144" r="4"/> <circle cx="121" cy="146" r="4"/> <circle cx="134" cy="148" r="4"/> <circle cx="139" cy="148" r="4"/> <circle cx="130" cy="164" r="4"/> <circle cx="135" cy="145" r="4"/>
+          <circle cx="315" cy="166" r="4"/> <circle cx="378" cy="142" r="4"/> <circle cx="313" cy="180" r="4"/> <circle cx="293" cy="141" r="4"/> <circle cx="346" cy="167" r="4"/> <circle cx="323" cy="170" r="4"/> <circle cx="255" cy="181" r="4"/> <circle cx="291" cy="100" r="4"/> <circle cx="328" cy="171" r="4"/> <circle cx="307" cy="118" r="4"/> <circle cx="321" cy="148" r="4"/> <circle cx="362" cy="172" r="4"/>
+          <circle cx="538" cy="140" r="4"/> <circle cx="534" cy="122" r="4"/> <circle cx="541" cy="135" r="4"/> <circle cx="534" cy="123" r="4"/> <circle cx="538" cy="108" r="4"/> <circle cx="542" cy="134" r="4"/> <circle cx="521" cy="131" r="4"/> <circle cx="527" cy="137" r="4"/> <circle cx="518" cy="122" r="4"/> <circle cx="542" cy="140" r="4"/> <circle cx="517" cy="126" r="4"/> <circle cx="539" cy="125" r="4"/>
+          <circle cx="750" cy="96" r="4"/> <circle cx="733" cy="101" r="4"/> <circle cx="754" cy="131" r="4"/> <circle cx="711" cy="80" r="4"/> <circle cx="752" cy="155" r="4"/> <circle cx="745" cy="166" r="4"/> <circle cx="732" cy="113" r="4"/> <circle cx="698" cy="108" r="4"/> <circle cx="763" cy="88" r="4"/> <circle cx="704" cy="122" r="4"/> <circle cx="729" cy="149" r="4"/> <circle cx="685" cy="80" r="4"/>
+        </g>
+        <g class="t" text-anchor="middle" style="font-size:13px;font-weight:700"><text x="130" y="40">편향 작음 · 분산 작음</text><text x="320" y="40">편향 작음 · 분산 큼</text><text x="510" y="40">편향 큼 · 분산 작음</text><text x="700" y="40">편향 큼 · 분산 큼</text></g>
+        <g class="t t-dim" text-anchor="middle" style="font-size:12px"><text x="130" y="256">MSE 가장 작음</text><text x="320" y="256">불편이지만 흩어짐</text><text x="510" y="256">정밀하지만 빗나감</text><text x="700" y="256">MSE 가장 큼</text></g>
+      </svg>
+      <figcaption>편향과 분산. 과녁 중심(자주)이 참값 \(\theta\), 점 하나가 표본 하나로 얻은 추정값이다. 측정 장비로 말하면 편향은 정확도(accuracy)의 반대, 분산은 정밀도(precision)의 반대다. 둘째와 셋째 과녁 가운데 어느 쪽이 나은지는 MSE로 판정한다.</figcaption>
+    </figure>
+    <div class="formula">$$\mathrm{MSE}(\hat\theta) = E\big[(\hat\theta - \theta)^2\big] = \operatorname{Var}(\hat\theta) + \big[\operatorname{Bias}(\hat\theta)\big]^2$$<div class="where">\(\hat\theta - \theta = (\hat\theta - E[\hat\theta]) + (E[\hat\theta] - \theta)\)로 나누어 제곱하면 교차항의 기댓값이 \(E[\hat\theta - E\hat\theta] = 0\)이어서 사라진다. 불편 추정량이면 MSE가 곧 분산이다. \(\sqrt{\mathrm{MSE}}\)는 RMSE라 하며 추정값이 참값에서 전형적으로 얼마나 벗어나는지를 원래 단위로 나타낸다. 추정량의 표준 편차 \(\sqrt{\operatorname{Var}(\hat\theta)}\)는 표준 오차(standard error)라 부른다(8장).</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 820 250" role="img" aria-label="추정량의 표본 분포 곡선 위에 참값, 기댓값, 편향 화살표, 표준 오차 폭을 표시한 그림">
+        <defs><marker id="es-ar2" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="var(--bad)"/></marker><marker id="es-ar3" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="var(--accent)"/></marker></defs>
+        <line x1="180" y1="200" x2="700" y2="200" stroke="var(--text-dim)" stroke-width="1.4"/>
+        <path d="M200 200 L212 200 L225 200 L237 199 L249 199 L262 197 L274 195 L286 192 L298 187 L311 181 L323 171 L335 160 L348 145 L360 129 L372 112 L385 95 L397 80 L409 68 L422 61 L434 60 L446 65 L458 75 L471 89 L483 105 L495 123 L508 139 L520 155 L532 167 L545 177 L557 185 L569 191 L582 194 L594 197 L606 198 L618 199 L631 199 L643 200 L655 200 L668 200 L680 200" fill="var(--accent)" fill-opacity=".12" stroke="var(--accent)" stroke-width="2.4"/>
+        <line x1="330" y1="40" x2="330" y2="206" stroke="var(--accent-2)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text class="t" x="330" y="222" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">θ (참값)</text>
+        <line x1="430" y1="56" x2="430" y2="206" stroke="var(--accent)" stroke-width="2"/>
+        <text class="t" x="430" y="222" text-anchor="middle" style="fill:var(--accent);font-weight:700">E[θ̂]</text>
+        <line x1="334" y1="44" x2="424" y2="44" stroke="var(--bad)" stroke-width="2.4" marker-end="url(#es-ar2)"/>
+        <text class="t" x="380" y="34" text-anchor="middle" style="fill:var(--bad);font-weight:700">편향</text>
+        <line x1="436" y1="130" x2="486" y2="130" stroke="var(--accent)" stroke-width="2" marker-start="url(#es-ar3)" marker-end="url(#es-ar3)"/>
+        <text class="t" x="498" y="134" style="fill:var(--accent);font-weight:700">SE = √Var(θ̂)</text>
+        <text class="t" x="560" y="70" style="font-size:14px;font-weight:700">MSE = SE² + 편향²</text>
+        <text class="t t-dim" x="560" y="92" style="font-size:12px">참값에서 잰 흩어짐의 제곱 평균</text>
+      </svg>
+      <figcaption>편향–분산 분해. 곡선은 추정량의 표본 분포다. MSE는 참값 \(\theta\)에서 잰 평균 제곱 거리이고, 분포의 중심이 어긋난 몫(편향²)과 중심 둘레로 퍼진 몫(분산)으로 나뉜다.</figcaption>
+    </figure>
+    <div class="example" data-title="세 추정량의 MSE 비교">
+      <p>\(X_1, X_2, X_3\)이 평균 \(\mu = 4\), 분산 \(\sigma^2 = 12\)인 모집단의 확률 표본이다. 다음 세 추정량의 편향, 분산, MSE를 구하라. \(\hat\theta_1 = \bar X\), \(\hat\theta_2 = (X_1 + 2X_2 + X_3)/4\), \(\hat\theta_3 = (X_1 + X_2 + X_3)/4\).</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 선형 결합 \(\sum a_iX_i\)의 기댓값은 \(\mu\sum a_i\), 분산은 \(\sigma^2\sum a_i^2\)이다(6장).</div>
+        <div class="step"><b>풀이</b> \(\hat\theta_1\): 계수 합 1, \(\sum a_i^2 = 3/9\) → 편향 0, 분산 \(12/3 = 4\), MSE 4. \(\hat\theta_2\): 계수 합 1, \(\sum a_i^2 = 6/16\) → 편향 0, 분산 4.5, MSE 4.5. \(\hat\theta_3\): 계수 합 3/4 → 편향 \(-\mu/4 = -1\), 분산 \(12\cdot3/16 = 2.25\), MSE \(2.25 + 1 = 3.25\).</div>
+        <div class="answer">MSE: \(\hat\theta_1 = 4\), \(\hat\theta_2 = 4.5\), \(\hat\theta_3 = 3.25\)</div>
+        <div class="step"><b>검토</b> 불편 추정량 둘 가운데서는 \(\bar X\)가 낫다(계수가 고를수록 분산이 작다). 그런데 편향이 있는 \(\hat\theta_3\)이 MSE에서는 이겼다. 다만 이것은 \(\mu = 4\)일 때 이야기다. \(\mu = 10\)이면 편향² 이 6.25가 되어 진다. 편향이 있는 추정량의 성적은 모르는 \(\mu\)에 달려 있다.</div>
+      </details>
+    </div>
+    <p>마지막 추정량은 \(\bar X\)를 0 쪽으로 줄인 <span class="term">수축 추정량</span><span class="en">(shrinkage estimator)</span> \(c\bar X\)(\(c = 3/4\))이다. 일반적인 \(c\)에서 편향은 \((c-1)\mu\), 분산은 \(c^2\sigma^2/n\)이므로</p>
+    <div class="formula">$$\mathrm{MSE}(c\bar X) = (1-c)^2\mu^2 + c^2\frac{\sigma^2}{n},\qquad c^* = \frac{\mu^2}{\mu^2 + \sigma^2/n},\qquad \mathrm{MSE}_{\min} = \frac{\mu^2\,\sigma^2/n}{\mu^2 + \sigma^2/n} < \frac{\sigma^2}{n}$$<div class="where">\(c\)를 1에서 조금 줄이면 편향² 은 \((1-c)^2\)로 아주 천천히 늘지만 분산은 \(c^2\)으로 곧바로 준다. 그래서 최적점 \(c^*\)는 언제나 1보다 작다. 다만 \(c^*\)가 모르는 \(\mu\)에 달려 있어 그대로 쓸 수는 없다. 여러 평균을 한꺼번에 추정할 때 이 아이디어를 자료로 실현한 것이 제임스–스타인 추정량이고, 9.9절의 베이즈 사후 평균도 같은 수축이다.</div></div>
+    <div class="tangle" id="tg-shrink">
+      <p>참 평균 \(\mu\) = <span class="tn" data-var="mu" data-min="0" data-max="10" data-step="0.1">2.0</span>, 표준 편차 \(\sigma\) = <span class="tn" data-var="s" data-min="0.5" data-max="10" data-step="0.1">3.0</span>, 표본 크기 <span class="tn" data-var="n" data-min="1" data-max="100" data-step="1">5</span>에서 수축 계수 <span class="tn" data-var="c" data-min="0" data-max="1.2" data-step="0.01">0.80</span>을 쓰면 편향² = <span class="tn-out" data-out="b2"></span>, 분산 = <span class="tn-out" data-out="v"></span>, MSE = <span class="tn-out" data-out="m"></span>로 \(\bar X\)의 MSE <span class="tn-out" data-out="m1"></span>보다 <span class="tn-out" data-out="cmp"></span>. 최적 계수는 \(c^*\) = <span class="tn-out" data-out="cs"></span>이고 그때 MSE는 <span class="tn-out" data-out="ms"></span>이다.</p>
+    </div>
+    <div class="sim" id="sim-bv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>편향–분산 실험실: MSE 바닥 찾기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-bv1"></canvas><span class="hint top">c·X̄ 추정값 분포와 MSE 막대</span></div><div><canvas id="cv-bv2"></canvas><span class="hint top">흰 원을 좌우로 끌어 c를 바꾼다</span></div></div></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="bv-theory"> 이론 곡선 보이기</label>
+          <div class="ctrl"><span>표본 쌓기</span><div class="btn-row"><button class="btn" id="bv-100" type="button">100번 더</button><button class="btn primary" id="bv-play" type="button"></button></div></div>
+          <button class="btn" id="bv-new" type="button">새 문제 (μ, σ, n 바꾸기)</button>
+          <button class="btn" id="bv-check" type="button">판정: 여기가 바닥?</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">문제</span><span class="v" id="bv-p" style="font-size:14px">—</span></div>
+        <div class="stat"><span class="k">수축 계수 c</span><span class="v" id="bv-c">—</span></div>
+        <div class="stat"><span class="k">모의 편향² + 분산</span><span class="v" id="bv-m" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">X̄(c = 1)의 MSE</span><span class="v" id="bv-m1" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">과녁</span><span class="v" id="bv-g" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽은 표본마다 얻은 \(c\bar X\)를 쌓은 히스토그램과, 그 모의 MSE를 편향²(빨강)과 분산(초록)으로 쌓은 막대다. 오른쪽에는 지금까지 시도한 \(c\)에서의 모의 MSE가 점으로 남는다. 같은 표본들의 \(\bar X\)에 \(c\)만 곱하므로 점들이 매끄러운 곡선을 그린다. 과녁: 이론 곡선을 숨긴 채 \(c\)를 옮겨 가며 MSE가 가장 작은 곳을 찾고 "판정"을 누른다. 이론 최솟값의 2% 이내면 성공이다. 해볼 것: ① \(c\)를 1에서 0.9로 줄이면 빨간 막대는 거의 그대로인데 초록 막대가 확 준다. ② \(c\)를 0 근처로 끌면 분산은 사라지지만 편향² 이 \(\mu^2\)이 된다. ③ 새 문제에서 \(\mu\)가 크고 \(\sigma^2/n\)이 작으면 바닥이 \(c = 1\) 가까이에 있다. 수축의 이득은 잡음이 신호에 비해 클 때 크다.</div>
+    </div>
+    <div class="example" data-title="측정 오프셋의 수축 추정">
+      <p>계측기의 오프셋 \(\mu\)를 기준 시편을 8번 재서 추정한다. 반복 측정의 표준 편차는 \(\sigma = 2\) nm이고, 과거 경험상 오프셋은 0.5 nm 안팎으로 작다. \(\mu = 0.5\)라고 할 때 \(\bar X\)와 최적 수축 추정량 \(c^*\bar X\)의 MSE를 비교하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\sigma^2/n\)과 \(\mu^2\)을 비교해 \(c^*\)를 구한다.</div>
+        <div class="step"><b>풀이</b> \(\sigma^2/n = 4/8 = 0.5\), \(\mu^2 = 0.25\). \(\mathrm{MSE}(\bar X) = 0.5\) nm². \(c^* = 0.25/(0.25 + 0.5) = 1/3\), \(\mathrm{MSE}_{\min} = 0.25\times0.5/0.75 = 0.167\) nm².</div>
+        <div class="answer">\(\mathrm{MSE}(\bar X) = 0.50\) nm², \(c^* = 0.333\), \(\mathrm{MSE}(c^*\bar X) = 0.167\) nm² (RMSE 0.71 → 0.41 nm)</div>
+        <div class="step"><b>검토</b> 잡음(\(\sigma/\sqrt n = 0.71\) nm)이 신호(0.5 nm)보다 크니 0 쪽으로 세게 줄이는 편이 낫다. 실제로는 \(\mu\)를 모르므로 "오프셋은 0 근처"라는 사전 지식을 베이즈 추정(9.9절)으로 넣는 것이 정석이다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-mse" data-title="편향·분산·MSE 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="efficiency">
+    <h2>효율성과 일치성</h2>
+    <p>불편 추정량 둘을 비교할 때는 분산이 작은 쪽이 낫다. 두 불편 추정량의 <span class="term">상대 효율</span><span class="en">(relative efficiency)</span>을 분산의 비로 정의한다.</p>
+    <div class="formula">$$\operatorname{eff}(\hat\theta_1 \text{ 대비 } \hat\theta_2) = \frac{\operatorname{Var}(\hat\theta_1)}{\operatorname{Var}(\hat\theta_2)}$$<div class="where">이 값이 1보다 작으면 \(\hat\theta_2\)가 덜 효율적이다. 분산이 \(1/n\)에 비례할 때 상대 효율 0.64는 "\(\hat\theta_2\)로 같은 정밀도를 얻으려면 표본이 \(1/0.64 = 1.57\)배 필요하다"는 뜻이다. 편향이 있는 추정량끼리는 MSE의 비로 비교한다.</div></div>
+    <p>정규 모집단에서 표본 중앙값의 분산은 \(n\)이 클 때 \(\pi\sigma^2/(2n)\)이다. 따라서 평균 대비 중앙값의 효율은 \(2/\pi \approx 0.637\)이다. 중앙값은 자료의 순위만 쓰고 크기 정보를 버리기 때문이다. 그러나 꼬리가 두꺼운 모집단에서는 사정이 뒤집힌다.</p>
+    <div class="predict" data-for="sim-eff">
+      <p>측정값의 95%는 정상이지만 5%는 장비 오류로 표준 편차가 10배인 '오염 정규' 자료가 있다. \(n = 15\)로 표본을 거듭 뽑을 때, 평균과 중앙값 가운데 분산이 작은 것은?</p>
+      <div class="opts"><button class="opt">평균 — 모든 값을 쓰므로 언제나 가장 효율적이다</button><button class="opt" data-correct>중앙값 — 튀는 값에 끌려가지 않아 분산이 평균의 3분의 1 정도다</button><button class="opt">둘이 같다 — 대칭 분포이므로</button></div>
+      <div class="quiz-exp">오염 정규의 분산은 \(0.95 + 0.05\times100 = 5.95\)여서 \(\bar X\)의 분산은 \(5.95/n\)이다. 중앙값은 가운데 순위만 보므로 거의 \(N(0,1)\)일 때처럼 행동해 분산이 약 \(1.72/n\)이다. 효율은 약 3.5배 차이 난다. 아래 시뮬레이터에서 모집단을 바꿔 가며 확인하자.</div>
+    </div>
+    <div class="sim" id="sim-eff">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>평균 대 중앙값: 효율 경주</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-eff"></canvas><span class="hint top">위: 모집단과 이번 표본 · 아래: 두 추정량의 분포</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>모집단</span><div class="seg" id="ef-pop"><button data-value="norm" class="on">정규</button><button data-value="t3">t₃ (두꺼운 꼬리)</button><button data-value="cont">오염 정규</button></div></div>
+          <label class="ctrl"><span>표본 크기 n <output id="ef-n-out"></output></span><input type="range" id="ef-n" min="3" max="51" step="2" value="15"></label>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="ef-10" type="button">10번</button><button class="btn" id="ef-1000" type="button">1000번</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ef-play" type="button"></button><button class="btn" id="ef-reset" type="button">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="ef-k">—</span></div>
+        <div class="stat"><span class="k">Var(평균)</span><span class="v" id="ef-vm">—</span></div>
+        <div class="stat"><span class="k">Var(중앙값)</span><span class="v" id="ef-vd">—</span></div>
+        <div class="stat"><span class="k">효율 Var(평균)/Var(중앙값)</span><span class="v" id="ef-e">—</span></div>
+        <div class="stat"><span class="k">큰 n 이론값</span><span class="v" id="ef-th">—</span></div>
+      </div>
+      <div class="sim-note">초록은 표본 평균, 주황은 표본 중앙값의 히스토그램이다. 효율이 1보다 크면 중앙값이 더 정밀하다. 해볼 것: ① 정규에서 1000번 뽑으면 효율이 0.64–0.66 근처다(\(n\)이 작으면 \(2/\pi\)보다 조금 크다). ② t₃와 오염 정규로 바꾸면 효율이 1.5, 3.5 근처로 역전된다. 평균의 히스토그램에 긴 꼬리가 생기는 것을 보자. ③ 위 그림에서 이번 표본의 튀는 점(빨강)이 평균(초록 선)을 얼마나 끌고 가는지 보자.</div>
+    </div>
+    <p>모든 불편 추정량 가운데 분산이 가장 작은 것을 <span class="term">최소 분산 불편 추정량</span><span class="en">(minimum variance unbiased estimator, MVUE)</span>이라 한다. 정규 모집단에서 \(\bar X\)는 \(\mu\)의 MVUE다. 9.8절의 크라메르–라오 하한은 불편 추정량의 분산이 그보다 작아질 수 없는 바닥을 주므로, 어떤 추정량이 그 바닥에 닿으면 MVUE임을 바로 알 수 있다.</p>
+    <h3>일치성</h3>
+    <p>표본을 늘릴수록 추정량이 참값으로 모여야 한다. 표본 크기 \(n\)이 커질 때 모든 \(\varepsilon > 0\)에 대해 \(P(|\hat\theta_n - \theta| > \varepsilon) \to 0\)이면 \(\hat\theta_n\)을 <span class="term">일치 추정량</span><span class="en">(consistent estimator)</span>이라 한다. 7장의 체비쇼프 부등식을 \(\hat\theta_n\)에 쓰면 쉬운 충분조건이 나온다.</p>
+    <div class="formula">$$P(|\hat\theta_n - \theta| \ge \varepsilon) \le \frac{E[(\hat\theta_n - \theta)^2]}{\varepsilon^2} = \frac{\mathrm{MSE}(\hat\theta_n)}{\varepsilon^2}$$<div class="where">따라서 \(\mathrm{MSE} \to 0\), 곧 편향과 분산이 모두 0으로 가면 일치 추정량이다. \(\bar X\)(분산 \(\sigma^2/n\)), \(S^2\)와 \(S_n^2\)(편향 \(-\sigma^2/n\)도 0으로 감)는 일치 추정량이다. \(X_1\)은 불편이지만 분산이 \(\sigma^2\)에서 줄지 않아 일치 추정량이 아니다. 불편성과 일치성은 서로 다른 성질이다.</div></div>
+    <figure class="mini" id="mini-cons">
+      <div class="mini-view"><canvas id="cv-cons"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>n <output id="cs-n-out"></output></span><input type="range" id="cs-n" min="0" max="2.7" step="0.01" value="0.7"></label>
+        <div class="seg" id="cs-e"><button data-value="mean" class="on">X̄</button><button data-value="x1">X₁</button></div>
+        <button class="btn" id="cs-play" type="button"></button>
+        <span class="readout" id="cs-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>지수 분포 수명(평균 1000 h)에서 표본 400묶음을 뽑아 만든 추정량의 분포. \(n\)이 커지면 \(\bar X\)의 분포가 참값 둘레 ±100 h 띠 안으로 오그라들고 띠 밖 비율이 0으로 간다. \(X_1\)로 바꾸면 \(n\)을 아무리 키워도 분포가 그대로다.</figcaption>
+    </figure>
+    <div class="tangle" id="tg-cheb">
+      <p>표준 편차 <span class="tn" data-var="s" data-min="0.5" data-max="20" data-step="0.5">4.0</span> nm인 공정에서 평균 두께를 오차 <span class="tn" data-var="e" data-min="0.2" data-max="5" data-step="0.1">1.0</span> nm 이내로 잡고 싶다. 표본 <span class="tn" data-var="n" data-min="1" data-max="1000" data-step="1">50</span>개의 \(\bar X\)가 그보다 벗어날 확률은 체비쇼프 부등식으로 많아야 <span class="tn-out" data-out="ub"></span>이고, 정규 근사로는 <span class="tn-out" data-out="nr"></span>이다. 체비쇼프 상한을 5%로 보장하려면 \(n \ge\) <span class="tn-out" data-out="need"></span>이 필요하다.</p>
+    </div>
+    <p>체비쇼프 상한은 분포를 모를 때도 쓸 수 있지만 매우 보수적이다. 정규 근사(중심 극한 정리)가 같은 질문에 훨씬 작은 확률을 준다. 일치성의 판정에는 상한이 0으로 간다는 사실만 있으면 된다.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="moments">
+    <h2>적률법</h2>
+    <p>지금까지는 주어진 추정량을 평가했다. 이제 추정량을 만드는 방법을 보자. 가장 오래된 방법인 <span class="term">적률법</span><span class="en">(method of moments)</span>은 모집단 적률을 표본 적률과 같다고 놓고 모수에 대해 푼다.</p>
+    <div class="formula">$$\mu_k(\theta) = E[X^k] \;\overset{\text{놓기}}{=}\; M_k = \frac1n\sum_{i=1}^n X_i^k,\qquad k = 1, 2, \dots, (\text{모수 개수})$$<div class="where">모수가 하나면 \(E[X] = \bar X\) 하나로, 둘이면 둘째 적률까지 쓴다. 둘째 적률 대신 분산을 맞추어도 같다: \(\operatorname{Var}(X) = M_2 - M_1^2 = S_n^2\)(\(n\)으로 나눈 분산). 큰 수의 법칙에 따라 \(M_k \to \mu_k\)이므로 적률법 추정량은 보통 일치 추정량이다.</div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>모집단</th><th>적률 식</th><th>적률법 추정량</th></tr></thead>
+      <tbody>
+        <tr><td>\(\mathrm{Poisson}(\lambda)\)</td><td>\(E[X] = \lambda\)</td><td>\(\hat\lambda = \bar X\)</td></tr>
+        <tr><td>\(\mathrm{Exp}(\lambda)\)</td><td>\(E[X] = 1/\lambda\)</td><td>\(\hat\lambda = 1/\bar X\)</td></tr>
+        <tr><td>균일 \((0, \theta)\)</td><td>\(E[X] = \theta/2\)</td><td>\(\hat\theta = 2\bar X\)</td></tr>
+        <tr><td>\(N(\mu, \sigma^2)\)</td><td>\(E[X] = \mu,\ \operatorname{Var}(X) = \sigma^2\)</td><td>\(\hat\mu = \bar X,\ \hat\sigma^2 = S_n^2\)</td></tr>
+        <tr><td>\(\mathrm{Gamma}(k, \theta)\)</td><td>\(E[X] = k\theta,\ \operatorname{Var}(X) = k\theta^2\)</td><td>\(\hat\theta = S_n^2/\bar X,\ \hat k = \bar X^2/S_n^2\)</td></tr>
+      </tbody>
+    </table></div>
+    <p>감마 분포는 대기 시간, 누설 전류, 입자 크기처럼 양수이고 오른쪽으로 치우친 자료에 자주 쓴다. 평균과 분산 두 숫자로 모양 \(k\)와 척도 \(\theta\)가 정해지니, 적률법은 곧 "평균과 분산이 자료와 같은 감마 곡선 고르기"다. 아래에서 손으로 직접 해 보자.</p>
+    <div class="sim" id="sim-mom">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>적률 맞추기: 감마 곡선을 자료에 겹치기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-mom"></canvas><span class="hint top">◆ 평균 손잡이, ● 표준 편차 손잡이를 끈다</span></div>
+        <div class="sim-controls">
+          <button class="btn" id="mm-new" type="button">새 자료 (누설 전류 60개)</button>
+          <label class="check"><input type="checkbox" id="mm-mle"> 최대 가능도 곡선도 보기</label>
+          <button class="btn" id="mm-auto" type="button">적률법 답 보기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">자료 평균 · S<sub>n</sub></span><span class="v" id="mm-d" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">곡선 평균 kθ · 표준 편차 √k θ</span><span class="v" id="mm-c" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">곡선 모수 k · θ</span><span class="v" id="mm-p" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">로그 가능도</span><span class="v" id="mm-l" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">과녁</span><span class="v" id="mm-g" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">초록 히스토그램은 번인 전에 잰 칩 60개의 누설 전류(nA)다. 자주색 곡선은 내가 고른 감마 분포다. 과녁: 곡선의 평균과 표준 편차를 자료의 \(\bar x\), \(S_n\)과 각각 2% 이내로 맞추면 성공이다. 그때의 \(k\), \(\theta\)가 적률법 추정값이다. 해볼 것: ① 평균만 맞추고 표준 편차를 줄이거나 키우면 곡선이 뾰족해지거나 넓어진다. ② 성공한 뒤 "최대 가능도 곡선"을 켜 보자. 점선(MLE)은 적률법과 조금 다르고 로그 가능도가 조금 더 크다. 9.6절에서 이유를 본다. ③ 새 자료를 몇 번 뽑으면 \(\hat k\)가 참값 4 둘레에서 꽤 흔들린다. 모양 모수는 60개로도 정밀하게 잡히지 않는다.</div>
+    </div>
+    <div class="tangle" id="tg-mom">
+      <p>누설 전류 자료의 표본 평균이 <span class="tn" data-var="m" data-min="1" data-max="40" data-step="0.1">10.4</span> nA, \(n\)으로 나눈 분산이 <span class="tn" data-var="v" data-min="1" data-max="200" data-step="0.01">27.04</span> nA²이면 감마 분포의 적률법 추정값은 척도 \(\hat\theta\) = <span class="tn-out" data-out="th"></span>, 모양 \(\hat k\) = <span class="tn-out" data-out="k"></span>이다. 분산을 평균과 같게 하면 \(\hat\theta = 1\) nA가 되고, 분산을 평균의 제곱과 같게 하면 \(\hat k = 1\), 곧 지수 분포가 된다. 지금 변동 계수 \(S_n/\bar x\) = <span class="tn-out" data-out="cv"></span>.</p>
+    </div>
+    <div class="example" data-title="감마 분포의 적률법 추정">
+      <p>칩 40개의 누설 전류를 재어 표본 평균 \(\bar x = 10.4\) nA, \(n\)으로 나눈 분산 \(s_n^2 = 27.04\) nA²을 얻었다. 감마 분포 \(\mathrm{Gamma}(k, \theta)\)를 가정하고 적률법으로 \(k\)와 \(\theta\)를 추정하라. 추정한 분포에서 누설 전류가 20 nA를 넘을 확률은? (감마 꼬리 확률은 계산기로 구한다.)</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(k\theta = \bar x\), \(k\theta^2 = s_n^2\)를 연립한다. 둘째 식을 첫째 식으로 나누면 \(\theta\)가 나온다.</div>
+        <div class="step"><b>풀이</b> \(\hat\theta = s_n^2/\bar x = 27.04/10.4 = 2.60\) nA, \(\hat k = \bar x/\hat\theta = 10.4/2.60 = 4.00\). \(P(X > 20) = 1 - F(20; 4, 2.6) = 0.0521\).</div>
+        <div class="answer">\(\hat k = 4.00\), \(\hat\theta = 2.60\) nA, \(P(X > 20) \approx 0.052\)</div>
+        <div class="step"><b>검토</b> \(\hat k\theta = 10.4\), \(\hat k\hat\theta^2 = 27.04\)로 두 적률이 맞는다. 꼬리 확률은 모양 모수에 민감하므로 실제 불량률 예측에는 더 정밀한 MLE와 구간 추정을 쓴다.</div>
+      </details>
+    </div>
+    <p>적률법은 계산이 쉽지만 약점도 있다. 균일 분포 \((0, \theta)\)에서 \(\hat\theta = 2\bar X\)는 불편이지만, 자료의 최댓값보다 작은 값을 내놓을 수 있다. 측정값 하나가 이미 \(\theta\)보다 작을 수 없다는 사실을 무시하는 셈이다.</p>
+    <figure class="mini" id="mini-unif">
+      <div class="mini-view"><canvas id="cv-unif"></canvas></div>
+      <div class="mini-ctrl">
+        <button class="btn" id="un-1" type="button">다시 뽑기</button>
+        <button class="btn" id="un-play" type="button"></button>
+        <label class="ctrl"><span>n <output id="un-n-out"></output></span><input type="range" id="un-n" min="2" max="20" step="1" value="5"></label>
+        <span class="readout" id="un-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>균일 \((0, 10)\)에서 뽑은 \(n\)개(초록 점)와 적률법 추정값 \(2\bar x\)(자주 선), 최댓값 \(x_{(n)}\)(회색 선). 빨강 표시는 \(2\bar x < x_{(n)}\), 곧 자료와 모순되는 추정값이 나온 경우다. \(n = 5\)에서 약 20%, \(n = 10\)에서 약 28%로 오히려 늘어난다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="mle">
+    <h2>최대 가능도 추정</h2>
+    <p>적률법이 "적률이 맞는 모수"를 고른다면, 최대 가능도 추정은 "이 자료가 나올 확률이 가장 큰 모수"를 고른다. 자료 \(x_1, \dots, x_n\)이 이미 관측되었다고 하자. 독립인 표본의 결합 밀도(또는 확률)를 모수의 함수로 본 것을 <span class="term">가능도 함수</span><span class="en">(likelihood function)</span>라 한다.</p>
+    <div class="formula">$$L(\theta) = \prod_{i=1}^n f(x_i;\theta),\qquad \ell(\theta) = \ln L(\theta) = \sum_{i=1}^n \ln f(x_i;\theta)$$<div class="where">\(\ell(\theta)\)를 <span class="term">로그 가능도</span><span class="en">(log-likelihood)</span>라 한다. 로그는 증가 함수이므로 \(L\)과 \(\ell\)은 같은 곳에서 최대가 된다. 곱이 합으로 바뀌어 미분하기 쉽고, 수많은 작은 확률의 곱이 컴퓨터에서 0으로 뭉개지는(언더플로) 문제도 피한다. \(L(\theta)\)를 최대로 만드는 \(\hat\theta\)가 <span class="term">최대 가능도 추정량</span><span class="en">(maximum likelihood estimator, MLE)</span>이다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 270" role="img" aria-label="왼쪽은 λ를 고정하고 x의 함수로 본 지수 분포 밀도 세 개와 자료 위치, 오른쪽은 자료를 고정하고 λ의 함수로 본 가능도 곡선과 최댓값">
+        <line x1="50" y1="230" x2="360" y2="230" stroke="var(--text-dim)" stroke-width="1.4"/><line x1="50" y1="40" x2="50" y2="230" stroke="var(--text-dim)" stroke-width="1.4"/>
+        <path d="M50 171 L55 173 L61 175 L66 177 L71 179 L77 180 L82 182 L88 184 L91 185 L100 188 L109 190 L118 192 L127 194 L136 197 L145 198 L154 200 L163 202 L172 204 L180 205 L189 207 L198 208 L207 209 L216 210 L225 212 L234 213 L243 214 L252 215 L261 215 L270 216 L279 217 L288 218 L296 219 L305 219 L314 220 L323 220 L332 221 L341 221 L350 222" fill="none" stroke="var(--text-faint)" stroke-width="1.8"/>
+        <path d="M50 111 L55 119 L61 127 L66 134 L71 141 L77 147 L82 153 L88 158 L91 161 L100 169 L109 176 L118 182 L127 187 L136 192 L145 196 L154 200 L163 204 L172 207 L180 209 L189 211 L198 214 L207 215 L216 217 L225 218 L234 220 L243 221 L252 222 L261 223 L270 224 L279 224 L288 225 L296 226 L305 226 L314 226 L323 227 L332 227 L341 228 L350 228" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+        <path d="M61 52 L66 75 L71 96 L77 114 L82 129 L88 143 L91 151 L100 168 L109 181 L118 191 L127 199 L136 206 L145 211 L154 215 L163 218 L172 221 L180 223 L189 224 L198 225 L207 226 L216 227 L225 228 L234 228 L243 229 L252 229 L261 229 L270 229 L279 229 L288 230 L296 230 L305 230 L314 230 L323 230 L332 230 L341 230 L350 230" fill="none" stroke="var(--text-faint)" stroke-width="1.8" stroke-dasharray="5 4"/>
+        <g stroke="var(--accent-2)" stroke-width="1.6" stroke-dasharray="2 3"><line x1="80" y1="230" x2="80" y2="150"/><line x1="102.5" y1="230" x2="102.5" y2="171"/><line x1="117.5" y1="230" x2="117.5" y2="182"/><line x1="132.5" y1="230" x2="132.5" y2="190"/><line x1="222.5" y1="230" x2="222.5" y2="218"/></g>
+        <g fill="var(--accent)"><circle cx="80" cy="230" r="5"/><circle cx="102.5" cy="230" r="5"/><circle cx="117.5" cy="230" r="5"/><circle cx="132.5" cy="230" r="5"/><circle cx="222.5" cy="230" r="5"/></g>
+        <text class="t" x="205" y="30" text-anchor="middle" style="font-weight:700">f(x; λ): λ 고정, x의 함수</text>
+        <text class="t" x="150" y="120" style="fill:var(--accent-2);font-size:12px;font-weight:700">λ = 1</text>
+        <text class="t t-dim" x="92" y="64" style="font-size:12px">λ = 2</text>
+        <text class="t t-dim" x="250" y="200" style="font-size:12px">λ = 0.5</text>
+        <text class="t t-dim" x="205" y="254" text-anchor="middle" style="font-size:12px">x (자료 5개: 초록 점) · 점선 높이의 곱 = L(λ)</text>
+        <line x1="450" y1="230" x2="770" y2="230" stroke="var(--text-dim)" stroke-width="1.4"/><line x1="450" y1="40" x2="450" y2="230" stroke="var(--text-dim)" stroke-width="1.4"/>
+        <path d="M452 230 L459 230 L466 229 L473 224 L480 214 L487 198 L494 178 L501 154 L508 130 L515 107 L522 88 L529 74 L536 64 L543 60 L550 61 L557 65 L564 73 L571 83 L578 95 L585 108 L592 121 L599 134 L606 146 L613 158 L620 168 L627 177 L634 186 L641 193 L648 199 L655 205 L662 209 L669 213 L676 216 L683 219 L690 221 L697 223 L704 224 L711 225 L718 226 L725 227 L732 228 L739 228 L746 229 L753 229 L760 229" fill="none" stroke="var(--accent)" stroke-width="2.6"/>
+        <line x1="545.7" y1="52" x2="545.7" y2="236" stroke="var(--accent)" stroke-dasharray="4 3"/>
+        <text class="t" x="552" y="50" style="fill:var(--accent);font-weight:700">λ̂ = 0.926</text>
+        <g fill="var(--text-faint)"><circle cx="501.7" cy="152" r="4"/><circle cx="656.7" cy="206" r="4"/></g><circle cx="553.3" cy="62.6" r="4.5" fill="var(--accent-2)"/>
+        <g class="t t-dim" style="font-size:11px" text-anchor="middle"><text x="501.7" y="246">0.5</text><text x="553.3" y="246">1</text><text x="656.7" y="246">2</text></g>
+        <text class="t" x="610" y="30" text-anchor="middle" style="font-weight:700">L(λ): 자료 고정, λ의 함수</text>
+        <text class="t t-dim" x="610" y="264" text-anchor="middle" style="font-size:12px">λ</text>
+      </svg>
+      <figcaption>같은 식 \(f(x;\lambda) = \lambda e^{-\lambda x}\)를 두 방향으로 읽는다. 왼쪽은 \(\lambda\)를 고정한 확률 밀도(넓이 1), 오른쪽은 자료 \(x = 0.4, 0.7, 0.9, 1.1, 2.3\)을 고정한 가능도다. \(\lambda = 1\)일 때 다섯 점선 높이의 곱이 \(\lambda = 0.5\)나 2일 때보다 크고, 꼭대기는 \(\hat\lambda = 5/5.4 = 0.926\)에 있다. 가능도는 \(\lambda\)에 대한 밀도가 아니어서 넓이가 1이 아니다(그림은 꼭대기를 맞춰 그렸다).</figcaption>
+    </figure>
+    <p>가능도가 매끄러우면 미분해서 0이 되는 점을 찾는다. 이 방정식 \(\ell'(\theta) = 0\)을 가능도 방정식이라 한다. 지수 분포 고장 시간으로 순서를 따라가 보자.</p>
+    <figure class="diagram steps" data-steps="5">
+      <svg viewBox="0 0 800 270" role="img" aria-label="지수 분포 고장률의 최대 가능도 추정을 다섯 단계로 유도하는 그림: 가능도, 로그, 미분, 해, 이계 도함수 확인">
+        <g class="t" style="font-size:14px">
+          <text x="24" y="44" data-step="1"><tspan style="font-weight:700">① 가능도</tspan>  L(λ) = Π λe^(−λxᵢ) = λⁿ e^(−λΣxᵢ)</text>
+          <text x="24" y="92" data-step="2"><tspan style="font-weight:700">② 로그</tspan>  ℓ(λ) = n ln λ − λ Σxᵢ</text>
+          <text x="24" y="140" data-step="3"><tspan style="font-weight:700">③ 미분 = 0</tspan>  ℓ′(λ) = n/λ − Σxᵢ = 0</text>
+          <text x="24" y="188" data-step="4"><tspan style="font-weight:700;fill:var(--accent)">④ 해</tspan>  λ̂ = n / Σxᵢ = 1 / x̄</text>
+          <text x="24" y="236" data-step="5"><tspan style="font-weight:700">⑤ 확인</tspan>  ℓ″(λ) = −n/λ² &lt; 0 → 최대</text>
+        </g>
+        <g data-step="2">
+          <line x1="470" y1="250" x2="780" y2="250" stroke="var(--text-dim)" stroke-width="1.2"/>
+          <path d="M485 204 L492 160 L500 133 L507 113 L514 99 L522 89 L529 82 L536 77 L543 73 L551 71 L558 70 L565 70 L573 71 L580 72 L587 74 L595 77 L602 80 L609 83 L617 87 L624 91 L631 95 L638 100 L646 105 L653 110 L660 116 L668 121 L675 127 L682 133 L690 139 L697 145 L704 152 L712 158 L719 165 L726 172 L733 179 L741 186 L748 193 L755 200 L763 207 L770 215" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+          <text class="t" x="640" y="40" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">ℓ(λ), n = 5, Σx = 5.4</text>
+          <g class="t t-dim" style="font-size:11px" text-anchor="middle"><text x="570" y="266">1</text><text x="670" y="266">2</text><text x="770" y="266">3</text></g>
+        </g>
+        <g data-step="3"><line x1="520" y1="70" x2="610" y2="70" stroke="var(--bad)" stroke-width="2"/><text class="t" x="616" y="66" style="fill:var(--bad);font-size:12px">기울기 0</text></g>
+        <g data-step="4"><line x1="562.6" y1="70" x2="562.6" y2="250" stroke="var(--accent)" stroke-dasharray="4 3" stroke-width="1.6"/><circle cx="562.6" cy="70" r="5" fill="var(--accent)"/><text class="t" x="560" y="236" text-anchor="end" style="fill:var(--accent);font-weight:700;font-size:12px">λ̂ = 0.926</text></g>
+        <g data-step="5"><path d="M515 104 Q 562.6 36 610 104" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-dasharray="5 3"/><text class="t" x="616" y="120" style="fill:var(--warn);font-size:12px">아래로 볼록: 곡률 = n/λ̂²</text></g>
+      </svg>
+      <ol class="steps-cap"><li>독립인 관측의 밀도를 곱한다.</li><li>로그를 취하면 곱이 합이 된다. 오른쪽 곡선은 앞 그림의 자료로 그린 \(\ell(\lambda)\)다.</li><li>\(\lambda\)로 미분해 0으로 놓는다. 꼭대기에서 접선이 수평이다.</li><li>풀면 \(\hat\lambda = n/\sum x_i = 1/\bar x\). 적률법과 같은 답이다.</li><li>이계 도함수가 음수이므로 극대이고 유일한 극값이니 최대다. 꼭대기의 곡률 \(n/\hat\lambda^2\)은 9.8절에서 정밀도를 알려 주는 피셔 정보가 된다.</li></ol>
+      <figcaption>최대 가능도 추정의 표준 순서. 대부분의 교과서 문제는 이 다섯 단계로 풀린다.</figcaption>
+    </figure>
+    <p>같은 순서로 자주 쓰는 MLE를 얻는다. 포아송 \(\ell(\lambda) = \sum x_i\ln\lambda - n\lambda - \sum\ln x_i!\)에서 \(\hat\lambda = \bar X\). 베르누이 \(\ell(p) = x\ln p + (n-x)\ln(1-p)\)에서 \(\hat p = x/n\). 정규 분포는 두 모수로 편미분해 연립하면</p>
+    <div class="formula">$$\hat\mu = \bar X,\qquad \hat\sigma^2 = \frac1n\sum_{i=1}^n (X_i - \bar X)^2 = S_n^2$$<div class="where">정규 분포의 \(\sigma^2\)에 대한 MLE는 \(n\)으로 나눈 분산이므로 편향이 있다. MLE가 늘 불편인 것은 아니다. 다만 편향은 \(-\sigma^2/n\)으로 \(n\)이 커지면 사라진다.</div></div>
+    <p>아래 탐험기에서 가능도를 손으로 만져 보자. 자료 점을 끌면 가능도 곡선이 바뀌고, \(\theta\) 손잡이를 끌면 그 값에서 각 자료의 밀도(점선 막대)가 바뀐다. 막대 높이의 곱이 가장 커지는 곳이 MLE다.</p>
+    <div class="sim" id="sim-lik">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가능도 탐험기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-lik1"></canvas><span class="hint top">자료 점(초록)을 끈다</span></div><div><canvas id="cv-lik2"></canvas><span class="hint top">흰 원을 끌어 θ를 바꾼다</span></div></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>모형</span><div class="seg" id="lk-m"><button data-value="norm" class="on">정규 μ (σ = 1)</button><button data-value="pois">포아송 λ (결함 수)</button><button data-value="exp">지수 λ (고장 시간)</button></div></div>
+          <label class="check"><input type="checkbox" id="lk-log" checked> 로그 가능도로 보기</label>
+          <button class="btn" id="lk-new" type="button">새 자료</button>
+          <button class="btn" id="lk-go" type="button">꼭대기로 이동</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">현재 θ</span><span class="v" id="lk-t">—</span></div>
+        <div class="stat"><span class="k">ℓ(θ)</span><span class="v" id="lk-l">—</span></div>
+        <div class="stat"><span class="k">MLE θ̂</span><span class="v" id="lk-h">—</span></div>
+        <div class="stat"><span class="k">가능도 비 L(θ)/L(θ̂)</span><span class="v" id="lk-r">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽: 자료(초록)와 현재 \(\theta\)의 분포(자주). 점선 막대 높이가 \(f(x_i;\theta)\)이다. 오른쪽: \(\ell(\theta)\) 또는 \(L(\theta)\) 곡선과 현재 위치, MLE(초록 점선). 해볼 것: ① 정규 모형에서 자료 점 하나를 멀리 끌면 MLE(= \(\bar x\))가 따라간다. ② 포아송에서 MLE는 웨이퍼당 결함 수의 평균이다. 결함이 0개인 웨이퍼를 하나 더 만들면(점을 0으로) MLE가 준다. ③ 지수 모형에서 긴 수명 하나를 더 길게 끌면 \(\hat\lambda\)가 작아진다. 로그 가능도를 끄면 \(L(\theta)\)가 아주 작은 수라는 것이 보인다.</div>
+    </div>
+    <h3>모수 두 개: 가능도 곡면</h3>
+    <p>모수가 둘이면 로그 가능도는 \((\mu, \sigma)\) 평면 위의 곡면이고, MLE는 그 산의 꼭대기다. 실제 모형(와이블, 감마, 회귀)에서는 꼭대기를 식으로 풀 수 없어 컴퓨터가 경사를 따라 오른다. 아래에서 등고선 지도를 보며 직접 정상을 찾아보자.</p>
+    <div class="sim" id="sim-surf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>로그 가능도 곡면 등반</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-surf"></canvas><span class="hint top">흰 원을 끌어 (μ, σ)를 옮긴다</span></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="sf-heat" checked> 높이 색칠</label>
+          <button class="btn" id="sf-grad" type="button">경사 따라 오르기</button>
+          <button class="btn" id="sf-new" type="button">새 자료 (산화막 두께 12개)</button>
+          <button class="btn" id="sf-show" type="button">정답 보기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">현재 (μ, σ)</span><span class="v" id="sf-p" style="font-size:14px">—</span></div>
+        <div class="stat"><span class="k">ℓ(μ, σ)</span><span class="v" id="sf-l">—</span></div>
+        <div class="stat"><span class="k">정상까지 Δℓ</span><span class="v" id="sf-d">—</span></div>
+        <div class="stat"><span class="k">이동 횟수</span><span class="v" id="sf-k">—</span></div>
+        <div class="stat"><span class="k">과녁</span><span class="v" id="sf-g" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">게이트 산화막 두께(Å) 측정값 12개의 정규 로그 가능도 \(\ell(\mu, \sigma)\). 등고선은 정상에서 0.5, 2, 4.5, 8, 12.5만큼 낮은 높이다(\(\Delta\ell = k^2/2\)이므로 정규 근사에서 한 모수의 \(k\)σ 폭에 해당). 과녁: 정답을 보지 않고 \(\Delta\ell < 0.05\)인 곳까지 가면 성공이다. 손을 뗄 때마다 이동 횟수가 하나씩 는다. 해볼 것: ① 등고선이 \(\sigma\) 방향으로 비대칭이다. 작은 \(\sigma\) 쪽이 가파르다. ② "경사 따라 오르기"는 기울기 방향으로 조금씩 움직이는 경사 상승법이다. 기울기는 등고선에 수직이라 경로가 등고선을 직각으로 가로지르며 휘어 오른다. ③ 정답을 본 뒤 비교하면 정상의 \(\hat\sigma = S_n\)은 회색 점 \((\bar x, S)\)보다 조금 아래에 있다.</div>
+    </div>
+    <h3>불변성: 모수의 함수도 그대로 추정한다</h3>
+    <p>MLE에는 편리한 성질이 있다. \(\hat\theta\)가 \(\theta\)의 MLE이면 어떤 함수 \(g\)에 대해서도 \(g(\hat\theta)\)가 \(g(\theta)\)의 MLE다. 이것을 MLE의 <span class="term">불변성</span><span class="en">(invariance property)</span>이라 한다. 고장률의 MLE가 \(\hat\lambda\)이면 평균 수명 MTTF의 MLE는 \(1/\hat\lambda\), 시간 \(t\)까지의 신뢰도 \(R(t) = e^{-\lambda t}\)의 MLE는 \(e^{-\hat\lambda t}\)다. 수율에서 결함 밀도를 얻는 것도 같은 원리다. 다이 \(N\)개 중 \(G\)개가 양품이면 수율의 MLE는 \(\hat Y = G/N\)이고, 포아송 수율 모형 \(Y = e^{-D_0A}\)를 거꾸로 풀어 \(\hat D_0 = -\ln\hat Y/A\)가 \(D_0\)의 MLE다.</p>
+    <div class="example" data-title="웨이퍼 검사로 결함 밀도 추정">
+      <p>웨이퍼 8장을 검사해 면적 50 cm²의 검사 영역에서 결함을 12, 7, 9, 15, 10, 8, 11, 13개 셌다. 웨이퍼당 결함 수가 \(\mathrm{Poisson}(D_0A)\)를 따른다고 할 때 결함 밀도 \(D_0\)의 MLE를 구하라. 다이 면적 0.5 cm²인 제품의 포아송 수율 MLE는?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\lambda = D_0A\)의 MLE는 \(\bar x\)이고, 불변성으로 \(\hat D_0 = \bar x/A\), \(\hat Y = e^{-\hat D_0 A_{\text{die}}}\)이다.</div>
+        <div class="step"><b>풀이</b> \(\sum x_i = 85\), \(\bar x = 10.625\). \(\hat D_0 = 10.625/50 = 0.2125\) 개/cm². \(\hat Y = e^{-0.2125\times0.5} = e^{-0.106} = 0.899\).</div>
+        <div class="answer">\(\hat D_0 = 0.213\) 개/cm², \(\hat Y = 0.899\)</div>
+        <div class="step"><b>검토</b> 결함 수의 분산이 평균과 같다면 \(\hat D_0\)의 표준 오차는 \(\sqrt{\bar x/n}/A = \sqrt{10.625/8}/50 = 0.023\)(9.8절)이다. 실제 웨이퍼 사이 결함 수는 뭉쳐서 분산이 평균보다 큰 경우가 많고, 그때는 음이항 모형을 쓴다(17장).</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>\(D_0\)는 재는 값이 아니라 추정하는 값이다</strong> 수율 엔지니어는 웨이퍼 정렬 테스트 결과(양품 다이 수)에서 결함 밀도를 거꾸로 푼다. 다이 0.52 cm², 520개 중 458개 양품이면 \(\hat Y = 0.881\), \(\hat D_0 = -\ln0.881/0.52 = 0.244\) 개/cm²다. 이것이 MLE의 불변성이다. 그러나 수율 한 점으로는 \(D_0\) 하나밖에 얻지 못하고, 계통 불량이 섞이면 그 몫까지 \(D_0\)에 얹혀 과대 추정된다. 다이를 2개, 4개씩 묶어 면적이 다른 수율 점을 여러 개 만드는 윈도 방법으로 군집 모수까지 함께 추정한다. → <a href="https://semi.euiyun.com/yield/chapters/models.html">YieldBook · 결함 밀도와 수율 모델(D₀ 추정: 수율에서 거꾸로)</a></div>
+    <h3>중도 절단된 수명 자료</h3>
+    <p>수명 시험은 모든 소자가 고장 날 때까지 기다리지 않는다. \(n\)개를 시간 \(t_0\)까지 시험해 \(r\)개가 \(t_1, \dots, t_r\)에서 고장 나고 나머지 \(n - r\)개는 살아 있다면, 살아남은 소자는 "수명이 \(t_0\)보다 길다"는 정보만 준다. 이런 자료를 <span class="term">중도 절단</span><span class="en">(censoring)</span> 자료라 한다. 지수 분포에서 고장 난 소자는 밀도 \(\lambda e^{-\lambda t_i}\)를, 살아남은 소자는 생존 확률 \(e^{-\lambda t_0}\)를 가능도에 기여하므로</p>
+    <div class="formula">$$L(\lambda) = \prod_{i=1}^r \lambda e^{-\lambda t_i}\cdot\prod^{n-r} e^{-\lambda t_0} = \lambda^r e^{-\lambda T},\qquad T = \sum_{i=1}^r t_i + (n-r)t_0,\qquad \hat\lambda = \frac{r}{T}$$<div class="where">\(T\)는 모든 소자가 시험받은 시간의 합인 총 시험 시간(total time on test, 소자·시간)이다. 고장률의 MLE는 "고장 수 ÷ 총 시험 시간"이다. 고장이 하나도 없으면(\(r = 0\)) MLE는 0이 되어 쓸모없으므로, 실무에서는 10장의 신뢰 상한을 쓴다. 가속 시험이면 \(T\)에 가속 계수 AF를 곱해 사용 조건의 등가 시간으로 바꾼다.</div></div>
+    <div class="tangle" id="tg-htol">
+      <p>소자 <span class="tn" data-var="n" data-min="10" data-max="2000" data-step="1">231</span>개를 <span class="tn" data-var="t" data-min="100" data-max="3000" data-step="50" data-unit=" h">1000</span> 동안 고온 동작 시험(HTOL)해 <span class="tn" data-var="r" data-min="0" data-max="10" data-step="1">1</span>개가 고장 났다(고장은 시험 끝 무렵이라 보고 총 시험 시간을 \(n t_0\)로 어림한다). 사용 조건 대비 가속 계수가 <span class="tn" data-var="af" data-min="1" data-max="500" data-step="0.1">77.6</span>이면 등가 시간 \(T\) = <span class="tn-out" data-out="T"></span> 소자·시간, 고장률 MLE는 \(\hat\lambda\) = <span class="tn-out" data-out="lam"></span>, 곧 <span class="tn-out" data-out="fit"></span>이고 MTTF의 MLE는 <span class="tn-out" data-out="mttf"></span>다. 10장에서 다룰 60% 신뢰 상한으로는 <span class="tn-out" data-out="up"></span>이다.</p>
+    </div>
+    <div class="example" data-title="HTOL 시험의 고장률과 FIT">
+      <p>세 로트에서 77개씩 231개를 125 °C에서 1000시간 HTOL 시험해 1개가 고장 났다. 활성화 에너지 0.7 eV의 아레니우스 모형으로 사용 온도 55 °C에 대한 가속 계수를 구하고, 고장률의 MLE를 FIT 단위로 나타내라(\(k = 8.617\times10^{-5}\) eV/K, 총 시험 시간은 \(n t_0\)로 어림).</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> \(\mathrm{AF} = \exp\big[\frac{E_a}{k}\big(\frac1{T_u} - \frac1{T_s}\big)\big]\), 등가 시간 \(T = n t_0\,\mathrm{AF}\), \(\hat\lambda = r/T\).</div>
+        <div class="step"><b>풀이</b> \(1/328.15 - 1/398.15 = 5.358\times10^{-4}\) K⁻¹, \(E_a/k = 8123\) K → \(\mathrm{AF} = e^{4.352} = 77.6\). \(T = 231\times1000\times77.6 = 1.794\times10^7\) 소자·시간. \(\hat\lambda = 1/1.794\times10^7 = 5.58\times10^{-8}\) /h = 55.8 FIT.</div>
+        <div class="answer">\(\mathrm{AF} \approx 77.6\), \(\hat\lambda \approx 5.6\times10^{-8}\) /h ≈ 56 FIT</div>
+        <div class="step"><b>검토</b> 고장 하나로 얻은 점추정값은 매우 불확실하다. 같은 자료의 60% 신뢰 상한은 \(\chi^2_{0.4,\,4}/2T\)로 약 113 FIT이고, 신뢰성 보고서에는 보통 이 상한을 적는다(10장, 17장).</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>HTOL 보고서의 FIT는 "고장 수 ÷ 등가 소자·시간"이다</strong> JEDEC 방식 신뢰성 인증에서는 세 로트 77개씩을 125 °C, 1000시간 돌리고, 아레니우스(그리고 전압) 가속 계수로 사용 조건의 등가 소자·시간을 만든다. 이 장의 \(\hat\lambda = r/T\)가 그 점추정값이고, 보고서에는 \(\chi^2\) 분포로 구한 60% 또는 90% 신뢰 상한이 FIT로 올라간다. 번인은 같은 생각을 반대로 써서 초기 고장 부모집단을 미리 태워 없애는 공정이다. → <a href="https://semi.euiyun.com/test/chapters/burnin.html">TestBook · 번인과 신뢰성 스크리닝(와이블·가속 모델·FIT)</a> · <a href="https://semi.euiyun.com/memory/chapters/reliability.html">MemoryBook · 신뢰성과 오류 정정(가속 수명 시험)</a></div>
+    <div class="drill" id="drill-mle" data-title="최대 가능도 추정값 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="endpoint">
+    <h2>끝점 추정: 독일 전차 문제</h2>
+    <p>균일 분포 \((0, \theta)\)의 가능도는 미분으로 풀리지 않는 대표적인 예다. 밀도는 \(0 \le x \le \theta\)에서 \(1/\theta\)이므로</p>
+    <div class="formula">$$L(\theta) = \begin{cases}\theta^{-n}, & \theta \ge x_{(n)} = \max_i x_i\\ 0, & \theta < x_{(n)}\end{cases}\qquad\Longrightarrow\qquad \hat\theta_{\text{MLE}} = X_{(n)}$$<div class="where">\(\theta\)가 최댓값보다 작으면 자료가 나올 수 없으므로 가능도가 0이고, 그 위에서는 \(\theta^{-n}\)이 감소하므로 경계 \(\theta = x_{(n)}\)에서 최대다. 도함수가 0인 점이 아니라 경계에서 최대가 되는 경우다.</div></div>
+    <p>표본 최댓값은 자료와 모순되지 않는다는 장점이 있지만, 언제나 \(\theta\)보다 작거나 같다. 그렇다면 평균적으로는 어떨까?</p>
+    <div class="predict" data-for="sim-tank">
+      <p>균일 \((0, \theta)\)에서 \(n = 4\)개를 뽑을 때 표본 최댓값 \(X_{(n)}\)의 기댓값은?</p>
+      <div class="opts"><button class="opt">\(\theta\) — MLE이므로 불편이다</button><button class="opt" data-correct>\(0.8\theta\) — 일반적으로 \(\frac{n}{n+1}\theta\)</button><button class="opt">\(0.5\theta\) — 평균과 같다</button><button class="opt">\(0.75\theta\) — \(\frac{n-1}{n}\theta\)</button></div>
+      <div class="quiz-exp">\(n\)개의 점이 \((0, \theta)\)를 평균적으로 \(n + 1\)개의 같은 간격으로 나눈다. 그래서 가장 큰 점 위에도 평균 \(\theta/(n+1)\)의 빈틈이 남고 \(E[X_{(n)}] = \frac{n}{n+1}\theta\)다. 편향을 없애려면 \(\frac{n+1}{n}X_{(n)}\)을 쓴다. 아래 게임과 미니 실험에서 확인하자.</div>
+    </div>
+    <p>제2차 세계 대전 때 연합군은 노획한 독일 전차의 일련번호로 전차 생산량을 추정했다. 번호가 1부터 \(N\)까지 붙어 있고 노획 전차가 그중 무작위로 \(k\)대라면, 이것은 이산 균일 분포의 끝점 \(N\)을 추정하는 문제다. 정보 기관이 월 1,000대가 넘는다고 보던 생산량을 통계 추정은 수백 대로 내놓았고, 전후 독일 기록은 통계 쪽에 훨씬 가까웠다.</p>
+    <div class="formula">$$\hat N = m + \frac{m}{k} - 1 = m\Big(1 + \frac1k\Big) - 1,\qquad m = \text{관측한 가장 큰 번호}$$<div class="where">최댓값 \(m\)에 "번호 사이의 평균 빈틈" \(m/k - 1\)을 더한 값이다. 이 추정량은 불편이고 불편 추정량 가운데 분산이 가장 작다(MVUE). 적률법 \(2\bar X - 1\)도 불편이지만 분산이 훨씬 크다.</div></div>
+    <div class="sim" id="sim-tank">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>독일 전차 게임: 일련번호로 생산량 맞히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-tank"></canvas><span class="hint top">흰 원(내 추정)을 좌우로 끈다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>노획 대수 k <output id="tk-k-out"></output></span><input type="range" id="tk-k" min="2" max="15" step="1" value="5"></label>
+          <button class="btn primary" id="tk-check" type="button">정답 확인</button>
+          <button class="btn" id="tk-next" type="button">다음 판</button>
+          <label class="check"><input type="checkbox" id="tk-hint"> 공식 추정값 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">내 추정 N</span><span class="v" id="tk-g">—</span></div>
+        <div class="stat"><span class="k">이번 판 결과</span><span class="v" id="tk-res" style="font-size:14px">—</span></div>
+        <div class="stat"><span class="k">판 수</span><span class="v" id="tk-n">—</span></div>
+        <div class="stat"><span class="k">평균 오차: 나 · m(1+1/k)−1 · 2x̄−1</span><span class="v" id="tk-sc" style="font-size:14px">—</span></div>
+      </div>
+      <div class="sim-note">전차(초록 사각형)에 적힌 일련번호만 보고 생산량 \(N\)(100–1000)을 짐작한다. 정답을 확인하면 참값과 두 공식 추정값이 나타나고, 판이 쌓이면 세 방법의 평균 상대 오차를 비교한다. 과녁: 다섯 판 이상에서 내 평균 오차를 공식 \(m(1 + 1/k) - 1\)보다 작게 만들어 보라. 해볼 것: ① 가장 큰 번호보다 작게 추정하는 것은 손해다. 최소한 \(m\)은 생산되었다. ② 번호 사이 간격을 눈으로 어림해 \(m\) 위에 한 간격만큼 더해 보자. 그것이 공식의 생각이다. ③ \(k\)를 늘리면 공식의 오차가 빠르게 준다.</div>
+    </div>
+    <figure class="mini" id="mini-ends">
+      <div class="mini-view"><canvas id="cv-ends"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>n <output id="en-n-out"></output></span><input type="range" id="en-n" min="2" max="20" step="1" value="4"></label>
+        <button class="btn" id="en-1000" type="button">1000번 뽑기</button>
+        <button class="btn" id="en-play" type="button"></button>
+        <span class="readout" id="en-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>균일 \((0, 10)\)에서 \(n\)개씩 거듭 뽑아 만든 세 추정량의 분포: MLE \(X_{(n)}\)(회색), 보정 \(\frac{n+1}{n}X_{(n)}\)(초록), 적률법 \(2\bar X\)(자주). MLE는 10을 넘지 못해 왼쪽으로 치우치고, 보정 추정량은 중심이 10에 오며 적률법보다 훨씬 좁다. 분산은 \(\theta^2/n(n+2)\) 대 \(\theta^2/3n\)이다.</figcaption>
+    </figure>
+    <div class="tangle" id="tg-ends">
+      <p>표본 크기 <span class="tn" data-var="n" data-min="1" data-max="50" data-step="1">4</span>에서 \(E[X_{(n)}]\) = <span class="tn-out" data-out="e"></span>\(\theta\)이므로 MLE의 편향은 <span class="tn-out" data-out="b"></span>\(\theta\)이다. 보정 추정량 \(\frac{n+1}{n}X_{(n)}\)의 표준 오차는 <span class="tn-out" data-out="s1"></span>\(\theta\), 적률법 \(2\bar X\)는 <span class="tn-out" data-out="s2"></span>\(\theta\)로 적률법의 효율은 <span class="tn-out" data-out="eff"></span>이다. 보정 추정량의 분산은 \(1/n^2\)로, 적률법은 \(1/n\)로 준다.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="fisher">
+    <h2>피셔 정보와 크라메르–라오 하한</h2>
+    <p>로그 가능도의 꼭대기가 뾰족하면 자료가 모수를 강하게 가리키고, 꼭대기가 평평하면 넓은 범위의 모수가 자료를 거의 똑같이 잘 설명한다. 이 뾰족함, 곧 꼭대기의 곡률이 자료가 담은 모수 정보의 양이다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 280" role="img" aria-label="표본 20개와 200개의 베르누이 로그 가능도 곡선. 표본이 많을수록 꼭대기가 뾰족하고 0.5 아래 폭이 좁다">
+        <line x1="60" y1="240" x2="740" y2="240" stroke="var(--text-dim)" stroke-width="1.2"/>
+        <line x1="60" y1="56.7" x2="740" y2="56.7" stroke="var(--text-faint)" stroke-dasharray="4 4"/>
+        <text class="t t-dim" x="742" y="52" text-anchor="end" style="font-size:12px">꼭대기에서 0.5 아래</text>
+        <path d="M60 132 L66 129 L71 127 L77 124 L83 122 L89 120 L94 117 L100 115 L106 113 L111 111 L117 108 L123 106 L129 104 L134 102 L140 100 L146 98 L151 96 L157 94 L163 92 L169 90 L174 88 L180 87 L186 85 L191 83 L197 81 L203 80 L209 78 L214 76 L220 75 L226 73 L231 71 L237 70 L243 68 L249 67 L254 66 L260 64 L266 63 L271 62 L277 60 L283 59 L289 58 L294 57 L300 56 L306 54 L311 53 L317 52 L323 51 L329 50 L334 49 L340 49 L346 48 L351 47 L357 46 L363 45 L369 45 L374 44 L380 43 L386 43 L391 42 L397 42 L403 42 L409 41 L414 41 L420 41 L426 40 L431 40 L437 40 L443 40 L449 40 L454 40 L460 40 L466 40 L471 41 L477 41 L483 41 L489 42 L494 42 L500 43 L506 43 L511 44 L517 45 L523 46 L529 47 L534 48 L540 49 L546 50 L551 52 L557 53 L563 55 L569 57 L574 59 L580 61 L586 63 L591 65 L597 68 L603 71 L609 73 L614 77 L620 80 L626 84 L631 87 L637 92 L643 96 L649 101 L654 106 L660 112 L666 118 L671 124 L677 132 L683 140 L689 149 L694 159 L700 170 L706 182 L711 196 L717 213 L723 232" fill="none" stroke="var(--text-dim)" stroke-width="2.2"/>
+        <path d="M283 230 L289 218 L294 207 L300 195 L306 184 L311 173 L317 163 L323 153 L329 143 L334 134 L340 125 L346 117 L351 109 L357 101 L363 94 L369 87 L374 81 L380 75 L386 69 L391 64 L397 60 L403 55 L409 52 L414 49 L420 46 L426 44 L431 42 L437 41 L443 40 L449 40 L454 41 L460 42 L466 43 L471 46 L477 49 L483 52 L489 57 L494 62 L500 68 L506 74 L511 82 L517 90 L523 99 L529 109 L534 120 L540 132 L546 145 L551 159 L557 174 L563 190 L569 208 L574 227" fill="none" stroke="var(--accent)" stroke-width="2.6"/>
+        <line x1="308" y1="70" x2="585" y2="70" stroke="var(--text-dim)" stroke-width="2"/><line x1="308" y1="64" x2="308" y2="76" stroke="var(--text-dim)" stroke-width="2"/><line x1="585" y1="64" x2="585" y2="76" stroke="var(--text-dim)" stroke-width="2"/>
+        <line x1="403" y1="84" x2="490" y2="84" stroke="var(--accent)" stroke-width="2.4"/><line x1="403" y1="78" x2="403" y2="90" stroke="var(--accent)" stroke-width="2.4"/><line x1="490" y1="78" x2="490" y2="90" stroke="var(--accent)" stroke-width="2.4"/>
+        <line x1="446.4" y1="34" x2="446.4" y2="244" stroke="var(--accent-2)" stroke-dasharray="4 3"/>
+        <text class="t" x="446" y="28" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">p̂ = 0.8</text>
+        <text class="t t-dim" x="120" y="152" style="font-weight:700">n = 20: 완만 (정보 적음)</text>
+        <text class="t" x="520" y="200" style="fill:var(--accent);font-weight:700">n = 200: 뾰족 (정보 많음)</text>
+        <text class="t t-dim" x="596" y="74" style="font-size:12px">±0.089</text>
+        <text class="t" x="498" y="100" style="fill:var(--accent);font-size:12px">±0.028</text>
+        <g class="t t-dim" style="font-size:11px" text-anchor="middle"><text x="137" y="256">0.6</text><text x="292" y="256">0.7</text><text x="446" y="256">0.8</text><text x="601" y="256">0.9</text></g>
+        <text class="t t-dim" x="740" y="272" text-anchor="end" style="font-size:12px">p (수율)</text>
+      </svg>
+      <figcaption>같은 표본 수율 \(\hat p = 0.8\)이라도 칩 20개를 본 것과 200개를 본 것은 다르다. 두 곡선은 \(\ell(p) - \ell(\hat p)\)로, 200개의 곡선이 10배 더 휘어 있다. 꼭대기에서 0.5만큼 내려간 폭의 절반이 표준 오차 \(\sqrt{\hat p(1-\hat p)/n}\)와 같다.</figcaption>
+    </figure>
+    <p>로그 가능도의 기울기 \(U(\theta) = \partial\ell/\partial\theta\)를 <span class="term">점수 함수</span><span class="en">(score function)</span>라 한다. 참 모수에서 점수의 기댓값은 0이고, 그 분산을 관측 하나당 <span class="term">피셔 정보</span><span class="en">(Fisher information)</span>라 한다.</p>
+    <div class="formula">$$I(\theta) = E\Big[\Big(\frac{\partial}{\partial\theta}\ln f(X;\theta)\Big)^2\Big] = -E\Big[\frac{\partial^2}{\partial\theta^2}\ln f(X;\theta)\Big],\qquad I_n(\theta) = nI(\theta)$$<div class="where">둘째 식은 로그 밀도의 평균 곡률이다. 독립 관측 \(n\)개의 정보는 \(n\)배가 된다. 자료에서 직접 잰 곡률 \(-\ell''(\hat\theta)\)를 관측 정보라 하며 \(nI(\hat\theta)\)의 추정값으로 쓴다.</div></div>
+    <figure class="mini" id="mini-curv">
+      <div class="mini-view"><canvas id="cv-curv"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>검사한 칩 n <output id="cv-n-out"></output></span><input type="range" id="cv-n" min="1" max="3" step="0.01" value="1.6"></label>
+        <label class="ctrl"><span>표본 수율 p̂ <output id="cv-p-out"></output></span><input type="range" id="cv-p" min="0.05" max="0.95" step="0.01" value="0.8"></label>
+        <span class="readout" id="cv-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>베르누이 로그 가능도 \(\ell(p) - \ell(\hat p)\)(초록)와 꼭대기의 곡률로 그린 포물선 \(-\frac12 nI(\hat p)(p - \hat p)^2\)(자주 점선). \(n\)을 늘리면 곡률이 \(n\)에 비례해 커지고 두 곡선이 겹친다. 회색 띠는 꼭대기에서 0.5 아래까지의 범위로, 그 반폭이 표준 오차다. \(\hat p\)를 0이나 1 쪽으로 옮기면 곡선이 비대칭이 되고 포물선 근사가 나빠진다.</figcaption>
+    </figure>
+    <p>피셔 정보는 불편 추정량이 도달할 수 있는 정밀도의 한계를 정한다.</p>
+    <div class="def"><span class="def-k">크라메르–라오 하한</span>
+      <p>정칙 조건(지지 집합이 \(\theta\)에 의존하지 않는 등)을 만족하는 모형에서 \(\theta\)의 불편 추정량 \(\hat\theta\)는 모두 다음을 만족한다. 이 하한에 닿는 불편 추정량을 <span class="term">유효 추정량</span><span class="en">(efficient estimator)</span>이라 한다.</p>
+      $$\operatorname{Var}(\hat\theta) \ge \frac{1}{nI(\theta)}$$
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>모형</th><th>\(I(\theta)\)</th><th>크라메르–라오 하한</th><th>MLE와 그 분산</th></tr></thead>
+      <tbody>
+        <tr><td>\(\mathrm{Bernoulli}(p)\)</td><td>\(\dfrac{1}{p(1-p)}\)</td><td>\(\dfrac{p(1-p)}{n}\)</td><td>\(\hat p\): 같음(유효)</td></tr>
+        <tr><td>\(\mathrm{Poisson}(\lambda)\)</td><td>\(1/\lambda\)</td><td>\(\lambda/n\)</td><td>\(\bar X\): 같음(유효)</td></tr>
+        <tr><td>\(N(\mu, \sigma^2)\), \(\sigma\) 앎</td><td>\(1/\sigma^2\)</td><td>\(\sigma^2/n\)</td><td>\(\bar X\): 같음(유효)</td></tr>
+        <tr><td>\(\mathrm{Exp}(\lambda)\)</td><td>\(1/\lambda^2\)</td><td>\(\lambda^2/n\)</td><td>\(n/\sum X_i\): \(\frac{n^2\lambda^2}{(n-1)^2(n-2)}\), 편향 있음</td></tr>
+      </tbody>
+    </table></div>
+    <p>MLE가 언제나 하한에 닿지는 않는다. 그러나 \(n\)이 크면 MLE는 거의 불편이고 분산이 하한에 다가가며 분포가 정규에 가까워진다.</p>
+    <div class="formula">$$\hat\theta_{\text{MLE}} \;\approx\; N\Big(\theta,\ \frac{1}{nI(\theta)}\Big),\qquad \mathrm{SE}(\hat\theta) \approx \frac{1}{\sqrt{nI(\hat\theta)}} \approx \frac{1}{\sqrt{-\ell''(\hat\theta)}}$$<div class="where">이 점근 정규성이 MLE를 널리 쓰는 이유다. 꼭대기의 곡률 하나로 표준 오차를 얻고, 10장의 근사 신뢰 구간 \(\hat\theta \pm z_{\alpha/2}\,\mathrm{SE}\)로 바로 이어진다. 균일 분포 \((0, \theta)\)처럼 지지 집합이 모수에 달린 모형은 정칙 조건을 어기므로 하한이 성립하지 않는다. 실제로 \(\frac{n+1}{n}X_{(n)}\)의 분산은 \(1/n^2\)로 줄어 \(1/n\)보다 빠르다.</div></div>
+    <div class="predict" data-for="sim-crlb">
+      <p>지수 분포 수명 \(n = 5\)개로 고장률을 추정할 때, MLE \(\hat\lambda = n/\sum X_i\)의 분산은 크라메르–라오 하한 \(\lambda^2/n\)과 비교해 어떨까?</p>
+      <div class="opts"><button class="opt">하한과 같다 — MLE는 언제나 유효하다</button><button class="opt">하한보다 작다 — MLE가 가장 정밀하다</button><button class="opt" data-correct>하한보다 2배 이상 크다 — 작은 표본에서는 하한에 못 미친다</button></div>
+      <div class="quiz-exp">정확한 분산은 \(\frac{n^2\lambda^2}{(n-1)^2(n-2)}\)이고 \(n = 5\)에서 하한의 2.6배다. 게다가 MLE는 \(\frac{n}{n-1}\lambda\)로 25% 큰 쪽으로 치우쳐 있다(이 추정량은 불편이 아니므로 하한이 직접 적용되지는 않는다). \(n\)을 키우면 비가 1로 간다. 시뮬레이터에서 \(n\)을 바꾸며 확인하자.</div>
+    </div>
+    <div class="sim" id="sim-crlb">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>크라메르–라오 하한 대 실제 분산</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-cr1"></canvas><span class="hint top">흰 원을 끌어 참값 θ를 바꾼다</span></div><div><canvas id="cv-cr2"></canvas><span class="hint top">n에 따른 분산 (로그 눈금)</span></div></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>모형 · 추정량</span><div class="seg" id="cr-m"><button data-value="exp" class="on">지수 λ̂ = n/ΣX</button><button data-value="pois">포아송 λ̂ = X̄</button><button data-value="bern">베르누이 p̂</button></div></div>
+          <label class="ctrl"><span>표본 크기 n <output id="cr-n-out"></output></span><input type="range" id="cr-n" min="3" max="100" step="1" value="5"></label>
+          <div class="ctrl"><span>뽑기</span><div class="btn-row"><button class="btn" id="cr-1000" type="button">1000번</button><button class="btn primary" id="cr-play" type="button"></button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="cr-k">—</span></div>
+        <div class="stat"><span class="k">추정값 평균 (참값)</span><span class="v" id="cr-m-v" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">모의 분산</span><span class="v" id="cr-v">—</span></div>
+        <div class="stat"><span class="k">하한 1/nI(θ)</span><span class="v" id="cr-b">—</span></div>
+        <div class="stat"><span class="k">분산 ÷ 하한</span><span class="v" id="cr-r">—</span></div>
+      </div>
+      <div class="sim-note">왼쪽: 추정값 히스토그램(초록)과 점근 분포 \(N(\theta, 1/nI(\theta))\)(자주). 오른쪽: \(n\)마다 2000번 모의한 분산(초록 점)과 하한 \(1/nI\)(자주 직선)을 로그–로그 눈금으로 그렸다. 해볼 것: ① 지수 모형에서 \(n = 5\)이면 히스토그램이 오른쪽으로 길게 치우치고 분산이 하한의 2배를 넘는다. \(n = 50\)이면 거의 겹친다. ② 포아송과 베르누이는 작은 \(n\)에서도 분산 ÷ 하한이 1 근처다. 유효 추정량이기 때문이다. ③ 오른쪽 그래프의 기울기 −1은 "표본을 4배 늘려야 표준 오차가 반이 된다"는 뜻이다.</div>
+    </div>
+    <div class="tangle" id="tg-crlb">
+      <p>칩 <span class="tn" data-var="n" data-min="10" data-max="5000" data-step="10">200</span>개를 검사해 수율 <span class="tn" data-var="p" data-min="0.5" data-max="0.99" data-step="0.01">0.90</span>을 얻었다. 관측 하나의 피셔 정보는 \(I(\hat p)\) = <span class="tn-out" data-out="I"></span>, 전체 정보는 <span class="tn-out" data-out="In"></span>이고, 크라메르–라오 하한에서 표준 오차는 <span class="tn-out" data-out="se"></span>이다. 표준 오차를 0.01로 줄이려면 칩 <span class="tn-out" data-out="need"></span>개가 필요하다.</p>
+    </div>
+    <div class="example" data-title="수율 추정의 표준 오차와 필요한 표본">
+      <p>웨이퍼 정렬 테스트에서 다이 200개 중 180개가 양품이었다. 수율 MLE와 피셔 정보로 구한 표준 오차를 구하라. 표준 오차를 0.01 이하로 만들려면 다이가 몇 개 필요한가?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 베르누이 모형에서 \(\hat p = x/n\), \(I(p) = 1/p(1-p)\), \(\mathrm{SE} = 1/\sqrt{nI(\hat p)}\).</div>
+        <div class="step"><b>풀이</b> \(\hat p = 0.9\), \(I(0.9) = 1/0.09 = 11.1\), \(nI = 2222\), \(\mathrm{SE} = \sqrt{0.09/200} = 0.0212\). \(\sqrt{0.09/n} \le 0.01\)이면 \(n \ge 0.09/10^{-4} = 900\).</div>
+        <div class="answer">\(\hat p = 0.90\), \(\mathrm{SE} = 0.021\), 필요한 다이 수 900개</div>
+        <div class="step"><b>검토</b> 표준 오차를 반으로 줄이려면 표본이 4배 필요하다. 0.0212에서 0.01로 줄이는 데 약 4.5배가 들었다. 수율이 0.5에 가까울수록 \(p(1-p)\)가 커서 같은 정밀도에 더 많은 다이가 든다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>TCAD 보정의 "골짜기"는 피셔 정보가 부족하다는 신호다</strong> 소자 모델의 매개변수를 측정 곡선에 맞출 때 최소 제곱 오차 곡면은 정규 잡음 아래에서 로그 가능도를 뒤집은 것이다. 해 근처에서 매개변수 공분산을 \(\hat\sigma^2(\mathbf J^{\top}\mathbf J)^{-1}\)로 어림하는데, \(\mathbf J^{\top}\mathbf J/\hat\sigma^2\)가 바로 피셔 정보 행렬이다. 이동도와 직렬 저항처럼 두 매개변수가 출력을 같은 방식으로 바꾸면 곡면에 평평한 골짜기가 생기고(정보 행렬이 특이에 가까움) 표준 오차가 커진다. 측정 조건을 넓혀 곡률을 키우는 것, 곧 정보를 늘리는 것이 해법이다. → <a href="https://semi.euiyun.com/tcad/chapters/calibration.html">TCADBook · 보정과 실험 계획(식별 가능성: 상관된 매개변수와 골짜기)</a></div>
+    <div class="drill" id="drill-fisher" data-title="피셔 정보와 표준 오차 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="bayes">
+    <h2>베이즈 추정 맛보기</h2>
+    <p>지금까지는 모수를 모르는 상수로 보았다. 베이즈 관점은 모수에 대한 불확실성을 확률 분포로 표현한다. 자료를 보기 전의 믿음을 <span class="term">사전 분포</span><span class="en">(prior distribution)</span> \(\pi(\theta)\)로 두고, 3장의 베이즈 정리로 자료를 본 뒤의 <span class="term">사후 분포</span><span class="en">(posterior distribution)</span>를 얻는다.</p>
+    <div class="formula">$$\pi(\theta \mid x_1, \dots, x_n) = \frac{L(\theta)\,\pi(\theta)}{\int L(t)\,\pi(t)\,dt} \;\propto\; L(\theta)\,\pi(\theta)$$<div class="where">사후 분포는 가능도와 사전 분포의 곱에 비례한다. 점추정값으로는 사후 평균(제곱 오차 손실에서 최적)이나 사후 최빈값(MAP)을 쓴다. 사전 분포가 평평하면 MAP는 MLE와 같다.</div></div>
+    <p>수율처럼 0과 1 사이의 모수에는 베타 분포 \(\mathrm{Beta}(a, b)\)가 편리하다. \(\pi(p) \propto p^{a-1}(1-p)^{b-1}\)에 이항 가능도 \(p^x(1-p)^{n-x}\)를 곱하면 다시 베타 분포가 된다. 사전과 사후가 같은 분포족에 머무는 이런 짝을 <span class="term">켤레 사전 분포</span><span class="en">(conjugate prior)</span>라 한다.</p>
+    <div class="formula">$$p \sim \mathrm{Beta}(a, b),\ X \mid p \sim \mathrm{Bin}(n, p)\ \Longrightarrow\ p \mid x \sim \mathrm{Beta}(a + x,\ b + n - x)$$
+    $$E[p \mid x] = \frac{a + x}{a + b + n} = \underbrace{\frac{a+b}{a+b+n}}_{\text{사전 무게}}\cdot\frac{a}{a+b} + \underbrace{\frac{n}{a+b+n}}_{\text{자료 무게}}\cdot\frac{x}{n}$$<div class="where">사후 평균은 사전 평균과 MLE \(x/n\)의 가중 평균이다. \(a + b\)는 사전 믿음이 "칩 몇 개를 본 것만큼" 강한지를 나타내는 사전 표본 크기다. 9.3절의 수축 추정량과 같은 구조로, MLE를 사전 평균 쪽으로 끌어당긴다. \(n \to \infty\)이면 자료 무게가 1로 가서 사후 평균이 MLE와 같아진다.</div></div>
+    <div class="sim" id="sim-bayes">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>사전 × 가능도 = 사후: 신제품 수율 추정</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-bayes"></canvas><span class="hint top">흰 원: 좌우 = 사전 평균, 위아래 = 사전 강도</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>검사한 칩 n <output id="by-n-out"></output></span><input type="range" id="by-n" min="0" max="200" step="1" value="20"></label>
+          <label class="ctrl"><span>그중 양품 x <output id="by-x-out"></output></span><input type="range" id="by-x" min="0" max="200" step="1" value="15"></label>
+          <div class="btn-row"><button class="btn" id="by-more" type="button">칩 10개 더 검사</button><button class="btn" id="by-reset" type="button">자료 지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">사전 Beta(a, b)</span><span class="v" id="by-pr" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">MLE x/n</span><span class="v" id="by-mle">—</span></div>
+        <div class="stat"><span class="k">사후 평균 · MAP</span><span class="v" id="by-pm" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">사후 95% 구간</span><span class="v" id="by-ci" style="font-size:15px">—</span></div>
+        <div class="stat"><span class="k">자료 무게 n/(a+b+n)</span><span class="v" id="by-w">—</span></div>
+      </div>
+      <div class="sim-note">회색은 사전 분포, 초록은 가능도(꼭대기가 MLE, 높이를 맞춰 그림), 자주색은 사후 분포다. 기존 제품의 수율이 0.9 안팎이었다는 경험을 사전 분포로 넣었다. "칩 10개 더 검사"는 참 수율 0.82인 신제품을 10개씩 검사해 자료를 늘린다. 해볼 것: ① 사전 강도를 키우면(● 위로) 사후가 사전 쪽에 붙고, 줄이면 가능도 쪽으로 간다. ② 자료를 지운 뒤 10개씩 늘려 보자. 처음에는 사후 평균이 0.9 근처에 머물다가 자료가 쌓이면 0.82로 옮겨 간다. ③ 사전 평균을 0.5, 강도를 2(평평한 Beta(1, 1))로 두면 MAP가 MLE와 같아진다.</div>
+    </div>
+    <div class="example" data-title="베타 사전 분포로 신제품 수율 추정">
+      <p>기존 제품 경험에서 수율의 사전 분포를 \(\mathrm{Beta}(18, 2)\)(평균 0.9, 사전 표본 크기 20)로 잡았다. 신제품 다이 50개를 검사해 41개가 양품이었다. 사후 분포, 사후 평균, MAP, MLE를 구하고 95% 사후 구간을 말하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 켤레 갱신 \(\mathrm{Beta}(a + x, b + n - x)\).</div>
+        <div class="step"><b>풀이</b> 사후 \(\mathrm{Beta}(59, 11)\). 사후 평균 \(59/70 = 0.843\), MAP \(58/68 = 0.853\), MLE \(41/50 = 0.820\). 가중 평균으로 보면 \(\frac{20}{70}(0.9) + \frac{50}{70}(0.82) = 0.843\). 베타 분위수로 95% 구간은 \([0.750, 0.918]\).</div>
+        <div class="answer">사후 Beta(59, 11), 사후 평균 0.843, MAP 0.853, MLE 0.820, 95% 사후 구간 [0.750, 0.918]</div>
+        <div class="step"><b>검토</b> 사후 평균은 MLE(0.82)와 사전 평균(0.9) 사이에 있고, 자료 무게 \(50/70 = 0.71\)만큼 MLE 쪽이다. 신제품이 기존 제품과 정말 비슷하다는 근거가 약하면 사전 강도를 줄여야 한다. 사전 분포는 숨기지 말고 보고서에 밝힌다.</div>
+      </details>
+    </div>
+    <p>결함 수처럼 포아송 자료에는 감마 분포가 켤레다. 결함 밀도 \(D_0\)에 사전 \(\mathrm{Gamma}(\alpha, \text{비율 } \beta)\)를 두고, 면적 \(A\)인 영역 \(n\)곳에서 결함을 모두 \(\sum x_i\)개 셌다면 사후는 \(\mathrm{Gamma}(\alpha + \sum x_i,\ \beta + nA)\)이고 사후 평균은 \((\alpha + \sum x_i)/(\beta + nA)\)이다. \(\alpha\)는 "사전에 본 결함 수", \(\beta\)는 "사전에 본 면적"처럼 읽힌다.</p>
+    <div class="tangle" id="tg-gp">
+      <p>과거 라인 경험을 결함 <span class="tn" data-var="al" data-min="0" data-max="100" data-step="1">20</span>개를 면적 <span class="tn" data-var="be" data-min="0" data-max="500" data-step="5" data-unit=" cm²">100</span>에서 본 것과 같은 사전 분포(사전 평균 <span class="tn-out" data-out="pm"></span>)로 두었다. 새 공정의 웨이퍼 <span class="tn" data-var="n" data-min="1" data-max="50" data-step="1">8</span>장에서 50 cm²씩 검사해 결함 <span class="tn" data-var="x" data-min="0" data-max="400" data-step="1">85</span>개를 셌다. MLE는 \(\hat D_0\) = <span class="tn-out" data-out="mle"></span>, 사후 평균은 <span class="tn-out" data-out="post"></span>이고 자료 무게는 <span class="tn-out" data-out="w"></span>다.</p>
+    </div>
+    <div class="callout tip"><strong>빈도론과 베이즈, 무엇이 다른가</strong><p>빈도론의 추정량 평가(편향, MSE, 신뢰 구간)는 "표본을 다시 뽑는다면"이라는 가상의 반복에 기대고, 모수는 고정된 상수다. 베이즈 추론은 자료를 고정하고 모수의 불확실성을 확률로 말한다. "수율이 0.75와 0.92 사이일 확률이 95%"라는 말은 베이즈 사후 구간에서만 문자 그대로 성립한다. 자료가 많으면 두 방법의 답이 거의 같아지고, 자료가 적고 믿을 만한 사전 지식이 있을 때 베이즈 방법이 힘을 낸다.</p></div>
+    <div class="drill" id="drill-bayes" data-title="베타–이항 사후 평균 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>추정량 \(\hat\theta = h(X_1, \dots, X_n)\)은 규칙이자 확률 변수이고, 추정값은 그 규칙이 자료에서 내놓은 숫자다. 추정량의 좋고 나쁨은 표본 분포로 판단한다.</li>
+      <li>편향은 \(E[\hat\theta] - \theta\)이다. \(\bar X\), \(\hat p\), \(S^2 = \frac{1}{n-1}\sum(X_i - \bar X)^2\)는 불편이고 \(S_n^2\)는 \(-\sigma^2/n\)만큼 편향된다. 자유도 \(n - 1\)은 \(\bar X\)를 자료로 추정하느라 잃은 하나를 뺀 것이다. \(S\)는 \(\sigma\)를 작게 본다(\(E[S] = c_4\sigma\)).</li>
+      <li>\(\mathrm{MSE} = \operatorname{Var}(\hat\theta) + \mathrm{Bias}^2\). 수축 추정량 \(c\bar X\)처럼 약간의 편향으로 분산을 크게 줄이면 MSE가 작아질 수 있다(\(c^* = \mu^2/(\mu^2 + \sigma^2/n)\)).</li>
+      <li>상대 효율은 분산의 비다. 정규 자료에서 중앙값은 평균 대비 \(2/\pi \approx 0.64\)이지만, 꼬리가 두꺼우면 중앙값이 이긴다. MSE \(\to 0\)이면 일치 추정량이다(체비쇼프).</li>
+      <li>적률법은 \(E[X^k] = \frac1n\sum X_i^k\)를 푼다: 감마 \(\hat\theta = S_n^2/\bar X\), \(\hat k = \bar X^2/S_n^2\), 균일 \(2\bar X\). 쉽지만 자료와 모순되는 값을 낼 수 있다.</li>
+      <li>MLE는 \(\ell(\theta) = \sum\ln f(x_i;\theta)\)의 최대점이다: 포아송·정규 평균 \(\bar X\), 지수 \(1/\bar X\), 중도 절단 지수 \(r/T\)(총 시험 시간), 정규 분산 \(S_n^2\), 균일 \(X_{(n)}\)(경계 최대, 편향 → \(\frac{n+1}{n}X_{(n)}\)). 불변성으로 \(\hat D_0 = -\ln\hat Y/A\), MTTF \(= 1/\hat\lambda\).</li>
+      <li>피셔 정보 \(I(\theta) = -E[\partial^2\ln f/\partial\theta^2]\)는 로그 가능도의 곡률이다. 불편 추정량은 \(\operatorname{Var} \ge 1/nI(\theta)\)(크라메르–라오)이고, MLE는 점근적으로 \(N(\theta, 1/nI)\)를 따른다. 베이즈 추정은 사후 \(\propto\) 가능도 × 사전이며, 베타–이항 사후 평균은 사전 평균과 MLE의 가중 평균이다.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="problems" id="problems">
+    <h2>연습문제</h2>
+    <p>필요하면 부록 A의 분포 계산기를 쓴다. 따로 말이 없으면 표본은 확률 표본(독립, 같은 분포)이다. 답이 ±1% 이내면 정답이다.</p>
+    <div class="problem-set">
+      <div class="problem" data-level="1" data-topic="표본 분산" data-answer="3.67; 0.419; 0.647" data-label="x̄ =; S² =; S =" data-unit="; ;">
+        <div class="prob-q"><p>측정값 3.2, 4.1, 2.7, 3.9, 3.6, 4.5의 표본 평균, 표본 분산 \(S^2\), 표본 표준 편차 \(S\)를 구하라.</p></div>
+        <div class="prob-hint">편차 제곱합을 \(n - 1 = 5\)로 나눈다.</div>
+        <div class="prob-sol"><p>\(\bar x = 22/6 = 3.667\). 편차 제곱합 \(= \sum x_i^2 - n\bar x^2 = 82.76 - 80.667 = 2.093\). \(S^2 = 2.093/5 = 0.419\), \(S = 0.647\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="편향" data-answer="3.6; -0.4" data-label="E[S_n²] =; 편향 =">
+        <div class="prob-q"><p>모분산 \(\sigma^2 = 4\)인 모집단에서 \(n = 10\)개를 뽑아 \(n\)으로 나눈 분산 \(S_n^2\)을 쓴다. \(E[S_n^2]\)와 편향은?</p></div>
+        <div class="prob-sol"><p>\(E[S_n^2] = \frac{n-1}{n}\sigma^2 = 0.9\times4 = 3.6\), 편향 \(= 3.6 - 4 = -0.4 = -\sigma^2/n\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="불편성">
+        <div class="prob-q"><p>\(\hat\theta\)가 \(\theta\)의 불편 추정량일 때 옳은 것은?</p></div>
+        <div class="prob-choices"><button>이번 자료에서 얻은 추정값은 \(\theta\)와 같다</button><button data-correct>표본을 거듭 뽑아 얻은 추정값들의 평균은 \(\theta\)로 간다</button><button>\(\hat\theta^2\)도 \(\theta^2\)의 불편 추정량이다</button><button>\(\hat\theta\)는 불편 추정량 가운데 분산이 가장 작다</button></div>
+        <div class="prob-sol"><p>불편성은 \(E[\hat\theta] = \theta\), 곧 반복 추출에서의 평균에 대한 성질이다. \(E[\hat\theta^2] = \operatorname{Var}(\hat\theta) + \theta^2 > \theta^2\)이므로 \(\hat\theta^2\)는 편향된다. 분산이 최소라는 것은 MVUE라는 더 강한 조건이다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="MSE" data-answer="-2; 2; 6" data-label="편향 =; 분산 =; MSE =">
+        <div class="prob-q"><p>\(X_1, X_2\)가 평균 \(\mu = 6\), 분산 \(\sigma^2 = 9\)인 모집단의 표본이다. 추정량 \(\hat\theta = (X_1 + X_2)/3\)의 편향, 분산, MSE를 구하라. \(\bar X\)의 MSE(4.5)와 비교하라.</p></div>
+        <div class="prob-hint">\(E[\hat\theta] = 2\mu/3\), \(\operatorname{Var}(\hat\theta) = 2\sigma^2/9\).</div>
+        <div class="prob-sol"><p>편향 \(= 2\mu/3 - \mu = -\mu/3 = -2\), 분산 \(= 2\times9/9 = 2\), MSE \(= 2 + 4 = 6\). \(\bar X\)(4.5)보다 크다. 이 \(\mu\)에서는 수축이 지나치다(\(c = 2/3\)). 최적 계수는 \(c^* = 36/(36 + 4.5) = 0.889\)이다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="수축 추정량" data-answer="0.5; 12.5" data-label="c* =; MSE_min =">
+        <div class="prob-q"><p>\(\mu = 5\), \(\sigma = 10\), \(n = 4\)일 때 수축 추정량 \(c\bar X\)의 MSE를 최소로 만드는 \(c^*\)와 그때의 MSE를 구하라. \(\bar X\)의 MSE는 얼마인가?</p></div>
+        <div class="prob-sol"><p>\(\sigma^2/n = 25 = \mu^2\)이므로 \(c^* = 25/50 = 0.5\), \(\mathrm{MSE}_{\min} = 25\times25/50 = 12.5\). \(\bar X\)의 MSE는 25이니 절반이다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="상대 효율" data-answer="157" data-label="n ≈">
+        <div class="prob-q"><p>정규 모집단에서 \(n = 100\)인 표본 평균과 같은 분산을 표본 중앙값으로 얻으려면 표본이 대략 몇 개 필요한가? (큰 표본의 \(\operatorname{Var}(\text{중앙값}) \approx \pi\sigma^2/2n\)을 쓴다.)</p></div>
+        <div class="prob-sol"><p>\(\pi\sigma^2/(2m) = \sigma^2/100\)에서 \(m = 50\pi = 157\). 효율 \(2/\pi = 0.637\)의 역수만큼, 곧 57% 더 필요하다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="적률법과 MLE" data-answer="8.5; 7.4; 8.63" data-label="2x̄ =; MLE =; 보정 =">
+        <div class="prob-q"><p>균일 분포 \((0, \theta)\)에서 2.1, 7.4, 5.0, 3.3, 6.8, 0.9를 얻었다. \(\theta\)의 적률법 추정값, MLE, 불편 보정 추정값 \(\frac{n+1}{n}x_{(n)}\)을 구하라.</p></div>
+        <div class="prob-sol"><p>\(\bar x = 25.5/6 = 4.25\)이므로 \(2\bar x = 8.5\). MLE는 최댓값 7.4. 보정 \(= \frac76\times7.4 = 8.63\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="감마 적률법" data-answer="4; 3" data-label="k̂ =; θ̂ =">
+        <div class="prob-q"><p>대기 시간 자료의 표본 평균이 12분, \(n\)으로 나눈 분산이 36분²이다. 감마 분포 \(\mathrm{Gamma}(k, \theta)\)의 적률법 추정값을 구하라.</p></div>
+        <div class="prob-sol"><p>\(\hat\theta = s_n^2/\bar x = 36/12 = 3\)분, \(\hat k = \bar x^2/s_n^2 = 144/36 = 4\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="포아송 MLE" data-answer="0.0529; 0.00869" data-label="D̂₀ =; SE =" data-unit="개/cm²; 개/cm²">
+        <div class="prob-q"><p>웨이퍼 10장에서 각각 70 cm²를 검사해 결함을 모두 37개 찾았다. 결함 수가 포아송 분포를 따른다고 할 때 결함 밀도의 MLE와 그 표준 오차(피셔 정보 이용)를 구하라.</p></div>
+        <div class="prob-hint">총 검사 면적 700 cm²에서 결함 수가 \(\mathrm{Poisson}(700D_0)\)이라고 보면 된다.</div>
+        <div class="prob-sol"><p>\(\hat D_0 = 37/700 = 0.0529\) 개/cm². 총 결함 수의 분산이 \(700D_0\)이므로 \(\operatorname{Var}(\hat D_0) = D_0/700\), \(\mathrm{SE} = \sqrt{37}/700 = 0.00869\) 개/cm².</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="중도 절단 MLE" data-answer="6.24; 16000" data-label="λ̂ =; MTTF =" data-unit="×10⁻⁵ /h; h" data-tol="1%; 1%">
+        <div class="prob-q"><p>소자 50개를 1000시간 시험해 120, 340, 610시간에 하나씩 고장 났고 나머지는 끝까지 살아 있었다. 지수 분포를 가정할 때 고장률의 MLE(×10⁻⁵ /h 단위)와 MTTF의 MLE를 구하라.</p></div>
+        <div class="prob-hint">총 시험 시간 \(T = 120 + 340 + 610 + 47\times1000\).</div>
+        <div class="prob-sol"><p>\(T = 1070 + 47000 = 48070\) 소자·시간, \(\hat\lambda = 3/48070 = 6.24\times10^{-5}\) /h, 불변성으로 \(\widehat{\mathrm{MTTF}} = 48070/3 = 16023\) h.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="MLE 유도" data-answer="3.02" data-label="θ̂ =">
+        <div class="prob-q"><p>밀도 \(f(x;\theta) = \theta x^{\theta - 1}\) (\(0 < x < 1\), \(\theta > 0\))의 MLE를 유도하고, 자료 0.62, 0.85, 0.71, 0.93, 0.55로 값을 구하라.</p></div>
+        <div class="prob-hint">\(\ell(\theta) = n\ln\theta + (\theta - 1)\sum\ln x_i\).</div>
+        <div class="prob-sol"><p>\(\ell'(\theta) = n/\theta + \sum\ln x_i = 0\)에서 \(\hat\theta = -n/\sum\ln x_i\). \(\sum\ln x_i = -0.4780 - 0.1625 - 0.3425 - 0.0726 - 0.5978 = -1.6535\)이므로 \(\hat\theta = 5/1.6535 = 3.02\). \(\ell'' = -n/\theta^2 < 0\)이라 최대다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="크라메르–라오 하한" data-answer="0.015" data-label="SE =">
+        <div class="prob-q"><p>수율이 \(p = 0.9\)인 공정에서 다이 400개로 \(p\)를 추정한다. 크라메르–라오 하한으로 구한 불편 추정량의 최소 표준 오차는?</p></div>
+        <div class="prob-sol"><p>\(I(p) = 1/p(1-p) = 11.1\), 하한 \(= p(1-p)/n = 0.09/400 = 2.25\times10^{-4}\), \(\mathrm{SE} = 0.015\). \(\hat p\)가 이 하한에 닿는다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="MLE의 편향" data-answer="1.11; 1.25" data-label="E[λ̂]/λ =; Var/하한 =">
+        <div class="prob-q"><p>지수 분포에서 \(n = 10\)개로 구한 MLE \(\hat\lambda = n/\sum X_i\)의 기댓값은 \(\frac{n}{n-1}\lambda\)다. \(E[\hat\lambda]/\lambda\)를 구하라. 불편 추정량 \(\tilde\lambda = (n-1)/\sum X_i\)의 분산은 \(\lambda^2/(n-2)\)이다. 이 분산은 크라메르–라오 하한의 몇 배인가?</p></div>
+        <div class="prob-hint">\(\sum X_i \sim \mathrm{Gamma}(n, 1/\lambda)\)이고 \(E[1/\sum X_i] = \lambda/(n-1)\)이다. 하한은 \(\lambda^2/n\).</div>
+        <div class="prob-sol"><p>\(E[\hat\lambda]/\lambda = 10/9 = 1.11\). \(\operatorname{Var}(\tilde\lambda)/(\lambda^2/n) = n/(n-2) = 10/8 = 1.25\). 불편 추정량이지만 하한에 닿지 않는다. 지수 분포의 \(\lambda\)에는 유효 추정량이 없고, \(n\)이 커지면 비가 1로 간다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="독일 전차 문제" data-answer="74; 79.5" data-label="N̂ =; 2x̄ − 1 =">
+        <div class="prob-q"><p>번호가 1부터 \(N\)까지인 장비 가운데 무작위로 고른 4대의 번호가 19, 40, 42, 60이었다. 불편 추정량 \(m(1 + 1/k) - 1\)과 적률법 \(2\bar x - 1\)로 \(N\)을 추정하라.</p></div>
+        <div class="prob-sol"><p>\(m = 60\), \(k = 4\): \(\hat N = 60\times1.25 - 1 = 74\). \(\bar x = 40.25\)이므로 \(2\bar x - 1 = 79.5\). 두 추정량 모두 불편이지만 앞의 것이 분산이 훨씬 작다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="베이즈 추정" data-answer="0.917; 0.931" data-label="사후 평균 =; MAP =">
+        <div class="prob-q"><p>수율의 사전 분포가 \(\mathrm{Beta}(9, 1)\)이다. 다이 50개 중 46개가 양품이었을 때 사후 평균과 사후 최빈값(MAP)을 구하라.</p></div>
+        <div class="prob-sol"><p>사후 \(\mathrm{Beta}(55, 5)\). 사후 평균 \(55/60 = 0.917\), MAP \(54/58 = 0.931\). MLE 0.92와 사전 평균 0.9 사이에 있다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="일치성">
+        <div class="prob-q"><p>모평균 \(\mu\)의 추정량 가운데 일치 추정량이 <em>아닌</em> 것은?</p></div>
+        <div class="prob-choices"><button>\(\bar X\)</button><button>\(\frac{n}{n+1}\bar X\)</button><button data-correct>\((X_1 + X_n)/2\)</button><button>정규 모집단의 표본 중앙값</button></div>
+        <div class="prob-sol"><p>\((X_1 + X_n)/2\)는 불편이지만 분산이 \(\sigma^2/2\)로 \(n\)과 상관없이 줄지 않는다. \(\frac{n}{n+1}\bar X\)는 편향이 있지만 편향과 분산이 모두 0으로 가므로 일치 추정량이다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="quiz-sec" id="quiz">
+    <h2>개념 확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>\(S^2\)이 \(\sigma^2\)의 불편 추정량이라면 \(S\)는 \(\sigma\)에 대해 어떤가?</p><div class="opts">
+        <button class="opt">역시 불편이다</button><button class="opt" data-correct>평균적으로 \(\sigma\)보다 작다</button><button class="opt">평균적으로 \(\sigma\)보다 크다</button><button class="opt">정규 모집단에서만 불편이다</button>
+      </div><div class="quiz-exp">제곱근은 오목 함수여서 \(E[S] = E[\sqrt{S^2}] < \sqrt{E[S^2]} = \sigma\)다(옌센 부등식). 정규 모집단에서 \(E[S] = c_4\sigma\)이고, 관리도는 \(\bar s/c_4\)로 보정한다.</div></div>
+      <div class="quiz-q"><p>편향이 있는 추정량에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">불편 추정량보다 언제나 MSE가 크다</button><button class="opt">일치 추정량이 될 수 없다</button><button class="opt" data-correct>분산이 충분히 작으면 불편 추정량보다 MSE가 작을 수 있다</button><button class="opt">표본을 늘려도 편향은 줄지 않는다</button>
+      </div><div class="quiz-exp">\(\mathrm{MSE} = \operatorname{Var} + \mathrm{Bias}^2\)이므로 편향을 조금 받아들이고 분산을 크게 줄이면 MSE가 준다. \(S_n^2\)처럼 편향이 \(n\)과 함께 0으로 가면 일치 추정량이다.</div></div>
+      <div class="quiz-q"><p>가능도 함수 \(L(\theta)\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">\(\theta\)에 대한 확률 밀도 함수이므로 넓이가 1이다</button><button class="opt" data-correct>자료를 고정하고 모수의 함수로 본 결합 밀도로, \(\theta\)에 대해 적분해도 1이 될 필요가 없다</button><button class="opt">\(L(\hat\theta)\)는 \(\theta = \hat\theta\)일 확률이다</button><button class="opt">로그를 취하면 최댓값의 위치가 바뀐다</button>
+      </div><div class="quiz-exp">가능도는 \(\theta\)의 분포가 아니다. \(\theta\)가 그럴듯한 정도를 상대적으로 비교할 뿐이어서 가능도 비 \(L(\theta_1)/L(\theta_2)\)에 뜻이 있다. \(\theta\)에 확률을 주려면 사전 분포를 곱해 사후 분포를 만들어야 한다.</div></div>
+      <div class="quiz-q"><p>두 실험의 로그 가능도가 같은 \(\hat\theta\)에서 최대인데, 실험 A의 꼭대기 곡률이 실험 B의 4배다. 옳은 것은?</p><div class="opts">
+        <button class="opt">A의 표준 오차가 B의 4배다</button><button class="opt">A의 표준 오차가 B의 1/4이다</button><button class="opt" data-correct>A의 표준 오차가 B의 1/2이다</button><button class="opt">곡률은 표준 오차와 관계없다</button>
+      </div><div class="quiz-exp">\(\mathrm{SE} \approx 1/\sqrt{-\ell''(\hat\theta)}\)이므로 곡률이 4배면 표준 오차는 1/2이다. 독립 관측을 4배로 늘린 것과 같은 효과다.</div></div>
+      <div class="quiz-q"><p>베타 사전 분포와 이항 자료에서 표본 크기 \(n\)을 계속 늘리면 사후 평균은?</p><div class="opts">
+        <button class="opt">사전 평균으로 간다</button><button class="opt" data-correct>MLE \(x/n\)에 가까워지고 사전 분포의 영향이 사라진다</button><button class="opt">0.5로 간다</button><button class="opt">사전 강도 \(a + b\)에 따라 어디로든 갈 수 있다</button>
+      </div><div class="quiz-exp">사후 평균에서 자료의 무게는 \(n/(a + b + n) \to 1\)이다. 자료가 많으면 빈도론과 베이즈의 점추정값이 거의 같아진다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const pal = () => SB.palette();
+  const $ = (id) => document.getElementById(id);
+  const TAU = 2 * Math.PI;
+  const font = (px, mono, bold) => (bold ? "600 " : "") + px + "px " + SB.color(mono ? "mono" : "font");
+  const handle = (ctx, x, y, col, r = 9) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const diamond = (ctx, x, y, col, r = 10) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const f3 = (x, d = 3) => (isFinite(x) ? String(Number(x.toPrecision(d))) : "—");
+  const fx = (x, d = 2) => (isFinite(x) ? x.toFixed(d) : "—");
+  const invX = (C, x0, x1, px) => x0 + ((px - C.box.x) / C.box.w) * (x1 - x0);
+  const invY = (C, y0, y1, py) => y0 + ((C.box.y + C.box.h - py) / C.box.h) * (y1 - y0);
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const rnd = (a, b, step) => Number((Math.round((a + Math.random() * (b - a)) / step) * step).toFixed(6));
+  const withA = (ctx, a, fn) => { const g = ctx.globalAlpha; ctx.globalAlpha = g * a; fn(); ctx.globalAlpha = g; };
+  const clip = (ctx, C, fn) => { ctx.save(); ctx.beginPath(); ctx.rect(C.box.x, C.box.y - 1, C.box.w + 1, C.box.h + 2); ctx.clip(); fn(); ctx.restore(); };
+  const median = (a) => { const s = Float64Array.from(a).sort(), n = s.length; return n % 2 ? s[(n - 1) / 2] : 0.5 * (s[n / 2 - 1] + s[n / 2]); };
+  const roundRect = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); };
+  const vline = (ctx, C, x, col, o = {}) => { ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = o.width || 2; if (o.dash) ctx.setLineDash(o.dash); ctx.beginPath(); ctx.moveTo(C.X(x), o.y0 != null ? o.y0 : C.box.y); ctx.lineTo(C.X(x), o.y1 != null ? o.y1 : C.box.y + C.box.h); ctx.stroke(); ctx.restore(); };
+  const sci = (x, d = 2) => {
+    if (!isFinite(x)) return "—"; if (x === 0) return "0";
+    const e = Math.floor(Math.log10(Math.abs(x)));
+    if (e >= -2 && e <= 4) return String(Number(x.toPrecision(d + 1)));
+    const SUP = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+    return (x / Math.pow(10, e)).toFixed(d) + "×10" + String(e).split("").map((c) => SUP[c]).join("");
+  };
+  const texSci = (x, d = 2) => { const e = Math.floor(Math.log10(Math.abs(x))); if (e >= -2 && e <= 4) return String(Number(x.toPrecision(d + 1))); return (x / Math.pow(10, e)).toFixed(d) + "\\times10^{" + e + "}"; };
+
+  /** 고정 칸 누적 히스토그램 + 웰퍼드 평균·분산 */
+  function acc(lo, hi, nb) {
+    const A = { lo, hi, nb, w: (hi - lo) / nb, c: new Float64Array(nb), n: 0, m: 0, M2: 0 };
+    A.add = (v) => { A.n++; const d = v - A.m; A.m += d / A.n; A.M2 += d * (v - A.m); const i = Math.floor((v - A.lo) / A.w); if (i >= 0 && i < A.nb) A.c[i]++; };
+    A.mean = () => (A.n ? A.m : NaN);
+    A.var = () => (A.n > 1 ? A.M2 / (A.n - 1) : NaN);
+    A.reset = (lo2, hi2) => { if (lo2 != null) { A.lo = lo2; A.hi = hi2; A.w = (hi2 - lo2) / A.nb; } A.c.fill(0); A.n = 0; A.m = 0; A.M2 = 0; };
+    A.dens = (i) => (A.n ? A.c[i] / (A.n * A.w) : 0);
+    A.maxDens = () => { let m = 0; for (let i = 0; i < A.nb; i++) m = Math.max(m, A.dens(i)); return m; };
+    A.draw = (ctx, C, col, a = 0.5, outline = true) => {
+      clip(ctx, C, () => {
+        withA(ctx, a, () => { ctx.fillStyle = col; for (let i = 0; i < A.nb; i++) { if (!A.c[i]) continue; const x0 = C.X(A.lo + i * A.w), x1 = C.X(A.lo + (i + 1) * A.w), y = C.Y(A.dens(i)); ctx.fillRect(x0, y, Math.max(1, x1 - x0 - 0.6), C.Y(0) - y); } });
+        if (outline && A.n) { ctx.strokeStyle = col; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(C.X(A.lo), C.Y(0)); for (let i = 0; i < A.nb; i++) { const y = C.Y(A.dens(i)); ctx.lineTo(C.X(A.lo + i * A.w), y); ctx.lineTo(C.X(A.lo + (i + 1) * A.w), y); } ctx.lineTo(C.X(A.hi), C.Y(0)); ctx.stroke(); }
+      });
+    };
+    return A;
+  }
+  /** 반복 실험 진행기: 1번/10번은 천천히, 큰 묶음은 프레임마다 batch개 */
+  function runner(onSample, o = {}) {
+    const R = { pending: 0, running: false, timer: 0, toggle() { R.running = !R.running; return R.running; } };
+    R.queue = (k) => { R.pending += k; };
+    R.tick = (dt) => {
+      if (R.pending > (o.slowMax || 12)) { const m = Math.min(R.pending, o.batch || 40); for (let i = 0; i < m; i++) onSample(i < m - 1); R.pending -= m; return true; }
+      R.timer += dt;
+      const iv = R.pending > 0 ? (o.interval || 0.12) : (o.playInterval || o.interval || 0.12);
+      if ((R.pending > 0 || R.running) && R.timer >= iv) { R.timer = 0; onSample(false); if (R.pending > 0) R.pending--; return true; }
+      return false;
+    };
+    return R;
+  }
+  const bindRun = (R, ids) => {
+    if (ids.one) $(ids.one).addEventListener("click", () => R.queue(1));
+    if (ids.ten) $(ids.ten).addEventListener("click", () => R.queue(10));
+    if (ids.hund) $(ids.hund).addEventListener("click", () => R.queue(100));
+    if (ids.thou) $(ids.thou).addEventListener("click", () => R.queue(1000));
+    if (ids.play) SB.play(ids.play, R);
+  };
+  /** 감마 함수 도우미: 디감마·트리감마 */
+  function digamma(x) { let r = 0; while (x < 6) { r -= 1 / x; x += 1; } const f = 1 / (x * x); return r + Math.log(x) - 0.5 / x - f * (1 / 12 - f * (1 / 120 - f * (1 / 252 - f * (1 / 240 - f / 132)))); }
+  function trigamma(x) { let r = 0; while (x < 6) { r += 1 / (x * x); x += 1; } const f = 1 / (x * x); return r + 1 / x + f / 2 + (f / x) * (1 / 6 - f * (1 / 30 - f * (1 / 42 - f / 30))); }
+  /** 감마 MLE: ln k − ψ(k) = ln x̄ − mean(ln x) */
+  function gammaMLE(x) {
+    const n = x.length, m = Stat.mean(x), lm = x.reduce((a, v) => a + Math.log(v), 0) / n, s = Math.log(m) - lm;
+    let k = (3 - s + Math.sqrt((s - 3) * (s - 3) + 24 * s)) / (12 * s);
+    for (let i = 0; i < 30; i++) { const g = Math.log(k) - digamma(k) - s, d = 1 / k - trigamma(k), nk = k - g / d; k = nk > 0 ? nk : k / 2; if (Math.abs(g) < 1e-12) break; }
+    return { k, theta: m / k };
+  }
+  const gammaLL = (x, k, th) => { let s = 0; for (const v of x) s += (k - 1) * Math.log(v) - v / th; return s - x.length * (Stat.lgamma(k) + k * Math.log(th)); };
+  /** 큰 평균의 포아송 난수(PTRS, 회르만) */
+  function rpois(R, lam) {
+    if (lam < 30) return R.poisson(lam);
+    const slam = Math.sqrt(lam), loglam = Math.log(lam), b = 0.931 + 2.53 * slam, a = -0.059 + 0.02483 * b, invalpha = 1.1239 + 1.1328 / (b - 3.4), vr = 0.9277 - 3.6224 / (b - 2);
+    for (;;) {
+      const U = R.u() - 0.5, V = R.u(), us = 0.5 - Math.abs(U), k = Math.floor(((2 * a) / us + b) * U + lam + 0.43);
+      if (us >= 0.07 && V <= vr) return k;
+      if (k < 0 || (us < 0.013 && V > us)) continue;
+      if (Math.log(V) + Math.log(invalpha) - Math.log(a / (us * us) + b) <= -lam + k * loglam - Stat.lfactorial(k)) return k;
+    }
+  }
+  const c4 = (n) => Math.sqrt(2 / (n - 1)) * Math.exp(Stat.lgamma(n / 2) - Stat.lgamma((n - 1) / 2));
+
+  /* ================================================================ 머리: 추정량 과녁 */
+  {
+    const EST = [{ id: "x1", name: "첫 값 X₁" }, { id: "mean", name: "평균 X̄" }, { id: "shrink", name: "수축 평균" }];
+    const st = { est: "mean", throws: [], g: [1.3, 0.9], c: 0.45, n: 5, timer: 0, idle: 0, cyc: 0, drag: false };
+    const R = Stat.rng(2024);
+    const throwOne = () => {
+      let sx = 0, sy = 0, x0 = 0, y0 = 0;
+      for (let i = 0; i < st.n; i++) { const x = R.normal(), y = R.normal(); if (i === 0) { x0 = x; y0 = y; } sx += x; sy += y; }
+      const mx = sx / st.n, my = sy / st.n;
+      const p = st.est === "x1" ? [x0, y0] : st.est === "mean" ? [mx, my] : [st.g[0] + st.c * (mx - st.g[0]), st.g[1] + st.c * (my - st.g[1])];
+      st.throws.push({ x: p[0], y: p[1], age: 0 });
+      if (st.throws.length > 60) st.throws.shift();
+    };
+    const theory = () => { const vm = 2 / st.n; if (st.est === "x1") return [0, 2]; if (st.est === "mean") return [0, vm]; return [(1 - st.c) ** 2 * (st.g[0] ** 2 + st.g[1] ** 2), st.c * st.c * vm]; };
+    const setEst = (id) => { if (st.est !== id) { st.est = id; st.throws = []; } };
+    for (let i = 0; i < 30; i++) { throwOne(); st.throws[st.throws.length - 1].age = 3; }
+    const cv = SB.canvas("cv-hero", (ctx, w, h, self) => {
+      const P = pal(), narrow = w < 600;
+      // 추정량 단추
+      ctx.font = font(12.5, false, true);
+      let x = 12; const chips = [];
+      EST.forEach((e) => { const tw = ctx.measureText(e.name).width + 24; chips.push({ id: e.id, name: e.name, x, y: 10, w: tw, h: 28 }); x += tw + 8; });
+      chips.forEach((c) => {
+        const on = c.id === st.est;
+        ctx.fillStyle = on ? P.accent : P.surface; ctx.strokeStyle = on ? P.accent : P.border; ctx.lineWidth = 1.2;
+        roundRect(ctx, c.x, c.y, c.w, c.h, 14); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = on ? P.bg : P.text; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(c.name, c.x + c.w / 2, c.y + c.h / 2 + 0.5);
+      });
+      self._chips = chips;
+      // 과녁
+      const R0 = narrow ? Math.min(w * 0.4, (h - 220) / 2) : Math.min(h * 0.4, w * 0.25);
+      const cx = narrow ? w / 2 : w * 0.3, cy = narrow ? 56 + R0 : h / 2 + 18, U = R0 / 2.6;
+      const PX = (p) => [cx + p[0] * U, cy - p[1] * U];
+      [2.5, 2, 1.5, 1, 0.5].forEach((r, i) => { ctx.beginPath(); ctx.arc(cx, cy, r * U, 0, TAU); ctx.fillStyle = i % 2 ? P.bg : P.surface; ctx.fill(); ctx.strokeStyle = P.border; ctx.lineWidth = 1; ctx.stroke(); });
+      ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, TAU); ctx.fill();
+      SB.label(ctx, "참값 θ", cx, cy + 0.5 * U + 12, { size: 11, color: P.accent2, bold: true });
+      // 기준점(수축 방향)
+      const gp = PX(st.g);
+      if (st.est === "shrink") SB.dashLine(ctx, cx, cy, gp[0], gp[1], P.accent2, [4, 4]);
+      // 다트
+      st.throws.forEach((t) => {
+        const [px, py] = PX([t.x, t.y]);
+        withA(ctx, Math.max(0.35, 1 - t.age / 10), () => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, TAU); ctx.fill(); });
+        if (t.age < 0.35) { ctx.strokeStyle = P.accent; ctx.lineWidth = 1.5; withA(ctx, 1 - t.age / 0.35, () => { ctx.beginPath(); ctx.arc(px, py, 5 + t.age * 40, 0, TAU); ctx.stroke(); }); }
+      });
+      // 구름의 중심과 퍼짐
+      const N = st.throws.length;
+      let mx = 0, my = 0; st.throws.forEach((t) => { mx += t.x; my += t.y; }); mx /= N || 1; my /= N || 1;
+      let vv = 0, ms = 0; st.throws.forEach((t) => { vv += (t.x - mx) ** 2 + (t.y - my) ** 2; ms += t.x * t.x + t.y * t.y; }); vv /= N || 1; ms /= N || 1;
+      const b2 = mx * mx + my * my;
+      if (N >= 5) {
+        const [qx, qy] = PX([mx, my]);
+        ctx.save(); ctx.strokeStyle = P.accent; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(qx, qy, Math.sqrt(vv) * U, 0, TAU); ctx.stroke(); ctx.restore();
+        if (Math.sqrt(b2) * U > 14) { SB.arrow(ctx, cx, cy, qx, qy, { color: P.bad, width: 2.4, head: 9 }); SB.label(ctx, "편향", (cx + qx) / 2 + 14, (cy + qy) / 2 - 10, { size: 12, color: P.bad, bold: true }); }
+        ctx.strokeStyle = P.bad; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(qx - 7, qy - 7); ctx.lineTo(qx + 7, qy + 7); ctx.moveTo(qx + 7, qy - 7); ctx.lineTo(qx - 7, qy + 7); ctx.stroke();
+      }
+      if (st.est === "shrink") { handle(ctx, gp[0], gp[1], P.accent2, 10); SB.label(ctx, "기준점", gp[0], gp[1] - 20, { size: 11, color: P.accent2, bold: true }); }
+      else withA(ctx, 0.55, () => handle(ctx, gp[0], gp[1], P.faint, 8));
+      self._g = gp; self._U = U; self._c = [cx, cy];
+      // 막대: 편향², 분산, MSE
+      const [tb, tv] = theory();
+      const bx = narrow ? 20 : w * 0.58, bw = narrow ? w - 40 - 70 : w - bx - 90, by = narrow ? cy + R0 + 26 : h * 0.3, rowH = narrow ? 30 : 42;
+      const S = (v) => (Math.min(v, 2.6) / 2.6) * bw;
+      SB.label(ctx, `다트 ${N}개 (다트 하나 = 표본 n = ${st.n}개로 만든 추정값)`, bx, by - 18, { size: 12, color: P.dim, align: "left" });
+      const rows = [["편향²", b2, tb, [[P.bad, b2]]], ["분산", vv, tv, [[P.accent, vv]]], ["MSE", ms, tb + tv, [[P.bad, b2], [P.accent, vv]]]];
+      rows.forEach(([nm, val, th, parts], i) => {
+        const y = by + i * rowH;
+        ctx.fillStyle = P.surface; ctx.fillRect(bx + 44, y, bw, rowH - 12);
+        let xx = bx + 44; parts.forEach(([col, v]) => { withA(ctx, 0.85, () => { ctx.fillStyle = col; ctx.fillRect(xx, y, S(v), rowH - 12); }); xx += S(v); });
+        const tx = bx + 44 + S(th); ctx.strokeStyle = P.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tx, y - 3); ctx.lineTo(tx, y + rowH - 9); ctx.stroke();
+        SB.label(ctx, nm, bx + 38, y + (rowH - 12) / 2, { size: 12, align: "right", bold: true });
+        SB.label(ctx, val.toFixed(2), bx + 50 + bw, y + (rowH - 12) / 2, { size: 12, align: "left", mono: true });
+      });
+      SB.label(ctx, "자주 눈금 = 이론값", bx + 44, by + 3 * rowH + 2, { size: 11, color: P.accent2, align: "left" });
+    }, { aspect: 0.45, minHeight: 410, maxHeight: 440 });
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._g ? [{ id: "g", x: cv._g[0], y: cv._g[1], r: 14 }] : []),
+      down: (id, x, y) => {
+        st.idle = 0;
+        if (id === "g") { setEst("shrink"); st.throws = []; return; }
+        (cv._chips || []).forEach((c) => { if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) setEst(c.id); });
+      },
+      move: (id, x, y) => {
+        if (id !== "g") return; st.idle = 0;
+        const [cx, cy] = cv._c, U = cv._U;
+        st.g = [SB.clamp((x - cx) / U, -2.3, 2.3), SB.clamp((cy - y) / U, -2.3, 2.3)];
+      },
+      up: (id) => { if (id === "g") st.throws = []; },
+    });
+    SB.loop("hero", (dt) => {
+      dt = Math.min(dt, 0.05);
+      st.timer += dt; st.idle += dt;
+      st.throws.forEach((t) => (t.age += dt));
+      while (st.timer > 0.22) { st.timer -= 0.22; throwOne(); }
+      if (st.idle > 10) { st.cyc += dt; if (st.cyc > 7) { st.cyc = 0; const i = EST.findIndex((e) => e.id === st.est); setEst(EST[(i + 1) % EST.length].id); } }
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 미니: 같은 자료, 네 추정량 */
+  {
+    const BASE = [97.8, 99.1, 99.6, 100.2, 100.5, 101.0, 101.4, 102.3, 103.0];
+    let d = BASE.slice();
+    const X0 = 94, X1 = 122;
+    const ests = () => { const s = d.slice().sort((a, b) => a - b); return [["평균", Stat.mean(d), "accent"], ["중앙값", median(d), "accent2"], ["절사 평균(20%)", Stat.mean(s.slice(1, 8)), "warn"], ["중간 범위", (s[0] + s[8]) / 2, "bad"]]; };
+    const base = (() => { const s = BASE.slice().sort((a, b) => a - b); return [Stat.mean(BASE), median(BASE), Stat.mean(s.slice(1, 8)), (s[0] + s[8]) / 2]; })();
+    const cv = SB.canvas("cv-est", (ctx, w, h, self) => {
+      const P = pal(), L = Math.min(118, w * 0.3);
+      const C = SB.chart(ctx, { x: L, y: 44, w: w - L - 16, h: 0 }, { x: [X0, X1], y: [0, 1], yTicks: [], xTicks: [95, 100, 105, 110, 115, 120] });
+      const ya = 44;
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(C.X(X0), ya); ctx.lineTo(C.X(X1), ya); ctx.stroke();
+      SB.label(ctx, "측정값 (nm)", L - 8, ya, { size: 12, align: "right", color: P.dim, bold: true });
+      const hs = [];
+      d.forEach((v, i) => { const px = C.X(v); handle(ctx, px, ya, P.accent, 8); hs.push({ id: i, x: px, y: ya, r: 13 }); });
+      self._hs = hs; self._C = C;
+      ests().forEach(([nm, v, col], i) => {
+        const y = 86 + i * 30, c = P[col];
+        ctx.strokeStyle = P.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(C.X(X0), y); ctx.lineTo(C.X(X1), y); ctx.stroke();
+        SB.dashLine(ctx, C.X(v), ya + 10, C.X(v), y, c, [2, 3]);
+        ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(C.X(v), y - 8); ctx.lineTo(C.X(v) + 7, y + 4); ctx.lineTo(C.X(v) - 7, y + 4); ctx.closePath(); ctx.fill();
+        SB.label(ctx, nm, L - 8, y, { size: 12, align: "right", color: c, bold: true });
+        const right = C.X(v) > w - 80;
+        SB.label(ctx, v.toFixed(2), C.X(v) + (right ? -12 : 12), y, { size: 11.5, align: right ? "right" : "left", mono: true });
+      });
+      const e = ests();
+      $("est-r").textContent = "원래 자료 대비 이동: " + e.map(([nm, v], i) => `${nm.replace("(20%)", "")} ${v - base[i] >= 0 ? "+" : ""}${(v - base[i]).toFixed(2)}`).join(" · ");
+    }, { height: 210 });
+    SB.drag(cv, { handles: () => cv._hs || [], move: (id, x) => { if (id == null) return; d[id] = SB.clamp(invX(cv._C, X0, X1, x), X0 + 0.3, X1 - 0.3); } });
+    $("est-out").addEventListener("click", () => { d = BASE.slice(); d[8] = 118.0; cv.redraw(); });
+    $("est-reset").addEventListener("click", () => { d = BASE.slice(); cv.redraw(); });
+  }
+
+  /* ================================================================ 시뮬레이터: 추정값의 표본 분포 쌓기 */
+  {
+    const MU = 100, SG = 4, LO = 84, HI = 116;
+    const R = Stat.rng(11);
+    const E = { mean: acc(LO, HI, 64), med: acc(LO, HI, 64), mid: acc(LO, HI, 64), x1: acc(LO, HI, 64) };
+    const NAME = { mean: "평균 X̄", med: "중앙값", mid: "중간 범위", x1: "첫 값 X₁" };
+    let cur = null;
+    const gN = SB.range("sd-n", (v) => v, () => reset());
+    const gE = SB.seg("sd-e", () => { cv.redraw(); out(); });
+    const sample = () => {
+      const n = gN(), x = Array.from({ length: n }, () => R.normal(MU, SG));
+      let mn = Infinity, mx = -Infinity; x.forEach((v) => { mn = Math.min(mn, v); mx = Math.max(mx, v); });
+      return { pts: x, est: { mean: Stat.mean(x), med: median(x), mid: (mn + mx) / 2, x1: x[0] }, t: 0, dur: 0.55, done: false };
+    };
+    const commit = (o) => { if (o.done) return; for (const k in E) E[k].add(o.est[k]); o.done = true; };
+    const run = runner((quiet) => {
+      if (cur && !cur.done) commit(cur);
+      const o = sample();
+      if (quiet) commit(o); else { cur = o; if (run.pending > 1 || run.running) cur.dur = 0.3; }
+    }, { interval: 0.6, playInterval: 0.36 });
+    bindRun(run, { one: "sd-1", ten: "sd-10", thou: "sd-1000", play: "sd-play" });
+    function reset() { for (const k in E) E[k].reset(); run.pending = 0; for (let i = 0; i < 120; i++) commit(sample()); cur = sample(); cur.t = cur.dur; commit(cur); cv && cv.redraw(); out(); }
+    const out = () => { const A = E[gE()], n = gN(); $("sd-k").textContent = A.n; $("sd-m").textContent = fx(A.mean(), 2) + " nm"; $("sd-s").textContent = fx(Math.sqrt(A.var()), 2) + " nm"; $("sd-se").textContent = (SG / Math.sqrt(n)).toFixed(2) + " nm"; };
+    const cv = SB.canvas("cv-sd", (ctx, w, h) => {
+      const P = pal(), k = gE(), n = gN(), A = E[k], topH = Math.round(h * 0.36);
+      // 위: 모집단과 이번 표본
+      const pdf = Stat.dist.normal(MU, SG);
+      const C1 = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: topH - 40 }, { x: [LO, HI], y: [0, 0.11], yTicks: [], xFmt: () => "" });
+      clip(ctx, C1, () => Stat.draw.curve(ctx, C1, pdf.pdf, LO, HI, { color: P.accent2, width: 2 }));
+      SB.label(ctx, "모집단 N(100, 4²)", C1.box.x + 6, C1.box.y + 8, { size: 11, color: P.accent2, align: "left", bold: true });
+      if (cur) {
+        const tt = cur.t / cur.dur;
+        cur.pts.forEach((v, i) => {
+          const ti = SB.clamp((tt - i * 0.02) / 0.6, 0, 1), y = SB.lerp(C1.box.y + 4, C1.box.y + C1.box.h - 5, 1 - (1 - ti) * (1 - ti));
+          ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C1.X(SB.clamp(v, LO, HI)), y, 4, 0, TAU); ctx.fill();
+        });
+        if (tt > 0.65) {
+          const ev = cur.est[k], xa = C1.X(SB.clamp(ev, LO, HI));
+          ctx.strokeStyle = P.accent; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(xa, C1.box.y + 14); ctx.lineTo(xa, C1.box.y + C1.box.h); ctx.stroke();
+          SB.label(ctx, NAME[k] + " = " + ev.toFixed(1), xa, C1.box.y + 14, { size: 11, color: P.accent, bold: true });
+          if (tt < 1) { const yy = SB.lerp(C1.box.y + C1.box.h, topH + 40, (tt - 0.65) / 0.35); ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(xa, yy, 5, 0, TAU); ctx.fill(); }
+        }
+      }
+      // 아래: 추정값 히스토그램
+      const se = SG / Math.sqrt(n), th = Stat.dist.normal(MU, se), peak = th.pdf(MU);
+      const ymax = Math.max(A.maxDens(), k === "mean" ? peak : 0.1) * 1.12 || 0.2;
+      const C2 = SB.chart(ctx, { x: 58, y: topH + 22, w: w - 74, h: h - topH - 70 }, { x: [LO, HI], y: [0, ymax], xLabel: "추정값 (nm)", yLabel: "밀도", yFmt: (v) => v.toFixed(2) });
+      A.draw(ctx, C2, P.accent, 0.45);
+      clip(ctx, C2, () => Stat.draw.curve(ctx, C2, th.pdf, LO, HI, { color: P.accent2, width: k === "mean" ? 2.4 : 1.6, dash: k === "mean" ? null : [5, 4] }));
+      vline(ctx, C2, MU, P.dim, { width: 1.2, dash: [3, 3] });
+      if (A.n) vline(ctx, C2, A.mean(), P.accent, { width: 2 });
+      SB.label(ctx, k === "mean" ? "이론 N(100, 4²/n)" : "점선: X̄의 이론 분포(비교)", C2.box.x + C2.box.w - 6, C2.box.y + 10, { size: 11, color: P.accent2, align: "right" });
+      SB.label(ctx, NAME[k] + "의 히스토그램", C2.box.x + 6, C2.box.y + 10, { size: 11.5, color: P.accent, align: "left", bold: true });
+    }, { aspect: 0.66, minHeight: 400, maxHeight: 520 });
+    $("sd-reset").addEventListener("click", reset);
+    reset();
+    SB.loop("sim-sd", (dt) => {
+      dt = Math.min(dt, 0.05);
+      let ch = run.tick(dt);
+      if (cur && cur.t < cur.dur) { cur.t = Math.min(cur.dur, cur.t + dt); ch = true; if (cur.t >= cur.dur) commit(cur); }
+      if (ch) { cv.redraw(); out(); }
+    });
+  }
+
+  /* ================================================================ 시뮬레이터: n vs n−1 */
+  {
+    const S2 = 4;
+    const R = Stat.rng(7);
+    const gN = SB.range("s2-n", (v) => v, () => reset());
+    const gP = SB.seg("s2-pop", () => reset());
+    const A = acc(0, 16, 64), B = acc(0, 16, 64), Ssd = acc(0, 8, 8);
+    let hist = [];
+    const draw1 = () => {
+      const p = gP();
+      if (p === "norm") return R.normal(0, 2);
+      if (p === "exp") return R.exp(0.5);
+      return R.uniform(-Math.sqrt(12), Math.sqrt(12));
+    };
+    const one = () => {
+      const n = gN(), x = Array.from({ length: n }, draw1), m = Stat.mean(x);
+      let ss = 0; x.forEach((v) => (ss += (v - m) * (v - m)));
+      A.add(ss / (n - 1)); B.add(ss / n); Ssd.add(Math.sqrt(ss / (n - 1)));
+      const k = A.n;
+      if (k < 200 || k % Math.ceil(k / 200) === 0) hist.push([k, A.mean(), B.mean()]);
+    };
+    const run = runner(() => one(), { interval: 0.12, playInterval: 0.03, batch: 30 });
+    bindRun(run, { one: "s2-1", ten: "s2-10", thou: "s2-1000", play: "s2-play" });
+    function reset() { A.reset(); B.reset(); Ssd.reset(); hist = []; run.pending = 0; for (let i = 0; i < 40; i++) one(); redraw(); }
+    const out = () => {
+      const n = gN();
+      $("s2-k").textContent = A.n; $("s2-a").textContent = fx(A.mean(), 3); $("s2-b").textContent = fx(B.mean(), 3);
+      $("s2-t").textContent = ((n - 1) * S2 / n).toFixed(3); $("s2-s").textContent = fx(Ssd.mean(), 3) + (gP() === "norm" ? ` (${(2 * c4(n)).toFixed(3)})` : "");
+    };
+    let cvA = null, cvB = null;
+    const redraw = () => { cvA && cvA.redraw(); cvB && cvB.redraw(); out(); };
+    cvA = SB.canvas("cv-s2a", (ctx, w, h) => {
+      const P = pal(), n = gN(), kmax = Math.max(10, Math.pow(10, Math.ceil(Math.log10(Math.max(10, A.n)))));
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 72, h: h - 76 }, { x: [1, kmax], y: [0, 8], logX: true, xLabel: "반복 횟수 (로그 눈금)", yLabel: "실행 평균", hlines: [{ y: S2, color: P.dim, label: "σ² = 4", dash: [5, 4] }, { y: ((n - 1) * S2) / n, color: P.warn, label: "(n−1)σ²/n", dash: [2, 4] }] });
+      clip(ctx, C, () => {
+        [[1, P.accent], [2, P.warn]].forEach(([j, col]) => { ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.beginPath(); hist.forEach((r, i) => { const X = C.X(r[0]), Y = C.Y(r[j]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke(); });
+      });
+      SB.label(ctx, "S² (÷ n−1)", C.box.x + 8, C.box.y + 10, { size: 11.5, color: P.accent, align: "left", bold: true });
+      SB.label(ctx, "Sₙ² (÷ n)", C.box.x + 92, C.box.y + 10, { size: 11.5, color: P.warn, align: "left", bold: true });
+    }, { aspect: 0.72, minHeight: 260, maxHeight: 340 });
+    cvB = SB.canvas("cv-s2b", (ctx, w, h) => {
+      const P = pal(), n = gN(), df = n - 1, chi = Stat.dist.chi2(df);
+      const fS = (s) => (s <= 0 ? 0 : (df / S2) * chi.pdf((df * s) / S2)), fB = (s) => (s <= 0 ? 0 : (n / S2) * chi.pdf((n * s) / S2));
+      const ymax = Math.min(1.2, Math.max(A.maxDens(), B.maxDens(), 0.1) * 1.15);
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 72, h: h - 76 }, { x: [0, 16], y: [0, ymax], xLabel: "추정값", yLabel: "밀도", yFmt: (v) => v.toFixed(2) });
+      B.draw(ctx, C, P.warn, 0.3); A.draw(ctx, C, P.accent, 0.3);
+      if (gP() === "norm") clip(ctx, C, () => { Stat.draw.curve(ctx, C, fS, 0.01, 16, { color: P.accent2, width: 2 }); Stat.draw.curve(ctx, C, fB, 0.01, 16, { color: P.accent2, width: 1.4, dash: [4, 4] }); });
+      vline(ctx, C, S2, P.dim, { width: 1.4, dash: [5, 4] });
+      if (A.n) { vline(ctx, C, A.mean(), P.accent, { width: 2.2 }); vline(ctx, C, B.mean(), P.warn, { width: 2.2 }); }
+      SB.label(ctx, "세로선 = 각 추정값의 평균", C.box.x + C.box.w - 4, C.box.y + 10, { size: 11, color: P.dim, align: "right" });
+    }, { aspect: 0.72, minHeight: 260, maxHeight: 340 });
+    $("s2-reset").addEventListener("click", reset);
+    reset();
+    SB.loop("sim-s2", (dt) => { if (run.tick(Math.min(dt, 0.05))) redraw(); });
+  }
+
+  /* ================================================================ 미니: 모든 표본 열거 */
+  {
+    let v = [2, 4, 9];
+    const cv = SB.canvas("cv-enum", (ctx, w, h, self) => {
+      const P = pal();
+      const C = SB.chart(ctx, { x: 24, y: 30, w: w - 48, h: 0 }, { x: [0, 12], y: [0, 1], yTicks: [], xTicks: [0, 2, 4, 6, 8, 10, 12] });
+      const ya = 30;
+      ctx.strokeStyle = P.axis; ctx.beginPath(); ctx.moveTo(C.X(0), ya); ctx.lineTo(C.X(12), ya); ctx.stroke();
+      const mu = Stat.mean(v), s2 = Stat.var(v, 0);
+      vline(ctx, C, mu, P.accent2, { y0: ya - 14, y1: ya + 14, width: 2, dash: [3, 3] });
+      const NM = ["a", "b", "c"];
+      self._hs = v.map((x, i) => { handle(ctx, C.X(x), ya, P.accent, 9); SB.label(ctx, NM[i], C.X(x), ya - 18, { size: 12, mono: true, bold: true }); return { id: i, x: C.X(x), y: ya, r: 14 }; });
+      self._C = C;
+      // 9개 표본
+      const top = 62, cw = (w - 24) / 3, ch = Math.min(44, (h - top - 56) / 3);
+      let sum = 0, sumN = 0;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+        const a = v[i], b = v[j], S = ((a - b) * (a - b)) / 2; sum += S; sumN += S / 2;
+        const x = 12 + j * cw, y = top + i * ch;
+        ctx.fillStyle = S === 0 ? P.bg : P.surface; ctx.strokeStyle = P.border; ctx.lineWidth = 1; ctx.fillRect(x + 2, y + 2, cw - 4, ch - 4); ctx.strokeRect(x + 2, y + 2, cw - 4, ch - 4);
+        const lo = { size: w < 460 ? 10.5 : 11.5, mono: true, bg: S === 0 ? P.bg : P.surface, color: S === 0 ? P.dim : P.text };
+        if (w < 560) { SB.label(ctx, `(${a.toFixed(1)}, ${b.toFixed(1)})`, x + cw / 2, y + ch / 2 - 7, lo); SB.label(ctx, `S² = ${S.toFixed(2)}`, x + cw / 2, y + ch / 2 + 8, lo); }
+        else SB.label(ctx, `(${a.toFixed(1)}, ${b.toFixed(1)})  S² = ${S.toFixed(2)}`, x + cw / 2, y + ch / 2, lo);
+      }
+      const yS = top + 3 * ch + 18;
+      SB.label(ctx, `9개 S²의 평균 = ${(sum / 9).toFixed(3)}   모분산 σ² = ${s2.toFixed(3)}`, w / 2, yS, { size: 12.5, bold: true, color: P.accent });
+      SB.label(ctx, `n으로 나눈 값의 평균 = ${(sumN / 9).toFixed(3)} = σ²의 ${(sumN / 9 / s2 || 0).toFixed(2)}배`, w / 2, yS + 20, { size: 12, color: P.warn });
+      $("enum-r").textContent = `a, b, c = ${v.map((q) => q.toFixed(1)).join(", ")} · μ = ${mu.toFixed(2)}, σ² = ${s2.toFixed(3)} · E[S²] = ${(sum / 9).toFixed(3)} · E[Sₙ²] = ${(sumN / 9).toFixed(3)}`;
+    }, { height: 280 });
+    SB.drag(cv, { handles: () => cv._hs || [], move: (id, x) => { if (id == null) return; v[id] = Math.round(SB.clamp(invX(cv._C, 0, 12, x), 0, 12) * 10) / 10; } });
+  }
+
+  /* ================================================================ 드래그 숫자: S_n²의 편향과 c4 */
+  SB.tangle("tg-bias", (v) => {
+    const n = v.n, s2 = v.s2, s = Math.sqrt(s2), c = c4(n);
+    return { en: f3(((n - 1) / n) * s2, 4), b: "−" + f3(s2 / n, 3), rel: "−" + f3(100 / n, 3) + "%", sig: f3(s, 4), es: f3(c * s, 4), c4: c.toFixed(4) };
+  });
+
+  /* ================================================================ 드래그 숫자: 수축 추정량 */
+  SB.tangle("tg-shrink", (v) => {
+    const m2 = v.mu * v.mu, vn = (v.s * v.s) / v.n, b2 = (1 - v.c) ** 2 * m2, va = v.c * v.c * vn, m = b2 + va, cs = m2 / (m2 + vn), ms = (m2 * vn) / (m2 + vn);
+    return { b2: f3(b2, 3), v: f3(va, 3), m: f3(m, 3), m1: f3(vn, 3), cmp: m < vn - 1e-12 ? "<b>작다</b>" : m > vn + 1e-12 ? "<b>크다</b>" : "같다", cs: isFinite(cs) ? cs.toFixed(3) : "—", ms: f3(ms, 3) };
+  });
+
+  /* ================================================================ 시뮬레이터: 편향–분산 실험실 */
+  {
+    const st = { mu: 2, sg: 3, n: 5, c: 1, R: Stat.rng(34), xb: [], tried: new Set(), tries: 0, solved: false, mv: [NaN, NaN], len: -1 };
+    const addX = (k) => { for (let i = 0; i < k; i++) { let s = 0; for (let j = 0; j < st.n; j++) s += st.R.normal(st.mu, st.sg); st.xb.push(s / st.n); } };
+    const mv = () => { if (st.len !== st.xb.length) { const N = st.xb.length; let m = 0; st.xb.forEach((v) => (m += v)); m /= N; let v = 0; st.xb.forEach((x) => (v += (x - m) * (x - m))); st.mv = [m, v / N]; st.len = N; } return st.mv; };
+    const simM = (c) => { const [m, v] = mv(); return [(c * m - st.mu) ** 2, c * c * v]; };
+    const thM = (c) => [(1 - c) ** 2 * st.mu * st.mu, (c * c * st.sg * st.sg) / st.n];
+    const vn = () => (st.sg * st.sg) / st.n, cstar = () => (st.mu * st.mu) / (st.mu * st.mu + vn()), tmin = () => (st.mu * st.mu * vn()) / (st.mu * st.mu + vn());
+    const maxM = () => Math.max(st.mu * st.mu, thM(1.2)[0] + thM(1.2)[1]) * 1.08;
+    const gTh = () => $("bv-theory").checked;
+    let cv1 = null, cv2 = null;
+    const out = () => {
+      const [b, v] = simM(st.c), [m1b, m1v] = simM(1);
+      $("bv-p").textContent = `μ = ${st.mu}, σ = ${st.sg}, n = ${st.n} (표본 ${st.xb.length}개)`;
+      $("bv-c").textContent = st.c.toFixed(2);
+      $("bv-m").textContent = `${b.toFixed(2)} + ${v.toFixed(2)} = ${(b + v).toFixed(2)}`;
+      $("bv-m1").textContent = `${(m1b + m1v).toFixed(2)} (이론 ${vn().toFixed(2)})`;
+    };
+    const redraw = () => { cv1 && cv1.redraw(); cv2 && cv2.redraw(); out(); };
+    cv1 = SB.canvas("cv-bv1", (ctx, w, h) => {
+      const P = pal(), se = Math.sqrt(vn()), lo = Math.min(st.mu - 4 * se, -0.5 * se), hi = st.mu + 4 * se;
+      const A = acc(lo, hi, 50); st.xb.forEach((v) => A.add(st.c * v));
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 58 - 96, h: h - 76 }, { x: [lo, hi], y: [0, Math.max(0.05, A.maxDens() * 1.15)], xLabel: "추정값 c·X̄", yLabel: "밀도", yFmt: (v) => v.toFixed(2) });
+      A.draw(ctx, C, P.accent, 0.45);
+      vline(ctx, C, st.mu, P.accent2, { width: 2, dash: [5, 4] });
+      SB.label(ctx, "μ", C.X(st.mu) + 8, C.box.y + 10, { size: 12, color: P.accent2, bold: true });
+      if (A.n) { vline(ctx, C, A.mean(), P.accent, { width: 2.2 }); SB.label(ctx, "평균", C.X(A.mean()) - 4, C.box.y + 26, { size: 11, color: P.accent, align: "right" }); }
+      // 쌓은 막대
+      const [b, v] = simM(st.c), M = maxM(), bx = w - 70, bw = 30, by = C.box.y, bh = C.box.h, Y = (q) => by + bh - (Math.min(q, M) / M) * bh;
+      ctx.strokeStyle = P.axis; ctx.beginPath(); ctx.moveTo(bx - 6, by + bh); ctx.lineTo(bx + bw + 6, by + bh); ctx.stroke();
+      withA(ctx, 0.85, () => { ctx.fillStyle = P.bad; ctx.fillRect(bx, Y(b), bw, by + bh - Y(b)); ctx.fillStyle = P.accent; ctx.fillRect(bx, Y(b + v), bw, Y(b) - Y(b + v)); });
+      const [m1b, m1v] = simM(1); ctx.strokeStyle = P.dim; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(bx - 8, Y(m1b + m1v)); ctx.lineTo(bx + bw + 8, Y(m1b + m1v)); ctx.stroke(); ctx.setLineDash([]);
+      SB.label(ctx, "X̄", bx + bw + 14, Y(m1b + m1v), { size: 10.5, color: P.dim });
+      SB.label(ctx, "MSE", bx + bw / 2, by + bh + 14, { size: 11.5, bold: true });
+      SB.label(ctx, "분산", bx - 6, Math.max(by + 8, (Y(b) + Y(b + v)) / 2), { size: 10.5, color: P.accent, align: "right" });
+      if (by + bh - Y(b) > 12) SB.label(ctx, "편향²", bx - 6, (Y(b) + by + bh) / 2, { size: 10.5, color: P.bad, align: "right" });
+    }, { aspect: 0.75, minHeight: 270, maxHeight: 340 });
+    cv2 = SB.canvas("cv-bv2", (ctx, w, h, self) => {
+      const P = pal(), M = maxM();
+      const series = [];
+      if (gTh()) {
+        const db = [], dv = [], dm = [];
+        for (let i = 0; i <= 120; i++) { const c = (1.2 * i) / 120, [b, v] = thM(c); db.push([c, b]); dv.push([c, v]); dm.push([c, b + v]); }
+        series.push({ data: db, color: P.bad, width: 1.6, dash: [5, 4] }, { data: dv, color: P.accent, width: 1.6, dash: [5, 4] }, { data: dm, color: P.accent2, width: 2.4 });
+      }
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: h - 76 }, { x: [0, 1.2], y: [0, M], xLabel: "수축 계수 c", yLabel: "MSE", series, vlines: [{ x: 1, color: P.faint, label: "X̄", dash: [3, 3] }] });
+      st.tried.forEach((c) => { const [b, v] = simM(c); ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(c), C.Y(Math.min(b + v, M)), 3.2, 0, TAU); ctx.fill(); });
+      const [b, v] = simM(st.c), py = C.Y(Math.min(b + v, M));
+      SB.dashLine(ctx, C.X(st.c), py, C.X(st.c), C.box.y + C.box.h, P.accent2, [3, 3]);
+      ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(C.X(st.c), py, 5.5, 0, TAU); ctx.fill();
+      handle(ctx, C.X(st.c), C.box.y + C.box.h, P.accent2, 10);
+      if (st.solved || gTh()) { const cs = cstar(); ctx.strokeStyle = P.ok; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(C.X(cs), C.Y(tmin()), 8, 0, TAU); ctx.stroke(); if (st.solved) SB.label(ctx, "c* = " + cs.toFixed(3), C.X(cs), C.Y(tmin()) + 20, { size: 11, color: P.ok, bold: true }); }
+      self._h = [C.X(st.c), C.box.y + C.box.h]; self._C = C;
+    }, { aspect: 0.75, minHeight: 270, maxHeight: 340 });
+    SB.drag(cv2, {
+      free: true,
+      handles: () => (cv2._h ? [{ id: "c", x: cv2._h[0], y: cv2._h[1], r: 14 }] : []),
+      move: (id, x) => { if (!cv2._C) return; st.c = Math.round(SB.clamp(invX(cv2._C, 0, 1.2, x), 0, 1.2) * 100) / 100; st.tried.add(Math.round(st.c * 50) / 50); cv1.redraw(); out(); },
+    });
+    $("bv-theory").addEventListener("change", redraw);
+    const run = runner(() => addX(5), { interval: 0.05, playInterval: 0.05, slowMax: 1e9 });
+    $("bv-100").addEventListener("click", () => { addX(100); redraw(); });
+    SB.play("bv-play", run);
+    $("bv-check").addEventListener("click", () => {
+      st.tries++;
+      const [b, v] = thM(st.c), rel = (b + v) / tmin() - 1;
+      if (rel <= 0.02) { st.solved = true; $("bv-g").innerHTML = `<span style="color:var(--ok)">성공!</span> c* = ${cstar().toFixed(3)}, 바닥보다 ${(100 * rel).toFixed(1)}% 위 (${st.tries}번 판정)${gTh() ? " · 이론 곡선을 켠 채" : ""}`; }
+      else $("bv-g").textContent = `아직: 이론 바닥보다 ${(100 * rel).toFixed(0)}% 높다 (${st.tries}번째)`;
+      redraw();
+    });
+    const newProb = (first) => {
+      if (!first) { for (let t = 0; t < 50; t++) { st.mu = pick([1, 1.5, 2, 2.5, 3, 4]); st.sg = pick([2, 3, 4, 5, 6]); st.n = pick([3, 4, 5, 8, 10]); const c = cstar(); if (c > 0.3 && c < 0.88) break; } st.R = Stat.rng(Math.floor(Math.random() * 1e9)); }
+      st.xb = []; st.len = -1; st.tried = new Set(); st.c = 1; st.tries = 0; st.solved = false; $("bv-theory").checked = false;
+      addX(300); $("bv-g").textContent = "c를 옮겨 바닥을 찾은 뒤 판정"; redraw();
+    };
+    $("bv-new").addEventListener("click", () => newProb(false));
+    newProb(true);
+    SB.loop("sim-bv", (dt) => { if (run.tick(Math.min(dt, 0.05))) redraw(); });
+  }
+
+  /* ================================================================ 드릴: 편향·분산·MSE */
+  SB.drill("drill-mse", () => {
+    const t = pick(["shrink", "lin", "bse"]);
+    if (t === "shrink") {
+      const mu = rnd(1, 6, 0.5), s = rnd(1, 6, 0.5), n = pick([2, 4, 5, 8, 10]), c = pick([0.5, 0.6, 0.7, 0.75, 0.8, 0.9]);
+      const b = (c - 1) * mu, v = (c * c * s * s) / n, m = b * b + v;
+      return { q: `<p>평균 \\(\\mu = ${mu}\\), 표준 편차 \\(\\sigma = ${s}\\)인 모집단에서 \\(n = ${n}\\)개를 뽑아 \\(\\hat\\theta = ${c}\\bar X\\)로 \\(\\mu\\)를 추정한다. 편향과 MSE는?</p>`, answer: [b, m], label: ["편향 =", "MSE ="], unit: ["", ""], tol: "1%",
+        sol: `편향 \\(= (c-1)\\mu = ${f3(b, 4)}\\), 분산 \\(= c^2\\sigma^2/n = ${f3(v, 4)}\\), MSE \\(= ${f3(b * b, 4)} + ${f3(v, 4)} = ${f3(m, 4)}\\) (\\(\\bar X\\)는 \\(${f3((s * s) / n, 4)}\\))` };
+    }
+    if (t === "lin") {
+      const [a, d, txt] = pick([[[1, 2, 1], 4, "(X_1 + 2X_2 + X_3)/4"], [[1, 1, 1], 4, "(X_1 + X_2 + X_3)/4"], [[1, 1, 1], 2, "(X_1 + X_2 + X_3)/2"], [[2, 1, 1], 4, "(2X_1 + X_2 + X_3)/4"], [[1, 1, 2], 5, "(X_1 + X_2 + 2X_3)/5"], [[1, 1], 3, "(X_1 + X_2)/3"]]);
+      const mu = pick([2, 3, 4, 5, 6, 8]), s2 = pick([4, 6, 8, 9, 12, 16]);
+      const sa = a.reduce((p, q) => p + q, 0) / d, sa2 = a.reduce((p, q) => p + q * q, 0) / (d * d), b = (sa - 1) * mu, v = s2 * sa2;
+      return { q: `<p>\\(E[X_i] = ${mu}\\), \\(\\operatorname{Var}(X_i) = ${s2}\\)인 독립 표본으로 만든 \\(\\hat\\theta = ${txt}\\)의 MSE는?</p>`, answer: b * b + v, label: "MSE =", unit: "", tol: "1%",
+        sol: `계수 합 \\(${f3(sa, 4)}\\)이므로 편향 \\(= ${f3(b, 4)}\\), 계수 제곱합 \\(${f3(sa2, 4)}\\)이므로 분산 \\(= ${f3(v, 4)}\\). MSE \\(= ${f3(b * b, 4)} + ${f3(v, 4)} = ${f3(b * b + v, 4)}\\)` };
+    }
+    const b = rnd(0.2, 2, 0.1) * pick([1, -1]), se = rnd(0.5, 3, 0.1), m = b * b + se * se;
+    return { q: `<p>어떤 추정량의 편향이 \\(${b}\\), 표준 오차가 \\(${se}\\)이다. MSE와 RMSE는?</p>`, answer: [m, Math.sqrt(m)], label: ["MSE =", "RMSE ="], unit: ["", ""], tol: "1%", sol: `MSE \\(= ${se}^2 + (${b})^2 = ${f3(m, 4)}\\), RMSE \\(= \\sqrt{${f3(m, 4)}} = ${f3(Math.sqrt(m), 4)}\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 평균 대 중앙값 */
+  {
+    const t3 = Stat.dist.t(3);
+    const POPS = {
+      norm: { gen: (R) => R.normal(), pdf: (x) => Stat.dnorm(x), v: 1, eff: 2 / Math.PI },
+      t3: { gen: (R) => R.t(3), pdf: (x) => t3.pdf(x), v: 3, eff: 1.621 },
+      cont: { gen: (R) => (R.u() < 0.05 ? R.normal(0, 10) : R.normal()), pdf: (x) => 0.95 * Stat.dnorm(x) + 0.05 * Stat.dnorm(x, 0, 10), v: 5.95, eff: 3.455 },
+    };
+    const R = Stat.rng(15);
+    const gP = SB.seg("ef-pop", () => reset());
+    const gN = SB.range("ef-n", (v) => v, () => reset());
+    let Am = acc(-1, 1, 60), Ad = acc(-1, 1, 60), cur = [];
+    const one = () => { const p = POPS[gP()], n = gN(); cur = Array.from({ length: n }, () => p.gen(R)); Am.add(Stat.mean(cur)); Ad.add(median(cur)); };
+    const run = runner(() => one(), { interval: 0.15, playInterval: 0.1, batch: 40 });
+    bindRun(run, { ten: "ef-10", thou: "ef-1000", play: "ef-play" });
+    function reset() { const p = POPS[gP()], W = 3.4 * Math.sqrt(p.v / gN()); Am = acc(-W, W, 60); Ad = acc(-W, W, 60); run.pending = 0; for (let i = 0; i < 150; i++) one(); cv && cv.redraw(); out(); }
+    const out = () => { const vm = Am.var(), vd = Ad.var(); $("ef-k").textContent = Am.n; $("ef-vm").textContent = f3(vm, 3); $("ef-vd").textContent = f3(vd, 3); $("ef-e").textContent = fx(vm / vd, 2); $("ef-th").textContent = POPS[gP()].eff.toFixed(3); };
+    const cv = SB.canvas("cv-eff", (ctx, w, h) => {
+      const P = pal(), p = POPS[gP()], topH = Math.round(h * 0.34);
+      const C1 = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: topH - 40 }, { x: [-6, 6], y: [0, 0.45], yTicks: [] });
+      clip(ctx, C1, () => Stat.draw.curve(ctx, C1, p.pdf, -6, 6, { color: P.accent2, width: 2 }));
+      cur.forEach((v, i) => { const out6 = Math.abs(v) > 3; ctx.fillStyle = out6 ? P.bad : P.accent; ctx.beginPath(); ctx.arc(C1.X(SB.clamp(v, -5.9, 5.9)), C1.box.y + C1.box.h - 5 - (i % 3) * 7, 3.6, 0, TAU); ctx.fill(); });
+      if (cur.length) { vline(ctx, C1, Stat.mean(cur), P.accent, { width: 2.2 }); vline(ctx, C1, median(cur), P.warn, { width: 2.2, dash: [4, 3] }); }
+      SB.label(ctx, "이번 표본 · 평균(초록 선) · 중앙값(주황 점선)", C1.box.x + 6, C1.box.y + 8, { size: 11, color: P.dim, align: "left" });
+      const ymax = Math.max(Am.maxDens(), Ad.maxDens(), 0.1) * 1.12;
+      const C2 = SB.chart(ctx, { x: 58, y: topH + 22, w: w - 74, h: h - topH - 70 }, { x: [Am.lo, Am.hi], y: [0, ymax], xLabel: "추정값", yLabel: "밀도", yFmt: (v) => v.toFixed(1) });
+      Am.draw(ctx, C2, P.accent, 0.35); Ad.draw(ctx, C2, P.warn, 0.35);
+      vline(ctx, C2, 0, P.dim, { width: 1.2, dash: [3, 3] });
+      SB.label(ctx, "평균", C2.box.x + 8, C2.box.y + 10, { size: 12, color: P.accent, align: "left", bold: true });
+      SB.label(ctx, "중앙값", C2.box.x + 48, C2.box.y + 10, { size: 12, color: P.warn, align: "left", bold: true });
+    }, { aspect: 0.62, minHeight: 380, maxHeight: 500 });
+    $("ef-reset").addEventListener("click", reset);
+    reset();
+    SB.loop("sim-eff", (dt) => { if (run.tick(Math.min(dt, 0.05))) { cv.redraw(); out(); } });
+  }
+
+  /* ================================================================ 미니: 일치성 */
+  {
+    const nOf = (v) => Math.max(1, Math.round(Math.pow(10, v)));
+    const gN = SB.range("cs-n", (v) => String(nOf(v)), () => cv.redraw());
+    const gE = SB.seg("cs-e", () => cv.redraw());
+    const cv = SB.canvas("cv-cons", (ctx, w, h) => {
+      const P = pal(), n = nOf(gN()), e = gE(), R = Stat.rng(500 + n * 7 + (e === "x1" ? 1 : 0));
+      const A = acc(0, 3000, 120); let outN = 0;
+      for (let i = 0; i < 400; i++) { const v = e === "mean" ? R.gamma(n, 1000 / n) : R.exp(1 / 1000); A.add(v); if (Math.abs(v - 1000) > 100) outN++; }
+      const C = SB.chart(ctx, { x: 58, y: 18, w: w - 74, h: h - 62 }, { x: [0, 3000], y: [0, Math.max(0.0012, A.maxDens() * 1.12)], xLabel: e === "mean" ? "X̄ (h)" : "X₁ (h)", yLabel: "밀도 (×10⁻³)", yFmt: (v) => (v * 1000).toFixed(1) });
+      withA(ctx, 0.16, () => { ctx.fillStyle = P.ok; ctx.fillRect(C.X(900), C.box.y, C.X(1100) - C.X(900), C.box.h); });
+      A.draw(ctx, C, P.accent, 0.5);
+      vline(ctx, C, 1000, P.accent2, { width: 1.6, dash: [4, 3] });
+      const cheb = e === "mean" ? Math.min(1, 100 / n) : NaN;
+      SB.label(ctx, `n = ${n}`, C.box.x + C.box.w - 8, C.box.y + 10, { size: 13, bold: true, align: "right" });
+      SB.label(ctx, "±100 h 띠", C.X(1100) + 6, C.box.y + 26, { size: 11, color: P.ok, align: "left" });
+      $("cs-r").textContent = `띠 밖 비율 ${(outN / 4).toFixed(1)}%` + (e === "mean" ? ` · 체비쇼프 상한 ${(cheb * 100).toFixed(cheb < 0.1 ? 1 : 0)}%` : " · 이론 92.6% (n과 무관)");
+    }, { aspect: 0.42, minHeight: 220, maxHeight: 300 });
+    const loop = SB.loop("mini-cons", (dt) => { let v = gN() + Math.min(dt, 0.05) * 0.4; if (v > 2.7) v = 0; gN.set(v, true); cv.redraw(); });
+    loop.stop(); SB.play("cs-play", loop);
+  }
+
+  /* ================================================================ 드래그 숫자: 체비쇼프 */
+  SB.tangle("tg-cheb", (v) => {
+    const ub = Math.min(1, (v.s * v.s) / (v.n * v.e * v.e)), z = (v.e * Math.sqrt(v.n)) / v.s, nr = 2 * (1 - Stat.pnorm(z)), need = Math.ceil((v.s * v.s) / (0.05 * v.e * v.e));
+    return { ub: ub >= 1 ? "1 (쓸모없음)" : (100 * ub).toFixed(1) + "%", nr: nr < 1e-4 ? "0.01% 미만" : (100 * nr).toFixed(2) + "%", need: need };
+  });
+
+  /* ================================================================ 시뮬레이터: 적률 맞추기(감마) */
+  {
+    const st = { seed: 3, data: [], m: 7, sd: 2.5, solved: false, peek: false, xmax: 35 };
+    const gen = () => { const R = Stat.rng(st.seed); st.data = Array.from({ length: 60 }, () => Number(R.gamma(4, 2.5).toFixed(2))); st.xmax = Math.max(30, Math.ceil((Stat.max(st.data) + 4) / 5) * 5); st.solved = false; st.peek = false; st.m = 7; st.sd = 2.5; };
+    const dstat = () => { const m = Stat.mean(st.data); return [m, Math.sqrt(Stat.var(st.data, 0))]; };
+    const kth = (m, sd) => [(m / sd) ** 2, (sd * sd) / m];
+    const check = () => { const [m, s] = dstat(); if (!st.peek && Math.abs(st.m - m) / m < 0.02 && Math.abs(st.sd - s) / s < 0.02) st.solved = true; };
+    const out = () => {
+      const [m, s] = dstat(), [k, th] = kth(st.m, st.sd), mle = gammaMLE(st.data), [km, tm] = kth(m, s);
+      $("mm-d").textContent = `${m.toFixed(2)} · ${s.toFixed(2)} nA`;
+      $("mm-c").textContent = `${st.m.toFixed(2)} · ${st.sd.toFixed(2)} nA`;
+      $("mm-p").textContent = `${k.toFixed(2)} · ${th.toFixed(2)}`;
+      $("mm-l").textContent = gammaLL(st.data, k, th).toFixed(1) + ($("mm-mle").checked ? ` (적률법 ${gammaLL(st.data, km, tm).toFixed(1)}, MLE ${gammaLL(st.data, mle.k, mle.theta).toFixed(1)})` : "");
+      $("mm-g").innerHTML = st.solved ? `<span style="color:var(--ok)">성공!</span> k̂ = ${km.toFixed(2)}, θ̂ = ${tm.toFixed(2)}` : st.peek ? "답을 보았다 — 새 자료로 다시" : "평균·표준 편차를 2% 이내로";
+    };
+    const cv = SB.canvas("cv-mom", (ctx, w, h, self) => {
+      const P = pal(), H = Stat.hist(st.data, { width: 2, range: [0, st.xmax] }), [k, th] = kth(st.m, st.sd), g = Stat.dist.gamma(k, th);
+      let pk = 0; for (let i = 1; i <= 200; i++) pk = Math.max(pk, g.pdf((st.xmax * i) / 200));
+      const ymax = Math.min(0.35, Math.max(Math.max(...H.density), pk) * 1.25);
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: h - 76 }, { x: [0, st.xmax], y: [0, ymax], xLabel: "누설 전류 (nA)", yLabel: "밀도", yFmt: (v) => v.toFixed(2) });
+      Stat.draw.hist(ctx, C, H, { mode: "density", color: P.accent, alpha: 0.4 });
+      clip(ctx, C, () => {
+        Stat.draw.curve(ctx, C, g.pdf, 0.01, st.xmax, { color: P.accent2, width: 2.6 });
+        if ($("mm-mle").checked) { const M = gammaMLE(st.data), gm = Stat.dist.gamma(M.k, M.theta); Stat.draw.curve(ctx, C, gm.pdf, 0.01, st.xmax, { color: P.warn, width: 2, dash: [6, 4] }); SB.label(ctx, `MLE: k = ${M.k.toFixed(2)}, θ = ${M.theta.toFixed(2)}`, C.box.x + C.box.w - 6, C.box.y + 52, { size: 11, color: P.warn, align: "right" }); }
+      });
+      // 자료의 평균 ± Sn 막대(초록)와 곡선의 평균 ± sd 막대(자주)
+      const [m, s] = dstat(), yb = C.box.y + 16, yd = C.box.y + 34;
+      const bar = (a, b, y, col, wd) => { ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.beginPath(); ctx.moveTo(C.X(a), y); ctx.lineTo(C.X(b), y); ctx.moveTo(C.X(a), y - 5); ctx.lineTo(C.X(a), y + 5); ctx.stroke(); };
+      bar(Math.max(0, m - s), m + s, yd, P.accent, 3); ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(m), yd, 4.5, 0, TAU); ctx.fill();
+      SB.label(ctx, "자료 x̄ ± Sₙ", C.X(m + s) + 8, yd, { size: 11, color: P.accent, align: "left" });
+      bar(Math.max(0, st.m - st.sd), st.m + st.sd, yb, P.accent2, 3);
+      SB.label(ctx, "곡선 평균 ± sd", C.X(st.m + st.sd) + 16, yb, { size: 11, color: P.accent2, align: "left" });
+      SB.dashLine(ctx, C.X(st.m), yb, C.X(st.m), C.box.y + C.box.h, P.accent2, [3, 3]);
+      diamond(ctx, C.X(st.m), C.box.y + C.box.h, P.accent2, 11);
+      handle(ctx, C.X(st.m + st.sd), yb, P.accent2, 10);
+      self._hm = [C.X(st.m), C.box.y + C.box.h]; self._hs = [C.X(st.m + st.sd), yb]; self._C = C;
+    }, { aspect: 0.56, minHeight: 320, maxHeight: 440 });
+    SB.drag(cv, {
+      handles: () => (cv._hm ? [{ id: "m", x: cv._hm[0], y: cv._hm[1], r: 15 }, { id: "s", x: cv._hs[0], y: cv._hs[1], r: 14 }] : []),
+      move: (id, x) => {
+        const v = invX(cv._C, 0, st.xmax, x);
+        if (id === "m") st.m = SB.clamp(v, 1, st.xmax - 2);
+        if (id === "s") st.sd = SB.clamp(v - st.m, 0.4, st.xmax / 2);
+        check(); out();
+      },
+    });
+    $("mm-new").addEventListener("click", () => { st.seed = Math.floor(Math.random() * 1e9); gen(); cv.redraw(); out(); });
+    $("mm-auto").addEventListener("click", () => { const [m, s] = dstat(); st.m = m; st.sd = s; if (!st.solved) st.peek = true; cv.redraw(); out(); });
+    $("mm-mle").addEventListener("change", () => { cv.redraw(); out(); });
+    gen(); cv.redraw(); out();
+  }
+
+  /* ================================================================ 드래그 숫자: 감마 적률법 */
+  SB.tangle("tg-mom", (v) => ({ th: (v.v / v.m).toFixed(3) + " nA", k: ((v.m * v.m) / v.v).toFixed(3), cv: (Math.sqrt(v.v) / v.m).toFixed(3) }));
+
+  /* ================================================================ 미니: 균일 분포 적률법의 모순 */
+  {
+    const st = { R: Stat.rng(77), x: [], draws: 0, bad: 0, hist: [] };
+    const gN = SB.range("un-n", (v) => v, () => { st.draws = 0; st.bad = 0; st.hist = []; draw(); });
+    const draw = () => { const n = gN(); st.x = Array.from({ length: n }, () => st.R.uniform(0, 10)); st.draws++; const b = 2 * Stat.mean(st.x) < Stat.max(st.x); if (b) st.bad++; st.hist.push(b); if (st.hist.length > 40) st.hist.shift(); cv && cv.redraw(); };
+    const cv = SB.canvas("cv-unif", (ctx, w, h) => {
+      const P = pal(), C = SB.chart(ctx, { x: 20, y: 24, w: w - 40, h: h - 76 }, { x: [0, 20], y: [0, 1], yTicks: [], xTicks: [0, 5, 10, 15, 20] });
+      const yb = C.box.y + C.box.h;
+      withA(ctx, 0.12, () => { ctx.fillStyle = P.accent2; ctx.fillRect(C.X(0), C.box.y, C.X(10) - C.X(0), C.box.h); });
+      SB.label(ctx, "θ = 10", C.X(10) + 4, C.box.y + 8, { size: 11, color: P.dim, align: "left" });
+      const mx = Stat.max(st.x), mom = 2 * Stat.mean(st.x), bad = mom < mx;
+      if (bad) withA(ctx, 0.3, () => { ctx.fillStyle = P.bad; ctx.fillRect(C.X(mom), C.box.y, C.X(mx) - C.X(mom), C.box.h); });
+      vline(ctx, C, mx, P.dim, { width: 2 }); vline(ctx, C, mom, P.accent2, { width: 2.6 });
+      SB.label(ctx, "max", C.X(mx) + (bad ? 6 : -6), C.box.y + 26, { size: 11, color: P.dim, align: bad ? "left" : "right" });
+      SB.label(ctx, "2x̄ = " + mom.toFixed(2), C.X(mom) + (bad ? -6 : 6), C.box.y + 42, { size: 11.5, color: P.accent2, bold: true, align: bad ? "right" : "left" });
+      if (bad) SB.label(ctx, "모순!", (C.X(mom) + C.X(mx)) / 2, C.box.y + 10, { size: 12, color: P.bad, bold: true });
+      st.x.forEach((v) => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(v), yb - 8, 5, 0, TAU); ctx.fill(); });
+      const sz = Math.min(12, (w - 40) / 42);
+      st.hist.forEach((b, i) => { ctx.fillStyle = b ? P.bad : P.ok; withA(ctx, 0.8, () => ctx.fillRect(20 + i * (sz + 1.5), h - 18, sz, sz)); });
+      $("un-r").textContent = `모순 ${st.bad} / ${st.draws} (${st.draws ? ((100 * st.bad) / st.draws).toFixed(0) : 0}%)`;
+    }, { height: 190 });
+    $("un-1").addEventListener("click", draw);
+    let tm = 0;
+    const loop = SB.loop("mini-unif", (dt) => { tm += dt; if (tm > 0.5) { tm = 0; draw(); } });
+    loop.stop(); SB.play("un-play", loop);
+    draw();
+  }
+
+  /* ================================================================ 시뮬레이터: 가능도 탐험기 */
+  {
+    const lpois = (k, l) => k * Math.log(l) - l - Stat.lfactorial(k);
+    const M = {
+      norm: { xr: [0, 10], tr: [1, 9], d: [4.2, 5.1, 3.6, 6.0, 4.8, 5.5], th: 3, lf: (x, t) => -0.5 * (x - t) ** 2 - 0.5 * Math.log(TAU), mle: (d) => Stat.mean(d), disc: false, tn: "μ", xl: "측정값" },
+      pois: { xr: [-0.5, 10.5], tr: [0.3, 8], d: [3, 1, 4, 2, 0, 3, 5, 2], th: 5, lf: lpois, mle: (d) => Stat.mean(d), disc: true, tn: "λ", xl: "웨이퍼당 결함 수" },
+      exp: { xr: [0, 6], tr: [0.1, 2.5], d: [0.4, 1.1, 0.7, 2.3, 0.9, 1.6], th: 2, lf: (x, t) => Math.log(t) - t * x, mle: (d) => d.length / Stat.sum(d), disc: false, tn: "λ", xl: "고장 시간 (×1000 h)" },
+    };
+    let anim = false, seed = 40;
+    const gM = SB.seg("lk-m", () => redraw());
+    const m = () => M[gM()];
+    const ll = (t) => { const o = m(); let s = 0; for (const x of o.d) s += o.lf(x, t); return s; };
+    const isLog = () => $("lk-log").checked;
+    let cv1 = null, cv2 = null;
+    const out = () => {
+      const o = m(), h = o.mle(o.d), lt = ll(o.th), lh = ll(h);
+      $("lk-t").textContent = `${o.tn} = ${o.th.toFixed(3)}`; $("lk-l").textContent = lt.toFixed(3); $("lk-h").textContent = `${o.tn}̂ = ${h.toFixed(3)}`; $("lk-r").textContent = sci(Math.exp(lt - lh), 2);
+    };
+    const redraw = () => { cv1 && cv1.redraw(); cv2 && cv2.redraw(); out(); };
+    cv1 = SB.canvas("cv-lik1", (ctx, w, h, self) => {
+      const P = pal(), o = m(), t = o.th, f = (x) => Math.exp(o.lf(x, t));
+      let ymax = 0.1;
+      if (o.disc) for (let k = 0; k <= 10; k++) ymax = Math.max(ymax, f(k)); else for (let i = 0; i <= 200; i++) ymax = Math.max(ymax, f(o.xr[0] + ((o.xr[1] - o.xr[0]) * i) / 200));
+      ymax = Math.min(ymax * 1.18, 3);
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: h - 76 }, { x: o.xr, y: [0, ymax], xLabel: o.xl, yLabel: o.disc ? "확률" : "밀도", yFmt: (v) => v.toFixed(2), xTicks: o.disc ? [0, 2, 4, 6, 8, 10] : null });
+      clip(ctx, C, () => {
+        if (o.disc) Stat.draw.bars(ctx, C, Array.from({ length: 11 }, (_, k) => [k, f(k)]), { color: P.accent2, alpha: 0.35, width: 0.7 });
+        else Stat.draw.curve(ctx, C, f, o.xr[0], o.xr[1], { color: P.accent2, width: 2.4 });
+      });
+      const hs = [], stack = {};
+      let prod = 0;
+      o.d.forEach((x, i) => {
+        const fy = f(x); prod += Math.log(fy);
+        const key = o.disc ? x : i, j = (stack[key] = (stack[key] || 0) + 1) - 1;
+        const px = C.X(x), py = C.box.y + C.box.h - 10 - j * 16;
+        if (j === 0) { SB.dashLine(ctx, px, C.box.y + C.box.h, px, C.Y(fy), P.accent2, [2, 3]); ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(px, C.Y(fy), 3.5, 0, TAU); ctx.fill(); }
+        handle(ctx, px, py, P.accent, 7.5); hs.push({ id: i, x: px, y: py, r: 12 });
+      });
+      SB.label(ctx, `${o.tn} = ${t.toFixed(2)}일 때 Π f(xᵢ) = ${sci(Math.exp(prod), 2)}`, C.box.x + C.box.w - 6, C.box.y + 10, { size: 11.5, color: P.accent2, align: "right", bold: true });
+      self._hs = hs; self._C = C;
+    }, { aspect: 0.72, minHeight: 270, maxHeight: 340 });
+    SB.drag(cv1, {
+      handles: () => cv1._hs || [],
+      move: (id, x) => { if (id == null) return; const o = m(); let v = invX(cv1._C, o.xr[0], o.xr[1], x); v = o.disc ? Math.round(SB.clamp(v, 0, 10)) : SB.clamp(v, o.xr[0] + 0.05, o.xr[1] - 0.05); if (gM() === "exp") v = Math.max(0.05, v); o.d[id] = Number(v.toFixed(2)); cv2.redraw(); out(); },
+    });
+    cv2 = SB.canvas("cv-lik2", (ctx, w, h, self) => {
+      const P = pal(), o = m(), hat = o.mle(o.d), lh = ll(hat), lg = isLog(), N = 200, data = [];
+      let lmin = Infinity;
+      for (let i = 0; i <= N; i++) { const t = o.tr[0] + ((o.tr[1] - o.tr[0]) * i) / N, l = ll(t); lmin = Math.min(lmin, l); data.push([t, lg ? l : Math.exp(l)]); }
+      const span = SB.clamp(lh - lmin, 4, 30);
+      const yr = lg ? [lh - span, lh + 0.1 * span] : [0, Math.exp(lh) * 1.12];
+      const C = SB.chart(ctx, { x: 62, y: 30, w: w - 76, h: h - 76 }, { x: o.tr, y: yr, xLabel: o.tn, yLabel: lg ? "ℓ(θ)" : "L(θ)", yFmt: lg ? (v) => v.toFixed(0) : (v) => (v === 0 ? "0" : v.toExponential(0)), series: [{ data, color: P.accent, width: 2.6 }], vlines: [{ x: hat, color: P.accent, label: `${o.tn}̂ = ${hat.toFixed(2)}`, dash: [4, 3] }] });
+      const lt = ll(o.th), yv = lg ? lt : Math.exp(lt), py = C.Y(Math.max(yr[0], yv));
+      SB.dashLine(ctx, C.X(o.th), py, C.X(o.th), C.box.y + C.box.h, P.accent2, [3, 3]);
+      ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(C.X(o.th), py, 5.5, 0, TAU); ctx.fill();
+      handle(ctx, C.X(o.th), C.box.y + C.box.h, P.accent2, 10);
+      self._h = [C.X(o.th), C.box.y + C.box.h]; self._C = C;
+    }, { aspect: 0.72, minHeight: 270, maxHeight: 340 });
+    SB.drag(cv2, { free: true, handles: () => (cv2._h ? [{ id: "t", x: cv2._h[0], y: cv2._h[1], r: 14 }] : []), move: (id, x) => { const o = m(); anim = false; o.th = SB.clamp(invX(cv2._C, o.tr[0], o.tr[1], x), o.tr[0], o.tr[1]); cv1.redraw(); out(); } });
+    $("lk-log").addEventListener("change", redraw);
+    $("lk-go").addEventListener("click", () => { anim = true; });
+    $("lk-new").addEventListener("click", () => {
+      const R = Stat.rng(seed++), k = gM(), o = M[k];
+      if (k === "norm") { const t = rnd(3, 7, 0.1); o.d = Array.from({ length: 6 }, () => Number(SB.clamp(R.normal(t, 1), 0.2, 9.8).toFixed(1))); }
+      if (k === "pois") { const t = rnd(1, 5, 0.1); o.d = Array.from({ length: 8 }, () => Math.min(10, R.poisson(t))); }
+      if (k === "exp") { const t = rnd(0.4, 1.6, 0.1); o.d = Array.from({ length: 6 }, () => Number(SB.clamp(R.exp(t), 0.05, 5.9).toFixed(2))); }
+      redraw();
+    });
+    redraw();
+    SB.loop("sim-lik", (dt) => {
+      if (!anim) return;
+      const o = m(), hat = o.mle(o.d);
+      o.th += (hat - o.th) * Math.min(1, dt * 5);
+      if (Math.abs(hat - o.th) < 1e-3) { o.th = hat; anim = false; }
+      redraw();
+    });
+  }
+
+  /* ================================================================ 시뮬레이터: 로그 가능도 곡면 등반 */
+  {
+    const st = { seed: 21, x: [], n: 12, xb: 0, sn: 0, mu: 0, sg: 0, moves: 0, solved: false, shown: false, assisted: false, climbing: false, step: 0.015, path: [] };
+    const LV = [0.5, 2, 4.5, 8, 12.5];
+    let cache = null, mr = [0, 1], sr = [0, 1];
+    const gen = () => {
+      const R = Stat.rng(st.seed); st.x = Array.from({ length: st.n }, () => Number(R.normal(20.0, 0.6).toFixed(2)));
+      st.xb = Stat.mean(st.x); st.sn = Math.sqrt(Stat.var(st.x, 0));
+      mr = [st.xb - 2.2 * st.sn, st.xb + 2.2 * st.sn]; sr = [0.4 * st.sn, 2.6 * st.sn];
+      st.mu = st.xb - 1.5 * st.sn; st.sg = 2.2 * st.sn; st.moves = 0; st.solved = false; st.shown = false; st.assisted = false; st.climbing = false; st.path = []; cache = null;
+    };
+    const L = (mu, s) => -st.n * Math.log(s) - (st.n * (st.sn * st.sn + (mu - st.xb) ** 2)) / (2 * s * s) - 0.5 * st.n * Math.log(TAU);
+    const Lmax = () => L(st.xb, st.sn);
+    const grad = (mu, s) => [(st.n * (st.xb - mu)) / (s * s), -st.n / s + (st.n * (st.sn * st.sn + (mu - st.xb) ** 2)) / (s * s * s)];
+    const out = () => {
+      const l = L(st.mu, st.sg), d = Lmax() - l;
+      $("sf-p").textContent = `(${st.mu.toFixed(2)}, ${st.sg.toFixed(3)}) Å`; $("sf-l").textContent = l.toFixed(3); $("sf-d").textContent = d.toFixed(3); $("sf-k").textContent = st.moves;
+      $("sf-g").innerHTML = st.solved ? `<span style="color:var(--ok)">성공!</span> ${st.moves}번 만에 정상 (x̄ = ${st.xb.toFixed(3)}, Sₙ = ${st.sn.toFixed(3)})` : st.assisted ? `경사 상승이 찾음: (${st.xb.toFixed(3)}, ${st.sn.toFixed(3)})` : st.shown ? "정답을 보았다 — 새 자료로 다시" : "Δℓ < 0.05까지 오르기";
+    };
+    const contour = (d) => {
+      const g = (s) => 2 * s * s * (Math.log(st.sn / s) + 0.5 + d / st.n) - st.sn * st.sn;
+      const root = (a, b) => { for (let i = 0; i < 60; i++) { const c = (a + b) / 2; if ((g(a) > 0) === (g(c) > 0)) a = c; else b = c; } return (a + b) / 2; };
+      const lo = root(st.sn * 0.05, st.sn), hi = root(st.sn, st.sn * 30), up = [], dn = [];
+      for (let i = 0; i <= 120; i++) { const t = (1 - Math.cos((Math.PI * i) / 120)) / 2, s = lo + (hi - lo) * t, dd = Math.sqrt(Math.max(0, g(s))); up.push([st.xb + dd, s]); dn.push([st.xb - dd, s]); }
+      return up.concat(dn.reverse());
+    };
+    const cv = SB.canvas("cv-surf", (ctx, w, h, self) => {
+      const P = pal();
+      const C = SB.chart(ctx, { x: 58, y: 18, w: w - 74, h: h - 64 }, { x: mr, y: sr, xLabel: "μ (Å)", yLabel: "σ (Å)", yFmt: (v) => v.toFixed(2), xFmt: (v) => v.toFixed(1) });
+      if ($("sf-heat").checked) {
+        const key = [w, h, st.seed, SB.isDark()].join(",");
+        if (!cache || cache.key !== key) {
+          const oc = document.createElement("canvas"), cw = Math.ceil(C.box.w / 4), chh = Math.ceil(C.box.h / 4); oc.width = cw; oc.height = chh;
+          const o = oc.getContext("2d"), lm = Lmax(); o.fillStyle = P.accent2;
+          for (let i = 0; i < cw; i++) for (let j = 0; j < chh; j++) { const mu = mr[0] + ((i + 0.5) / cw) * (mr[1] - mr[0]), s = sr[1] - ((j + 0.5) / chh) * (sr[1] - sr[0]), t = SB.clamp(1 + (L(mu, s) - lm) / 15, 0, 1); o.globalAlpha = 0.04 + 0.55 * t * t; o.fillRect(i, j, 1, 1); }
+          cache = { key, oc };
+        }
+        ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(cache.oc, C.box.x, C.box.y, C.box.w, C.box.h); ctx.restore();
+      }
+      clip(ctx, C, () => {
+        LV.forEach((d, i) => { const pts = contour(d); ctx.strokeStyle = P.accent2; ctx.globalAlpha = 1 - i * 0.14; ctx.lineWidth = i === 0 ? 2 : 1.4; ctx.beginPath(); pts.forEach(([a, b], k) => (k ? ctx.lineTo(C.X(a), C.Y(b)) : ctx.moveTo(C.X(a), C.Y(b)))); ctx.closePath(); ctx.stroke(); ctx.globalAlpha = 1; });
+        if (st.path.length > 1) { ctx.strokeStyle = P.accent; ctx.lineWidth = 2; ctx.beginPath(); st.path.forEach(([a, b], k) => (k ? ctx.lineTo(C.X(a), C.Y(b)) : ctx.moveTo(C.X(a), C.Y(b)))); ctx.stroke(); }
+      });
+      if (st.shown || st.solved || st.assisted) { const X = C.X(st.xb), Y = C.Y(st.sn); ctx.strokeStyle = P.ok; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(X - 8, Y); ctx.lineTo(X + 8, Y); ctx.moveTo(X, Y - 8); ctx.lineTo(X, Y + 8); ctx.stroke(); SB.label(ctx, "MLE (x̄, Sₙ)", X + 12, Y - 14, { size: 11, color: P.ok, bold: true, align: "left" }); }
+      const S = Stat.sd(st.x);
+      if (st.shown || st.solved || st.assisted) { ctx.fillStyle = P.dim; ctx.beginPath(); ctx.arc(C.X(st.xb), C.Y(S), 3, 0, TAU); ctx.fill(); }
+      if (st.shown || st.solved || st.assisted) SB.label(ctx, "(x̄, S)", C.X(st.xb) + 6, C.Y(S) - 10, { size: 10.5, color: P.dim, align: "left" });
+      handle(ctx, C.X(st.mu), C.Y(st.sg), P.accent, 10);
+      SB.label(ctx, "Δℓ = " + (Lmax() - L(st.mu, st.sg)).toFixed(2), C.X(st.mu) + 14, C.Y(st.sg) + 16, { size: 11.5, bold: true, align: "left" });
+      self._h = [C.X(st.mu), C.Y(st.sg)]; self._C = C;
+    }, { aspect: 0.6, minHeight: 330, maxHeight: 460 });
+    const setP = (x, y) => { const C = cv._C; st.mu = SB.clamp(invX(C, mr[0], mr[1], x), mr[0], mr[1]); st.sg = SB.clamp(invY(C, sr[0], sr[1], y), sr[0], sr[1]); };
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._h ? [{ id: "p", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      down: () => { st.climbing = false; st.path = []; },
+      move: (id, x, y) => { if (!cv._C) return; setP(x, y); out(); },
+      up: () => { st.moves++; if (!st.shown && !st.assisted && Lmax() - L(st.mu, st.sg) < 0.05) st.solved = true; cv.redraw(); out(); },
+    });
+    $("sf-heat").addEventListener("change", () => cv.redraw());
+    $("sf-show").addEventListener("click", () => { if (!st.solved) st.shown = true; cv.redraw(); out(); });
+    $("sf-new").addEventListener("click", () => { st.seed = Math.floor(Math.random() * 1e9); gen(); cv.redraw(); out(); });
+    $("sf-grad").addEventListener("click", () => { st.climbing = true; st.step = 0.015; st.path = [[st.mu, st.sg]]; if (!st.solved) st.assisted = true; });
+    gen(); cv.redraw(); out();
+    SB.loop("sim-surf", () => {
+      if (!st.climbing) return;
+      const Wm = mr[1] - mr[0], Ws = sr[1] - sr[0];
+      for (let k = 0; k < 2; k++) {
+        const [gm, gs] = grad(st.mu, st.sg), gu = gm * Wm, gv = gs * Ws, gl = Math.hypot(gu, gv);
+        if (Lmax() - L(st.mu, st.sg) < 0.002 || gl < 1e-9) { st.climbing = false; break; }
+        const l0 = L(st.mu, st.sg), nm = st.mu + ((st.step * gu) / gl) * Wm, ns = SB.clamp(st.sg + ((st.step * gv) / gl) * Ws, sr[0], sr[1]);
+        if (L(nm, ns) < l0) { st.step *= 0.5; continue; }
+        st.mu = nm; st.sg = ns; st.path.push([nm, ns]);
+      }
+      cv.redraw(); out();
+    });
+  }
+
+  /* ================================================================ 드래그 숫자: HTOL 고장률 */
+  SB.tangle("tg-htol", (v) => {
+    const T = v.n * v.t * v.af, lam = v.r / T, up = Stat.rel.lambdaUpper(v.r, T, 0.6);
+    return { T: sci(T, 2), lam: v.r ? sci(lam, 2) + " /h" : "0 /h", fit: v.r ? f3(lam * 1e9, 3) + " FIT" : "0 FIT (쓸모없음)", mttf: v.r ? sci(T / v.r, 2) + " h (" + f3(T / v.r / 8766, 3) + "년)" : "∞", up: f3(up.fit, 3) + " FIT" };
+  }, { fmt: { af: (x) => x.toFixed(1) } });
+
+  /* ================================================================ 드릴: MLE */
+  SB.drill("drill-mle", () => {
+    const t = pick(["pois", "cens", "yield", "nvar"]);
+    if (t === "pois") {
+      const k = pick([5, 6, 7, 8]), lam = rnd(2, 9, 0.5), A = pick([20, 25, 40, 50, 70]), c = Array.from({ length: k }, () => SB.poisson(lam));
+      if (!c.some((x) => x > 0)) c[0] = 1;
+      const S = c.reduce((a, b) => a + b, 0);
+      return { q: `<p>웨이퍼 ${k}장에서 면적 ${A} cm²씩 검사해 결함을 ${c.join(", ")}개 셌다. 포아송 모형에서 결함 밀도 \\(D_0\\)의 MLE(개/cm²)는?</p>`, answer: S / (k * A), label: "D̂₀ =", unit: "개/cm²", tol: "1%", sol: `\\(\\hat D_0 = \\sum x_i/(nA) = ${S}/(${k}\\times${A}) = ${f3(S / (k * A), 4)}\\)` };
+    }
+    if (t === "cens") {
+      const n = pick([20, 30, 40, 50, 80]), t0 = pick([500, 1000, 2000]), r = pick([2, 3, 4]);
+      const tf = Array.from({ length: r }, () => Math.round(rnd(0.05, 0.95, 0.01) * t0)).sort((a, b) => a - b), T = tf.reduce((a, b) => a + b, 0) + (n - r) * t0;
+      return { q: `<p>소자 ${n}개를 ${t0}시간 시험해 ${tf.join(", ")}시간에 하나씩 고장 났고 나머지는 끝까지 살았다. 지수 모형에서 고장률의 MLE를 \\(10^{-5}\\)/h 단위로, MTTF의 MLE를 h로 구하라.</p>`, answer: [(r / T) * 1e5, T / r], label: ["λ̂ =", "MTTF ="], unit: ["×10⁻⁵ /h", "h"], tol: "1%", sol: `총 시험 시간 \\(T = ${tf.join(" + ")} + ${n - r}\\times${t0} = ${T}\\), \\(\\hat\\lambda = ${r}/${T} = ${f3((r / T) * 1e5, 4)}\\times10^{-5}\\)/h, MTTF \\(= T/r = ${f3(T / r, 5)}\\) h` };
+    }
+    if (t === "yield") {
+      const N = pick([200, 300, 400, 500, 600]), Y = rnd(0.7, 0.95, 0.01), G = Math.round(N * Y), A = pick([0.25, 0.4, 0.5, 0.8, 1.0, 1.2]), D = -Math.log(G / N) / A;
+      return { q: `<p>다이 면적 ${A} cm²인 제품에서 다이 ${N}개 중 ${G}개가 양품이었다. 포아송 수율 모형 \\(Y = e^{-D_0A}\\)에서 \\(D_0\\)의 MLE는?</p>`, answer: D, label: "D̂₀ =", unit: "개/cm²", tol: "1%", sol: `불변성: \\(\\hat Y = ${G}/${N} = ${f3(G / N, 4)}\\), \\(\\hat D_0 = -\\ln\\hat Y/A = ${f3(D, 4)}\\)` };
+    }
+    const x = Array.from({ length: 5 }, () => rnd(9, 11, 0.1)), m = Stat.mean(x), v = Stat.var(x, 0);
+    return { q: `<p>정규 모집단에서 ${x.map((a) => a.toFixed(1)).join(", ")}을 얻었다. \\(\\sigma^2\\)의 MLE와 불편 추정값 \\(S^2\\)는?</p>`, answer: [v, Stat.var(x)], label: ["σ̂²(MLE) =", "S² ="], unit: ["", ""], tol: "1%", sol: `\\(\\bar x = ${f3(m, 5)}\\), 편차 제곱합 \\(= ${f3(v * 5, 4)}\\). MLE \\(= ${f3(v * 5, 4)}/5 = ${f3(v, 4)}\\), \\(S^2 = ${f3(v * 5, 4)}/4 = ${f3(Stat.var(x), 4)}\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 독일 전차 게임 */
+  {
+    const st = { R: Stat.rng(1941), N: 0, ser: [], guess: 0, rev: false, rounds: [] };
+    const gK = SB.range("tk-k", (v) => v, () => newRound());
+    const XM = 1300;
+    const est = () => { const k = st.ser.length, m = Stat.max(st.ser); return { f: m * (1 + 1 / k) - 1, mo: 2 * Stat.mean(st.ser) - 1, m }; };
+    function newRound() { st.N = st.R.int(100, 1000); const all = Array.from({ length: st.N }, (_, i) => i + 1); st.ser = st.R.sample(all, gK()).sort((a, b) => a - b); st.guess = Stat.max(st.ser); st.rev = false; $("tk-res").textContent = "추정을 끌고 확인"; cv && cv.redraw(); out(); }
+    const avg = (j) => (st.rounds.length ? (100 * st.rounds.reduce((a, r) => a + r[j], 0)) / st.rounds.length : NaN);
+    const out = () => { $("tk-g").textContent = Math.round(st.guess); $("tk-n").textContent = st.rounds.length; $("tk-sc").textContent = st.rounds.length ? `${avg(0).toFixed(1)}% · ${avg(1).toFixed(1)}% · ${avg(2).toFixed(1)}%` : "—"; };
+    const cv = SB.canvas("cv-tank", (ctx, w, h, self) => {
+      const P = pal(), x0 = 24, x1 = w - 24, X = (v) => x0 + (Math.min(v, XM) / XM) * (x1 - x0), ly = Math.max(170, h * 0.56);
+      ctx.strokeStyle = P.axis; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x0, ly); ctx.lineTo(x1, ly); ctx.stroke();
+      ctx.font = font(10.5, true); ctx.fillStyle = P.dim; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (let v = 0; v <= XM; v += w < 500 ? 500 : w < 800 ? 200 : 100) { ctx.fillRect(X(v), ly, 1, 5); ctx.fillText(String(v), X(v), ly + 7); }
+      // 전차들(겹치지 않게 줄 배정)
+      const rowsLast = [];
+      st.ser.forEach((s) => {
+        const px = X(s); let r = 0; while (r < 3 && rowsLast[r] != null && px - rowsLast[r] < 40) r++;
+        const lab = r < 3; if (!lab) r = st.ser.indexOf(s) % 3; rowsLast[r] = px;
+        const ty = ly - 22 - r * 30;
+        SB.dashLine(ctx, px, ty + 8, px, ly, P.faint, [2, 3]);
+        ctx.fillStyle = P.accent; roundRect(ctx, px - 11, ty - 5, 22, 11, 3); ctx.fill(); ctx.fillRect(px - 2, ty - 9, 11, 3);
+        if (lab) SB.label(ctx, "#" + s, px, ty - 16, { size: 10.5, mono: true, bold: true });
+      });
+      SB.label(ctx, "번호: " + st.ser.join(", "), x0, 38, { size: 12, align: "left", mono: true, bold: true });
+      const E = est();
+      const lines = [];
+      if (st.rev || $("tk-hint").checked) lines.push([E.f, P.accent, "m(1+1/k)−1 = " + Math.round(E.f), [6, 4]], [E.mo, P.warn, "2x̄−1 = " + Math.round(E.mo), [3, 3]]);
+      if (st.rev) lines.push([st.N, P.accent2, "참 N = " + st.N, null]);
+      lines.forEach(([v, col, lab, dash], i) => { ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2.2; if (dash) ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(X(v), ly - 6); ctx.lineTo(X(v), ly + 40 + i * 18); ctx.stroke(); ctx.restore(); const right = X(v) > w * 0.65; SB.label(ctx, lab, X(v) + (right ? -5 : 5), ly + 40 + i * 18, { size: 11, color: col, bold: true, align: right ? "right" : "left" }); });
+      handle(ctx, X(st.guess), ly, P.accent2, 11);
+      SB.label(ctx, "내 추정 " + Math.round(st.guess), X(st.guess), ly + 24, { size: 12, bold: true, color: P.accent2 });
+      SB.label(ctx, `노획 ${st.ser.length}대 · 가장 큰 번호 m = ${E.m}`, x0, 16, { size: 12, align: "left", color: P.dim });
+      self._h = [X(st.guess), ly]; self._X = [x0, x1];
+    }, { aspect: 0.42, minHeight: 300, maxHeight: 380 });
+    SB.drag(cv, { free: true, handles: () => (cv._h ? [{ id: "g", x: cv._h[0], y: cv._h[1], r: 15 }] : []), move: (id, x) => { if (st.rev || !cv._X) return; const [a, b] = cv._X; st.guess = Math.round(SB.clamp(((x - a) / (b - a)) * XM, 1, XM)); out(); } });
+    $("tk-check").addEventListener("click", () => {
+      if (st.rev) return;
+      const E = est(); st.rev = true;
+      const e = [Math.abs(st.guess - st.N) / st.N, Math.abs(E.f - st.N) / st.N, Math.abs(E.mo - st.N) / st.N];
+      st.rounds.push(e);
+      const win = st.rounds.length >= 5 && avg(0) < avg(1);
+      $("tk-res").innerHTML = `참 N = ${st.N} · 내 오차 ${(100 * e[0]).toFixed(1)}%, 공식 ${(100 * e[1]).toFixed(1)}%` + (win ? ` · <span style="color:var(--ok)">성공: 공식보다 정확하다!</span>` : "");
+      cv.redraw(); out();
+    });
+    $("tk-next").addEventListener("click", newRound);
+    $("tk-hint").addEventListener("change", () => cv.redraw());
+    newRound();
+  }
+
+  /* ================================================================ 미니: 끝점 추정량 세 개의 분포 */
+  {
+    const R = Stat.rng(88);
+    const gN = SB.range("en-n", (v) => v, () => reset());
+    const A = { mle: acc(0, 20, 100), cor: acc(0, 20, 100), mom: acc(0, 20, 100) };
+    const one = () => { const n = gN(); let mx = 0, s = 0; for (let i = 0; i < n; i++) { const v = R.uniform(0, 10); s += v; if (v > mx) mx = v; } A.mle.add(mx); A.cor.add(((n + 1) / n) * mx); A.mom.add((2 * s) / n); };
+    const run = runner(() => one(), { interval: 0.05, playInterval: 0.03, batch: 50 });
+    bindRun(run, { thou: "en-1000", play: "en-play" });
+    function reset() { for (const k in A) A[k].reset(); run.pending = 0; for (let i = 0; i < 300; i++) one(); cv && cv.redraw(); }
+    const cv = SB.canvas("cv-ends", (ctx, w, h) => {
+      const P = pal(), ymax = Math.min(3, Math.max(A.mle.maxDens(), A.cor.maxDens(), A.mom.maxDens(), 0.1) * 1.1);
+      const C = SB.chart(ctx, { x: 58, y: 18, w: w - 74, h: h - 62 }, { x: [0, 20], y: [0, ymax], xLabel: "추정값 (참 θ = 10)", yLabel: "밀도", yFmt: (v) => v.toFixed(1) });
+      A.mom.draw(ctx, C, P.accent2, 0.25); A.mle.draw(ctx, C, P.faint, 0.3); A.cor.draw(ctx, C, P.accent, 0.35);
+      vline(ctx, C, 10, P.text, { width: 1.6, dash: [4, 3] });
+      [["MLE X₍ₙ₎", P.dim], ["보정 (n+1)/n·X₍ₙ₎", P.accent], ["적률법 2X̄", P.accent2]].forEach(([t, c], i) => SB.label(ctx, t, C.box.x + 8, C.box.y + 10 + i * 16, { size: 11, color: c, bold: true, align: "left" }));
+      const s = (a) => `${fx(a.mean(), 2)}±${fx(Math.sqrt(a.var()), 2)}`;
+      $("en-r").textContent = `${A.mle.n}번 · 평균±SD: MLE ${s(A.mle)} · 보정 ${s(A.cor)} · 2X̄ ${s(A.mom)}`;
+    }, { aspect: 0.42, minHeight: 230, maxHeight: 300 });
+    reset();
+    SB.loop("mini-ends", (dt) => { if (run.tick(Math.min(dt, 0.05))) cv.redraw(); });
+  }
+
+  /* ================================================================ 드래그 숫자: 끝점 추정량 */
+  SB.tangle("tg-ends", (v) => { const n = v.n; return { e: (n / (n + 1)).toFixed(3), b: "−" + (1 / (n + 1)).toFixed(3), s1: (1 / Math.sqrt(n * (n + 2))).toFixed(4), s2: (1 / Math.sqrt(3 * n)).toFixed(4), eff: (3 / (n + 2)).toFixed(3) }; });
+
+  /* ================================================================ 미니: 곡률 = 정보 */
+  {
+    const nOf = (v) => Math.round(Math.pow(10, v));
+    const gN = SB.range("cv-n", (v) => String(nOf(v)), () => cv.redraw());
+    const gP = SB.range("cv-p", (v) => v.toFixed(2), () => cv.redraw());
+    const cv = SB.canvas("cv-curv", (ctx, w, h) => {
+      const P = pal(), n = nOf(gN()), ph = gP(), I = 1 / (ph * (1 - ph)), se = Math.sqrt(1 / (n * I));
+      const rel = (p) => n * (ph * Math.log(p / ph) + (1 - ph) * Math.log((1 - p) / (1 - ph)));
+      const par = (p) => -0.5 * n * I * (p - ph) ** 2;
+      let a = ph, b = ph; while (a > 0.0005 && rel(a - 0.0005) >= -0.5) a -= 0.0005; while (b < 0.9995 && rel(b + 0.0005) >= -0.5) b += 0.0005;
+      const C = SB.chart(ctx, { x: 58, y: 16, w: w - 74, h: h - 60 }, { x: [0, 1], y: [-6, 0.6], xLabel: "p (수율)", yLabel: "ℓ(p) − ℓ(p̂)", hlines: [{ y: -0.5, color: P.dim, dash: [3, 3] }], bands: [{ x0: a, x1: b, color: "rgba(128,128,128,0.16)" }] });
+      clip(ctx, C, () => { Stat.draw.curve(ctx, C, par, 0, 1, { color: P.accent2, width: 1.8, dash: [6, 4], n: 400 }); Stat.draw.curve(ctx, C, rel, 0.001, 0.999, { color: P.accent, width: 2.6, n: 500 }); });
+      [ph - se, ph + se].forEach((x) => { ctx.strokeStyle = P.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(C.X(x), C.Y(-0.5) - 7); ctx.lineTo(C.X(x), C.Y(-0.5) + 7); ctx.stroke(); });
+      $("cv-r").textContent = `nI(p̂) = ${f3(n * I, 3)} · SE = ${se.toFixed(3)} · 0.5 아래 구간 [${a.toFixed(3)}, ${b.toFixed(3)}]`;
+    }, { aspect: 0.42, minHeight: 230, maxHeight: 300 });
+  }
+
+  /* ================================================================ 시뮬레이터: 크라메르–라오 하한 */
+  {
+    const R = Stat.rng(64);
+    const MD = {
+      exp: { tr: [0.2, 3], th: 1, I: (t) => 1 / (t * t), est: (n, t) => n / R.gamma(n, 1 / t), exact: (n, t) => (n > 2 ? (n * n * t * t) / ((n - 1) * (n - 1) * (n - 2)) : Infinity), tn: "λ" },
+      pois: { tr: [0.5, 12], th: 4, I: (t) => 1 / t, est: (n, t) => rpois(R, n * t) / n, exact: (n, t) => t / n, tn: "λ" },
+      bern: { tr: [0.05, 0.95], th: 0.8, I: (t) => 1 / (t * (1 - t)), est: (n, t) => { let k = 0; for (let i = 0; i < n; i++) if (R.u() < t) k++; return k / n; }, exact: (n, t) => (t * (1 - t)) / n, tn: "p" },
+    };
+    const NS = [3, 5, 10, 20, 50, 100];
+    const gM = SB.seg("cr-m", () => reset(true));
+    const gN = SB.range("cr-n", (v) => v, () => reset(false));
+    const md = () => MD[gM()];
+    let A = acc(0, 1, 60), pts = [];
+    const range = () => { const o = md(), n = gN(), t = o.th, sd = Math.sqrt(1 / (n * o.I(t))); let lo = t - 4 * sd, hi = t + (gM() === "exp" ? 7 : 4) * sd; if (gM() !== "pois") lo = Math.max(0, lo); if (gM() === "bern") hi = Math.min(1, hi); return [lo, hi]; };
+    const one = () => A.add(md().est(gN(), md().th));
+    const run = runner(() => one(), { interval: 0.05, playInterval: 0.02, batch: 50 });
+    bindRun(run, { thou: "cr-1000", play: "cr-play" });
+    function reset(all) {
+      const [lo, hi] = range(); A = acc(lo, hi, 60); run.pending = 0; for (let i = 0; i < 300; i++) one();
+      if (all) { const o = md(); pts = NS.map((n) => { const B = acc(0, 1, 1); for (let i = 0; i < 2000; i++) B.add(o.est(n, o.th)); return [n, B.var()]; }); }
+      cv1 && cv1.redraw(); cv2 && cv2.redraw(); out();
+    }
+    const out = () => { const o = md(), n = gN(), b = 1 / (n * o.I(o.th)); $("cr-k").textContent = A.n; $("cr-m-v").textContent = `${fx(A.mean(), 3)} (${o.th.toFixed(2)})`; $("cr-v").textContent = sci(A.var(), 2); $("cr-b").textContent = sci(b, 2); $("cr-r").textContent = fx(A.var() / b, 2); };
+    let cv1 = null, cv2 = null;
+    cv1 = SB.canvas("cv-cr1", (ctx, w, h, self) => {
+      const P = pal(), o = md(), n = gN(), t = o.th, b = 1 / (n * o.I(t));
+      // 참값 손잡이 트랙
+      const ta = 58, tb = w - 22, ty = 46, TX = (v) => ta + ((v - o.tr[0]) / (o.tr[1] - o.tr[0])) * (tb - ta);
+      ctx.save(); ctx.strokeStyle = P.border; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(ta, ty); ctx.lineTo(tb, ty); ctx.stroke(); ctx.strokeStyle = P.accent2; ctx.beginPath(); ctx.moveTo(ta, ty); ctx.lineTo(TX(t), ty); ctx.stroke(); ctx.restore();
+      SB.label(ctx, `참값 ${o.tn} = ${t.toFixed(2)}`, ta, ty - 16, { size: 11.5, color: P.accent2, bold: true, align: "left" });
+      handle(ctx, TX(t), ty, P.accent2, 10);
+      self._h = [TX(t), ty]; self._t = [ta, tb];
+      const nd = Stat.dist.normal(t, Math.sqrt(b)), ymax = Math.max(A.maxDens(), nd.pdf(t)) * 1.12;
+      const C = SB.chart(ctx, { x: 58, y: 70, w: w - 74, h: h - 116 }, { x: [A.lo, A.hi], y: [0, ymax], xLabel: `추정값 ${o.tn}̂ (n = ${n})`, yLabel: "밀도", yFmt: (v) => f3(v, 2) });
+      A.draw(ctx, C, P.accent, 0.45);
+      clip(ctx, C, () => Stat.draw.curve(ctx, C, nd.pdf, A.lo, A.hi, { color: P.accent2, width: 2.2 }));
+      vline(ctx, C, t, P.accent2, { width: 1.4, dash: [4, 3] });
+      if (A.n) vline(ctx, C, A.mean(), P.accent, { width: 2 });
+    }, { aspect: 0.8, minHeight: 290, maxHeight: 360 });
+    SB.drag(cv1, { handles: () => (cv1._h ? [{ id: "t", x: cv1._h[0], y: cv1._h[1], r: 14 }] : []), move: (id, x) => { if (id !== "t") return; const o = md(), [a, b] = cv1._t; o.th = Number(SB.clamp(o.tr[0] + ((x - a) / (b - a)) * (o.tr[1] - o.tr[0]), o.tr[0], o.tr[1]).toFixed(2)); }, up: (id) => { if (id === "t") reset(true); } });
+    cv2 = SB.canvas("cv-cr2", (ctx, w, h) => {
+      const P = pal(), o = md(), t = o.th, n = gN(), crb = (m) => 1 / (m * o.I(t));
+      const hiV = Math.max(...pts.map((p) => p[1]).filter(isFinite), crb(2)) * 2, loV = crb(200) / 2;
+      const d1 = [], d2 = []; for (let i = 0; i <= 80; i++) { const m = 2 * Math.pow(100, i / 80); d1.push([m, crb(m)]); if (m > 2.6) d2.push([m, o.exact(m, t)]); }
+      const series = [{ data: d1, color: P.accent2, width: 2.2 }]; if (gM() === "exp") series.push({ data: d2, color: P.accent, width: 1.6, dash: [5, 4] });
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 72, h: h - 76 }, { x: [2, 200], y: [loV, hiV], logX: true, logY: true, xLabel: "표본 크기 n", yLabel: "분산", series, vlines: [{ x: n, color: P.faint, dash: [3, 3] }] });
+      pts.forEach(([m, v]) => { ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(m), C.Y(v), 4.5, 0, TAU); ctx.fill(); });
+      if (A.n > 50) { ctx.strokeStyle = P.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(C.X(n), C.Y(Math.max(loV, A.var())), 7, 0, TAU); ctx.stroke(); }
+      SB.label(ctx, "자주: 하한 1/nI", C.box.x + C.box.w - 6, C.box.y + 10, { size: 11, color: P.accent2, align: "right" });
+      if (gM() === "exp") SB.label(ctx, "점선: MLE의 정확한 분산", C.box.x + C.box.w - 6, C.box.y + 26, { size: 11, color: P.accent, align: "right" });
+    }, { aspect: 0.8, minHeight: 290, maxHeight: 360 });
+    reset(true);
+    SB.loop("sim-crlb", (dt) => { if (run.tick(Math.min(dt, 0.05))) { cv1.redraw(); cv2.redraw(); out(); } });
+  }
+
+  /* ================================================================ 드래그 숫자: 수율의 피셔 정보 */
+  SB.tangle("tg-crlb", (v) => { const q = v.p * (1 - v.p), I = 1 / q; return { I: I.toFixed(2), In: f3(v.n * I, 4), se: Math.sqrt(q / v.n).toFixed(4), need: Math.ceil(q / 1e-4 - 1e-9) }; });
+
+  /* ================================================================ 드릴: 피셔 정보와 표준 오차 */
+  SB.drill("drill-fisher", () => {
+    const t = pick(["bern", "pois", "exp", "need"]);
+    if (t === "bern") { const n = pick([50, 100, 200, 400, 800]), p = rnd(0.6, 0.97, 0.01), x = Math.round(n * p), ph = x / n, se = Math.sqrt((ph * (1 - ph)) / n); return { q: `<p>다이 ${n}개 중 ${x}개가 양품이다. 수율 MLE의 표준 오차 \\(1/\\sqrt{nI(\\hat p)}\\)는?</p>`, answer: se, label: "SE =", unit: "", tol: "1%", sol: `\\(\\hat p = ${f3(ph, 4)}\\), \\(\\mathrm{SE} = \\sqrt{\\hat p(1-\\hat p)/n} = ${f3(se, 4)}\\)` }; }
+    if (t === "pois") { const n = pick([5, 8, 10, 20, 25]), m = rnd(2, 15, 0.1), se = Math.sqrt(m / n); return { q: `<p>웨이퍼 ${n}장의 결함 수 평균이 ${m}개다. 포아송 모형에서 \\(\\hat\\lambda = \\bar x\\)의 표준 오차는?</p>`, answer: se, label: "SE =", unit: "개", tol: "1%", sol: `\\(I(\\lambda) = 1/\\lambda\\), \\(\\mathrm{SE} = \\sqrt{\\hat\\lambda/n} = \\sqrt{${m}/${n}} = ${f3(se, 4)}\\)` }; }
+    if (t === "exp") { const n = pick([10, 20, 25, 40, 50, 100]), l = rnd(0.5, 5, 0.1), se = l / Math.sqrt(n); return { q: `<p>고장 시간 ${n}개로 구한 지수 고장률 MLE가 \\(\\hat\\lambda = ${l}\\) /1000 h이다. 피셔 정보로 어림한 표준 오차(/1000 h)는?</p>`, answer: se, label: "SE =", unit: "/1000 h", tol: "1%", sol: `\\(I(\\lambda) = 1/\\lambda^2\\), \\(\\mathrm{SE} \\approx \\hat\\lambda/\\sqrt n = ${l}/\\sqrt{${n}} = ${f3(se, 4)}\\)` }; }
+    const p = rnd(0.7, 0.98, 0.01), e = pick([0.005, 0.01, 0.02]), n = (p * (1 - p)) / (e * e);
+    return { q: `<p>수율이 약 ${p}인 공정에서 \\(\\hat p\\)의 표준 오차를 ${e} 이하로 하려면 다이가 몇 개 필요한가? (크라메르–라오 하한 이용)</p>`, answer: Math.ceil(n - 1e-9), label: "n =", unit: "개", tol: "1%", sol: `\\(\\sqrt{p(1-p)/n} \\le ${e}\\) → \\(n \\ge p(1-p)/${e}^2 = ${f3(n, 5)}\\) → ${Math.ceil(n - 1e-9)}개` };
+  });
+
+  /* ================================================================ 시뮬레이터: 베타–이항 베이즈 */
+  {
+    const st = { m0: 0.9, s0: 20, R: Stat.rng(82) };
+    const elX = $("by-x");
+    const gN = SB.range("by-n", (v) => v, () => { syncX(); cv.redraw(); });
+    const gX = SB.range("by-x", (v) => v, () => cv.redraw());
+    const syncX = () => { const n = gN(); elX.max = String(n); if (gX() > n) gX.set(n, true); else gX.set(gX(), true); };
+    const LS = Math.log(250);
+    const cv = SB.canvas("cv-bayes", (ctx, w, h, self) => {
+      const P = pal(), n = gN(), x = Math.min(gX(), n), a = st.m0 * st.s0, b = (1 - st.m0) * st.s0, A = a + x, B = b + n - x;
+      const pr = Stat.dist.beta(a, b), po = Stat.dist.beta(A, B);
+      const lik = (p) => (n === 0 ? 1 : Math.exp(x * Math.log(Math.max(p, 1e-300)) + (n - x) * Math.log(Math.max(1 - p, 1e-300)) - (x > 0 ? x * Math.log(x / n) : 0) - (n - x > 0 ? (n - x) * Math.log((n - x) / n) : 0)));
+      let pk = 0.5, pp = 0; for (let i = 1; i < 400; i++) { const p = i / 400; pk = Math.max(pk, pr.pdf(p), po.pdf(p)); pp = Math.max(pp, po.pdf(p)); }
+      const ymax = Math.min(40, pk * 1.12);
+      const C = SB.chart(ctx, { x: 58, y: 30, w: w - 74, h: h - 76 }, { x: [0, 1], y: [0, ymax], xLabel: "수율 p", yLabel: "밀도", yFmt: (v) => f3(v, 2) });
+      clip(ctx, C, () => {
+        Stat.draw.area(ctx, C, pr.pdf, 0.001, 0.999, { color: P.dim, alpha: 0.15 }); Stat.draw.curve(ctx, C, pr.pdf, 0.002, 0.998, { color: P.dim, width: 2, n: 400 });
+        if (n > 0) Stat.draw.curve(ctx, C, (p) => lik(p) * pp, 0.001, 0.999, { color: P.accent, width: 2, dash: [6, 4], n: 400 });
+        Stat.draw.area(ctx, C, po.pdf, 0.001, 0.999, { color: P.accent2, alpha: 0.2 }); Stat.draw.curve(ctx, C, po.pdf, 0.002, 0.998, { color: P.accent2, width: 2.6, n: 400 });
+      });
+      if (n > 0) vline(ctx, C, x / n, P.accent, { width: 1.4, dash: [3, 3] });
+      vline(ctx, C, A / (A + B), P.accent2, { width: 2 });
+      const hx = C.X(st.m0), hy = C.box.y + C.box.h * (1 - Math.log(st.s0 / 2) / LS);
+      SB.dashLine(ctx, hx, hy, hx, C.box.y + C.box.h, P.dim, [2, 3]);
+      handle(ctx, hx, hy, P.text, 10);
+      const right = hx > w * 0.6;
+      SB.label(ctx, `사전 a+b = ${st.s0.toFixed(0)}`, hx + (right ? -16 : 16), hy, { size: 11.5, bold: true, align: right ? "right" : "left", color: P.dim });
+      [["사전", P.dim], ["가능도", P.accent], ["사후", P.accent2]].forEach(([t, c], i) => SB.label(ctx, t, C.box.x + 8 + i * 58, C.box.y + 10, { size: 12, color: c, bold: true, align: "left" }));
+      self._h = [hx, hy]; self._C = C;
+      // 읽은 값
+      const map = A > 1 && B > 1 ? (A - 1) / (A + B - 2) : A >= B ? 1 : 0;
+      $("by-pr").textContent = `Beta(${f3(a, 3)}, ${f3(b, 3)})`; $("by-mle").textContent = n ? (x / n).toFixed(3) : "—";
+      $("by-pm").textContent = `${(A / (A + B)).toFixed(3)} · ${map.toFixed(3)}`; $("by-ci").textContent = `[${po.q(0.025).toFixed(3)}, ${po.q(0.975).toFixed(3)}]`; $("by-w").textContent = (n / (st.s0 + n)).toFixed(3);
+    }, { aspect: 0.56, minHeight: 320, maxHeight: 440 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "p", x: cv._h[0], y: cv._h[1], r: 15 }] : []),
+      move: (id, x, y) => { if (id !== "p") return; const C = cv._C; st.m0 = Number(SB.clamp(invX(C, 0, 1, x), 0.05, 0.98).toFixed(3)); const t = SB.clamp(1 - (y - C.box.y) / C.box.h, 0, 1); st.s0 = Math.round(2 * Math.exp(t * LS)); },
+    });
+    $("by-more").addEventListener("click", () => { const n = gN(); if (n >= 200) return; let k = 0; for (let i = 0; i < 10; i++) if (st.R.u() < 0.82) k++; gN.set(n + 10, true); syncX(); gX.set(gX() + k, true); cv.redraw(); });
+    $("by-reset").addEventListener("click", () => { gN.set(0, true); syncX(); gX.set(0, true); cv.redraw(); });
+    syncX(); cv.redraw();
+  }
+
+  /* ================================================================ 드래그 숫자: 감마–포아송 결함 밀도 */
+  SB.tangle("tg-gp", (v) => {
+    const area = 50 * v.n, mle = v.x / area, post = (v.al + v.x) / (v.be + area);
+    return { pm: v.be > 0 ? (v.al / v.be).toFixed(3) + " 개/cm²" : "정의 안 됨", mle: mle.toFixed(4) + " 개/cm²", post: v.al + v.be > 0 ? post.toFixed(4) + " 개/cm²" : "—", w: (area / (v.be + area)).toFixed(3) };
+  });
+
+  /* ================================================================ 드릴: 베타–이항 사후 */
+  SB.drill("drill-bayes", () => {
+    const a = pick([1, 2, 4, 8, 9, 18, 19, 45]), b = pick([1, 1, 2, 2, 3, 5]), n = pick([10, 20, 30, 40, 50, 100]), x = Math.round(n * rnd(0.6, 0.98, 0.01)), A = a + x, B = b + n - x;
+    return { q: `<p>수율의 사전 분포가 \\(\\mathrm{Beta}(${a}, ${b})\\)이고 다이 ${n}개 중 ${x}개가 양품이었다. 사후 평균과 MAP는?</p>`, answer: [A / (A + B), (A - 1) / (A + B - 2)], label: ["사후 평균 =", "MAP ="], unit: ["", ""], tol: "1%",
+      sol: `사후 \\(\\mathrm{Beta}(${A}, ${B})\\). 평균 \\(${A}/${A + B} = ${f3(A / (A + B), 4)}\\), MAP \\((${A}-1)/(${A + B}-2) = ${f3((A - 1) / (A + B - 2), 4)}\\). MLE는 \\(${f3(x / n, 4)}\\)` };
+  });
+})();
+</script>
+</body>
+</html>

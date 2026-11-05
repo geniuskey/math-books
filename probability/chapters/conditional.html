@@ -1,0 +1,1938 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>조건부 확률과 베이즈 정리 · 확률과 통계 · MathBooks</title>
+<meta name="description" content="조건부 확률과 곱셈 법칙, 확률 나무와 전확률 공식, 독립 사건과 직렬·병렬 계통의 신뢰도, 베이즈 정리와 기저율 오류, 사전·사후 확률의 갱신, 몬티 홀 문제까지 — 검사 장비의 과검출·미검출과 불량 원인 추적을 직접 끌고 반복 실험하며 익힌다.">
+<!-- sb:seo -->
+<link rel="canonical" href="https://math.euiyun.com/probability/chapters/conditional.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MathBooks">
+<meta property="og:title" content="조건부 확률과 베이즈 정리 · 확률과 통계 · MathBooks">
+<meta property="og:description" content="조건부 확률과 곱셈 법칙, 확률 나무와 전확률 공식, 독립 사건과 직렬·병렬 계통의 신뢰도, 베이즈 정리와 기저율 오류, 사전·사후 확률의 갱신, 몬티 홀 문제까지 — 검사 장비의 과검출·미검출과 불량 원인 추적을 직접 끌고 반복 실험하며 익힌다.">
+<meta property="og:url" content="https://math.euiyun.com/probability/chapters/conditional.html">
+<meta property="og:image" content="https://math.euiyun.com/og.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "TechArticle", "name": "조건부 확률과 베이즈 정리 · 확률과 통계 · MathBooks", "headline": "03 조건부 확률과 베이즈 정리", "url": "https://math.euiyun.com/probability/chapters/conditional.html", "inLanguage": "ko", "isAccessibleForFree": true, "image": "https://math.euiyun.com/og.png", "description": "조건부 확률과 곱셈 법칙, 확률 나무와 전확률 공식, 독립 사건과 직렬·병렬 계통의 신뢰도, 베이즈 정리와 기저율 오류, 사전·사후 확률의 갱신, 몬티 홀 문제까지 — 검사 장비의 과검출·미검출과 불량 원인 추적을 직접 끌고 반복 실험하며 익힌다.", "publisher": {"@type": "Organization", "name": "MathBooks", "url": "https://math.euiyun.com/"}, "learningResourceType": "interactive textbook chapter", "position": 3, "dateModified": "2026-10-22", "isPartOf": {"@type": "Book", "@id": "https://math.euiyun.com/probability/#book", "name": "확률과 통계", "url": "https://math.euiyun.com/probability/"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "MathBooks", "item": "https://math.euiyun.com/"}, {"@type": "ListItem", "position": 2, "name": "확률과 통계", "item": "https://math.euiyun.com/probability/"}, {"@type": "ListItem", "position": 3, "name": "03 조건부 확률과 베이즈 정리", "item": "https://math.euiyun.com/probability/chapters/conditional.html"}]}]}</script>
+<!-- /sb:seo -->
+<link rel="stylesheet" href="../engine/css/scibook.css">
+<script src="../engine/js/scibook.js"></script>
+<script src="../course.js"></script>
+<script src="../engine/lib/stat.js"></script>
+<style>
+  .cp-tbl td, .cp-tbl th { text-align: center; }
+  .cp-tbl td.num { text-align: right; }
+  .sim-readout .v small { font-weight: 400; color: var(--text-dim); }
+  .cp-score { font-weight: 700; }
+  .cp-ok { color: var(--ok); font-weight: 700; }
+  .cp-bad { color: var(--bad); font-weight: 700; }
+</style>
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="probability"></script>
+</head>
+<body data-chapter="conditional">
+<main class="chapter">
+  <header class="chapter-hero" data-prereq="probability">
+    <div class="eyebrow">Chapter 03</div>
+    <h1>조건부 확률과 베이즈 정리</h1>
+    <p class="lead">검사 장비가 칩 하나에 "불량" 경보를 울렸다. 장비의 정확도는 99%라고 한다. 그 칩이 정말 불량일 확률은 얼마일까? 많은 사람이 99%라고 답하지만, 불량률이 0.1%인 라인이라면 답은 약 9%다. 이 차이를 만드는 것이 이 장의 주제인 조건부 확률이다. "무엇을 이미 알고 있는가"가 바뀌면 확률이 바뀌고, 그 바뀌는 규칙이 곱셈 법칙, 전확률 공식, 베이즈 정리다. 아래의 다이 1000개에서 불량률, 검출률, 오경보율을 끌어 바꾸고, 경보가 울린 다이만 모아 보자.</p>
+    <div class="hero-live" id="hero"><canvas id="cv-hero"></canvas><span class="hint">흰 원을 끌어 비율을 바꾸고, 다이 지도를 누르면 경보가 울린 다이만 본다</span></div>
+    <ul class="objectives">
+      <li>조건부 확률 \(P(A\mid B) = P(A\cap B)/P(B)\)를 "표본 공간을 \(B\)로 좁히기"로 이해하고, 분할표와 비복원 추출에서 곱셈 법칙으로 확률을 계산한다.</li>
+      <li>확률 나무를 그려 잎의 확률을 곱으로 구하고, 분할과 전확률 공식 \(P(A) = \sum_i P(A\mid B_i)P(B_i)\)로 전체 확률을 가중 평균으로 계산한다.</li>
+      <li>독립의 정의 \(P(A\cap B) = P(A)P(B)\)를 판정하고, 서로소와 독립을 구별하며, 쌍별 독립과 상호 독립의 차이를 예로 보인다.</li>
+      <li>독립 고장 가정 아래 직렬·병렬·혼합·\(k\)-out-of-\(n\) 계통의 신뢰도를 계산하고, 목표 신뢰도를 최소 비용으로 맞추는 중복 설계를 한다.</li>
+      <li>베이즈 정리로 민감도·특이도·불량률에서 양성 예측도를 구하고, 기저율 오류와 검사관의 오류를 자연 빈도로 설명한다. 공정 장비별 점유율과 불량률에서 불량의 원인 장비를 역추적한다.</li>
+      <li>오즈와 가능도비로 사전 확률을 사후 확률로 갱신하고, 반복 검사에서 확신이 쌓이는 과정을 계산한다.</li>
+      <li>몬티 홀 문제를 확률 나무, 베이즈 정리, 반복 시뮬레이션으로 풀고, 사회자의 규칙이 답을 바꾼다는 것을 보인다.</li>
+    </ul>
+  </header>
+
+  <!-- ============================================================ -->
+  <section id="conditional-prob">
+    <h2>조건부 확률과 곱셈 법칙</h2>
+    <p>웨이퍼 한 장의 다이 1000개 가운데 40개가 웨이퍼 테스트에서 불합격했다. 아무 다이나 하나 고르면 불합격일 확률은 \(40/1000 = 0.04\)다. 그런데 그 다이가 <em>가장자리</em> 다이라는 것을 이미 안다면? 가장자리 다이 150개 가운데 24개가 불합격이었다면 답은 \(24/150 = 0.16\)으로 네 배가 된다. 정보 하나가 확률을 바꿨다. 이렇게 사건 \(B\)가 일어났다는 것을 알 때 사건 \(A\)의 확률을 <span class="term">조건부 확률</span><span class="en">(conditional probability)</span>이라 하고 \(P(A\mid B)\)로 쓴다("\(B\)가 주어졌을 때 \(A\)의 확률").</p>
+    <div class="def"><span class="def-k">조건부 확률</span>
+      <p>\(P(B) > 0\)일 때, 사건 \(B\)가 주어졌을 때 사건 \(A\)의 조건부 확률은</p>
+      $$P(A\mid B) = \frac{P(A\cap B)}{P(B)}$$
+      <p>이다. \(P(B) = 0\)이면 정의하지 않는다.</p>
+    </div>
+    <p>정의의 뜻은 그림으로 보면 분명하다. \(B\)가 일어났다는 것을 알면 \(B\) 밖의 결과는 모두 지워진다. 이제 \(B\)가 새로운 표본 공간이고, 그 안에서 \(A\)가 차지하는 몫이 \(P(A\mid B)\)다. 분모 \(P(B)\)로 나누는 것은 새 표본 공간의 전체 확률을 다시 1로 맞추는 일(재정규화)이다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 260" role="img" aria-label="조건부 확률: 표본 공간을 B로 좁히면 A와 B의 교집합이 B 안에서 차지하는 몫이 조건부 확률이다">
+        <rect x="20" y="30" width="330" height="200" rx="10" fill="var(--surface)" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <text class="t" x="34" y="54">Ω (전체 표본 공간)</text>
+        <circle cx="150" cy="135" r="70" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="2"/>
+        <circle cx="230" cy="135" r="80" fill="var(--accent-2)" fill-opacity=".14" stroke="var(--accent-2)" stroke-width="2"/>
+        <text class="t" x="110" y="140" style="fill:var(--accent);font-weight:700">A</text>
+        <text class="t" x="262" y="140" style="fill:var(--accent-2);font-weight:700">B</text>
+        <text class="t t-dim" x="184" y="222" text-anchor="middle">A∩B</text>
+        <path d="M368 135 L 430 135" stroke="var(--text)" stroke-width="2" fill="none" marker-end="url(#cp-ar1)"/>
+        <defs><marker id="cp-ar1" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--text)"/></marker>
+          <clipPath id="cp-clipB"><circle cx="600" cy="135" r="105"/></clipPath></defs>
+        <text class="t" x="399" y="122" text-anchor="middle">B가 일어났다</text>
+        <circle cx="600" cy="135" r="105" fill="var(--accent-2)" fill-opacity=".14" stroke="var(--accent-2)" stroke-width="2.5"/>
+        <circle cx="495" cy="135" r="92" fill="var(--accent)" fill-opacity=".30" stroke="var(--accent)" stroke-width="2" clip-path="url(#cp-clipB)"/>
+        <text class="t" x="545" y="140" text-anchor="middle" style="fill:var(--accent);font-weight:700">A∩B</text>
+        <text class="t" x="650" y="140" text-anchor="middle" style="fill:var(--accent-2);font-weight:700">B = 새 Ω</text>
+        <text class="t" x="600" y="262" text-anchor="middle">P(A | B) = (A∩B의 넓이) ÷ (B의 넓이)</text>
+      </svg>
+      <figcaption>조건부 확률은 표본 공간을 \(B\)로 좁힌 뒤 \(A\)의 몫을 다시 재는 것이다. \(B\) 밖에 있는 \(A\)의 부분은 더 이상 가능하지 않다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 두 원을 끌어 겹침을 바꾸고 "\(B\)로 확대"를 눌러 보자. 확대된 화면에서는 \(B\) 밖이 흐려지고, \(B\)가 화면을 가득 채운다. 점을 무작위로 뿌리면(반복 실험) \(B\)에 떨어진 점 가운데 \(A\)에도 들어간 점의 비율이 \(P(A\mid B)\)로 다가간다. 조건부 확률의 상대 도수 해석은 "\(B\)가 일어난 시행만 골라 세었을 때 \(A\)의 비율"이다.</p>
+
+    <div class="sim" id="sim-cond">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>조건부 확률 = 표본 공간을 B로 좁히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-cond"></canvas><span class="hint top">원의 가운데와 테두리 점을 끈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>보는 범위</span><div class="seg" id="cd-mode"><button data-value="omega" class="on">전체 Ω</button><button data-value="B">B로 확대</button><button data-value="A">A로 확대</button></div></div>
+          <button class="btn" id="cd-play" type="button"></button>
+          <button class="btn" id="cd-more" type="button">점 200개 더</button>
+          <button class="btn" id="cd-reset" type="button">점 지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">P(A), P(B)</span><span class="v" id="cd-pa">—</span></div>
+        <div class="stat"><span class="k">P(A∩B)</span><span class="v" id="cd-pab">—</span></div>
+        <div class="stat"><span class="k">P(A | B)</span><span class="v" id="cd-pagb">—</span></div>
+        <div class="stat"><span class="k">P(B | A)</span><span class="v" id="cd-pbga">—</span></div>
+        <div class="stat"><span class="k">점으로 센 P(A | B)</span><span class="v" id="cd-emp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① \(B\)를 \(A\) 안에 완전히 넣으면 \(P(A\mid B)\)는? 반대로 \(A\)를 \(B\) 안에 넣으면? ② \(B\)를 작게 만들어 \(P(A\mid B)\)는 크고 \(P(B\mid A)\)는 작은 상황을 만들어 보자. 두 조건부 확률은 일반적으로 다르다. ③ \(P(A\mid B) > P(A)\)이면서 \(P(B\mid A) < P(B)\)인 배치를 찾을 수 있을까? (두 식 모두 \(P(A\cap B) > P(A)P(B)\)와 같으므로 불가능하다.)</div>
+    </div>
+
+    <div class="tangle" id="tg-cond">
+      <p>웨이퍼의 다이 가운데 가장자리 다이가 <span class="tn" data-var="e" data-min="5" data-max="60" data-step="1" data-unit="%">15</span>, 가장자리이면서 불합격인 다이가 전체의 <span class="tn" data-var="ef" data-min="0" data-max="20" data-step="0.1" data-unit="%">2.4</span>, 불합격 다이가 전체의 <span class="tn" data-var="f" data-min="0.5" data-max="40" data-step="0.1" data-unit="%">4.0</span>라면, 가장자리 다이가 불합격일 확률 \(P(F\mid E)\)는 <span class="tn-out" data-out="fe"></span>이고 불합격 다이가 가장자리에 있을 확률 \(P(E\mid F)\)는 <span class="tn-out" data-out="ef2"></span>이다. <span data-out="note"></span></p>
+    </div>
+
+    <h3>곱셈 법칙</h3>
+    <p>정의의 양변에 \(P(B)\)를 곱하면 교집합의 확률을 조건부 확률로 쓰는 <span class="term">곱셈 법칙</span><span class="en">(multiplication rule)</span>이 된다. 순서대로 일어나는 일의 확률은 "첫째의 확률 × 첫째가 일어났을 때 둘째의 확률"이다.</p>
+    <div class="formula">$$P(A\cap B) = P(B)\,P(A\mid B) = P(A)\,P(B\mid A)$$
+    $$P(A_1\cap A_2\cap\cdots\cap A_n) = P(A_1)\,P(A_2\mid A_1)\,P(A_3\mid A_1\cap A_2)\cdots P(A_n\mid A_1\cap\cdots\cap A_{n-1})$$<div class="where">둘째 줄은 곱셈 법칙을 거듭 쓴 연쇄 법칙(chain rule)이다. 비복원 추출에서 "첫째가 불량, 둘째도 불량…"의 확률을 계산할 때 쓴다.</div></div>
+    <p>가장 흔한 쓰임새가 비복원 추출이다. 로트에서 칩을 하나 꺼내 확인하고 다시 넣지 않으면, 첫째 결과가 둘째의 확률을 바꾼다. 20개 중 불량 3개인 로트에서 첫째가 불량이면 남은 19개 중 불량은 2개이므로 \(P(\text{둘째 불량}\mid\text{첫째 불량}) = 2/19\)다. 흥미롭게도 첫째를 모를 때 둘째가 불량일 확률은 여전히 \(3/20\)이다 — 아래 미니 실험에서 확인해 보자.</p>
+
+    <figure class="mini" id="mini-urn">
+      <div class="mini-view"><canvas id="cv-urn"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>로트 속 불량 K <output id="urn-k-out"></output></span><input type="range" id="urn-k" min="1" max="10" value="3"></label>
+        <button class="btn" id="urn-one" type="button">두 개 꺼내기</button>
+        <button class="btn" id="urn-play" type="button"></button>
+        <span class="readout" id="urn-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>칩 20개짜리 로트에서 두 개를 차례로 꺼낸다(되돌려 넣지 않음). 재생을 누르면 수천 번 반복한다. 아래 막대는 반복 실험의 상대 도수(초록)와 이론값(자주 선). 첫째가 불량이었던 시행만 골라 센 "둘째 불량" 비율은 \((K-1)/19\)로, 첫째를 따지지 않은 "둘째 불량" 비율은 \(K/20\)으로 간다.</figcaption>
+    </figure>
+
+    <div class="example" data-title="분할표에서 조건부 확률 읽기">
+      <p>두 식각 장비 A, B에서 처리한 다이 1000개의 테스트 결과가 다음과 같다. A: 600개 중 불합격 18개, B: 400개 중 불합격 22개. 다이 하나를 무작위로 골랐을 때 (가) 불합격일 확률, (나) A에서 처리한 다이가 불합격일 확률, (다) B에서 처리한 다이가 불합격일 확률, (라) 불합격 다이가 B에서 처리되었을 확률을 구하라.</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 조건이 붙으면 그 조건에 맞는 행이나 열만 남기고 그 합으로 나눈다. 분할표에서는 \(P(A\mid B) = n(A\cap B)/n(B)\)다.</div>
+        <div class="step"><b>풀이</b> (가) \(P(F) = 40/1000 = 0.040\). (나) \(P(F\mid A) = 18/600 = 0.030\). (다) \(P(F\mid B) = 22/400 = 0.055\). (라) 이번에는 불합격 다이 40개가 새 표본 공간이다. \(P(B\mid F) = 22/40 = 0.55\). 정의로 확인하면 \(P(B\cap F)/P(F) = 0.022/0.040 = 0.55\).</div>
+        <div class="answer">(가) 0.040 (나) 0.030 (다) 0.055 (라) 0.55</div>
+        <div class="step"><b>검토</b> (다)와 (라)는 같은 교집합 22개를 서로 다른 분모(400과 40)로 나눈 것이다. "B 장비의 불량률"과 "불량 중 B의 몫"은 다른 질문이다. B는 다이의 40%만 처리했지만 불량의 55%를 냈다 — 공통성 분석이 찾는 신호가 바로 이것이다.</div>
+      </details>
+    </div>
+    <div class="example" data-title="비복원 추출과 곱셈 법칙">
+      <p>칩 20개가 든 트레이에 불량이 3개 섞여 있다. 두 개를 차례로 꺼낼 때(되돌려 넣지 않음) (가) 둘 다 불량일 확률, (나) 적어도 하나가 불량일 확률은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 곱셈 법칙: \(P(D_1\cap D_2) = P(D_1)P(D_2\mid D_1)\). "적어도 하나"는 여사건 "둘 다 양품"으로 계산한다.</div>
+        <div class="step"><b>풀이</b> (가) \(\frac{3}{20}\cdot\frac{2}{19} = \frac{6}{380} = 0.0158\). (나) \(P(G_1\cap G_2) = \frac{17}{20}\cdot\frac{16}{19} = 0.7158\)이므로 \(1 - 0.7158 = 0.284\).</div>
+        <div class="answer">(가) 0.0158 (나) 0.284</div>
+        <div class="step"><b>검토</b> 2장의 조합으로 풀어도 같다: \(\binom32/\binom{20}2 = 3/190 = 0.0158\). 복원 추출이었다면 (가)는 \((3/20)^2 = 0.0225\)로 조금 크다. 첫째가 불량이면 남은 불량이 줄어들기 때문이다.</div>
+      </details>
+    </div>
+    <div class="drill" id="drill-cond" data-title="분할표에서 조건부 확률 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="tree-total">
+    <h2>확률 나무와 전확률 공식</h2>
+    <p>여러 단계로 일어나는 실험은 <span class="term">확률 나무</span><span class="en">(probability tree)</span>로 정리하면 실수가 줄어든다. 각 갈림길의 가지에 그 단계의 조건부 확률을 적고, 뿌리에서 잎까지 가는 길의 확률은 가지의 확률을 곱해서(곱셈 법칙) 얻는다. 한 갈림길에서 나가는 가지의 확률 합은 늘 1이고, 모든 잎의 확률 합도 1이다.</p>
+    <p>검사 장비의 예를 보자. 다이가 실제로 불량(\(D\))인지 아닌지가 첫 갈림길이고, 장비가 경보(\(+\))를 울리는지가 둘째 갈림길이다. 둘째 갈림길의 확률은 첫 단계의 결과에 따라 다르다. 불량 다이를 잡아낼 확률 \(P(+\mid D)\)와 양품에 잘못 경보를 울릴 확률 \(P(+\mid D^c)\)는 장비의 성능이다.</p>
+
+    <div class="sim" id="sim-tree">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>끌어서 바꾸는 확률 나무와 뒤집은 나무</h3></div>
+      <div class="sim-body">
+        <div class="sim-view"><div class="sim-split"><div><canvas id="cv-tree"></canvas><span class="hint top">막대의 흰 원을 위아래로 끈다</span></div><div><canvas id="cv-tree2"></canvas></div></div></div>
+        <div class="sim-controls">
+          <button class="btn" id="tr-1" type="button">다이 1개 흘리기</button>
+          <button class="btn" id="tr-100" type="button">100개</button>
+          <button class="btn primary" id="tr-1000" type="button">1000개 흘리기</button>
+          <button class="btn" id="tr-reset" type="button">세기 지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">P(+) 전확률</span><span class="v" id="tr-pa">—</span></div>
+        <div class="stat"><span class="k">P(D | +) 베이즈</span><span class="v" id="tr-pba">—</span></div>
+        <div class="stat"><span class="k">흘린 다이</span><span class="v" id="tr-n">0</span></div>
+        <div class="stat"><span class="k">센 값: 경보 중 불량</span><span class="v" id="tr-emp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 뿌리 막대(불량률), \(D\) 막대(검출률), \(D^c\) 막대(오경보율)의 흰 원을 끌어 잎의 곱이 어떻게 바뀌는지 보자. ② 1000개를 흘려 잎에 쌓인 개수가 잎의 확률 × 1000에 가까워지는지 확인하자. ③ 오른쪽 뒤집은 나무는 같은 네 잎을 "경보 먼저" 순서로 다시 묶은 것이다. 불량률을 줄이면 \(P(D\mid +)\)가 어떻게 되는가?</div>
+    </div>
+
+    <h3>분할과 전확률 공식</h3>
+    <p>사건 \(B_1, B_2, \dots, B_k\)가 서로소이고 합집합이 \(\Omega\) 전체이면 이들을 표본 공간의 <span class="term">분할</span><span class="en">(partition)</span>이라 한다. 다이가 거쳐 간 식각 챔버(A, B, C), 웨이퍼 위치(중앙, 중간, 가장자리), 생산 교대조처럼 "어느 경로로 왔는가"가 대표적인 분할이다. 그러면 어떤 사건 \(A\)든 분할 조각에 걸친 몫으로 나눌 수 있다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 250" role="img" aria-label="표본 공간을 B1부터 B4까지 네 조각으로 나누고, 사건 A가 각 조각과 겹치는 부분의 합이 P(A)가 되는 그림">
+        <rect x="40" y="30" width="460" height="190" rx="8" fill="var(--surface)" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <line x1="170" y1="30" x2="170" y2="220" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <line x1="270" y1="30" x2="270" y2="220" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <line x1="410" y1="30" x2="410" y2="220" stroke="var(--text-dim)" stroke-width="1.5"/>
+        <text class="t" x="105" y="52" text-anchor="middle">B₁</text><text class="t" x="220" y="52" text-anchor="middle">B₂</text><text class="t" x="340" y="52" text-anchor="middle">B₃</text><text class="t" x="455" y="52" text-anchor="middle">B₄</text>
+        <ellipse cx="290" cy="140" rx="200" ry="55" fill="var(--bad)" fill-opacity=".22" stroke="var(--bad)" stroke-width="2"/>
+        <text class="t" x="290" y="146" text-anchor="middle" style="fill:var(--bad);font-weight:700">A</text>
+        <text class="t t-dim" x="120" y="200" text-anchor="middle">A∩B₁</text>
+        <text class="t" x="220" y="200" text-anchor="middle">A∩B₂</text>
+        <text class="t" x="340" y="200" text-anchor="middle">A∩B₃</text>
+        <text class="t" x="455" y="200" text-anchor="middle">A∩B₄</text>
+        <text class="t" x="530" y="80">P(A) = Σ P(A∩Bᵢ)</text>
+        <text class="t" x="530" y="112">     = Σ P(A | Bᵢ) P(Bᵢ)</text>
+        <text class="t t-dim" x="530" y="150">조각마다 "그 경로의 불량률"에</text>
+        <text class="t t-dim" x="530" y="172">"그 경로의 몫"을 곱해 더한다</text>
+        <text class="t t-dim" x="530" y="194">= 경로별 불량률의 가중 평균</text>
+      </svg>
+      <figcaption>분할 \(B_1,\dots,B_4\)가 사건 \(A\)를 서로소인 조각으로 자른다. 조각의 확률을 곱셈 법칙으로 쓰고 더한 것이 전확률 공식이다.</figcaption>
+    </figure>
+    <div class="formula">$$P(A) = \sum_{i=1}^{k} P(A\cap B_i) = \sum_{i=1}^{k} P(A\mid B_i)\,P(B_i)$$<div class="where">이것이 <span class="term">전확률 공식</span><span class="en">(law of total probability)</span>이다. 두 조각(\(B\), \(B^c\))이면 \(P(A) = P(A\mid B)P(B) + P(A\mid B^c)P(B^c)\). \(P(A)\)는 조건부 확률 \(P(A\mid B_i)\)들의 가중 평균이고, 가중치가 \(P(B_i)\)다. 그래서 \(P(A)\)는 늘 가장 작은 \(P(A\mid B_i)\)와 가장 큰 것 사이에 있다.</div></div>
+
+    <figure class="mini" id="mini-total">
+      <div class="mini-view"><canvas id="cv-total"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>라인 1 불량률 <output id="tot-r1-out"></output></span><input type="range" id="tot-r1" min="0" max="20" step="0.5" value="2"></label>
+        <label class="ctrl"><span>라인 2 불량률 <output id="tot-r2-out"></output></span><input type="range" id="tot-r2" min="0" max="20" step="0.5" value="8"></label>
+        <span class="readout" id="tot-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>두 생산 라인의 물량 몫 \(w = P(L_1)\)을 끌어 바꾸면, 전체 불량률 \(P(D) = r_1w + r_2(1-w)\)이 두 라인 불량률을 잇는 선분 위를 움직인다. 위쪽 막대는 같은 계산을 넓이로 보인다: 폭이 몫, 높이가 불량률, 빨간 넓이의 합이 전체 불량률이다.</figcaption>
+    </figure>
+
+    <div class="tangle" id="tg-total">
+      <p>세 식각 챔버가 다이를 각각 <span class="tn" data-var="s1" data-min="0" data-max="100" data-step="5" data-unit="%">50</span>, <span class="tn" data-var="s2" data-min="0" data-max="100" data-step="5" data-unit="%">30</span>, 나머지 <span class="tn-out" data-out="s3"></span>만큼 처리하고, 챔버별 불량률이 <span class="tn" data-var="d1" data-min="0" data-max="10" data-step="0.1" data-unit="%">1.0</span>, <span class="tn" data-var="d2" data-min="0" data-max="10" data-step="0.1" data-unit="%">2.0</span>, <span class="tn" data-var="d3" data-min="0" data-max="10" data-step="0.1" data-unit="%">5.0</span>이면 전체 불량률은 <span class="tn-out" data-out="tot"></span>이다. 불량 다이 하나를 집었을 때 그것이 셋째 챔버에서 왔을 확률은 <span class="tn-out" data-out="post"></span>(처리 몫은 <span class="tn-out" data-out="s3b"></span>)이다.</p>
+    </div>
+
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 300" role="img" aria-label="확률 나무를 뒤집는 과정: 불량 여부 먼저인 나무의 잎 확률을 경보 여부로 다시 묶어 경보 먼저인 나무를 만든다">
+        <g class="t">
+          <!-- 정방향 나무 -->
+          <circle cx="40" cy="150" r="6" fill="var(--text)"/>
+          <line x1="40" y1="150" x2="170" y2="75" stroke="var(--bad)" stroke-width="3"/>
+          <line x1="40" y1="150" x2="170" y2="225" stroke="var(--text-dim)" stroke-width="3"/>
+          <text x="86" y="98" style="fill:var(--bad)">D 0.02</text>
+          <text x="80" y="214">Dᶜ 0.98</text>
+          <line x1="170" y1="75" x2="300" y2="40" stroke="var(--accent-2)" stroke-width="2"/>
+          <line x1="170" y1="75" x2="300" y2="110" stroke="var(--text-dim)" stroke-width="2"/>
+          <line x1="170" y1="225" x2="300" y2="190" stroke="var(--accent-2)" stroke-width="2"/>
+          <line x1="170" y1="225" x2="300" y2="260" stroke="var(--text-dim)" stroke-width="2"/>
+          <text x="205" y="44" style="fill:var(--accent-2)">+ 0.95</text>
+          <text x="205" y="112">− 0.05</text>
+          <text x="205" y="196" style="fill:var(--accent-2)">+ 0.05</text>
+          <text x="205" y="262">− 0.95</text>
+        </g>
+        <g data-step="2" class="t">
+          <text x="310" y="44">D∩+ = 0.019</text>
+          <text x="310" y="114">D∩− = 0.001</text>
+          <text x="310" y="194">Dᶜ∩+ = 0.049</text>
+          <text x="310" y="264">Dᶜ∩− = 0.931</text>
+        </g>
+        <g data-step="3" class="t">
+          <rect x="304" y="26" width="112" height="24" rx="5" fill="none" stroke="var(--accent-2)" stroke-width="2"/>
+          <rect x="304" y="176" width="124" height="24" rx="5" fill="none" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="440" y="120" style="fill:var(--accent-2);font-weight:700">P(+) = 0.019 + 0.049 = 0.068</text>
+          <text x="440" y="142" class="t-dim">경보가 울린 두 잎을 모은다 (전확률)</text>
+        </g>
+        <g data-step="4" class="t">
+          <circle cx="470" cy="210" r="5" fill="var(--text)"/>
+          <line x1="470" y1="210" x2="560" y2="180" stroke="var(--accent-2)" stroke-width="3"/>
+          <line x1="470" y1="210" x2="560" y2="262" stroke="var(--text-dim)" stroke-width="3"/>
+          <text x="488" y="182" style="fill:var(--accent-2)">+ 0.068</text>
+          <line x1="560" y1="180" x2="650" y2="165" stroke="var(--bad)" stroke-width="2"/>
+          <line x1="560" y1="180" x2="650" y2="200" stroke="var(--text-dim)" stroke-width="2"/>
+          <text x="656" y="168" style="fill:var(--bad);font-weight:700">D | + = 0.279</text>
+          <text x="656" y="204">Dᶜ | + = 0.721</text>
+          <text x="572" y="276" class="t-dim">− 0.932 → D | − = 0.0011</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>정방향 나무: 먼저 다이가 불량인지(\(P(D) = 0.02\)), 그다음 장비가 경보를 울리는지(\(P(+\mid D) = 0.95\), \(P(+\mid D^c) = 0.05\)).</li><li>잎의 확률은 길을 따라 곱한다: \(P(D\cap +) = 0.02\times0.95 = 0.019\) 등. 네 잎의 합은 1이다.</li><li>"경보가 울렸다"는 두 잎 \(D\cap+\)와 \(D^c\cap+\)의 합집합이다. 전확률 공식으로 \(P(+) = 0.068\).</li><li>같은 잎을 경보 먼저 순서로 다시 묶으면 뒤집은 나무가 된다. \(P(D\mid +) = 0.019/0.068 = 0.279\) — 이것이 베이즈 정리다.</li></ol>
+      <figcaption>나무 뒤집기. 잎(교집합)의 확률은 어느 순서로 그려도 같다. 바뀌는 것은 가지에 적힌 조건부 확률뿐이다.</figcaption>
+    </figure>
+
+    <div class="example" data-title="세 챔버의 전체 불량률">
+      <p>한 식각 공정을 세 챔버가 나눠 맡는다. 다이의 50%는 챔버 1, 30%는 챔버 2, 20%는 챔버 3을 거치고, 각 챔버를 거친 다이의 불량률은 1%, 2%, 5%다. 무작위로 고른 다이가 불량일 확률은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 챔버 \(C_1, C_2, C_3\)은 분할이다. 전확률 공식 \(P(D) = \sum P(D\mid C_i)P(C_i)\).</div>
+        <div class="step"><b>풀이</b> \(P(D) = 0.01(0.5) + 0.02(0.3) + 0.05(0.2) = 0.005 + 0.006 + 0.010 = 0.021\).</div>
+        <div class="answer">\(P(D) = 0.021\) (2.1%)</div>
+        <div class="step"><b>검토</b> 답이 1%와 5% 사이에 있다(가중 평균). 단순 평균 2.67%가 아닌 것은 불량률이 낮은 챔버 1이 물량의 절반을 맡기 때문이다. 이 예는 베이즈 정리 절에서 "불량 다이는 어느 챔버에서 왔나"로 이어진다.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="independence">
+    <h2>독립 사건</h2>
+    <p>\(B\)가 일어났다는 정보가 \(A\)의 확률을 전혀 바꾸지 않을 때, 곧 \(P(A\mid B) = P(A)\)일 때 두 사건은 서로 정보를 주지 않는다. 이 조건에 \(P(A\mid B) = P(A\cap B)/P(B)\)를 넣으면 대칭적인 정의가 나온다.</p>
+    <div class="def"><span class="def-k">독립</span>
+      <p>두 사건 \(A\), \(B\)가 \(P(A\cap B) = P(A)\,P(B)\)를 만족하면 <span class="term">독립</span><span class="en">(independent)</span>이라 한다. 그렇지 않으면 종속(dependent)이다. \(P(B) > 0\)이면 이것은 \(P(A\mid B) = P(A)\)와 같고, \(P(A) > 0\)이면 \(P(B\mid A) = P(B)\)와도 같다.</p>
+    </div>
+    <p>\(A\)와 \(B\)가 독립이면 \(A\)와 \(B^c\), \(A^c\)와 \(B\), \(A^c\)와 \(B^c\)도 모두 독립이다(\(P(A\cap B^c) = P(A) - P(A)P(B) = P(A)P(B^c)\)). 독립은 그림으로 보면 "모자이크의 두 기둥 높이가 같다"는 뜻이다. 가로를 \(P(A)\)와 \(P(A^c)\)로 나누고, 각 기둥을 \(B\)의 조건부 확률로 나누면 두 기둥의 \(B\) 높이가 같을 때만 독립이다.</p>
+
+    <div class="predict" data-for="sim-indep">
+      <p>\(P(A) = 0.3\), \(P(B) = 0.4\)이고 \(A\)와 \(B\)가 서로소(동시에 일어날 수 없음)라면, \(A\)와 \(B\)는 독립일까?</p>
+      <div class="opts"><button class="opt">독립이다 — 서로 아무 관계가 없으니까</button><button class="opt" data-correct>독립이 아니다 — 오히려 강하게 종속이다</button><button class="opt">주어진 정보로는 알 수 없다</button></div>
+      <div class="quiz-exp">서로소이면 \(P(A\cap B) = 0\)인데 \(P(A)P(B) = 0.12\)다. \(A\)가 일어났다는 것을 알면 \(B\)는 확실히 일어나지 않았다는 강한 정보를 얻는다. 아래 모자이크에서 \(A\) 기둥의 \(B\) 높이를 0으로 끌어 보자.</div>
+    </div>
+    <div class="sim" id="sim-indep">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>모자이크로 보는 독립 — 과녁 맞히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-indep"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>모드</span><div class="seg" id="in-mode"><button data-value="free" class="on">자유</button><button data-value="game">과녁 맞히기</button></div></div>
+          <button class="btn" id="in-new" type="button">새 과녁</button>
+          <div id="in-table"></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">P(A)P(B)</span><span class="v" id="in-prod">—</span></div>
+        <div class="stat"><span class="k">P(A∩B)</span><span class="v" id="in-ab">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="in-verdict">—</span></div>
+        <div class="stat"><span class="k">과녁 점수</span><span class="v cp-score" id="in-score">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: 흰 원 세 개(가운데 경계, 두 기둥의 B 높이)를 끈다. ① 두 기둥의 높이를 같게 맞추면 \(P(A\cap B) = P(A)P(B)\)가 되는 것을 확인하자. ② "과녁 맞히기"에서는 제시된 \(P(A)\), \(P(B)\)를 가지면서 독립인 모자이크를 만들어야 한다(각각 ±0.02 이내). 다섯 개를 연달아 맞혀 보자. ③ 오른쪽 표는 다이 200개의 기대 도수다. 독립이면 각 칸이 "행 합 × 열 합 ÷ 200"이 된다(12장 카이제곱 검정의 기대 도수).</div>
+    </div>
+
+    <figure class="mini" id="mini-dice">
+      <div class="mini-view"><canvas id="cv-dice"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>사건 A</span><select id="dc-a"><option value="even1">첫째 눈이 짝수</option><option value="six1" selected>첫째 눈이 6</option><option value="le2">첫째 눈이 2 이하</option></select></label>
+        <label class="ctrl"><span>사건 B</span><select id="dc-b"><option value="sum7" selected>합이 7</option><option value="sum8">합이 8</option><option value="odd2">둘째 눈이 홀수</option><option value="same">두 눈이 같음</option><option value="ge10">합이 10 이상</option></select></label>
+        <button class="btn" id="dc-play" type="button"></button>
+        <span class="readout" id="dc-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>주사위 두 개의 36칸 표본 공간. \(A\)는 초록 테두리, \(B\)는 자주 칠, 겹친 칸이 \(A\cap B\)다. "첫째 눈이 6"과 "합이 7"은 독립이지만 "합이 8"과는 종속이다 — 숫자를 세어 확인하고, 재생으로 두 주사위를 수천 번 굴려 칸마다 쌓이는 도수를 보자.</figcaption>
+    </figure>
+
+    <h3>셋 이상의 사건: 쌍별 독립과 상호 독립</h3>
+    <p>사건이 셋 이상이면 독립의 조건이 더 많다. \(A_1, \dots, A_n\)이 <span class="term">상호 독립</span><span class="en">(mutually independent)</span>이라는 것은 그중 어떤 부분 모임을 골라도 교집합의 확률이 개별 확률의 곱이라는 뜻이다. 세 사건이면 네 개의 식</p>
+    <div class="formula">$$P(A\cap B) = P(A)P(B),\quad P(A\cap C) = P(A)P(C),\quad P(B\cap C) = P(B)P(C),\quad P(A\cap B\cap C) = P(A)P(B)P(C)$$</div>
+    <p>이 모두 성립해야 한다. 앞의 세 식만 성립하는 것을 <span class="term">쌍별 독립</span><span class="en">(pairwise independent)</span>이라 하는데, 쌍별 독립이라고 해서 상호 독립인 것은 아니다. 동전 두 개로 그 반례를 만들 수 있다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 230" role="img" aria-label="동전 두 개의 네 결과에서 사건 A, B, C가 쌍별로는 독립이지만 셋이 함께는 독립이 아닌 예">
+        <g class="t">
+          <text x="30" y="34" style="font-weight:700">결과 (각 1/4)</text>
+          <text x="210" y="34" style="fill:var(--accent);font-weight:700">A: 첫째 앞</text>
+          <text x="330" y="34" style="fill:var(--accent-2);font-weight:700">B: 둘째 앞</text>
+          <text x="450" y="34" style="fill:var(--bad);font-weight:700">C: 둘이 같음</text>
+          <g>
+            <text x="60" y="72">앞 앞</text><text x="60" y="112">앞 뒤</text><text x="60" y="152">뒤 앞</text><text x="60" y="192">뒤 뒤</text>
+          </g>
+          <g fill="var(--accent)"><circle cx="250" cy="67" r="9"/><circle cx="250" cy="107" r="9"/></g>
+          <g fill="var(--accent-2)"><circle cx="370" cy="67" r="9"/><circle cx="370" cy="147" r="9"/></g>
+          <g fill="var(--bad)"><circle cx="500" cy="67" r="9"/><circle cx="500" cy="187" r="9"/></g>
+          <g stroke="var(--border)"><line x1="30" y1="86" x2="540" y2="86"/><line x1="30" y1="126" x2="540" y2="126"/><line x1="30" y1="166" x2="540" y2="166"/></g>
+          <text x="570" y="70">P(A) = P(B) = P(C) = 1/2</text>
+          <text x="570" y="100">P(A∩B) = P(A∩C) = P(B∩C) = 1/4 ✓</text>
+          <text x="570" y="130" style="fill:var(--bad);font-weight:700">P(A∩B∩C) = 1/4 ≠ 1/8 ✗</text>
+          <text x="570" y="166" class="t-dim">A와 B를 알면 C가 정해진다:</text>
+          <text x="570" y="188" class="t-dim">쌍별 독립이지만 상호 독립은 아니다</text>
+        </g>
+      </svg>
+      <figcaption>쌍별 독립과 상호 독립. 셋 중 아무 둘은 서로 정보를 주지 않지만, 둘을 함께 알면 셋째가 결정된다.</figcaption>
+    </figure>
+    <p>공학에서 독립은 대개 계산으로 확인하는 성질이 아니라 <em>모형의 가정</em>이다. "부품의 고장이 서로 독립", "다이마다 불량이 독립"이라고 두면 계산이 곱셈으로 쉬워진다. 그러나 실제 결함은 군집을 이루고(한 파티클 소나기가 이웃 다이를 함께 죽인다), 같은 전원을 쓰는 부품은 함께 고장 난다. 독립 가정이 맞는지는 자료로 따져 봐야 한다. 아래 미니 실험의 "군집" 모드가 그런 경우다.</p>
+
+    <figure class="mini" id="mini-streak">
+      <div class="mini-view"><canvas id="cv-streak"></canvas></div>
+      <div class="mini-ctrl">
+        <div class="ctrl"><span>불량 발생</span><div class="seg" id="sk-mode"><button data-value="ind" class="on">독립</button><button data-value="clu">군집</button></div></div>
+        <label class="ctrl"><span>불량률 p <output id="sk-p-out"></output></span><input type="range" id="sk-p" min="0.1" max="0.5" step="0.05" value="0.3"></label>
+        <button class="btn" id="sk-play" type="button"></button>
+        <span class="readout" id="sk-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>다이를 한 줄로 검사하며 "직전에 불량이 \(k\)번 연속 나온 뒤 다음 다이가 불량일 비율"을 센다. 독립이면 막대가 모두 \(p\) 근처로 평평하다 — 연속 불량 뒤에 "이번엔 양품 차례"라는 <span class="term">도박사의 오류</span><span class="en">(gambler's fallacy)</span>는 틀렸다. 군집 모드(직전 다이가 불량이면 다음 다이도 불량이 되기 쉬운 마르코프 모형, 장기 불량률은 같다)에서는 \(k = 0\)과 \(k \ge 1\) 사이에서 막대가 크게 뛴다 — 직전 결과가 정보를 준다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="reliability">
+    <h2>직렬·병렬 계통의 신뢰도</h2>
+    <p>독립이 가장 큰 힘을 내는 곳이 계통의 <span class="term">신뢰도</span><span class="en">(reliability)</span> 계산이다. 부품 하나의 신뢰도 \(r\)은 정해진 기간(임무 시간) 동안 그 부품이 제 기능을 할 확률이다. 부품들이 서로 독립으로 고장 난다고 가정하면, 계통 전체의 신뢰도는 부품의 연결 방식만으로 정해진다. 17장에서 신뢰도를 시간의 함수 \(R(t)\)로 넓히는데, 여기서는 시간을 고정한 확률 하나로 다룬다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 250" role="img" aria-label="직렬 계통, 병렬 계통, 혼합 계통의 블록 다이어그램과 신뢰도 식">
+        <g class="t">
+          <text x="20" y="30" style="font-weight:700">직렬: 모두 살아야 산다</text>
+          <line x1="20" y1="70" x2="370" y2="70" stroke="var(--text-dim)" stroke-width="2"/>
+          <rect x="50" y="50" width="60" height="40" rx="6" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="75" text-anchor="middle">r₁</text>
+          <rect x="150" y="50" width="60" height="40" rx="6" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="2"/><text x="180" y="75" text-anchor="middle">r₂</text>
+          <rect x="250" y="50" width="60" height="40" rx="6" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="2"/><text x="280" y="75" text-anchor="middle">r₃</text>
+          <text x="20" y="118" style="fill:var(--accent);font-weight:700">R = r₁ r₂ r₃</text>
+
+          <text x="430" y="30" style="font-weight:700">병렬: 하나만 살아도 산다</text>
+          <line x1="430" y1="110" x2="480" y2="110" stroke="var(--text-dim)" stroke-width="2"/>
+          <line x1="720" y1="110" x2="770" y2="110" stroke="var(--text-dim)" stroke-width="2"/>
+          <path d="M480 60 V160 M720 60 V160" stroke="var(--text-dim)" stroke-width="2"/>
+          <path d="M480 60 H570 M630 60 H720 M480 110 H570 M630 110 H720 M480 160 H570 M630 160 H720" stroke="var(--text-dim)" stroke-width="2"/>
+          <rect x="570" y="42" width="60" height="36" rx="6" fill="var(--bg-elev)" stroke="var(--accent-2)" stroke-width="2"/><text x="600" y="65" text-anchor="middle">r₁</text>
+          <rect x="570" y="92" width="60" height="36" rx="6" fill="var(--bg-elev)" stroke="var(--accent-2)" stroke-width="2"/><text x="600" y="115" text-anchor="middle">r₂</text>
+          <rect x="570" y="142" width="60" height="36" rx="6" fill="var(--bg-elev)" stroke="var(--accent-2)" stroke-width="2"/><text x="600" y="165" text-anchor="middle">r₃</text>
+          <text x="430" y="206" style="fill:var(--accent-2);font-weight:700">R = 1 − (1−r₁)(1−r₂)(1−r₃)</text>
+
+          <text x="20" y="168" style="font-weight:700">혼합: 블록을 하나씩 줄여 간다</text>
+          <text x="20" y="196">직렬 블록 → 곱, 병렬 블록 → 1 − 실패 확률의 곱</text>
+          <text x="20" y="222" class="t-dim">k-out-of-n: n개 중 k개 이상이 살아야 산다 (이항 분포, 4장)</text>
+        </g>
+      </svg>
+      <figcaption>신뢰도 블록 다이어그램. 직렬은 "모두 성공"의 교집합이라 곱이 되고, 병렬은 "모두 실패"의 여사건이라 1에서 실패 확률의 곱을 뺀다. 둘 다 독립 고장을 가정한다.</figcaption>
+    </figure>
+    <div class="formula">$$R_{\text{직렬}} = \prod_{i=1}^{n} r_i,\qquad R_{\text{병렬}} = 1 - \prod_{i=1}^{n}(1 - r_i),\qquad R_{k/n} = \sum_{j=k}^{n}\binom{n}{j}r^j(1-r)^{n-j}$$<div class="where"><span class="term">직렬 계통</span><span class="en">(series system)</span>은 부품이 하나라도 고장 나면 멈추는 계통이고, <span class="term">병렬 계통</span><span class="en">(parallel system)</span>은 모든 부품이 고장 나야 멈추는 계통(중복 설계)이다. 같은 부품 \(n\)개의 <span class="term">k-out-of-n 계통</span><span class="en">(k-out-of-n system)</span>은 \(n\)개 중 \(k\)개 이상이 살아 있으면 동작한다. \(k = n\)이면 직렬, \(k = 1\)이면 병렬이다.</div></div>
+    <p>직렬 계통의 신뢰도는 가장 약한 부품보다도 낮다. 부품이 많아지면 놀랄 만큼 빨리 떨어진다. 반대로 병렬은 실패 확률을 곱하므로 몇 개만 겹쳐도 거의 1이 된다.</p>
+    <div class="tangle" id="tg-series">
+      <p>신뢰도 <span class="tn" data-var="r" data-min="0.9" data-max="0.9999" data-step="0.0001">0.9900</span>인 부품 <span class="tn" data-var="n" data-min="1" data-max="500" data-step="1">20</span>개를 직렬로 이으면 계통 신뢰도는 <span class="tn-out" data-out="ser"></span>이다. 같은 부품을 <span class="tn" data-var="m" data-min="1" data-max="5" data-step="1">2</span>개씩 병렬로 묶은 블록 \(n\)개를 직렬로 이으면(부품 수 <span class="tn-out" data-out="parts"></span>) <span class="tn-out" data-out="mix"></span>로 오른다.</p>
+    </div>
+    <div class="predict" data-for="mini-curve">
+      <p>신뢰도 0.99인 부품 100개를 직렬로 이은 계통의 신뢰도는 대략 얼마일까?</p>
+      <div class="opts"><button class="opt">약 0.99 — 부품마다 99%니까</button><button class="opt">약 0.90</button><button class="opt" data-correct>약 0.37</button><button class="opt">약 0.01</button></div>
+      <div class="quiz-exp">\(0.99^{100} = 0.366 \approx e^{-1}\). 실패 확률이 작으면 \((1-q)^n \approx e^{-nq}\)이므로, 부품 수 × 부품 실패 확률이 1이면 계통 신뢰도가 약 37%로 떨어진다. 아래 그림에서 \(n\)을 끌어 확인하자.</div>
+    </div>
+    <figure class="mini" id="mini-curve">
+      <div class="mini-view"><canvas id="cv-curve"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>부품 신뢰도 r <output id="cu-r-out"></output></span><input type="range" id="cu-r" min="0.5" max="0.999" step="0.001" value="0.99"></label>
+        <span class="readout" id="cu-rd"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>부품 수 \(n\)(로그 눈금)에 따른 직렬 신뢰도 \(r^n\)(빨강)과 병렬 신뢰도 \(1-(1-r)^n\)(초록). 점선은 근사 \(e^{-n(1-r)}\). 직렬은 \(n(1-r)\)이 1에 이르면 37%로 무너지고, 병렬은 두세 개만으로 거의 1에 붙는다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-rel">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>중복 설계 게임: 최소 비용으로 목표 신뢰도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-rel"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>목표 신뢰도</span><div class="seg" id="rl-goal"><button data-value="0.99">0.99</button><button data-value="0.999" class="on">0.999</button></div></div>
+          <label class="check"><input type="checkbox" id="rl-cc"> 공통 원인 고장 포함(단마다 0.2%)</label>
+          <button class="btn" id="rl-play" type="button"></button>
+          <button class="btn" id="rl-reset" type="button">처음 설계로</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">계통 신뢰도 R</span><span class="v" id="rl-R">—</span></div>
+        <div class="stat"><span class="k">비용</span><span class="v" id="rl-cost">—</span></div>
+        <div class="stat"><span class="k">모의 임무 성공률</span><span class="v" id="rl-mc">—</span></div>
+        <div class="stat"><span class="k">과제</span><span class="v cp-score" id="rl-goal-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 펌프·제어기·센서·전원 네 단이 직렬로 이어진 장비다. 처음 설계(모두 1개)의 신뢰도는 0.705다. 각 단을 병렬로 늘려 목표를 넘기되 비용을 최소로 하자 — 최적 설계에 이르면 "최적!"이 뜬다. ② 비용 대비 효과가 큰 단은 어디인가? 신뢰도가 낮고 값싼 단을 먼저 늘리는 것이 대개 이득이다. ③ 공통 원인 고장(같은 전원 서지가 병렬 부품을 한꺼번에 죽임)을 켜면 아무리 늘려도 신뢰도가 일정 값을 못 넘는다. 독립 가정이 깨지는 대가다.</div>
+    </div>
+
+    <div class="example" data-title="혼합 계통의 신뢰도">
+      <p>검사 장비의 신호 경로가 광원 A(신뢰도 0.95) → 검출기 두 개 B₁, B₂(각 0.90, 병렬) → 처리 보드 C(0.99)로 이어진다. 고장은 서로 독립이다. (가) 계통 신뢰도는? (나) 검출기를 하나만 두었다면?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 병렬 블록을 먼저 하나의 등가 부품으로 줄인 다음 직렬로 곱한다.</div>
+        <div class="step"><b>풀이</b> 병렬 블록: \(1 - (1-0.90)^2 = 0.99\). (가) \(R = 0.95\times0.99\times0.99 = 0.9311\). (나) \(R = 0.95\times0.90\times0.99 = 0.8465\).</div>
+        <div class="answer">(가) 0.931 (나) 0.846</div>
+        <div class="step"><b>검토</b> 중복 검출기 하나가 계통 실패 확률을 15.4%에서 6.9%로 절반 이하로 줄였다. 이제 가장 약한 고리는 광원 A(실패 5%)이므로, 다음 개선은 A를 이중화하는 것이다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>메모리의 여분 행·열은 병렬 중복이다</strong> DRAM과 SRAM 배열에는 여분 행과 열이 있어서, 테스트에서 고장 난 셀이 나오면 퓨즈를 끊어 여분으로 바꿔 단다. 블록 하나에 여분이 \(s\)개 있으면 고장 셀이 \(s\)개 이하일 때 블록이 살아남는다 — \(k\)-out-of-\(n\) 계통과 같은 계산이다. 다만 결함은 독립이 아니라 군집을 이루므로(한 파티클이 이웃 셀 여러 개를 죽인다), 독립 가정으로 계산한 리페어 후 수율은 실제보다 낙관적일 수 있다. 실제 수율 모델은 군집을 음이항 분포로 넣는다. → <a href="https://semi.euiyun.com/memory/chapters/test.html">MemoryBook · 테스트와 수율(리던던시와 리페어)</a></div>
+    <div class="drill" id="drill-rel" data-title="직렬·병렬 계통 신뢰도 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="bayes">
+    <h2>베이즈 정리와 기저율 오류</h2>
+    <p>나무를 뒤집는 계산을 한 줄로 쓴 것이 <span class="term">베이즈 정리</span><span class="en">(Bayes' theorem)</span>다. 분자는 곱셈 법칙, 분모는 전확률 공식이다.</p>
+    <div class="formula">$$P(B_j\mid A) = \frac{P(A\mid B_j)\,P(B_j)}{\sum_{i} P(A\mid B_i)\,P(B_i)},\qquad P(D\mid +) = \frac{P(+\mid D)P(D)}{P(+\mid D)P(D) + P(+\mid D^c)P(D^c)}$$<div class="where">\(P(B_j)\)는 증거 \(A\)를 보기 전의 믿음인 <span class="term">사전 확률</span><span class="en">(prior probability)</span>, \(P(B_j\mid A)\)는 증거를 본 뒤의 <span class="term">사후 확률</span><span class="en">(posterior probability)</span>이다. \(P(A\mid B_j)\)는 각 가설 아래서 그 증거가 나올 확률로 <span class="term">가능도</span><span class="en">(likelihood)</span>라 부른다. 사후 확률은 "사전 확률 × 가능도"에 비례하고, 분모는 합을 1로 맞추는 정규화 상수다.</div></div>
+    <h3>검사 장비의 네 가지 결과</h3>
+    <p>불량(\(D\))과 양품(\(D^c\)), 경보(\(+\))와 통과(\(-\))를 엇갈리면 네 칸이 생긴다. 불량을 잡아낸 비율 \(P(+\mid D)\)를 <span class="term">민감도</span><span class="en">(sensitivity)</span>(검출률, 포획률), 양품을 통과시킨 비율 \(P(-\mid D^c)\)를 <span class="term">특이도</span><span class="en">(specificity)</span>라 한다. 양품에 울린 경보 \(P(+\mid D^c) = 1 - \)특이도가 오경보율이고, 반도체 현장에서는 양품을 버리는 이 실수를 <span class="term">과검출</span><span class="en">(overkill, false alarm)</span>, 불량을 놓쳐 내보내는 실수 \(P(-\mid D)\)를 <span class="term">미검출</span><span class="en">(underkill, escape)</span>이라 한다. 그리고 실무자가 정말 궁금한 것은 장비 성능이 아니라 "경보가 울린 다이가 진짜 불량일 확률" \(P(D\mid +)\), 곧 <span class="term">양성 예측도</span><span class="en">(positive predictive value, PPV)</span>다(분류에서는 정밀도·순도라고 한다).</p>
+    <div class="table-wrap"><table class="cp-tbl">
+      <thead><tr><th></th><th>경보 (+)</th><th>통과 (−)</th><th>행이 정하는 비율</th></tr></thead>
+      <tbody>
+        <tr><th>불량 D</th><td>참 양성 (검출)</td><td class="cp-bad">미검출 · 유출</td><td>민감도 \(P(+\mid D)\)</td></tr>
+        <tr><th>양품 Dᶜ</th><td class="cp-bad">과검출 · 오경보</td><td>참 음성</td><td>특이도 \(P(-\mid D^c)\)</td></tr>
+        <tr><th>열이 정하는 비율</th><td>PPV \(P(D\mid +)\)</td><td>\(P(D\mid -)\) → 출하 불량</td><td></td></tr>
+      </tbody>
+    </table></div>
+    <p>민감도와 특이도는 장비의 성질이라 행 안에서 정해진다. PPV는 열 안에서 정해지므로 행의 크기, 곧 불량률(기저율)에 따라 크게 달라진다. 이것을 잊고 "검출률 99%니까 걸린 칩은 99% 불량"이라고 판단하는 실수가 <span class="term">기저율 오류</span><span class="en">(base rate fallacy)</span>다.</p>
+
+    <div class="predict" data-for="sim-bayes">
+      <p>불량률이 0.1%인 라인에서 검사 장비가 불량을 99% 잡아내고, 양품에는 1%만 잘못 경보를 울린다. 경보가 울린 다이가 진짜 불량일 확률은?</p>
+      <div class="opts"><button class="opt">약 99%</button><button class="opt">약 90%</button><button class="opt">약 50%</button><button class="opt" data-correct>약 9%</button></div>
+      <div class="quiz-exp">10만 개로 세어 보자. 불량 100개 중 99개가 경보를 울린다. 양품 99,900개의 1%인 999개도 경보를 울린다. 경보 1,098개 중 진짜 불량은 99개, 곧 9.0%다. 드문 불량은 아무리 잘 잡아도 많은 양품에서 나오는 오경보에 묻힌다. 아래 넓이 그림에서 확인하자.</div>
+    </div>
+    <div class="sim" id="sim-bayes">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>베이즈 넓이 그림: 경보가 울린 칸만 모으기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-bayes"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>불량률 P(D) <output id="by-p-out"></output></span><input type="range" id="by-p" min="-3" max="-0.3" step="0.01" value="-3"></label>
+          <label class="check"><input type="checkbox" id="by-zoom" checked> 불량 기둥 넓혀 보기(돋보기)</label>
+          <button class="btn" id="by-play" type="button"></button>
+          <button class="btn" id="by-reset" type="button">점 지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">PPV P(D | +)</span><span class="v" id="by-ppv">—</span></div>
+        <div class="stat"><span class="k">10만 개로 세면</span><span class="v" id="by-nf">—</span></div>
+        <div class="stat"><span class="k">P(D | −) 출하 불량</span><span class="v" id="by-npv">—</span></div>
+        <div class="stat"><span class="k">무작위 다이로 센 PPV</span><span class="v" id="by-emp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 불량률을 0.1%에서 10%로 올려 보자. 장비는 그대로인데 PPV가 9%에서 90% 넘게 뛴다. ② 오경보율(오른쪽 기둥의 경계)을 1%에서 0.1%로 줄이면 PPV는? 드문 불량을 찾을 때는 민감도보다 특이도가 PPV를 좌우한다. ③ 재생을 누르면 다이(점)가 정사각형 위에 무작위로 떨어진다. 경보 칸에 떨어진 점 중 빨간 점의 비율이 PPV로 수렴한다. 돋보기를 끄면 불량 기둥의 실제 폭이 얼마나 가는지 보인다.</div>
+    </div>
+
+    <div class="tangle" id="tg-ppv">
+      <p>불량률 <span class="tn" data-var="p" data-min="0.01" data-max="30" data-step="0.01" data-unit="%">0.10</span>, 민감도 <span class="tn" data-var="se" data-min="50" data-max="100" data-step="0.1" data-unit="%">99.0</span>, 오경보율 <span class="tn" data-var="fa" data-min="0" data-max="20" data-step="0.01" data-unit="%">1.00</span>인 검사에서 경보가 울린 다이가 불량일 확률은 <span class="tn-out" data-out="ppv"></span>이다. 다이 10만 개라면 경보 <span class="tn-out" data-out="nflag"></span>개 중 진짜 불량이 <span class="tn-out" data-out="ntp"></span>개다. 통과한 다이 중 불량(유출)은 <span class="tn-out" data-out="dppm"></span> DPPM이다.</p>
+    </div>
+
+    <div class="example" data-title="드문 불량과 정확한 검사">
+      <p>불량률 0.1%인 다이를 민감도 99%, 오경보율 1%인 장비로 검사한다. (가) 경보가 울린 다이가 불량일 확률은? (나) 통과한 다이가 불량일 확률은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 베이즈 정리. 분모 \(P(+)\)는 전확률 공식으로 구한다.</div>
+        <div class="step"><b>풀이</b> \(P(+) = 0.99(0.001) + 0.01(0.999) = 0.00099 + 0.00999 = 0.01098\). (가) \(P(D\mid +) = 0.00099/0.01098 = 0.0902\). (나) \(P(-) = 1 - 0.01098 = 0.98902\), \(P(D\cap -) = 0.01\times0.001 = 0.00001\)이므로 \(P(D\mid -) = 1.011\times10^{-5}\) (약 10 DPPM).</div>
+        <div class="answer">(가) 0.090 (나) \(1.01\times10^{-5}\)</div>
+        <div class="step"><b>검토</b> 경보 열의 91%가 오경보다. 그렇다고 장비가 쓸모없는 것은 아니다. 사전 확률 0.1%를 9%로 90배 올렸고, 통과 다이의 불량은 1000 DPPM에서 10 DPPM으로 100분의 1로 줄였다. 경보 다이는 버리기보다 재검사(다음 절)나 리뷰로 한 번 더 거르는 것이 합리적이다.</div>
+      </details>
+    </div>
+
+    <div class="callout warn"><strong>검사관의 오류: \(P(A\mid B)\)와 \(P(B\mid A)\)를 바꿔 읽기</strong><p>"불량 다이라면 이 이상 신호가 나올 확률이 99%다"와 "이 이상 신호가 나왔으니 99% 불량이다"는 다른 문장이다. 앞은 \(P(+\mid D)\), 뒤는 \(P(D\mid +)\)다. 법정에서 "무죄라면 이 증거가 나올 확률은 100만분의 1"을 "무죄일 확률이 100만분의 1"로 읽는 실수를 <span class="term">검사관의 오류</span><span class="en">(prosecutor's fallacy)</span>라 한다. 인구 수백만 명 중 그 증거에 맞는 사람이 여럿일 수 있으므로, 사전 확률 없이는 사후 확률을 말할 수 없다. 공정 이상 분석에서 "이 장비를 거친 웨이퍼의 90%가 불량"과 "불량 웨이퍼의 90%가 이 장비를 거쳤다"를 섞는 것도 같은 실수다 — 장비 하나가 물량의 90%를 처리한다면 뒤의 문장은 아무것도 말해 주지 않는다.</p></div>
+
+    <div class="callout semi"><strong>과잉 불량과 유출, 그리고 DPPM</strong> 웨이퍼 테스트와 최종 테스트의 한계값(리밋)을 조이면 미검출(유출)은 줄지만 과검출(과잉 불량, 수율 손실)이 는다. 측정 잡음이 있는 파라미터 테스트에서 이 둘은 늘 맞바뀐다. 출하 품질의 척도인 DPPM은 이 장의 \(P(D\mid -)\times10^6\), 곧 "통과한 칩 중 불량"이다. 가드밴드를 얼마나 둘지, 그 결과 양품을 몇 % 버리는지를 이 절의 베이즈 계산으로 따진다. → <a href="https://semi.euiyun.com/test/chapters/limits.html">TestBook · 셔무, 특성 평가와 가드밴드(과잉 불량과 유출 계산)</a></div>
+
+    <h3>불량 원인 추적: 어느 챔버에서 왔나</h3>
+    <p>분할이 셋 이상이어도 계산은 같다. 불량 다이 하나가 발견되었을 때 그 다이가 각 챔버를 거쳤을 사후 확률은 "처리 몫 × 그 챔버의 불량률"에 비례한다. 처리 몫이 작아도 불량률이 높은 챔버는 불량 다이 무리에서 몫이 커진다. 아래에서 챔버의 처리 몫(가로 폭)과 불량률(빨간 높이)을 끌어 보자.</p>
+    <div class="sim" id="sim-root">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>불량 다이의 출신 챔버 역추적</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-root"></canvas></div>
+        <div class="sim-controls">
+          <button class="btn" id="rt-one" type="button">불량 다이 하나 추적</button>
+          <button class="btn" id="rt-play" type="button"></button>
+          <button class="btn" id="rt-reset" type="button">세기 지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">전체 불량률 P(D)</span><span class="v" id="rt-pd">—</span></div>
+        <div class="stat"><span class="k">사후 P(C₁|D), P(C₂|D), P(C₃|D)</span><span class="v" id="rt-post">—</span></div>
+        <div class="stat"><span class="k">추적한 불량 다이</span><span class="v" id="rt-n">0</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 처음 값(몫 50·30·20%, 불량률 1·2·5%)에서 불량의 48%가 몫이 가장 작은 챔버 3에서 온다. 재생을 눌러 불량 다이를 하나씩 추적하면 오른쪽 출신 막대가 사후 확률로 쌓인다. ② 세 챔버의 불량률을 같게 만들면 사후 확률은 무엇과 같아지는가? (불량이 아무 정보도 주지 않는다 — 독립.) ③ 챔버 1의 몫을 크게 하고 불량률을 조금만 올려도 불량 무리에서 챔버 1이 가장 많아질 수 있다. "불량의 대부분이 이 장비에서 나왔다"만으로 범인을 지목하면 안 되는 이유다.</div>
+    </div>
+    <div class="example" data-title="불량 다이의 출신 챔버">
+      <p>앞 절 예제(챔버 몫 50·30·20%, 불량률 1·2·5%)에서 불량 다이 하나를 발견했다. 이 다이가 각 챔버를 거쳤을 확률은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 베이즈 정리. 분모는 앞에서 구한 \(P(D) = 0.021\)이다.</div>
+        <div class="step"><b>풀이</b> \(P(C_1\mid D) = 0.005/0.021 = 0.238\), \(P(C_2\mid D) = 0.006/0.021 = 0.286\), \(P(C_3\mid D) = 0.010/0.021 = 0.476\).</div>
+        <div class="answer">0.238, 0.286, 0.476</div>
+        <div class="step"><b>검토</b> 합이 1이다. 챔버 3은 다이의 20%만 처리했지만 불량의 48%를 냈다. 사후 확률 ÷ 사전 확률(챔버 3은 \(0.476/0.2 = 2.38\)배, 챔버 1은 0.48배)이 클수록 그 챔버가 의심스럽다. 이 비는 \(P(D\mid C_i)/P(D)\)와 같다.</div>
+      </details>
+    </div>
+    <div class="callout semi"><strong>공통성 분석과 결함 리뷰는 베이즈 계산이다</strong> 수율이 떨어진 로트가 나오면 엔지니어는 불량 웨이퍼들이 공통으로 거친 장비·챔버·레티클을 로트 이력에서 찾는다(공통성 분석). 이때 비교해야 하는 것은 "불량 중 그 장비의 몫"(사후)과 "전체 중 그 장비의 몫"(사전)의 차이다. 또 결함 검사기가 보고한 수천 개의 신호 중 상당수는 수율과 무관한 뉴슨스여서, 리뷰 SEM으로 표본을 골라 보는 것은 경보의 PPV(순도)를 재는 일이다. 드문 치명 결함일수록 순도가 낮다는 것은 이 절의 기저율 효과 그대로다. → <a href="https://semi.euiyun.com/yield/chapters/commonality.html">YieldBook · 공통성 분석과 근본 원인</a> · <a href="https://semi.euiyun.com/yield/chapters/classify.html">YieldBook · 검출 · 리뷰 · 분류</a></div>
+    <div class="drill" id="drill-bayes" data-title="베이즈 정리(양성 예측도) 반복 연습"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="updating">
+    <h2>사전·사후 확률의 갱신</h2>
+    <p>베이즈 정리의 진짜 힘은 되풀이에 있다. 증거를 하나 보고 얻은 사후 확률은 다음 증거를 볼 때의 사전 확률이 된다. 이 갱신을 가장 깔끔하게 쓰는 방법이 오즈다. 확률 \(p\)의 <span class="term">오즈</span><span class="en">(odds)</span>는 \(p/(1-p)\)다(확률 0.2는 오즈 1:4 = 0.25). 두 가설 \(D\), \(D^c\)에 베이즈 정리를 각각 쓰고 나누면 분모가 지워진다.</p>
+    <div class="formula">$$\underbrace{\frac{P(D\mid +)}{P(D^c\mid +)}}_{\text{사후 오즈}} = \underbrace{\frac{P(+\mid D)}{P(+\mid D^c)}}_{\text{가능도비 }LR_+}\times\underbrace{\frac{P(D)}{P(D^c)}}_{\text{사전 오즈}},\qquad LR_- = \frac{P(-\mid D)}{P(-\mid D^c)}$$<div class="where">\(LR_+ = \)민감도/오경보율을 양성 결과의 <span class="term">가능도비</span><span class="en">(likelihood ratio)</span>라 한다. 결과 하나가 오즈를 몇 배로 만드는지를 말해 준다. 민감도 99%, 오경보율 1%면 \(LR_+ = 99\), \(LR_- = 0.01/0.99 = 1/99\). 로그를 취하면 증거마다 \(\ln LR\)을 더하는 덧셈이 된다.</div></div>
+    <p>같은 다이를 \(k\)번 재검사해 결과가 모두 양성이고, 다이의 상태가 주어졌을 때 검사 결과들이 서로 독립(조건부 독립)이라면 사후 오즈 = 사전 오즈 × \(LR_+^{\,k}\)이다. 양성과 음성이 섞이면 해당 가능도비를 차례로 곱한다. 순서는 상관없다.</p>
+
+    <div class="predict" data-for="mini-odds">
+      <p>불량률 0.1%, 민감도 99%, 오경보율 1%인 검사에서 경보가 울린 다이를 같은 조건으로 한 번 더 검사했더니 또 경보가 울렸다. 이 다이가 불량일 확률은?</p>
+      <div class="opts"><button class="opt">약 18% (9%의 두 배)</button><button class="opt">약 50%</button><button class="opt" data-correct>약 91%</button><button class="opt">약 99.9%</button></div>
+      <div class="quiz-exp">첫 경보 뒤 오즈는 \((1/999)\times99 = 0.0991\)(확률 9.0%). 둘째 경보로 다시 99배: 9.81, 확률 \(9.81/10.81 = 0.907\). 오즈는 곱으로 자라므로 확률은 9%에서 91%로 단숨에 뛴다. 아래 로그 오즈 눈금에서 증거 한 개는 같은 길이의 한 걸음이다.</div>
+    </div>
+    <figure class="mini" id="mini-odds">
+      <div class="mini-view"><canvas id="cv-odds"></canvas><span class="hint top">사전 확률의 흰 원을 끈다</span></div>
+      <div class="mini-ctrl">
+        <button class="btn" id="od-pos" type="button">+ 경보</button>
+        <button class="btn" id="od-neg" type="button">− 통과</button>
+        <button class="btn" id="od-clr" type="button">증거 지우기</button>
+        <label class="ctrl"><span>검사 정확도 <output id="od-lr-out"></output></span><input type="range" id="od-lr" min="0.6" max="0.999" step="0.001" value="0.99"></label>
+        <span class="readout" id="od-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>로그 오즈 눈금. 가로축은 \(\log_{10}\)(오즈)이고 위에 대응하는 확률을 적었다. 검사 정확도는 민감도 = 특이도로 둔 값이다(그러면 \(LR_- = 1/LR_+\)). 사전 확률(흰 원)에서 출발해 경보 하나마다 \(\log_{10}LR_+\)만큼 오른쪽, 통과 하나마다 \(\log_{10}LR_-\)만큼 왼쪽으로 간다. 증거의 순서를 바꿔도 도착점은 같다.</figcaption>
+    </figure>
+
+    <div class="tangle" id="tg-odds">
+      <p>사전 확률 <span class="tn" data-var="p" data-min="0.1" data-max="50" data-step="0.1" data-unit="%">2.0</span>인 다이에 민감도 <span class="tn" data-var="se" data-min="50" data-max="99.9" data-step="0.1" data-unit="%">90.0</span>, 오경보율 <span class="tn" data-var="fa" data-min="0.1" data-max="40" data-step="0.1" data-unit="%">10.0</span>인 검사를 했더니 경보가 <span class="tn" data-var="k" data-min="0" data-max="10" data-step="1">2</span>번, 통과가 <span class="tn" data-var="j" data-min="0" data-max="10" data-step="1">0</span>번 나왔다. \(LR_+\) = <span class="tn-out" data-out="lrp"></span>, \(LR_-\) = <span class="tn-out" data-out="lrm"></span>이고, 사후 오즈 <span class="tn-out" data-out="odds"></span>, 사후 확률 <span class="tn-out" data-out="post"></span>이다.</p>
+    </div>
+
+    <div class="sim" id="sim-seq">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>재검사 판정 게임: 95% 확신에 이를 때까지</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-seq"></canvas></div>
+        <div class="sim-controls">
+          <button class="btn primary" id="sq-test" type="button">재검사 1회</button>
+          <button class="btn" id="sq-bad" type="button">불량 판정</button>
+          <button class="btn" id="sq-good" type="button">양품 판정</button>
+          <label class="ctrl"><span>민감도 <output id="sq-se-out"></output></span><input type="range" id="sq-se" min="0.6" max="0.99" step="0.01" value="0.9"></label>
+          <label class="ctrl"><span>오경보율 <output id="sq-fa-out"></output></span><input type="range" id="sq-fa" min="0.01" max="0.4" step="0.01" value="0.1"></label>
+          <button class="btn" id="sq-restart" type="button">게임 다시</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">현재 사후 P(D)</span><span class="v" id="sq-post">—</span></div>
+        <div class="stat"><span class="k">이 다이의 검사 결과</span><span class="v" id="sq-hist">—</span></div>
+        <div class="stat"><span class="k">판정 / 정답 / 검사 횟수</span><span class="v cp-score" id="sq-score">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: 첫 검사에서 경보가 울린 다이가 차례로 들어온다(라인 불량률은 흰 원으로 정한 사전 확률). 진짜 상태는 숨겨져 있다. ① "재검사"를 누를 때마다 결과가 나오고 사후 확률 막대와 궤적이 갱신된다. 95%(또는 5%) 선을 넘으면 판정하자. ② 다이 10개를 판정해 정답 10개, 평균 검사 횟수를 가능한 한 적게. 성급하게 판정하면 틀리고, 너무 신중하면 검사 비용이 쌓인다. ③ 오경보율을 올리면 같은 확신에 이르기까지 검사가 몇 번 더 필요한가?</div>
+    </div>
+
+    <div class="example" data-title="재검사로 쌓이는 확신">
+      <p>불량률 0.1%, 민감도 99%, 오경보율 1%인 검사를 한 다이에 독립적으로 되풀이한다. (가) 경보가 연속 2번, 3번 울린 뒤 불량일 확률은? (나) 경보 한 번 뒤 통과가 한 번 나오면?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 오즈 형태: 사후 오즈 = 사전 오즈 × \(LR\)의 곱. \(LR_+ = 99\), \(LR_- = 1/99\).</div>
+        <div class="step"><b>풀이</b> 사전 오즈 \(= 0.001/0.999 = 1.001\times10^{-3}\). (가) 2번: \(1.001\times10^{-3}\times99^2 = 9.81\) → \(9.81/10.81 = 0.9075\). 3번: \(971.2\) → \(0.99897\). (나) \(1.001\times10^{-3}\times99\times\frac1{99} = 1.001\times10^{-3}\) → 0.1%로 되돌아간다.</div>
+        <div class="answer">(가) 0.908, 0.999 (나) 0.001</div>
+        <div class="step"><b>검토</b> 이 검사는 \(LR_- = 1/LR_+\)라서 경보 하나와 통과 하나가 정확히 상쇄된다. 단, 재검사가 독립이라는 가정이 중요하다. 오경보가 다이 표면의 얼룩처럼 "그 다이에 붙은" 원인에서 오면 같은 장비로 다시 재도 또 경보가 울린다. 그런 경우에는 다른 원리의 장비(광학 대신 전자빔)로 재검사해야 가능도비를 곱할 자격이 생긴다.</div>
+      </details>
+    </div>
+    <div class="callout warn"><strong>조건부 독립이 아니면 가능도비를 곱할 수 없다</strong><p>같은 측정기로 같은 위치를 다시 재면 잡음은 새로 뽑히지만 계통 오차(교정 편차, 표면 상태)는 그대로 남는다. 이때 두 결과는 다이 상태가 주어져도 서로 상관되어 있어서, \(LR^2\)으로 계산한 확신은 과장된다. 두 번째 의견은 독립적인 출처에서 와야 값어치가 있다.</p></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="monty-hall">
+    <h2>몬티 홀 문제</h2>
+    <p>2장에서 맛본 <span class="term">몬티 홀 문제</span><span class="en">(Monty Hall problem)</span>를 이제 조건부 확률로 끝까지 풀어 보자. 문 세 개 중 하나 뒤에 자동차가, 나머지 둘 뒤에 염소가 있다. 참가자가 문 하나를 고르면, 자동차의 위치를 아는 사회자가 남은 두 문 중 염소가 있는 문 하나를 연다(둘 다 염소면 무작위로). 그리고 묻는다: "고른 문을 바꾸겠습니까?"</p>
+    <div class="predict" data-for="sim-monty">
+      <p>문을 바꾸면 자동차를 받을 확률은?</p>
+      <div class="opts"><button class="opt">1/3 — 바꾸든 안 바꾸든 같다</button><button class="opt">1/2 — 문이 두 개 남았으니까</button><button class="opt" data-correct>2/3 — 바꾸는 쪽이 두 배 유리하다</button></div>
+      <div class="quiz-exp">처음 고른 문이 맞을 확률은 1/3이고, 사회자가 염소 문을 열어도 이 확률은 바뀌지 않는다(사회자는 어차피 염소 문을 열 수 있다). 처음 고른 문이 틀렸을 확률 2/3가 남은 한 문으로 모인다. 아래에서 직접 해 보고, 1000판을 돌려 확인하자.</div>
+    </div>
+    <div class="sim" id="sim-monty">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>몬티 홀: 직접 해 보기와 1000판 모의 실험</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cv-monty"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>사회자</span><div class="seg" id="mh-host"><button data-value="know" class="on">알고 연다</button><button data-value="rand">모르고 연다</button></div></div>
+          <button class="btn" id="mh-new" type="button">새 판</button>
+          <button class="btn primary" id="mh-auto" type="button"></button>
+          <button class="btn" id="mh-clr" type="button">기록 지우기</button>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">직접 한 판: 유지 승 / 바꿈 승</span><span class="v" id="mh-me">—</span></div>
+        <div class="stat"><span class="k">모의 실험 판 수</span><span class="v" id="mh-n">0</span></div>
+        <div class="stat"><span class="k">유지 승률</span><span class="v" id="mh-stay">—</span></div>
+        <div class="stat"><span class="k">바꿈 승률</span><span class="v" id="mh-switch">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 문을 하나 누르고, 사회자가 염소 문을 연 뒤 남은 문 중 하나를 눌러 유지하거나 바꾼다. 열 판쯤 해 보자. ② "자동 재생"으로 수천 판을 돌리면 두 승률 곡선이 1/3과 2/3으로 갈라진다. ③ 사회자가 자동차 위치를 모르고 무작위로 연다면(자동차가 나온 판은 무효로 빼고 센다) 승률은 1/2, 1/2이 된다. 같은 장면(염소 문이 열림)이라도 그 장면이 만들어진 규칙이 답을 바꾼다.</div>
+    </div>
+
+    <figure class="diagram steps" data-steps="4">
+      <svg viewBox="0 0 800 300" role="img" aria-label="몬티 홀 문제의 확률 나무: 자동차 위치, 사회자가 여는 문, 유지와 바꿈의 결과">
+        <g class="t">
+          <text x="20" y="24" style="font-weight:700">참가자는 문 1을 골랐다</text>
+          <circle cx="40" cy="150" r="6" fill="var(--text)"/>
+          <line x1="40" y1="150" x2="190" y2="60" stroke="var(--text-dim)" stroke-width="2.5"/>
+          <line x1="40" y1="150" x2="190" y2="150" stroke="var(--text-dim)" stroke-width="2.5"/>
+          <line x1="40" y1="150" x2="190" y2="240" stroke="var(--text-dim)" stroke-width="2.5"/>
+          <text x="80" y="90">차 1 · 1/3</text><text x="88" y="143">차 2 · 1/3</text><text x="80" y="222">차 3 · 1/3</text>
+        </g>
+        <g data-step="2" class="t">
+          <line x1="190" y1="60" x2="330" y2="35" stroke="var(--accent-2)" stroke-width="2"/>
+          <line x1="190" y1="60" x2="330" y2="90" stroke="var(--accent-2)" stroke-width="2"/>
+          <line x1="190" y1="150" x2="330" y2="150" stroke="var(--accent-2)" stroke-width="2"/>
+          <line x1="190" y1="240" x2="330" y2="240" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="215" y="36" style="fill:var(--accent-2)">문 2 열기 1/2</text>
+          <text x="215" y="96" style="fill:var(--accent-2)">문 3 열기 1/2</text>
+          <text x="215" y="143" style="fill:var(--accent-2)">문 3 열기 1</text>
+          <text x="215" y="233" style="fill:var(--accent-2)">문 2 열기 1</text>
+          <text x="340" y="40">1/6</text><text x="340" y="95">1/6</text><text x="340" y="155">1/3</text><text x="340" y="245">1/3</text>
+        </g>
+        <g data-step="3" class="t">
+          <text x="400" y="40">유지 승 · 바꾸면 패</text>
+          <text x="400" y="95">유지 승 · 바꾸면 패</text>
+          <text x="400" y="155" style="fill:var(--accent);font-weight:700">유지 패 · 바꾸면 승</text>
+          <text x="400" y="245" style="fill:var(--accent);font-weight:700">유지 패 · 바꾸면 승</text>
+          <text x="400" y="285">유지 승 = 1/6 + 1/6 = 1/3, 바꿈 승 = 1/3 + 1/3 = 2/3</text>
+        </g>
+        <g data-step="4" class="t">
+          <rect x="590" y="70" width="200" height="110" rx="8" fill="var(--bg-elev)" stroke="var(--accent-2)" stroke-width="1.5"/>
+          <text x="604" y="96" style="font-weight:700">문 3이 열렸다면</text>
+          <text x="604" y="122">P(차 1 | 문3) = (1/6) / (1/6 + 1/3)</text>
+          <text x="604" y="146">           = 1/3</text>
+          <text x="604" y="170" style="fill:var(--accent);font-weight:700">P(차 2 | 문3) = 2/3</text>
+        </g>
+      </svg>
+      <ol class="steps-cap"><li>자동차는 세 문 뒤에 같은 확률(1/3)로 있다. 참가자는 문 1을 골랐다고 하자(대칭이므로 일반성을 잃지 않는다).</li><li>사회자의 규칙: 차가 문 1이면 문 2, 3 중 무작위로, 차가 문 2면 문 3을, 차가 문 3이면 문 2를 반드시 연다. 잎의 확률은 가지의 곱이다.</li><li>유지하면 차가 문 1인 두 잎(합 1/3)에서만 이기고, 바꾸면 나머지 두 잎(합 2/3)에서 이긴다.</li><li>베이즈 정리로 쓰면: 문 3이 열린 잎만 남기고 재정규화한다. 사회자가 문 3을 연 것은 "차가 문 2"일 때 두 배 더 일어나기 쉬운 일이다(가능도 1 대 1/2).</li></ol>
+      <figcaption>몬티 홀의 확률 나무. 답을 정하는 것은 사회자가 문을 여는 규칙, 곧 가능도 \(P(\text{문 3 열림}\mid\text{차 위치})\)다.</figcaption>
+    </figure>
+
+    <p>베이즈 정리로 쓰면 더 짧다. 참가자가 문 1을 고르고 사회자가 문 3을 열었다(\(H_3\)). 가능도는 \(P(H_3\mid C_1) = 1/2\), \(P(H_3\mid C_2) = 1\), \(P(H_3\mid C_3) = 0\)이므로</p>
+    <div class="formula">$$P(C_2\mid H_3) = \frac{1\cdot\frac13}{\frac12\cdot\frac13 + 1\cdot\frac13 + 0\cdot\frac13} = \frac{2}{3},\qquad P(C_1\mid H_3) = \frac13$$</div>
+    <p>문이 \(n\)개이고 사회자가 염소 문 \(k\)개(\(k \le n-2\))를 연 뒤 남은 닫힌 문 중 하나로 무작위로 바꾸면, 처음 문이 틀렸을 확률 \((n-1)/n\)이 남은 \(n-k-1\)개의 문에 고르게 나뉜다.</p>
+    <div class="formula">$$P(\text{바꿔서 승}) = \frac{n-1}{n}\cdot\frac{1}{n-k-1},\qquad P(\text{유지해서 승}) = \frac1n$$</div>
+    <figure class="mini" id="mini-ndoor">
+      <div class="mini-view"><canvas id="cv-ndoor"></canvas></div>
+      <div class="mini-ctrl">
+        <label class="ctrl"><span>문 개수 n <output id="nd-n-out"></output></span><input type="range" id="nd-n" min="3" max="20" value="10"></label>
+        <label class="ctrl"><span>여는 염소 문 k <output id="nd-k-out"></output></span><input type="range" id="nd-k" min="1" max="18" value="8"></label>
+        <button class="btn" id="nd-play" type="button"></button>
+        <span class="readout" id="nd-r"></span>
+      </div>
+      <figcaption><span class="mini-tag">MINI LAB</span>문 \(n\)개, 사회자가 염소 문 \(k\)개를 연다. 위쪽은 한 판의 모습(초록 = 처음 고른 문, 회색 = 열린 염소 문), 아래는 모의 실험으로 센 승률(막대)과 이론값(자주 선). \(n = 10\), \(k = 8\)이면 바꿔서 이길 확률이 90%다. 문이 많을수록 "사회자가 남겨 둔 문"이 얼마나 수상한지 직관적으로 보인다.</figcaption>
+    </figure>
+    <div class="example" data-title="사회자가 모르고 문을 열면">
+      <p>몬티 홀 게임에서 사회자가 자동차의 위치를 모른 채 참가자가 고르지 않은 두 문 중 하나를 무작위로 열었는데, 마침 염소가 나왔다. 참가자는 문 1을 골랐고 사회자는 문 3을 열었다. 바꾸면 이길 확률은?</p>
+      <details><summary>풀이 보기</summary>
+        <div class="step"><b>전략</b> 관측된 사건은 "문 3이 열렸고 그 뒤가 염소" \(= E\)이다. 차의 위치별 가능도를 새로 계산한다.</div>
+        <div class="step"><b>풀이</b> 사회자는 문 2, 3 중 무작위로 연다. \(P(E\mid C_1) = \frac12\cdot1 = \frac12\), \(P(E\mid C_2) = \frac12\cdot1 = \frac12\), \(P(E\mid C_3) = \frac12\cdot0 = 0\). 사전 확률이 같으므로 \(P(C_2\mid E) = \frac{1/2}{1/2 + 1/2} = \frac12\).</div>
+        <div class="answer">1/2 (유지해도 1/2)</div>
+        <div class="step"><b>검토</b> 화면에 보이는 장면은 원래 게임과 똑같지만 답이 다르다. 아는 사회자는 차가 문 2일 때 문 3을 "반드시" 열어서(가능도 1) 정보를 흘렸고, 모르는 사회자는 그러지 않았다. 증거의 가치는 증거가 생겨난 과정에 달려 있다 — 검사 대상을 고르는 방식(표본 추출)이 결론을 바꾸는 이유도 같다.</div>
+      </details>
+    </div>
+    <div class="callout tip"><strong>직관이 흔들릴 때 쓰는 세 가지 도구</strong><p>① 자연 빈도로 바꾼다: "확률 0.1%"를 "10만 개 중 100개"로. ② 확률 나무를 그리고 관측된 잎만 남긴 뒤 재정규화한다. ③ 시뮬레이션한다: 규칙대로 수천 번 돌려 조건에 맞는 시행만 센다. 세 방법은 모두 같은 정의 \(P(A\mid B) = P(A\cap B)/P(B)\)를 다른 모양으로 쓴 것이다.</p></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>조건부 확률 \(P(A\mid B) = P(A\cap B)/P(B)\)는 표본 공간을 \(B\)로 좁히고 다시 정규화한 확률이다. 상대 도수로는 "\(B\)가 일어난 시행만 골라 센 \(A\)의 비율"이다. 일반적으로 \(P(A\mid B) \ne P(B\mid A)\).</li>
+      <li>곱셈 법칙 \(P(A\cap B) = P(B)P(A\mid B)\)와 연쇄 법칙으로 순차적 사건(비복원 추출 등)의 확률을 곱한다. 확률 나무에서 잎의 확률은 가지의 곱이다.</li>
+      <li>분할 \(B_1,\dots,B_k\)에 대해 전확률 공식 \(P(A) = \sum P(A\mid B_i)P(B_i)\)는 조건부 확률들의 가중 평균이다.</li>
+      <li>독립: \(P(A\cap B) = P(A)P(B)\) (\(\Leftrightarrow P(A\mid B) = P(A)\)). 확률이 양수인 서로소 사건은 독립이 아니다. 셋 이상이면 모든 부분 모임에서 곱이 성립해야 상호 독립이고, 쌍별 독립만으로는 부족하다. 공학의 독립은 대개 검증해야 할 가정이다.</li>
+      <li>독립 고장이면 직렬 \(R = \prod r_i\), 병렬 \(R = 1 - \prod(1-r_i)\), \(k\)-out-of-\(n\)은 이항 합. 직렬은 \(n(1-r)\approx1\)에서 \(e^{-1}\)로 무너지고, 병렬 중복은 실패 확률을 곱으로 줄인다. 공통 원인 고장이 중복의 한계를 정한다.</li>
+      <li>베이즈 정리 \(P(B_j\mid A) = P(A\mid B_j)P(B_j)/\sum_i P(A\mid B_i)P(B_i)\): 사후 ∝ 가능도 × 사전. 검사에서 PPV는 민감도·특이도뿐 아니라 기저율(불량률)에 크게 좌우된다. 드문 불량은 오경보에 묻힌다(기저율 오류). \(P(D\mid -)\times10^6\)이 출하 DPPM이다.</li>
+      <li>오즈 형태: 사후 오즈 = \(LR\) × 사전 오즈. 조건부 독립인 증거는 가능도비를 차례로 곱한다(로그 오즈는 덧셈). 몬티 홀처럼 같은 장면이라도 증거가 생겨난 규칙(가능도)이 다르면 사후 확률이 다르다.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="problems" id="problems">
+    <h2>연습문제</h2>
+    <p>확률은 소수로 답한다(예: 0.25). 따로 말이 없으면 부품 고장과 반복 검사 결과는 서로 독립이다. 답이 ±1% 이내면 정답이다.</p>
+    <div class="problem-set">
+      <div class="problem" data-level="1" data-topic="조건부 확률의 정의" data-answer="0.3; 0.24" data-label="P(A|B) =; P(B|A) =">
+        <div class="prob-q"><p>\(P(A) = 0.5\), \(P(B) = 0.4\), \(P(A\cap B) = 0.12\)일 때 \(P(A\mid B)\)와 \(P(B\mid A)\)를 구하라.</p></div>
+        <div class="prob-hint">분자는 둘 다 \(P(A\cap B)\)다. 분모가 다르다.</div>
+        <div class="prob-sol"><p>\(P(A\mid B) = 0.12/0.4 = 0.30\), \(P(B\mid A) = 0.12/0.5 = 0.24\). 같은 교집합을 서로 다른 조건의 크기로 나눈다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="분할표" data-answer="0.16; 0.632" data-label="P(F|E) =; P(E|F) =">
+        <div class="prob-q"><p>다이 500개 중 가장자리 다이가 150개이고 그중 24개가 불합격, 중앙 다이 350개 중 14개가 불합격이다. 가장자리 다이가 불합격일 확률 \(P(F\mid E)\)와 불합격 다이가 가장자리 다이일 확률 \(P(E\mid F)\)는?</p></div>
+        <div class="prob-sol"><p>\(P(F\mid E) = 24/150 = 0.16\). 불합격은 모두 \(24 + 14 = 38\)개이므로 \(P(E\mid F) = 24/38 = 0.632\). 가장자리는 다이의 30%지만 불량의 63%를 차지한다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="비복원 추출" data-answer="0.255" data-label="P =">
+        <div class="prob-q"><p>웨이퍼 12장이 든 카세트에 긁힘이 있는 웨이퍼가 4장 있다. 3장을 차례로 꺼내(되돌려 넣지 않음) 검사할 때 긁힌 웨이퍼가 한 장도 없을 확률은?</p></div>
+        <div class="prob-hint">연쇄 법칙: 첫째 양호 × (첫째 양호일 때 둘째 양호) × …</div>
+        <div class="prob-sol"><p>\(\frac{8}{12}\cdot\frac{7}{11}\cdot\frac{6}{10} = \frac{336}{1320} = 0.2545\). 조합으로는 \(\binom83/\binom{12}3 = 56/220\)으로 같다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="전확률과 베이즈" data-answer="0.032; 0.625" data-label="P(F) =; P(S₂|F) =">
+        <div class="prob-q"><p>노광 공정을 스테퍼 두 대가 60%, 40%씩 맡는다. 오버레이 불량률은 스테퍼 1이 2%, 스테퍼 2가 5%다. (가) 무작위로 고른 웨이퍼가 오버레이 불량일 확률은? (나) 오버레이 불량 웨이퍼가 스테퍼 2에서 왔을 확률은?</p></div>
+        <div class="prob-sol"><p>(가) \(0.6(0.02) + 0.4(0.05) = 0.012 + 0.020 = 0.032\). (나) \(0.020/0.032 = 0.625\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="서로소와 독립">
+        <div class="prob-q"><p>\(P(A) = 0.2\), \(P(B) = 0.5\)이고 \(A\cap B = \varnothing\)이다. 옳은 것은?</p></div>
+        <div class="prob-choices"><button>\(A\)와 \(B\)는 독립이다</button><button data-correct>\(A\)와 \(B\)는 종속이고 \(P(B\mid A) = 0\)이다</button><button>\(P(A\cup B) = 0.6\)이다</button><button>\(P(A\mid B) = 0.2\)이다</button></div>
+        <div class="prob-sol"><p>\(P(A\cap B) = 0 \ne P(A)P(B) = 0.1\)이므로 종속이다. \(A\)가 일어나면 \(B\)는 일어날 수 없으므로 \(P(B\mid A) = 0\). 서로소이므로 \(P(A\cup B) = 0.7\)이다.</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="독립과 합사건" data-answer="0.58" data-label="P(A∪B) =">
+        <div class="prob-q"><p>독립인 두 사건 \(A\), \(B\)에서 \(P(A) = 0.3\), \(P(B) = 0.4\)이다. \(P(A\cup B)\)는?</p></div>
+        <div class="prob-sol"><p>\(P(A\cup B) = P(A) + P(B) - P(A)P(B) = 0.3 + 0.4 - 0.12 = 0.58\). 또는 \(1 - P(A^c)P(B^c) = 1 - 0.7\times0.6 = 0.58\).</p></div>
+      </div>
+      <div class="problem" data-level="1" data-topic="직렬 계통" data-answer="0.951" data-label="R =">
+        <div class="prob-q"><p>신뢰도 0.995인 부품 10개가 직렬로 연결된 계통의 신뢰도는?</p></div>
+        <div class="prob-sol"><p>\(0.995^{10} = 0.9511\). 근사 \(e^{-10\times0.005} = e^{-0.05} = 0.9512\)와도 잘 맞는다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="병렬 중복" data-answer="5" data-label="n =" data-unit="개">
+        <div class="prob-q"><p>신뢰도 0.8인 펌프를 병렬로 몇 개 이상 두어야 계통 신뢰도가 0.999 이상이 되는가?</p></div>
+        <div class="prob-hint">\(1 - 0.2^n \ge 0.999\), 곧 \(0.2^n \le 0.001\). 양변에 로그를 취한다.</div>
+        <div class="prob-sol"><p>\(n \ge \ln0.001/\ln0.2 = 4.29\)이므로 \(n = 5\). 확인: 4개면 \(1 - 0.2^4 = 0.9984\)(부족), 5개면 \(0.99968\).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="혼합 계통" data-answer="0.931" data-label="R =">
+        <div class="prob-q"><p>부품 A(0.95), 병렬 블록(0.9인 부품 두 개), 부품 C(0.99)가 차례로 직렬로 이어진 계통의 신뢰도는?</p></div>
+        <div class="prob-sol"><p>병렬 블록 \(1 - 0.1^2 = 0.99\). \(R = 0.95\times0.99\times0.99 = 0.9311\).</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="k-out-of-n" data-answer="0.972" data-label="R =">
+        <div class="prob-q"><p>세 개의 센서 중 두 개 이상이 같은 값을 내야 동작하는 다수결(2-out-of-3) 계통이 있다. 센서 하나의 신뢰도가 0.9일 때 계통 신뢰도는? (센서 하나와 비교해 보라.)</p></div>
+        <div class="prob-hint">정확히 2개 살아 있을 확률 + 3개 모두 살아 있을 확률.</div>
+        <div class="prob-sol"><p>\(\binom32(0.9)^2(0.1) + (0.9)^3 = 0.243 + 0.729 = 0.972\). 센서 하나(0.9)보다 높다. 다만 \(r < 0.5\)이면 다수결이 오히려 단일 센서보다 나빠진다(\(3r^2 - 2r^3 < r\)).</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="양성 예측도와 DPPM" data-answer="0.393; 1051" data-label="P(D|+) =; DPPM =" data-tol="1%">
+        <div class="prob-q"><p>불량률 2%인 다이를 민감도 95%, 오경보율 3%인 장비로 검사한다. (가) 경보가 울린 다이가 불량일 확률은? (나) 통과한 다이 가운데 불량의 비율을 DPPM(백만 개당 개수)으로 나타내면?</p></div>
+        <div class="prob-sol"><p>(가) \(P(+) = 0.95(0.02) + 0.03(0.98) = 0.019 + 0.0294 = 0.0484\), \(P(D\mid +) = 0.019/0.0484 = 0.3926\). (나) \(P(D\cap -) = 0.05\times0.02 = 0.001\), \(P(-) = 0.001 + 0.97\times0.98 = 0.9516\), \(P(D\mid -) = 0.001051\) → 1051 DPPM.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="테스트 유출" data-answer="264" data-label="DPPM =" data-tol="1%">
+        <div class="prob-q"><p>최종 테스트에 들어오는 칩의 5%가 불량이다. 테스트는 불량의 99.5%를 잡아내고, 양품의 0.2%를 잘못 불합격시킨다(과잉 불량). 합격한 칩의 출하 불량률을 DPPM으로 구하라.</p></div>
+        <div class="prob-hint">유출 = 불량인데 합격. 분모는 합격한 칩 전체(양품 합격 + 유출)다.</div>
+        <div class="prob-sol"><p>유출 \(= 0.05\times0.005 = 2.5\times10^{-4}\). 합격 \(= 0.95\times0.998 + 2.5\times10^{-4} = 0.94835\). \(P(D\mid\text{합격}) = 2.5\times10^{-4}/0.94835 = 2.636\times10^{-4}\) → 264 DPPM. 덧붙여 불합격 칩 중 양품(과잉 불량)의 비율은 \(0.0019/(0.0019 + 0.04975) = 3.7\%\)다.</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="순차 갱신" data-answer="0.766; 3" data-label="P(D|++) =; k =" data-unit="; 번">
+        <div class="prob-q"><p>불량률 1%인 다이를 민감도 90%, 오경보율 5%인 검사로 되풀이 검사한다. (가) 연속 2번 경보가 울린 뒤 불량일 확률은? (나) 사후 확률이 0.95를 넘으려면 연속 경보가 최소 몇 번 필요한가?</p></div>
+        <div class="prob-hint">\(LR_+ = 0.90/0.05 = 18\). 사전 오즈 \(= 1/99\).</div>
+        <div class="prob-sol"><p>(가) 오즈 \(= 18^2/99 = 3.273\) → \(3.273/4.273 = 0.766\). (나) 사후 확률 0.95는 오즈 19다. \(18^k/99 \ge 19\) → \(18^k \ge 1881\) → \(k \ge \ln1881/\ln18 = 2.61\), 곧 \(k = 3\)(이때 0.983).</p></div>
+      </div>
+      <div class="problem" data-level="3" data-topic="몬티 홀 일반화" data-answer="0.375" data-label="P(승) =">
+        <div class="prob-q"><p>문이 4개인 몬티 홀 게임에서 사회자가 염소 문 하나만 열고, 참가자는 남은 닫힌 두 문 중 하나로 무작위로 바꾼다. 자동차를 받을 확률은?</p></div>
+        <div class="prob-sol"><p>처음 문이 틀렸을 확률 3/4이 남은 두 문에 고르게 나뉘므로 \(\frac34\cdot\frac12 = 0.375\). 유지하면 \(1/4 = 0.25\)이므로 바꾸는 편이 여전히 낫다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="검사관의 오류">
+        <div class="prob-q"><p>"정상 장비에서 이런 파티클 수가 나올 확률은 0.1%뿐이다. 그러니 이 장비가 정상일 확률은 0.1%다." 이 추론에 대해 옳은 것은?</p></div>
+        <div class="prob-choices"><button>옳다. 두 확률은 같은 것이다</button><button data-correct>틀렸다. \(P(\text{관측}\mid\text{정상})\)과 \(P(\text{정상}\mid\text{관측})\)은 다르며, 뒤의 것을 구하려면 사전 확률과 이상 장비에서의 가능도가 필요하다</button><button>틀렸다. 정상일 확률은 99.9%다</button><button>관측이 한 번뿐이라 아무것도 말할 수 없다</button></div>
+        <div class="prob-sol"><p>앞의 0.1%는 가능도 \(P(x\mid\text{정상})\)이다. \(P(\text{정상}\mid x) = \frac{P(x\mid\text{정상})P(\text{정상})}{P(x\mid\text{정상})P(\text{정상}) + P(x\mid\text{이상})P(\text{이상})}\)이므로 장비 이상의 사전 확률과, 이상 장비가 그런 파티클 수를 낼 확률을 알아야 답할 수 있다. 장비 이상이 매우 드물면 정상일 확률이 여전히 높을 수도 있다.</p></div>
+      </div>
+      <div class="problem" data-level="2" data-topic="원인 추적" data-answer="0.51" data-label="P(C₃|D) =">
+        <div class="prob-q"><p>세 증착 챔버가 웨이퍼를 40%, 35%, 25%씩 처리하고, 챔버별 불량률은 0.5%, 0.8%, 2.0%다. 불량 웨이퍼 하나가 챔버 3에서 왔을 확률은?</p></div>
+        <div class="prob-sol"><p>\(P(D) = 0.4(0.005) + 0.35(0.008) + 0.25(0.02) = 0.002 + 0.0028 + 0.005 = 0.0098\). \(P(C_3\mid D) = 0.005/0.0098 = 0.510\). 처리 몫 25%인 챔버가 불량의 절반을 낸다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>개념 확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>"검사 장비의 검출률이 98%"라는 문장이 말하는 확률은?</p><div class="opts">
+        <button class="opt">\(P(\text{불량}\mid\text{경보})\)</button><button class="opt" data-correct>\(P(\text{경보}\mid\text{불량})\)</button><button class="opt">\(P(\text{불량}\cap\text{경보})\)</button><button class="opt">\(P(\text{경보})\)</button>
+      </div><div class="quiz-exp">검출률(민감도)은 불량 다이만 놓고 본 경보의 비율이다. 경보가 울린 다이가 불량일 확률(PPV)은 불량률에 따라 전혀 다른 값이 될 수 있다.</div></div>
+      <div class="quiz-q"><p>공정을 개선해 불량률이 1%에서 0.1%로 줄었다. 같은 검사 장비를 계속 쓰면 경보가 울린 다이 중 진짜 불량의 비율(PPV)은?</p><div class="opts">
+        <button class="opt">그대로다 — 장비가 같으니까</button><button class="opt">올라간다 — 불량이 적으니 경보가 더 정확해진다</button><button class="opt" data-correct>내려간다 — 오경보의 몫이 상대적으로 커진다</button><button class="opt">0이 된다</button>
+      </div><div class="quiz-exp">PPV \(= \frac{s\,p}{s\,p + f(1-p)}\)는 불량률 \(p\)가 작아질수록 줄어든다. 수율이 좋아질수록 경보 대부분이 뉴슨스가 되어 리뷰 부담이 커지는 이유다.</div></div>
+      <div class="quiz-q"><p>\(A\)와 \(B\)가 독립이라는 것과 같은 말이 <em>아닌</em> 것은? (\(P(A), P(B) > 0\))</p><div class="opts">
+        <button class="opt">\(P(A\mid B) = P(A)\)</button><button class="opt">\(P(A\cap B^c) = P(A)P(B^c)\)</button><button class="opt" data-correct>\(A\cap B = \varnothing\)</button><button class="opt">\(P(B\mid A^c) = P(B)\)</button>
+      </div><div class="quiz-exp">서로소는 독립과 정반대에 가깝다. 확률이 양수인 두 사건이 서로소이면 한쪽이 일어날 때 다른 쪽은 확실히 일어나지 않으므로 강하게 종속이다. 독립이면 여사건끼리도 독립이다.</div></div>
+      <div class="quiz-q"><p>신뢰도 0.9인 펌프 3대를 병렬로 두면 독립 가정으로 \(1 - 0.1^3 = 0.999\)다. 세 펌프가 같은 전원을 쓴다면 실제 신뢰도는?</p><div class="opts">
+        <button class="opt">여전히 0.999다</button><button class="opt">0.999보다 높다</button><button class="opt" data-correct>0.999보다 낮고, 전원의 신뢰도를 넘을 수 없다</button><button class="opt">0.9³ = 0.729다</button>
+      </div><div class="quiz-exp">공유 전원은 세 펌프에 직렬로 붙은 공통 원인이다. 펌프 고장이 서로 독립이 아니게 되어 병렬 계산이 과대평가된다. 중복 설계의 효과는 가장 흔한 공통 원인에서 막힌다.</div></div>
+      <div class="quiz-q"><p>몬티 홀 게임에서 사회자가 차의 위치를 모르고 문을 열었는데 우연히 염소가 나왔다. 바꾸면 이길 확률은?</p><div class="opts">
+        <button class="opt">2/3</button><button class="opt" data-correct>1/2</button><button class="opt">1/3</button><button class="opt">1</button>
+      </div><div class="quiz-exp">모르는 사회자에게는 "차가 문 2일 때 문 3을 반드시 연다"는 성질이 없으므로 가능도가 \(C_1\), \(C_2\)에서 같다(각 1/2). 사후 확률도 1/2씩이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const pal = () => SB.palette();
+  const $ = (id) => document.getElementById(id);
+  const TAU = Math.PI * 2;
+  const font = (px, bold) => (bold ? "600 " : "") + px + "px " + SB.color("font");
+  const handle = (ctx, x, y, col, r = 9) => { ctx.save(); ctx.fillStyle = "#fff"; ctx.strokeStyle = col; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); };
+  const withA = (ctx, a, fn) => { const g = ctx.globalAlpha; ctx.globalAlpha = g * a; fn(); ctx.globalAlpha = g; };
+  const pc = (x, d = 1) => (100 * x).toFixed(d) + "%";
+  /** 작은 값도 읽히는 백분율 */
+  const pcs = (x) => { const v = 100 * x; if (!isFinite(v)) return "—"; if (v === 0) return "0%"; return v >= 10 ? v.toFixed(1) + "%" : v >= 1 ? v.toFixed(2) + "%" : v >= 0.01 ? v.toFixed(3) + "%" : v >= 0.0001 ? v.toFixed(5) + "%" : v.toExponential(1) + "%"; };
+  const f3 = (x) => (!isFinite(x) ? "—" : x === 0 ? "0" : Math.abs(x) < 1e-3 ? x.toExponential(2) : x.toFixed(Math.abs(x) < 0.01 ? 4 : 3));
+  const fint = (n) => Math.round(n).toLocaleString("ko-KR");
+  const rnd = (a, b, step) => Number((Math.round((a + Math.random() * (b - a)) / step) * step).toFixed(6));
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+
+  /* ================================================================ 머리: 다이 1000개의 자연 빈도 */
+  {
+    const N = 1000, COLS = 40, ROWS = 25;
+    const R = Stat.rng(2024);
+    const ord = R.shuffle(Array.from({ length: N }, (_, i) => i));
+    const key2 = Array.from({ length: N }, () => R.u());
+    const st = { p: 0.02, se: 0.9, fa: 0.05, sweep: 0, focus: 0, want: 0, hold: 0, manual: 0, drag: false };
+    const LP = [-3, Math.log10(0.3)];
+    let cache = null, ckey = "";
+    function classify() {
+      const k = st.p + "|" + st.se + "|" + st.fa;
+      if (k === ckey) return cache;
+      const D = Math.round(N * st.p), TP = Math.round(D * st.se), FP = Math.round((N - D) * st.fa);
+      const isD = new Uint8Array(N), flag = new Uint8Array(N), dl = [], gl = [];
+      for (let i = 0; i < D; i++) isD[ord[i]] = 1;
+      for (let i = 0; i < N; i++) (isD[i] ? dl : gl).push(i);
+      dl.sort((a, b) => key2[a] - key2[b]); gl.sort((a, b) => key2[a] - key2[b]);
+      for (let i = 0; i < TP; i++) flag[dl[i]] = 1;
+      for (let i = 0; i < FP; i++) flag[gl[i]] = 1;
+      ckey = k; cache = { D, TP, FP, isD, flag };
+      return cache;
+    }
+    const cv = SB.canvas("cv-hero", (ctx, w, h, self) => {
+      const P = pal(), C = classify(), wide = w >= 600;
+      let gx0 = 14, gy0 = 14, cell;
+      if (wide) cell = Math.min((w * 0.56) / COLS, (h - 50) / ROWS);
+      else cell = (w - 28) / COLS;
+      const gw = cell * COLS, gh = cell * ROWS;
+      self._grid = [gx0, gy0, gw, gh];
+      const fz = st.focus;
+      for (let i = 0; i < N; i++) {
+        const c = i % COLS, r = Math.floor(i / COLS), x = gx0 + c * cell, y = gy0 + r * cell, s = Math.max(1, cell - 1.4);
+        const shown = c < st.sweep, fl = shown && C.flag[i];
+        const a = fl ? 1 : 1 - 0.88 * fz;
+        withA(ctx, a, () => {
+          if (C.isD[i]) { ctx.fillStyle = P.bad; ctx.fillRect(x, y, s, s); }
+          else { withA(ctx, 0.4, () => { ctx.fillStyle = P.faint; ctx.fillRect(x, y, s, s); }); }
+          if (fl) { ctx.strokeStyle = P.accent; ctx.lineWidth = Math.max(1.6, cell * 0.22); const o = ctx.lineWidth / 2; ctx.strokeRect(x + o, y + o, s - 2 * o, s - 2 * o); }
+        });
+      }
+      // 검사 쓸기 선
+      if (st.sweep < COLS) { const sx = gx0 + st.sweep * cell; ctx.save(); ctx.strokeStyle = P.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, gy0 - 4); ctx.lineTo(sx, gy0 + gh + 4); ctx.stroke(); ctx.restore(); }
+      // 범례
+      const ly = gy0 + gh + 14;
+      ctx.font = font(11.5); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+      let lx = gx0;
+      const leg = (draw, text) => { draw(lx, ly); ctx.fillStyle = P.dim; ctx.fillText(text, lx + 14, ly); lx += ctx.measureText(text).width + 30; };
+      leg((x, y) => { ctx.fillStyle = P.bad; ctx.fillRect(x, y - 5, 10, 10); }, "실제 불량");
+      leg((x, y) => { ctx.strokeStyle = P.accent; ctx.lineWidth = 2.2; ctx.strokeRect(x + 1, y - 4, 8, 8); }, "경보(검출)");
+      if (wide || w > 420) leg(() => {}, fz > 0.5 ? "▶ 경보 다이만 보는 중" : "");
+      // 수치
+      const flagged = C.TP + C.FP, ppv = flagged ? C.TP / flagged : NaN;
+      const exact = (st.p * st.se) / (st.p * st.se + (1 - st.p) * st.fa);
+      let px0, py, tw;
+      if (wide) { px0 = gx0 + gw + 28; tw = w - px0 - 18; py = 26; }
+      else { px0 = 16; tw = w - 32; py = ly + 22; }
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      if (wide) {
+        ctx.fillStyle = P.dim; ctx.font = font(13); ctx.fillText("경보가 울린 다이가 진짜 불량일 확률", px0, py + 4);
+        ctx.fillStyle = P.accent2; ctx.font = font(36, true); ctx.fillText(isFinite(ppv) ? pc(ppv, 0) : "—", px0, py + 46);
+        ctx.fillStyle = P.text; ctx.font = font(12.5, true); ctx.fillText(`P(불량 | 경보) — 경보 ${flagged}개 중 불량 ${C.TP}개`, px0, py + 70);
+        ctx.fillStyle = P.dim; ctx.font = font(12);
+        ctx.fillText(`놓친 불량(미검출) ${C.D - C.TP}개 · 과검출 ${C.FP}개`, px0, py + 92);
+        ctx.fillText(`정확한 값 ${pcs(exact)} (다이 1000개로 반올림)`, px0, py + 110);
+      } else {
+        ctx.fillStyle = P.accent2; ctx.font = font(24, true); ctx.fillText(isFinite(ppv) ? pc(ppv, 0) : "—", px0, py + 14);
+        ctx.fillStyle = P.text; ctx.font = font(12, true); ctx.fillText(`P(불량 | 경보): 경보 ${flagged}개 중 불량 ${C.TP}개`, px0 + 62, py + 4);
+        ctx.fillStyle = P.dim; ctx.font = font(11); ctx.fillText(`미검출 ${C.D - C.TP}개 · 과검출 ${C.FP}개`, px0 + 62, py + 20);
+      }
+      // 슬라이더 세 개
+      const sl = [
+        { id: "p", lab: `불량률 ${pcs(st.p)}`, t: (Math.log10(st.p) - LP[0]) / (LP[1] - LP[0]), col: P.bad },
+        { id: "se", lab: `검출률(민감도) ${pc(st.se, 0)}`, t: (st.se - 0.5) / 0.5, col: P.accent },
+        { id: "fa", lab: `오경보율 ${pc(st.fa, 1)}`, t: st.fa / 0.3, col: P.accent2 },
+      ];
+      const y0 = wide ? py + 150 : py + 50, dy = wide ? Math.min(58, (h - y0 - 10) / 3) : 44;
+      const ta = px0 + 8, tb = px0 + tw - 10;
+      self._sl = [];
+      sl.forEach((s, i) => {
+        const y = y0 + i * dy + 14;
+        SB.label(ctx, s.lab, ta - 6, y - 15, { align: "left", size: 12, bold: true, color: P.text });
+        ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = 5; ctx.strokeStyle = P.border; ctx.beginPath(); ctx.moveTo(ta, y); ctx.lineTo(tb, y); ctx.stroke();
+        ctx.strokeStyle = s.col; ctx.beginPath(); ctx.moveTo(ta, y); ctx.lineTo(ta + s.t * (tb - ta), y); ctx.stroke(); ctx.restore();
+        const hx = ta + SB.clamp(s.t, 0, 1) * (tb - ta);
+        handle(ctx, hx, y, s.col, 10);
+        self._sl.push({ id: s.id, x: hx, y, ta, tb });
+      });
+    }, { get aspect() { const el = $("hero"); const w = el ? el.clientWidth : 700; return w >= 600 ? 0.43 : 1.45; }, minHeight: 300, maxHeight: 520 });
+    SB.drag(cv, {
+      free: true,
+      handles: () => (cv._sl || []).map((s) => ({ id: s.id, x: s.x, y: s.y, r: 14 })),
+      down: (id, x, y) => {
+        if (id) { st.drag = true; st.sweep = COLS; st.manual = Math.max(st.manual, 3); return; }
+        const g = cv._grid; if (g && x >= g[0] && x <= g[0] + g[2] && y >= g[1] && y <= g[1] + g[3]) { st.sweep = COLS; st.want = st.want > 0.5 ? 0 : 1; st.manual = 10; }
+      },
+      move: (id, x) => {
+        if (!id) return;
+        const s = cv._sl.find((q) => q.id === id), t = SB.clamp((x - s.ta) / (s.tb - s.ta), 0, 1);
+        if (id === "p") st.p = Number(Math.pow(10, LP[0] + t * (LP[1] - LP[0])).toPrecision(2));
+        if (id === "se") st.se = Math.round((0.5 + 0.5 * t) * 100) / 100;
+        if (id === "fa") st.fa = Math.round(t * 0.3 * 1000) / 1000;
+      },
+      up: () => { st.drag = false; },
+    });
+    SB.loop("hero", (dt) => {
+      if (st.manual > 0) st.manual -= dt;
+      if (st.sweep < COLS) st.sweep = Math.min(COLS, st.sweep + dt * 13);
+      else if (st.manual <= 0) {
+        st.hold += dt;
+        if (st.hold > 0.8) st.want = 1;
+        if (st.hold > 4.5) { st.hold = 0; st.want = 0; st.sweep = 0; }
+      }
+      st.focus += (st.want - st.focus) * Math.min(1, dt * 5);
+      cv.redraw();
+    });
+  }
+
+  /* ================================================================ 시뮬레이터: 조건부 확률 = B로 좁히기 */
+  {
+    const WW = 1.6, HH = 1;
+    const st = { A: { x: 0.6, y: 0.52, r: 0.3 }, B: { x: 0.95, y: 0.48, r: 0.34 }, mode: "omega", cond: "B", z: 0, pts: [], R: Stat.rng(11), seed: 11 };
+    const gMode = SB.seg("cd-mode", (v) => { st.mode = v; });
+    const inC = (c, x, y) => (x - c.x) ** 2 + (y - c.y) ** 2 <= c.r * c.r;
+    let akey = "", areas = null;
+    function getAreas() {
+      const k = [st.A.x, st.A.y, st.A.r, st.B.x, st.B.y, st.B.r].join(",");
+      if (k === akey) return areas;
+      const nx = 192, ny = 120; let a = 0, b = 0, ab = 0;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const x = ((i + 0.5) / nx) * WW, y = ((j + 0.5) / ny) * HH, ia = inC(st.A, x, y), ib = inC(st.B, x, y); if (ia) a++; if (ib) b++; if (ia && ib) ab++; }
+      const T = nx * ny; akey = k; areas = { a: a / T, b: b / T, ab: ab / T };
+      return areas;
+    }
+    function addPts(n) { for (let i = 0; i < n && st.pts.length < 2500; i++) st.pts.push([st.R.u() * WW, st.R.u() * HH]); }
+    addPts(300);
+    const cv = SB.canvas("cv-cond", (ctx, w, h, self) => {
+      const P = pal(), hb = h - 34;
+      const s0 = Math.min((w - 28) / WW, (hb - 20) / HH), C = st[st.cond];
+      const s1 = Math.min(w - 40, hb - 30) / (2 * C.r);
+      const z = st.z, sc = Math.exp(Math.log(s0) + (Math.log(s1) - Math.log(s0)) * z);
+      const cx = WW / 2 + (C.x - WW / 2) * z, cy = HH / 2 + (C.y - HH / 2) * z;
+      const X = (x) => w / 2 + sc * (x - cx), Y = (y) => hb / 2 + 4 - sc * (y - cy);
+      self._T = { sc, cx, cy, w, hb };
+      ctx.save(); ctx.fillStyle = P.surface; ctx.strokeStyle = P.dim; ctx.lineWidth = 1.5; ctx.fillRect(X(0), Y(HH), sc * WW, sc * HH); ctx.strokeRect(X(0), Y(HH), sc * WW, sc * HH); ctx.restore();
+      const circ = (c, col, a) => { ctx.save(); ctx.beginPath(); ctx.arc(X(c.x), Y(c.y), c.r * sc, 0, TAU); withA(ctx, a, () => { ctx.fillStyle = col; ctx.fill(); }); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); };
+      ctx.save(); ctx.beginPath(); ctx.rect(X(0), Y(HH), sc * WW, sc * HH); ctx.clip();
+      circ(st.A, P.accent, 0.16); circ(st.B, P.accent2, 0.14);
+      let nB = 0, nAB = 0, nA = 0;
+      st.pts.forEach(([x, y]) => {
+        const ia = inC(st.A, x, y), ib = inC(st.B, x, y);
+        if (ib) nB++; if (ia) nA++; if (ia && ib) nAB++;
+        ctx.fillStyle = ia && ib ? P.text : ia ? P.accent : ib ? P.accent2 : P.faint;
+        ctx.beginPath(); ctx.arc(X(x), Y(y), ia && ib ? 2.6 : 2.1, 0, TAU); ctx.fill();
+      });
+      ctx.restore();
+      if (z > 0.01) {
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.arc(X(C.x), Y(C.y), C.r * sc, 0, TAU, true);
+        withA(ctx, 0.86 * z, () => { ctx.fillStyle = P.bg; ctx.fill(); }); ctx.restore();
+        ctx.save(); ctx.strokeStyle = st.cond === "B" ? P.accent2 : P.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(C.x), Y(C.y), C.r * sc, 0, TAU); ctx.stroke(); ctx.restore();
+      }
+      SB.label(ctx, "A", X(st.A.x - st.A.r * 0.62), Y(st.A.y + st.A.r * 0.62), { color: P.accent, bold: true, size: 15 });
+      SB.label(ctx, "B", X(st.B.x + st.B.r * 0.62), Y(st.B.y + st.B.r * 0.62), { color: P.accent2, bold: true, size: 15 });
+      if (z < 0.5) SB.label(ctx, "Ω", X(0.05), Y(0.94), { color: P.dim, bold: true, size: 14 });
+      // 손잡이
+      const hs = [];
+      [["A", st.A, P.accent], ["B", st.B, P.accent2]].forEach(([k, c, col]) => {
+        const hx = X(c.x), hy = Y(c.y), ex = X(c.x + c.r), ey = Y(c.y);
+        if (hx > -20 && hx < w + 20 && hy > -20 && hy < h + 20) { handle(ctx, hx, hy, col, 8); hs.push({ id: k + "c", x: hx, y: hy }); }
+        if (ex > 0 && ex < w && ey > 0 && ey < hb) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(ex, ey, 6, 0, TAU); ctx.fill(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 3, 0, TAU); ctx.fill(); hs.push({ id: k + "r", x: ex, y: ey }); }
+      });
+      self._hs = hs;
+      const Aa = getAreas();
+      const sm = w < 480, useB = st.cond === "B" || st.mode !== "A";
+      const txt = useB
+        ? (sm ? `B 안 ${nB}점 중 A∩B ${nAB}점 → ${nB ? (nAB / nB).toFixed(3) : "—"} (참값 ${(Aa.ab / Aa.b).toFixed(3)})` : `B 안의 점 ${nB}개 중 A에도 든 점 ${nAB}개 → ${nB ? (nAB / nB).toFixed(3) : "—"}   (참값 P(A|B) = ${(Aa.ab / Aa.b).toFixed(3)})`)
+        : (sm ? `A 안 ${nA}점 중 A∩B ${nAB}점 → ${nA ? (nAB / nA).toFixed(3) : "—"} (참값 ${(Aa.ab / Aa.a).toFixed(3)})` : `A 안의 점 ${nA}개 중 B에도 든 점 ${nAB}개 → ${nA ? (nAB / nA).toFixed(3) : "—"}   (참값 P(B|A) = ${(Aa.ab / Aa.a).toFixed(3)})`);
+      SB.label(ctx, txt, w / 2, h - 14, { size: sm ? 11 : 12, color: P.text });
+      SB.stat("cd-pa", `${Aa.a.toFixed(3)}, ${Aa.b.toFixed(3)}`);
+      SB.stat("cd-pab", Aa.ab.toFixed(3) + ` <small>(P(A)P(B) = ${(Aa.a * Aa.b).toFixed(3)})</small>`);
+      SB.stat("cd-pagb", Aa.b > 0 ? (Aa.ab / Aa.b).toFixed(3) : "—");
+      SB.stat("cd-pbga", Aa.a > 0 ? (Aa.ab / Aa.a).toFixed(3) : "—");
+      SB.stat("cd-emp", nB ? `${nAB} / ${nB} = ${(nAB / nB).toFixed(3)}` : "—");
+    }, { aspect: 0.66, minHeight: 280, maxHeight: 440 });
+    SB.drag(cv, {
+      handles: () => (cv._hs || []).map((q) => ({ id: q.id, x: q.x, y: q.y, r: 13 })),
+      move: (id, x, y) => {
+        if (!id) return;
+        const T = cv._T, wx = T.cx + (x - T.w / 2) / T.sc, wy = T.cy - (y - T.hb / 2 - 4) / T.sc, c = st[id[0]];
+        if (id[1] === "c") { c.x = SB.clamp(wx, 0.05, WW - 0.05); c.y = SB.clamp(wy, 0.05, HH - 0.05); }
+        else c.r = SB.clamp(Math.hypot(wx - c.x, wy - c.y), 0.06, 0.48);
+      },
+    });
+    let playing = false;
+    const loop = SB.loop("sim-cond", (dt) => {
+      const target = st.mode === "omega" ? 0 : 1;
+      if (st.mode !== "omega" && st.cond !== st.mode) { st.z = Math.max(0, st.z - dt * 3); if (st.z === 0) st.cond = st.mode; }
+      else st.z += (target - st.z) * Math.min(1, dt * 6);
+      if (playing) { addPts(6); if (st.pts.length >= 2500) { playing = false; syncPlay(); } }
+      cv.redraw();
+    });
+    const pb = $("cd-play");
+    const syncPlay = () => { pb.textContent = playing ? "❚❚ 점 뿌리기 정지" : "▶ 점 뿌리기"; };
+    pb.addEventListener("click", () => { playing = !playing; if (playing && st.pts.length >= 2500) st.pts = []; syncPlay(); });
+    syncPlay();
+    $("cd-more").addEventListener("click", () => { addPts(200); cv.redraw(); });
+    $("cd-reset").addEventListener("click", () => { st.seed++; st.R = Stat.rng(st.seed); st.pts = []; cv.redraw(); });
+    void loop; void gMode;
+  }
+
+  /* ================================================================ 드래그 숫자: 가장자리와 불합격 */
+  SB.tangle("tg-cond", (v) => {
+    const e = v.e / 100, ef = v.ef / 100, f = v.f / 100;
+    let note = "";
+    if (ef > Math.min(e, f) + 1e-12) note = "(교집합이 가장자리나 불합격 비율보다 클 수는 없다 — 불가능한 조합)";
+    else if (e + f - ef > 1 + 1e-12) note = "(합집합이 1을 넘는다 — 불가능한 조합)";
+    else {
+      const lift = ef / e / f;
+      note = lift > 1.05 ? `가장자리라는 정보가 불합격 확률을 전체 ${pc(f)}에서 ${pc(ef / e)}로 ${lift.toFixed(2)}배 올린다.` : lift < 0.95 ? `가장자리 다이가 오히려 덜 불합격한다(${lift.toFixed(2)}배).` : "가장자리 여부와 불합격이 거의 독립이다.";
+    }
+    return { fe: pc(ef / e), ef2: f > 0 ? pc(ef / f) : "—", note };
+  });
+
+  /* ================================================================ 미니: 비복원 추출 */
+  {
+    const N = 20;
+    const st = { t: 0, n1: 0, n12: 0, n2: 0, last: null, R: Stat.rng(5) };
+    const gK = SB.range("urn-k", (v) => v + "개", () => { reset(); cv.redraw(); });
+    function reset() { st.t = st.n1 = st.n12 = st.n2 = 0; st.last = null; }
+    function trial() {
+      const K = gK(), a = Math.floor(st.R.u() * N); let b = Math.floor(st.R.u() * (N - 1)); if (b >= a) b++;
+      const d1 = a < K, d2 = b < K; st.t++; if (d1) st.n1++; if (d2) st.n2++; if (d1 && d2) st.n12++; st.last = [a, b];
+    }
+    const order = Stat.rng(3).shuffle(Array.from({ length: N }, (_, i) => i));
+    const cv = SB.canvas("cv-urn", (ctx, w, h) => {
+      const P = pal(), K = gK();
+      const cw = Math.min(26, (w - 40) / 10), x0 = (w - cw * 10) / 2, y0 = 10;
+      for (let s = 0; s < N; s++) {
+        const id = order[s], col = s % 10, row = Math.floor(s / 10), x = x0 + col * cw, y = y0 + row * (cw + 4);
+        const L = st.last, k = L ? L.indexOf(id) : -1;
+        ctx.save(); rr(ctx, x + 2, y + 2, cw - 4, cw - 4, 4);
+        ctx.fillStyle = id < K ? P.bad : P.faint; withA(ctx, id < K ? 0.85 : 0.35, () => ctx.fill());
+        if (k >= 0) { ctx.strokeStyle = P.accent2; ctx.lineWidth = 3; ctx.stroke(); }
+        ctx.restore();
+        if (k >= 0) SB.label(ctx, String(k + 1), x + cw / 2, y + cw / 2, { size: 12, bold: true, color: P.text });
+      }
+      const top = y0 + 2 * (cw + 4) + 8;
+      const th = [(K - 1) / (N - 1), K / N, (K * (K - 1)) / (N * (N - 1))];
+      const em = [st.n1 ? st.n12 / st.n1 : NaN, st.t ? st.n2 / st.t : NaN, st.t ? st.n12 / st.t : NaN];
+      const ymax = Math.max(0.2, ...th.map((v) => v * 1.25));
+      const C = SB.chart(ctx, { x: 48, y: top + 6, w: w - 62, h: h - top - 46 }, { x: [-0.5, 2.5], y: [0, ymax], xTicks: [], yLabel: "확률" });
+      Stat.draw.bars(ctx, C, em.map((v, i) => [i, isFinite(v) ? v : 0]), { width: 0.5, color: P.accent, alpha: 0.75 });
+      ctx.save(); ctx.strokeStyle = P.accent2; ctx.lineWidth = 3;
+      th.forEach((v, i) => { ctx.beginPath(); ctx.moveTo(C.X(i - 0.36), C.Y(v)); ctx.lineTo(C.X(i + 0.36), C.Y(v)); ctx.stroke(); });
+      ctx.restore();
+      const labs = w < 420 ? ["둘째D | 첫째D", "둘째 D", "둘 다 D"] : ["P(둘째 불량 | 첫째 불량)", "P(둘째 불량)", "P(둘 다 불량)"];
+      labs.forEach((t, i) => SB.label(ctx, t, C.X(i), C.box.y + C.box.h + 14, { size: 11, color: P.dim }));
+      $("urn-r").textContent = `시행 ${fint(st.t)}번 · 첫째 불량 ${fint(st.n1)}번 → 둘째도 불량 ${fint(st.n12)}번 (${isFinite(em[0]) ? em[0].toFixed(3) : "—"}, 이론 ${th[0].toFixed(3)}) · P(둘째 불량) ${isFinite(em[1]) ? em[1].toFixed(3) : "—"} (이론 ${th[1].toFixed(3)})`;
+    }, { aspect: 0.5, minHeight: 250, maxHeight: 330 });
+    $("urn-one").addEventListener("click", () => { trial(); cv.redraw(); });
+    const loop = SB.loop("mini-urn", () => { for (let i = 0; i < 25; i++) trial(); cv.redraw(); });
+    loop.stop();
+    SB.play("urn-play", loop, { play: "▶ 반복 실험", pause: "❚❚ 정지" });
+  }
+
+  /* ================================================================ 드릴: 분할표 */
+  SB.drill("drill-cond", () => {
+    const nA = rnd(200, 800, 10), nB = rnd(200, 800, 10), fA = rnd(2, 40, 1), fB = rnd(2, 40, 1);
+    const kind = pick(["fa", "fb", "af", "bf", "f"]);
+    const tbl = `<div class="table-wrap"><table class="cp-tbl"><thead><tr><th></th><th>합격</th><th>불합격</th><th>합</th></tr></thead><tbody><tr><th>장비 A</th><td class="num">${nA - fA}</td><td class="num">${fA}</td><td class="num">${nA}</td></tr><tr><th>장비 B</th><td class="num">${nB - fB}</td><td class="num">${fB}</td><td class="num">${nB}</td></tr></tbody></table></div>`;
+    const F = fA + fB, T = nA + nB;
+    const Q = { fa: ["장비 A에서 처리한 다이가 불합격일 확률 \\(P(F\\mid A)\\)", fA / nA, `\\(P(F\\mid A) = ${fA}/${nA}\\)`], fb: ["장비 B에서 처리한 다이가 불합격일 확률 \\(P(F\\mid B)\\)", fB / nB, `\\(P(F\\mid B) = ${fB}/${nB}\\)`], af: ["불합격 다이가 장비 A에서 처리되었을 확률 \\(P(A\\mid F)\\)", fA / F, `불합격 열만 남긴다: \\(P(A\\mid F) = ${fA}/${F}\\)`], bf: ["불합격 다이가 장비 B에서 처리되었을 확률 \\(P(B\\mid F)\\)", fB / F, `불합격 열만 남긴다: \\(P(B\\mid F) = ${fB}/${F}\\)`], f: ["무작위로 고른 다이가 불합격일 확률 \\(P(F)\\)", F / T, `\\(P(F) = ${F}/${T}\\)`] }[kind];
+    return { q: `<p>두 장비에서 처리한 다이의 테스트 결과다.</p>${tbl}<p>${Q[0]}은?</p>`, answer: Number(Q[1].toPrecision(3)), label: "P =", tol: "1%", sol: `${Q[2]} \\(= ${Q[1].toFixed(4)}\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 확률 나무와 뒤집은 나무 */
+  {
+    const st = { pB: 0.1, pAB: 0.9, pAc: 0.08, balls: [], cnt: [0, 0, 0, 0], n: 0, queue: 0, turbo: false, R: Stat.rng(17) };
+    const leafP = () => [st.pB * st.pAB, st.pB * (1 - st.pAB), (1 - st.pB) * st.pAc, (1 - st.pB) * (1 - st.pAc)];
+    function geom(w, h) {
+      const top = 40, bot = h - 22, H = bot - top, rx = 22, cx = Math.round(w * 0.4), lx = w - 104;
+      const c1 = [top, top + H * 0.44], c2 = [top + H * 0.56, bot];
+      const leafY = [0.08, 0.36, 0.64, 0.92].map((f) => top + H * f);
+      return { top, bot, H, rx, cx, lx, c1, c2, leafY };
+    }
+    /** 막대 하나: 위쪽 몫 p(색 col), 아래 나머지 */
+    function bar(ctx, x, y0, y1, p, col, P) {
+      const yb = y0 + p * (y1 - y0);
+      ctx.save(); ctx.fillStyle = col; ctx.fillRect(x - 6, y0, 12, yb - y0);
+      withA(ctx, 0.5, () => { ctx.fillStyle = P.faint; ctx.fillRect(x - 6, yb, 12, y1 - yb); });
+      ctx.strokeStyle = P.dim; ctx.lineWidth = 1; ctx.strokeRect(x - 6, y0, 12, y1 - y0); ctx.restore();
+      return yb;
+    }
+    function branch(ctx, x1, y1, x2, y2, p, col, lab, P, side) {
+      ctx.save(); ctx.strokeStyle = col; ctx.lineCap = "round"; ctx.lineWidth = 1.2 + 9 * p; ctx.globalAlpha = 0.75; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore();
+      if (lab) SB.label(ctx, lab, x1 + (x2 - x1) * 0.5, y1 + (y2 - y1) * 0.5 + (side || -12), { size: 11, color: col === P.faint ? P.dim : col, bold: true });
+    }
+    function drawTree(ctx, w, h, rev, self) {
+      const P = pal(), G = geom(w, h), L = leafP();
+      let p0, q1, q2, cols, names, leafNames, leafVals, leafCnt;
+      const pA = L[0] + L[2];
+      if (!rev) {
+        p0 = st.pB; q1 = st.pAB; q2 = st.pAc; cols = [P.bad, P.accent2]; names = ["D", "Dᶜ", "+", "−"];
+        leafNames = ["D∩+", "D∩−", "Dᶜ∩+", "Dᶜ∩−"]; leafVals = L; leafCnt = st.cnt;
+      } else {
+        p0 = pA; q1 = pA > 0 ? L[0] / pA : 0; q2 = pA < 1 ? L[1] / (1 - pA) : 0; cols = [P.accent2, P.bad]; names = ["+", "−", "D", "Dᶜ"];
+        leafNames = ["+∩D", "+∩Dᶜ", "−∩D", "−∩Dᶜ"]; leafVals = [L[0], L[2], L[1], L[3]]; leafCnt = [st.cnt[0], st.cnt[2], st.cnt[1], st.cnt[3]];
+      }
+      SB.label(ctx, rev ? "뒤집은 나무 (경보 먼저)" : "정방향 나무 (불량 여부 먼저)", 12, 16, { align: "left", size: 12.5, bold: true, color: P.text });
+      const yb0 = bar(ctx, G.rx, G.top, G.bot, p0, cols[0], P);
+      const m0 = [(G.top + yb0) / 2, (yb0 + G.bot) / 2];
+      const yb1 = bar(ctx, G.cx, G.c1[0], G.c1[1], q1, cols[1], P), yb2 = bar(ctx, G.cx, G.c2[0], G.c2[1], q2, cols[1], P);
+      const m1 = [(G.c1[0] + yb1) / 2, (yb1 + G.c1[1]) / 2], m2 = [(G.c2[0] + yb2) / 2, (yb2 + G.c2[1]) / 2];
+      const n1 = (G.c1[0] + G.c1[1]) / 2, n2 = (G.c2[0] + G.c2[1]) / 2;
+      branch(ctx, G.rx + 6, m0[0], G.cx - 6, n1, p0, cols[0], `${names[0]} ${f3(p0)}`, P, -12);
+      branch(ctx, G.rx + 6, m0[1], G.cx - 6, n2, 1 - p0, P.faint, `${names[1]} ${f3(1 - p0)}`, P, 14);
+      const lp = [[m1[0], q1, 0], [m1[1], 1 - q1, 1], [m2[0], q2, 2], [m2[1], 1 - q2, 3]];
+      lp.forEach(([y, q, i]) => {
+        const col = i % 2 === 0 ? cols[1] : P.faint, isTop = i % 2 === 0;
+        branch(ctx, G.cx + 6, y, G.lx, G.leafY[i], leafVals[i] / Math.max(1e-9, Math.max(...leafVals)) * 0.6, col, `${isTop ? names[2] : names[3]}|${i < 2 ? names[0] : names[1]} ${f3(q)}`, P, isTop ? -12 : 13);
+      });
+      ctx.font = font(12); ctx.textBaseline = "middle";
+      G.leafY.forEach((y, i) => {
+        ctx.fillStyle = P.text; ctx.beginPath(); ctx.arc(G.lx, y, 3.5, 0, TAU); ctx.fill();
+        SB.label(ctx, `${leafNames[i]} ${f3(leafVals[i])}`, G.lx + 8, y - 8, { align: "left", size: 11.5, bold: true, color: (rev ? i === 0 : i === 0) ? P.bad : P.text });
+        if (st.n) SB.label(ctx, `${leafCnt[i]}개 (기대 ${(leafVals[i] * st.n).toFixed(1)})`, G.lx + 8, y + 8, { align: "left", size: 10.5, color: P.dim });
+      });
+      if (!rev && self) self._h = [{ id: "r", x: G.rx, y: yb0, a: G.top, b: G.bot }, { id: "c1", x: G.cx, y: yb1, a: G.c1[0], b: G.c1[1] }, { id: "c2", x: G.cx, y: yb2, a: G.c2[0], b: G.c2[1] }];
+      if (!rev) { handle(ctx, G.rx, yb0, P.bad, 9); handle(ctx, G.cx, yb1, P.accent2, 9); handle(ctx, G.cx, yb2, P.accent2, 9); }
+      // 공
+      if (!rev && self) {
+        st.balls.forEach((b) => {
+          const p0y = b.d ? m0[0] : m0[1], c = b.d ? (b.a ? m1[0] : m1[1]) : (b.a ? m2[0] : m2[1]), leaf = b.d ? (b.a ? 0 : 1) : (b.a ? 2 : 3);
+          const pts = [[4, (G.top + G.bot) / 2], [G.rx + 6, p0y], [G.cx + 6, c], [G.lx, G.leafY[leaf]]];
+          const t = Math.min(2.999, b.t * 3), k = Math.floor(t), f = t - k;
+          const x = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * f, y = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * f;
+          ctx.fillStyle = b.d ? P.bad : P.dim; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, TAU); ctx.fill();
+          if (b.a && t > 2) { ctx.strokeStyle = P.accent2; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, TAU); ctx.stroke(); }
+        });
+      }
+    }
+    const cv = SB.canvas("cv-tree", (ctx, w, h, self) => drawTree(ctx, w, h, false, self), { aspect: 0.8, minHeight: 300, maxHeight: 400 });
+    const cv2 = SB.canvas("cv-tree2", (ctx, w, h) => drawTree(ctx, w, h, true, null), { aspect: 0.8, minHeight: 300, maxHeight: 400 });
+    function readout() {
+      const L = leafP(), pA = L[0] + L[2];
+      SB.stat("tr-pa", `${f3(L[0])} + ${f3(L[2])} = ${f3(pA)}`);
+      SB.stat("tr-pba", `${f3(L[0])} / ${f3(pA)} = ${f3(L[0] / pA)}`);
+      SB.stat("tr-n", fint(st.n));
+      const na = st.cnt[0] + st.cnt[2];
+      SB.stat("tr-emp", na ? `${st.cnt[0]} / ${na} = ${(st.cnt[0] / na).toFixed(3)}` : "—");
+    }
+    function resetCounts() { st.cnt = [0, 0, 0, 0]; st.n = 0; st.balls = []; st.queue = 0; }
+    SB.drag(cv, {
+      handles: () => (cv._h || []).map((q) => ({ id: q.id, x: q.x, y: q.y, r: 13 })),
+      move: (id, x, y) => {
+        if (!id) return;
+        const q = cv._h.find((e) => e.id === id), v = SB.clamp((y - q.a) / (q.b - q.a), 0.01, 0.99);
+        const r2 = Math.round(v * 100) / 100;
+        if (id === "r") st.pB = r2; if (id === "c1") st.pAB = r2; if (id === "c2") st.pAc = r2;
+        resetCounts(); cv2.redraw(); readout();
+      },
+    });
+    const spawn = () => { const d = st.R.u() < st.pB, a = st.R.u() < (d ? st.pAB : st.pAc); st.balls.push({ d, a, t: 0 }); };
+    SB.loop("sim-tree", (dt) => {
+      if (!st.queue && !st.balls.length) return;
+      const rate = st.turbo ? 14 : 1;
+      for (let i = 0; i < rate && st.queue > 0 && st.balls.length < 260; i++) { if (st.turbo || !st.balls.length || st.balls[st.balls.length - 1].t > 0.12) { spawn(); st.queue--; } }
+      const sp = st.turbo ? 1.6 : 0.75;
+      st.balls.forEach((b) => (b.t += dt * sp));
+      const done = st.balls.filter((b) => b.t >= 1);
+      done.forEach((b) => { st.cnt[b.d ? (b.a ? 0 : 1) : (b.a ? 2 : 3)]++; st.n++; });
+      if (done.length) { st.balls = st.balls.filter((b) => b.t < 1); readout(); cv2.redraw(); }
+      if (!st.queue && !st.balls.length) st.turbo = false;
+      cv.redraw();
+    });
+    $("tr-1").addEventListener("click", () => { st.queue += 1; });
+    $("tr-100").addEventListener("click", () => { st.queue += 100; st.turbo = true; });
+    $("tr-1000").addEventListener("click", () => { st.queue += 1000; st.turbo = true; });
+    $("tr-reset").addEventListener("click", () => { resetCounts(); readout(); cv.redraw(); cv2.redraw(); });
+    readout();
+  }
+
+  /* ================================================================ 미니: 전확률 = 가중 평균 */
+  {
+    const st = { w: 0.6 };
+    const g1 = SB.range("tot-r1", (v) => v.toFixed(1) + "%", () => cv.redraw());
+    const g2 = SB.range("tot-r2", (v) => v.toFixed(1) + "%", () => cv.redraw());
+    const cv = SB.canvas("cv-total", (ctx, w, h, self) => {
+      const P = pal(), r1 = g1() / 100, r2 = g2() / 100, pd = r1 * st.w + r2 * (1 - st.w);
+      // 넓이 막대
+      const bx = 58, bw = w - 76, by = 24, bh = Math.round(h * 0.26), ymax = 0.2;
+      const xs = bx + st.w * bw;
+      ctx.save(); ctx.strokeStyle = P.dim; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+      withA(ctx, 0.8, () => { ctx.fillStyle = P.bad; ctx.fillRect(bx, by + bh * (1 - r1 / ymax), st.w * bw, bh * (r1 / ymax)); ctx.fillRect(xs, by + bh * (1 - r2 / ymax), (1 - st.w) * bw, bh * (r2 / ymax)); });
+      ctx.strokeStyle = P.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(xs, by); ctx.lineTo(xs, by + bh); ctx.stroke(); ctx.restore();
+      SB.label(ctx, `라인 1 · 몫 ${pc(st.w, 0)}`, bx + st.w * bw / 2, by - 10, { size: 11, color: P.dim });
+      SB.label(ctx, `라인 2 · 몫 ${pc(1 - st.w, 0)}`, xs + (1 - st.w) * bw / 2, by - 10, { size: 11, color: P.dim });
+      handle(ctx, xs, by + bh / 2, P.text, 9);
+      // 선 그래프
+      const top = by + bh + 22;
+      const C = SB.chart(ctx, { x: 58, y: top, w: w - 76, h: h - top - 44 }, { x: [0, 1], y: [0, ymax], xLabel: "라인 1의 몫 w = P(L₁)", yLabel: "P(D)", yFmt: (v) => (v * 100).toFixed(0) + "%", series: [{ data: [[0, r2], [1, r1]], color: P.accent2, width: 2.4 }] });
+      SB.dashLine(ctx, C.X(st.w), C.Y(0), C.X(st.w), C.Y(pd), P.faint);
+      handle(ctx, C.X(st.w), C.Y(pd), P.bad, 10);
+      SB.label(ctx, `P(D) = ${pc(pd, 2)}`, SB.clamp(C.X(st.w), C.box.x + 50, C.box.x + C.box.w - 50), C.Y(pd) - 18, { size: 12, bold: true, color: P.bad });
+      self._h = [{ id: "a", x: xs, y: by + bh / 2 }, { id: "b", x: C.X(st.w), y: C.Y(pd) }]; self._X = [C.box.x, C.box.x + C.box.w];
+      $("tot-r").textContent = `P(D) = ${(r1 * 100).toFixed(1)}% × ${st.w.toFixed(2)} + ${(r2 * 100).toFixed(1)}% × ${(1 - st.w).toFixed(2)} = ${pc(pd, 2)}`;
+    }, { aspect: 0.6, minHeight: 280, maxHeight: 360 });
+    SB.drag(cv, {
+      handles: () => (cv._h || []).map((q) => ({ id: q.id, x: q.x, y: q.y, r: 13 })),
+      move: (id, x) => { if (!id) return; const [a, b] = cv._X; st.w = Math.round(SB.clamp((x - a) / (b - a), 0, 1) * 100) / 100; },
+    });
+  }
+
+  /* ================================================================ 드래그 숫자: 세 챔버 */
+  SB.tangle("tg-total", (v) => {
+    const s3 = 100 - v.s1 - v.s2;
+    if (s3 < 0) return { s3: `<span class="cp-bad">${s3}%</span>`, tot: "— (몫의 합이 100%를 넘는다)", post: "—", s3b: "—" };
+    const t = (v.s1 * v.d1 + v.s2 * v.d2 + s3 * v.d3) / 1e4;
+    return { s3: s3 + "%", tot: pc(t, 2), post: t > 0 ? pc((s3 * v.d3) / 1e4 / t, 1) : "—", s3b: s3 + "%" };
+  });
+
+  /* ================================================================ 시뮬레이터: 모자이크 독립 판정 + 과녁 */
+  {
+    const st = { pA: 0.3, bA: 0, bAc: 0.4 / 0.7, tgt: null, hits: 0, tries: 0, flash: 0 };
+    const gMode = SB.seg("in-mode", (v) => { if (v === "game" && !st.tgt) newTarget(); if (v === "free") st.tgt = null; cv.redraw(); });
+    function newTarget() { st.tgt = { a: rnd(0.15, 0.85, 0.05), b: rnd(0.15, 0.85, 0.05) }; }
+    const pB = () => st.pA * st.bA + (1 - st.pA) * st.bAc;
+    const cv = SB.canvas("cv-indep", (ctx, w, h, self) => {
+      const P = pal(), x0 = 18, y0 = 30, bw = w - x0 - 18, bh = h - y0 - 40;
+      const xa = x0 + st.pA * bw, yA = y0 + bh * (1 - st.bA), yAc = y0 + bh * (1 - st.bAc), b = pB();
+      // 칸
+      const cell = (x, y, ww, hh, col, a, lab) => { withA(ctx, a, () => { ctx.fillStyle = col; ctx.fillRect(x, y, ww, hh); }); ctx.strokeStyle = P.bg; ctx.lineWidth = 2; ctx.strokeRect(x, y, ww, hh); if (lab && ww > 44 && hh > 18) SB.label(ctx, lab, x + ww / 2, y + hh / 2, { size: 11.5, bold: true, color: P.text }); };
+      cell(x0, yA, xa - x0, y0 + bh - yA, P.accent2, 0.6, `A∩B ${(st.pA * st.bA).toFixed(2)}`);
+      cell(x0, y0, xa - x0, yA - y0, P.accent, 0.22, `A∩Bᶜ ${(st.pA * (1 - st.bA)).toFixed(2)}`);
+      cell(xa, yAc, x0 + bw - xa, y0 + bh - yAc, P.accent2, 0.35, `Aᶜ∩B ${((1 - st.pA) * st.bAc).toFixed(2)}`);
+      cell(xa, y0, x0 + bw - xa, yAc - y0, P.faint, 0.2, `Aᶜ∩Bᶜ ${((1 - st.pA) * (1 - st.bAc)).toFixed(2)}`);
+      ctx.strokeStyle = P.dim; ctx.lineWidth = 1.2; ctx.strokeRect(x0, y0, bw, bh);
+      // P(B) 선
+      const yb = y0 + bh * (1 - b);
+      SB.dashLine(ctx, x0 - 6, yb, x0 + bw + 4, yb, P.text, [6, 4]);
+      SB.label(ctx, `P(B) = ${b.toFixed(2)}`, x0 + bw - 6, yb - 10, { size: 11, align: "right", color: P.text, bold: true });
+      SB.label(ctx, `A (${st.pA.toFixed(2)})`, (x0 + xa) / 2, y0 + bh + 14, { size: 12, bold: true, color: P.accent });
+      SB.label(ctx, `Aᶜ (${(1 - st.pA).toFixed(2)})`, (xa + x0 + bw) / 2, y0 + bh + 14, { size: 12, bold: true, color: P.dim });
+      SB.label(ctx, `P(B|A) = ${st.bA.toFixed(2)}  ·  P(B|Aᶜ) = ${st.bAc.toFixed(2)}`, x0 + bw / 2, y0 - 16, { size: 11, color: P.accent2, bold: true });
+      // 과녁
+      if (st.tgt) {
+        const tx = x0 + st.tgt.a * bw, ty = y0 + bh * (1 - st.tgt.b);
+        ctx.save(); ctx.strokeStyle = P.bad; ctx.setLineDash([3, 3]); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(tx, y0); ctx.lineTo(tx, y0 + bh); ctx.moveTo(x0, ty); ctx.lineTo(x0 + bw, ty); ctx.stroke(); ctx.restore();
+        SB.label(ctx, `과녁: P(A) = ${st.tgt.a.toFixed(2)}, P(B) = ${st.tgt.b.toFixed(2)}, 독립`, x0 + bw / 2, h - 8, { size: 11.5, bold: true, color: P.bad });
+      }
+      if (st.flash > 0) SB.label(ctx, "명중!", x0 + bw / 2, y0 + bh / 2, { size: 30, bold: true, color: P.ok });
+      handle(ctx, xa, y0 + bh / 2, P.text, 9);
+      handle(ctx, (x0 + xa) / 2, yA, P.accent2, 9);
+      handle(ctx, (xa + x0 + bw) / 2, yAc, P.accent2, 9);
+      self._g = { x0, y0, bw, bh, xa, yA, yAc };
+      // 판정과 표
+      const ab = st.pA * st.bA, prod = st.pA * b, dep = Math.abs(ab - prod) < 0.005;
+      SB.stat("in-prod", prod.toFixed(3)); SB.stat("in-ab", ab.toFixed(3));
+      SB.stat("in-verdict", dep ? '<span class="cp-ok">독립</span>' : ab > prod ? '<span class="cp-bad">종속(양의 연관)</span>' : '<span class="cp-bad">종속(음의 연관)</span>');
+      SB.stat("in-score", st.tgt || st.tries ? `명중 ${st.hits}` : "—");
+      const n = 200, c = [[ab, st.pA - ab], [b - ab, 1 - st.pA - b + ab]].map((r) => r.map((v) => Math.round(v * n)));
+      $("in-table").innerHTML = `<div class="table-wrap"><table class="cp-tbl"><thead><tr><th>N=200</th><th>B</th><th>Bᶜ</th></tr></thead><tbody><tr><th>A</th><td class="num">${c[0][0]}</td><td class="num">${c[0][1]}</td></tr><tr><th>Aᶜ</th><td class="num">${c[1][0]}</td><td class="num">${c[1][1]}</td></tr></tbody></table></div>`;
+    }, { aspect: 0.72, minHeight: 300, maxHeight: 430 });
+    function check() {
+      if (!st.tgt) return;
+      const b = pB();
+      if (Math.abs(st.pA - st.tgt.a) <= 0.02 && Math.abs(b - st.tgt.b) <= 0.02 && Math.abs(st.bA - st.bAc) <= 0.02) {
+        st.hits++; st.flash = 1.2; newTarget(); cv.redraw();
+      }
+    }
+    SB.drag(cv, {
+      handles: () => { const g = cv._g; if (!g) return []; return [{ id: "a", x: g.xa, y: g.y0 + g.bh / 2, r: 14 }, { id: "bA", x: (g.x0 + g.xa) / 2, y: g.yA, r: 14 }, { id: "bAc", x: (g.xa + g.x0 + g.bw) / 2, y: g.yAc, r: 14 }]; },
+      move: (id, x, y) => {
+        const g = cv._g; if (!id || !g) return;
+        if (id === "a") st.pA = Math.round(SB.clamp((x - g.x0) / g.bw, 0.05, 0.95) * 100) / 100;
+        else st[id] = Math.round(SB.clamp(1 - (y - g.y0) / g.bh, 0, 1) * 100) / 100;
+      },
+      up: () => { check(); },
+    });
+    $("in-new").addEventListener("click", () => { if (gMode() !== "game") gMode.set("game"); else { newTarget(); cv.redraw(); } });
+    SB.loop("sim-indep", (dt) => { if (st.flash > 0) { st.flash -= dt; if (st.flash <= 0) st.flash = 0; cv.redraw(); } });
+  }
+
+  /* ================================================================ 미니: 두 주사위 */
+  {
+    const EV = {
+      even1: (a) => a % 2 === 0, six1: (a) => a === 6, le2: (a) => a <= 2,
+      sum7: (a, b) => a + b === 7, sum8: (a, b) => a + b === 8, odd2: (a, b) => b % 2 === 1, same: (a, b) => a === b, ge10: (a, b) => a + b >= 10,
+    };
+    const st = { cnt: Array.from({ length: 36 }, () => 0), n: 0, nA: 0, nB: 0, nAB: 0, last: -1, R: Stat.rng(23) };
+    const sa = $("dc-a"), sb = $("dc-b");
+    const reset = () => { st.cnt.fill(0); st.n = st.nA = st.nB = st.nAB = 0; st.last = -1; };
+    [sa, sb].forEach((s) => s.addEventListener("change", () => { reset(); cv.redraw(); }));
+    const cv = SB.canvas("cv-dice", (ctx, w, h) => {
+      const P = pal(), fA = EV[sa.value], fB = EV[sb.value];
+      const S = Math.min(h - 34, w * 0.52), c = S / 6, x0 = 30, y0 = 22;
+      let a = 0, b = 0, ab = 0;
+      const mx = Math.max(1, ...st.cnt);
+      for (let i = 1; i <= 6; i++) for (let j = 1; j <= 6; j++) {
+        const x = x0 + (j - 1) * c, y = y0 + (i - 1) * c, iA = fA(i, j), iB = fB(i, j), k = (i - 1) * 6 + (j - 1);
+        if (iA) a++; if (iB) b++; if (iA && iB) ab++;
+        if (iB) withA(ctx, 0.45, () => { ctx.fillStyle = P.accent2; ctx.fillRect(x + 1, y + 1, c - 2, c - 2); });
+        else withA(ctx, 0.12, () => { ctx.fillStyle = P.faint; ctx.fillRect(x + 1, y + 1, c - 2, c - 2); });
+        if (iA) { ctx.strokeStyle = P.accent; ctx.lineWidth = 2.5; ctx.strokeRect(x + 2.5, y + 2.5, c - 5, c - 5); }
+        if (st.n) { const v = st.cnt[k]; withA(ctx, 0.15 + 0.6 * (v / mx), () => { ctx.fillStyle = P.text; ctx.beginPath(); ctx.arc(x + c / 2, y + c / 2, Math.max(1.5, (c * 0.32) * Math.sqrt(v / mx)), 0, TAU); ctx.fill(); }); }
+        if (k === st.last) { ctx.strokeStyle = P.bad; ctx.lineWidth = 2; ctx.strokeRect(x, y, c, c); }
+      }
+      ctx.fillStyle = P.dim; ctx.font = font(10.5); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (let j = 1; j <= 6; j++) ctx.fillText(String(j), x0 + (j - 0.5) * c, y0 - 9);
+      for (let i = 1; i <= 6; i++) ctx.fillText(String(i), x0 - 10, y0 + (i - 0.5) * c);
+      SB.label(ctx, "둘째 →", x0 + S + 22, y0 - 9, { size: 10, color: P.dim });
+      const tx = x0 + S + 14, Lh = w < 420 ? 17 : 19, fs = w < 420 ? 10.5 : 12;
+      const ind = ab * 36 === a * b;
+      const lines = [
+        [`P(A) = ${a}/36 = ${(a / 36).toFixed(3)}`, P.accent], [`P(B) = ${b}/36 = ${(b / 36).toFixed(3)}`, P.accent2],
+        [`P(A∩B) = ${ab}/36 = ${(ab / 36).toFixed(3)}`, P.text], [`P(A)P(B) = ${((a * b) / 1296).toFixed(3)}`, P.text],
+        [ind ? "→ 독립" : "→ 종속", ind ? P.ok : P.bad],
+        [st.n ? `굴린 횟수 ${fint(st.n)}` : "재생을 눌러 굴려 보자", P.dim],
+        [st.n ? `센 P(A∩B) ${(st.nAB / st.n).toFixed(3)}` : "", P.dim],
+        [st.n ? `센 P(A)·P(B) ${((st.nA / st.n) * (st.nB / st.n)).toFixed(3)}` : "", P.dim],
+      ];
+      lines.forEach(([t, col], i) => SB.label(ctx, t, tx, y0 + 6 + i * Lh, { align: "left", size: fs, color: col, bold: i === 4 }));
+      $("dc-r").textContent = `P(A|B) = ${b ? (ab / b).toFixed(3) : "—"} vs P(A) = ${(a / 36).toFixed(3)}`;
+    }, { aspect: 0.58, minHeight: 200, maxHeight: 320 });
+    const loop = SB.loop("mini-dice", () => {
+      const fA = EV[sa.value], fB = EV[sb.value];
+      for (let r = 0; r < 30; r++) { const i = 1 + Math.floor(st.R.u() * 6), j = 1 + Math.floor(st.R.u() * 6), iA = fA(i, j), iB = fB(i, j); st.cnt[(i - 1) * 6 + j - 1]++; st.n++; if (iA) st.nA++; if (iB) st.nB++; if (iA && iB) st.nAB++; st.last = (i - 1) * 6 + j - 1; }
+      cv.redraw();
+    });
+    loop.stop();
+    SB.play("dc-play", loop, { play: "▶ 굴리기", pause: "❚❚ 정지" });
+  }
+
+  /* ================================================================ 미니: 도박사의 오류와 군집 */
+  {
+    const st = { R: Stat.rng(31), prev: 0, run: 0, num: new Array(6).fill(0), den: new Array(6).fill(0), n: 0, nd: 0, strip: [] };
+    const gMode = SB.seg("sk-mode", () => { reset(); cv.redraw(); });
+    const gP = SB.range("sk-p", (v) => v.toFixed(2), () => { reset(); cv.redraw(); });
+    const RHO = 0.5;
+    function reset() { st.prev = 0; st.run = 0; st.num.fill(0); st.den.fill(0); st.n = 0; st.nd = 0; st.strip = []; }
+    function step() {
+      const p = gP(), clu = gMode() === "clu";
+      const q = clu ? (st.prev ? p + RHO * (1 - p) : p * (1 - RHO)) : p;
+      const d = st.R.u() < q ? 1 : 0, k = Math.min(5, st.run);
+      st.den[k]++; if (d) st.num[k]++;
+      st.run = d ? st.run + 1 : 0; st.prev = d; st.n++; st.nd += d;
+      st.strip.push(d); if (st.strip.length > 80) st.strip.shift();
+    }
+    const cv = SB.canvas("cv-streak", (ctx, w, h) => {
+      const P = pal(), p = gP(), clu = gMode() === "clu";
+      const sw = Math.min(10, (w - 82) / 80);
+      st.strip.forEach((d, i) => { ctx.fillStyle = d ? P.bad : P.faint; withA(ctx, d ? 0.9 : 0.4, () => ctx.fillRect(70 + i * sw, 10, sw - 1, 14)); });
+      SB.label(ctx, "최근 다이 →", 66, 17, { size: 10, align: "right", color: P.dim });
+      const C = SB.chart(ctx, { x: 48, y: 40, w: w - 62, h: h - 86 }, { x: [-0.5, 5.5], y: [0, 1], xTicks: [0, 1, 2, 3, 4, 5], xFmt: (v) => (v === 5 ? "5+" : String(v)), xLabel: "직전 연속 불량 수 k", yLabel: "다음 다이 불량 비율" });
+      const em = st.num.map((v, i) => [i, st.den[i] ? v / st.den[i] : 0]);
+      Stat.draw.bars(ctx, C, em, { width: 0.55, color: P.accent, alpha: 0.75 });
+      ctx.save(); ctx.strokeStyle = P.accent2; ctx.lineWidth = 3;
+      for (let k = 0; k <= 5; k++) { const th = clu ? (k === 0 ? p * (1 - RHO) : p + RHO * (1 - p)) : p; ctx.beginPath(); ctx.moveTo(C.X(k - 0.38), C.Y(th)); ctx.lineTo(C.X(k + 0.38), C.Y(th)); ctx.stroke(); }
+      ctx.restore();
+      st.den.forEach((d, i) => { if (d) SB.label(ctx, fint(d), C.X(i), C.Y(0) - 9, { size: 9.5, color: P.dim }); });
+      $("sk-r").textContent = st.n ? `다이 ${fint(st.n)}개 · 전체 불량률 ${(st.nd / st.n).toFixed(3)} (설정 ${p.toFixed(2)})` : "재생을 눌러 검사를 시작하자";
+    }, { aspect: 0.5, minHeight: 240, maxHeight: 320 });
+    const loop = SB.loop("mini-streak", () => { for (let i = 0; i < 300; i++) step(); cv.redraw(); });
+    loop.stop();
+    SB.play("sk-play", loop, { play: "▶ 검사 시작", pause: "❚❚ 정지" });
+  }
+
+  /* ================================================================ 드래그 숫자: 직렬과 중복 */
+  SB.tangle("tg-series", (v) => {
+    const ser = Math.pow(v.r, v.n), blk = 1 - Math.pow(1 - v.r, v.m), mix = Math.pow(blk, v.n);
+    return { ser: ser.toFixed(4), parts: v.n * v.m + "개", mix: mix.toFixed(4) };
+  }, { fmt: { r: (x) => x.toFixed(4) } });
+
+  /* ================================================================ 미니: 부품 수와 계통 신뢰도 */
+  {
+    const st = { n: 100 };
+    const gR = SB.range("cu-r", (v) => v.toFixed(3), () => cv.redraw());
+    const cv = SB.canvas("cv-curve", (ctx, w, h, self) => {
+      const P = pal(), r = gR(), q = 1 - r;
+      const ser = [], par = [], apx = [];
+      for (let i = 0; i <= 200; i++) { const n = Math.pow(10, (i / 200) * 3); ser.push([n, Math.pow(r, n)]); par.push([n, 1 - Math.pow(q, n)]); apx.push([n, Math.exp(-n * q)]); }
+      const C = SB.chart(ctx, { x: 52, y: 26, w: w - 70, h: h - 72 }, { x: [1, 1000], y: [0, 1], logX: true, xFmt: (v) => String(v), xLabel: "부품 수 n (로그 눈금)", yLabel: "계통 신뢰도", hlines: [{ y: Math.exp(-1), color: P.faint, label: "e⁻¹ = 0.368" }], series: [{ data: apx, color: P.accent2, width: 1.6, dash: [5, 4] }, { data: par, color: P.accent, width: 2.6 }, { data: ser, color: P.bad, width: 2.6 }] });
+      const n = st.n, ys = Math.pow(r, n), yp = 1 - Math.pow(q, n);
+      SB.dashLine(ctx, C.X(n), C.box.y, C.X(n), C.box.y + C.box.h, P.dim);
+      ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(C.X(n), C.Y(yp), 5, 0, TAU); ctx.fill();
+      handle(ctx, C.X(n), C.Y(ys), P.bad, 10);
+      SB.label(ctx, `직렬 ${ys.toFixed(3)}`, SB.clamp(C.X(n) + 8, C.box.x, C.box.x + C.box.w - 70), C.Y(ys) - 16, { size: 11.5, bold: true, color: P.bad, align: "left" });
+      SB.label(ctx, `병렬 ${yp.toFixed(4)}`, SB.clamp(C.X(n) + 8, C.box.x, C.box.x + C.box.w - 80), Math.max(C.box.y + 10, C.Y(yp) + 14), { size: 11.5, bold: true, color: P.accent, align: "left" });
+      self._h = [C.X(n), C.Y(ys)]; self._C = C;
+      $("cu-rd").textContent = `n = ${n}: 직렬 rⁿ = ${ys.toPrecision(3)}, 근사 e^(−n(1−r)) = ${Math.exp(-n * q).toPrecision(3)}, 병렬 ${yp >= 0.9999995 ? "≈ 1" : "= " + yp.toPrecision(4)}`;
+    }, { aspect: 0.55, minHeight: 250, maxHeight: 340 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "n", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x) => { if (!id) return; const B = cv._C.box, t = SB.clamp((x - B.x) / B.w, 0, 1); st.n = Math.max(1, Math.round(Math.pow(10, 3 * t))); },
+    });
+  }
+
+  /* ================================================================ 시뮬레이터: 중복 설계 게임 */
+  {
+    const ST = [{ name: "펌프", r: 0.9, c: 2 }, { name: "제어기", r: 0.97, c: 5 }, { name: "센서", r: 0.85, c: 1 }, { name: "전원", r: 0.95, c: 3 }];
+    const QCC = 0.002, NMAX = 5;
+    const st = { n: [1, 1, 1, 1], alive: null, ok: null, ccf: null, tick: 0, trials: 0, succ: 0, R: Stat.rng(41) };
+    const gGoal = SB.seg("rl-goal", () => { update(); cv.redraw(); });
+    const ccEl = $("rl-cc");
+    const stageR = (i, n) => { const base = 1 - Math.pow(1 - ST[i].r, n); return ccEl.checked && n >= 2 ? (1 - QCC) * base : base; };
+    const sysR = (ns) => ns.reduce((a, n, i) => a * stageR(i, n), 1);
+    const cost = (ns) => ns.reduce((a, n, i) => a + n * ST[i].c, 0);
+    function optimum(goal) {
+      let best = null;
+      for (let a = 1; a <= NMAX; a++) for (let b = 1; b <= NMAX; b++) for (let c = 1; c <= NMAX; c++) for (let d = 1; d <= NMAX; d++) {
+        const ns = [a, b, c, d], R = sysR(ns), co = cost(ns);
+        if (R >= goal && (!best || co < best.c)) best = { c: co, ns };
+      }
+      return best;
+    }
+    function maxR() { return sysR([NMAX, NMAX, NMAX, NMAX]); }
+    function update() {
+      const R = sysR(st.n), co = cost(st.n), goal = Number(gGoal()), opt = optimum(goal);
+      SB.stat("rl-R", R.toFixed(5));
+      SB.stat("rl-cost", String(co));
+      let msg;
+      if (!opt) msg = `<span class="cp-bad">도달 불가 — 최대 ${maxR().toFixed(4)}</span>`;
+      else if (R >= goal) msg = co === opt.c ? `<span class="cp-ok">최적! 비용 ${co}</span>` : `<span class="cp-ok">달성</span> · 비용 ${co} (최소 ${opt.c})`;
+      else msg = `목표 ${goal} 미달 — 더 늘리자`;
+      SB.stat("rl-goal-r", msg);
+      SB.stat("rl-mc", st.trials ? `${(st.succ / st.trials).toFixed(4)} <small>(${fint(st.trials)}회)</small>` : "—");
+    }
+    function trial(save) {
+      const cc = st.n.map((n) => ccEl.checked && n >= 2 && st.R.u() < QCC);
+      const alive = st.n.map((n, i) => Array.from({ length: n }, () => !cc[i] && st.R.u() < ST[i].r));
+      const ok = alive.map((a) => a.some(Boolean));
+      const sys = ok.every(Boolean);
+      st.trials++; if (sys) st.succ++;
+      if (save) { st.alive = alive; st.ok = ok; st.ccf = cc; st.sys = sys; }
+    }
+    function resetMC() { st.trials = st.succ = 0; st.alive = null; }
+    ccEl.addEventListener("change", () => { resetMC(); update(); cv.redraw(); });
+    const cv = SB.canvas("cv-rel", (ctx, w, h, self) => {
+      const P = pal(), K = ST.length, colW = (w - 40) / K, midY = h * 0.5 + 2, bh = 24, gap = 8, bw = Math.min(60, colW * 0.62);
+      const xL = 14, xR = w - 14, sysOk = st.alive ? st.sys : null;
+      const lineCol = sysOk == null ? P.dim : sysOk ? P.ok : P.bad;
+      ctx.save(); ctx.strokeStyle = lineCol; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(xL, midY); ctx.lineTo(xR, midY); ctx.stroke(); ctx.restore();
+      SB.label(ctx, "입력", xL + 14, midY - 12, { size: 10.5, color: P.dim }); SB.label(ctx, "출력", xR - 14, midY - 12, { size: 10.5, color: P.dim });
+      self._cols = [];
+      ST.forEach((s, i) => {
+        const n = st.n[i], cx = 20 + colW * (i + 0.5), totH = n * bh + (n - 1) * gap, y0 = midY - totH / 2;
+        // 병렬 레일
+        ctx.save(); ctx.fillStyle = P.bg; ctx.fillRect(cx - bw / 2 - 12, midY - 3, bw + 24, 6); ctx.restore();
+        ctx.save(); ctx.strokeStyle = st.alive ? (st.ok[i] ? P.ok : P.bad) : P.dim; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - bw / 2 - 12, y0 + bh / 2); ctx.lineTo(cx - bw / 2 - 12, y0 + totH - bh / 2); ctx.moveTo(cx + bw / 2 + 12, y0 + bh / 2); ctx.lineTo(cx + bw / 2 + 12, y0 + totH - bh / 2); ctx.stroke();
+        for (let k = 0; k < n; k++) { const y = y0 + k * (bh + gap) + bh / 2; ctx.beginPath(); ctx.moveTo(cx - bw / 2 - 12, y); ctx.lineTo(cx - bw / 2, y); ctx.moveTo(cx + bw / 2, y); ctx.lineTo(cx + bw / 2 + 12, y); ctx.stroke(); }
+        if (n === 1) { ctx.beginPath(); ctx.moveTo(cx - bw / 2 - 12, midY); ctx.lineTo(cx + bw / 2 + 12, midY); ctx.stroke(); }
+        ctx.restore();
+        for (let k = 0; k < n; k++) {
+          const y = y0 + k * (bh + gap), alive = st.alive ? st.alive[i][k] : null;
+          ctx.save(); rr(ctx, cx - bw / 2, y, bw, bh, 5);
+          ctx.fillStyle = P.surface; ctx.fill();
+          if (alive != null) withA(ctx, 0.45, () => { ctx.fillStyle = alive ? P.ok : P.bad; ctx.fill(); });
+          ctx.strokeStyle = P.accent; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+          SB.label(ctx, s.r.toFixed(2), cx, y + bh / 2, { size: 10.5, color: P.text, bg: "transparent" });
+        }
+        if (st.ccf && st.ccf[i]) SB.label(ctx, "공통 원인!", cx, y0 - 30, { size: 11, bold: true, color: P.bad });
+        const hy = y0 - 14;
+        handle(ctx, cx, hy, P.accent2, 9);
+        const nar = colW < 110;
+        SB.label(ctx, nar ? s.name : `${s.name} ×${n}`, cx, h - 36, { size: 12, bold: true, color: P.text });
+        SB.label(ctx, nar ? stageR(i, n).toFixed(5) : `단 신뢰도 ${stageR(i, n).toFixed(5)}`, cx, h - 21, { size: 10.5, color: P.dim });
+        SB.label(ctx, nar ? `${n}개·개당 ${s.c}` : `개당 비용 ${s.c}`, cx, h - 7, { size: 10, color: P.dim });
+        self._cols.push({ i, cx, hy, midY });
+      });
+      SB.label(ctx, `R = ${sysR(st.n).toFixed(5)} · 비용 ${cost(st.n)}`, w / 2, 14, { size: 13, bold: true, color: P.text });
+      SB.label(ctx, "각 단 위의 흰 원을 위아래로 끌어 병렬 개수(1–5)를 정한다", w / 2, 32, { size: 10.5, color: P.dim });
+    }, { aspect: 0.66, minHeight: 330, maxHeight: 420 });
+    SB.drag(cv, {
+      handles: () => (cv._cols || []).map((c) => ({ id: c.i, x: c.cx, y: c.hy, r: 14 })),
+      move: (id, x, y) => {
+        if (id == null) return;
+        const c = cv._cols[id], n = SB.clamp(Math.round(((c.midY - y - 14) * 2 + 8) / 32), 1, NMAX);
+        if (n !== st.n[id]) { st.n[id] = n; resetMC(); update(); }
+      },
+    });
+    $("rl-reset").addEventListener("click", () => { st.n = [1, 1, 1, 1]; resetMC(); update(); cv.redraw(); });
+    const loop = SB.loop("sim-rel", (dt) => {
+      st.tick += dt;
+      for (let i = 0; i < 60; i++) trial(false);
+      if (st.tick > 0.45) { st.tick = 0; trial(true); }
+      update(); cv.redraw();
+    });
+    loop.stop();
+    SB.play("rl-play", loop, { play: "▶ 임무 모의 실험", pause: "❚❚ 정지" });
+    update();
+  }
+
+  /* ================================================================ 드릴: 계통 신뢰도 */
+  SB.drill("drill-rel", () => {
+    const kind = pick(["ser", "par", "mix", "kn"]);
+    if (kind === "ser") { const n = pick([3, 4, 5, 6, 8, 10, 12, 20]), r = pick([0.9, 0.95, 0.98, 0.99, 0.995, 0.999]); const R = Math.pow(r, n); return { q: `<p>신뢰도 \\(${r}\\)인 부품 \\(${n}\\)개가 직렬로 연결된 계통의 신뢰도는?</p>`, answer: Number(R.toPrecision(4)), label: "R =", tol: "0.5%", sol: `\\(R = ${r}^{${n}} = ${R.toFixed(4)}\\)` }; }
+    if (kind === "par") { const n = pick([2, 3, 4]), r = pick([0.6, 0.7, 0.8, 0.85, 0.9]); const R = 1 - Math.pow(1 - r, n); return { q: `<p>신뢰도 \\(${r}\\)인 부품 \\(${n}\\)개가 병렬로 연결된 계통의 신뢰도는?</p>`, answer: Number(R.toPrecision(5)), label: "R =", tol: "0.2%", sol: `\\(R = 1 - (1 - ${r})^{${n}} = ${R.toFixed(5)}\\)` }; }
+    if (kind === "kn") { const r = pick([0.7, 0.8, 0.9, 0.95]); const R = Stat.rel.kOfN(2, 3, r); return { q: `<p>신뢰도 \\(${r}\\)인 센서 3개로 만든 2-out-of-3 다수결 계통의 신뢰도는?</p>`, answer: Number(R.toPrecision(4)), label: "R =", tol: "0.5%", sol: `\\(R = 3r^2(1-r) + r^3 = 3(${r})^2(${(1 - r).toFixed(2)}) + ${r}^3 = ${R.toFixed(4)}\\)` }; }
+    const a = pick([0.9, 0.95, 0.98, 0.99]), b = pick([0.7, 0.8, 0.9]), c = pick([0.9, 0.95, 0.99]);
+    const blk = 1 - (1 - b) ** 2, R = a * blk * c;
+    return { q: `<p>부품 A(\\(${a}\\)) → 병렬 블록(신뢰도 \\(${b}\\)인 부품 두 개) → 부품 C(\\(${c}\\))가 직렬로 이어진 계통의 신뢰도는?</p>`, answer: Number(R.toPrecision(4)), label: "R =", tol: "0.5%", sol: `병렬 블록 \\(1 - (1-${b})^2 = ${blk.toFixed(4)}\\), \\(R = ${a}\\times${blk.toFixed(4)}\\times${c} = ${R.toFixed(4)}\\)` };
+  });
+
+  /* ================================================================ 시뮬레이터: 베이즈 넓이 그림 */
+  {
+    const st = { p: 0.001, se: 0.99, fa: 0.01, dots: [], n: 0, nf: 0, nfd: 0, R: Stat.rng(53) };
+    const LMIN = -3, C15 = 0.15, LC = Math.log10(C15);
+    const zoomEl = $("by-zoom");
+    const gP = SB.range("by-p", (v) => pcs(Math.pow(10, v)), (v) => { st.p = Math.pow(10, v); reset(); cv.redraw(); });
+    const disp = (p) => (zoomEl.checked && p < C15 ? 0.03 + 0.12 * (Math.log10(Math.max(p, 1e-3)) - LMIN) / (LC - LMIN) : p);
+    const undisp = (u) => (zoomEl.checked && u < C15 ? Math.pow(10, LMIN + (SB.clamp(u, 0.03, C15) - 0.03) / 0.12 * (LC - LMIN)) : u);
+    function reset() { st.dots = []; st.n = st.nf = st.nfd = 0; }
+    zoomEl.addEventListener("change", () => { reset(); cv.redraw(); });
+    function sample(keep) {
+      const d = st.R.u() < st.p, f = st.R.u() < (d ? st.se : st.fa);
+      st.n++; if (f) { st.nf++; if (d) st.nfd++; }
+      if (keep && st.dots.length < 1500) st.dots.push({ d, f, u: st.R.u(), v: st.R.u() });
+    }
+    const cv = SB.canvas("cv-bayes", (ctx, w, h, self) => {
+      const P = pal(), barW = Math.max(54, Math.min(90, w * 0.16)), S = Math.min(h - 84, w - 70 - barW - 30), x0 = 44, y0 = 48;
+      const wd = disp(st.p) * S, xb = x0 + wd;
+      const hSe = st.se * S, hFa = disp(st.fa) * S;
+      // 네 칸 (경보는 아래쪽)
+      const fill = (x, y, ww, hh, col, a) => { withA(ctx, a, () => { ctx.fillStyle = col; ctx.fillRect(x, y, ww, hh); }); };
+      fill(x0, y0 + S - hSe, wd, hSe, P.bad, 0.9);
+      fill(x0, y0, wd, S - hSe, P.bad, 0.25);
+      fill(xb, y0 + S - hFa, S - wd, hFa, P.accent2, 0.5);
+      fill(xb, y0, S - wd, S - hFa, P.faint, 0.18);
+      ctx.strokeStyle = P.dim; ctx.lineWidth = 1.2; ctx.strokeRect(x0, y0, S, S);
+      ctx.beginPath(); ctx.moveTo(xb, y0); ctx.lineTo(xb, y0 + S); ctx.stroke();
+      // 점
+      st.dots.forEach((q) => {
+        const x = q.d ? x0 + q.u * wd : xb + q.u * (S - wd);
+        const hh = q.d ? hSe : hFa, y = q.f ? y0 + S - q.v * hh : y0 + (S - hh) * q.v;
+        ctx.fillStyle = q.d ? P.bad : P.text; withA(ctx, q.d ? 1 : 0.45, () => { ctx.beginPath(); ctx.arc(x, y, q.d ? 2.6 : 1.6, 0, TAU); ctx.fill(); });
+      });
+      if (zoomEl.checked && st.p < C15) SB.label(ctx, "돋보기: 작은 확률을 로그로 넓힘", x0 + S / 2, y0 + S + 30, { size: 10.5, color: P.dim });
+      SB.label(ctx, `D ${pcs(st.p)}`, x0 - 4, y0 - 32, { size: 11, bold: true, color: P.bad, align: "left" });
+      SB.label(ctx, `Dᶜ ${pcs(1 - st.p)}`, xb + (S - wd) / 2, y0 - 32, { size: 11, bold: true, color: P.dim });
+      SB.label(ctx, `+|D ${pc(st.se, 1)}`, x0 + wd + 14, Math.max(y0 - 12, y0 + S - hSe - 12), { size: 10.5, bold: true, color: P.bad, align: "left" });
+      SB.label(ctx, `+|Dᶜ ${pcs(st.fa)}`, xb + (S - wd) / 2, y0 + S - hFa - 12, { size: 10.5, bold: true, color: P.accent2 });
+      SB.label(ctx, "경보(+)는 아래쪽", x0 + S / 2, y0 + S + 14, { size: 10.5, color: P.dim });
+      // 경보만 모은 막대
+      const bx = x0 + S + 30, tp = st.p * st.se, fp = (1 - st.p) * st.fa, ppv = tp / (tp + fp);
+      ctx.save(); ctx.strokeStyle = P.dim; ctx.strokeRect(bx, y0, barW, S);
+      fill(bx, y0 + S * (1 - ppv), barW, S * ppv, P.bad, 0.9); fill(bx, y0, barW, S * (1 - ppv), P.accent2, 0.5); ctx.restore();
+      SB.label(ctx, "경보만 모으면", bx + barW / 2, y0 - 22, { size: 11, bold: true, color: P.text });
+      SB.label(ctx, pc(ppv, 1), bx + barW / 2, SB.clamp(y0 + S * (1 - ppv) - 12, y0 + 12, y0 + S - 12), { size: 13, bold: true, color: P.bad });
+      SB.label(ctx, "P(D|+)", bx + barW / 2, y0 + S + 14, { size: 10.5, color: P.dim });
+      // 화살표
+      SB.arrow(ctx, x0 + S + 4, y0 + S - 10, bx - 4, y0 + S - 10, { color: P.dim, width: 1.4, head: 6 });
+      handle(ctx, xb, y0 + S / 2, P.text, 9);
+      handle(ctx, x0 + wd / 2, y0 + S - hSe, P.bad, 9);
+      handle(ctx, xb + (S - wd) / 2, y0 + S - hFa, P.accent2, 9);
+      self._g = { x0, y0, S, wd, xb, hSe, hFa };
+      // 수치
+      const npv = (st.p * (1 - st.se)) / (st.p * (1 - st.se) + (1 - st.p) * (1 - st.fa));
+      SB.stat("by-ppv", pc(ppv, 1));
+      SB.stat("by-nf", `경보 ${fint(1e5 * (tp + fp))} 중 불량 ${fint(1e5 * tp)}`);
+      SB.stat("by-npv", `${pcs(npv)} <small>(${fint(npv * 1e6)} DPPM)</small>`);
+      SB.stat("by-emp", st.nf ? `${fint(st.nfd)} / ${fint(st.nf)} = ${pc(st.nfd / st.nf, 1)} <small>(다이 ${fint(st.n)}개)</small>` : "—");
+    }, { aspect: 0.7, minHeight: 300, maxHeight: 440 });
+    SB.drag(cv, {
+      handles: () => { const g = cv._g; if (!g) return []; return [{ id: "p", x: g.xb, y: g.y0 + g.S / 2, r: 14 }, { id: "se", x: g.x0 + g.wd / 2, y: g.y0 + g.S - g.hSe, r: 14 }, { id: "fa", x: g.xb + (g.S - g.wd) / 2, y: g.y0 + g.S - g.hFa, r: 14 }]; },
+      move: (id, x, y) => {
+        const g = cv._g; if (!id || !g) return;
+        if (id === "p") { st.p = SB.clamp(undisp((x - g.x0) / g.S), 0.001, 0.5); gP.set(Math.log10(st.p), true); }
+        if (id === "se") st.se = Math.round(SB.clamp(1 - (y - g.y0) / g.S, 0.5, 1) * 1000) / 1000;
+        if (id === "fa") { const u = SB.clamp(1 - (y - g.y0) / g.S, 0, 0.5); st.fa = SB.clamp(undisp(u), 0.001, 0.5); st.fa = Number(st.fa.toPrecision(2)); }
+        reset();
+      },
+    });
+    const loop = SB.loop("sim-bayes", () => { for (let i = 0; i < 12; i++) sample(true); for (let i = 0; i < 1500; i++) sample(false); cv.redraw(); });
+    loop.stop();
+    SB.play("by-play", loop, { play: "▶ 다이 떨어뜨리기", pause: "❚❚ 정지" });
+    $("by-reset").addEventListener("click", () => { reset(); cv.redraw(); });
+    $("sim-bayes").addEventListener("unlock", () => cv.redraw());
+  }
+
+  /* ================================================================ 드래그 숫자: 양성 예측도 */
+  SB.tangle("tg-ppv", (v) => {
+    const p = v.p / 100, se = v.se / 100, fa = v.fa / 100, tp = p * se, fp = (1 - p) * fa;
+    const ppv = tp + fp > 0 ? tp / (tp + fp) : NaN, esc = p * (1 - se), pass = esc + (1 - p) * (1 - fa);
+    return { ppv: isFinite(ppv) ? pc(ppv, 1) : "—", nflag: fint(1e5 * (tp + fp)), ntp: fint(1e5 * tp), dppm: fint((esc / pass) * 1e6) };
+  });
+
+  /* ================================================================ 시뮬레이터: 불량 원인 추적 */
+  {
+    const st = { s: [0.5, 0.3, 0.2], d: [0.01, 0.02, 0.05], cnt: [0, 0, 0], n: 0, fly: [], R: Stat.rng(61) };
+    const YM = 0.1, names = ["C₁", "C₂", "C₃"];
+    const post = () => { const j = st.s.map((s, i) => s * st.d[i]), t = j[0] + j[1] + j[2]; return { j, t, p: j.map((v) => (t > 0 ? v / t : 0)) }; };
+    function trace() {
+      const Q = post(); if (Q.t <= 0) return;
+      const i = st.R.choice(Q.j);
+      st.fly.push({ i, u: st.R.u(), v: st.R.u(), t: 0 });
+    }
+    const reset = () => { st.cnt = [0, 0, 0]; st.n = 0; st.fly = []; };
+    const cv = SB.canvas("cv-root", (ctx, w, h, self) => {
+      const P = pal(), Q = post(), cols = [P.series[0], P.series[1], P.series[2]];
+      const lx = 48, lw = Math.round((w - 48) * 0.56), y0 = 34, H = h - y0 - 46;
+      const rx = lx + lw + 30, rw = w - rx - 12;
+      // 왼쪽: 처리 몫 × 불량률
+      const C = SB.chart(ctx, { x: lx, y: y0, w: lw, h: H }, { x: [0, 1], y: [0, YM], xTicks: [], yFmt: (v) => (v * 100).toFixed(0) + "%", yLabel: "챔버 불량률" });
+      let acc = 0; const xs = [], tops = [];
+      st.s.forEach((s, i) => {
+        const a = C.X(acc), b = C.X(acc + s), yt = C.Y(Math.min(st.d[i], YM));
+        withA(ctx, 0.12, () => { ctx.fillStyle = cols[i]; ctx.fillRect(a, C.box.y, b - a, C.box.h); });
+        withA(ctx, 0.85, () => { ctx.fillStyle = P.bad; ctx.fillRect(a + 1, yt, b - a - 2, C.Y(0) - yt); });
+        SB.label(ctx, `${names[i]} ${pc(s, 0)}`, (a + b) / 2, C.box.y + C.box.h + 14, { size: 11, bold: true, color: cols[i] });
+        if (b - a > 34) SB.label(ctx, pc(st.d[i], 1), (a + b) / 2, yt - 22, { size: 10.5, bold: true, color: P.bad });
+        xs.push(b); tops.push([(a + b) / 2, yt, a, b]); acc += s;
+      });
+      ctx.strokeStyle = P.text; ctx.lineWidth = 2;
+      xs.slice(0, 2).forEach((x) => { ctx.beginPath(); ctx.moveTo(x, C.box.y); ctx.lineTo(x, C.box.y + C.box.h); ctx.stroke(); });
+      // 오른쪽: 사전 몫 vs 사후 확률 vs 추적 도수
+      const R = SB.chart(ctx, { x: rx, y: y0, w: rw, h: H }, { x: [-0.5, 2.5], y: [0, 1], xTicks: [], yTicks: [0, 0.5, 1], yFmt: (v) => String(v) });
+      const bw = 0.62;
+      st.s.forEach((s, i) => {
+        const a = R.X(i - bw / 2), b = R.X(i + bw / 2);
+        if (st.n) withA(ctx, 0.7, () => { ctx.fillStyle = cols[i]; const v = st.cnt[i] / st.n; ctx.fillRect(a, R.Y(v), b - a, R.Y(0) - R.Y(v)); });
+        ctx.save(); ctx.strokeStyle = P.dim; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.4; ctx.strokeRect(a, R.Y(s), b - a, R.Y(0) - R.Y(s)); ctx.restore();
+        ctx.save(); ctx.strokeStyle = P.accent2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a - 3, R.Y(Q.p[i])); ctx.lineTo(b + 3, R.Y(Q.p[i])); ctx.stroke(); ctx.restore();
+        SB.label(ctx, names[i], R.X(i), R.box.y + R.box.h + 14, { size: 11, bold: true, color: cols[i] });
+        SB.label(ctx, Q.p[i].toFixed(2), R.X(i), Math.max(R.box.y + 8, R.Y(Q.p[i]) - 10), { size: 10.5, bold: true, color: P.accent2 });
+      });
+      SB.label(ctx, "불량 다이의 출신", rx + rw / 2, 14, { size: 11.5, bold: true, color: P.text });
+      SB.label(ctx, "처리 몫(폭) × 불량률(높이)", lx + lw / 2, 14, { size: 11.5, bold: true, color: P.text });
+      SB.label(ctx, w < 480 ? "점선 사전 · 자주 사후" : "점선 = 처리 몫(사전) · 자주 = 사후 · 칠 = 추적 도수", rx + rw / 2, h - 10, { size: 10, color: P.dim });
+      // 날아가는 불량 다이
+      st.fly.forEach((f) => {
+        const t = tops[f.i], sx = t[2] + 3 + f.u * (t[3] - t[2] - 6), sy = t[1] + f.v * (C.Y(0) - t[1]), ex = R.X(f.i), ey = R.Y(0) - 6;
+        const k = Math.min(1, f.t), x = sx + (ex - sx) * k, y = sy + (ey - sy) * k - Math.sin(Math.PI * k) * 40;
+        ctx.fillStyle = P.bad; ctx.strokeStyle = P.bg; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); ctx.stroke();
+      });
+      // 손잡이
+      const hs = [];
+      xs.slice(0, 2).forEach((x, k) => { handle(ctx, x, C.box.y + 12, P.text, 9); hs.push({ id: "s" + k, x, y: C.box.y + 12 }); });
+      tops.forEach((t, i) => { handle(ctx, t[0], t[1], P.bad, 9); hs.push({ id: "d" + i, x: t[0], y: t[1] }); });
+      self._hs = hs; self._C = C;
+      SB.stat("rt-pd", pc(Q.t, 2) + ` <small>= ${st.s.map((s, i) => (s * st.d[i] * 100).toFixed(2)).join(" + ")} (%)</small>`);
+      SB.stat("rt-post", Q.p.map((v) => v.toFixed(3)).join(", "));
+      SB.stat("rt-n", st.n ? `${fint(st.n)}개 → ${st.cnt.map((c) => (c / st.n).toFixed(3)).join(", ")}` : "0");
+    }, { aspect: 0.62, minHeight: 300, maxHeight: 420 });
+    SB.drag(cv, {
+      handles: () => (cv._hs || []).map((q) => ({ id: q.id, x: q.x, y: q.y, r: 13 })),
+      move: (id, x, y) => {
+        if (!id) return; const C = cv._C, B = C.box;
+        if (id[0] === "s") {
+          const u = SB.clamp((x - B.x) / B.w, 0, 1);
+          if (id === "s0") { const c2 = st.s[0] + st.s[1]; const a = SB.clamp(u, 0.05, c2 - 0.05); st.s = [a, c2 - a, st.s[2]]; }
+          else { const a = st.s[0]; const c2 = SB.clamp(u, a + 0.05, 0.95); st.s = [a, c2 - a, 1 - c2]; }
+          st.s = st.s.map((v) => Math.round(v * 100) / 100); st.s[2] = Math.round((1 - st.s[0] - st.s[1]) * 100) / 100;
+        } else { const i = Number(id[1]); st.d[i] = Math.round(SB.clamp((1 - (y - B.y) / B.h) * YM, 0, YM) * 1000) / 1000; }
+        reset();
+      },
+    });
+    let auto = false;
+    SB.loop("sim-root", (dt) => {
+      if (auto && st.fly.length < 40) { trace(); if (st.n > 60) { trace(); trace(); } }
+      if (!st.fly.length) return;
+      st.fly.forEach((f) => (f.t += dt * (st.n > 60 ? 2.2 : 1.3)));
+      st.fly.filter((f) => f.t >= 1).forEach((f) => { st.cnt[f.i]++; st.n++; });
+      st.fly = st.fly.filter((f) => f.t < 1);
+      cv.redraw();
+    });
+    const pb = $("rt-play"), sync = () => (pb.textContent = auto ? "❚❚ 정지" : "▶ 계속 추적");
+    pb.addEventListener("click", () => { auto = !auto; sync(); }); sync();
+    $("rt-one").addEventListener("click", () => trace());
+    $("rt-reset").addEventListener("click", () => { reset(); cv.redraw(); });
+  }
+
+  /* ================================================================ 드릴: 베이즈 */
+  SB.drill("drill-bayes", () => {
+    const p = pick([0.2, 0.5, 1, 2, 5, 10]), se = pick([80, 85, 90, 95, 98, 99]), fa = pick([0.5, 1, 2, 3, 5, 10]);
+    const P = p / 100, S = se / 100, Fa = fa / 100, tp = P * S, fp = (1 - P) * Fa, ppv = tp / (tp + fp);
+    if (Math.random() < 0.3) {
+      const esc = P * (1 - S), pass = esc + (1 - P) * (1 - Fa), v = esc / pass;
+      return { q: `<p>불량률 ${p}%인 다이를 민감도 ${se}%, 오경보율 ${fa}%인 장비로 검사한다. 통과한 다이가 불량일 확률 \\(P(D\\mid -)\\)는?</p>`, answer: Number(v.toPrecision(3)), label: "P(D|−) =", tol: "1%", sol: `\\(P(D\\mid -) = \\dfrac{${P}\\times${(1 - S).toFixed(2)}}{${P}\\times${(1 - S).toFixed(2)} + ${(1 - P).toFixed(3)}\\times${(1 - Fa).toFixed(3)}} = ${v.toExponential(3)}\\)` };
+    }
+    return { q: `<p>불량률 ${p}%인 다이를 민감도 ${se}%, 오경보율 ${fa}%인 장비로 검사한다. 경보가 울린 다이가 불량일 확률 \\(P(D\\mid +)\\)는?</p>`, answer: Number(ppv.toPrecision(3)), label: "P(D|+) =", tol: "1%", sol: `\\(P(D\\mid +) = \\dfrac{${S}\\times${P}}{${S}\\times${P} + ${Fa}\\times${(1 - P).toFixed(3)}} = \\dfrac{${tp.toPrecision(4)}}{${(tp + fp).toPrecision(4)}} = ${ppv.toFixed(4)}\\)` };
+  });
+
+  /* ================================================================ 미니: 로그 오즈 눈금 */
+  {
+    const st = { lo0: Math.log10(0.001 / 0.999), ev: [] };
+    const gS = SB.range("od-lr", (v) => { const L = v / (1 - v); return `${pc(v, 1)} (LR₊ = ${L >= 100 ? L.toFixed(0) : L.toFixed(1)})`; }, () => cv.redraw());
+    const gL = () => Math.log10(gS() / (1 - gS()));
+    const toP = (lo) => { const o = Math.pow(10, lo); return o / (1 + o); };
+    const cv = SB.canvas("cv-odds", (ctx, w, h, self) => {
+      const P = pal(), x0 = 24, x1 = w - 24, A = -4, B = 4, X = (lo) => x0 + ((SB.clamp(lo, A - 0.3, B + 0.3) - A) / (B - A)) * (x1 - x0), y = h - 50;
+      ctx.save(); ctx.strokeStyle = P.axis; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); ctx.restore();
+      ctx.font = font(10.5); ctx.textAlign = "center"; ctx.fillStyle = P.dim; ctx.textBaseline = "top";
+      for (let k = A; k <= B; k++) { ctx.fillRect(X(k) - 0.5, y - 4, 1, 8); if (w > 420 || k % 2 === 0) ctx.fillText(String(k), X(k), y + 8); }
+      ctx.fillText("log₁₀ 오즈", (x0 + x1) / 2, y + 24);
+      [0.0001, 0.001, 0.01, 0.1, 0.5, 0.9, 0.99, 0.999, 0.9999].forEach((p, i) => { if (w < 420 && i % 2 === 1) return; const lo = Math.log10(p / (1 - p)); ctx.fillStyle = P.faint; ctx.fillRect(X(lo) - 0.5, y - 14, 1, 10); SB.label(ctx, p < 0.01 || p > 0.99 ? String(p) : pc(p, 0), X(lo), y - 22, { size: 10, color: P.dim }); });
+      // 0.95 선
+      const l95 = Math.log10(19);
+      SB.dashLine(ctx, X(l95), 8, X(l95), y, P.bad, [3, 3]);
+      SB.label(ctx, "95%", X(l95) + 14, 12, { size: 10, color: P.bad });
+      // 증거 걸음
+      const Lp = gL(), Lm = -gL();
+      let lo = st.lo0;
+      const n = st.ev.length, stepY = n ? Math.min(14, (y - 44) / n) : 0;
+      st.ev.forEach((e, i) => {
+        const nx = lo + (e === "+" ? Lp : Lm), yy = y - 34 - i * stepY;
+        SB.arrow(ctx, X(lo), yy, X(nx), yy, { color: e === "+" ? P.accent2 : P.accent, width: 2, head: 7 });
+        lo = nx;
+      });
+      handle(ctx, X(st.lo0), y, P.text, 10);
+      if (n) { ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(X(lo), y, 7, 0, TAU); ctx.fill(); }
+      self._h = [X(st.lo0), y]; self._X = [x0, x1, A, B];
+      $("od-r").textContent = `사전 ${pcs(toP(st.lo0))} → 증거 [${st.ev.join(" ") || "없음"}] → 사후 ${pcs(toP(lo))}`;
+    }, { aspect: 0.36, minHeight: 190, maxHeight: 250 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "p", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x) => { if (!id) return; const [x0, x1, A, B] = cv._X; st.lo0 = Math.round(SB.clamp(A + ((x - x0) / (x1 - x0)) * (B - A), A, B) * 20) / 20; },
+    });
+    $("od-pos").addEventListener("click", () => { if (st.ev.length < 12) st.ev.push("+"); cv.redraw(); });
+    $("od-neg").addEventListener("click", () => { if (st.ev.length < 12) st.ev.push("−"); cv.redraw(); });
+    $("od-clr").addEventListener("click", () => { st.ev = []; cv.redraw(); });
+  }
+
+  /* ================================================================ 드래그 숫자: 오즈 갱신 */
+  SB.tangle("tg-odds", (v) => {
+    const p = v.p / 100, se = v.se / 100, fa = v.fa / 100, lrp = se / fa, lrm = (1 - se) / (1 - fa);
+    const o = (p / (1 - p)) * Math.pow(lrp, v.k) * Math.pow(lrm, v.j);
+    return { lrp: lrp.toPrecision(3), lrm: lrm.toPrecision(3), odds: o >= 1000 || o < 0.001 ? o.toExponential(2) : o.toPrecision(3), post: pcs(o / (1 + o)) };
+  });
+
+  /* ================================================================ 시뮬레이터: 재검사 판정 게임 */
+  {
+    const st = { p0: 0.2, R: Stat.rng(71), seed: 71, truth: false, res: [], post: [0.2], disp: 0.2, done: 0, right: 0, tests: 0, msg: "", msgCol: "", wait: 0, past: [] };
+    const gSe = SB.range("sq-se", (v) => pc(v, 0), () => restart());
+    const gFa = SB.range("sq-fa", (v) => pc(v, 0), () => restart());
+    function newDie() { st.truth = st.R.u() < st.p0; st.res = []; st.post = [st.p0]; st.wait = 0; }
+    function restart() { st.seed++; st.R = Stat.rng(st.seed); st.done = st.right = st.tests = 0; st.past = []; st.msg = ""; newDie(); update(); cv.redraw(); }
+    const cur = () => st.post[st.post.length - 1];
+    function test() {
+      if (st.wait > 0) return;
+      if (st.done >= 10) { restart(); return; }
+      const se = gSe(), fa = gFa(), pos = st.R.u() < (st.truth ? se : fa), p = cur();
+      const o = (p / (1 - p)) * (pos ? se / fa : (1 - se) / (1 - fa));
+      st.res.push(pos ? "+" : "−"); st.post.push(o / (1 + o)); st.tests++; st.msg = "";
+      update(); cv.redraw();
+    }
+    function decide(bad) {
+      if (st.wait > 0 || st.done >= 10) return;
+      const ok = bad === st.truth; st.done++; if (ok) st.right++;
+      st.past.push({ post: st.post.slice(), truth: st.truth });
+      if (st.past.length > 10) st.past.shift();
+      st.msg = (ok ? "정답! " : "오답… ") + (st.truth ? "실제로 불량이었다" : "실제로 양품이었다");
+      st.msgCol = ok ? "ok" : "bad";
+      if (st.done >= 10) st.msg += ` · 10개 완료: 정답 ${st.right}/10, 평균 검사 ${(st.tests / 10).toFixed(1)}회` + (st.right === 10 && st.tests <= 25 ? " — 훌륭하다!" : "");
+      st.wait = st.done >= 10 ? 0 : 1.6;
+      update(); cv.redraw();
+    }
+    function update() {
+      SB.stat("sq-post", pc(cur(), 1));
+      SB.stat("sq-hist", st.res.length ? st.res.join(" ") : "아직 없음");
+      SB.stat("sq-score", `${st.done}개 / ${st.right}개 / ${st.tests}회`);
+    }
+    const cv = SB.canvas("cv-seq", (ctx, w, h, self) => {
+      const P = pal(), bw = 46, cw = w - bw - 24;
+      const C = SB.chart(ctx, { x: 52, y: 30, w: cw - 52, h: h - 76 }, { x: [0, 8], y: [0, 1], xTicks: [0, 1, 2, 3, 4, 5, 6, 7, 8], xLabel: "검사 횟수", yLabel: "사후 P(D)", yFmt: (v) => (v * 100).toFixed(0) + "%", hbands: [{ y0: 0.95, y1: 1, color: "rgba(220,60,60,.12)" }, { y0: 0, y1: 0.05, color: "rgba(40,160,90,.14)" }] });
+      SB.label(ctx, "불량 판정 구역 ≥ 95%", C.box.x + C.box.w - 4, C.Y(0.975), { size: 10, color: P.bad, align: "right" });
+      SB.label(ctx, "양품 판정 구역 ≤ 5%", C.box.x + C.box.w - 4, C.Y(0.025), { size: 10, color: P.ok, align: "right" });
+      const path = (arr, col, wd, a) => { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.beginPath(); arr.forEach((p, i) => { const x = C.X(Math.min(i, 8)), y = C.Y(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); ctx.restore(); };
+      st.past.forEach((q) => path(q.post, q.truth ? P.bad : P.ok, 1.4, 0.35));
+      path(st.post, P.accent2, 2.6, 1);
+      st.post.forEach((p, i) => { if (!i) return; ctx.fillStyle = st.res[i - 1] === "+" ? P.accent2 : P.accent; ctx.beginPath(); ctx.arc(C.X(Math.min(i, 8)), C.Y(p), 4.5, 0, TAU); ctx.fill(); SB.label(ctx, st.res[i - 1], C.X(Math.min(i, 8)), C.Y(p) - 12, { size: 11, bold: true, color: P.text }); });
+      handle(ctx, C.X(0), C.Y(st.p0), P.text, 9);
+      // 사후 막대
+      const bx = w - bw - 10, by = C.box.y, bh = C.box.h;
+      ctx.save(); ctx.strokeStyle = P.dim; ctx.strokeRect(bx, by, bw, bh);
+      withA(ctx, 0.85, () => { ctx.fillStyle = P.bad; ctx.fillRect(bx, by + bh * (1 - st.disp), bw, bh * st.disp); });
+      withA(ctx, 0.25, () => { ctx.fillStyle = P.ok; ctx.fillRect(bx, by, bw, bh * (1 - st.disp)); }); ctx.restore();
+      SB.label(ctx, pc(st.disp, 0), bx + bw / 2, SB.clamp(by + bh * (1 - st.disp) - 10, by + 10, by + bh - 10), { size: 12, bold: true, color: P.text });
+      SB.label(ctx, "P(D)", bx + bw / 2, by - 10, { size: 10.5, color: P.dim });
+      SB.label(ctx, `다이 ${Math.min(10, st.done + (st.wait > 0 || st.done >= 10 ? 0 : 1))} / 10 · 사전 ${pc(st.p0, 0)}`, 54, 12, { size: 11.5, bold: true, color: P.text, align: "left" });
+      if (st.msg) SB.label(ctx, st.msg, C.box.x + C.box.w / 2, C.Y(0.5), { size: w < 480 ? 11 : 13, bold: true, color: st.msgCol === "ok" ? P.ok : P.bad });
+      self._h = [C.X(0), C.Y(st.p0)]; self._C = C;
+    }, { aspect: 0.62, minHeight: 300, maxHeight: 400 });
+    SB.drag(cv, {
+      handles: () => (cv._h ? [{ id: "p0", x: cv._h[0], y: cv._h[1], r: 14 }] : []),
+      move: (id, x, y) => { if (!id) return; const B = cv._C.box; st.p0 = Math.round(SB.clamp(1 - (y - B.y) / B.h, 0.01, 0.9) * 100) / 100; },
+      up: (id) => { if (id) restart(); },
+    });
+    $("sq-test").addEventListener("click", test);
+    $("sq-bad").addEventListener("click", () => decide(true));
+    $("sq-good").addEventListener("click", () => decide(false));
+    $("sq-restart").addEventListener("click", restart);
+    SB.loop("sim-seq", (dt) => {
+      const target = cur(); let dirty = false;
+      if (Math.abs(st.disp - target) > 0.001) { st.disp += (target - st.disp) * Math.min(1, dt * 6); dirty = true; }
+      if (st.wait > 0) { st.wait -= dt; if (st.wait <= 0) { st.wait = 0; newDie(); update(); } dirty = true; }
+      if (dirty) cv.redraw();
+    });
+    newDie(); update();
+  }
+
+  /* ================================================================ 시뮬레이터: 몬티 홀 */
+  {
+    const st = { car: 0, pick: -1, open: -1, final: -1, phase: "pick", note: "", me: { stay: [0, 0], sw: [0, 0] }, n: 0, ws: 0, wsw: 0, hist: [], R: Stat.rng(81), H: Stat.rng(83) };
+    const gHost = SB.seg("mh-host", () => { clearSim(); newGame(); });
+    function newGame() { st.car = Math.floor(st.H.u() * 3); st.pick = st.open = st.final = -1; st.phase = "pick"; st.note = "문을 하나 고르세요"; cv && cv.redraw(); }
+    function clearSim() { st.n = st.ws = st.wsw = 0; st.hist = []; update(); }
+    function hostOpen(pick, car, R) {
+      const others = [0, 1, 2].filter((d) => d !== pick);
+      if (gHost() === "know") { const goats = others.filter((d) => d !== car); return goats[Math.floor(R.u() * goats.length)]; }
+      return others[Math.floor(R.u() * 2)];
+    }
+    function click(i) {
+      if (st.phase === "pick") {
+        st.pick = i; st.open = hostOpen(i, st.car, st.H);
+        if (st.open === st.car) { st.phase = "void"; st.note = "사회자가 자동차를 열어 버렸다 — 무효 판 (새 판)"; }
+        else { st.phase = "decide"; st.note = cv.w < 480 ? `문 ${st.open + 1} 열림(염소) · 유지 또는 바꿀 문을 누르세요` : `열린 문 ${st.open + 1}: 염소. 유지하려면 문 ${st.pick + 1}, 바꾸려면 남은 닫힌 문을 누르세요`; }
+      } else if (st.phase === "decide") {
+        if (i === st.open) return;
+        st.final = i; st.phase = "done";
+        const win = i === st.car, stay = i === st.pick, k = stay ? "stay" : "sw";
+        st.me[k][1]++; if (win) st.me[k][0]++;
+        st.note = (win ? "자동차! " : "염소… ") + (stay ? "(유지)" : "(바꿈)") + " — 아무 곳이나 누르면 새 판";
+        update();
+      } else newGame();
+      cv.redraw();
+    }
+    function simGame() {
+      const R = st.R, car = Math.floor(R.u() * 3), pick = Math.floor(R.u() * 3), open = hostOpen(pick, car, R);
+      if (open === car) return;
+      const other = [0, 1, 2].find((d) => d !== pick && d !== open);
+      st.n++; if (pick === car) st.ws++; if (other === car) st.wsw++;
+      if (st.n <= 50 || st.n % Math.ceil(st.n / 150) === 0) st.hist.push([st.n, st.ws / st.n, st.wsw / st.n]);
+    }
+    function update() {
+      SB.stat("mh-me", `${st.me.stay[0]}/${st.me.stay[1]} · ${st.me.sw[0]}/${st.me.sw[1]}`);
+      SB.stat("mh-n", fint(st.n));
+      SB.stat("mh-stay", st.n ? (st.ws / st.n).toFixed(3) : "—");
+      SB.stat("mh-switch", st.n ? (st.wsw / st.n).toFixed(3) : "—");
+    }
+    const cv = SB.canvas("cv-monty", (ctx, w, h, self) => {
+      const P = pal(), dh = Math.min(120, h * 0.36), dw = Math.min(90, (w - 60) / 3 - 14), gap = (w - 3 * dw) / 4, dy = 30;
+      self._doors = [];
+      for (let i = 0; i < 3; i++) {
+        const x = gap + i * (dw + gap), opened = i === st.open || st.phase === "done" || st.phase === "void";
+        ctx.save(); rr(ctx, x, dy, dw, dh, 8);
+        if (opened) { ctx.fillStyle = i === st.car ? P.ok : P.surface; withA(ctx, i === st.car ? 0.5 : 1, () => ctx.fill()); }
+        else { ctx.fillStyle = P.accent2; withA(ctx, 0.18, () => ctx.fill()); }
+        ctx.lineWidth = i === st.pick || i === st.final ? 3.5 : 1.6;
+        ctx.strokeStyle = i === st.final ? P.text : i === st.pick ? P.accent : P.dim; ctx.stroke(); ctx.restore();
+        SB.label(ctx, `문 ${i + 1}`, x + dw / 2, dy + 16, { size: 12, bold: true, color: P.text });
+        if (opened) SB.label(ctx, i === st.car ? "자동차" : "염소", x + dw / 2, dy + dh / 2 + 6, { size: 14, bold: true, color: i === st.car ? P.text : P.dim });
+        else SB.label(ctx, "?", x + dw / 2, dy + dh / 2 + 6, { size: 22, bold: true, color: P.dim });
+        if (i === st.pick) SB.label(ctx, "처음 선택", x + dw / 2, dy + dh + 12, { size: 10.5, color: P.accent, bold: true });
+        self._doors.push([x, dy, dw, dh]);
+      }
+      SB.label(ctx, st.note, w / 2, 12, { size: w < 480 ? 10.5 : 12, color: P.text });
+      const top = dy + dh + 30;
+      const data = st.hist, xmax = Math.max(100, st.n);
+      SB.chart(ctx, { x: 46, y: top, w: w - 62, h: h - top - 40 }, { x: [0, xmax], y: [0, 1], yTicks: [0, 1 / 3, 2 / 3, 1], yFmt: (v) => (v === 0 ? "0" : v === 1 ? "1" : v < 0.5 ? "1/3" : "2/3"), xLabel: "모의 실험 판 수", hlines: [{ y: 1 / 3, color: P.faint }, { y: 2 / 3, color: P.faint }, { y: 0.5, color: P.faint, dash: [2, 4] }], series: [{ data: data.map((d) => [d[0], d[1]]), color: P.dim, width: 2.2 }, { data: data.map((d) => [d[0], d[2]]), color: P.accent, width: 2.6 }] });
+      SB.label(ctx, "바꿈", w - 30, top + 10, { size: 11, bold: true, color: P.accent });
+      SB.label(ctx, "유지", w - 30, top + 26, { size: 11, bold: true, color: P.dim });
+    }, { aspect: 0.66, minHeight: 330, maxHeight: 440 });
+    SB.drag(cv, {
+      free: true, handles: () => [],
+      down: (id, x, y) => { const k = (cv._doors || []).findIndex(([dx, dy, dw, dh]) => x >= dx && x <= dx + dw && y >= dy && y <= dy + dh); if (k >= 0) click(k); else if (st.phase === "done" || st.phase === "void") { newGame(); } },
+    });
+    const loop = SB.loop("sim-monty", () => { const k = st.n < 100 ? 1 : st.n < 1000 ? 6 : 25; for (let i = 0; i < k && st.n < 5000; i++) simGame(); update(); cv.redraw(); });
+    loop.stop();
+    SB.play("mh-auto", loop, { play: "▶ 자동 재생(5000판)", pause: "❚❚ 정지" });
+    $("mh-new").addEventListener("click", newGame);
+    $("mh-clr").addEventListener("click", () => { st.me = { stay: [0, 0], sw: [0, 0] }; clearSim(); cv.redraw(); });
+    newGame(); update();
+  }
+
+  /* ================================================================ 미니: 문 n개 */
+  {
+    const st = { n: 0, ws: 0, wsw: 0, R: Stat.rng(91), game: null, t: 0 };
+    const gN = SB.range("nd-n", (v) => v + "개", () => { syncK(); reset(); });
+    const gK = SB.range("nd-k", (v) => v + "개", () => reset());
+    function syncK() { const el = gK.el, mx = gN() - 2; el.max = mx; if (gK() > mx) gK.set(mx, true); else gK.set(gK(), true); }
+    function reset() { st.n = st.ws = st.wsw = 0; st.game = play(); cv.redraw(); }
+    function play() {
+      const n = gN(), k = gK(), R = st.R, car = Math.floor(R.u() * n), pick = Math.floor(R.u() * n);
+      const goats = R.shuffle(Array.from({ length: n }, (_, i) => i).filter((d) => d !== pick && d !== car));
+      const open = goats.slice(0, k), rest = Array.from({ length: n }, (_, i) => i).filter((d) => d !== pick && !open.includes(d));
+      const sw = rest[Math.floor(R.u() * rest.length)];
+      st.n++; if (pick === car) st.ws++; if (sw === car) st.wsw++;
+      return { car, pick, open, sw };
+    }
+    const cv = SB.canvas("cv-ndoor", (ctx, w, h) => {
+      const P = pal(), n = gN(), k = gK(), G = st.game || { open: [], pick: -1, car: -1, sw: -1 };
+      const dw = Math.min(30, (w - 40) / n - 4), x0 = (w - n * (dw + 4)) / 2;
+      for (let i = 0; i < n; i++) {
+        const x = x0 + i * (dw + 4), op = G.open.includes(i);
+        ctx.save(); rr(ctx, x, 10, dw, 40, 4);
+        ctx.fillStyle = op ? P.bg : i === G.sw ? P.accent2 : P.faint; withA(ctx, op ? 1 : i === G.sw ? 0.5 : 0.35, () => ctx.fill());
+        ctx.strokeStyle = i === G.pick ? P.accent : P.dim; ctx.lineWidth = i === G.pick ? 3 : 1; if (op) ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
+        if (op) { ctx.save(); ctx.strokeStyle = P.faint; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 5, 20); ctx.lineTo(x + dw - 5, 40); ctx.moveTo(x + dw - 5, 20); ctx.lineTo(x + 5, 40); ctx.stroke(); ctx.restore(); }
+        if (i === G.car) { ctx.fillStyle = P.ok; ctx.beginPath(); ctx.arc(x + dw / 2, 58, 3.5, 0, TAU); ctx.fill(); }
+      }
+      SB.label(ctx, w < 480 ? "초록 = 처음 · 자주 = 바꾼 문 · × = 열린 염소 · 점 = 차" : "초록 테두리 = 처음 선택 · 자주 = 바꾼 문 · × = 열린 염소 문 · 아래 점 = 자동차", w / 2, 72, { size: 10, color: P.dim });
+      const th = [1 / n, ((n - 1) / n) / (n - k - 1)], em = [st.n ? st.ws / st.n : 0, st.n ? st.wsw / st.n : 0];
+      const C = SB.chart(ctx, { x: 46, y: 88, w: w - 62, h: h - 88 - 34 }, { x: [-0.5, 1.5], y: [0, 1], xTicks: [], yTicks: [0, 0.5, 1] });
+      Stat.draw.bars(ctx, C, em.map((v, i) => [i, v]), { width: 0.45, color: P.accent, alpha: 0.75 });
+      ctx.save(); ctx.strokeStyle = P.accent2; ctx.lineWidth = 3; th.forEach((v, i) => { ctx.beginPath(); ctx.moveTo(C.X(i - 0.32), C.Y(v)); ctx.lineTo(C.X(i + 0.32), C.Y(v)); ctx.stroke(); }); ctx.restore();
+      ["유지", "바꿈(무작위)"].forEach((t, i) => SB.label(ctx, `${t} ${em[i].toFixed(3)} (이론 ${th[i].toFixed(3)})`, C.X(i), C.box.y + C.box.h + 14, { size: 11, color: P.text }));
+      $("nd-r").textContent = `${fint(st.n)}판 · 이론: 유지 1/${n}, 바꿈 (${n - 1}/${n})·1/${n - k - 1} = ${th[1].toFixed(3)}`;
+    }, { aspect: 0.5, minHeight: 240, maxHeight: 320 });
+    const loop = SB.loop("mini-ndoor", (dt) => { st.t += dt; for (let i = 0; i < 40; i++) play(); if (st.t > 0.35) { st.t = 0; st.game = play(); } cv.redraw(); });
+    loop.stop();
+    SB.play("nd-play", loop, { play: "▶ 반복 실험", pause: "❚❚ 정지" });
+    syncK(); reset();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>연립방정식과 가우스 소거 · LinearBook</title>
+<meta name="description" content="연립방정식 Ax = b를 직선·평면이 만나는 행 그림과 열을 섞는 열 그림으로 보고, 피벗과 승수로 첨가 행렬을 상삼각으로 바꾸는 가우스 소거, 후진 대입, 행 교환과 특이 행렬, 기본 행렬 EA = U, 부분 피벗팅과 반올림 오차, 연산량 n³까지 한 단계씩 직접 풀어 본다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ge-wrap { overflow-x: auto; max-width: 100%; }
+  .ge-m { display: inline-grid; grid-template-columns: repeat(var(--c, 4), auto); gap: 2px 4px; padding: 4px 8px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13.5px var(--mono); vertical-align: middle; }
+  .ge-m > span { text-align: right; padding: 3px 6px; border-radius: 5px; min-width: 2.2em; white-space: nowrap; }
+  .ge-m > span.aug { border-left: 1.5px dashed var(--text-faint); padding-left: 10px; }
+  .ge-m > span.pv { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .ge-m > span.tg { background: var(--accent-2-soft); }
+  .ge-m > span.z { color: var(--text-faint); }
+  .ge-m > span.bad { color: var(--bad); }
+  .ge-stage { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding: 16px 18px; background: var(--canvas-bg); min-height: 150px; }
+  .ge-stage .lab { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .ge-note { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); min-height: 3.2em; }
+  .ge-note b { color: var(--accent); }
+  .ge-in.mat { grid-template-columns: repeat(var(--n, 4), minmax(0, 52px)); }
+  .ge-in.mat input.rhs { border-color: var(--accent-2); }
+  .ge-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ge-row .btn { padding: 6px 10px; font-size: 13px; }
+  .ge-log { font: 12.5px var(--mono); color: var(--text-dim); max-height: 7.5em; overflow-y: auto; padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ge-log div.cur { color: var(--text); font-weight: 700; }
+  .ge-eq { font: 13px var(--mono); padding: 8px 18px; border-top: 1px solid var(--border); color: var(--text-dim); overflow-x: auto; }
+  .ge-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ge-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ge-steps ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .ge-steps li { margin: 6px 0; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="elimination">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 03</div>
+    <h1 data-no-glossary>연립방정식과 가우스 소거</h1>
+    <p class="lead">미지수가 둘이면 중학교에서 배운 대로 한 식을 다른 식에서 빼면 됩니다. 미지수가 백만 개라면 어떨까요? 놀랍게도 방법은 같습니다. 한 식의 몇 배를 다른 식에서 빼서 미지수를 하나씩 지우고, 맨 아래 식부터 거꾸로 풀어 올라갑니다. 이 단순한 절차가 <b>가우스 소거</b>이고, 다리의 응력 해석, 회로 시뮬레이터, 일기 예보 모델, 머신러닝의 최소제곱이 모두 그 위에서 돌아갑니다. 이 장에서는 연립방정식을 두 가지 그림(직선과 평면이 만나는 <b>행 그림</b>, 열벡터를 섞는 <b>열 그림</b>)으로 보고, 소거를 한 단계씩 직접 돌려 본 뒤, 소거가 언제 멈추는지, 컴퓨터에서 왜 틀릴 수 있는지, 얼마나 오래 걸리는지까지 따져 봅니다.</p>
+    <ul class="objectives">
+      <li>연립방정식 \(A\mathbf{x} = \mathbf{b}\)를 행 그림(직선·평면의 교점)과 열 그림(열벡터의 선형 결합)으로 해석하고, 해가 하나·없음·무수히 많음 세 경우만 있음을 설명한다.</li>
+      <li>첨가 행렬 \([A \mid \mathbf{b}]\)에 행 연산을 적용해 상삼각 형태로 만들고, 피벗과 승수 \(\ell_{ij}\)를 정확히 구한다.</li>
+      <li>후진 대입으로 상삼각 연립방정식을 풀고, 피벗 n개가 모두 0이 아니면 해가 유일함을 안다.</li>
+      <li>0인 피벗을 행 교환으로 넘기는 경우와, 피벗이 영영 사라지는 특이(singular) 경우를 구별하고, 특이일 때 해가 없는지 무수히 많은지 판정한다.</li>
+      <li>소거의 각 단계를 기본 행렬 \(E_{ij}\)·치환 행렬 \(P_{ij}\)로 쓰고, 소거 전체를 \(EA = U\)라는 행렬 곱으로 표현한다.</li>
+      <li>작은 피벗이 반올림 오차를 키우는 이유와 부분 피벗팅의 규칙을 설명하고, 소거의 연산량이 약 \(\tfrac{2}{3}n^3\)임을 유도한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>쓰러지지 않는 다리와 빌딩의 설계</b></div>
+      <div class="o-body"><p>교량이나 고층 건물을 설계할 때 구조 엔지니어는 구조물을 작은 요소 수십만 개로 나누고, 마디마다 "들어오는 힘과 나가는 힘이 평형을 이룬다"는 식을 세웁니다. 미지수는 마디의 변위이고, 식 하나하나는 이웃 마디 몇 개만 묶는 <b>선형</b> 방정식입니다. 결국 문제는 미지수 수십만~수백만 개짜리 연립방정식 \(K\mathbf{u} = \mathbf{f}\) 하나가 됩니다.</p>
+        <p>이 크기를 손으로 풀 방법은 없습니다. 하지만 컴퓨터에게 일을 시키려면 "기계적으로 반복할 수 있는 절차"가 필요합니다. 한 식의 몇 배를 빼서 미지수를 하나씩 지우는 <b>소거법</b>이 바로 그 절차입니다. 기원후 1세기 무렵 정리된 중국의 『구장산술』 제8장 「방정(方程)」에 이미 산가지 배열로 계수를 늘어놓고 열끼리 빼는 방법이 있었고, 19세기 초 가우스가 소행성 궤도 계산에서 체계적으로 쓰면서 오늘날 그의 이름이 붙었습니다. 지금 구조 해석 프로그램이 돌리는 것도 본질적으로 같은 소거(정확히는 다음 장의 LU 분해)입니다.</p>
+        <div class="o-chain"><span>마디마다 힘의 평형</span><i>→</i><span>미지수 수십만 개</span><i>→</i><span class="tool">가우스 소거</span><i>→</i><span>상삼각 → 거꾸로 대입</span><i>→</i><span>몇 초 만에 변위·응력</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="row-picture">
+    <h2>행 그림: 직선과 평면이 만나는 곳</h2>
+    <div class="problem"><strong>두 센서가 가리키는 한 점</strong>
+      <p>위치를 모르는 물체를 두 센서가 관측합니다. 센서 1은 "물체는 \(x + y = 3\) 위에 있다", 센서 2는 "물체는 \(x - y = 1\) 위에 있다"고 알려 줍니다. 물체는 어디 있을까요? 센서 2가 고장 나 \(x + y = 1\)을 보냈다면? 센서 2가 센서 1과 똑같은 정보를 두 배로 부풀려 \(2x + 2y = 6\)을 보냈다면?</p></div>
+    <p>식 하나를 <b>한 행</b>으로 보는 관점이 <span class="term">행 그림</span><span class="en">(row picture)</span>입니다. 미지수가 둘인 선형 방정식 \(a x + b y = c\)는 평면 위의 <b>직선</b> 하나이고, 연립방정식의 해는 모든 직선 위에 동시에 있는 점, 즉 <b>교점</b>입니다. 두 직선이 만나는 방식은 셋뿐입니다. 한 점에서 만나거나, 평행해서 만나지 않거나, 아예 같은 직선이라 겹치거나.</p>
+
+    <div class="callout"><strong>정의 3.1 (선형 연립방정식)</strong> 미지수 \(x_1, \dots, x_n\)에 대한 식 \(m\)개
+      $$a_{i1}x_1 + a_{i2}x_2 + \cdots + a_{in}x_n = b_i \qquad (i = 1, \dots, m)$$
+      를 선형 연립방정식이라 하고, 계수를 모은 \(m\times n\) 행렬 \(A = [a_{ij}]\), 미지수 벡터 \(\mathbf{x}\), 우변 \(\mathbf{b}\)로 \(A\mathbf{x} = \mathbf{b}\)라 쓴다. 모든 식을 만족하는 \(\mathbf{x}\)를 <b>해</b>, 해 전체의 모임을 <b>해집합</b>이라 한다. 해가 하나라도 있으면 <b>무모순</b><span class="en">(consistent)</span>, 없으면 <b>모순</b><span class="en">(inconsistent)</span>이라 한다.</div>
+
+    <p>아래 시뮬레이터에서 두 식의 계수를 바꿔 보세요. 칸은 왼쪽부터 \(a, b \mid c\)이고, 두 직선의 교점이 해입니다.</p>
+
+    <div class="sim" id="sim-ge-rows">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>행 그림: 두 직선의 교점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-rows"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>첨가 행렬 [a b | c]</span>
+            <div class="mat ge-in" style="--n:3" id="ge-r-in"><input value="1" inputmode="decimal" aria-label="a11"><input value="1" inputmode="decimal" aria-label="a12"><input class="rhs" value="3" inputmode="decimal" aria-label="b1"><input value="1" inputmode="decimal" aria-label="a21"><input value="-1" inputmode="decimal" aria-label="a22"><input class="rhs" value="1" inputmode="decimal" aria-label="b2"></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="ge-r-pre">
+            <option value="one">한 점에서 만남 (해 1개)</option>
+            <option value="par">평행 (해 없음)</option>
+            <option value="same">같은 직선 (해 무수히)</option>
+            <option value="near">거의 평행 (해는 1개지만 불안정)</option>
+          </select></label>
+          <label class="ctrl"><span>두 번째 식의 c를 흔들기 <output id="ge-r-eps-out"></output></span><input type="range" id="ge-r-eps" min="-0.5" max="0.5" step="0.01" value="0"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">판정</span><span class="v" id="ge-r-kind">—</span></div>
+        <div class="stat"><span class="k">해 (x, y)</span><span class="v" id="ge-r-sol">—</span></div>
+        <div class="stat"><span class="k">두 직선 사이 각</span><span class="v" id="ge-r-ang">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '거의 평행'을 고르고 아래 슬라이더로 c를 ±0.05만 흔들어 보세요. 우변이 조금 바뀌었을 뿐인데 교점은 멀리 달아납니다(7절의 조건수 이야기). ② '평행'에서 한 계수만 살짝 바꾸면 갑자기 해가 생깁니다. ③ 두 번째 줄을 첫 줄의 정확한 배수로 만들어 보세요. 모델: 실수 계수 2×2 연립방정식. 직선 각도는 법선벡터 (a, b) 사이의 각입니다.</div>
+    </div>
+
+    <p>미지수가 셋이면 식 \(a x + b y + c z = d\) 하나는 3차원 공간의 <b>평면</b>입니다. 두 평면은 (평행이 아니라면) 직선에서 만나고, 그 직선이 세 번째 평면을 한 점에서 뚫으면 해가 하나입니다. 하지만 평면 셋은 훨씬 다양하게 어긋날 수 있습니다. 세 평면이 책장을 펼친 듯 한 직선을 공유할 수도, 두 장씩만 만나 <b>삼각 기둥</b>을 이룰 수도 있습니다.</p>
+
+    <div class="sim" id="sim-ge-planes">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 평면은 어떻게 만나는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-planes" style="touch-action: pan-y"></canvas><span class="hint">좌우로 끌면 돌아갑니다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>배치</span><select id="ge-p-pre">
+            <option value="one">한 점에서 만남</option>
+            <option value="book">한 직선을 공유 (책장)</option>
+            <option value="prism">삼각 기둥 (두 장씩만 만남)</option>
+            <option value="par">두 평면이 평행</option>
+          </select></label>
+          <div class="ctrl"><span>[A | b] (3×4)</span>
+            <div class="mat ge-in" style="--n:4" id="ge-p-in"></div></div>
+          <label class="ctrl"><span>시점 회전 <output id="ge-p-yaw-out"></output></span><input type="range" id="ge-p-yaw" min="-180" max="180" step="1" value="35"></label>
+          <label class="check"><input type="checkbox" id="ge-p-lines" checked> 두 평면의 교선 그리기</label>
+        </div>
+      </div>
+      <div class="ge-legend"><span><i style="background:var(--accent)"></i>평면 1</span><span><i style="background:var(--accent-2)"></i>평면 2</span><span><i style="background:var(--warn)"></i>평면 3</span><span><i style="background:var(--text)"></i>교선·교점</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">판정</span><span class="v" id="ge-p-kind">—</span></div>
+        <div class="stat"><span class="k">해</span><span class="v" id="ge-p-sol">—</span></div>
+        <div class="stat"><span class="k">rank A / rank [A|b]</span><span class="v" id="ge-p-rank">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '삼각 기둥'을 돌려 보며 세 교선이 모두 평행이라는 것을 확인하세요. 어느 두 평면도 평행하지 않은데 해가 없습니다. ② '책장'에서 세 번째 식의 우변 1을 1.5로 바꾸면 책장이 삼각 기둥으로 바뀝니다. ③ 계수를 직접 고쳐 세 평면이 한 점에서 만나게 해 보세요. 모델: 각 평면의 일부(정사각형 조각)만 사선 투영으로 그립니다. rank는 다음 장들에서 정식으로 정의할 '독립인 식의 개수'입니다.</div>
+    </div>
+
+    <p>그림을 아무리 바꿔도 해의 개수는 0, 1, ∞ 중 하나뿐입니다. 해가 정확히 두 개, 세 개인 선형 연립방정식은 없습니다. 이것은 우연이 아니라 선형성에서 바로 나옵니다.</p>
+    <div class="callout"><strong>정리 3.1 (해의 개수)</strong> 선형 연립방정식 \(A\mathbf{x} = \mathbf{b}\)의 해는 없거나, 정확히 하나이거나, 무수히 많다.
+      <p><b>증명.</b> 서로 다른 해 \(\mathbf{x}\)와 \(\mathbf{y}\)가 있다고 하자. 임의의 실수 \(t\)에 대해 \(\mathbf{z} = \mathbf{x} + t(\mathbf{y} - \mathbf{x})\)를 넣으면
+      \(A\mathbf{z} = A\mathbf{x} + t(A\mathbf{y} - A\mathbf{x}) = \mathbf{b} + t(\mathbf{b} - \mathbf{b}) = \mathbf{b}\). 즉 두 해를 잇는 직선 위의 모든 점이 해다. 서로 다른 \(t\)는 서로 다른 \(\mathbf{z}\)를 주므로 해가 무수히 많다. ∎</p></div>
+    <p>그림으로 말하면 "두 점에서 만나는 두 직선은 같은 직선"이라는 사실의 일반화입니다. 평면이든 n차원의 초평면이든, 선형 방정식이 그리는 도형은 휘지 않으니 두 번 만나면 끝까지 만납니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="column-picture">
+    <h2>열 그림: 열벡터를 섞어 b 만들기</h2>
+    <div class="problem"><strong>두 가지 원료로 목표 조성 맞추기</strong>
+      <p>합금 A는 1 kg당 구리 2 kg·아연 1 kg 비율의 성분을, 합금 B는 구리 1 kg·아연 2 kg 비율의 성분을 준다고 합시다(단위는 편의상 정한 것). 구리 4, 아연 5를 정확히 얻으려면 A와 B를 얼마씩 섞어야 할까요? 이 질문에는 "직선의 교점"보다 "두 재료 벡터를 몇 개씩 더하나"가 더 자연스러운 그림입니다.</p></div>
+    <p>같은 연립방정식을 <b>세로로</b> 읽어 봅시다. 1장에서 본 대로 행렬–벡터 곱은 열들의 선형 결합입니다.</p>
+    <div class="formula">$$\begin{aligned} 2x + y &= 4 \\ x + 2y &= 5 \end{aligned} \quad\Longleftrightarrow\quad x\begin{bmatrix}2\\1\end{bmatrix} + y\begin{bmatrix}1\\2\end{bmatrix} = \begin{bmatrix}4\\5\end{bmatrix}$$
+      <div class="where">왼쪽은 식 두 개(행 그림), 오른쪽은 벡터 방정식 하나(열 그림). "A의 열 \(\mathbf{a}_1, \mathbf{a}_2\)를 몇 배씩 더해야 \(\mathbf{b}\)가 되나?"를 묻는다. 답은 \(x = 1, y = 2\).</div>
+    </div>
+    <p>이것이 <span class="term">열 그림</span><span class="en">(column picture)</span>입니다. 행 그림에서는 식마다 도형을 하나씩 그렸다면, 열 그림에서는 <b>미지수마다 벡터를 하나씩</b> 그리고 그 벡터들의 조합이 목표 \(\mathbf{b}\)에 닿는지 봅니다. 해가 없다는 것은 "어떻게 섞어도 \(\mathbf{b}\)에 닿지 못한다", 해가 무수히 많다는 것은 "닿는 방법이 여러 가지"라는 뜻이 됩니다.</p>
+
+    <div class="sim" id="sim-ge-columns">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>열 그림: x·a₁ + y·a₂ 로 b에 닿기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-cols"></canvas><span class="tag-tl">a₁, a₂, b 끝점을 끌 수 있습니다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>x (a₁의 개수) <output id="ge-c-x-out"></output></span><input type="range" id="ge-c-x" min="-3" max="4" step="0.05" value="0.5"></label>
+          <label class="ctrl"><span>y (a₂의 개수) <output id="ge-c-y-out"></output></span><input type="range" id="ge-c-y" min="-3" max="4" step="0.05" value="0.5"></label>
+          <div class="btn-row"><button class="btn primary" id="ge-c-solve">정답으로 이동</button><button class="btn" id="ge-c-reset">처음 예제</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x·a₁ + y·a₂</span><span class="v" id="ge-c-ax">—</span></div>
+        <div class="stat"><span class="k">남은 거리 |Ax − b|</span><span class="v" id="ge-c-res">—</span></div>
+        <div class="stat"><span class="k">정답 (x, y)</span><span class="v" id="ge-c-sol">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 슬라이더만으로 b에 닿아 보세요(남은 거리 0). ② a₂를 a₁과 같은 방향으로 끌어 두 열을 나란히 만들면, 조합이 한 직선 위에만 머물러 대부분의 b에 닿지 못합니다(해 없음). 그 직선 위에 b를 두면 닿는 방법이 무수히 많아집니다. 모델: 2×2, 끈 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+
+    <div class="table-wrap"><table>
+      <thead><tr><th></th><th>행 그림</th><th>열 그림</th></tr></thead>
+      <tbody>
+        <tr><td>그리는 것</td><td>식 하나 = 직선·평면 하나</td><td>미지수 하나 = 열벡터 하나</td></tr>
+        <tr><td>해란</td><td>모든 도형의 교점</td><td>\(\mathbf{b}\)에 닿는 섞는 비율</td></tr>
+        <tr><td>해 없음</td><td>평행한 직선, 삼각 기둥</td><td>\(\mathbf{b}\)가 열들이 만드는 공간 밖</td></tr>
+        <tr><td>해 무수히</td><td>도형이 직선·평면을 공유</td><td>열들이 서로 겹쳐 같은 \(\mathbf{b}\)를 여러 방법으로 만든다</td></tr>
+        <tr><td>n이 커지면</td><td>n차원 초평면 n개 — 상상하기 어렵다</td><td>벡터 n개의 조합 — 여전히 "섞기"</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><strong>열 그림이 주는 핵심 질문</strong> \(A\mathbf{x} = \mathbf{b}\)에 해가 있다 \(\iff\) \(\mathbf{b}\)가 \(A\)의 열들의 선형 결합이다. 열들의 선형 결합 전체를 <b>열공간</b>이라 부르며 5장에서 정식으로 다룹니다. 3×3 행렬의 세 열이 한 평면에 놓여 있으면(앞 시뮬레이터의 '책장'과 '삼각 기둥'), 열공간은 평면뿐이라 대부분의 \(\mathbf{b}\)는 닿을 수 없습니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="elimination">
+    <h2>소거: 한 식의 몇 배를 빼서 미지수 지우기</h2>
+    <div class="problem"><strong>그림 없이 푸는 법</strong>
+      <p>행 그림과 열 그림은 해가 무엇인지 보여 주지만 해를 <b>계산</b>해 주지는 않습니다. 미지수가 넷만 넘어도 그림은 그릴 수조차 없습니다. 사람이든 컴퓨터든 따라 할 수 있는, 몇 번 반복하면 반드시 끝나는 절차가 필요합니다.</p></div>
+    <p>계산에는 \(x, y, z\)라는 이름이 필요 없습니다. 계수와 우변만 모아 <span class="term">첨가 행렬</span><span class="en">(augmented matrix)</span> \([A \mid \mathbf{b}]\)를 만들고, 다음 세 가지 <span class="term">기본 행 연산</span><span class="en">(elementary row operation)</span>만 씁니다.</p>
+    <div class="cards">
+      <div><span class="big">① 빼기</span><b>행 i ← 행 i − ℓ · 행 j</b>한 식의 ℓ배를 다른 식에서 뺀다. 소거의 주력 연산.</div>
+      <div><span class="big">② 교환</span><b>행 i ↔ 행 j</b>두 식의 순서를 바꾼다. 피벗이 0일 때 필요하다.</div>
+      <div><span class="big">③ 배수</span><b>행 i ← c · 행 i (c ≠ 0)</b>식 전체에 0이 아닌 수를 곱한다. 손계산을 깔끔하게 할 때 쓴다.</div>
+    </div>
+    <p>세 연산 모두 <b>되돌릴 수 있습니다</b>(빼었으면 다시 더하고, 바꿨으면 다시 바꾸고, 곱했으면 나누면 된다). 그래서 연산 전후의 연립방정식은 해집합이 정확히 같습니다. 이것이 소거가 정당한 이유입니다.</p>
+    <div class="callout"><strong>정의 3.2 (피벗과 승수)</strong> 소거의 k번째 단계에서 k번째 행의 대각 원소 \(u_{kk}\)를 <span class="term">피벗</span><span class="en">(pivot)</span>이라 한다. 피벗 아래의 원소 \(a_{ik}\)를 0으로 만들기 위해 행 i에서 행 k를 빼는 배수
+      $$\ell_{ik} = \frac{a_{ik}}{u_{kk}} = \frac{\text{지울 원소}}{\text{피벗}}$$
+      를 <span class="term">승수</span><span class="en">(multiplier)</span>라 한다. 피벗은 나눗셈의 분모이므로 <b>0이 될 수 없다</b>.</div>
+
+    <div class="callout ge-steps"><strong>예제 3.1 · 3×3 소거를 손으로</strong>
+      <p>다음 연립방정식을 소거로 상삼각 형태까지 만들어 보자.</p>
+      $$\begin{aligned} 2x + y + z &= 3 \\ 4x + y \phantom{{}+z} &= 6 \\ -2x + 2y + z &= 1 \end{aligned} \qquad\longrightarrow\qquad \left[\begin{array}{rrr|r} 2 & 1 & 1 & 3 \\ 4 & 1 & 0 & 6 \\ -2 & 2 & 1 & 1 \end{array}\right]$$
+      <ol>
+        <li><b>1열, 피벗 2.</b> \(\ell_{21} = 4/2 = 2\): 행 2 ← 행 2 − 2·행 1 → \([0,\ -1,\ -2 \mid 0]\). \(\ell_{31} = -2/2 = -1\): 행 3 ← 행 3 − (−1)·행 1 = 행 3 + 행 1 → \([0,\ 3,\ 2 \mid 4]\).</li>
+        <li><b>2열, 피벗 −1.</b> \(\ell_{32} = 3/(-1) = -3\): 행 3 ← 행 3 + 3·행 2 → \([0,\ 0,\ -4 \mid 4]\).</li>
+      </ol>
+      $$\left[\begin{array}{rrr|r} 2 & 1 & 1 & 3 \\ 0 & -1 & -2 & 0 \\ 0 & 0 & -4 & 4 \end{array}\right] = [\,U \mid \mathbf{c}\,], \qquad \text{피벗 } 2,\ -1,\ -4$$
+      <p>세 피벗이 모두 0이 아니므로 해가 하나 있다. 대각선 아래가 모두 0인 이 모양을 <b>상삼각</b><span class="en">(upper triangular)</span>이라 한다. 승수 세 개 \(\ell_{21} = 2,\ \ell_{31} = -1,\ \ell_{32} = -3\)은 버리지 말자. 다음 장에서 이 숫자들이 그대로 행렬 \(L\)이 된다.</p></div>
+
+    <p>아래 시뮬레이터는 이 절차를 기계처럼 한 단계씩 실행합니다. 계수를 직접 고치거나 프리셋을 골라 '다음 단계'를 눌러 보세요. 테두리 친 칸이 피벗, 색칠된 행이 지금 고치는 행입니다.</p>
+
+    <div class="sim" id="sim-ge-stepper">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가우스 소거 한 단계씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view">
+          <div class="ge-stage" id="ge-s-stage"></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>예제</span><select id="ge-s-pre">
+            <option value="ex">예제 3.1 (3×3)</option>
+            <option value="swap">피벗 0 → 행 교환</option>
+            <option value="none">특이: 해 없음</option>
+            <option value="inf">특이: 해 무수히</option>
+            <option value="tri">4×4 띠 행렬</option>
+            <option value="dense4">4×4 일반</option>
+          </select></label>
+          <div class="ctrl"><span>[A | b] 직접 고치기</span><div class="mat ge-in" id="ge-s-in"></div></div>
+          <label class="check"><input type="checkbox" id="ge-s-partial"> 부분 피벗팅 (가장 큰 피벗 고르기)</label>
+          <div class="ge-row"><button class="btn" id="ge-s-first">⏮ 처음</button><button class="btn" id="ge-s-prev">◀ 이전</button><button class="btn primary" id="ge-s-next">다음 단계 ▶</button><button class="btn" id="ge-s-last">끝까지 ⏭</button></div>
+          <button class="btn" id="ge-s-rand">무작위 정수 문제</button>
+        </div>
+      </div>
+      <div class="ge-note" id="ge-s-note">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="ge-s-k">—</span></div>
+        <div class="stat"><span class="k">피벗</span><span class="v" id="ge-s-piv">—</span></div>
+        <div class="stat"><span class="k">곱셈·나눗셈 누적</span><span class="v" id="ge-s-ops">—</span></div>
+      </div>
+      <div class="ge-log" id="ge-s-log"></div>
+      <div class="sim-note">해볼 것: ① 예제 3.1을 끝까지 넘기며 위의 손계산과 승수(2, −1, −3)가 같은지 확인하세요. ② '피벗 0 → 행 교환'에서 2단계 피벗 자리에 0이 생기는 순간을 보세요. ③ '4×4 띠 행렬'에서는 0인 원소를 건너뛰므로 연산 수가 일반 4×4보다 훨씬 적습니다. 모델: 배정밀도 실수 연산, 크기가 10⁻¹²보다 작은 값은 0으로 봅니다. 표시는 분모 12 이하의 분수로 나타낼 수 있으면 분수로 보여 줍니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="back-substitution">
+    <h2>후진 대입: 맨 아래 식부터 거꾸로</h2>
+    <div class="problem"><strong>상삼각이면 왜 쉬운가</strong>
+      <p>소거가 끝난 \([U \mid \mathbf{c}]\)의 맨 아래 식에는 미지수가 하나만 남아 있습니다. 그것을 풀어 바로 위 식에 넣으면, 그 식에도 새 미지수가 하나만 남습니다. 도미노처럼 위로 올라가면 끝입니다.</p></div>
+    <p>예제 3.1의 \([U \mid \mathbf{c}]\)에서 \(-4z = 4\)이므로 \(z = -1\). 둘째 식 \(-y - 2z = 0\)에 넣으면 \(-y + 2 = 0\), \(y = 2\). 첫째 식 \(2x + y + z = 3\)에서 \(2x + 2 - 1 = 3\), \(x = 1\). 해는 \(\mathbf{x} = (1, 2, -1)\)이고, 원래 세 식에 넣어 검산하면 \(3, 6, 1\)이 정확히 나옵니다. 일반적으로</p>
+    <div class="formula">$$x_n = \frac{c_n}{u_{nn}}, \qquad x_i = \frac{1}{u_{ii}}\Bigl(c_i - \sum_{j=i+1}^{n} u_{ij}\,x_j\Bigr) \quad (i = n-1, \dots, 1)$$
+      <div class="where">이것이 <span class="term">후진 대입</span><span class="en">(back substitution)</span>이다. i번째 줄에서 곱셈 \(n - i\)번, 나눗셈 1번이 필요하므로 모두 합해 약 \(n^2/2\)번의 곱셈. 아래삼각 \(L\mathbf{y} = \mathbf{b}\)를 위에서부터 푸는 짝은 <b>전진 대입</b>(forward substitution)이다.</div>
+    </div>
+    <div class="callout"><strong>정리 3.2 (피벗 n개 ⇒ 유일한 해)</strong> \(n\times n\) 행렬 \(A\)를 행 교환을 허용한 소거로 상삼각 \(U\)까지 만들었을 때 피벗 \(n\)개가 모두 0이 아니면, 모든 \(\mathbf{b}\)에 대해 \(A\mathbf{x} = \mathbf{b}\)의 해가 정확히 하나 있다.
+      <p><b>증명 개요.</b> 행 연산은 해집합을 바꾸지 않는다. 피벗이 모두 0이 아니면 후진 대입의 모든 나눗셈이 가능하고, 각 단계에서 \(x_i\)의 값이 하나로 정해진다. 따라서 해가 존재하고 그 해뿐이다. ∎</p></div>
+    <p>시뮬레이터에서 '끝까지'를 누르면 상삼각이 된 뒤 후진 대입 단계가 이어집니다. 각 \(x_i\)가 어떤 수로 정해지는지 노트 줄의 계산식을 따라가 보세요.</p>
+    <div class="callout warn"><strong>검산 습관</strong> 손으로 푼 해는 반드시 <b>원래</b> 식에 넣어 확인하세요. 소거된 식에 넣으면 소거 과정의 실수를 잡을 수 없습니다. 컴퓨터에서도 같은 원리로 <b>잔차</b> \(\mathbf{r} = \mathbf{b} - A\mathbf{x}\)를 계산해 답의 품질을 봅니다(7절).</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="breakdown">
+    <h2>소거가 멈출 때: 행 교환과 특이 행렬</h2>
+    <div class="problem"><strong>피벗 자리에 0이 나타나면</strong>
+      <p>소거 도중 다음 피벗이 들어갈 대각 자리가 0이 되었습니다. 0으로 나눌 수는 없습니다. 이 방정식은 풀 수 없는 걸까요, 아니면 순서만 잘못된 걸까요?</p></div>
+    <p>두 경우를 구별해야 합니다. 피벗 자리가 0이어도 <b>그 아래 행 중 하나가 0이 아니면</b> 두 행을 바꾸면 됩니다. 식의 순서를 바꾸는 것은 해에 아무 영향이 없으니 이것은 <b>일시적</b> 실패입니다. 반면 피벗 자리와 그 아래가 <b>모두 0</b>이면 어떤 교환으로도 피벗을 만들 수 없습니다. 이것은 <b>영구적</b> 실패이고, 이런 정사각 행렬을 <span class="term">특이 행렬</span><span class="en">(singular matrix)</span>이라 합니다.</p>
+    <div class="formula">$$\left[\begin{array}{rrr|r} 1 & 2 & 1 & 4 \\ 2 & 4 & 3 & 9 \\ 1 & 3 & 2 & 6 \end{array}\right] \xrightarrow{\ \text{1열 소거}\ } \left[\begin{array}{rrr|r} 1 & 2 & 1 & 4 \\ 0 & \mathbf{0} & 1 & 1 \\ 0 & 1 & 1 & 2 \end{array}\right] \xrightarrow{\ P_{23}\ } \left[\begin{array}{rrr|r} 1 & 2 & 1 & 4 \\ 0 & 1 & 1 & 2 \\ 0 & 0 & 1 & 1 \end{array}\right]$$
+      <div class="where">2행의 피벗 자리가 0이 되었지만 아래 3행의 같은 자리가 1이라 교환으로 해결된다. 피벗 1, 1, 1 → 해 \((1, 1, 1)\).</div>
+    </div>
+    <p>특이일 때는 우변이 판결을 내립니다. 소거 끝에 계수가 모두 0인 행 \([0\ 0\ 0 \mid c]\)이 남으면 그 행은 식 \(0 = c\)입니다. \(c \ne 0\)이면 거짓인 식이므로 <b>해가 없고</b>, \(c = 0\)이면 아무 정보도 없는 식이라 남은 식들만으로는 미지수 하나가 자유롭게 남아 <b>해가 무수히 많습니다</b>.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 250" role="img" aria-label="소거 결과로 본 세 가지 경우">
+        <g transform="translate(10,10)">
+          <rect width="240" height="200" rx="12" class="f-surface"/>
+          <text x="120" y="28" text-anchor="middle" class="t" style="font-weight:700">피벗 3개</text>
+          <g class="t-mono" style="font-size:15px">
+            <text x="40" y="70">■ ∗ ∗ │ ∗</text><text x="40" y="100">0 ■ ∗ │ ∗</text><text x="40" y="130">0 0 ■ │ ∗</text>
+          </g>
+          <text x="120" y="168" text-anchor="middle" class="t-acc">해가 하나</text>
+          <text x="120" y="188" text-anchor="middle" class="t-dim">후진 대입 성공</text>
+        </g>
+        <g transform="translate(270,10)">
+          <rect width="240" height="200" rx="12" class="f-surface"/>
+          <text x="120" y="28" text-anchor="middle" class="t" style="font-weight:700">피벗 2개, 마지막 행 0 = c (c ≠ 0)</text>
+          <g class="t-mono" style="font-size:15px">
+            <text x="40" y="70">■ ∗ ∗ │ ∗</text><text x="40" y="100">0 ■ ∗ │ ∗</text><text x="40" y="130">0 0 0 │ </text><text x="140" y="130" style="fill:var(--bad);font-weight:700">c</text>
+          </g>
+          <text x="120" y="168" text-anchor="middle" style="fill:var(--bad);font-weight:700" class="t">해 없음 (모순)</text>
+          <text x="120" y="188" text-anchor="middle" class="t-dim">0 = c 는 거짓</text>
+        </g>
+        <g transform="translate(530,10)">
+          <rect width="240" height="200" rx="12" class="f-surface"/>
+          <text x="120" y="28" text-anchor="middle" class="t" style="font-weight:700">피벗 2개, 마지막 행 0 = 0</text>
+          <g class="t-mono" style="font-size:15px">
+            <text x="40" y="70">■ ∗ ∗ │ ∗</text><text x="40" y="100">0 ■ ∗ │ ∗</text><text x="40" y="130">0 0 0 │ 0</text>
+          </g>
+          <text x="120" y="168" text-anchor="middle" style="fill:var(--ok);font-weight:700" class="t">해 무수히</text>
+          <text x="120" y="188" text-anchor="middle" class="t-dim">자유 변수 1개 → 직선 하나</text>
+        </g>
+        <text x="390" y="240" text-anchor="middle" class="t-dim">■ = 0이 아닌 피벗, ∗ = 아무 수. 피벗이 n개보다 적으면 특이이고, 우변이 해의 유무를 가른다.</text>
+      </svg>
+      <figcaption><b>그림 3-1.</b> 소거가 끝났을 때 [U | c]의 세 가지 모양. 피벗 개수가 n이면 해가 하나, n보다 적으면 0 = c 꼴의 행이 해가 없는지(c ≠ 0) 무수히 많은지(c = 0)를 정한다.</figcaption>
+    </figure>
+    <div class="callout ge-steps"><strong>예제 3.2 · 특이 행렬과 우변</strong>
+      <p>\(A = \begin{bmatrix}1&1&1\\1&2&3\\2&3&4\end{bmatrix}\)에서 셋째 행은 첫째 행과 둘째 행의 합이다. 소거하면</p>
+      <ol>
+        <li>\(\ell_{21} = 1,\ \ell_{31} = 2\) → 행 2 = \([0, 1, 2]\), 행 3 = \([0, 1, 2]\).</li>
+        <li>\(\ell_{32} = 1\) → 행 3 = \([0, 0, 0]\). 피벗은 1, 1 두 개뿐이다.</li>
+      </ol>
+      <p>\(\mathbf{b} = (3, 6, 10)\)이면 우변이 \(3 \to 3 \to 10 - 6 - 3 = 1\)이 되어 \(0 = 1\): <b>해 없음</b>. \(\mathbf{b} = (3, 6, 9)\)이면 \(0 = 0\): \(z\)를 자유롭게 정하면 \(y = 3 - 2z,\ x = z\)로 <b>해가 직선 하나</b>만큼 있다. 같은 \(A\)인데 우변이 셋째 성분 1만큼 달랐을 뿐이다. 시뮬레이터의 '특이' 두 프리셋이 이 예제다.</p></div>
+    <div class="callout tip"><strong>특이성은 A만의 성질</strong> 피벗이 n개 나오느냐는 \(A\)만 보고 정해집니다(우변은 소거 과정에서 따라갈 뿐). \(A\)가 특이가 아니면 어떤 \(\mathbf{b}\)에도 해가 하나, 특이면 어떤 \(\mathbf{b}\)에도 "없거나 무수히"입니다. 다음 장에서 이것이 "역행렬이 있다"와 같은 말임을 봅니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="elementary">
+    <h2>소거를 행렬 곱으로: 기본 행렬과 EA = U</h2>
+    <div class="problem"><strong>절차를 공식으로 바꾸기</strong>
+      <p>"2행에서 1행의 2배를 빼라" 같은 지시는 말로 된 절차입니다. 이것을 행렬로 쓸 수 있다면 소거 전체가 행렬 곱셈 몇 번이 되고, 행렬의 대수(결합 법칙, 역행렬)를 소거에 그대로 쓸 수 있습니다.</p></div>
+    <p>열 그림을 행에 적용해 봅시다. \(EA\)의 i번째 행은 "\(E\)의 i번째 행이 정한 비율로 \(A\)의 행들을 섞은 것"입니다. 그러니 단위 행렬에서 한 칸만 바꾼 행렬로 행 연산 하나를 정확히 표현할 수 있습니다.</p>
+    <div class="formula">$$E_{21} = \begin{bmatrix}1&0&0\\-\ell_{21}&1&0\\0&0&1\end{bmatrix}, \qquad P_{23} = \begin{bmatrix}1&0&0\\0&0&1\\0&1&0\end{bmatrix}, \qquad E_{21}^{-1} = \begin{bmatrix}1&0&0\\\ell_{21}&1&0\\0&0&1\end{bmatrix}$$
+      <div class="where">\(E_{21}A\): 2행 ← 2행 − \(\ell_{21}\)·1행, 나머지 행은 그대로. \(P_{23}A\): 2행과 3행 교환. 되돌리기 \(E_{21}^{-1}\)은 빼었던 것을 다시 더하는 것이라 부호만 바뀐다.</div>
+    </div>
+    <p>이런 행렬을 <span class="term">기본 행렬</span><span class="en">(elementary matrix)</span>, 행을 바꾸는 것을 <span class="term">치환 행렬</span><span class="en">(permutation matrix)</span>이라 합니다. 예제 3.1의 소거 세 단계는 행렬 곱 하나로 요약됩니다.</p>
+    <div class="formula">$$E_{32}\,E_{31}\,E_{21}\,A = U, \qquad E = E_{32}E_{31}E_{21} = \begin{bmatrix}1&0&0\\-2&1&0\\-5&3&1\end{bmatrix}$$
+      <div class="where">\(\ell_{21}=2,\ \ell_{31}=-1,\ \ell_{32}=-3\)을 넣어 곱하면 위와 같다. 오른쪽 행렬이 먼저 작용하므로 첫 단계 \(E_{21}\)이 가장 오른쪽에 온다. \(E\)의 (3,1) 칸 −5는 승수 셋이 얽힌 결과라 깔끔하지 않지만, 역행렬 \(E^{-1}\)은 승수가 제자리에 그대로 앉은 \(\begin{bmatrix}1&0&0\\2&1&0\\-1&-3&1\end{bmatrix}\)이 된다. 이것이 4장의 \(L\)이다.</div>
+    </div>
+    <p>시뮬레이터에서 각 소거 단계마다 오른쪽에 그 단계의 기본 행렬이 함께 표시됩니다. 행 교환 단계에서는 치환 행렬이 나타납니다. 직접 곱해 보면 표시된 행렬을 왼쪽에 곱한 결과가 다음 상태와 같다는 것을 확인할 수 있습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 170" role="img" aria-label="소거를 기본 행렬의 곱으로 보기">
+        <defs><marker id="ge-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g class="t-mono" style="font-size:13px">
+          <rect x="10" y="40" width="120" height="80" rx="10" class="f-surface"/><text x="70" y="72" text-anchor="middle">2  1  1</text><text x="70" y="90" text-anchor="middle">4  1  0</text><text x="70" y="108" text-anchor="middle">−2  2  1</text>
+          <rect x="220" y="40" width="120" height="80" rx="10" class="f-surface"/><text x="280" y="72" text-anchor="middle">2  1  1</text><text x="280" y="90" text-anchor="middle" style="fill:var(--accent-2)">0 −1 −2</text><text x="280" y="108" text-anchor="middle">−2  2  1</text>
+          <rect x="430" y="40" width="120" height="80" rx="10" class="f-surface"/><text x="490" y="72" text-anchor="middle">2  1  1</text><text x="490" y="90" text-anchor="middle">0 −1 −2</text><text x="490" y="108" text-anchor="middle" style="fill:var(--accent-2)">0  3  2</text>
+          <rect x="640" y="40" width="130" height="80" rx="10" class="f-acc-soft"/><text x="705" y="72" text-anchor="middle">2  1  1</text><text x="705" y="90" text-anchor="middle">0 −1 −2</text><text x="705" y="108" text-anchor="middle" style="fill:var(--accent-2)">0  0 −4</text>
+        </g>
+        <path d="M134 80 H214" class="s-acc" marker-end="url(#ge-ah)"/><path d="M344 80 H424" class="s-acc" marker-end="url(#ge-ah)"/><path d="M554 80 H634" class="s-acc" marker-end="url(#ge-ah)"/>
+        <text x="174" y="66" text-anchor="middle" class="t-acc">E₂₁</text><text x="174" y="104" text-anchor="middle" class="t-dim">ℓ₂₁ = 2</text>
+        <text x="384" y="66" text-anchor="middle" class="t-acc">E₃₁</text><text x="384" y="104" text-anchor="middle" class="t-dim">ℓ₃₁ = −1</text>
+        <text x="594" y="66" text-anchor="middle" class="t-acc">E₃₂</text><text x="594" y="104" text-anchor="middle" class="t-dim">ℓ₃₂ = −3</text>
+        <text x="70" y="26" text-anchor="middle" class="t" style="font-weight:700">A</text><text x="705" y="26" text-anchor="middle" class="t" style="font-weight:700">U</text>
+        <text x="390" y="155" text-anchor="middle" class="t-dim">U = E₃₂ E₃₁ E₂₁ A — 각 화살표는 왼쪽에 기본 행렬 하나를 곱하는 것</text>
+      </svg>
+      <figcaption><b>그림 3-2.</b> 예제 3.1의 소거를 기본 행렬 세 개의 곱으로 본 그림. 색칠한 행이 그 단계에서 바뀐 행이다. 각 Eᵢⱼ는 단위 행렬의 (i, j) 칸에 −ℓᵢⱼ를 넣은 것이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>정리 3.3 (소거의 행렬 표현)</strong> 행 교환이 필요 없는 소거는 아래삼각 기본 행렬들의 곱 \(E\)로 \(EA = U\)이다. 행 교환이 필요하면 교환을 미리 모은 치환 행렬 \(P\)가 있어 \(PA\)는 교환 없이 소거된다. 기본 행렬과 치환 행렬은 모두 가역이므로 소거는 정보를 잃지 않는다. 피벗이 n개가 아닐 때 잃는 것은 소거가 아니라 \(A\) 자체가 이미 가진 정보 부족이다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="pivoting">
+    <h2>컴퓨터의 소거: 반올림 오차와 부분 피벗팅</h2>
+    <div class="problem"><strong>0은 아니지만 아주 작은 피벗</strong>
+      <p>피벗이 정확히 0이면 행을 바꾸라고 배웠습니다. 그럼 피벗이 \(10^{-17}\)이면? 수학적으로는 아무 문제가 없습니다. 하지만 유효 숫자가 16자리 남짓인 컴퓨터에서는 해가 완전히 틀릴 수 있습니다.</p></div>
+    <p>가장 작은 예를 봅시다. \(\varepsilon\)이 아주 작은 양수일 때</p>
+    <div class="formula">$$\begin{bmatrix}\varepsilon & 1\\ 1 & 1\end{bmatrix}\begin{bmatrix}x\\y\end{bmatrix} = \begin{bmatrix}1\\2\end{bmatrix}, \qquad \text{정확한 해 } x = \frac{1}{1-\varepsilon} \approx 1,\quad y = \frac{1-2\varepsilon}{1-\varepsilon} \approx 1$$
+      <div class="where">피벗 \(\varepsilon\)으로 소거하면 승수 \(\ell_{21} = 1/\varepsilon\)이 거대해지고, 2행이 \(1 - 1/\varepsilon\), 우변이 \(2 - 1/\varepsilon\)이 된다. 컴퓨터에서 \(1 - 10^{20}\)은 \(-10^{20}\)으로 반올림되어 원래 행의 "1"과 "2"라는 정보가 사라진다.</div>
+    </div>
+    <p>그 결과 \(y\)는 거의 정확하게 1로 나오지만, \(x = (1 - y)/\varepsilon\)를 계산하는 순간 작은 오차가 \(1/\varepsilon\)배로 불어나 \(x\)가 0이나 엉뚱한 값이 됩니다. 처방은 간단합니다. 두 행을 바꿔 <b>절댓값이 큰 1을 피벗으로</b> 쓰면 승수가 \(\varepsilon\)으로 작아지고 아무것도 지워지지 않습니다.</p>
+    <div class="callout"><strong>정의 3.3 (부분 피벗팅)</strong> k번째 단계에서 k번째 열의 k행 이하 원소 중 <b>절댓값이 가장 큰</b> 것을 골라 그 행을 k행과 바꾼 뒤 소거한다. 그러면 모든 승수가 \(|\ell_{ik}| \le 1\)이 되어, 한 단계에서 행에 더해지는 양이 피벗 행보다 커지지 않는다. LAPACK 같은 표준 라이브러리의 일반 연립방정식 풀이기는 기본으로 이 방식을 쓴다.</div>
+
+    <div class="sim" id="sim-ge-pivot">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>작은 피벗의 함정: 피벗팅 있이 vs 없이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-piv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피벗 ε = 10^k <output id="ge-v-k-out"></output></span><input type="range" id="ge-v-k" min="-18" max="-1" step="1" value="-10"></label>
+          <div class="ctrl"><span>계산 정밀도</span><div class="seg" id="ge-v-prec"><button data-value="16" class="on">배정밀도</button><button data-value="8">유효 8자리</button><button data-value="4">유효 4자리</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">피벗팅 없이 (x, y)</span><span class="v" id="ge-v-no">—</span></div>
+        <div class="stat"><span class="k">부분 피벗팅 (x, y)</span><span class="v" id="ge-v-yes">—</span></div>
+        <div class="stat"><span class="k">승수 ℓ₂₁ (없이 / 있을 때)</span><span class="v" id="ge-v-l">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 배정밀도에서 ε를 10⁻¹까지 올렸다 10⁻¹⁸까지 내려 보세요. 피벗팅 없이 얻은 x의 오차(빨강)가 1/ε에 비례해 커지다가 ε가 10⁻¹⁶ 근처를 넘으면 x = 0이 됩니다. ② 유효 4자리로 바꾸면 ε = 10⁻⁵만 되어도 이미 완전히 틀립니다. 부분 피벗팅(초록)은 내내 반올림 수준의 오차입니다. 모델: 매 연산 뒤 결과를 지정한 유효 자리로 반올림(배정밀도는 자바스크립트 기본 실수). 그래프의 0 오차는 10⁻¹⁷로 표시합니다.</div>
+    </div>
+    <p>부분 피벗팅이 만능은 아닙니다. 피벗팅으로도 구할 수 없는 것은 문제 자체가 예민한 경우입니다. 1절의 '거의 평행한 두 직선'은 어떤 알고리즘으로 풀어도 우변의 작은 흔들림이 해를 크게 움직입니다. 이 예민함을 재는 수가 <b>조건수</b>이고, 14·16장에서 특이값으로 정확히 정의합니다. 정리하면 오차의 원인은 둘입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>원인</th><th>예</th><th>처방</th></tr></thead>
+      <tbody>
+        <tr><td>알고리즘이 불안정</td><td>작은 피벗으로 소거 (위 시뮬레이터)</td><td>부분 피벗팅 — 알고리즘을 바꾸면 해결</td></tr>
+        <tr><td>문제가 예민함(조건수가 큼)</td><td>거의 평행한 직선 (1절)</td><td>알고리즘으로는 해결 불가. 측정을 늘리거나 문제를 다시 세운다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout deep"><strong>부분 피벗팅은 얼마나 안전한가</strong> 수치 해석가 윌킨슨은 부분 피벗팅을 쓴 소거의 오차를 "원소가 소거 중에 얼마나 커지는가"(성장 인자)로 묶었습니다. 최악의 경우 성장 인자가 \(2^{n-1}\)인 행렬을 인위적으로 만들 수 있지만, 실제 응용에서 그런 행렬은 극히 드물어 부분 피벗팅은 사실상 표준이 되었습니다. 더 안전한 완전 피벗팅(행과 열을 모두 바꿈)은 비용이 커서 특별한 경우에만 씁니다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="cost">
+    <h2>얼마나 걸리나: 연산량 2n³/3</h2>
+    <div class="problem"><strong>미지수가 10배면 시간은 몇 배?</strong>
+      <p>미지수 1,000개짜리 문제를 노트북이 0.1초에 푼다면, 10,000개짜리는 몇 초 걸릴까요? 1초? 10초? 100초? 계산 모델의 해상도를 높일지 정하려면 이 질문에 답할 수 있어야 합니다.</p></div>
+    <p>k번째 단계에서 피벗 아래 \(n - k\)개 행 각각에 대해, 그 행의 남은 \(n - k\)개 칸을 고칩니다(칸마다 곱셈 하나와 뺄셈 하나). 단계마다 약 \((n-k)^2\)번의 곱셈이 드니</p>
+    <div class="formula">$$\sum_{k=1}^{n-1} (n-k)^2 = \sum_{j=1}^{n-1} j^2 = \frac{(n-1)n(2n-1)}{6} \approx \frac{n^3}{3} \ \text{곱셈}, \qquad \text{덧셈과 뺄셈까지} \ \approx \frac{2}{3}n^3 \ \text{flop}$$
+      <div class="where">우변 \(\mathbf{b}\)를 따라 고치는 데 \(n^2/2\), 후진 대입에 \(n^2/2\) 곱셈이 더 든다. n이 클 때는 \(n^3\) 항이 압도한다. flop은 부동소수점 연산 한 번.</div>
+    </div>
+    <p>그래서 답은 "약 1,000배"입니다. n이 10배면 시간은 \(10^3\)배, n이 2배면 8배. 반대로 우변만 바꿔 다시 풀 때는 소거 결과(다음 장의 LU)를 재활용해 \(n^2\)만 들기 때문에, 한 번 분해해 두면 같은 행렬로 우변 수천 개를 싸게 풀 수 있습니다.</p>
+
+    <div class="sim" id="sim-ge-cost">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>n³의 벽: 연산량과 실측 시간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-cost"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>미지수 개수 n <output id="ge-t-n-out"></output></span><input type="range" id="ge-t-n" min="1" max="6" step="0.05" value="3"></label>
+          <label class="ctrl"><span>계산 속도 <output id="ge-t-speed-out"></output></span><input type="range" id="ge-t-speed" min="8" max="18" step="1" value="10"></label>
+          <div class="btn-row"><button class="btn primary" id="ge-t-run">이 브라우저에서 실측</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">소거 2n³/3</span><span class="v" id="ge-t-elim">—</span></div>
+        <div class="stat"><span class="k">후진 대입 n²</span><span class="v" id="ge-t-back">—</span></div>
+        <div class="stat"><span class="k">예상 시간 (소거)</span><span class="v" id="ge-t-time">—</span></div>
+        <div class="stat"><span class="k">실측: n 두 배 → 시간</span><span class="v" id="ge-t-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n을 10³에서 10⁴로 올리면 예상 시간이 1,000배가 되는 것을 보세요. ② '실측'을 누르면 이 브라우저가 n = 50~400 문제를 실제로 소거하고 걸린 시간을 주황 점으로 찍습니다(n = 400의 실측 속도로 flop에 환산했으므로, 점들이 소거 직선과 같은 기울기 3을 따르는지가 핵심). n이 두 배일 때 시간이 8배에 가까운지 확인하세요(작은 n에서는 오버헤드 때문에 덜 늘어납니다). 모델: 밀집 행렬, 피벗팅 비용 무시. 계산 속도 10⁹ flop/s는 단순한 자바스크립트 수준, 고성능 라이브러리를 쓰는 노트북 CPU는 10¹⁰~10¹¹, 큰 슈퍼컴퓨터는 10¹⁷ 이상입니다.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">n</th><th class="num">소거 flop ≈ 2n³/3</th><th class="num">10¹⁰ flop/s에서</th><th>해당 규모의 예</th></tr></thead>
+      <tbody>
+        <tr><td class="num">100</td><td class="num">6.7 × 10⁵</td><td class="num">0.07 ms</td><td>작은 회로, 트러스 구조</td></tr>
+        <tr><td class="num">10³</td><td class="num">6.7 × 10⁸</td><td class="num">0.07 s</td><td>중간 크기 회귀 문제</td></tr>
+        <tr><td class="num">10⁴</td><td class="num">6.7 × 10¹¹</td><td class="num">67 s</td><td>2D 유한요소 메시</td></tr>
+        <tr><td class="num">10⁶</td><td class="num">6.7 × 10¹⁷</td><td class="num">약 2년</td><td>3D 구조·유체 해석 — 밀집 소거로는 불가능</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><strong>그럼 백만 개는 어떻게 푸나</strong> 실제 공학 문제의 행렬은 대부분 0입니다(마디 하나는 이웃 몇 개와만 연결). 시뮬레이터의 '4×4 띠 행렬'처럼 0을 건너뛰면 연산이 크게 줄어, 삼중대각 행렬은 \(O(n)\)에 풀립니다(4장). 더 일반적인 희소 행렬에는 채움(fill-in)을 줄이는 순서 바꾸기와 반복법(16장)을 씁니다. 크라메르 공식을 여인수 전개로 계산하는 방법은 \(n!\)에 비례해 n = 25만 되어도 우주의 나이로도 모자라므로, 계산 도구로는 쓰지 않습니다(10장).</div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="circuits">
+    <h2>응용: 회로의 노드 해석</h2>
+    <div class="problem"><strong>휘트스톤 브리지의 가운데 전류</strong>
+      <p>저항 다섯 개가 마름모 모양으로 연결된 휘트스톤 브리지는 센서(스트레인 게이지, 온도 센서)의 작은 저항 변화를 읽는 표준 회로입니다. 가운데 다리 \(R_5\)에 흐르는 전류는 얼마일까요? 직렬·병렬 공식만으로는 이 회로를 줄일 수 없습니다.</p></div>
+    <p>회로 시뮬레이터(SPICE 계열)가 쓰는 방법은 <span class="term">노드 해석</span><span class="en">(nodal analysis)</span>입니다. 미지수를 마디의 전압으로 두고, 마디마다 키르히호프 전류 법칙 "나가는 전류의 합 = 0"을 씁니다. 저항 \(R\)을 지나는 전류는 \((v_i - v_j)/R\)로 전압에 <b>선형</b>이므로 결과는 연립방정식 \(G\mathbf{v} = \mathbf{i}\)입니다. 여기서 \(G\)는 컨덕턴스(1/R) 행렬입니다.</p>
+    <div class="formula">$$\begin{bmatrix} g_s + g_1 + g_2 & -g_1 & -g_2 \\ -g_1 & g_1 + g_3 + g_5 & -g_5 \\ -g_2 & -g_5 & g_2 + g_4 + g_5 \end{bmatrix}\begin{bmatrix}v_A\\v_B\\v_C\end{bmatrix} = \begin{bmatrix} g_s V \\ 0 \\ 0 \end{bmatrix}, \qquad g_k = \frac{1}{R_k}$$
+      <div class="where">마디 A는 내부 저항 \(R_s\)를 거쳐 전원 \(V\)에, B·C는 브리지의 양쪽, 바닥 마디 D는 접지(0 V). 대각 원소는 그 마디에 붙은 컨덕턴스의 합, 비대각 원소는 두 마디를 잇는 컨덕턴스의 음수. 그래서 \(G\)는 대칭이고 대각이 크다(13장의 양의 정부호 행렬).</div>
+    </div>
+
+    <div class="sim" id="sim-ge-bridge">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>휘트스톤 브리지를 소거로 풀기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ge-cv-bridge"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>전원 V <output id="ge-b-v-out"></output></span><input type="range" id="ge-b-v" min="1" max="12" step="0.5" value="5"></label>
+          <label class="ctrl"><span>R₄ (센서) <output id="ge-b-r4-out"></output></span><input type="range" id="ge-b-r4" min="1000" max="6000" step="10" value="2500"></label>
+          <label class="ctrl"><span>R₅ (검류계) <output id="ge-b-r5-out"></output></span><input type="range" id="ge-b-r5" min="10" max="2000" step="10" value="100"></label>
+          <div class="btn-row"><button class="btn" id="ge-b-bal">균형점으로 (R₄ = R₂R₃/R₁)</button></div>
+        </div>
+      </div>
+      <div class="ge-eq" id="ge-b-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">vA, vB, vC</span><span class="v" id="ge-b-volt">—</span></div>
+        <div class="stat"><span class="k">I₅ (B → C)</span><span class="v" id="ge-b-i5">—</span></div>
+        <div class="stat"><span class="k">브리지</span><span class="v" id="ge-b-bal-s">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① R₄를 움직여 I₅가 0이 되는 점을 찾으세요. R₁ = 1 kΩ, R₂ = 2 kΩ, R₃ = 1.5 kΩ이므로 R₄ = 3 kΩ에서 균형입니다. 균형점은 V에도 R₅에도 무관합니다. ② 균형점 근처에서 R₄를 10 Ω만 바꿔도 I₅의 부호가 바뀝니다. 이 민감함이 브리지를 센서 회로로 쓰는 이유입니다. 모델: 이상적인 직류 전원과 선형 저항, Rₛ = 100 Ω. 3×3 노드 방정식을 부분 피벗팅 가우스 소거로 풉니다. 행렬 줄은 mS(밀리지멘스) 단위입니다.</div>
+    </div>
+    <p>실제 회로 시뮬레이터는 마디가 수만~수백만 개인 집적 회로에서 이 연립방정식을 세웁니다. 트랜지스터처럼 비선형 소자가 있으면 뉴턴법으로 선형화해 매 반복마다 \(G\mathbf{v} = \mathbf{i}\)를 다시 풀고, 시간에 따라 변하는 회로는 시간 간격마다 또 풉니다. 그래서 회로 시뮬레이터 시간의 큰 몫이 희소 행렬의 소거(LU)에 쓰입니다. 같은 구조가 구조물의 강성 행렬 \(K\mathbf{u} = \mathbf{f}\), 열전도의 이산화, 관망의 유량 계산에도 그대로 나타납니다. "연결된 것끼리 주고받는 양이 차이에 비례한다"는 모델은 언제나 이런 대칭 행렬을 만듭니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>가우스 소거는 선형대수에서 가장 많이 실행되는 알고리즘입니다. 이 책의 다음 장들과 시리즈의 다른 책이 이 장의 절차 위에 서 있습니다.</p>
+    <div class="uses">
+      <a href="lu.html"><small>LINEARBOOK · 4장</small>역행렬과 LU 분해<br><span>소거의 기록(승수)을 L로 모아 A = LU. 한 번 분해해 우변 여러 개를 n²에 풀기.</span></a>
+      <a href="../../foundations/chapters/linalg.html#inverse"><small>MATHBOOK</small>행렬은 변환이다<br><span>Ax = b를 "어떤 입력이 b로 가나"로 보는 기하 그림과 조건수의 직관.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>컴퓨터는 어떻게 틀리는가<br><span>부동소수점, 상쇄 오차, 안정성. 이 장의 작은 피벗 문제의 배경.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>최소제곱의 정규 방정식 AᵀAx = Aᵀb도 결국 소거로 푼다.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>소자·공정 시뮬레이션<br><span>포아송·드리프트–확산 방정식을 격자로 이산화하면 거대한 희소 연립방정식이 된다.</span></a>
+      <a href="https://semi.euiyun.com/analog/"><small>ANALOGBOOK</small>아날로그 회로<br><span>노드 해석과 회로 시뮬레이션. 브리지·증폭기의 동작점 계산.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>행 그림</b>: 식 하나 = 직선·평면·초평면 하나, 해 = 교점. <b>열 그림</b>: 미지수 하나 = 열벡터 하나, 해 = \(\mathbf{b}\)를 만드는 섞는 비율. \(A\mathbf{x} = \mathbf{b}\)에 해가 있다 ⟺ \(\mathbf{b}\)가 \(A\)의 열들의 선형 결합.</li>
+      <li>선형 연립방정식의 해는 <b>0개, 1개, 무수히</b> 중 하나다(두 해가 있으면 그 사이 직선 전체가 해).</li>
+      <li><b>가우스 소거</b>: 첨가 행렬에 "행 i − ℓ·행 k", 행 교환을 적용해 상삼각 \([U \mid \mathbf{c}]\)로 만든다. 승수 \(\ell_{ik}\) = 지울 원소 / 피벗. 행 연산은 해집합을 바꾸지 않는다.</li>
+      <li><b>후진 대입</b>: 맨 아래부터 \(x_i = (c_i - \sum_{j>i} u_{ij}x_j)/u_{ii}\). 피벗 n개가 모두 0이 아니면 해가 유일하다.</li>
+      <li>피벗 자리가 0이면 <b>아래 행과 교환</b>(일시적 실패). 아래도 모두 0이면 <b>특이</b>(영구적 실패)이고, 마지막 행 \(0 = c\)에서 \(c \ne 0\)이면 해 없음, \(c = 0\)이면 해가 무수히 많다.</li>
+      <li>소거 한 단계 = <b>기본 행렬</b> \(E_{ij}\) 곱하기, 행 교환 = <b>치환 행렬</b> \(P_{ij}\). 전체 소거는 \(EA = U\) (교환이 있으면 \(PA\)를 소거).</li>
+      <li>작은 피벗은 승수를 키워 반올림 오차를 증폭한다. <b>부분 피벗팅</b>(열에서 절댓값 최대를 피벗으로)은 \(|\ell| \le 1\)을 보장하는 표준 처방이다. 문제 자체가 예민한(조건수가 큰) 경우는 알고리즘으로 고칠 수 없다.</li>
+      <li>연산량은 소거 약 \(\tfrac{2}{3}n^3\) flop, 후진 대입 약 \(n^2\). n이 2배면 시간 8배. 큰 공학 문제는 희소성을 이용해야 풀린다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 선형 연립방정식이 서로 다른 해를 정확히 두 개 가질 수 있는가?</p><div class="opts">
+        <button class="opt">미지수가 둘 이상이면 가능하다</button>
+        <button class="opt">식이 미지수보다 적으면 가능하다</button>
+        <button class="opt" data-correct>불가능하다. 두 해가 있으면 무수히 많다</button>
+        <button class="opt">특이 행렬이면 항상 정확히 두 개다</button>
+      </div><div class="quiz-exp">정리 3.1. 해 x, y가 있으면 x + t(y − x)도 모든 t에 대해 해이므로 해가 무수히 많다. 선형 방정식이 그리는 도형(직선·평면)은 휘지 않기 때문이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 첨가 행렬의 첫 열이 (3, 6, −9)이고 피벗이 3이다. 승수 \(\ell_{21}, \ell_{31}\)은?</p><div class="opts">
+        <button class="opt">\(\ell_{21} = 1/2,\ \ell_{31} = -1/3\)</button>
+        <button class="opt" data-correct>\(\ell_{21} = 2,\ \ell_{31} = -3\)</button>
+        <button class="opt">\(\ell_{21} = -2,\ \ell_{31} = 3\)</button>
+        <button class="opt">\(\ell_{21} = 6,\ \ell_{31} = -9\)</button>
+      </div><div class="quiz-exp">승수 = 지울 원소 / 피벗. 6/3 = 2, −9/3 = −3. 행 2 ← 행 2 − 2·행 1, 행 3 ← 행 3 − (−3)·행 1 = 행 3 + 3·행 1로 두 원소가 0이 된다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 소거 도중 2행의 피벗 자리가 0인데 3행의 같은 열 원소는 5다. 어떻게 해야 하나?</p><div class="opts">
+        <button class="opt">행렬이 특이이므로 멈춘다</button>
+        <button class="opt" data-correct>2행과 3행을 바꾸고 계속한다</button>
+        <button class="opt">2행에 5를 더한다</button>
+        <button class="opt">2열을 지우고 미지수를 하나 줄인다</button>
+      </div><div class="quiz-exp">일시적 실패다. 식의 순서를 바꾸는 것은 해에 영향이 없으므로 치환 행렬 P₂₃을 곱하고 피벗 5로 소거를 계속한다. 피벗 자리와 그 아래가 모두 0일 때만 특이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 소거가 끝난 첨가 행렬의 마지막 행이 \([0\ 0\ 0 \mid 2]\)이다. 결론은?</p><div class="opts">
+        <button class="opt" data-correct>해가 없다</button>
+        <button class="opt">해가 무수히 많다</button>
+        <button class="opt">z = 2</button>
+        <button class="opt">반올림 오차이므로 무시해도 된다</button>
+      </div><div class="quiz-exp">이 행은 0x + 0y + 0z = 2, 즉 0 = 2라는 거짓 식이다. 원래 연립방정식은 모순이다. 마지막 행이 [0 0 0 | 0]이었다면 해가 무수히 많았다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(E_{31} = \begin{bmatrix}1&0&0\\0&1&0\\4&0&1\end{bmatrix}\)을 A의 왼쪽에 곱하면 무슨 일이 생기나?</p><div class="opts">
+        <button class="opt">1행에 3행의 4배를 더한다</button>
+        <button class="opt" data-correct>3행에 1행의 4배를 더한다 (승수 ℓ₃₁ = −4)</button>
+        <button class="opt">3열에 1열의 4배를 더한다</button>
+        <button class="opt">3행을 4배 한다</button>
+      </div><div class="quiz-exp">EA의 3행 = E의 3행 (4, 0, 1)이 정한 비율로 A의 행을 섞은 것 = 4·(1행) + (3행). 열 연산은 오른쪽에 곱할 때 일어난다. "행 3 − ℓ·행 1"로 쓰면 ℓ₃₁ = −4다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 부분 피벗팅의 주된 목적은?</p><div class="opts">
+        <button class="opt">연산량을 n³에서 n²로 줄이기</button>
+        <button class="opt">특이 행렬도 풀 수 있게 하기</button>
+        <button class="opt" data-correct>승수를 |ℓ| ≤ 1로 묶어 반올림 오차의 증폭을 막기</button>
+        <button class="opt">조건수가 큰 문제를 정확히 풀기</button>
+      </div><div class="quiz-exp">열에서 절댓값이 가장 큰 원소를 피벗으로 고르면 모든 승수의 절댓값이 1 이하가 된다. 연산량은 그대로이고, 특이 행렬은 여전히 특이이며, 조건수가 큰 문제의 예민함은 알고리즘으로 없앨 수 없다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 노트북이 밀집 행렬 n = 2,000 연립방정식을 소거로 0.5초에 푼다. n = 8,000이면 대략?</p><div class="opts">
+        <button class="opt">2초</button>
+        <button class="opt">8초</button>
+        <button class="opt" data-correct>32초</button>
+        <button class="opt">128초</button>
+      </div><div class="quiz-exp">연산량 ∝ n³이므로 n이 4배면 시간은 4³ = 64배, 0.5 × 64 = 32초. (메모리 n²도 16배가 된다는 점도 함께 기억하자.)</div></div>
+
+      <div class="quiz-q"><p>Q8. 우변 \(\mathbf{b}\)만 다른 같은 행렬의 연립방정식 100개를 풀어야 한다. 가장 효율적인 방법은?</p><div class="opts">
+        <button class="opt">100번 각각 처음부터 소거한다 (100 × 2n³/3)</button>
+        <button class="opt" data-correct>A의 소거를 한 번 하고 승수를 기록해, 우변마다 n² 정도로 푼다</button>
+        <button class="opt">크라메르 공식을 쓴다</button>
+        <button class="opt">우변 100개를 더해 한 번에 푼다</button>
+      </div><div class="quiz-exp">소거의 비싼 부분(2n³/3)은 A에만 의존한다. 승수를 저장해 두면 새 우변은 전진 대입과 후진 대입으로 약 2n²만에 풀린다. 이것이 다음 장의 LU 분해다. 우변을 더해 풀면 해의 합만 얻는다(선형성).</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const GE = {
+  EPS: 1e-12,
+  SUB: "₀₁₂₃₄₅₆₇₈₉",
+  sub(n) { return String(n).split("").map((d) => GE.SUB[+d]).join(""); },
+  minus(s) { return String(s).replace(/-/g, "−"); },
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) return "0";
+    return GE.minus(String(Number(v.toFixed(d))));
+  },
+  /** 분모 12 이하의 분수로 나타낼 수 있으면 분수로, 아니면 소수 */
+  frac(v) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 1e-10) return "0";
+    for (let q = 1; q <= 12; q++) {
+      const p = Math.round(v * q);
+      if (Math.abs(v * q - p) < 1e-8 * Math.max(1, Math.abs(p))) return GE.minus(q === 1 ? String(p) : p + "/" + q);
+    }
+    return GE.num(v, 3);
+  },
+  clone(M) { return M.map((r) => r.slice()); },
+  /** HTML 행렬. opts: {aug, pivot:[r,c], target, bad:[rows]} */
+  matHTML(M, o = {}) {
+    const cols = M[0].length;
+    let h = `<span class="ge-m" style="--c:${cols}">`;
+    M.forEach((row, i) => row.forEach((v, j) => {
+      const cls = [];
+      if (o.aug && j === cols - 1) cls.push("aug");
+      if (o.pivot && o.pivot[0] === i && o.pivot[1] === j) cls.push("pv");
+      else if (o.target === i) cls.push("tg");
+      if (Math.abs(v) < 1e-10 && !(o.pivot && o.pivot[0] === i && o.pivot[1] === j)) cls.push("z");
+      if (o.bad && o.bad.includes(i) && j === cols - 1) cls.push("bad");
+      h += `<span class="${cls.join(" ")}">${o.dec ? GE.num(v, o.dec) : GE.frac(v)}</span>`;
+    }));
+    return h + "</span>";
+  },
+  readMat(container, rows, cols) {
+    const vals = [...container.querySelectorAll("input")].map((el) => { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : 0; });
+    const M = [];
+    for (let i = 0; i < rows; i++) M.push(vals.slice(i * cols, i * cols + cols));
+    return M;
+  },
+  fillInputs(container, M, extraClassLast = true) {
+    const cols = M[0].length;
+    container.style.setProperty("--n", cols);
+    container.innerHTML = M.map((row, i) => row.map((v, j) => `<input value="${v}" inputmode="decimal" aria-label="${j === cols - 1 ? "b" + (i + 1) : "a" + (i + 1) + (j + 1)}"${extraClassLast && j === cols - 1 ? ' class="rhs"' : ""}>`).join("")).join("");
+  },
+  /** 계수 행렬의 rank (부분 피벗팅 소거) */
+  rank(M, cols) {
+    const A = M.map((r) => r.slice(0, cols)); let r = 0;
+    const scale = Math.max(1e-300, ...A.flat().map(Math.abs));
+    for (let c = 0; c < cols && r < A.length; c++) {
+      let p = r; for (let i = r + 1; i < A.length; i++) if (Math.abs(A[i][c]) > Math.abs(A[p][c])) p = i;
+      if (Math.abs(A[p][c]) < 1e-9 * scale) continue;
+      [A[p], A[r]] = [A[r], A[p]];
+      for (let i = r + 1; i < A.length; i++) { const l = A[i][c] / A[r][c]; for (let j = c; j < cols; j++) A[i][j] -= l * A[r][j]; }
+      r++;
+    }
+    return r;
+  },
+  /** 정사각 연립방정식 풀이(부분 피벗팅). 특이면 null */
+  solve(A, b) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      if (Math.abs(M[p][k]) < 1e-12) return null;
+      [M[p], M[k]] = [M[k], M[p]];
+      for (let i = k + 1; i < n; i++) { const l = M[i][k] / M[k][k]; for (let j = k; j <= n; j++) M[i][j] -= l * M[k][j]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+    return x;
+  },
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  dot: (a, b) => a.reduce((s, v, i) => s + v * b[i], 0),
+  norm: (a) => Math.hypot(...a),
+  unit(a) { const n = GE.norm(a) || 1; return a.map((v) => v / n); },
+  sup(n) { const S = "⁰¹²³⁴⁵⁶⁷⁸⁹"; return (n < 0 ? "⁻" : "") + String(Math.abs(n)).split("").map((d) => S[+d]).join(""); },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const e = Math.floor(Math.log10(Math.abs(v))), m = v / Math.pow(10, e);
+    if (e >= -2 && e <= 3) return GE.num(v, d);
+    return GE.minus(m.toFixed(d - 1)) + "×10" + GE.sup(e);
+  },
+};
+
+/* ================================================================ 1. 행 그림: 두 직선 */
+(function () {
+  const PRE = {
+    one: [[1, 1, 3], [1, -1, 1]], par: [[1, 1, 3], [1, 1, 1]], same: [[1, 1, 3], [2, 2, 6]], near: [[1, 1, 2], [1, 1.04, 2.04]],
+  };
+  const box = document.getElementById("ge-r-in");
+  let M = PRE.one.map((r) => r.slice());
+  const eps = MB.range("ge-r-eps", (v) => GE.minus((v >= 0 ? "+" : "") + v.toFixed(2)), () => update());
+  function line(P, a, b, c, color) {
+    const big = 40;
+    if (Math.abs(a) < 1e-12 && Math.abs(b) < 1e-12) return;
+    if (Math.abs(b) >= Math.abs(a)) P.line(-big, (c + a * big) / b, big, (c - a * big) / b, { color, width: 2.5 });
+    else P.line((c + b * big) / a, -big, (c - b * big) / a, big, { color, width: 2.5 });
+  }
+  const pl = MB.plane("#ge-cv-rows", {
+    x: [-4, 6], aspect: 0.72, maxHeight: 460, minHeight: 280,
+    draw(P) {
+      const C = P.P, [r1, r2] = cur();
+      line(P, r1[0], r1[1], r1[2], C.accent);
+      line(P, r2[0], r2[1], r2[2], C.accent2);
+      const d = r1[0] * r2[1] - r1[1] * r2[0];
+      if (Math.abs(d) > 1e-12) {
+        const x = (r1[2] * r2[1] - r1[1] * r2[2]) / d, y = (r1[0] * r2[2] - r1[2] * r2[0]) / d;
+        if (Math.abs(x) < 1e6 && Math.abs(y) < 1e6) P.dot(x, y, { r: 6, color: C.text, label: `(${GE.num(x, 2)}, ${GE.num(y, 2)})` });
+      }
+      P.text("식 1", P.x0 + 0.3, P.y1 - 0.4, { color: C.accent, bold: true });
+      P.text("식 2", P.x0 + 0.3, P.y1 - 0.9, { color: C.accent2, bold: true });
+    },
+  });
+  function cur() { const r2 = M[1].slice(); r2[2] += eps(); return [M[0], r2]; }
+  function update() {
+    M = GE.readMat(box, 2, 3);
+    const [r1, r2] = cur();
+    const d = r1[0] * r2[1] - r1[1] * r2[0];
+    const rA = GE.rank([r1, r2], 2), rAb = GE.rank([r1, r2], 3);
+    let kind, sol = "—";
+    if (rA === 2) { kind = '<span class="badge ok">해 1개</span>'; sol = `(${GE.num((r1[2] * r2[1] - r1[1] * r2[2]) / d, 3)}, ${GE.num((r1[0] * r2[2] - r1[2] * r2[0]) / d, 3)})`; }
+    else if (rA < rAb) kind = '<span class="badge bad">해 없음</span>';
+    else { kind = '<span class="badge warn">해 무수히</span>'; sol = "직선 전체"; }
+    MB.stat("ge-r-kind", kind); MB.stat("ge-r-sol", sol);
+    const n1 = GE.norm([r1[0], r1[1]]), n2 = GE.norm([r2[0], r2[1]]);
+    if (n1 > 0 && n2 > 0) {
+      let c = Math.abs((r1[0] * r2[0] + r1[1] * r2[1]) / (n1 * n2)); c = Math.min(1, c);
+      MB.stat("ge-r-ang", GE.num(Math.acos(c) * 180 / Math.PI, 2) + "°");
+    } else MB.stat("ge-r-ang", "—");
+    pl.redraw();
+  }
+  box.addEventListener("input", update);
+  document.getElementById("ge-r-pre").addEventListener("change", (e) => { GE.fillInputs(box, PRE[e.target.value]); eps.set(0, false); update(); });
+  update();
+})();
+
+/* ================================================================ 2. 세 평면 */
+(function () {
+  const PRE = {
+    one: [[2, 1, 1, 3], [4, 1, 0, 6], [-2, 2, 1, 1]],
+    book: [[1, 0, 1, 1], [-1, 0, 1, 1], [0, 0, 1, 1]],
+    prism: [[1, 0, 1, 1], [-1, 0, 1, 1], [0, 0, 1, 0]],
+    par: [[1, 1, 1, 1], [1, 1, 1, 3], [1, -1, 0, 0]],
+  };
+  const box = document.getElementById("ge-p-in");
+  GE.fillInputs(box, PRE.one);
+  let M = GE.clone(PRE.one);
+  const lines = MB.check("ge-p-lines", () => cv.redraw());
+  let yaw = 35 * Math.PI / 180; const pitch = 0.38;
+  const yawR = MB.range("ge-p-yaw", (v) => v + "°", (v) => { yaw = v * Math.PI / 180; cv.redraw(); });
+  function proj(p, w, h) {
+    const s = Math.min(w, h) / 7.5;
+    const xr = p[0] * Math.cos(yaw) - p[1] * Math.sin(yaw), yr = p[0] * Math.sin(yaw) + p[1] * Math.cos(yaw);
+    const depth = yr * Math.cos(pitch) - p[2] * Math.sin(pitch), up = yr * Math.sin(pitch) + p[2] * Math.cos(pitch);
+    return [w / 2 + s * xr, h / 2 - s * up, depth];
+  }
+  function focus() {
+    const x = GE.solve(M.map((r) => r.slice(0, 3)), M.map((r) => r[3]));
+    if (x && x.every((v) => Math.abs(v) < 4)) return x;
+    return [0, 0, 0.5];
+  }
+  const cv = MB.canvas("#ge-cv-planes", (ctx, w, h) => {
+    const P = MB.palette(), cols = [P.accent, P.accent2, P.warn], f = focus();
+    const polys = [];
+    // 좌표축
+    [[3, 0, 0, "x"], [0, 3, 0, "y"], [0, 0, 3, "z"]].forEach(([a, b, c, lab]) => {
+      const o = proj([0, 0, 0], w, h), e = proj([a, b, c], w, h);
+      ctx.strokeStyle = P.faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
+      ctx.fillStyle = P.dim; ctx.font = "12px sans-serif"; ctx.fillText(lab, e[0] + 4, e[1]);
+    });
+    M.forEach((r, i) => {
+      const n = r.slice(0, 3), nn = GE.dot(n, n);
+      if (nn < 1e-12) return;
+      const c = f.map((v, k) => v + (r[3] - GE.dot(n, f)) / nn * n[k]);
+      const e = Math.abs(n[0]) < 0.6 * Math.sqrt(nn) ? [1, 0, 0] : [0, 1, 0];
+      const u = GE.unit(GE.cross(n, e)), v = GE.unit(GE.cross(GE.unit(n), u)), s = 2.3;
+      const pts = [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([a, b]) => proj(c.map((q, k) => q + s * (a * u[k] + b * v[k])), w, h));
+      polys.push({ pts, depth: proj(c, w, h)[2], color: cols[i] });
+    });
+    polys.sort((a, b) => b.depth - a.depth).forEach((p) => {
+      ctx.beginPath(); p.pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+      ctx.globalAlpha = 0.26; ctx.fillStyle = p.color; ctx.fill(); ctx.globalAlpha = 0.95; ctx.strokeStyle = p.color; ctx.lineWidth = 1.6; ctx.stroke(); ctx.globalAlpha = 1;
+    });
+    if (lines()) {
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+        const n1 = M[i].slice(0, 3), n2 = M[j].slice(0, 3), d = GE.cross(n1, n2);
+        if (GE.norm(d) < 1e-9) continue;
+        const p = GE.solve([n1, n2, d], [M[i][3], M[j][3], GE.dot(d, f)]);
+        if (!p) continue;
+        const du = GE.unit(d), a = proj(p.map((q, k) => q - 2.6 * du[k]), w, h), b = proj(p.map((q, k) => q + 2.6 * du[k]), w, h);
+        ctx.strokeStyle = P.text; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    const rA = GE.rank(M, 3);
+    if (rA === 3) {
+      const x = GE.solve(M.map((r) => r.slice(0, 3)), M.map((r) => r[3]));
+      if (x) { const q = proj(x, w, h); ctx.fillStyle = P.text; ctx.beginPath(); ctx.arc(q[0], q[1], 6, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = P.bg; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+  }, { aspect: 0.78, maxHeight: 480, minHeight: 280 });
+  function update() {
+    M = GE.readMat(box, 3, 4);
+    const rA = GE.rank(M, 3), rAb = GE.rank(M, 4);
+    MB.stat("ge-p-rank", rA + " / " + rAb);
+    if (rA === 3) {
+      const x = GE.solve(M.map((r) => r.slice(0, 3)), M.map((r) => r[3]));
+      MB.stat("ge-p-kind", '<span class="badge ok">한 점</span>'); MB.stat("ge-p-sol", "(" + x.map((v) => GE.num(v, 2)).join(", ") + ")");
+    } else if (rA < rAb) { MB.stat("ge-p-kind", '<span class="badge bad">해 없음</span>'); MB.stat("ge-p-sol", "—"); }
+    else { MB.stat("ge-p-kind", '<span class="badge warn">해 무수히</span>'); MB.stat("ge-p-sol", rA === 2 ? "직선 전체" : "평면 전체"); }
+    cv.redraw();
+  }
+  box.addEventListener("input", update);
+  document.getElementById("ge-p-pre").addEventListener("change", (e) => { GE.fillInputs(box, PRE[e.target.value]); update(); });
+  // 좌우 드래그로 회전
+  const el = cv.canvas; let drag = null;
+  el.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, yaw }; });
+  addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    let deg = (drag.yaw + (e.clientX - drag.x) * 0.01) * 180 / Math.PI;
+    deg = ((deg + 540) % 360) - 180;
+    yawR.set(Math.round(deg));
+  });
+  addEventListener("pointerup", () => { drag = null; });
+  addEventListener("pointercancel", () => { drag = null; });
+  update();
+})();
+
+/* ================================================================ 3. 열 그림 */
+(function () {
+  const START = { a1: [2, 1], a2: [1, 2], b: [4, 5] };
+  let st = { a1: START.a1.slice(), a2: START.a2.slice(), b: START.b.slice() };
+  const xs = MB.range("ge-c-x", (v) => GE.num(v, 2), () => update());
+  const ys = MB.range("ge-c-y", (v) => GE.num(v, 2), () => update());
+  const pl = MB.plane("#ge-cv-cols", {
+    x: [-3, 8], aspect: 0.72, maxHeight: 460, minHeight: 280,
+    points: [{ x: 2, y: 1, snap: 0.1, label: "a₁" }, { x: 1, y: 2, snap: 0.1, label: "a₂" }, { x: 4, y: 5, snap: 0.1, label: "b" }],
+    draw(P, api) {
+      const C = P.P, [p1, p2, pb] = api.points, x = xs(), y = ys();
+      p1.color = C.accent; p2.color = C.accent2; pb.color = C.text;
+      // 두 열이 만드는 기울어진 격자
+      P.ctx.save(); P.ctx.globalAlpha = 0.16; P.ctx.strokeStyle = C.dim; P.ctx.lineWidth = 1; P.ctx.beginPath();
+      for (let k = -8; k <= 8; k++) {
+        P.ctx.moveTo(P.X(k * p1.x - 8 * p2.x), P.Y(k * p1.y - 8 * p2.y)); P.ctx.lineTo(P.X(k * p1.x + 8 * p2.x), P.Y(k * p1.y + 8 * p2.y));
+        P.ctx.moveTo(P.X(-8 * p1.x + k * p2.x), P.Y(-8 * p1.y + k * p2.y)); P.ctx.lineTo(P.X(8 * p1.x + k * p2.x), P.Y(8 * p1.y + k * p2.y));
+      }
+      P.ctx.stroke(); P.ctx.restore();
+      P.arrow(0, 0, p1.x, p1.y, { color: C.accent, width: 3 });
+      P.arrow(0, 0, p2.x, p2.y, { color: C.accent2, width: 3 });
+      const ex = x * p1.x, ey = x * p1.y;
+      P.arrow(0, 0, ex, ey, { color: C.accent, width: 2, dash: [5, 4] });
+      P.arrow(ex, ey, ex + y * p2.x, ey + y * p2.y, { color: C.accent2, width: 2, dash: [5, 4] });
+      P.dot(ex + y * p2.x, ey + y * p2.y, { r: 5, color: C.warn, label: "Ax" });
+    },
+    onDrag(p, i) { update(); },
+  });
+  function update() {
+    const [p1, p2, pb] = pl.points, x = xs(), y = ys();
+    const ax = [x * p1.x + y * p2.x, x * p1.y + y * p2.y];
+    MB.stat("ge-c-ax", `(${GE.num(ax[0], 2)}, ${GE.num(ax[1], 2)})`);
+    MB.stat("ge-c-res", GE.num(Math.hypot(ax[0] - pb.x, ax[1] - pb.y), 3));
+    const d = p1.x * p2.y - p2.x * p1.y;
+    if (Math.abs(d) > 1e-9) MB.stat("ge-c-sol", `(${GE.num((pb.x * p2.y - p2.x * pb.y) / d, 3)}, ${GE.num((p1.x * pb.y - pb.x * p1.y) / d, 3)})`);
+    else {
+      const onLine = Math.abs(p1.x * pb.y - p1.y * pb.x) + Math.abs(p2.x * pb.y - p2.y * pb.x) < 1e-9;
+      MB.stat("ge-c-sol", onLine ? '<span class="badge warn">무수히</span>' : '<span class="badge bad">없음</span>');
+    }
+    pl.redraw();
+  }
+  document.getElementById("ge-c-solve").addEventListener("click", () => {
+    const [p1, p2, pb] = pl.points, d = p1.x * p2.y - p2.x * p1.y;
+    if (Math.abs(d) < 1e-9) return;
+    xs.set(MB.clamp((pb.x * p2.y - p2.x * pb.y) / d, -3, 4), false); ys.set(MB.clamp((p1.x * pb.y - pb.x * p1.y) / d, -3, 4), false); update();
+  });
+  document.getElementById("ge-c-reset").addEventListener("click", () => {
+    [START.a1, START.a2, START.b].forEach((v, i) => { pl.points[i].x = v[0]; pl.points[i].y = v[1]; });
+    xs.set(0.5, false); ys.set(0.5, false); update();
+  });
+  update();
+})();
+
+/* ================================================================ 4. 가우스 소거 스텝퍼 */
+(function () {
+  const PRE = {
+    ex: [[2, 1, 1, 3], [4, 1, 0, 6], [-2, 2, 1, 1]],
+    swap: [[1, 2, 1, 4], [2, 4, 3, 9], [1, 3, 2, 6]],
+    none: [[1, 1, 1, 3], [1, 2, 3, 6], [2, 3, 4, 10]],
+    inf: [[1, 1, 1, 3], [1, 2, 3, 6], [2, 3, 4, 9]],
+    tri: [[2, -1, 0, 0, 1], [-1, 2, -1, 0, 0], [0, -1, 2, -1, 0], [0, 0, -1, 2, 1]],
+    dense4: [[1, 2, -1, 3, 5], [2, 1, 1, 1, 5], [-1, 3, 2, 1, 5], [3, -1, 1, 2, 5]],
+  };
+  const box = document.getElementById("ge-s-in"), stage = document.getElementById("ge-s-stage");
+  const partial = MB.check("ge-s-partial", () => rebuild());
+  let steps = [], idx = 0, n = 3;
+  const ident = (k) => Array.from({ length: k }, (_, i) => Array.from({ length: k }, (_, j) => (i === j ? 1 : 0)));
+
+  function build(M0, usePartial) {
+    const M = GE.clone(M0), S = []; let ops = 0;
+    const N = M.length, piv = [];
+    const push = (note, ex = {}) => S.push(Object.assign({ M: GE.clone(M), note, ops, piv: piv.slice() }, ex));
+    push("첨가 행렬 <b>[A | b]</b>에서 시작한다. 1열의 피벗부터 정한다.");
+    let r = 0;
+    for (let c = 0; c < N && r < N; c++) {
+      let p = r;
+      if (usePartial) { for (let i = r + 1; i < N; i++) if (Math.abs(M[i][c]) > Math.abs(M[p][c]) + 1e-12) p = i; }
+      else if (Math.abs(M[r][c]) < GE.EPS) { for (let i = r + 1; i < N; i++) if (Math.abs(M[i][c]) > GE.EPS) { p = i; break; } }
+      if (Math.abs(M[p][c]) < GE.EPS) {
+        push(`${c + 1}열: 피벗 자리(${r + 1}행)와 그 아래가 모두 0이다. 이 열에는 피벗이 없다 → <b>특이 행렬</b>. 다음 열로 넘어간다.`, { pivot: [r, c] });
+        continue;
+      }
+      if (p !== r) {
+        [M[p], M[r]] = [M[r], M[p]];
+        const P = ident(N); [P[p], P[r]] = [P[r], P[p]];
+        push(usePartial ? `부분 피벗팅: ${c + 1}열에서 절댓값이 가장 큰 원소가 ${p + 1}행에 있다. <b>${r + 1}행 ↔ ${p + 1}행</b>.` : `피벗 자리 (${r + 1}, ${c + 1})이 0이다. 아래의 ${p + 1}행과 바꾼다: <b>${r + 1}행 ↔ ${p + 1}행</b>.`, { pivot: [r, c], E: P, Ename: "P" + GE.sub(r + 1) + GE.sub(p + 1) });
+      }
+      piv.push(M[r][c]);
+      for (let i = r + 1; i < N; i++) {
+        if (Math.abs(M[i][c]) < GE.EPS) continue;
+        const a = M[i][c], l = a / M[r][c];
+        for (let j = c; j <= N; j++) M[i][j] -= l * M[r][j];
+        M[i][c] = 0;
+        for (let j = c + 1; j <= N; j++) if (Math.abs(M[i][j]) < GE.EPS) M[i][j] = 0;
+        ops += 1 + (N - c);
+        const E = ident(N); E[i][r] = -l;
+        push(`승수 <b>ℓ${GE.sub(i + 1)}${GE.sub(r + 1)}</b> = ${GE.frac(a)} ÷ ${GE.frac(M[r][c])} = <b>${GE.frac(l)}</b>. ${i + 1}행 ← ${i + 1}행 − (${GE.frac(l)})·${r + 1}행 → (${i + 1}, ${c + 1}) 자리가 0이 된다.`, { pivot: [r, c], target: i, E, Ename: "E" + GE.sub(i + 1) + GE.sub(r + 1) });
+      }
+      r++;
+    }
+    if (piv.length === N) {
+      push(`상삼각 <b>[U | c]</b> 완성. 피벗 ${N}개(${piv.map(GE.frac).join(", ")})가 모두 0이 아니므로 해가 하나다. 이제 후진 대입.`, { done: true });
+      const x = new Array(N).fill(null);
+      for (let i = N - 1; i >= 0; i--) {
+        let s = M[i][N]; const terms = [];
+        for (let j = i + 1; j < N; j++) { if (Math.abs(M[i][j]) > 1e-12) terms.push(`(${GE.frac(M[i][j])})(${GE.frac(x[j])})`); s -= M[i][j] * x[j]; }
+        x[i] = s / M[i][i]; ops += 1 + (N - 1 - i);
+        const expr = terms.length ? `(${GE.frac(M[i][N])} − ${terms.join(" − ")}) ÷ ${GE.frac(M[i][i])}` : `${GE.frac(M[i][N])} ÷ ${GE.frac(M[i][i])}`;
+        push(`후진 대입: <b>x${GE.sub(i + 1)}</b> = ${expr} = <b>${GE.frac(x[i])}</b>`, { x: x.slice(), target: i, done: true });
+      }
+      push(`해 <b>x = (${x.map(GE.frac).join(", ")})</b>. 원래 식에 넣어 검산해 보자.`, { x: x.slice(), done: true, final: true });
+    } else {
+      const bad = [];
+      for (let i = 0; i < N; i++) if (M[i].slice(0, N).every((v) => Math.abs(v) < 1e-9) && Math.abs(M[i][N]) > 1e-9) bad.push(i);
+      if (bad.length) push(`소거 끝: 피벗이 ${piv.length}개뿐이고 ${bad.map((i) => i + 1).join(", ")}행이 <b>0 = ${GE.frac(M[bad[0]][N])}</b>이다. 거짓인 식 → <b>해 없음</b>.`, { done: true, bad });
+      else push(`소거 끝: 피벗이 ${piv.length}개뿐이고 남은 행은 <b>0 = 0</b>이다. 자유 변수가 ${N - piv.length}개 → <b>해가 무수히 많다</b>.`, { done: true });
+    }
+    return S;
+  }
+  function render() {
+    const s = steps[idx];
+    let h = `<div><span class="lab">${s.done ? "[U | c]" : "[A | b] → 소거 중"}</span><div class="ge-wrap">${GE.matHTML(s.M, { aug: true, pivot: s.pivot, target: s.target, bad: s.bad })}</div></div>`;
+    if (s.E) h += `<div><span class="lab">이 단계의 행렬 ${s.Ename} (왼쪽에 곱함)</span><div class="ge-wrap">${GE.matHTML(s.E)}</div></div>`;
+    if (s.x) h += `<div><span class="lab">x (아래부터 채움)</span><div class="ge-wrap"><span class="ge-m" style="--c:1">${s.x.map((v) => `<span${v === null ? ' class="z"' : ""}>${v === null ? "?" : GE.frac(v)}</span>`).join("")}</span></div></div>`;
+    stage.innerHTML = h;
+    document.getElementById("ge-s-note").innerHTML = s.note;
+    MB.stat("ge-s-k", `${idx + 1} / ${steps.length}`);
+    MB.stat("ge-s-piv", s.piv.length ? s.piv.map(GE.frac).join(", ") : "—");
+    MB.stat("ge-s-ops", String(s.ops));
+    const log = document.getElementById("ge-s-log");
+    log.innerHTML = steps.slice(0, idx + 1).map((t, k) => `<div class="${k === idx ? "cur" : ""}">${k + 1}. ${t.note.replace(/<[^>]+>/g, "")}</div>`).join("");
+    log.scrollTop = log.scrollHeight;
+  }
+  function rebuild() { steps = build(GE.readMat(box, n, n + 1), partial()); idx = 0; render(); }
+  function load(M) { n = M.length; GE.fillInputs(box, M); rebuild(); }
+  box.addEventListener("input", rebuild);
+  document.getElementById("ge-s-pre").addEventListener("change", (e) => load(PRE[e.target.value]));
+  document.getElementById("ge-s-next").addEventListener("click", () => { if (idx < steps.length - 1) { idx++; render(); } });
+  document.getElementById("ge-s-prev").addEventListener("click", () => { if (idx > 0) { idx--; render(); } });
+  document.getElementById("ge-s-first").addEventListener("click", () => { idx = 0; render(); });
+  document.getElementById("ge-s-last").addEventListener("click", () => { idx = steps.length - 1; render(); });
+  document.getElementById("ge-s-rand").addEventListener("click", () => {
+    const R = MB.rng((Date.now() & 0xffff) + 7);
+    let A;
+    do { A = Array.from({ length: n }, () => Array.from({ length: n }, () => Math.round(R.range(-4.4, 4.4)))); } while (GE.rank(A, n) < n);
+    const x = Array.from({ length: n }, () => Math.round(R.range(-3.4, 3.4)));
+    load(A.map((row) => [...row, row.reduce((s, v, j) => s + v * x[j], 0)]));
+  });
+  load(PRE.ex);
+})();
+
+/* ================================================================ 5. 작은 피벗과 부분 피벗팅 */
+(function () {
+  let prec = 16;
+  const k = MB.range("ge-v-k", (v) => GE.sup(v).replace(/^/, "10"), () => update());
+  MB.seg("ge-v-prec", (v) => { prec = +v; update(); });
+  const R = (v) => (prec >= 16 ? v : Number(v.toPrecision(prec)));
+  function noPivot(e) {
+    const l = R(1 / e), u22 = R(1 - R(l * 1)), c2 = R(2 - R(l * 1));
+    const y = R(c2 / u22), x = R(R(1 - y) / e);
+    return { x, y, l };
+  }
+  function withPivot(e) {
+    const l = R(e / 1), u22 = R(1 - R(l * 1)), c2 = R(1 - R(l * 2));
+    const y = R(c2 / u22), x = R(R(2 - y) / 1);
+    return { x, y, l };
+  }
+  const exact = (e) => ({ x: 1 / (1 - e), y: (1 - 2 * e) / (1 - e) });
+  const err = (s, e) => { const t = exact(e); return Math.max(Math.abs(s.x - t.x), Math.abs(s.y - t.y)); };
+  let curK = -10;
+  const cv = MB.canvas("#ge-cv-piv", (ctx, w, h) => {
+    const P = MB.palette();
+    const A = [], B = [];
+    for (let j = -18; j <= -1; j++) {
+      const e = Math.pow(10, j);
+      A.push([j, Math.max(1e-17, Math.min(1e3, err(noPivot(e), e)))]);
+      B.push([j, Math.max(1e-17, Math.min(1e3, err(withPivot(e), e)))]);
+    }
+    MB.chart(ctx, null, {
+      x: [-18, -1], y: [1e-17, 1e3], logY: true, yTicks: [1e-15, 1e-12, 1e-9, 1e-6, 1e-3, 1], xLabel: "피벗 ε = 10^k 의 k", yLabel: "해의 최대 오차",
+      xFmt: (v) => String(v).replace("-", "−"),
+      series: [{ data: A, color: P.bad, width: 2.5 }, { data: B, color: P.ok, width: 2.5 }],
+      vlines: [{ x: curK, color: P.accent, label: "현재 ε" }],
+      hlines: [{ y: 1, color: P.dim, label: "오차 1 = 해가 완전히 틀림" }],
+      points: [{ x: curK, y: A[curK + 18][1], color: P.bad }, { x: curK, y: B[curK + 18][1], color: P.ok }],
+    });
+  }, { aspect: 0.62, maxHeight: 420, minHeight: 260 });
+  function update() {
+    curK = k(); const e = Math.pow(10, curK);
+    const a = noPivot(e), b = withPivot(e);
+    const f = (v) => GE.minus(String(Number(v.toPrecision(12))));
+    MB.stat("ge-v-no", `(${f(a.x)}, ${f(a.y)})`);
+    MB.stat("ge-v-yes", `(${f(b.x)}, ${f(b.y)})`);
+    MB.stat("ge-v-l", GE.sci(a.l) + " / " + GE.sci(b.l));
+    cv.redraw();
+  }
+  update();
+})();
+
+/* ================================================================ 6. 연산량 */
+(function () {
+  let measured = [], rate = 1;
+  const pow = (v) => "10" + GE.sup(Math.round(Math.log10(v)));
+  const nR = MB.range("ge-t-n", (v) => Math.round(Math.pow(10, v)).toLocaleString("ko-KR"), () => update());
+  const sp = MB.range("ge-t-speed", (v) => "10" + GE.sup(v) + " flop/s", () => update());
+  const fmtTime = (s) => {
+    if (s < 1e-6) return GE.num(s * 1e9, 1) + " ns";
+    if (s < 1e-3) return GE.num(s * 1e6, 1) + " µs";
+    if (s < 1) return GE.num(s * 1e3, 1) + " ms";
+    if (s < 120) return GE.num(s, 1) + " s";
+    if (s < 7200) return GE.num(s / 60, 1) + " 분";
+    if (s < 172800) return GE.num(s / 3600, 1) + " 시간";
+    if (s < 3.2e7 * 2) return GE.num(s / 86400, 1) + " 일";
+    return GE.sci(s / 3.15e7) + " 년";
+  };
+  const cv = MB.canvas("#ge-cv-cost", (ctx, w, h) => {
+    const P = MB.palette(), el = [], bk = [];
+    for (let e = 1; e <= 6.001; e += 0.05) { const n = Math.pow(10, e); el.push([n, 2 * n * n * n / 3]); bk.push([n, n * n]); }
+    const n = Math.pow(10, nR());
+    MB.chart(ctx, null, {
+      x: [10, 1e6], y: [10, 1e18], logX: true, logY: true, xLabel: "미지수 개수 n", yLabel: "flop",
+      xTicks: [10, 100, 1e3, 1e4, 1e5, 1e6], yTicks: [10, 1e3, 1e6, 1e9, 1e12, 1e15, 1e18], xFmt: pow, yFmt: pow,
+      series: [{ data: el, color: P.accent, width: 2.5 }, { data: bk, color: P.accent2, width: 2, dash: [6, 4] }],
+      vlines: [{ x: n, color: P.dim }],
+      points: [{ x: n, y: 2 * n * n * n / 3, color: P.accent, label: "소거" }, { x: n, y: n * n, color: P.accent2, label: "후진 대입" },
+        ...measured.map((m) => ({ x: m.n, y: m.t * rate, color: P.warn, r: 4 }))],
+    });
+  }, { aspect: 0.62, maxHeight: 420, minHeight: 260 });
+  function update() {
+    const n = Math.pow(10, nR()), f = 2 * n * n * n / 3;
+    MB.stat("ge-t-elim", GE.sci(f));
+    MB.stat("ge-t-back", GE.sci(n * n));
+    MB.stat("ge-t-time", fmtTime(f / Math.pow(10, sp())));
+    cv.redraw();
+  }
+  function elim(N, seed) {
+    const R = MB.rng(seed), A = new Float64Array(N * N);
+    for (let i = 0; i < N * N; i++) A[i] = R() - 0.5;
+    for (let i = 0; i < N; i++) A[i * N + i] += N;
+    const t0 = performance.now();
+    for (let k = 0; k < N; k++) {
+      const pk = A[k * N + k];
+      for (let i = k + 1; i < N; i++) {
+        const l = A[i * N + k] / pk, ri = i * N, rk = k * N;
+        for (let j = k; j < N; j++) A[ri + j] -= l * A[rk + j];
+      }
+    }
+    return (performance.now() - t0) / 1000;
+  }
+  document.getElementById("ge-t-run").addEventListener("click", (e) => {
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = "측정 중…";
+    setTimeout(() => {
+      elim(60, 1);
+      measured = [50, 100, 200, 400].map((N) => ({ n: N, t: Math.max(1e-6, Math.min(elim(N, N), elim(N, N + 1))) }));
+      const m = measured, ratio = m[3].t / m[2].t;
+      rate = (2 * 400 * 400 * 400 / 3) / m[3].t;
+      MB.stat("ge-t-ratio", `×${GE.num(ratio, 1)} <small>(약 ${GE.sci(rate)} flop/s)</small>`);
+      btn.disabled = false; btn.textContent = "다시 실측";
+      update();
+    }, 30);
+  });
+  update();
+})();
+
+/* ================================================================ 7. 휘트스톤 브리지 */
+(function () {
+  const R1 = 1000, R2 = 2000, R3 = 1500, Rs = 100;
+  const V = MB.range("ge-b-v", (v) => GE.num(v, 1) + " V", () => update());
+  const R4 = MB.range("ge-b-r4", (v) => GE.num(v / 1000, 2) + " kΩ", () => update());
+  const R5 = MB.range("ge-b-r5", (v) => v + " Ω", () => update());
+  let sol = [0, 0, 0];
+  function system() {
+    const gs = 1 / Rs, g1 = 1 / R1, g2 = 1 / R2, g3 = 1 / R3, g4 = 1 / R4(), g5 = 1 / R5();
+    return { G: [[gs + g1 + g2, -g1, -g2], [-g1, g1 + g3 + g5, -g5], [-g2, -g5, g2 + g4 + g5]], i: [gs * V(), 0, 0] };
+  }
+  function resistor(ctx, x1, y1, x2, y2, label, color, P) {
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+    const a = 0.32, b = 0.68, z = 7;
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + dx * a, y1 + dy * a);
+    for (let k = 0; k <= 6; k++) { const t = a + (b - a) * (k + 0.5) / 7, s = k % 2 ? -z : z; ctx.lineTo(x1 + dx * t + nx * s, y1 + dy * t + ny * s); }
+    ctx.lineTo(x1 + dx * b, y1 + dy * b); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.fillStyle = P.dim; ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(label, (x1 + x2) / 2 + nx * 20, (y1 + y2) / 2 + ny * 20);
+  }
+  const cv = MB.canvas("#ge-cv-bridge", (ctx, w, h) => {
+    const P = MB.palette(), cx = w / 2 + Math.min(20, w * 0.04), s = Math.min(w * 0.3, h * 0.36);
+    const A = [cx, h * 0.5 - s * 0.95], B = [cx - s, h * 0.5 + s * 0.05], C = [cx + s, h * 0.5 + s * 0.05], D = [cx, h * 0.5 + s * 1.05], S = [Math.max(36, cx - s * 1.35), A[1] - s * 0.05];
+    resistor(ctx, A[0], A[1], B[0], B[1], "R₁ 1k", P.text, P);
+    resistor(ctx, A[0], A[1], C[0], C[1], "R₂ 2k", P.text, P);
+    resistor(ctx, B[0], B[1], D[0], D[1], "R₃ 1.5k", P.text, P);
+    resistor(ctx, C[0], C[1], D[0], D[1], "R₄ " + GE.num(R4() / 1000, 2) + "k", P.accent2, P);
+    const i5 = (sol[1] - sol[2]) / R5();
+    resistor(ctx, B[0], B[1], C[0], C[1], "R₅", Math.abs(i5) < 1e-7 ? P.ok : P.bad, P);
+    // 전원: S(+) → Rs → A, S 아래로 접지
+    ctx.strokeStyle = P.text; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(S[0], S[1]); ctx.lineTo(S[0], D[1]); ctx.lineTo(D[0], D[1]); ctx.stroke();
+    resistor(ctx, S[0], S[1], A[0], A[1], "Rₛ", P.dim, P);
+    const by = (S[1] + D[1]) / 2;
+    ctx.fillStyle = MB.color("canvas-bg"); ctx.fillRect(S[0] - 16, by - 9, 32, 18);
+    ctx.strokeStyle = P.text; ctx.beginPath(); ctx.moveTo(S[0] - 14, by - 7); ctx.lineTo(S[0] + 14, by - 7); ctx.moveTo(S[0] - 7, by + 7); ctx.lineTo(S[0] + 7, by + 7); ctx.stroke();
+    ctx.fillStyle = P.dim; ctx.font = "11px sans-serif"; ctx.textAlign = "right"; ctx.fillText(GE.num(V(), 1) + " V", S[0] - 16, by);
+    // 접지 기호
+    ctx.beginPath(); [16, 10, 4].forEach((wd, k) => { ctx.moveTo(D[0] - wd, D[1] + 8 + k * 5); ctx.lineTo(D[0] + wd, D[1] + 8 + k * 5); }); ctx.moveTo(D[0], D[1]); ctx.lineTo(D[0], D[1] + 8); ctx.stroke();
+    // 마디
+    [[A, "A", sol[0]], [B, "B", sol[1]], [C, "C", sol[2]], [D, "D", 0]].forEach(([p, n, v]) => {
+      ctx.fillStyle = P.accent; ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = P.text; ctx.font = "bold 12px sans-serif";
+      const lab = `${n} ${GE.num(v, 3)} V`;
+      if (n === "A") { ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(lab, p[0] + 10, p[1] - 4); }
+      else if (n === "D") { ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(lab, p[0] + 22, p[1] + 10); }
+      else { ctx.textAlign = n === "B" ? "left" : "right"; ctx.textBaseline = "bottom"; ctx.fillText(lab, p[0] + (n === "B" ? -2 : 2), p[1] - 10); }
+    });
+    // R5 전류 화살표
+    if (Math.abs(i5) > 1e-7) {
+      const dir = Math.sign(i5), y = B[1] + 26, x0 = cx - 26 * dir, x1 = cx + 26 * dir;
+      ctx.strokeStyle = P.bad; ctx.fillStyle = P.bad; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x1 - 8 * dir, y - 5); ctx.lineTo(x1 - 8 * dir, y + 5); ctx.closePath(); ctx.fill();
+    }
+  }, { aspect: 0.7, maxHeight: 440, minHeight: 300 });
+  function update() {
+    const { G, i } = system();
+    sol = GE.solve(G, i) || [0, 0, 0];
+    const mS = G.map((r) => r.map((v) => v * 1000));
+    document.getElementById("ge-b-eq").innerHTML = `G (mS) = ${GE.matHTML(mS, { dec: 3 })} &nbsp; i (mA) = ${GE.matHTML(i.map((v) => [v * 1000]), { dec: 2 })}`;
+    MB.stat("ge-b-volt", sol.map((v) => GE.num(v, 3)).join(", "));
+    const i5 = (sol[1] - sol[2]) / R5();
+    MB.stat("ge-b-i5", GE.num(i5 * 1e6, 1) + "<small>µA</small>");
+    MB.stat("ge-b-bal-s", Math.abs(i5) < 5e-8 ? '<span class="badge ok">균형</span>' : i5 > 0 ? '<span class="badge warn">B가 높음</span>' : '<span class="badge warn">C가 높음</span>');
+    cv.redraw();
+  }
+  document.getElementById("ge-b-bal").addEventListener("click", () => R4.set(R2 * R3 / R1));
+  update();
+})();
+</script>
+</body>
+</html>

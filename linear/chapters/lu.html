@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>역행렬과 LU 분해 · LinearBook</title>
+<meta name="description" content="역행렬을 되돌리기 변환으로 보고, 가우스–조르당으로 구하고, 실제로는 왜 거의 계산하지 않는지 배운다. 소거의 기록 A = LU와 PA = LU, 한 번 분해해 여러 번 풀기, LDLᵀ, 삼중대각 토머스 알고리즘, 회로의 노드 해석까지 직접 단계별로 풀어 본다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .lu-m { display: inline-grid; grid-template-columns: repeat(var(--c, 3), auto); gap: 3px 12px; padding: 3px 9px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13.5px var(--mono); text-align: right; font-variant-numeric: tabular-nums; vertical-align: middle; }
+  .lu-m > span { padding: 1px 3px; border-radius: 4px; }
+  .lu-m > span.aug { border-left: 1.5px dashed var(--text-faint); padding-left: 10px; }
+  .lu-m > span.row { background: var(--accent-soft); }
+  .lu-m > span.piv { background: var(--accent); color: var(--on-accent); }
+  .lu-m > span.mul { color: var(--accent-2); }
+  .lu-m > span.zero { color: var(--text-faint); }
+  .lu-m > span.fill { background: var(--accent-2-soft); color: var(--accent-2); }
+  .lu-mats { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; padding: 16px 18px; background: var(--canvas-bg); max-width: 100%; overflow-x: auto; }
+  .lu-mats figure { margin: 0; display: grid; gap: 4px; justify-items: start; }
+  .lu-mats figcaption { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+  .lu-op { font: 600 18px var(--mono); color: var(--text-dim); }
+  .lu-msg { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; }
+  .lu-msg b { color: var(--text); }
+  .lu-msg.ok { color: var(--ok); font-weight: 600; }
+  .lu-msg.bad { color: var(--bad); font-weight: 600; }
+  .lu-sliders { display: grid; gap: 12px; }
+  .lu-small { font-size: 13px; color: var(--text-dim); }
+  .lu-two { display: grid; gap: 1px; grid-template-columns: minmax(0, 1fr); background: var(--border); }
+  @media (min-width: 760px) { .lu-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .lu-two > div { background: var(--canvas-bg); position: relative; }
+  .lu-two .cap { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--text-dim); font-family: var(--mono); pointer-events: none; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="lu">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 04</div>
+    <h1 data-no-glossary>역행렬과 LU 분해</h1>
+    <p class="lead">3장에서 가우스 소거로 \(A\mathbf{x} = \mathbf{b}\)를 한 번 풀었습니다. 그런데 공학에서는 같은 \(A\)로 수십, 수천 개의 \(\mathbf{b}\)를 풀어야 할 때가 대부분입니다. 회로 시뮬레이터는 시간 단계마다, 구조 해석 프로그램은 하중 조건마다 새 오른쪽 변을 받습니다. 매번 처음부터 소거할까요, 역행렬을 한 번 구해 두고 곱할까요? 이 장의 답은 둘 다 아닙니다. <b>소거 과정 자체를 기록해 두면</b> 그 기록이 \(A = LU\)라는 두 삼각 행렬이 되고, 새 \(\mathbf{b}\)는 삼각 행렬 두 개로 순식간에 풉니다. 역행렬은 개념으로는 중요하지만 계산으로는 거의 쓰지 않는다는 것도 이 장에서 분명해집니다.</p>
+    <ul class="objectives">
+      <li>역행렬을 "변환을 되돌리는 변환"으로 이해하고, 2×2 공식과 \((AB)^{-1} = B^{-1}A^{-1}\)을 그림으로 설명한다.</li>
+      <li>가우스–조르당 소거를 \([A \mid I]\)에 적용해 역행렬을 손으로 구하고, 역행렬이 존재할 동치 조건을 정리한다.</li>
+      <li>소거의 승수를 모으면 하삼각 행렬 \(L\)이 된다는 것을 보이고, \(A = LU\)와 행 교환을 포함한 \(PA = LU\)를 구한다.</li>
+      <li>전진 대입과 후진 대입으로 여러 오른쪽 변을 풀고, 역행렬 방식과 연산량·정확도를 비교한다.</li>
+      <li>\(A = LDU\)와 대칭 행렬의 \(A = LDL^{\mathsf T}\)를 이해하고, 삼중대각 시스템을 \(O(n)\)에 푸는 토머스 알고리즘을 쓴다.</li>
+      <li>저항 회로의 노드 해석을 \(G\mathbf{v} = \mathbf{i}\)로 세우고 LU로 풀며, 희소 행렬의 채움(fill-in)이 순서에 따라 달라짐을 본다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>회로 시뮬레이터 SPICE</b></div>
+      <div class="o-body"><p>칩 하나를 만들기 전에 설계자는 수만~수백만 개 소자의 회로를 컴퓨터로 먼저 돌려 봅니다. SPICE 계열 시뮬레이터는 키르히호프 전류 법칙을 노드마다 세워 거대한 연립방정식 \(G\mathbf{v} = \mathbf{i}\)를 만들고, 비선형 소자 때문에 뉴턴 반복을 하고, 과도 해석에서는 그것을 시간 단계마다 되풀이합니다. 한 번의 시뮬레이션이 연립방정식 수십만 번을 푸는 셈입니다.</p>
+        <p>이것을 가능하게 한 것이 <b>LU 분해</b>, 그중에서도 0이 대부분인 행렬에 맞춘 <b>희소 LU</b>입니다. 행렬의 구조(어느 노드가 어느 노드와 연결되는가)는 반복 내내 같으니, 소거 순서와 채움 위치는 한 번만 정해 두고 숫자만 바꿔 다시 분해합니다. 역행렬을 구했다면 0이던 칸이 모두 채워져 메모리부터 감당할 수 없었을 것입니다.</p>
+        <div class="o-chain"><span>노드 방정식 Gv = i</span><i>→</i><span>매 단계 새로 풀기</span><i>→</i><span class="tool">A = LU (희소)</span><i>→</i><span>삼각 대입 두 번</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="inverse">
+    <h2>역행렬은 되돌리기 변환이다</h2>
+    <div class="problem"><strong>보정한 사진을 원본으로 되돌릴 수 있을까</strong>
+      <p>사진 편집 앱이 이미지에 회전·전단·확대를 섞은 2×2 변환 \(A\)를 적용했습니다. "실행 취소"를 누르면 원래 좌표로 돌아가야 합니다. 변환된 좌표 \(\mathbf{y} = A\mathbf{x}\)에서 \(\mathbf{x}\)를 되찾는 변환이 언제나 있을까요? 있다면 그것도 행렬일까요?</p></div>
+    <p>선형 변환을 되돌리는 변환도 선형입니다(\(A\)가 덧셈과 스칼라배를 보존하면 그 역도 보존합니다). 그러니 되돌리기 역시 행렬 하나로 쓸 수 있고, 그것이 <span class="term">역행렬</span><span class="en">(inverse matrix)</span>입니다.</p>
+    <div class="callout"><strong>정의 4.1 (역행렬)</strong> \(n\times n\) 행렬 \(A\)에 대해 \(BA = I\)이고 \(AB = I\)인 행렬 \(B\)가 있으면 \(A\)를 <b>가역</b><span class="en">(invertible)</span> 또는 <b>정칙</b><span class="en">(nonsingular)</span>이라 하고, \(B\)를 \(A^{-1}\)로 쓴다. 그런 \(B\)가 없으면 \(A\)는 <b>특이</b><span class="en">(singular)</span>하다.</div>
+    <p>역행렬은 있으면 하나뿐입니다. \(B\)와 \(C\)가 모두 역행렬이면 \(B = BI = B(AC) = (BA)C = IC = C\)이기 때문입니다. 정사각 행렬에서는 한쪽만 확인해도 충분하다는 사실(\(BA = I\)이면 자동으로 \(AB = I\))은 3절의 정리에서 나옵니다.</p>
+    <p>2×2에서는 공식이 바로 나옵니다. 직접 곱해 보면 확인할 수 있습니다.</p>
+    <div class="formula">$$A = \begin{bmatrix}a & b\\ c & d\end{bmatrix} \quad\Longrightarrow\quad A^{-1} = \frac{1}{ad - bc}\begin{bmatrix}d & -b\\ -c & a\end{bmatrix}\qquad (ad - bc \ne 0)$$
+      <div class="where">대각 원소는 자리를 바꾸고, 비대각 원소는 부호를 바꾼 뒤, 행렬식 \(ad - bc\)로 나눈다. 행렬식이 0이면 나눌 수 없다. 그림으로는 평면이 직선으로 납작해져 어디서 왔는지 알 수 없게 된 경우다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 250" role="img" aria-label="A를 적용한 뒤 A의 역행렬로 되돌리는 그림과 곱의 역행렬 순서">
+        <defs><marker id="lu-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g transform="translate(20,30)"><rect width="170" height="150" rx="10" class="f-surface"/>
+          <polygon points="50,120 70,120 70,80 100,80 100,64 70,64 70,46 110,46 110,30 50,30" style="fill:var(--accent);opacity:.8"/>
+          <text x="85" y="142" text-anchor="middle" class="t">원본 x</text></g>
+        <path d="M196 105 C 240 70, 270 70, 300 105" fill="none" class="s-acc" marker-end="url(#lu-ah)"/>
+        <text x="248" y="66" text-anchor="middle" class="t-acc">A</text>
+        <g transform="translate(305,30)"><rect width="170" height="150" rx="10" class="f-surface"/>
+          <polygon points="45,120 67,128 81,92 113,104 118,90 86,78 92,62 135,78 140,64 76,40" style="fill:var(--accent-2);opacity:.75"/>
+          <text x="85" y="142" text-anchor="middle" class="t">y = Ax</text></g>
+        <path d="M481 105 C 525 70, 555 70, 585 105" fill="none" class="s-acc" marker-end="url(#lu-ah)"/>
+        <text x="533" y="66" text-anchor="middle" class="t-acc">A⁻¹</text>
+        <g transform="translate(590,30)"><rect width="170" height="150" rx="10" class="f-surface"/>
+          <polygon points="50,120 70,120 70,80 100,80 100,64 70,64 70,46 110,46 110,30 50,30" style="fill:var(--accent);opacity:.8"/>
+          <text x="85" y="142" text-anchor="middle" class="t">A⁻¹y = x</text></g>
+        <text x="390" y="215" text-anchor="middle" class="t-dim">양말을 신고(B) 신발을 신었으면(A), 벗을 때는 신발부터(A⁻¹) 벗고 양말(B⁻¹)을 벗는다:</text>
+        <text x="390" y="238" text-anchor="middle" class="t-mono">(AB)⁻¹ = B⁻¹A⁻¹</text>
+      </svg>
+      <figcaption><b>그림 4-1.</b> 역행렬은 변환을 되돌린다. 곱 \(AB\)는 오른쪽 \(B\)가 먼저 적용되므로, 되돌릴 때는 나중에 한 \(A\)부터 되돌린다. 그래서 곱의 역행렬은 순서가 뒤집힌다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 4.1 (곱과 전치의 역행렬)</strong> \(A\), \(B\)가 가역이면 \(AB\)도 가역이고 \((AB)^{-1} = B^{-1}A^{-1}\)이다. 또 \((A^{\mathsf T})^{-1} = (A^{-1})^{\mathsf T}\)이다.
+      <br>증명: \((AB)(B^{-1}A^{-1}) = A(BB^{-1})A^{-1} = AA^{-1} = I\)이고 반대 순서도 같다. 전치는 \(A^{\mathsf T}(A^{-1})^{\mathsf T} = (A^{-1}A)^{\mathsf T} = I^{\mathsf T} = I\)에서 나온다.</div>
+
+    <div class="sim" id="sim-lu-undo">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>변환하고 되돌리기: A와 A⁻¹</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lu-cv-undo"></canvas><span class="tag-tl">Aî, Aĵ 끝점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>보기</span><div class="seg" id="lu-u-mode"><button data-value="a" class="on">A 적용</button><button data-value="inv">A⁻¹ 적용</button><button data-value="back">A⁻¹A</button></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="lu-u-pre">
+            <option value="gen">일반 변환</option>
+            <option value="rot">회전 40°</option>
+            <option value="shear">전단</option>
+            <option value="near">거의 특이 (det ≈ 0.05)</option>
+            <option value="sing">특이 (det = 0)</option>
+          </select></label>
+          <div class="ctrl"><span>A와 A⁻¹</span><div id="lu-u-mats" class="lu-small"></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">det A = ad − bc</span><span class="v" id="lu-u-det">—</span></div>
+        <div class="stat"><span class="k">det A⁻¹ = 1/det A</span><span class="v" id="lu-u-dinv">—</span></div>
+        <div class="stat"><span class="k">상태</span><span class="v" id="lu-u-state">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'A⁻¹A'를 누르면 변환한 F가 정확히 원래 자리로 돌아옵니다. ② '거의 특이'를 고르고 'A⁻¹ 적용'을 보세요. A가 평면을 얇게 누를수록 A⁻¹은 반대로 크게 부풀려야 합니다. 측정 잡음이 있으면 이 부풀림이 잡음을 키웁니다. ③ 두 점을 원점을 지나는 한 직선 위에 놓으면 역행렬이 사라집니다. 모델: 원점을 고정하는 2×2 선형 변환, 끈 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="gauss-jordan">
+    <h2>가우스–조르당: [A | I]를 [I | A⁻¹]로</h2>
+    <div class="problem"><strong>3×3 이상은 공식이 없을까</strong>
+      <p>2×2 공식은 외우기 쉽지만, 3×3 공식(여인수 공식, 10장)은 항이 많고 4×4 이상은 손으로 쓸 엄두가 나지 않습니다. 소거를 이미 알고 있으니 그것으로 역행렬을 구할 수는 없을까요?</p></div>
+    <p>\(AX = I\)를 만족하는 \(X\)를 찾는 것은 \(X\)의 열 \(\mathbf{x}_1, \dots, \mathbf{x}_n\)에 대해 \(n\)개의 연립방정식 \(A\mathbf{x}_j = \mathbf{e}_j\)를 푸는 것과 같습니다. 계수 행렬이 모두 \(A\)로 같으니 오른쪽 변 \(n\)개를 한꺼번에 붙여 소거하면 됩니다. 이것이 <span class="term">가우스–조르당 소거</span><span class="en">(Gauss–Jordan elimination)</span>입니다.</p>
+    <ol>
+      <li><b>앞으로 소거</b>: 피벗 아래를 0으로 만든다(3장의 가우스 소거와 같다).</li>
+      <li><b>뒤로 소거</b>: 피벗 위도 0으로 만든다. 왼쪽이 대각 행렬이 된다.</li>
+      <li><b>피벗으로 나누기</b>: 각 행을 피벗으로 나눠 왼쪽을 \(I\)로 만든다. 그때 오른쪽이 \(A^{-1}\)이다.</li>
+    </ol>
+    <p>왜 오른쪽이 \(A^{-1}\)일까요? 각 행 연산은 왼쪽에 <a href="elimination.html#elementary">기본 행렬</a> \(E\)를 곱하는 것입니다. 연산을 모두 모은 \(M = E_k\cdots E_2E_1\)이 \(MA = I\)를 만들었다면 \(M = A^{-1}\)이고, 같은 연산을 받은 오른쪽은 \(MI = M = A^{-1}\)입니다.</p>
+    <div class="callout"><strong>예제 4.1 — 손으로 푸는 2×2</strong> \(A = \begin{bmatrix}2 & 1\\ 5 & 3\end{bmatrix}\)의 역행렬.
+      <div class="formula">$$\left[\begin{array}{cc|cc}2 & 1 & 1 & 0\\ 5 & 3 & 0 & 1\end{array}\right] \xrightarrow{R_2 - 2.5R_1} \left[\begin{array}{cc|cc}2 & 1 & 1 & 0\\ 0 & 0.5 & -2.5 & 1\end{array}\right] \xrightarrow{R_1 - 2R_2} \left[\begin{array}{cc|cc}2 & 0 & 6 & -2\\ 0 & 0.5 & -2.5 & 1\end{array}\right] \xrightarrow{R_1/2,\;2R_2} \left[\begin{array}{cc|cc}1 & 0 & 3 & -1\\ 0 & 1 & -5 & 2\end{array}\right]$$</div>
+      따라서 \(A^{-1} = \begin{bmatrix}3 & -1\\ -5 & 2\end{bmatrix}\). 2×2 공식(\(\det A = 6 - 5 = 1\))과 같고, \(AA^{-1} = I\)도 곱해 보면 확인된다.</div>
+
+    <div class="sim" id="sim-lu-gj">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가우스–조르당 단계별 실행기</h3></div>
+      <div class="sim-view lu-mats" id="lu-gj-view"></div>
+      <div class="lu-msg" id="lu-gj-msg">—</div>
+      <div class="sim-controls">
+        <label class="ctrl"><span>행렬</span><select id="lu-gj-pre">
+          <option value="a2">예제 4.1 (2×2)</option>
+          <option value="a3" selected>3×3 정수 행렬</option>
+          <option value="swap">피벗 자리가 0 (행 교환 필요)</option>
+          <option value="sing">특이 행렬 (세 번째 행 = 첫째 + 둘째)</option>
+        </select></label>
+        <div class="btn-row"><button class="btn primary" id="lu-gj-next">다음 단계 ▶</button><button class="btn" id="lu-gj-all">끝까지</button><button class="btn" id="lu-gj-reset">처음부터</button></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="lu-gj-step">—</span></div>
+        <div class="stat"><span class="k">지금까지 곱셈·나눗셈</span><span class="v" id="lu-gj-ops">—</span></div>
+        <div class="stat"><span class="k">결과</span><span class="v" id="lu-gj-res">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 3×3 행렬을 끝까지 실행해 오른쪽 블록이 A⁻¹이 되는 것을 보세요. 마지막 단계에서 AA⁻¹ = I도 검산합니다. ② '피벗 자리가 0'은 첫 단계에서 행을 바꿉니다. ③ '특이 행렬'은 세 번째 피벗을 찾지 못하고 멈춥니다. 모델: 정확한 유리수 대신 배정밀도 실수로 계산하고 소수 셋째 자리까지 보여 줍니다. 피벗은 맨 위의 0이 아닌 원소를 씁니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="invertible">
+    <h2>역행렬이 있을 조건, 그리고 왜 거의 계산하지 않는가</h2>
+    <p>가우스–조르당이 멈추는 경우는 딱 하나, 어떤 열에서 피벗 후보가 모두 0일 때입니다. 이 관찰 하나가 서로 달라 보이는 여러 조건을 한 줄로 묶습니다.</p>
+    <div class="callout deep"><strong>정리 4.2 (가역 행렬 정리)</strong> \(n\times n\) 행렬 \(A\)에 대해 다음은 모두 동치다.
+      <ol>
+        <li>\(A\)는 가역이다.</li>
+        <li>소거(필요하면 행 교환 포함)가 0이 아닌 피벗 \(n\)개를 낸다.</li>
+        <li>\(A\mathbf{x} = \mathbf{0}\)의 해는 \(\mathbf{x} = \mathbf{0}\)뿐이다.</li>
+        <li>\(A\)의 열들은 선형 독립이다(1장 <a href="vectors.html">벡터와 선형 결합</a>).</li>
+        <li>모든 \(\mathbf{b}\)에 대해 \(A\mathbf{x} = \mathbf{b}\)의 해가 정확히 하나 있다.</li>
+        <li>\(A\)는 기본 행렬들의 곱이다.</li>
+        <li>\(\det A \ne 0\)이다(10장에서 증명).</li>
+        <li>\(BA = I\)인 \(B\)가 있다(또는 \(AB = I\)인 \(B\)가 있다).</li>
+      </ol>
+      핵심 고리: 피벗이 \(n\)개면 가우스–조르당이 끝까지 가서 역행렬을 만든다(1⇔2). 피벗이 모자라면 자유 변수가 생겨 \(A\mathbf{x} = \mathbf{0}\)에 0 아닌 해가 생긴다(2⇔3). 열의 선형 결합이 0이 되는 것이 바로 \(A\mathbf{x} = \mathbf{0}\)의 0 아닌 해다(3⇔4). \(BA = I\)이면 \(A\mathbf{x} = \mathbf{0}\)에서 \(\mathbf{x} = BA\mathbf{x} = \mathbf{0}\)이니 3이 성립하고, 그러면 \(A^{-1}\)이 있으므로 \(B = BAA^{-1} = A^{-1}\)이다(8). 그래서 정사각 행렬은 한쪽 역행렬만 확인하면 된다.</div>
+    <p>이론에서 역행렬은 이렇게 강력하지만, 수치 계산에서는 한 가지 원칙이 거의 철칙처럼 쓰입니다.</p>
+    <div class="callout warn"><strong>\(A\mathbf{x} = \mathbf{b}\)를 풀 때 \(A^{-1}\)을 만들지 않는다</strong>
+      \(\mathbf{x} = A^{-1}\mathbf{b}\)는 식으로는 깔끔하지만, 계산으로는 손해입니다.
+      <ul>
+        <li><b>연산량</b>: \(n\times n\) 역행렬을 구하는 데 곱셈·덧셈이 약 \(2n^3\)회 필요합니다. LU 분해는 약 \(\tfrac{2}{3}n^3\)회로, 세 배 적습니다. 그 뒤 \(\mathbf{b}\) 하나를 푸는 비용은 둘 다 약 \(2n^2\)으로 같습니다.</li>
+        <li><b>정확도</b>: 역행렬을 거치면 반올림 오차가 한 단계 더 쌓이고, LU와 삼각 대입으로 푼 해보다 잔차 \(\lVert A\mathbf{x} - \mathbf{b}\rVert\)가 대체로 더 큽니다. 후진 안정성(16장) 보장도 약해집니다.</li>
+        <li><b>희소성</b>: 희소 행렬의 역행렬은 거의 언제나 꽉 찬 행렬입니다(7절). 0이 99.9%인 백만 차원 행렬의 역행렬은 메모리에 담을 수조차 없습니다.</li>
+      </ul>
+      그래서 MATLAB의 <code>A\b</code>, NumPy의 <code>numpy.linalg.solve</code>, LAPACK의 <code>dgesv</code>는 모두 역행렬이 아니라 LU 분해로 풉니다. 역행렬 자체가 필요한 경우(공분산 행렬의 대각 원소처럼 \(A^{-1}\)의 성분이 답인 경우)는 생각보다 드뭅니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="lu">
+    <h2>A = LU: 소거의 기록</h2>
+    <div class="problem"><strong>소거를 매번 다시 해야 할까</strong>
+      <p>구조물의 강성 행렬 \(K\)는 그대로인데 하중 벡터 \(\mathbf{f}\)만 바람·지진·적설 조건마다 바뀝니다. 가우스 소거는 \(K\)와 \(\mathbf{f}\)를 함께 바꿔 가며 풀므로, \(\mathbf{f}\)가 바뀌면 \(\tfrac{2}{3}n^3\)짜리 소거를 처음부터 다시 해야 합니다. \(K\)에 대해 한 일은 어딘가에 남겨 둘 수 없을까요?</p></div>
+    <p>남겨 둘 것은 많지 않습니다. 소거의 각 단계는 "\(i\)행에서 \(k\)행의 \(\ell_{ik}\)배를 뺀다"였고, 이 <span class="term">승수</span><span class="en">(multiplier)</span> \(\ell_{ik} = u_{ik}/u_{kk}\)만 기억하면 \(A\)에 한 일을 \(\mathbf{b}\)에도 언제든 똑같이 해 줄 수 있습니다. 승수를 대각선 아래에 모으면 하삼각 행렬이 됩니다.</p>
+    <div class="formula">$$A = LU,\qquad L = \begin{bmatrix}1 & & & \\ \ell_{21} & 1 & & \\ \ell_{31} & \ell_{32} & 1 & \\ \vdots & & \ddots & \ddots\end{bmatrix},\qquad U = \text{소거가 끝난 위삼각 행렬}$$
+      <div class="where">\(L\)은 대각이 1인 하삼각 행렬(단위 하삼각)이고 대각 아래에 승수가 그 자리 그대로 들어간다. \(U\)의 대각 원소가 피벗이다. 승수를 부호까지 그대로 적는다는 것(빼 준 양 = 더해야 원래로 돌아오는 양)이 요점이다.</div>
+    </div>
+    <p>왜 승수가 "그 자리 그대로" 들어갈까요? 소거 단계 하나는 기본 행렬 \(E_{ik}\)(단위 행렬의 \((i,k)\) 칸에 \(-\ell_{ik}\))를 곱하는 것이고, 모두 모으면 \(E\,A = U\)입니다. 그러면 \(A = E^{-1}U\)이고 \(L = E^{-1}\)입니다. \(E_{ik}^{-1}\)은 \((i,k)\) 칸의 부호만 바꾼 것(뺀 것을 다시 더하기)이며, 역순으로 곱하면 서로 간섭하지 않아 승수들이 자기 칸에 그대로 놓입니다. 반면 \(E\) 자체에는 승수끼리 곱한 항이 섞여 들어갑니다. 그래서 \(E\)가 아니라 \(L = E^{-1}\)을 기록하는 것이 깔끔합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 230" role="img" aria-label="소거 승수가 L의 대각 아래에 모이는 모습">
+        <g font-family="var(--mono)" font-size="15">
+          <text x="20" y="30" class="t" style="font-weight:700">A</text>
+          <g transform="translate(20,45)">
+            <rect x="0" y="0" width="150" height="120" rx="8" class="f-surface"/>
+            <text x="30" y="32" class="t-mono">2</text><text x="75" y="32" class="t-mono">1</text><text x="120" y="32" class="t-mono">1</text>
+            <text x="30" y="70" class="t-mono">4</text><text x="75" y="70" class="t-mono">5</text><text x="120" y="70" class="t-mono">3</text>
+            <text x="24" y="108" class="t-mono">−2</text><text x="75" y="108" class="t-mono">2</text><text x="120" y="108" class="t-mono">5</text>
+          </g>
+          <text x="200" y="110" class="t" style="font-size:22px">=</text>
+          <text x="240" y="30" class="t" style="font-weight:700">L (승수의 기록)</text>
+          <g transform="translate(240,45)">
+            <rect x="0" y="0" width="150" height="120" rx="8" class="f-surface"/>
+            <text x="30" y="32" class="t-mono">1</text><text x="75" y="32" class="t-dim">0</text><text x="120" y="32" class="t-dim">0</text>
+            <rect x="14" y="48" width="36" height="30" rx="5" class="f-acc2-soft"/><text x="30" y="70" class="t-mono" style="fill:var(--accent-2);font-weight:700">2</text><text x="75" y="70" class="t-mono">1</text><text x="120" y="70" class="t-dim">0</text>
+            <rect x="14" y="86" width="36" height="30" rx="5" class="f-acc2-soft"/><text x="24" y="108" class="t-mono" style="fill:var(--accent-2);font-weight:700">−1</text>
+            <rect x="59" y="86" width="36" height="30" rx="5" class="f-acc2-soft"/><text x="75" y="108" class="t-mono" style="fill:var(--accent-2);font-weight:700">1</text><text x="120" y="108" class="t-mono">1</text>
+          </g>
+          <text x="410" y="110" class="t" style="font-size:22px">·</text>
+          <text x="440" y="30" class="t" style="font-weight:700">U (소거 결과)</text>
+          <g transform="translate(440,45)">
+            <rect x="0" y="0" width="150" height="120" rx="8" class="f-surface"/>
+            <rect x="14" y="10" width="36" height="30" rx="5" class="f-acc-soft"/><text x="30" y="32" class="t-mono" style="font-weight:700">2</text><text x="75" y="32" class="t-mono">1</text><text x="120" y="32" class="t-mono">1</text>
+            <text x="30" y="70" class="t-dim">0</text><rect x="59" y="48" width="36" height="30" rx="5" class="f-acc-soft"/><text x="75" y="70" class="t-mono" style="font-weight:700">3</text><text x="120" y="70" class="t-mono">1</text>
+            <text x="30" y="108" class="t-dim">0</text><text x="75" y="108" class="t-dim">0</text><rect x="104" y="86" width="36" height="30" rx="5" class="f-acc-soft"/><text x="120" y="108" class="t-mono" style="font-weight:700">5</text>
+          </g>
+        </g>
+        <text x="620" y="70" class="t-dim">ℓ₂₁ = 4/2 = 2</text>
+        <text x="620" y="94" class="t-dim">ℓ₃₁ = −2/2 = −1</text>
+        <text x="620" y="118" class="t-dim">ℓ₃₂ = 3/3 = 1</text>
+        <text x="620" y="150" class="t-dim">피벗 2, 3, 5</text>
+        <text x="390" y="205" text-anchor="middle" class="t-dim">L의 각 칸은 "그 행에서 피벗 행을 몇 배 뺐는가". U의 대각이 피벗이고 det A = 2·3·5 = 30.</text>
+      </svg>
+      <figcaption><b>그림 4-2.</b> 예제 4.2의 분해. 소거하며 쓴 승수(주황)를 같은 자리에 적으면 \(L\), 소거가 끝난 결과가 \(U\)(피벗은 보라). 컴퓨터는 \(L\)과 \(U\)를 따로 저장하지 않고 \(A\)의 칸에 덮어쓴다. \(L\)의 대각 1은 적을 필요가 없기 때문이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 4.2 — 3×3 LU 분해</strong> \(A = \begin{bmatrix}2 & 1 & 1\\ 4 & 5 & 3\\ -2 & 2 & 5\end{bmatrix}\).
+      <ol>
+        <li>1열: 피벗 2. \(\ell_{21} = 4/2 = 2\)이므로 \(R_2 - 2R_1 = (0, 3, 1)\). \(\ell_{31} = -2/2 = -1\)이므로 \(R_3 - (-1)R_1 = (0, 3, 6)\).</li>
+        <li>2열: 피벗 3. \(\ell_{32} = 3/3 = 1\)이므로 \(R_3 - R_2 = (0, 0, 5)\).</li>
+        <li>결과: \(L = \begin{bmatrix}1 & 0 & 0\\ 2 & 1 & 0\\ -1 & 1 & 1\end{bmatrix}\), \(U = \begin{bmatrix}2 & 1 & 1\\ 0 & 3 & 1\\ 0 & 0 & 5\end{bmatrix}\). 검산: \(L\)의 3행 \((-1, 1, 1)\)은 "\(U\)의 1행 \(-1\)배 + 2행 + 3행" \(= (-2, 2, 5)\)으로 \(A\)의 3행과 같다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lu-factor">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>L이 채워지고 U가 만들어진다</h3></div>
+      <div class="sim-view lu-mats" id="lu-f-view"></div>
+      <div class="lu-msg" id="lu-f-msg">—</div>
+      <div class="sim-controls">
+        <label class="ctrl"><span>행렬</span><select id="lu-f-pre">
+          <option value="ex">예제 4.2 (3×3)</option>
+          <option value="four">4×4 정수 행렬</option>
+          <option value="zero">2열 피벗 자리가 0</option>
+          <option value="tiny">아주 작은 피벗 (0.0001)</option>
+          <option value="rand">무작위 4×4</option>
+        </select></label>
+        <label class="check"><input type="checkbox" id="lu-f-piv"> 부분 피벗팅 (PA = LU)</label>
+        <div class="btn-row"><button class="btn primary" id="lu-f-next">다음 단계 ▶</button><button class="btn" id="lu-f-all">끝까지</button><button class="btn" id="lu-f-reset">처음부터</button></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="lu-f-step">—</span></div>
+        <div class="stat"><span class="k">최대 |승수|</span><span class="v" id="lu-f-maxl">—</span></div>
+        <div class="stat"><span class="k">검산 max|PA − LU|</span><span class="v" id="lu-f-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 4.2를 한 단계씩 실행하며 승수가 L의 어느 칸에 들어가는지 확인하세요. ② '2열 피벗 자리가 0'은 피벗팅 없이는 멈춥니다. 부분 피벗팅을 켜면 행을 바꾸고 P가 기록됩니다. ③ '아주 작은 피벗'에서 피벗팅을 끄면 승수가 10⁴까지 커지고, 켜면 모든 |승수| ≤ 1이 됩니다. 모델: 배정밀도 계산, 표시는 소수 셋째 자리. 부분 피벗팅은 각 열에서 절댓값이 가장 큰 원소를 피벗으로 고릅니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="plu">
+    <h2>행 교환이 필요할 때: PA = LU</h2>
+    <p>피벗 자리에 0이 오면 아래 행과 바꿔야 합니다(<a href="elimination.html#pivoting">3장의 부분 피벗팅</a>). 0이 아니어도 아주 작은 피벗은 거대한 승수를 낳고 반올림 오차를 키우므로, 실무에서는 <b>매 열마다 절댓값이 가장 큰 원소를 피벗으로</b> 올립니다. 그러면 모든 승수가 \(|\ell_{ik}| \le 1\)이 됩니다.</p>
+    <p>행 교환을 섞으면 \(A = LU\)가 그대로 성립하지 않습니다. 대신 바꿀 행을 미리 다 바꿔 둔 행렬 \(PA\)에 대해 교환 없는 소거를 한 것과 결과가 같습니다. \(P\)는 단위 행렬의 행 순서를 바꾼 <span class="term">치환 행렬</span><span class="en">(permutation matrix)</span>입니다.</p>
+    <div class="callout deep"><strong>정리 4.3 (PA = LU)</strong> 모든 가역 행렬 \(A\)에 대해 치환 행렬 \(P\), 단위 하삼각 행렬 \(L\), 대각에 0이 없는 위삼각 행렬 \(U\)가 있어 \(PA = LU\)이다. 행 교환이 일어나면 이미 계산한 \(L\)의 승수들도 같이 바꿔 준다(행 전체가 이사를 가니, 그 행의 기록도 따라간다). \(P^{-1} = P^{\mathsf T}\)이므로 \(A = P^{\mathsf T}LU\)로도 쓴다.</div>
+    <p>\(PA = LU\)로 \(A\mathbf{x} = \mathbf{b}\)를 풀 때는 양변에 \(P\)를 곱해 \(LU\mathbf{x} = P\mathbf{b}\)로 바꾸면 됩니다. \(P\mathbf{b}\)는 곱셈이 아니라 원소의 순서를 바꾸는 것이라 비용이 거의 없습니다. 한편 피벗팅 없이도 언제나 안전한 행렬들이 있습니다. 대각 지배 행렬(각 행에서 대각 원소의 절댓값이 나머지 절댓값의 합보다 큰 행렬)과 대칭 양의 정부호 행렬(13장)이 그렇고, 다음 절들의 열전도 행렬과 회로 행렬이 바로 이 경우입니다.</p>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="many-rhs">
+    <h2>한 번 분해해 여러 번 풀기</h2>
+    <p>\(A = LU\)가 있으면 \(A\mathbf{x} = \mathbf{b}\)는 \(L(U\mathbf{x}) = \mathbf{b}\)입니다. \(\mathbf{c} = U\mathbf{x}\)로 두면 삼각 시스템 두 개로 쪼개집니다.</p>
+    <div class="formula">$$\underbrace{L\mathbf{c} = \mathbf{b}}_{\text{전진 대입: } c_1, c_2, \dots \text{ 순서}}\qquad\text{그다음}\qquad \underbrace{U\mathbf{x} = \mathbf{c}}_{\text{후진 대입: } x_n, x_{n-1}, \dots \text{ 순서}}$$
+      <div class="where">전진 대입 \(c_i = b_i - \sum_{j \lt i} \ell_{ij}c_j\), 후진 대입 \(x_i = \big(c_i - \sum_{j > i} u_{ij}x_j\big)/u_{ii}\). 각각 약 \(n^2\)번의 곱셈·덧셈. 전진 대입은 가우스 소거가 \(\mathbf{b}\)에 하던 일을 나중에 따로 해 주는 것이다.</div>
+    </div>
+    <div class="callout"><strong>예제 4.3 — 예제 4.2의 분해로 풀기</strong> \(\mathbf{b} = (5, 17, 7)\).
+      <ol>
+        <li>전진 대입 \(L\mathbf{c} = \mathbf{b}\): \(c_1 = 5\), \(c_2 = 17 - 2\cdot 5 = 7\), \(c_3 = 7 - (-1)\cdot 5 - 1\cdot 7 = 5\).</li>
+        <li>후진 대입 \(U\mathbf{x} = \mathbf{c}\): \(x_3 = 5/5 = 1\), \(x_2 = (7 - 1\cdot 1)/3 = 2\), \(x_1 = (5 - 1\cdot 2 - 1\cdot 1)/2 = 1\).</li>
+        <li>답 \(\mathbf{x} = (1, 2, 1)\). 새 \(\mathbf{b}\)가 오면 1–2만 반복한다. \(L\)과 \(U\)는 그대로다.</li>
+      </ol></div>
+    <p>연산량을 비교하면 차이가 분명합니다. 오른쪽 변이 \(k\)개일 때 대략</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방법</th><th>한 번만 하는 일</th><th>오른쪽 변 하나마다</th><th>\(k\)개 전체</th></tr></thead>
+      <tbody>
+        <tr><td>매번 가우스 소거</td><td>—</td><td>\(\tfrac{2}{3}n^3 + n^2\)</td><td>\(k\cdot\tfrac{2}{3}n^3\)</td></tr>
+        <tr><td>역행렬을 구해 곱하기</td><td>\(2n^3\)</td><td>\(2n^2\)</td><td>\(2n^3 + 2kn^2\)</td></tr>
+        <tr><td><b>LU 분해 + 대입</b></td><td>\(\tfrac{2}{3}n^3\)</td><td>\(2n^2\)</td><td>\(\tfrac{2}{3}n^3 + 2kn^2\)</td></tr>
+      </tbody>
+    </table></div>
+    <p>LU는 역행렬 방식보다 언제나 앞서고(분해가 세 배 싸고 그 뒤는 같다), 매번 소거하는 방식과는 \(k\)가 커질수록 격차가 벌어집니다. 아래에서 \(n\)과 \(k\)를 바꿔 보세요.</p>
+
+    <div class="sim" id="sim-lu-cost">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>연산량 비교: 소거·역행렬·LU</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lu-cv-cost"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>오른쪽 변 개수 k <output id="lu-c-k-out"></output></span><input type="range" id="lu-c-k" min="0" max="4" step="0.01" value="2"></label>
+          <label class="ctrl"><span>행렬 크기 n (읽기용) <output id="lu-c-n-out"></output></span><input type="range" id="lu-c-n" min="1" max="4" step="0.01" value="3"></label>
+          <label class="ctrl"><span>컴퓨터 속도 <output id="lu-c-f-out"></output></span><input type="range" id="lu-c-f" min="8" max="12" step="1" value="10"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">매번 소거</span><span class="v" id="lu-c-ge">—</span></div>
+        <div class="stat"><span class="k">역행렬 + 곱</span><span class="v" id="lu-c-inv">—</span></div>
+        <div class="stat"><span class="k">LU + 대입</span><span class="v" id="lu-c-lu">—</span></div>
+        <div class="stat"><span class="k">LU가 빠른 배수 (매번 소거 대비)</span><span class="v" id="lu-c-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k = 1이면 역행렬 방식이 LU보다 약 세 배 느립니다. ② k를 n보다 크게 하면 대입 비용 2kn²이 분해 비용을 넘어서고, 역행렬과 LU의 차이는 줄지만 LU가 여전히 앞섭니다. ③ n = 10⁴, k = 100이면 매번 소거하는 방식은 LU보다 약 100배 느립니다. 모델: 곱셈·덧셈 횟수(flop)의 주요 항만 셉니다. 실제 속도는 메모리 접근과 병렬화에 크게 좌우되며, 시간은 지정한 일정 속도를 가정한 어림입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="ldu">
+    <h2>A = LDU와 대칭 행렬의 A = LDLᵀ</h2>
+    <p>\(A = LU\)는 비대칭입니다. \(L\)의 대각은 1인데 \(U\)의 대각은 피벗입니다. 피벗을 대각 행렬 \(D\)로 뽑아내면 양쪽이 대칭적인 모양이 됩니다.</p>
+    <div class="formula">$$A = LDU',\qquad D = \operatorname{diag}(u_{11}, \dots, u_{nn}),\qquad U' = D^{-1}U \;(\text{대각이 1인 위삼각})$$</div>
+    <p>예제 4.2에서는 \(D = \operatorname{diag}(2, 3, 5)\), \(U' = \begin{bmatrix}1 & 0.5 & 0.5\\ 0 & 1 & 1/3\\ 0 & 0 & 1\end{bmatrix}\)입니다. 이 분해는 피벗팅이 필요 없는 가역 행렬에서 유일합니다.</p>
+    <p>\(A\)가 <b>대칭</b>(\(A = A^{\mathsf T}\))이면 더 좋은 일이 생깁니다. \(A = LDU'\)를 전치하면 \(A^{\mathsf T} = U'^{\mathsf T}DL^{\mathsf T}\)이고, 이것도 "단위 하삼각 · 대각 · 단위 위삼각" 꼴이니 유일성에 의해 \(U' = L^{\mathsf T}\)입니다.</p>
+    <div class="callout deep"><strong>정리 4.4 (대칭 행렬의 LDLᵀ)</strong> 행 교환 없이 소거되는 대칭 행렬은 \(A = LDL^{\mathsf T}\)로 분해된다. \(L\)만 계산하면 되므로 연산량과 저장 공간이 \(LU\)의 절반(약 \(\tfrac{1}{3}n^3\))이다. 피벗(\(D\)의 원소)이 모두 양수이면 \(A\)는 양의 정부호이고, \(\sqrt{D}\)를 나눠 담아 \(A = (L\sqrt{D})(L\sqrt{D})^{\mathsf T} = R^{\mathsf T}R\)로 쓸 수 있다. 이것이 <b>콜레스키 분해</b>이며 13장에서 자세히 다룬다.</div>
+    <div class="callout"><strong>예제 4.4</strong> \(A = \begin{bmatrix}4 & 2 & 2\\ 2 & 5 & 3\\ 2 & 3 & 6\end{bmatrix}\). 승수 \(\ell_{21} = \ell_{31} = 0.5\)로 1열을 지우면 남은 블록은 \(\begin{bmatrix}4 & 2\\ 2 & 5\end{bmatrix}\)이고(여전히 대칭!), \(\ell_{32} = 0.5\)로 지우면 마지막 피벗 4가 남는다. 따라서
+      $$L = \begin{bmatrix}1 & 0 & 0\\ 0.5 & 1 & 0\\ 0.5 & 0.5 & 1\end{bmatrix},\quad D = \operatorname{diag}(4, 4, 4),\quad A = LDL^{\mathsf T}.$$
+      소거 도중의 남은 블록이 계속 대칭이라는 것이 \(L^{\mathsf T}\)만으로 \(U\)를 대신할 수 있는 이유다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="banded">
+    <h2>띠 행렬: 열전도 막대를 O(n)에 풀기</h2>
+    <div class="problem"><strong>칩의 방열판을 따라 온도는 어떻게 분포할까</strong>
+      <p>길이 1인 막대의 양 끝 온도를 고정하고 막대 안에서 열이 발생한다고 합시다. 정상 상태 온도 \(T(x)\)는 \(-kT''(x) = q(x)\)를 만족합니다. 막대를 \(n\)개 내부 점으로 나누고 2계 도함수를 차분 \(T'' \approx (T_{i-1} - 2T_i + T_{i+1})/h^2\)으로 바꾸면 \(n\)원 연립방정식이 됩니다. 정확하게 풀려면 \(n\)을 크게 해야 하는데, \(n = 10^6\)이면 \(\tfrac{2}{3}n^3 \approx 7\times 10^{17}\)번의 연산이 필요할까요?</p></div>
+    <p>각 점의 방정식은 양옆 이웃만 포함하므로 행렬은 대각과 바로 위·아래 대각에만 원소가 있는 <span class="term">삼중대각 행렬</span><span class="en">(tridiagonal matrix)</span>입니다.</p>
+    <div class="formula">$$\frac{k}{h^2}\begin{bmatrix}2 & -1 & & & \\ -1 & 2 & -1 & & \\ & \ddots & \ddots & \ddots & \\ & & -1 & 2 & -1\\ & & & -1 & 2\end{bmatrix}\begin{bmatrix}T_1\\ T_2\\ \vdots\\ T_{n-1}\\ T_n\end{bmatrix} = \begin{bmatrix}q_1 + kT_L/h^2\\ q_2\\ \vdots\\ q_{n-1}\\ q_n + kT_R/h^2\end{bmatrix}$$
+      <div class="where">\(h = 1/(n+1)\). 양 끝의 고정 온도 \(T_L\), \(T_R\)는 알고 있는 값이므로 오른쪽 변으로 넘어간다. 이 행렬은 대칭이고 양의 정부호라 피벗팅이 필요 없다.</div>
+    </div>
+    <p>소거를 해 보면 놀라운 일이 생깁니다. 1행으로 지울 것은 2행 하나뿐이고, 지운 뒤에도 0이던 칸은 0으로 남습니다. 즉 \(L\)은 대각 바로 아래 한 줄, \(U\)는 대각과 바로 위 한 줄뿐입니다. 이 사실을 이용한 소거와 대입이 <span class="term">토머스 알고리즘</span><span class="en">(Thomas algorithm)</span>입니다. 행마다 상수 번의 연산(약 8회)만 하므로 전체 비용은 \(O(n)\)입니다.</p>
+    <div class="callout deep"><strong>정리 4.5 (띠 행렬의 LU)</strong> \(A\)의 원소가 \(|i - j| \le w\)인 칸에만 있으면(반띠폭 \(w\)) 행 교환 없는 LU에서 \(L\)과 \(U\)도 같은 띠 안에만 원소를 가진다. 연산량은 약 \(2nw^2\), 저장 공간은 약 \(3nw\)이다. 삼중대각(\(w = 1\))이면 \(O(n)\)이다.</div>
+
+    <div class="sim" id="sim-lu-heat">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>열전도 막대: 토머스 알고리즘으로 푸는 온도 분포</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lu-cv-heat"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>내부 점 개수 n <output id="lu-h-n-out"></output></span><input type="range" id="lu-h-n" min="3" max="200" step="1" value="12"></label>
+          <label class="ctrl"><span>왼쪽 끝 온도 <output id="lu-h-tl-out"></output></span><input type="range" id="lu-h-tl" min="20" max="100" step="1" value="40"></label>
+          <label class="ctrl"><span>오른쪽 끝 온도 <output id="lu-h-tr-out"></output></span><input type="range" id="lu-h-tr" min="20" max="100" step="1" value="25"></label>
+          <label class="ctrl"><span>발열 세기 q/k <output id="lu-h-q-out"></output></span><input type="range" id="lu-h-q" min="0" max="600" step="10" value="300"></label>
+          <div class="ctrl"><span>발열 분포</span><div class="seg" id="lu-h-src"><button data-value="uni" class="on">균일</button><button data-value="mid">가운데 칩</button><button data-value="none">없음</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최고 온도</span><span class="v" id="lu-h-max">—</span></div>
+        <div class="stat"><span class="k">토머스 연산량 ≈ 8n</span><span class="v" id="lu-h-th">—</span></div>
+        <div class="stat"><span class="k">꽉 찬 LU ≈ ⅔n³</span><span class="v" id="lu-h-dense">—</span></div>
+        <div class="stat"><span class="k">해석해와 최대 차이 (균일 발열)</span><span class="v" id="lu-h-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n을 200까지 올려도 계산은 즉시 끝납니다. 꽉 찬 LU였다면 연산량이 n²/12, 약 3,300배 많고, n = 10⁶이면 그 차이가 10¹¹배에 이릅니다. ② 균일 발열에서는 해석해 \(T = T_L + (T_R - T_L)x + \tfrac{q}{2k}x(1-x)\)와 차이가 반올림 수준입니다(2차 다항식에는 중앙 차분이 정확하기 때문). ③ '가운데 칩'은 폭 0.1 구간에만 열이 나서 온도가 뾰족해집니다. 모델: 1차원 정상 열전도, 균일 열전도율, 양 끝 디리클레 조건, 2차 중앙 차분.</div>
+    </div>
+
+    <p>2차원·3차원 격자에서는 이웃이 위아래 행에도 있어서 띠가 넓어지고, 띠 안의 0이던 칸이 소거 중에 채워집니다. 이 <span class="term">채움</span><span class="en">(fill-in)</span>의 양은 <b>미지수의 순서</b>에 따라 크게 달라집니다. 극단적인 예가 "허브" 노드 하나가 모두와 연결된 화살표 모양 행렬입니다.</p>
+    <div class="sim" id="sim-lu-fill">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>희소 LU의 채움: 순서가 메모리를 정한다</h3></div>
+      <div class="lu-two">
+        <div><canvas id="lu-cv-fa"></canvas><span class="cap">A의 0 아닌 칸</span></div>
+        <div><canvas id="lu-cv-fb"></canvas><span class="cap">L + U (주황 = 채움)</span></div>
+      </div>
+      <div class="sim-controls">
+        <div class="ctrl"><span>구조와 순서</span><div class="seg" id="lu-fl-kind"><button data-value="arrowA" class="on">허브 먼저</button><button data-value="arrowB">허브 나중</button><button data-value="tri">삼중대각</button><button data-value="grid">2D 격자 4×4</button></div></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">A의 0 아닌 칸</span><span class="v" id="lu-fl-nnz">—</span></div>
+        <div class="stat"><span class="k">L + U의 0 아닌 칸</span><span class="v" id="lu-fl-lu">—</span></div>
+        <div class="stat"><span class="k">채움</span><span class="v" id="lu-fl-fill">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '허브 먼저'는 같은 행렬인데도 첫 소거에서 모든 칸이 채워집니다. ② '허브 나중'은 허브를 마지막 번호로 옮겼을 뿐인데 채움이 0입니다. ③ 2D 격자는 띠 안이 채워집니다. 실제 희소 솔버는 최소 차수(AMD), 중첩 분할(nested dissection) 같은 재번호 매기기로 채움을 줄입니다. 모델: 숫자 상쇄를 무시한 기호적 채움(구조만 봄), 행 교환 없음.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="circuit">
+    <h2>응용: 저항 회로의 노드 해석</h2>
+    <div class="problem"><strong>저항 여섯 개와 전류원 하나, 각 노드의 전압은</strong>
+      <p>아래 회로에서 전류원이 1번 노드로 전류를 밀어 넣습니다. 저항 값을 바꿀 때마다 모든 노드의 전압과 각 저항의 전류를 알고 싶습니다. 고리마다 전압 방정식을 세울 수도 있지만, 컴퓨터가 체계적으로 세우기 좋은 방법은 따로 있습니다.</p></div>
+    <p><span class="term">노드 해석</span><span class="en">(nodal analysis)</span>은 접지(0번)를 기준으로 각 노드 전압 \(v_i\)를 미지수로 두고, 노드마다 키르히호프 전류 법칙(나가는 전류의 합 = 들어오는 전원 전류)을 씁니다. 노드 \(i\)와 \(j\) 사이 컨덕턴스 \(g = 1/R\)을 지나는 전류는 \(g(v_i - v_j)\)이므로, 방정식을 모으면</p>
+    <div class="formula">$$G\mathbf{v} = \mathbf{i},\qquad G_{ii} = \sum_{\text{노드 } i\text{에 붙은 저항}} g,\qquad G_{ij} = -g_{ij}\;(i \ne j)$$
+      <div class="where">\(G\)는 컨덕턴스 행렬, \(\mathbf{i}\)는 각 노드로 들어오는 전원 전류. 저항 하나는 \(G\)의 네 칸 \((i,i), (j,j), (i,j), (j,i)\)에 \(+g, +g, -g, -g\)를 더한다(스탬프). 접지에 붙은 저항은 \((i,i)\)에만 \(+g\). 그래서 \(G\)는 대칭이고, 접지로 가는 길이 있으면 양의 정부호다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="노드 1, 2, 3과 접지 사이에 연결된 저항 여섯 개와 전류원">
+        <line x1="60" y1="215" x2="700" y2="215" class="s-line" style="stroke-width:2.5"/>
+        <text x="710" y="220" class="t-dim">접지 (0 V)</text>
+        <g class="t">
+          <circle cx="170" cy="70" r="7" style="fill:var(--accent)"/><text x="150" y="52" class="t" style="font-weight:700">①</text>
+          <circle cx="380" cy="70" r="7" style="fill:var(--accent)"/><text x="372" y="52" class="t" style="font-weight:700">②</text>
+          <circle cx="590" cy="70" r="7" style="fill:var(--accent)"/><text x="600" y="52" class="t" style="font-weight:700">③</text>
+        </g>
+        <g fill="none" style="stroke:var(--text);stroke-width:2">
+          <path d="M70 215 V 160"/><circle cx="70" cy="140" r="20"/><path d="M70 152 V 128 M64 134 L70 126 L76 134"/><path d="M70 120 V 70 H 163"/>
+          <path d="M170 77 V 110 l8 5 -16 10 16 10 -16 10 16 10 -8 5 V 215"/>
+          <path d="M177 70 H 230 l5 -8 10 16 10 -16 10 16 10 -16 10 16 5 -8 H 373"/>
+          <path d="M380 77 V 110 l8 5 -16 10 16 10 -16 10 16 10 -8 5 V 215"/>
+          <path d="M387 70 H 440 l5 -8 10 16 10 -16 10 16 10 -16 10 16 5 -8 H 583"/>
+          <path d="M590 77 V 110 l8 5 -16 10 16 10 -16 10 16 10 -8 5 V 215"/>
+          <path d="M170 63 V 22 H 330 l5 -8 10 16 10 -16 10 16 10 -16 10 16 5 -8 H 590 V 63"/>
+        </g>
+        <text x="40" y="145" class="t-mono">I</text>
+        <text x="186" y="150" class="t-mono">R₁</text><text x="268" y="98" class="t-mono">R₂</text><text x="396" y="150" class="t-mono">R₃</text>
+        <text x="478" y="98" class="t-mono">R₄</text><text x="606" y="150" class="t-mono">R₅</text><text x="368" y="50" class="t-mono">R₆</text>
+      </svg>
+      <figcaption><b>그림 4-3.</b> 시뮬레이터의 회로. 노드 ①–③과 접지 사이에 저항 여섯 개, ①로 들어가는 전류원 \(I\). 노드 수가 미지수 수이고, 저항이 \(G\)에 스탬프를 찍는다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 4.5 — 모든 저항이 1 kΩ, I = 3 mA</strong> \(g = 1\) mS로 두면
+      $$G = \begin{bmatrix}3 & -1 & -1\\ -1 & 3 & -1\\ -1 & -1 & 3\end{bmatrix}\text{ mS},\qquad \mathbf{i} = \begin{bmatrix}3\\ 0\\ 0\end{bmatrix}\text{ mA}.$$
+      소거: \(\ell_{21} = \ell_{31} = -1/3\), 남은 블록 \(\begin{bmatrix}8/3 & -4/3\\ -4/3 & 8/3\end{bmatrix}\), \(\ell_{32} = -1/2\), 마지막 피벗 \(2\). 전진 대입 \(\mathbf{c} = (3, 1, 1.5)\), 후진 대입 \(v_3 = 0.75\), \(v_2 = (1 + \tfrac43\cdot 0.75)/\tfrac83 = 0.75\), \(v_1 = (3 + 0.75 + 0.75)/3 = 1.5\) V. 대칭인 회로라 ②와 ③의 전압이 같다는 것도 확인된다.</div>
+
+    <div class="sim" id="sim-lu-circuit">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>노드 해석기: 저항을 바꾸면 G와 전압이 바뀐다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lu-cv-circ"></canvas></div>
+        <div class="sim-controls lu-sliders">
+          <label class="ctrl"><span>전류원 I <output id="lu-r-i-out"></output></span><input type="range" id="lu-r-i" min="0" max="10" step="0.5" value="3"></label>
+          <label class="ctrl"><span>R₂ (①–②) <output id="lu-r-2-out"></output></span><input type="range" id="lu-r-2" min="0" max="2" step="any" value="0.6666667"></label>
+          <label class="ctrl"><span>R₄ (②–③) <output id="lu-r-4-out"></output></span><input type="range" id="lu-r-4" min="0" max="2" step="any" value="0.6666667"></label>
+          <label class="ctrl"><span>R₅ (③–접지) <output id="lu-r-5-out"></output></span><input type="range" id="lu-r-5" min="0" max="2" step="any" value="0.6666667"></label>
+          <label class="ctrl"><span>R₆ (①–③) <output id="lu-r-6-out"></output></span><input type="range" id="lu-r-6" min="0" max="2" step="any" value="0.6666667"></label>
+          <div class="ctrl"><span>G (mS), 분해 결과</span><div id="lu-r-mats" class="lu-small"></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">v₁</span><span class="v" id="lu-r-v1">—</span></div>
+        <div class="stat"><span class="k">v₂</span><span class="v" id="lu-r-v2">—</span></div>
+        <div class="stat"><span class="k">v₃</span><span class="v" id="lu-r-v3">—</span></div>
+        <div class="stat"><span class="k">KCL 검산: 접지로 가는 전류 합</span><span class="v" id="lu-r-kcl">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 처음 상태(모두 1 kΩ, 3 mA)가 예제 4.5입니다. ② R₆을 0.1 kΩ 쪽으로 낮추면 ①과 ③이 거의 같은 전압이 되고 G의 (1,3) 칸이 커집니다. ③ R₅를 크게 하면 ③의 전류는 ②를 돌아 접지로 갑니다. 접지로 가는 전류의 합은 언제나 I와 같습니다. 모델: 슬라이더는 로그 눈금(0.1–100 kΩ), R₁ = R₃ = 1 kΩ 고정, 이상적인 선형 저항과 직류 전류원.</div>
+    </div>
+    <p>실제 회로 시뮬레이터는 전압원·인덕터·트랜지스터까지 다루기 위해 미지수에 일부 전류를 더한 <b>수정 노드 해석</b><span class="en">(modified nodal analysis)</span>을 쓰고, 그 행렬은 대칭이 아니어서 피벗팅이 있는 희소 LU로 풉니다. 하지만 "부품마다 스탬프를 찍어 행렬을 만들고 LU로 푼다"는 뼈대는 위 시뮬레이터와 같습니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"한 번 분해해 여러 번 푼다"는 수치 계산의 기본기라, 연립방정식이 나오는 거의 모든 곳에 숨어 있습니다.</p>
+    <div class="uses">
+      <a href="https://semi.euiyun.com/analog/"><small>ANALOGBOOK</small>회로 시뮬레이션<br><span>SPICE의 노드 해석, 동작점과 과도 해석, 뉴턴 반복마다 희소 LU.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>소자·공정 시뮬레이션<br><span>포아송·드리프트–확산 방정식의 이산화는 거대한 희소 띠 행렬이다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>열확산 방정식<br><span>암시적 시간 적분은 매 단계 같은 삼중대각 행렬을 푼다. 분해는 한 번이면 된다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>수치 해석<br><span>유한 차분과 안정성, 반올림 오차가 쌓이는 방식.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>정규 방정식 XᵀXβ = Xᵀy는 대칭 양의 정부호라 LDLᵀ·콜레스키로 푼다.</span></a>
+      <a href="https://semi.euiyun.com/packaging/"><small>PACKAGINGBOOK</small>열 해석<br><span>패키지 열저항망은 회로와 같은 꼴의 G·T = P 방정식이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>역행렬은 되돌리기 변환</b>이다. 2×2는 \(\tfrac{1}{ad-bc}\begin{bmatrix}d & -b\\ -c & a\end{bmatrix}\), 곱의 역행렬은 순서가 뒤집혀 \((AB)^{-1} = B^{-1}A^{-1}\).</li>
+      <li><b>가우스–조르당</b>: \([A \mid I]\)를 행 연산으로 \([I \mid A^{-1}]\)로 만든다. 행 연산을 모은 행렬이 곧 \(A^{-1}\)이다.</li>
+      <li><b>가역 행렬 정리</b>: 피벗 \(n\)개 ⇔ \(A\mathbf{x} = \mathbf{0}\)의 해는 0뿐 ⇔ 열이 독립 ⇔ 모든 \(\mathbf{b}\)에 해가 하나 ⇔ \(\det A \ne 0\). 정사각 행렬은 한쪽 역행렬이면 충분하다.</li>
+      <li><b>\(A\mathbf{x} = \mathbf{b}\)를 풀 때 역행렬을 만들지 않는다.</b> 역행렬은 \(2n^3\), LU는 \(\tfrac23 n^3\)이고, 정확도와 희소성에서도 LU가 낫다.</li>
+      <li><b>\(A = LU\)</b>: \(L\)은 승수를 제자리에 적은 단위 하삼각, \(U\)는 소거 결과. 행 교환이 있으면 \(PA = LU\), 부분 피벗팅은 \(|\ell_{ik}| \le 1\)을 보장한다.</li>
+      <li>분해 뒤에는 <b>전진 대입 \(L\mathbf{c} = \mathbf{b}\)과 후진 대입 \(U\mathbf{x} = \mathbf{c}\)</b>, 오른쪽 변 하나에 \(2n^2\).</li>
+      <li>대칭 행렬은 <b>\(A = LDL^{\mathsf T}\)</b>(비용 절반), 피벗이 모두 양수면 콜레스키로 이어진다. <b>띠 행렬</b>은 LU도 띠 안에 머물러 삼중대각은 \(O(n)\)(토머스 알고리즘). 일반 희소 행렬은 순서에 따라 채움이 크게 달라진다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(A\)와 \(B\)가 가역일 때 \((AB)^{-1}\)은?</p><div class="opts">
+        <button class="opt">\(A^{-1}B^{-1}\)</button>
+        <button class="opt" data-correct>\(B^{-1}A^{-1}\)</button>
+        <button class="opt">\((BA)^{-1}\)</button>
+        <button class="opt">\(A^{-1}B^{-1}\)과 \(B^{-1}A^{-1}\) 중 어느 것이든 같다</button>
+      </div><div class="quiz-exp">\(AB\)는 \(B\)를 먼저, \(A\)를 나중에 적용한다. 되돌릴 때는 나중 것부터: \((AB)(B^{-1}A^{-1}) = AIA^{-1} = I\). 행렬 곱은 일반적으로 교환되지 않으므로 \(A^{-1}B^{-1}\)과는 보통 다르다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\begin{bmatrix}3 & 1\\ 5 & 2\end{bmatrix}^{-1}\)은?</p><div class="opts">
+        <button class="opt">\(\begin{bmatrix}2 & 1\\ 5 & 3\end{bmatrix}\)</button>
+        <button class="opt" data-correct>\(\begin{bmatrix}2 & -1\\ -5 & 3\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}-2 & 1\\ 5 & -3\end{bmatrix}\)</button>
+        <button class="opt">역행렬이 없다</button>
+      </div><div class="quiz-exp">\(\det = 3\cdot 2 - 1\cdot 5 = 1\). 대각은 자리를 바꾸고 비대각은 부호를 바꾼 뒤 1로 나눈다. 원래 행렬과 곱하면 \(I\)가 나온다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 4×4 행렬 \(A\)에 대해 \(A\mathbf{x} = \mathbf{0}\)이 \(\mathbf{x} = (1, -2, 0, 1)\)이라는 해를 가진다. 옳은 것은?</p><div class="opts">
+        <button class="opt">\(A\)는 가역이고 \(A^{-1}\mathbf{0} = (1, -2, 0, 1)\)이다</button>
+        <button class="opt">소거하면 피벗이 4개 나온다</button>
+        <button class="opt" data-correct>\(A\)는 특이하고, 1열 − 2·(2열) + 4열 = 0이다</button>
+        <button class="opt">\(A\mathbf{x} = \mathbf{b}\)는 모든 \(\mathbf{b}\)에 대해 해가 무수히 많다</button>
+      </div><div class="quiz-exp">\(A\mathbf{x}\)는 열들의 선형 결합이므로 \(1\cdot\mathbf{a}_1 - 2\mathbf{a}_2 + 0\cdot\mathbf{a}_3 + 1\cdot\mathbf{a}_4 = \mathbf{0}\), 즉 열이 종속이다. 가역 행렬 정리에 의해 특이하다. 이때 \(A\mathbf{x} = \mathbf{b}\)는 \(\mathbf{b}\)에 따라 해가 없거나 무수히 많다(모든 \(\mathbf{b}\)에 해가 있는 것은 아니다).</div></div>
+
+      <div class="quiz-q"><p>Q4. 소거에서 \(R_2 - 3R_1\), \(R_3 + 2R_1\), \(R_3 - 4R_2\)를 했다(행 교환 없음). \(L\)의 대각 아래 \((\ell_{21}, \ell_{31}, \ell_{32})\)는?</p><div class="opts">
+        <button class="opt">\((-3, 2, -4)\)</button>
+        <button class="opt" data-correct>\((3, -2, 4)\)</button>
+        <button class="opt">\((3, -2, -4)\)</button>
+        <button class="opt">\((3, 10, 4)\): 승수끼리 곱해져 섞인다</button>
+      </div><div class="quiz-exp">\(R_i - \ell_{ik}R_k\)의 \(\ell_{ik}\)가 그대로 \(L\)의 \((i,k)\) 칸에 들어간다. \(R_3 + 2R_1\)은 \(R_3 - (-2)R_1\)이므로 \(\ell_{31} = -2\). 승수가 섞이는 것은 \(L\)이 아니라 \(E = L^{-1}\) 쪽이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 같은 \(1000\times 1000\) 행렬로 오른쪽 변 10개를 풀어야 한다. 가장 연산이 적은 방법은?</p><div class="opts">
+        <button class="opt">10번 각각 가우스 소거</button>
+        <button class="opt">역행렬을 한 번 구한 뒤 10번 곱하기</button>
+        <button class="opt" data-correct>LU 분해 한 번 + 전진·후진 대입 10번</button>
+        <button class="opt">크라메르 공식</button>
+      </div><div class="quiz-exp">대략 소거 10번 \(\approx 6.7\times 10^9\), 역행렬 \(2\times 10^9 + 2\times 10^7\), LU \(6.7\times 10^8 + 2\times 10^7\). 크라메르 공식은 행렬식을 \(n+1\)개 계산해야 해서 훨씬 비싸다(10장).</div></div>
+
+      <div class="quiz-q"><p>Q6. 부분 피벗팅을 하는 주된 이유는?</p><div class="opts">
+        <button class="opt">\(L\)을 대칭으로 만들기 위해</button>
+        <button class="opt">연산량을 \(O(n^2)\)으로 줄이기 위해</button>
+        <button class="opt" data-correct>0이나 아주 작은 피벗을 피해 승수를 \(|\ell| \le 1\)로 묶고 반올림 오차의 증폭을 막기 위해</button>
+        <button class="opt">행렬식을 바꾸지 않기 위해</button>
+      </div><div class="quiz-exp">작은 피벗은 거대한 승수를 만들고, 큰 승수는 반올림 오차를 그만큼 키운다. 행 교환은 행렬식의 부호를 바꾸며(10장), 연산량은 여전히 \(\tfrac23 n^3\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(n\)개 내부 점의 1차원 열전도 문제(삼중대각)를 토머스 알고리즘으로 풀 때 연산량은 어떻게 늘어나나?</p><div class="opts">
+        <button class="opt" data-correct>\(n\)에 비례한다</button>
+        <button class="opt">\(n^2\)에 비례한다</button>
+        <button class="opt">\(n^3\)에 비례한다</button>
+        <button class="opt">\(2^n\)에 비례한다</button>
+      </div><div class="quiz-exp">삼중대각 행렬의 \(L\)과 \(U\)는 띠 밖으로 채워지지 않으므로 행마다 상수 번(약 8회)의 연산만 한다. \(n = 10^6\)도 순식간에 풀린다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 저항 회로의 컨덕턴스 행렬 \(G\)에 대해 옳지 <b>않은</b> 것은?</p><div class="opts">
+        <button class="opt">대칭 행렬이다</button>
+        <button class="opt">대각 원소는 그 노드에 붙은 컨덕턴스의 합이다</button>
+        <button class="opt">접지로 가는 경로가 있으면 피벗팅 없이 \(LDL^{\mathsf T}\)로 분해된다</button>
+        <button class="opt" data-correct>노드끼리 연결되지 않은 칸도 소거 뒤 \(L\), \(U\)에서 언제나 0으로 남는다</button>
+      </div><div class="quiz-exp">\(A\)에서 0인 칸도 소거 중에 채워질 수 있다(채움). 얼마나 채워지는지는 노드 번호 순서에 달려 있으며, 희소 솔버가 재번호 매기기를 하는 이유다. 나머지는 모두 참이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const LU = {
+  clone: (M) => M.map((r) => r.slice()),
+  eye: (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))),
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  /** 숫자 표시: 정수는 정수로, 아니면 소수 셋째 자리까지 (음수는 −) */
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 1e-10) v = 0;
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v)).replace("-", "−");
+    if (Math.abs(v) >= 1e4 || Math.abs(v) < 1e-3) return v.toExponential(2).replace("e+", "e").replace(/-/g, "−");
+    return String(Number(v.toFixed(d))).replace("-", "−");
+  },
+  /** 행렬 HTML. cls(i,j) → 칸 클래스, aug: 이 열부터 오른쪽 블록 */
+  html(M, o = {}) {
+    const c = M[0].length;
+    const cells = M.map((r, i) => r.map((v, j) => {
+      const k = [o.cls ? o.cls(i, j, v) : "", o.aug != null && j === o.aug ? "aug" : ""].filter(Boolean).join(" ");
+      return `<span${k ? ` class="${k}"` : ""}>${LU.num(v, o.d)}</span>`;
+    }).join("")).join("");
+    return `<span class="lu-m" style="--c:${c}">${cells}</span>`;
+  },
+  fig: (cap, html) => `<figure>${html}<figcaption>${cap}</figcaption></figure>`,
+  ap: (M, x, y) => [M[0][0] * x + M[0][1] * y, M[1][0] * x + M[1][1] * y],
+  F: [[0.2, 0], [0.4, 0], [0.4, 0.4], [0.7, 0.4], [0.7, 0.58], [0.4, 0.58], [0.4, 0.8], [0.8, 0.8], [0.8, 1], [0.2, 1]],
+  grid(P, M, color, alpha, n = 10) {
+    const ctx = P.ctx; ctx.save(); ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = -n; i <= n; i++) {
+      let [x1, y1] = LU.ap(M, i, -n), [x2, y2] = LU.ap(M, i, n);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+      [x1, y1] = LU.ap(M, -n, i); [x2, y2] = LU.ap(M, n, i);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  fill(P, pts, color, alpha) {
+    const ctx = P.ctx; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y))));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  /** 삼중대각 풀이(토머스): a 아래, b 대각, c 위, d 오른쪽 변 */
+  thomas(a, b, c, d) {
+    const n = b.length, cp = new Array(n), dp = new Array(n), x = new Array(n);
+    cp[0] = c[0] / b[0]; dp[0] = d[0] / b[0];
+    for (let i = 1; i < n; i++) { const m = b[i] - a[i] * cp[i - 1]; cp[i] = c[i] / m; dp[i] = (d[i] - a[i] * dp[i - 1]) / m; }
+    x[n - 1] = dp[n - 1];
+    for (let i = n - 2; i >= 0; i--) x[i] = dp[i] - cp[i] * x[i + 1];
+    return x;
+  },
+  /** 피벗팅 없는 LU 후 대입 (작은 대칭 양의 정부호 행렬용) */
+  solve(A, b) {
+    const n = A.length, U = LU.clone(A), L = LU.eye(n);
+    for (let k = 0; k < n; k++) for (let i = k + 1; i < n; i++) { const l = U[i][k] / U[k][k]; L[i][k] = l; for (let j = k; j < n; j++) U[i][j] -= l * U[k][j]; }
+    const c = b.slice(); for (let i = 0; i < n; i++) for (let j = 0; j < i; j++) c[i] -= L[i][j] * c[j];
+    const x = c.slice(); for (let i = n - 1; i >= 0; i--) { for (let j = i + 1; j < n; j++) x[i] -= U[i][j] * x[j]; x[i] /= U[i][i]; }
+    return { L, U, c, x };
+  },
+  sci(v) { if (v < 1e4) return LU.num(Math.round(v)); const e = Math.floor(Math.log10(v)); return `${(v / Math.pow(10, e)).toFixed(1)}×10<sup>${e}</sup>`; },
+  time(s) {
+    if (s < 1e-3) return (s * 1e6).toFixed(s < 1e-5 ? 2 : 0) + " µs";
+    if (s < 1) return (s * 1e3).toFixed(1) + " ms";
+    if (s < 120) return s.toFixed(1) + " s";
+    if (s < 7200) return (s / 60).toFixed(1) + " 분";
+    if (s < 172800) return (s / 3600).toFixed(1) + " 시간";
+    if (s < 3.15e7 * 2) return (s / 86400).toFixed(0) + " 일";
+    return (s / 3.15e7).toFixed(0) + " 년";
+  },
+};
+
+/* ================================================================ 1. 변환하고 되돌리기 */
+(function () {
+  const PRE = {
+    gen: [[1.4, -0.6], [0.5, 1.1]], rot: [[Math.cos(0.698), -Math.sin(0.698)], [Math.sin(0.698), Math.cos(0.698)]],
+    shear: [[1, 1.2], [0, 1]], near: [[1, 0.9], [1.05, 1]], sing: [[1, 0.5], [2, 1]],
+  };
+  let A = PRE.gen.map((r) => r.slice());
+  const mode = MB.seg("lu-u-mode", () => pl.redraw());
+  const pl = MB.plane("#lu-cv-undo", {
+    x: [-4, 4], aspect: 0.78, maxHeight: 520, minHeight: 300,
+    points: [{ x: A[0][0], y: A[1][0], snap: 0.1, label: "Aî" }, { x: A[0][1], y: A[1][1], snap: 0.1, label: "Aĵ" }],
+    draw(P, api) {
+      const C = P.P;
+      api.points[0].color = C.green; api.points[1].color = C.red;
+      A = [[api.points[0].x, api.points[1].x], [api.points[0].y, api.points[1].y]];
+      const d = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+      const ok = Math.abs(d) > 1e-6;
+      const inv = ok ? [[A[1][1] / d, -A[0][1] / d], [-A[1][0] / d, A[0][0] / d]] : null;
+      const m = mode();
+      LU.grid(P, [[1, 0], [0, 1]], C.dim, 0.16, 10);
+      if (m === "a" || !ok) {
+        LU.grid(P, A, C.accent, 0.45, 12);
+        LU.fill(P, LU.F, C.dim, 0.25);
+        LU.fill(P, LU.F.map(([x, y]) => LU.ap(A, x, y)), C.accent2, 0.85);
+      } else if (m === "inv") {
+        LU.grid(P, inv, C.accent2, 0.45, 12);
+        LU.fill(P, LU.F, C.dim, 0.25);
+        LU.fill(P, LU.F.map(([x, y]) => LU.ap(inv, x, y)), C.accent, 0.85);
+        P.arrow(0, 0, inv[0][0], inv[1][0], { color: C.green, width: 2, alpha: 0.7, label: "A⁻¹î" });
+        P.arrow(0, 0, inv[0][1], inv[1][1], { color: C.red, width: 2, alpha: 0.7, label: "A⁻¹ĵ" });
+      } else {
+        LU.fill(P, LU.F.map(([x, y]) => LU.ap(A, x, y)), C.accent2, 0.22);
+        LU.fill(P, LU.F, C.accent, 0.9);
+      }
+      P.arrow(0, 0, A[0][0], A[1][0], { color: C.green, width: 3 });
+      P.arrow(0, 0, A[0][1], A[1][1], { color: C.red, width: 3 });
+      MB.stat("lu-u-det", LU.num(d, 3));
+      MB.stat("lu-u-dinv", ok ? LU.num(1 / d, 3) : "없음");
+      MB.stat("lu-u-state", !ok ? '<span class="badge bad">특이</span>' : Math.abs(d) < 0.15 ? '<span class="badge warn">거의 특이</span>' : '<span class="badge ok">가역</span>');
+      document.getElementById("lu-u-mats").innerHTML = "A = " + LU.html(A, { d: 2 }) + (ok ? "<br><br>A⁻¹ = " + LU.html(inv, { d: 2 }) : "<br><br>A⁻¹ 없음 (det = 0)");
+    },
+  });
+  document.getElementById("lu-u-pre").addEventListener("change", (e) => {
+    const M = PRE[e.target.value];
+    pl.points[0].x = M[0][0]; pl.points[0].y = M[1][0]; pl.points[1].x = M[0][1]; pl.points[1].y = M[1][1];
+    pl.redraw();
+  });
+})();
+
+/* ================================================================ 2. 가우스–조르당 */
+(function () {
+  const PRE = {
+    a2: [[2, 1], [5, 3]],
+    a3: [[2, 1, 1], [4, 5, 3], [-2, 2, 5]],
+    swap: [[0, 2, 1], [1, 1, 1], [2, 1, 3]],
+    sing: [[1, 2, 1], [2, 1, 3], [3, 3, 4]],
+  };
+  const rn = (i) => "R" + "₁₂₃₄"[i];
+  function build(A) {
+    const n = A.length, M = A.map((r, i) => r.concat(LU.eye(n)[i]));
+    const steps = [{ M: LU.clone(M), msg: "시작: 왼쪽에 A, 오른쪽에 I를 붙인 [A | I]", ops: 0 }];
+    let ops = 0;
+    for (let k = 0; k < n; k++) {
+      let p = -1; for (let i = k; i < n; i++) if (Math.abs(M[i][k]) > 1e-12) { p = i; break; }
+      if (p < 0) { steps.push({ M: LU.clone(M), msg: `${k + 1}열에서 피벗을 찾을 수 없습니다(그 열의 피벗 자리와 아래가 모두 0). A는 특이하고 역행렬이 없습니다.`, col: k, ops, fail: true }); return steps; }
+      if (p !== k) { [M[k], M[p]] = [M[p], M[k]]; steps.push({ M: LU.clone(M), msg: `${rn(k)} ↔ ${rn(p)}: 피벗 자리가 0이라 행을 바꿉니다.`, row: k, piv: [k, k], ops }); }
+      for (let i = 0; i < n; i++) {
+        if (i === k || Math.abs(M[i][k]) < 1e-12) continue;
+        const l = M[i][k] / M[k][k];
+        for (let j = 0; j < 2 * n; j++) M[i][j] -= l * M[k][j];
+        ops += 2 * n + 1;
+        M[i][k] = 0;
+        steps.push({ M: LU.clone(M), msg: `${rn(i)} − (${LU.num(l)})·${rn(k)}: 피벗 ${LU.num(M[k][k])}${i < k ? " 위" : " 아래"}를 0으로 (${i < k ? "뒤로" : "앞으로"} 소거)`, row: i, piv: [k, k], ops });
+      }
+    }
+    for (let k = 0; k < n; k++) {
+      const p = M[k][k];
+      if (Math.abs(p - 1) > 1e-12) { for (let j = 0; j < 2 * n; j++) M[k][j] /= p; ops += 2 * n; }
+      steps.push({ M: LU.clone(M), msg: `${rn(k)} ÷ ${LU.num(p)}: 피벗을 1로`, row: k, piv: [k, k], ops });
+    }
+    const inv = M.map((r) => r.slice(n));
+    const chk = LU.mul(A, inv), err = Math.max(...chk.flat().map((v, i) => Math.abs(v - (Math.floor(i / n) === i % n ? 1 : 0))));
+    steps.push({ M: LU.clone(M), msg: `완료: 오른쪽 블록이 A⁻¹. 검산 max|AA⁻¹ − I| = ${err < 1e-12 ? "0" : err.toExponential(1)}`, ops, done: true });
+    return steps;
+  }
+  let steps = [], at = 0, n = 3;
+  function show() {
+    const s = steps[at];
+    document.getElementById("lu-gj-view").innerHTML = LU.html(s.M, {
+      aug: n,
+      cls: (i, j, v) => (s.piv && s.piv[0] === i && s.piv[1] === j ? "piv" : s.row === i ? "row" : Math.abs(v) < 1e-10 ? "zero" : ""),
+    });
+    const msg = document.getElementById("lu-gj-msg");
+    msg.innerHTML = s.msg; msg.className = "lu-msg" + (s.fail ? " bad" : s.done ? " ok" : "");
+    MB.stat("lu-gj-step", `${at} / ${steps.length - 1}`);
+    MB.stat("lu-gj-ops", String(s.ops));
+    MB.stat("lu-gj-res", s.fail ? '<span class="badge bad">특이</span>' : s.done ? '<span class="badge ok">A⁻¹ 완성</span>' : "진행 중");
+  }
+  function load() { const A = PRE[document.getElementById("lu-gj-pre").value]; n = A.length; steps = build(A); at = 0; show(); }
+  document.getElementById("lu-gj-pre").addEventListener("change", load);
+  document.getElementById("lu-gj-next").addEventListener("click", () => { if (at < steps.length - 1) at++; show(); });
+  document.getElementById("lu-gj-all").addEventListener("click", () => { at = steps.length - 1; show(); });
+  document.getElementById("lu-gj-reset").addEventListener("click", () => { at = 0; show(); });
+  load();
+})();
+
+/* ================================================================ 3. LU 분해 단계별 */
+(function () {
+  const rnd = () => { const r = MB.rng((Math.random() * 1e9) | 0); return Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => Math.round(r.range(-5, 5)) || 1)); };
+  const PRE = {
+    ex: () => [[2, 1, 1], [4, 5, 3], [-2, 2, 5]],
+    four: () => [[2, 1, 0, 1], [4, 3, 1, 2], [-2, 1, 3, 1], [6, 2, -1, 5]],
+    zero: () => [[1, 2, 1], [2, 4, 3], [3, 7, 2]],
+    tiny: () => [[0.0001, 1, 1], [1, 1, 2], [2, 1, 1]],
+    rand: rnd,
+  };
+  const rn = (i) => "R" + "₁₂₃₄"[i];
+  function build(A, piv) {
+    const n = A.length, U = LU.clone(A), L = LU.eye(n), perm = [...Array(n).keys()];
+    const snap = (o) => Object.assign({ U: LU.clone(U), L: LU.clone(L), perm: perm.slice() }, o);
+    const steps = [snap({ msg: "시작: U = A, L = I. 승수를 L의 대각 아래에 적어 나갑니다." })];
+    let maxl = 0;
+    for (let k = 0; k < n - 1; k++) {
+      let p = k;
+      if (piv) { for (let i = k + 1; i < n; i++) if (Math.abs(U[i][k]) > Math.abs(U[p][k]) + 1e-15) p = i; }
+      else if (Math.abs(U[k][k]) < 1e-12) {
+        steps.push(snap({ msg: `${k + 1}열 피벗 자리가 0입니다. 행 교환 없이는 진행할 수 없습니다. '부분 피벗팅'을 켜 보세요.`, fail: true, piv: k, maxl }));
+        return steps;
+      }
+      if (piv && Math.abs(U[p][k]) < 1e-12) { steps.push(snap({ msg: `${k + 1}열 아래가 모두 0입니다: 특이 행렬.`, fail: true, maxl })); return steps; }
+      if (p !== k) {
+        [U[k], U[p]] = [U[p], U[k]]; [perm[k], perm[p]] = [perm[p], perm[k]];
+        for (let j = 0; j < k; j++) [L[k][j], L[p][j]] = [L[p][j], L[k][j]];
+        steps.push(snap({ msg: `${rn(k)} ↔ ${rn(p)}: |${LU.num(U[k][k])}|이 ${k + 1}열에서 가장 큰 원소. 이미 적은 승수(L의 ${k}열까지)도 함께 바꾸고 P에 기록합니다.`, piv: k, swap: [k, p], maxl }));
+      }
+      for (let i = k + 1; i < n; i++) {
+        const l = U[i][k] / U[k][k];
+        for (let j = k; j < n; j++) U[i][j] -= l * U[k][j];
+        U[i][k] = 0; L[i][k] = l; maxl = Math.max(maxl, Math.abs(l));
+        steps.push(snap({ msg: `ℓ<sub>${i + 1}${k + 1}</sub> = ${LU.num(U[k][k] * l)} / ${LU.num(U[k][k])} = <b>${LU.num(l)}</b>: ${rn(i)} − ${LU.num(l)}·${rn(k)}, 승수를 L의 (${i + 1},${k + 1}) 칸에`, piv: k, row: i, lcell: [i, k], maxl }));
+      }
+    }
+    if (Math.abs(U[n - 1][n - 1]) < 1e-12) { steps.push(snap({ msg: "마지막 피벗이 0: 특이 행렬입니다(분해는 되지만 U로 풀 수 없음).", fail: true, maxl })); return steps; }
+    const P = perm.map((r) => LU.eye(n)[r]);
+    const PA = LU.mul(P, A), LUm = LU.mul(L, U);
+    const err = Math.max(...PA.flat().map((v, i) => Math.abs(v - LUm.flat()[i])));
+    steps.push(snap({ msg: `완료: 피벗 ${U.map((r, i) => LU.num(r[i])).join(", ")}. ${perm.some((v, i) => v !== i) ? "PA = LU" : "A = LU"}가 성립합니다.`, done: true, err, maxl }));
+    return steps;
+  }
+  let steps = [], at = 0, A = PRE.ex();
+  const pivot = MB.check("lu-f-piv", () => load(false));
+  function show() {
+    const s = steps[at], n = A.length;
+    const P = s.perm.map((r) => LU.eye(n)[r]);
+    const swapped = s.perm.some((v, i) => v !== i);
+    const Lc = (i, j) => (s.lcell && s.lcell[0] === i && s.lcell[1] === j ? "piv" : i > j && Math.abs(s.L[i][j]) > 1e-12 ? "mul" : i !== j && Math.abs(s.L[i][j]) < 1e-12 ? "zero" : "");
+    const Uc = (i, j, v) => (s.piv === i && i === j ? "piv" : s.row === i ? "row" : Math.abs(v) < 1e-10 ? "zero" : "");
+    let h = "";
+    if (pivot() || swapped) h += LU.fig("P", LU.html(P, { cls: (i, j, v) => (v ? "" : "zero") })) + '<span class="lu-op">·</span>';
+    h += LU.fig("A", LU.html(A)) + '<span class="lu-op">=</span>' + LU.fig("L", LU.html(s.L, { cls: Lc })) + '<span class="lu-op">·</span>' + LU.fig("U (지금 상태)", LU.html(s.U, { cls: Uc }));
+    document.getElementById("lu-f-view").innerHTML = h;
+    const msg = document.getElementById("lu-f-msg");
+    msg.innerHTML = s.msg; msg.className = "lu-msg" + (s.fail ? " bad" : s.done ? " ok" : "");
+    MB.stat("lu-f-step", `${at} / ${steps.length - 1}`);
+    MB.stat("lu-f-maxl", s.maxl != null ? LU.num(s.maxl) : "—");
+    MB.stat("lu-f-err", s.done ? (s.err < 1e-12 ? "0" : s.err.toExponential(1)) : "—");
+  }
+  function load(fresh = true) {
+    if (fresh) A = PRE[document.getElementById("lu-f-pre").value]();
+    steps = build(A, pivot()); at = 0; show();
+  }
+  document.getElementById("lu-f-pre").addEventListener("change", () => load(true));
+  document.getElementById("lu-f-next").addEventListener("click", () => { if (at < steps.length - 1) at++; show(); });
+  document.getElementById("lu-f-all").addEventListener("click", () => { at = steps.length - 1; show(); });
+  document.getElementById("lu-f-reset").addEventListener("click", () => { at = 0; show(); });
+  load(true);
+})();
+
+/* ================================================================ 4. 연산량 비교 */
+(function () {
+  const pow = (v) => `10<sup>${Number.isInteger(v) ? v : v.toFixed(1)}</sup>`;
+  const kexp = MB.range("lu-c-k", (v) => LU.num(Math.round(Math.pow(10, v))), () => cv.redraw());
+  const nexp = MB.range("lu-c-n", (v) => LU.num(Math.round(Math.pow(10, v))), () => cv.redraw());
+  const fexp = MB.range("lu-c-f", () => "", () => cv.redraw());
+  const cost = (n, k) => ({ ge: k * (2 / 3 * n ** 3 + n * n), inv: 2 * n ** 3 + 2 * k * n * n, lu: 2 / 3 * n ** 3 + 2 * k * n * n });
+  const cv = MB.canvas("#lu-cv-cost", (ctx, w, h) => {
+    const P = MB.palette(), k = Math.round(Math.pow(10, kexp())), n0 = Math.pow(10, nexp());
+    document.getElementById("lu-c-f-out").innerHTML = `${pow(fexp())} flop/s`;
+    const ns = []; for (let e = 1; e <= 4.0001; e += 0.05) ns.push(Math.pow(10, e));
+    const ser = (key, color, dash) => ({ data: ns.map((n) => [n, Math.max(1, cost(n, Math.max(k, 1))[key])]), color, width: 2.5, dash });
+    MB.chart(ctx, null, {
+      x: [10, 1e4], y: [1e2, 1e17], logX: true, logY: true, xLabel: "행렬 크기 n", yLabel: "연산량 (flop)",
+      series: [ser("ge", P.bad, [6, 4]), ser("inv", P.warn), ser("lu", P.accent)],
+      vlines: [{ x: n0, label: "n = " + Math.round(n0), color: P.dim }],
+    });
+    ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "left";
+    [["매번 소거", P.bad], ["역행렬 + 곱", P.warn], ["LU + 대입", P.accent]].forEach(([t, c], i) => { ctx.fillStyle = c; ctx.fillRect(70, 22 + i * 18, 14, 4); ctx.fillStyle = P.text; ctx.fillText(t, 90, 27 + i * 18); });
+    const c = cost(n0, Math.max(k, 1)), f = Math.pow(10, fexp());
+    const show = (id, v) => MB.stat(id, `${LU.sci(v)} <small>${LU.time(v / f)}</small>`);
+    show("lu-c-ge", c.ge); show("lu-c-inv", c.inv); show("lu-c-lu", c.lu);
+    MB.stat("lu-c-ratio", `${(c.ge / c.lu).toFixed(1)}배 <small>역행렬 대비 ${(c.inv / c.lu).toFixed(2)}배</small>`);
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 440 });
+})();
+
+/* ================================================================ 5. 열전도 막대 (토머스) */
+(function () {
+  const N = MB.range("lu-h-n", (v) => String(v), () => cv.redraw());
+  const TL = MB.range("lu-h-tl", (v) => v + " °C", () => cv.redraw());
+  const TR = MB.range("lu-h-tr", (v) => v + " °C", () => cv.redraw());
+  const Q = MB.range("lu-h-q", (v) => String(v), () => cv.redraw());
+  const src = MB.seg("lu-h-src", () => cv.redraw());
+  const cv = MB.canvas("#lu-cv-heat", (ctx, w, h) => {
+    const P = MB.palette(), n = N(), hx = 1 / (n + 1), tl = TL(), tr = TR(), mode = src(), q0 = mode === "none" ? 0 : Q();
+    const qf = (x) => (mode === "mid" ? (Math.abs(x - 0.5) <= 0.05 ? q0 * 5 : 0) : q0);
+    const a = new Array(n).fill(-1), b = new Array(n).fill(2), c = new Array(n).fill(-1), d = new Array(n);
+    for (let i = 0; i < n; i++) d[i] = hx * hx * qf((i + 1) * hx);
+    d[0] += tl; d[n - 1] += tr; a[0] = 0; c[n - 1] = 0;
+    const T = LU.thomas(a, b, c, d);
+    const pts = [[0, tl], ...T.map((t, i) => [(i + 1) * hx, t]), [1, tr]];
+    const exact = (x) => tl + (tr - tl) * x + (q0 / 2) * x * (1 - x);
+    const tmax = Math.max(...pts.map((p) => p[1]));
+    const yTop = Math.max(110, Math.ceil(tmax / 20) * 20 + 10);
+    const box = { x: 58, y: 16, w: w - 76, h: h - 16 - 86 };
+    const series = [];
+    if (mode === "uni") { const ex = []; for (let i = 0; i <= 100; i++) ex.push([i / 100, exact(i / 100)]); series.push({ data: ex, color: P.dim, width: 1.5, dash: [5, 4] }); }
+    series.push({ data: pts, color: P.accent, width: 2.5 });
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [0, yTop], xLabel: "위치 x", yLabel: "온도 (°C)", series });
+    if (n <= 60) pts.forEach(([x, t], i) => { ctx.fillStyle = i === 0 || i === pts.length - 1 ? P.accent2 : P.accent; ctx.beginPath(); ctx.arc(ch.X(x), ch.Y(t), n <= 20 ? 4 : 2.5, 0, 7); ctx.fill(); });
+    // 막대 색 띠
+    const by = h - 26, bh = 14;
+    for (let i = 0; i < w - 76; i++) {
+      const x = i / (w - 77), t = pts.reduce((best, p) => (Math.abs(p[0] - x) < Math.abs(best[0] - x) ? p : best))[1];
+      const [r, g, bl] = MB.colormap(MB.clamp((t - 20) / (yTop - 20), 0, 1), "viridis");
+      ctx.fillStyle = MB.rgb([r, g, bl]); ctx.fillRect(58 + i, by, 1.5, bh);
+    }
+    ctx.strokeStyle = P.border; ctx.strokeRect(58, by, w - 76, bh);
+    if (mode === "mid") { ctx.fillStyle = P.bad; ctx.fillRect(58 + 0.45 * (w - 76), by - 5, 0.1 * (w - 76), 3); }
+    MB.stat("lu-h-max", tmax.toFixed(2) + " °C");
+    MB.stat("lu-h-th", LU.sci(8 * n));
+    MB.stat("lu-h-dense", LU.sci((2 / 3) * n ** 3));
+    MB.stat("lu-h-err", mode === "uni" ? Math.max(...pts.map(([x, t]) => Math.abs(t - exact(x)))).toExponential(1) + " °C" : "— (균일 발열에서)");
+  }, { aspect: 0.62, minHeight: 300, maxHeight: 460 });
+})();
+
+/* ================================================================ 6. 희소 LU의 채움 */
+(function () {
+  function pattern(kind) {
+    let n, S;
+    const mk = (m) => Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => i === j));
+    if (kind === "arrowA" || kind === "arrowB") {
+      n = 12; S = mk(n); const hub = kind === "arrowA" ? 0 : n - 1;
+      for (let i = 0; i < n; i++) { S[hub][i] = true; S[i][hub] = true; }
+    } else if (kind === "tri") {
+      n = 12; S = mk(n); for (let i = 0; i < n - 1; i++) { S[i][i + 1] = true; S[i + 1][i] = true; }
+    } else {
+      const m = 4; n = m * m; S = mk(n);
+      for (let r = 0; r < m; r++) for (let c = 0; c < m; c++) {
+        const i = r * m + c;
+        if (c < m - 1) { S[i][i + 1] = S[i + 1][i] = true; }
+        if (r < m - 1) { S[i][i + m] = S[i + m][i] = true; }
+      }
+    }
+    return S;
+  }
+  function symbolic(S) {
+    const n = S.length, F = S.map((r) => r.slice());
+    for (let k = 0; k < n; k++) for (let i = k + 1; i < n; i++) if (F[i][k]) for (let j = k + 1; j < n; j++) if (F[k][j]) F[i][j] = true;
+    return F;
+  }
+  const kind = MB.seg("lu-fl-kind", () => { a.redraw(); b.redraw(); });
+  let S = null, F = null;
+  const draw = (useF) => (ctx, w, h) => {
+    const P = MB.palette();
+    if (!useF) { S = pattern(kind()); F = symbolic(S); }
+    const M = useF ? F : S, n = M.length, size = Math.min(w - 24, h - 40), cell = size / n, x0 = (w - size) / 2, y0 = 30;
+    ctx.strokeStyle = P.grid; ctx.lineWidth = 1;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const x = x0 + j * cell, y = y0 + i * cell;
+      if (M[i][j]) {
+        ctx.fillStyle = useF && !S[i][j] ? P.accent2 : i === j ? P.accent : P.text;
+        ctx.globalAlpha = useF && !S[i][j] ? 0.9 : i === j ? 0.9 : 0.6;
+        ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2); ctx.globalAlpha = 1;
+      }
+      ctx.strokeRect(x, y, cell, cell);
+    }
+    if (useF) {
+      const nz = (X) => X.flat().filter(Boolean).length, a0 = nz(S), f0 = nz(F);
+      MB.stat("lu-fl-nnz", String(a0)); MB.stat("lu-fl-lu", String(f0));
+      MB.stat("lu-fl-fill", f0 - a0 ? `<span class="badge warn">+${f0 - a0}칸</span>` : '<span class="badge ok">0칸</span>');
+    }
+  };
+  const a = MB.canvas("#lu-cv-fa", draw(false), { aspect: 1, maxHeight: 360, minHeight: 220 });
+  const b = MB.canvas("#lu-cv-fb", draw(true), { aspect: 1, maxHeight: 360, minHeight: 220 });
+})();
+
+/* ================================================================ 7. 노드 해석 */
+(function () {
+  // 슬라이더 0..2를 0.1–100 kΩ 로그 눈금에 대응: R = 10^(1.5v − 1), 처음 값 v = 2/3 → 1 kΩ
+  const toR = (v) => Math.pow(10, 1.5 * v - 1);
+  const fmt = (v) => { const r = toR(v); return (r < 10 ? r.toFixed(2) : r.toFixed(1)) + " kΩ"; };
+  const ids = ["lu-r-2", "lu-r-4", "lu-r-5", "lu-r-6"];
+  const I = MB.range("lu-r-i", (v) => v.toFixed(1) + " mA", () => cv.redraw());
+  const R = ids.map((id) => MB.range(id, fmt, () => cv.redraw()));
+  const NODE = [[0.24, 0.3], [0.56, 0.3], [0.88, 0.3]];
+  const cv = MB.canvas("#lu-cv-circ", (ctx, w, h) => {
+    const P = MB.palette();
+    const r = { 1: 1, 2: toR(R[0]()), 3: 1, 4: toR(R[1]()), 5: toR(R[2]()), 6: toR(R[3]()) };
+    const g = {}; for (const k in r) g[k] = 1 / r[k];
+    const edges = [[1, 0, 1], [2, 0, 3], [3, 0, 5], [1, 2, 2], [2, 3, 4], [1, 3, 6]]; // [i, j, 저항 번호], 0 = 접지
+    const G = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    edges.forEach(([i, j, k]) => { G[i - 1][i - 1] += g[k]; if (j) { G[j - 1][j - 1] += g[k]; G[i - 1][j - 1] -= g[k]; G[j - 1][i - 1] -= g[k]; } });
+    const s = LU.solve(G, [I(), 0, 0]), v = s.x;
+    // 그리기
+    const X = (u) => 30 + u * (w - 60), gy = h - 34, ny = 70 + 0.25 * (h - 120);
+    const pos = (i) => (i === 0 ? null : [X(NODE[i - 1][0]), ny]);
+    const vmax = Math.max(0.01, ...v);
+    ctx.lineWidth = 2; ctx.strokeStyle = P.text;
+    ctx.beginPath(); ctx.moveTo(X(0.04), gy); ctx.lineTo(X(0.98), gy); ctx.stroke();
+    ctx.fillStyle = P.dim; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillText("접지 0 V", X(0.98), gy + 18);
+    const res = (x1, y1, x2, y2, label, amps) => {
+      const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, mx = (x1 + x2) / 2, my = (y1 + y2) / 2, zl = Math.min(44, L * 0.45);
+      ctx.strokeStyle = P.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y1);
+      ctx.lineTo(mx - ux * zl / 2, my - uy * zl / 2);
+      for (let k = 1; k <= 6; k++) { const t = -zl / 2 + (k - 0.5) * zl / 6, s2 = k % 2 ? 7 : -7; ctx.lineTo(mx + ux * t - uy * s2, my + uy * t + ux * s2); }
+      ctx.lineTo(mx + ux * zl / 2, my + uy * zl / 2); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.fillStyle = P.dim; ctx.textAlign = "left"; ctx.font = "12px var(--mono), monospace";
+      const ox = Math.abs(uy) > 0.5 ? 12 : 0, oy = Math.abs(uy) > 0.5 ? 0 : -14;
+      ctx.fillText(label, mx + ox, my + oy - (Math.abs(uy) > 0.5 ? 6 : 0));
+      ctx.fillStyle = P.accent2; ctx.fillText(Math.abs(amps).toFixed(2) + " mA", mx + ox, my + oy + (Math.abs(uy) > 0.5 ? 10 : -14));
+    };
+    // ① ③ 위 연결 R6
+    const topY = 40;
+    const [x1, y1] = pos(1), [x3] = pos(3);
+    ctx.strokeStyle = P.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1, topY); ctx.moveTo(x3, topY); ctx.lineTo(x3, y1); ctx.stroke();
+    res(x1, topY, x3, topY, "R₆ " + LU.num(r[6], 2) + "k", g[6] * (v[0] - v[2]));
+    edges.forEach(([i, j, k]) => {
+      if (k === 6) return;
+      const [ax, ay] = pos(i);
+      if (j) { const [bx, by] = pos(j); res(ax + 8, ay, bx - 8, by, "R" + "₀₁₂₃₄₅₆"[k] + " " + LU.num(r[k], 2) + "k", g[k] * (v[i - 1] - v[j - 1])); }
+      else res(ax, ay + 8, ax, gy, "R" + "₀₁₂₃₄₅₆"[k], g[k] * v[i - 1]);
+    });
+    // 전류원
+    const sx = X(0.07), sy = (ny + gy) / 2;
+    ctx.strokeStyle = P.text; ctx.beginPath(); ctx.moveTo(sx, gy); ctx.lineTo(sx, sy + 16); ctx.moveTo(sx, sy - 16); ctx.lineTo(sx, ny); ctx.lineTo(x1, ny); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx, sy, 16, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx, sy + 9); ctx.lineTo(sx, sy - 9); ctx.moveTo(sx - 5, sy - 3); ctx.lineTo(sx, sy - 10); ctx.lineTo(sx + 5, sy - 3); ctx.stroke();
+    ctx.fillStyle = P.text; ctx.textAlign = "center"; ctx.font = "12px system-ui, sans-serif"; ctx.fillText(I().toFixed(1) + " mA", sx, sy + 32);
+    // 노드
+    [1, 2, 3].forEach((i) => {
+      const [x, y] = pos(i), t = v[i - 1] / vmax;
+      ctx.fillStyle = MB.rgb(MB.colormap(0.15 + 0.8 * t, "viridis")); ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
+      ctx.strokeStyle = P.bg; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = P.text; ctx.textAlign = "left"; ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.fillText(v[i - 1].toFixed(3) + " V", x + 14, y + 22);
+    });
+    ["v1", "v2", "v3"].forEach((id, i) => MB.stat("lu-r-" + id, v[i].toFixed(3) + " <small>V</small>"));
+    const toGround = g[1] * v[0] + g[3] * v[1] + g[5] * v[2];
+    MB.stat("lu-r-kcl", toGround.toFixed(3) + " <small>mA = I</small>");
+    document.getElementById("lu-r-mats").innerHTML = "G = " + LU.html(G, { d: 3 }) + "<br><br>L = " + LU.html(s.L, { d: 3, cls: (i, j) => (i > j ? "mul" : "") }) + "<br><br>U = " + LU.html(s.U, { d: 3, cls: (i, j) => (i === j ? "row" : "") });
+  }, { aspect: 0.62, minHeight: 300, maxHeight: 440 });
+})();
+</script>
+</body>
+</html>
