@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>좌표 변환과 선형 사상 · LinearBook</title>
+<meta name="description" content="같은 화살표도 기저가 바뀌면 다른 숫자가 된다. 기저에 대한 좌표, 기저 변환 행렬 P, 기저에서 본 변환의 행렬과 닮음 B = P⁻¹AP, 좋은 기저로 변환을 대각 행렬로 만들기, 다항식 공간의 미분 행렬, 핵과 상, RGB↔YCbCr 색 공간과 JPEG까지 직접 끌어 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .cb-m { display: inline-grid; grid-template-columns: repeat(var(--c, 2), auto); gap: 1px 10px; padding: 2px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 5px; font: 600 13px var(--mono); text-align: right; vertical-align: middle; }
+  .cb-m > span { padding: 1px 3px; border-radius: 4px; }
+  .cb-m > span.hl { background: var(--accent-soft); color: var(--accent); }
+  .cb-m > span.dim { color: var(--text-faint); }
+  .cb-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .cb-msg b { color: var(--text); }
+  .cb-msg.ok { color: var(--ok); font-weight: 600; }
+  .cb-msg.bad { color: var(--bad); font-weight: 600; }
+  .cb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .cb-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .cb-sw { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--canvas-bg); }
+  .cb-sw > div { flex: 1 1 120px; min-width: 0; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; background: var(--bg-elev); }
+  .cb-sw > div > i { display: block; height: 70px; }
+  .cb-sw > div > span { display: block; padding: 6px 10px; font: 12px var(--mono); color: var(--text-dim); overflow-wrap: anywhere; }
+  .sim-readout .stat .v .cb-m { font-size: 12px; }
+  .cb-poly { font-family: var(--mono); font-size: 13.5px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="change-of-basis">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 07</div>
+    <h1 data-no-glossary>좌표 변환과 선형 사상</h1>
+    <p class="lead">벡터 \((3, 2)\)라고 말할 때 우리는 늘 한 가지를 몰래 가정합니다. "가로로 3칸, 세로로 2칸", 즉 표준 기저 \(\mathbf{e}_1, \mathbf{e}_2\)를 잣대로 쓴다는 가정입니다. 잣대를 바꾸면 같은 화살표가 다른 숫자로 적힙니다. 결정 격자의 원자 위치, 로봇 손끝의 위치, 사진의 색은 저마다 편한 잣대가 따로 있습니다. 이 장은 <b>잣대(기저)를 바꾸는 법</b>과, 잣대를 바꾸면 <b>같은 변환이 다른 행렬로 보이는 이유</b>를 다룹니다. 그리고 잘 고른 잣대 하나가 복잡한 행렬을 대각 행렬로 바꾸고, 사진 파일을 절반 크기로 줄인다는 것을 보입니다.</p>
+    <ul class="objectives">
+      <li>기저에 대한 좌표 \([\mathbf{x}]_B\)를 정의하고, 좌표가 하나뿐인 이유를 선형 독립으로 설명한다.</li>
+      <li>기저 변환 행렬 \(P\)로 \(\mathbf{x} = P[\mathbf{x}]_B\), \([\mathbf{x}]_B = P^{-1}\mathbf{x}\)를 계산하고, 두 비표준 기저 사이의 변환 \(C^{-1}B\)를 구한다.</li>
+      <li>선형 변환의 기저 \(B\)에 대한 행렬 \([T]_B = P^{-1}AP\)를 구하고, 닮은 행렬이 공유하는 대각합·행렬식·계수를 증명한다.</li>
+      <li>변환에 맞는 기저를 골라 반사·사영 같은 변환을 대각 행렬로 쓰고, 그것이 고유값 문제로 이어지는 이유를 안다.</li>
+      <li>다항식 공간의 미분을 행렬로 쓰고, 핵·상·계수–퇴화차수 정리와 동형 사상을 이해한다.</li>
+      <li>JPEG가 RGB를 YCbCr로 바꾸는 이유를 기저 변환으로 설명하고, 색차 표본을 줄여도 사진이 멀쩡한 이유를 실험으로 확인한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>지금 크기의 JPEG 사진</b></div>
+      <div class="o-body"><p>카메라 센서는 화소마다 빨강·초록·파랑 세 숫자를 기록합니다. 그런데 사람 눈은 밝기의 변화에는 아주 예민하고, 색의 미세한 변화에는 훨씬 둔합니다. 문제는 R, G, B 세 숫자 어느 것도 "밝기"나 "색"만을 담고 있지 않다는 점입니다. 빨강 값을 대충 기록하면 밝기도 색도 함께 망가집니다.</p>
+        <p>JPEG의 해법은 숫자를 버리기 전에 <b>잣대부터 바꾸는 것</b>입니다. 3×3 행렬 하나로 (R, G, B)를 밝기 Y와 두 색차 Cb, Cr로 옮기면, 정보가 "눈이 예민한 축"과 "둔한 축"으로 나뉩니다. 그다음 색차 두 성분만 가로세로 절반 해상도로 줄여도(4:2:0) 눈은 거의 알아채지 못하고, 표본 수는 화소당 3개에서 1.5개로 줄어듭니다. 같은 데이터, 다른 기저. 이 장의 주제가 사진 한 장 안에 들어 있습니다.</p>
+        <div class="o-chain"><span>RGB: 밝기와 색이 섞임</span><i>→</i><span>어느 숫자도 버릴 수 없음</span><i>→</i><span class="tool">기저 변환 RGB → YCbCr</span><i>→</i><span>색차만 줄여 절반 크기</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="coordinates">
+    <h2>좌표는 기저에 대한 상대적인 숫자다</h2>
+    <div class="problem"><strong>그래핀 원자의 위치를 어떻게 적을까</strong>
+      <p>그래핀의 탄소 원자는 정육각형 벌집 무늬로 놓입니다. 이 무늬는 길이 2.46 Å인 두 벡터 \(\mathbf{a}_1, \mathbf{a}_2\)가 60°를 이루는 격자를 따라 되풀이됩니다. 원자 위치를 가로·세로 좌표로 적으면 \((1.23, 2.13)\)처럼 무리수투성이가 되고, "격자를 몇 칸 옮긴 자리인가"라는 정작 중요한 정보가 숫자에서 사라집니다. 결정학자는 대신 "\(\mathbf{a}_1\) 방향으로 1칸, \(\mathbf{a}_2\) 방향으로 2칸"이라고 적습니다. 같은 점, 다른 숫자입니다.</p></div>
+    <p>1장에서 평면의 모든 벡터가 \(\mathbf{e}_1, \mathbf{e}_2\)의 선형 결합으로 쓰인다는 것을 보았습니다. 사실 서로 평행하지 않은 <b>아무 두 벡터</b>로도 같은 일을 할 수 있습니다. 그 두 벡터를 새 잣대로 삼으면, 그 잣대로 잰 숫자가 새 좌표입니다.</p>
+    <div class="callout deep"><strong>정의 7.1 (기저와 좌표)</strong> 벡터 공간 \(V\)의 벡터 \(\mathbf{b}_1,\dots,\mathbf{b}_n\)이 <b>선형 독립</b>이고 <b>\(V\)를 생성</b>하면 이 순서 있는 묶음 \(B = (\mathbf{b}_1,\dots,\mathbf{b}_n)\)을 \(V\)의 <span class="term">기저</span><span class="en">(basis)</span>라 한다. \(\mathbf{x} = c_1\mathbf{b}_1 + \dots + c_n\mathbf{b}_n\)일 때 계수를 모은 벡터
+      <div class="formula">$$[\mathbf{x}]_B = \begin{bmatrix}c_1\\ \vdots\\ c_n\end{bmatrix}$$</div>
+      를 \(\mathbf{x}\)의 \(B\)에 대한 <span class="term">좌표 벡터</span><span class="en">(coordinate vector)</span>라 한다. 표준 기저 \(E = (\mathbf{e}_1,\dots,\mathbf{e}_n)\)에서는 \([\mathbf{x}]_E = \mathbf{x}\)이다.</div>
+    <div class="callout deep"><strong>정리 7.1 (좌표의 유일성)</strong> \(B\)가 \(V\)의 기저이면 모든 \(\mathbf{x}\in V\)의 좌표 \([\mathbf{x}]_B\)는 꼭 하나 있다.
+      <p><b>증명.</b> 생성하므로 적어도 하나는 있다. 두 개 \(\sum c_i\mathbf{b}_i = \sum d_i\mathbf{b}_i\)가 있다면 빼서 \(\sum (c_i - d_i)\mathbf{b}_i = \mathbf{0}\). 선형 독립이므로 모든 \(c_i - d_i = 0\)이다. ∎</p>
+      <p>생성은 "좌표가 있다", 독립은 "좌표가 하나뿐이다"를 보장한다. 기저의 두 조건은 정확히 좌표가 잘 정의되기 위한 조건이다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="같은 점을 두 기저로 잰 좌표">
+        <defs><marker id="cb-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker>
+          <marker id="cb-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+          <marker id="cb-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="10" y="30" width="360" height="260" rx="8" class="f-surface"/>
+        <rect x="390" y="30" width="360" height="260" rx="8" class="f-surface"/>
+        <g class="s-axis" style="opacity:.35"><path d="M40 250H350M40 210H350M40 170H350M40 130H350M40 90H350M40 50H350M80 280V40M120 280V40M160 280V40M200 280V40M240 280V40M280 280V40M320 280V40"/></g>
+        <path d="M80 250H350M80 280V40" class="s-axis" style="opacity:.9"/>
+        <line x1="80" y1="250" x2="198" y2="172" style="stroke:var(--text);stroke-width:3" marker-end="url(#cb-ah)"/>
+        <line x1="80" y1="250" x2="117" y2="250" style="stroke:var(--accent);stroke-width:3.5" marker-end="url(#cb-ah-a)"/>
+        <line x1="80" y1="250" x2="80" y2="213" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#cb-ah-b)"/>
+        <path d="M80 250H200V170" style="fill:none;stroke:var(--text-dim);stroke-width:1.6;stroke-dasharray:5 4"/>
+        <circle cx="200" cy="170" r="5" style="fill:var(--text)"/>
+        <text x="210" y="165" class="t-mono">x = (3, 2)</text>
+        <text x="100" y="270" class="t" style="fill:var(--accent);font-weight:700">e₁</text>
+        <text x="58" y="222" class="t" style="fill:var(--accent-2);font-weight:700">e₂</text>
+        <text x="20" y="22" class="t" style="font-weight:700">표준 기저 E: 3·e₁ + 2·e₂</text>
+        <g style="opacity:.35"><path d="M400 284H740M400 215H740M400 181H740M400 146H740M400 112H740M400 77H740M400 43H740" class="s-axis"/></g>
+        <g class="s-axis" style="opacity:.35"><path d="M400 290L540 40M440 290L580 40M480 290L620 40M520 290L660 40M560 290L700 40M600 290L740 40M640 290L750 103"/></g>
+        <path d="M410 250H740" class="s-axis" style="opacity:.6"/>
+        <line x1="460" y1="250" x2="578" y2="172" style="stroke:var(--text);stroke-width:3" marker-end="url(#cb-ah)"/>
+        <line x1="460" y1="250" x2="497" y2="250" style="stroke:var(--accent);stroke-width:3.5" marker-end="url(#cb-ah-a)"/>
+        <line x1="460" y1="250" x2="479" y2="217" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#cb-ah-b)"/>
+        <path d="M460 250L534 250L580 170" style="fill:none;stroke:var(--text-dim);stroke-width:1.6;stroke-dasharray:5 4"/>
+        <circle cx="580" cy="170" r="5" style="fill:var(--text)"/>
+        <text x="590" y="165" class="t-mono">[x]_B ≈ (1.85, 2.31)</text>
+        <text x="478" y="270" class="t" style="fill:var(--accent);font-weight:700">b₁ = e₁</text>
+        <text x="430" y="210" class="t" style="fill:var(--accent-2);font-weight:700">b₂</text>
+        <text x="400" y="22" class="t" style="font-weight:700">60° 격자 기저 B: 1.85·b₁ + 2.31·b₂</text>
+      </svg>
+      <figcaption><b>그림 7-1.</b> 같은 점 x를 두 잣대로 잰다. 왼쪽 표준 격자에서는 (3, 2), 오른쪽 60° 격자(b₁ = (1, 0), b₂ = (1/2, √3/2))에서는 약 (1.85, 2.31)이다. 점이 움직인 것이 아니라 눈금이 바뀌었다. 점선은 두 기저 방향을 따라 걷는 경로다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 기저 벡터 \(\mathbf{b}_1, \mathbf{b}_2\)와 점 \(\mathbf{x}\)를 끌어 보세요. 보라색 격자는 새 기저가 만드는 눈금이고, 점선은 \(c_1\mathbf{b}_1\)만큼 간 뒤 \(c_2\mathbf{b}_2\)만큼 가는 경로입니다.</p>
+
+    <div class="sim" id="sim-cb-coords">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 잣대로 잰 같은 점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cb-cv-coords"></canvas><span class="tag-tl">b₁, b₂, x를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>기저 프리셋</span><select id="cb-c-pre">
+            <option value="tilt">기울어진 기저</option>
+            <option value="std">표준 기저 (e₁, e₂)</option>
+            <option value="hex">60° 격자 (그래핀형)</option>
+            <option value="stretch">늘인 기저 (2e₁, 0.5e₂)</option>
+            <option value="near">거의 평행한 기저</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="cb-c-grid" checked> 새 기저의 격자 보기</label>
+          <label class="check"><input type="checkbox" id="cb-c-path" checked> c₁b₁ + c₂b₂ 경로 보기</label>
+          <div class="btn-row"><button class="btn" id="cb-c-int">x를 격자점에 맞추기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x (표준 좌표)</span><span class="v" id="cb-c-x">—</span></div>
+        <div class="stat"><span class="k">[x]_B (새 좌표)</span><span class="v" id="cb-c-xb">—</span></div>
+        <div class="stat"><span class="k">P = [b₁ b₂]</span><span class="v" id="cb-c-p">—</span></div>
+        <div class="stat"><span class="k">det P</span><span class="v" id="cb-c-det">—</span></div>
+      </div>
+      <div class="cb-msg" id="cb-c-msg"></div>
+      <div class="sim-note">해볼 것: ① '60° 격자'에서 'x를 격자점에 맞추기'를 누르면 새 좌표가 정수가 됩니다. 결정학자가 이 좌표를 쓰는 이유입니다. ② '거의 평행한 기저'에서 x를 조금만 움직여 보세요. 새 좌표가 크게 출렁입니다. 기저가 나쁘면 좌표가 잡음에 민감해집니다(16장 조건수). ③ b₂를 b₁과 한 직선에 놓으면 좌표가 정의되지 않습니다. 모델: 2차원, 좌표는 P[x]_B = x를 풀어 구합니다. 끄는 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 7.1 · 좌표 구하기</strong> \(\mathbf{b}_1 = (1, 1)\), \(\mathbf{b}_2 = (1, -1)\)일 때 \(\mathbf{x} = (3, 1)\)의 좌표 \([\mathbf{x}]_B\)를 구하라.
+      <p><b>풀이.</b> \(c_1(1,1) + c_2(1,-1) = (3,1)\)은 연립방정식 \(c_1 + c_2 = 3\), \(c_1 - c_2 = 1\)이다. 더하면 \(2c_1 = 4\), 따라서 \(c_1 = 2\), \(c_2 = 1\). 즉 \([\mathbf{x}]_B = (2, 1)\).</p>
+      <p>확인: \(2(1,1) + 1(1,-1) = (3, 1)\). 좌표를 구하는 일은 언제나 연립방정식 하나를 푸는 일이고, 그 계수 행렬의 열이 바로 기저 벡터다. 다음 절은 이 관찰을 행렬 하나로 정리한다.</p></div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="change-matrix">
+    <h2>기저 변환 행렬: 새 좌표와 옛 좌표 잇기</h2>
+    <div class="problem"><strong>새 좌표로 받은 숫자를 표준 좌표로 되돌리려면</strong>
+      <p>로봇 팔 제어기가 "공구 좌표계로 (0.2, 0.1)만큼 움직여라"라는 명령을 받았다고 합시다. 모터는 작업대에 고정된 표준 좌표계로 움직이므로, 이 숫자를 작업대 좌표로 바꿔야 합니다. 반대로 카메라가 작업대 좌표로 본 물체 위치를 공구 좌표로 알려 주어야 할 때도 있습니다. 두 방향 모두, 매번 연립방정식을 새로 세워야 할까요?</p></div>
+    <p>정의 7.1의 식 \(\mathbf{x} = c_1\mathbf{b}_1 + \dots + c_n\mathbf{b}_n\)을 다시 보세요. 이것은 2장의 열 그림 그대로, 기저 벡터를 열로 세운 행렬과 좌표 벡터의 곱입니다.</p>
+    <div class="callout deep"><strong>정리 7.2 (기저 변환 행렬)</strong> \(\mathbb{R}^n\)의 기저 \(B\)에 대해 \(P_B = [\,\mathbf{b}_1\ \cdots\ \mathbf{b}_n\,]\)라 하면
+      <div class="formula">$$\mathbf{x} = P_B\,[\mathbf{x}]_B, \qquad [\mathbf{x}]_B = P_B^{-1}\,\mathbf{x}.$$</div>
+      \(P_B\)의 열이 선형 독립이므로 \(P_B\)는 가역이다(4장 <a href="lu.html#invertible">가역 조건</a>). 또 \(C\)가 또 다른 기저이면 \(B\)-좌표를 \(C\)-좌표로 바꾸는 행렬은
+      <div class="formula">$$[\mathbf{x}]_C = P_{C\leftarrow B}\,[\mathbf{x}]_B, \qquad P_{C\leftarrow B} = P_C^{-1}P_B.$$</div>
+      <p><b>증명.</b> 첫 식은 행렬–벡터 곱의 열 그림 그 자체다. 둘째 식은 \(P_C[\mathbf{x}]_C = \mathbf{x} = P_B[\mathbf{x}]_B\)의 양변 왼쪽에 \(P_C^{-1}\)을 곱하면 된다. ∎</p></div>
+    <p>방향을 헷갈리기 쉬우니 그림으로 기억하세요. \(P_B\)는 "새 좌표 → 표준 좌표" 방향입니다. 새 좌표를 받아서 기저 벡터를 그만큼 더하면 실제 화살표가 나오니까요. 반대 방향은 역행렬입니다. \(P_{C\leftarrow B}\)는 \(B\)에서 표준 좌표로 올라갔다가(\(P_B\)) \(C\)로 내려오는(\(P_C^{-1}\)) 길입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 220" role="img" aria-label="기저 변환 행렬의 방향">
+        <defs><marker id="cb-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+          <marker id="cb-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="290" y="20" width="180" height="64" rx="12" class="f-acc-soft"/>
+        <text x="380" y="48" text-anchor="middle" class="t" style="font-weight:700">표준 좌표 x</text>
+        <text x="380" y="70" text-anchor="middle" class="t-dim">실제 화살표</text>
+        <rect x="40" y="136" width="180" height="64" rx="12" class="f-surface"/>
+        <text x="130" y="164" text-anchor="middle" class="t" style="font-weight:700">[x]_B</text>
+        <text x="130" y="186" text-anchor="middle" class="t-dim">기저 B로 잰 숫자</text>
+        <rect x="540" y="136" width="180" height="64" rx="12" class="f-surface"/>
+        <text x="630" y="164" text-anchor="middle" class="t" style="font-weight:700">[x]_C</text>
+        <text x="630" y="186" text-anchor="middle" class="t-dim">기저 C로 잰 숫자</text>
+        <path d="M150 130 L300 82" style="stroke:var(--accent);stroke-width:2.4;fill:none" marker-end="url(#cb-ar)"/>
+        <text x="190" y="96" class="t-mono" style="fill:var(--accent)">P_B</text>
+        <path d="M470 82 L615 130" style="stroke:var(--accent);stroke-width:2.4;fill:none" marker-end="url(#cb-ar)"/>
+        <text x="550" y="96" class="t-mono" style="fill:var(--accent)">P_C⁻¹</text>
+        <path d="M226 168 H532" style="stroke:var(--accent-2);stroke-width:2.4;fill:none;stroke-dasharray:7 5" marker-end="url(#cb-ar2)"/>
+        <text x="380" y="158" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">P_(C←B) = P_C⁻¹ P_B</text>
+      </svg>
+      <figcaption><b>그림 7-2.</b> 기저 행렬 P_B는 좌표를 "기저 B의 숫자"에서 "실제 화살표(표준 좌표)"로 올린다. 다른 기저 C의 좌표로 가려면 표준 좌표를 거쳐 P_C⁻¹로 내려온다. 두 화살표를 이은 것이 P_(C←B)다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 7.2 · 두 비표준 기저 사이의 변환</strong> \(B = ((1,1), (1,-1))\), \(C = ((1,0), (1,2))\)일 때 \(P_{C\leftarrow B}\)를 구하고, 예제 7.1의 \([\mathbf{x}]_B = (2,1)\)을 \(C\)-좌표로 바꿔라.
+      <p><b>풀이.</b> \(P_C = \begin{bmatrix}1 & 1\\ 0 & 2\end{bmatrix}\), \(\det P_C = 2\)이므로 \(P_C^{-1} = \tfrac12\begin{bmatrix}2 & -1\\ 0 & 1\end{bmatrix}\). 그러면</p>
+      <div class="formula">$$P_{C\leftarrow B} = P_C^{-1}P_B = \frac12\begin{bmatrix}2 & -1\\ 0 & 1\end{bmatrix}\begin{bmatrix}1 & 1\\ 1 & -1\end{bmatrix} = \begin{bmatrix}1/2 & 3/2\\ 1/2 & -1/2\end{bmatrix}, \qquad [\mathbf{x}]_C = \begin{bmatrix}1/2 & 3/2\\ 1/2 & -1/2\end{bmatrix}\begin{bmatrix}2\\1\end{bmatrix} = \begin{bmatrix}5/2\\ 1/2\end{bmatrix}.$$</div>
+      <p>확인: \(\tfrac52(1,0) + \tfrac12(1,2) = (3, 1)\). 같은 점 \((3,1)\)이다. 계산에서는 \(P_C^{-1}\)을 만들지 말고 \(P_C\mathbf{y} = P_B[\mathbf{x}]_B\)를 소거로 푸는 편이 낫다(4장의 교훈 그대로).</p></div>
+    <div class="callout"><strong>직교 기저면 역행렬이 공짜다</strong> 기저 벡터가 서로 수직인 단위 벡터이면 \(P^{\mathsf T}P = I\), 즉 \(P^{-1} = P^{\mathsf T}\)입니다. 이때 새 좌표는 그냥 내적 \(c_i = \mathbf{b}_i\cdot\mathbf{x}\)입니다. 로봇 공학과 그래픽스가 회전된 좌표계를 즐겨 쓰는 이유이고, 9장 그람–슈미트가 아무 기저나 직교 기저로 바꾸는 이유입니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="map-matrix">
+    <h2>기저에서 본 선형 변환의 행렬</h2>
+    <div class="problem"><strong>비스듬한 직선에 대한 반사를 행렬로 쓰려면</strong>
+      <p>직선 \(y = 2x\)를 거울 삼아 평면을 뒤집는 변환을 생각합시다. 2장의 방법대로 \(\mathbf{e}_1, \mathbf{e}_2\)가 어디로 가는지 계산하려면 삼각함수를 꺼내야 합니다. 그런데 거울 직선 방향의 벡터는 그대로 있고, 거울에 수직인 벡터는 정확히 뒤집힐 뿐입니다. 그 두 방향을 잣대로 쓰면 이 변환은 "첫 좌표는 그대로, 둘째 좌표는 부호만 바꾼다"라는 한 줄이 됩니다.</p></div>
+    <p>2장에서 행렬은 "기저 벡터가 가는 곳의 기록"이었습니다. 그때 기저는 늘 표준 기저였지요. 기저를 \(B\)로 바꾸면 기록하는 숫자도 \(B\)로 잰 숫자여야 합니다.</p>
+    <div class="callout deep"><strong>정의 7.2 (기저에 대한 변환의 행렬)</strong> 선형 변환 \(T: V\to V\)와 기저 \(B = (\mathbf{b}_1,\dots,\mathbf{b}_n)\)에 대해, \(j\)열이 \([T(\mathbf{b}_j)]_B\)인 \(n\times n\) 행렬을 \(T\)의 \(B\)에 대한 행렬 \([T]_B\)라 한다. 그러면 모든 \(\mathbf{x}\)에 대해
+      <div class="formula">$$[T(\mathbf{x})]_B = [T]_B\,[\mathbf{x}]_B.$$</div>
+      즉 \(B\)-좌표만 다루는 사람에게 \(T\)는 \([T]_B\)를 곱하는 일이다.</div>
+    <div class="callout deep"><strong>정리 7.3 (기저를 바꾼 행렬)</strong> \(\mathbb{R}^n\)에서 \(T(\mathbf{x}) = A\mathbf{x}\)(표준 행렬 \(A\))이고 \(P = P_B\)이면
+      <div class="formula">$$[T]_B = P^{-1}AP, \qquad A = P\,[T]_B\,P^{-1}.$$</div>
+      <p><b>증명.</b> \(B\)-좌표 \([\mathbf{x}]_B\)에서 출발해 세 단계를 밟는다. \(P\)를 곱해 실제 벡터 \(\mathbf{x}\)로 올라가고, \(A\)로 변환하고, \(P^{-1}\)로 다시 \(B\)-좌표로 내려온다. 결과는 \([A\mathbf{x}]_B = P^{-1}AP[\mathbf{x}]_B\). 모든 좌표에 대해 성립하므로 \([T]_B = P^{-1}AP\). ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="P⁻¹AP의 가환 도식">
+        <defs><marker id="cb-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker>
+          <marker id="cb-ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="120" y="24" width="170" height="56" rx="12" class="f-surface"/><text x="205" y="58" text-anchor="middle" class="t" style="font-weight:700">x (표준)</text>
+        <rect x="470" y="24" width="170" height="56" rx="12" class="f-surface"/><text x="555" y="58" text-anchor="middle" class="t" style="font-weight:700">Ax (표준)</text>
+        <rect x="120" y="170" width="170" height="56" rx="12" class="f-acc-soft"/><text x="205" y="204" text-anchor="middle" class="t" style="font-weight:700">[x]_B</text>
+        <rect x="470" y="170" width="170" height="56" rx="12" class="f-acc-soft"/><text x="555" y="204" text-anchor="middle" class="t" style="font-weight:700">[Ax]_B</text>
+        <path d="M296 52 H462" style="stroke:var(--text-dim);stroke-width:2.2" marker-end="url(#cb-ar3)"/><text x="380" y="42" text-anchor="middle" class="t-mono">A</text>
+        <path d="M205 164 V86" style="stroke:var(--text-dim);stroke-width:2.2" marker-end="url(#cb-ar3)"/><text x="190" y="130" text-anchor="end" class="t-mono">P</text>
+        <path d="M555 86 V164" style="stroke:var(--text-dim);stroke-width:2.2" marker-end="url(#cb-ar3)"/><text x="570" y="130" class="t-mono">P⁻¹</text>
+        <path d="M296 198 H462" style="stroke:var(--accent);stroke-width:2.6" marker-end="url(#cb-ar4)"/><text x="380" y="190" text-anchor="middle" class="t-mono" style="fill:var(--accent)">[T]_B = P⁻¹AP</text>
+        <text x="380" y="244" text-anchor="middle" class="t-dim">아래 길 한 번 = 위로 올라가 A를 거쳐 다시 내려오는 길</text>
+      </svg>
+      <figcaption><b>그림 7-3.</b> 같은 변환 T를 두 좌표계에서 본 그림. 표준 좌표에서는 A, B-좌표에서는 P⁻¹AP. 어느 길로 가도 도착점이 같으므로(가환 도식) 두 행렬은 같은 변환의 다른 기록이다. 행렬 곱은 오른쪽부터 읽는다: 먼저 P로 올라가고, A, 그다음 P⁻¹.</figcaption>
+    </figure>
+    <p>열 하나하나로 읽으면 더 직관적입니다. \([T]_B\)의 \(j\)열은 "\(\mathbf{b}_j\)를 변환한 결과를 \(B\)로 잰 숫자"입니다. 만약 \(T(\mathbf{b}_j)\)가 \(\mathbf{b}_j\)의 상수배 \(\lambda_j\mathbf{b}_j\)라면, 그 열은 \(j\)번째 칸만 \(\lambda_j\)이고 나머지는 0입니다. 모든 기저 벡터가 그렇다면 \([T]_B\)는 <b>대각 행렬</b>이 됩니다. 이것이 5절의 주제이고 11장 고유값의 출발점입니다.</p>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="similarity">
+    <h2>닮은 행렬: 같은 변환, 다른 기록</h2>
+    <div class="problem"><strong>두 행렬이 사실 같은 변환인지 어떻게 알까</strong>
+      <p>두 연구실이 같은 장비의 동작을 각자 다른 좌표계로 측정해 행렬 \(A\)와 \(B\)를 얻었습니다. 숫자는 완전히 다릅니다. 두 행렬이 같은 물리 현상의 기록인지, 아니면 정말 다른 동작인지 가려낼 방법이 있을까요? 좌표계에 따라 바뀌지 않는 숫자, 즉 <b>불변량</b>을 찾으면 됩니다.</p></div>
+    <div class="callout deep"><strong>정의 7.3 (닮음)</strong> 가역 행렬 \(P\)가 있어 \(B = P^{-1}AP\)이면 \(A\)와 \(B\)는 <span class="term">닮은 행렬</span><span class="en">(similar matrices)</span>이라 하고 \(A\sim B\)로 쓴다. 정리 7.3에 따르면 닮은 두 행렬은 <b>같은 선형 변환을 서로 다른 기저로 기록한 것</b>이다.</div>
+    <div class="callout deep"><strong>정리 7.4 (닮음 불변량)</strong> \(A\sim B\)이면 다음이 같다.
+      <ol>
+        <li>행렬식: \(\det B = \det A\)</li>
+        <li><span class="term">대각합</span><span class="en">(trace)</span>: \(\operatorname{tr}B = \operatorname{tr}A\) (대각 원소의 합)</li>
+        <li>계수: \(\operatorname{rank}B = \operatorname{rank}A\)</li>
+        <li>특성 다항식 \(\det(A - \lambda I)\), 따라서 고유값</li>
+      </ol>
+      <p><b>증명.</b> (1) \(\det(P^{-1}AP) = \det P^{-1}\det A\det P = \det A\). 행렬식은 부피 배율이니, 좌표를 바꿔도 변환이 부피를 몇 배 하는지는 그대로다(10장). (2) 아무 \(X, Y\)에 대해 \(\operatorname{tr}(XY) = \sum_{i,k}x_{ik}y_{ki} = \operatorname{tr}(YX)\)이므로 \(\operatorname{tr}(P^{-1}(AP)) = \operatorname{tr}((AP)P^{-1}) = \operatorname{tr}A\). (3) 가역 행렬을 곱해도 상의 차원은 바뀌지 않는다(7절). (4) \(P^{-1}AP - \lambda I = P^{-1}(A - \lambda I)P\)에 (1)을 쓴다. ∎</p></div>
+    <p>불변량이 같다고 반드시 닮은 것은 아닙니다. \(I\)와 \(\begin{bmatrix}1 & 1\\ 0 & 1\end{bmatrix}\)은 행렬식·대각합·특성 다항식이 모두 같지만, \(P^{-1}IP = I\)이므로 단위 행렬과 닮은 행렬은 단위 행렬뿐입니다. 불변량은 "다르다"를 증명하는 데 쓰는 도구입니다. 대각합이 다르면 그것으로 끝입니다.</p>
+    <p>아래 시뮬레이터는 같은 변환을 두 화면에 동시에 그립니다. 왼쪽은 표준 좌표로 본 세상, 오른쪽은 기저 \(B\)의 눈금을 반듯한 정사각형으로 펴서 본 세상입니다. 오른쪽에서 보이는 변환의 행렬이 \(P^{-1}AP\)입니다.</p>
+
+    <div class="sim" id="sim-cb-similar">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>같은 변환을 두 좌표계로 보기</h3></div>
+      <div class="split">
+        <div><canvas id="cb-cv-sim-a"></canvas><span class="cap">표준 좌표: A</span></div>
+        <div><canvas id="cb-cv-sim-b"></canvas><span class="cap">B-좌표: P⁻¹AP</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px">
+          <label class="ctrl"><span>변환 A</span><select id="cb-s-map">
+            <option value="refl">직선 y = 2x에 대한 반사</option>
+            <option value="proj">직선 y = 2x 위로 정사영</option>
+            <option value="sym">대칭 행렬 [2 1; 1 2]</option>
+            <option value="shear">전단 [1 1; 0 1]</option>
+            <option value="rot">회전 30°</option>
+          </select></label>
+          <div class="ctrl"><span>기저 B</span><div class="seg" id="cb-s-basis"><button data-value="std">표준</button><button data-value="tilt" class="on">기울어진</button><button data-value="good">변환에 맞춘</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="cb-s-play">▶ 변환 적용 애니메이션</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">A (표준)</span><span class="v" id="cb-s-a">—</span></div>
+        <div class="stat"><span class="k">P⁻¹AP (B-좌표)</span><span class="v" id="cb-s-b">—</span></div>
+        <div class="stat"><span class="k">tr · det · rank</span><span class="v" id="cb-s-inv">—</span></div>
+      </div>
+      <div class="cb-legend"><span><i style="background:var(--text-faint)"></i>원래 글자 F</span><span><i style="background:var(--accent)"></i>변환된 F</span><span><i style="background:var(--accent-2)"></i>기저 B의 눈금</span></div>
+      <div class="cb-msg" id="cb-s-msg"></div>
+      <div class="sim-note">해볼 것: ① '반사'에서 기저를 '변환에 맞춘'으로 바꾸면 오른쪽 행렬이 diag(1, −1)이 됩니다. 오른쪽 화면에서는 그냥 세로 뒤집기입니다. ② 어떤 변환·기저 조합에서도 tr·det·rank 세 숫자는 왼쪽과 오른쪽이 같습니다. ③ '전단'과 '회전'은 '변환에 맞춘' 기저를 만들 수 없습니다. 이유는 11장의 고유벡터가 답합니다. 모델: '변환에 맞춘' 기저는 실수 고유벡터 두 개(MB.mat.eig2)로 만듭니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="good-basis">
+    <h2>좋은 기저 하나가 계산을 바꾼다</h2>
+    <div class="problem"><strong>반사를 백 번 하면?</strong>
+      <p>비스듬한 거울에 대한 반사 행렬 \(A\)를 100번 곱한 \(A^{100}\)이나, 사영을 여러 번 한 결과는 무엇일까요? 표준 좌표에서 곱셈을 반복하면 계산도 오차도 쌓입니다. 하지만 거울에 맞춘 좌표에서 반사는 \(\operatorname{diag}(1,-1)\)이고, 이것의 100제곱은 그냥 \(\operatorname{diag}(1,1) = I\)입니다. 좌표를 잘 고르면 어려운 문제가 대각 원소 몇 개의 계산이 됩니다.</p></div>
+    <p>정리 7.3을 거꾸로 쓰면 \(A = PDP^{-1}\)입니다. \(D\)가 대각 행렬이면 이 식은 "\(A\)는 기저 \(B\)를 따라 각 방향을 \(d_i\)배 늘이는 변환"이라는 뜻입니다. 거듭제곱도 쉬워집니다. 가운데의 \(P^{-1}P\)가 서로 지워지므로</p>
+    <div class="formula">$$A^k = (PDP^{-1})(PDP^{-1})\cdots(PDP^{-1}) = PD^kP^{-1}, \qquad D^k = \operatorname{diag}(d_1^k,\dots,d_n^k).$$
+      <div class="where">이렇게 쓸 수 있는 \(A\)를 <span class="term">대각화 가능</span><span class="en">(diagonalizable)</span>하다고 한다. 그런 기저가 언제 있고 어떻게 찾는지가 11장의 주제다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="직선에 대한 반사와 맞춘 기저">
+        <defs><marker id="cb-ah5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+          <marker id="cb-ah6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker>
+          <marker id="cb-ah7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="270" rx="8" class="f-surface"/>
+        <line x1="210" y1="270" x2="330" y2="30" style="stroke:var(--accent);stroke-width:2;stroke-dasharray:8 5;opacity:.7"/>
+        <text x="335" y="44" class="t" style="fill:var(--accent)">거울 y = 2x</text>
+        <line x1="270" y1="150" x2="297" y2="96" style="stroke:var(--accent);stroke-width:3.5" marker-end="url(#cb-ah5)"/>
+        <line x1="270" y1="150" x2="216" y2="123" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#cb-ah6)"/>
+        <text x="303" y="100" class="t" style="fill:var(--accent);font-weight:700">b₁ = (1, 2)</text>
+        <text x="140" y="118" class="t" style="fill:var(--accent-2);font-weight:700">b₂ = (−2, 1)</text>
+        <line x1="270" y1="150" x2="390" y2="150" style="stroke:var(--text);stroke-width:2.6" marker-end="url(#cb-ah7)"/>
+        <line x1="270" y1="150" x2="198" y2="54" style="stroke:var(--text);stroke-width:2.6;stroke-dasharray:4 3" marker-end="url(#cb-ah7)"/>
+        <text x="372" y="172" class="t-mono">x = (3, 0)</text>
+        <text x="110" y="52" class="t-mono">Ax = (−1.8, 2.4)</text>
+        <path d="M390 150 L294 102 L198 54" style="fill:none;stroke:var(--text-dim);stroke-width:1.2;stroke-dasharray:3 4"/>
+        <text x="470" y="70" class="t" style="font-weight:700">표준 좌표</text>
+        <text x="470" y="96" class="t-mono">A = (1/5)[−3 4; 4 3]</text>
+        <text x="470" y="140" class="t" style="font-weight:700">기저 B = (b₁, b₂)</text>
+        <text x="470" y="166" class="t-mono">[T]_B = diag(1, −1)</text>
+        <text x="470" y="210" class="t-dim">b₁ 방향 성분은 그대로,</text>
+        <text x="470" y="232" class="t-dim">b₂ 방향 성분은 부호만 바뀐다</text>
+      </svg>
+      <figcaption><b>그림 7-4.</b> 거울 직선 위의 b₁은 반사해도 그대로, 거울에 수직인 b₂는 정확히 뒤집힌다. 이 두 벡터를 기저로 쓰면 반사는 diag(1, −1)이다. 점 x = (3, 0)은 거울에 대해 대칭인 (−1.8, 2.4)로 간다(가는 점선은 x와 Ax를 잇는, 거울에 수직인 선분).</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 7.3 · 좋은 기저에서 표준 행렬 만들기</strong> 직선 \(y = 2x\)에 대한 반사의 표준 행렬을 구하라.
+      <p><b>풀이.</b> 거울 방향 \(\mathbf{b}_1 = (1,2)\)는 그대로이고 수직 방향 \(\mathbf{b}_2 = (-2,1)\)은 뒤집히므로 \([T]_B = D = \operatorname{diag}(1,-1)\). \(P = \begin{bmatrix}1 & -2\\ 2 & 1\end{bmatrix}\), \(\det P = 5\), \(P^{-1} = \tfrac15\begin{bmatrix}1 & 2\\ -2 & 1\end{bmatrix}\). 따라서</p>
+      <div class="formula">$$A = PDP^{-1} = \begin{bmatrix}1 & 2\\ 2 & -1\end{bmatrix}\cdot\frac15\begin{bmatrix}1 & 2\\ -2 & 1\end{bmatrix} = \frac15\begin{bmatrix}-3 & 4\\ 4 & 3\end{bmatrix}.$$</div>
+      <p>확인: 일반 공식 \(\begin{bmatrix}\cos2\theta & \sin2\theta\\ \sin2\theta & -\cos2\theta\end{bmatrix}\)에 \(\tan\theta = 2\)를 넣으면 \(\cos2\theta = \tfrac{1-4}{1+4} = -\tfrac35\), \(\sin2\theta = \tfrac{2\cdot2}{1+4} = \tfrac45\). 같은 답을 삼각함수 없이 얻었다. 또 \(A^2 = PD^2P^{-1} = PIP^{-1} = I\): 두 번 반사하면 제자리다.</p></div>
+
+    <div class="sim" id="sim-cb-reflect">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>비스듬한 직선에 맞춘 기저</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cb-cv-refl"></canvas><span class="tag-tl">x를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>직선의 각도 θ <output id="cb-r-th-out"></output></span><input type="range" id="cb-r-th" min="0" max="180" step="1" value="63"></label>
+          <div class="ctrl"><span>변환</span><div class="seg" id="cb-r-mode"><button data-value="refl" class="on">반사</button><button data-value="proj">정사영</button><button data-value="stretch">직선 방향 2배</button></div></div>
+          <label class="check"><input type="checkbox" id="cb-r-grid" checked> 맞춘 기저의 격자 보기</label>
+          <label class="check"><input type="checkbox" id="cb-r-f"> 글자 F도 변환하기</label>
+          <label class="ctrl"><span>거듭제곱 k <output id="cb-r-k-out"></output></span><input type="range" id="cb-r-k" min="1" max="6" step="1" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">표준 행렬 Aᵏ</span><span class="v" id="cb-r-a">—</span></div>
+        <div class="stat"><span class="k">맞춘 기저에서 Dᵏ</span><span class="v" id="cb-r-d">—</span></div>
+        <div class="stat"><span class="k">[x]_B → [Aᵏx]_B</span><span class="v" id="cb-r-xb">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 각도를 바꾸면 표준 행렬의 네 숫자는 모두 바뀌지만, 맞춘 기저의 행렬은 늘 diag(1, −1)입니다. ② '정사영'에서 k를 올려도 결과가 같습니다(P² = P). '직선 방향 2배'에서는 Dᵏ = diag(2ᵏ, 1)이 표준 행렬보다 훨씬 읽기 쉽습니다. ③ '반사'에서 k가 짝수면 단위 행렬입니다. 모델: b₁ = (cos θ, sin θ), b₂ = (−sin θ, cos θ)인 직교 기저, Aᵏ = P Dᵏ Pᵀ.</div>
+    </div>
+    <div class="callout warn"><strong>모든 변환에 좋은 기저가 있는 것은 아니다</strong> 30° 회전은 어떤 실수 벡터도 같은 방향으로 남겨 두지 않으므로 실수 대각화가 불가능합니다. 전단 \(\begin{bmatrix}1 & 1\\ 0 & 1\end{bmatrix}\)은 \(x\)축 방향 하나만 그대로 두어 기저를 이룰 두 번째 방향이 없습니다. 언제 대각화가 되는지, 안 될 때 무엇이 차선인지(복소 고유값, 조르당 형식, 14장 특이값 분해)는 <a href="eigen.html">11장</a>에서 다룹니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="abstract-maps">
+    <h2>화살표가 아닌 벡터: 다항식 공간의 미분 행렬</h2>
+    <div class="problem"><strong>미분도 행렬 곱셈일까</strong>
+      <p>컴퓨터 대수 프로그램이 다항식 \(p(x) = 1 + 2x - x^2 + 3x^3\)을 미분하는 장면을 상상해 보세요. 프로그램은 기호를 들여다보지 않습니다. 계수 목록 \((1, 2, -1, 3)\)을 받아 \((2, -2, 9, 0)\)을 돌려줄 뿐입니다. 숫자 목록을 받아 숫자 목록을 내놓고, 덧셈과 상수배를 보존한다면, 그것은 행렬입니다.</p></div>
+    <p>3차 이하 다항식 전체 \(\mathcal{P}_3\)은 덧셈과 상수배가 자연스럽게 정의되는 <b>벡터 공간</b>입니다(5장에서 공리로 정리합니다). 기저 \(B = (1, x, x^2, x^3)\)을 잡으면 \(p(x) = a_0 + a_1x + a_2x^2 + a_3x^3\)의 좌표는 \((a_0, a_1, a_2, a_3)\)입니다. 미분 \(D(p) = p'\)은 \(D(p+q) = p' + q'\), \(D(cp) = cp'\)이므로 선형입니다.</p>
+    <div class="callout deep"><strong>정의 7.4 (벡터 공간 사이의 선형 사상과 그 행렬)</strong> 벡터 공간 \(V, W\) 사이의 함수 \(T: V\to W\)가 \(T(a\mathbf{u}+b\mathbf{v}) = aT(\mathbf{u}) + bT(\mathbf{v})\)를 만족하면 <span class="term">선형 사상</span><span class="en">(linear map)</span>이다. \(V\)의 기저 \(B = (\mathbf{b}_1,\dots,\mathbf{b}_n)\), \(W\)의 기저 \(C\)에 대해 \(j\)열이 \([T(\mathbf{b}_j)]_C\)인 행렬을 \([T]_{C\leftarrow B}\)라 하면 \([T(\mathbf{v})]_C = [T]_{C\leftarrow B}[\mathbf{v}]_B\)이다.</div>
+    <p>정의대로 기저 벡터의 미분을 좌표로 적어 열로 세우면 됩니다. \(D(1) = 0\), \(D(x) = 1\), \(D(x^2) = 2x\), \(D(x^3) = 3x^2\)이므로</p>
+    <div class="formula">$$[D]_B = \begin{bmatrix}0 & 1 & 0 & 0\\ 0 & 0 & 2 & 0\\ 0 & 0 & 0 & 3\\ 0 & 0 & 0 & 0\end{bmatrix}, \qquad [D]_B\begin{bmatrix}1\\2\\-1\\3\end{bmatrix} = \begin{bmatrix}2\\-2\\9\\0\end{bmatrix} \;\leftrightarrow\; p'(x) = 2 - 2x + 9x^2.$$
+      <div class="where">대각선 바로 위에 1, 2, 3이 놓인다. \([D]_B^4 = 0\): 3차 다항식을 네 번 미분하면 0이다. 이렇게 거듭제곱이 0이 되는 행렬을 멱영 행렬이라 한다.</div></div>
+    <div class="callout deep"><strong>정리 7.5 (합성은 행렬 곱)</strong> \(T: U\to V\), \(S: V\to W\)가 선형이고 \(U, V, W\)의 기저가 \(A, B, C\)이면 \([S\circ T]_{C\leftarrow A} = [S]_{C\leftarrow B}[T]_{B\leftarrow A}\).
+      <p><b>증명.</b> \([S(T\mathbf{u})]_C = [S]_{C\leftarrow B}[T\mathbf{u}]_B = [S]_{C\leftarrow B}[T]_{B\leftarrow A}[\mathbf{u}]_A\). 모든 \(\mathbf{u}\)에 대해 성립한다. ∎ 예를 들어 두 번 미분은 \([D]_B^2\)이다.</p></div>
+    <p>기저를 바꾸면 미분의 행렬도 바뀔까요? 아래 시뮬레이터에서 기저를 \(x = 1\) 근처의 테일러 기저 \((1, (x-1), (x-1)^2, (x-1)^3)\)로 바꿔 보세요. 다항식의 좌표는 완전히 달라지지만, 미분 \(D\)의 행렬은 놀랍게도 그대로입니다. \(\frac{d}{dx}(x-1)^k = k(x-1)^{k-1}\)이 \(\frac{d}{dx}x^k = kx^{k-1}\)과 모양이 같기 때문입니다. 반면 \(x\,\frac{d}{dx}\)는 단항식 기저에서 대각 행렬 \(\operatorname{diag}(0,1,2,3)\)이지만 테일러 기저에서는 대각이 아닙니다. 어떤 기저가 "좋은가"는 변환에 따라 다릅니다.</p>
+
+    <div class="sim" id="sim-cb-deriv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>다항식 공간의 선형 사상</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="cb-cv-deriv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>a₀ (상수항) <output id="cb-d-a0-out"></output></span><input type="range" id="cb-d-a0" min="-3" max="3" step="0.5" value="1"></label>
+          <label class="ctrl"><span>a₁ (x) <output id="cb-d-a1-out"></output></span><input type="range" id="cb-d-a1" min="-3" max="3" step="0.5" value="2"></label>
+          <label class="ctrl"><span>a₂ (x²) <output id="cb-d-a2-out"></output></span><input type="range" id="cb-d-a2" min="-3" max="3" step="0.5" value="-1"></label>
+          <label class="ctrl"><span>a₃ (x³) <output id="cb-d-a3-out"></output></span><input type="range" id="cb-d-a3" min="-3" max="3" step="0.5" value="0.5"></label>
+          <div class="ctrl"><span>사상 T</span><div class="seg" id="cb-d-op"><button data-value="D" class="on">d/dx</button><button data-value="D2">d²/dx²</button><button data-value="E">x·d/dx</button></div></div>
+          <div class="ctrl"><span>기저</span><div class="seg" id="cb-d-basis"><button data-value="mono" class="on">1, x, x², x³</button><button data-value="tay">1, (x−1), …</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">[p]_B</span><span class="v" id="cb-d-p">—</span></div>
+        <div class="stat"><span class="k">[T]_B</span><span class="v" id="cb-d-m">—</span></div>
+        <div class="stat"><span class="k">[T p]_B</span><span class="v" id="cb-d-tp">—</span></div>
+      </div>
+      <div class="cb-msg" id="cb-d-msg"></div>
+      <div class="cb-legend"><span><i style="background:var(--accent)"></i>p(x)</span><span><i style="background:var(--accent-2)"></i>T p(x)</span></div>
+      <div class="sim-note">해볼 것: ① d/dx에서 기저를 바꿔 보세요. [p]_B는 바뀌지만 [D]_B는 그대로입니다. ② x·d/dx로 바꾸면 단항식 기저에서는 대각 행렬이지만 테일러 기저에서는 아닙니다. 두 행렬은 닮았습니다(대각합 6, 행렬식 0). ③ a₁, a₂, a₃을 0으로 두면 d/dx의 결과가 0입니다. 상수 다항식이 미분의 핵입니다. 모델: 3차 이하 실계수 다항식, [T]_B = S⁻¹ M S (S는 기저 다항식의 단항식 계수를 열로 세운 행렬).</div>
+    </div>
+    <div class="callout deep"><strong>정의 7.5·정리 7.6 (동형 사상)</strong> 선형 사상 \(T: V\to W\)가 일대일이고 위로의 함수이면 <span class="term">동형 사상</span><span class="en">(isomorphism)</span>이라 하고, 그런 사상이 있으면 \(V\)와 \(W\)는 동형이라 한다. 차원이 \(n\)인 모든 벡터 공간 \(V\)는 \(\mathbb{R}^n\)과 동형이다.
+      <p><b>증명.</b> 기저 \(B\)를 하나 잡고 좌표 사상 \(\mathbf{v}\mapsto[\mathbf{v}]_B\)를 생각한다. 좌표의 정의에서 선형이고, 정리 7.1에 의해 일대일, 모든 숫자 목록 \((c_1,\dots,c_n)\)이 \(\sum c_i\mathbf{b}_i\)의 좌표이므로 위로의 함수다. ∎</p>
+      <p>이 정리 덕분에 다항식, 신호, 행렬처럼 "화살표가 아닌" 벡터도 기저만 고르면 \(\mathbb{R}^n\)의 숫자 목록과 행렬 계산으로 다룰 수 있다. 컴퓨터가 모든 선형대수를 숫자 배열로 하는 근거다.</p></div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="kernel-image">
+    <h2>핵과 상: 무엇이 사라지고 무엇이 남나</h2>
+    <div class="problem"><strong>측정값에서 원래 신호를 되찾을 수 있을까</strong>
+      <p>3차원 물체를 카메라로 찍으면 깊이 정보가 사라집니다. 같은 광선 위의 점은 모두 같은 화소에 찍히니까요. 선형 사상에서 이렇게 "보이지 않게 되는" 입력을 모은 것이 핵이고, 실제로 나올 수 있는 출력을 모은 것이 상입니다. 둘의 크기 사이에는 정확한 저울이 있습니다.</p></div>
+    <div class="callout deep"><strong>정의 7.6 (핵과 상)</strong> 선형 사상 \(T: V\to W\)에 대해
+      <div class="formula">$$\ker T = \{\mathbf{v}\in V : T(\mathbf{v}) = \mathbf{0}\}, \qquad \operatorname{im} T = \{T(\mathbf{v}) : \mathbf{v}\in V\}$$</div>
+      를 각각 \(T\)의 <span class="term">핵</span><span class="en">(kernel, null space)</span>과 <span class="term">상</span><span class="en">(image, range)</span>이라 한다. 핵은 \(V\)의, 상은 \(W\)의 부분공간이다. 행렬 \(A\)로 말하면 핵은 영공간 \(N(A)\), 상은 열공간 \(C(A)\)다(<a href="subspaces.html">5장</a>).</div>
+    <div class="callout deep"><strong>정리 7.7 (계수–퇴화차수 정리, 차원 정리)</strong> \(V\)가 유한 차원이면
+      <div class="formula">$$\dim\ker T + \dim\operatorname{im} T = \dim V.$$</div>
+      <p><b>증명 아이디어.</b> \(\ker T\)의 기저 \(\mathbf{k}_1,\dots,\mathbf{k}_r\)을 \(V\) 전체의 기저 \(\mathbf{k}_1,\dots,\mathbf{k}_r,\mathbf{u}_1,\dots,\mathbf{u}_s\)로 늘린다. \(T(\mathbf{k}_i) = \mathbf{0}\)이므로 상은 \(T(\mathbf{u}_1),\dots,T(\mathbf{u}_s)\)가 생성한다. 이들이 독립임을 보이면 \(\dim\operatorname{im}T = s\)이고 \(r + s = \dim V\)이다. \(\sum c_jT(\mathbf{u}_j) = \mathbf{0}\)이면 \(\sum c_j\mathbf{u}_j\in\ker T\)이므로 \(\mathbf{k}_i\)들의 결합인데, 전체가 기저이므로 모든 \(c_j = 0\)이다. ∎ (6장에서 행렬의 언어로 다시 증명한다.)</p>
+      <p><b>따름정리.</b> \(T\)가 일대일 \(\iff \ker T = \{\mathbf{0}\}\). 이유: \(T\mathbf{u} = T\mathbf{v} \iff T(\mathbf{u}-\mathbf{v}) = \mathbf{0}\). 특히 \(\dim V = \dim W\)이면 일대일, 위로, 동형이 모두 같은 조건이다.</p></div>
+    <p>미분 \(D: \mathcal{P}_3\to\mathcal{P}_3\)으로 확인해 봅시다. 핵은 상수 다항식(1차원), 상은 2차 이하 다항식(3차원), 합은 \(1 + 3 = 4 = \dim\mathcal{P}_3\)입니다. 미분은 상수항을 잊어버리고, 그래서 적분에는 "\(+C\)"가 붙습니다. 적분 상수는 미분의 핵을 되돌릴 수 없다는 고백입니다.</p>
+
+    <div class="sim" id="sim-cb-kernel">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>사라지는 방향, 남는 방향</h3></div>
+      <div class="split">
+        <div><canvas id="cb-cv-ker-a"></canvas><span class="cap">입력 공간: 핵(빨강)</span></div>
+        <div><canvas id="cb-cv-ker-b"></canvas><span class="cap">출력 공간: 상(보라)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px">
+          <div class="ctrl"><span>행렬 A</span>
+            <div class="mat" style="--n:2"><input id="cb-k11" value="1" inputmode="decimal" aria-label="a11"><input id="cb-k12" value="2" inputmode="decimal" aria-label="a12"><input id="cb-k21" value="0.5" inputmode="decimal" aria-label="a21"><input id="cb-k22" value="1" inputmode="decimal" aria-label="a22"></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="cb-k-pre">
+            <option value="r1">계수 1 [1 2; 0.5 1]</option>
+            <option value="inv">가역 [1.5 0.5; −0.5 1]</option>
+            <option value="proj">x축 사영 [1 0; 0 0]</option>
+            <option value="zero">영행렬</option>
+          </select></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">dim ker A</span><span class="v" id="cb-k-null">—</span></div>
+        <div class="stat"><span class="k">dim im A (계수)</span><span class="v" id="cb-k-rank">—</span></div>
+        <div class="stat"><span class="k">합 = dim ℝ²</span><span class="v" id="cb-k-sum">—</span></div>
+        <div class="stat"><span class="k">일대일? 위로?</span><span class="v" id="cb-k-inj">—</span></div>
+      </div>
+      <div class="cb-msg" id="cb-k-msg"></div>
+      <div class="sim-note">해볼 것: ① 왼쪽의 x를 끌어 보세요. 계수 1인 행렬에서는 x를 지나 핵과 평행한 점선 위의 모든 점이 오른쪽 같은 점 Ax로 갑니다. 그래서 Ax만 보고 x를 되찾을 수 없습니다. ② '가역'에서는 핵이 원점 하나, 상이 평면 전체입니다. ③ 행렬 칸을 고쳐 열 하나를 다른 열의 배수로 만들면 상이 직선으로 줄고 핵이 나타납니다. 모델: 점 묶음은 −3…3 격자점, 색은 입력 점의 방향(각도)입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="color-space">
+    <h2>응용: 색 공간, 좌표계, 결정 격자</h2>
+    <div class="problem"><strong>사진에서 무엇을 버려야 눈치채지 못할까</strong>
+      <p>사진 한 장의 데이터를 반으로 줄여야 합니다. R, G, B 중 하나의 해상도를 줄이면 그 색 성분이 많은 경계에서 색과 밝기가 함께 번집니다. 숫자를 버리기 전에, 눈이 예민한 정보와 둔한 정보가 서로 다른 좌표에 담기도록 기저를 바꿀 수는 없을까요?</p></div>
+    <p>JPEG 파일 형식(JFIF)은 ITU-R BT.601 표준의 계수로 RGB를 밝기 \(Y\)와 두 색차 \(C_b, C_r\)로 바꿉니다. 8비트 값(0–255) 기준으로</p>
+    <div class="formula">$$\begin{bmatrix}Y\\ C_b\\ C_r\end{bmatrix} = \begin{bmatrix}0.299 & 0.587 & 0.114\\ -0.168736 & -0.331264 & 0.5\\ 0.5 & -0.418688 & -0.081312\end{bmatrix}\begin{bmatrix}R\\ G\\ B\end{bmatrix} + \begin{bmatrix}0\\ 128\\ 128\end{bmatrix}.$$
+      <div class="where">\(Y\)의 계수는 초록에 가장 크다. 사람 눈의 밝기 감도가 초록 근처에서 가장 높기 때문이다. \(C_b, C_r\)의 각 행은 합이 0이라서, 회색(\(R = G = B\))이면 색차가 정확히 128(중립)이 된다. 상수 128은 음수가 나오지 않게 옮긴 것이고, 이 때문에 엄밀히는 아핀 변환이다. 선형 부분은 3×3 행렬이다.</div></div>
+    <p>역변환은 \(R = Y + 1.402(C_r - 128)\), \(G = Y - 0.344136(C_b - 128) - 0.714136(C_r - 128)\), \(B = Y + 1.772(C_b - 128)\)입니다. 이 계수들이 위 3×3 행렬의 역행렬(반올림한 값)이라는 것을 확인해 볼 수 있습니다. 행렬의 행 하나하나를 "새 기저로 잰 성분을 얻는 내적"으로 읽으면, 이 변환은 색 공간의 좌표축을 밝기 축 하나와 색 축 둘로 돌려 세운 것입니다.</p>
+    <div class="callout tip"><strong>예제 7.4 · 주황색 하나 변환하기</strong> \((R, G, B) = (200, 100, 50)\)을 YCbCr로 바꿔라.
+      <p><b>풀이.</b> \(Y = 0.299\cdot200 + 0.587\cdot100 + 0.114\cdot50 = 59.8 + 58.7 + 5.7 = 124.2\). \(C_b = 128 - 33.747 - 33.126 + 25 = 86.13\). \(C_r = 128 + 100 - 41.869 - 4.066 = 182.07\). 밝기는 중간 정도, \(C_b < 128\)(파랑이 적다), \(C_r > 128\)(빨강이 많다). 주황이 맞다.</p></div>
+
+    <div class="sim" id="sim-cb-ycc">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>RGB ↔ YCbCr 변환기</h3></div>
+      <div class="cb-sw" id="cb-y-sw">
+        <div><i id="cb-y-orig"></i><span id="cb-y-orig-t">원래 색</span></div>
+        <div><i id="cb-y-lum"></i><span>Y만 (흑백 사진)</span></div>
+        <div><i id="cb-y-chr"></i><span>색차만 (Y = 128 고정)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 18px">
+          <label class="ctrl"><span>R <output id="cb-y-r-out"></output></span><input type="range" id="cb-y-r" min="0" max="255" step="1" value="200"></label>
+          <label class="ctrl"><span>G <output id="cb-y-g-out"></output></span><input type="range" id="cb-y-g" min="0" max="255" step="1" value="100"></label>
+          <label class="ctrl"><span>B <output id="cb-y-b-out"></output></span><input type="range" id="cb-y-b" min="0" max="255" step="1" value="50"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Y (밝기)</span><span class="v" id="cb-y-y">—</span></div>
+        <div class="stat"><span class="k">Cb (파랑 − 밝기)</span><span class="v" id="cb-y-cb">—</span></div>
+        <div class="stat"><span class="k">Cr (빨강 − 밝기)</span><span class="v" id="cb-y-cr">—</span></div>
+        <div class="stat"><span class="k">역변환으로 되돌린 RGB</span><span class="v" id="cb-y-back">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① R = G = B로 맞추면 Cb = Cr = 128입니다. 회색은 색차 축의 원점입니다. ② 순수한 초록(0, 255, 0)과 파랑(0, 0, 255)의 Y를 비교해 보세요. 같은 "최대 밝기"여도 눈에는 초록이 훨씬 밝습니다. ③ 되돌린 RGB가 원래 값과 소수점 아래까지 같습니다. 기저 변환은 정보를 잃지 않습니다. 모델: JFIF(BT.601) 전범위 공식, 표시할 때만 0–255로 자릅니다.</div>
+    </div>
+
+    <p>기저 변환 자체는 정보를 하나도 잃지 않습니다. 이득은 그다음에 옵니다. 밝기 \(Y\)는 모든 화소에서 그대로 두고, 색차 \(C_b, C_r\)만 2×2 화소 묶음마다 평균 하나로 줄이는 것이 4:2:0 <span class="term">색차 부표본화</span><span class="en">(chroma subsampling)</span>입니다. 아래에서 같은 양의 숫자를 YCbCr에서 버릴 때와 RGB에서 버릴 때를 비교해 보세요.</p>
+
+    <div class="sim" id="sim-cb-jpeg">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>어느 좌표에서 버릴 것인가: 색차 부표본화</h3></div>
+      <div class="sim-view"><canvas id="cb-cv-jpeg"></canvas></div>
+      <div class="sim-body">
+        <div class="sim-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px">
+          <div class="ctrl"><span>버리는 좌표계</span><div class="seg" id="cb-j-space"><button data-value="ycc" class="on">YCbCr (Cb, Cr를 줄임)</button><button data-value="rgb">RGB (R, B를 줄임)</button></div></div>
+          <div class="ctrl"><span>묶음 크기</span><div class="seg" id="cb-j-block"><button data-value="1">1×1</button><button data-value="2" class="on">2×2 (4:2:0)</button><button data-value="4">4×4</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">화소당 표본 수</span><span class="v" id="cb-j-samples">—</span></div>
+        <div class="stat"><span class="k">PSNR · YCbCr에서 버림</span><span class="v" id="cb-j-pycc">—</span></div>
+        <div class="stat"><span class="k">PSNR · RGB에서 버림</span><span class="v" id="cb-j-prgb">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 2×2에서 두 좌표계의 PSNR(높을수록 원본에 가깝다)을 비교해 보세요. 버린 숫자의 양은 같습니다. ② 'RGB'로 바꾸고 오차 그림을 보면 글자와 줄무늬의 경계, 즉 밝기가 바뀌는 곳에 오차가 몰립니다. YCbCr에서는 밝기가 온전해 오차가 색 경계에만 남습니다. ③ 4×4로 키워도 YCbCr 쪽 사진은 형태가 또렷합니다. 모델: 합성 시험 그림(160×100), 묶음 평균 후 최근접 복원, 오차는 5배로 확대해 표시. 실제 JPEG는 여기에 DCT와 양자화를 더합니다.</div>
+    </div>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="육방 격자의 분수 좌표">
+        <defs><marker id="cb-ah8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+          <marker id="cb-ah9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="8" class="f-surface"/>
+        <g style="fill:var(--text-dim)">
+          <circle cx="80" cy="220" r="4"/><circle cx="160" cy="220" r="4"/><circle cx="240" cy="220" r="4"/><circle cx="320" cy="220" r="4"/><circle cx="400" cy="220" r="4"/>
+          <circle cx="120" cy="151" r="4"/><circle cx="200" cy="151" r="4"/><circle cx="280" cy="151" r="4"/><circle cx="360" cy="151" r="4"/><circle cx="440" cy="151" r="4"/>
+          <circle cx="160" cy="82" r="4"/><circle cx="240" cy="82" r="4"/><circle cx="320" cy="82" r="4"/><circle cx="400" cy="82" r="4"/><circle cx="480" cy="82" r="4"/>
+        </g>
+        <line x1="80" y1="220" x2="156" y2="220" style="stroke:var(--accent);stroke-width:3.5" marker-end="url(#cb-ah8)"/>
+        <line x1="80" y1="220" x2="118" y2="155" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#cb-ah9)"/>
+        <text x="112" y="244" class="t" style="fill:var(--accent);font-weight:700">a₁</text>
+        <text x="76" y="176" class="t" style="fill:var(--accent-2);font-weight:700">a₂</text>
+        <path d="M80 220 L240 220 L320 82" style="fill:none;stroke:var(--text-dim);stroke-width:1.6;stroke-dasharray:5 4"/>
+        <circle cx="320" cy="82" r="7" style="fill:none;stroke:var(--accent);stroke-width:2.4"/>
+        <text x="330" y="66" class="t-mono">(2, 2) in a₁, a₂</text>
+        <text x="520" y="70" class="t" style="font-weight:700">격자 기저 (그래핀, a = 2.46 Å)</text>
+        <text x="520" y="98" class="t-mono">a₁ = a(1, 0)</text>
+        <text x="520" y="122" class="t-mono">a₂ = a(1/2, √3/2)</text>
+        <text x="520" y="160" class="t-dim">격자점 = 정수 좌표</text>
+        <text x="520" y="184" class="t-dim">데카르트 좌표: (3a, √3·a)</text>
+        <text x="520" y="208" class="t-dim">≈ (7.38 Å, 4.26 Å)</text>
+      </svg>
+      <figcaption><b>그림 7-5.</b> 결정의 격자 기저. 격자점은 a₁, a₂의 정수 결합이고, 원자 위치는 이 기저에 대한 분수 좌표로 적는다. 데카르트 좌표로 바꾸는 것은 x = P[x]_B 한 번이다. 결정 구조 데이터 파일(CIF)도 원자 위치를 이렇게 격자 벡터에 대한 분수 좌표로 저장한다.</figcaption>
+    </figure>
+    <p>로봇 공학과 컴퓨터 비전에서는 기저 변환이 매 순간 일어납니다. 로봇의 각 관절, 손끝의 공구, 카메라, 작업대는 저마다 자기 좌표계(프레임)를 가지고, 한 프레임의 좌표를 다른 프레임으로 옮기는 회전 행렬과 평행이동이 2장의 동차 행렬로 이어집니다. 카메라가 본 물체 위치를 로봇 손끝 기준으로 바꾸는 일은 정리 7.2의 \(P_{C\leftarrow B} = P_C^{-1}P_B\)를 동차 행렬로 쓴 것이고, 회전 부분이 직교 행렬이라 역행렬이 전치로 끝납니다. 2장의 <a href="matrices.html#homogeneous">동차 좌표</a> 절과 함께 읽으세요.</p>
+  </section>
+
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"문제에 맞는 기저를 골라라"는 선형대수 전체에서 가장 자주 반복되는 전략입니다.</p>
+    <div class="uses">
+      <a href="eigen.html"><small>LINEARBOOK · 11장</small>고유 기저와 대각화<br><span>변환이 늘이기만 하는 방향을 기저로 쓰면 A = PDP⁻¹. 이 장의 좋은 기저를 체계적으로 찾는 법.</span></a>
+      <a href="svd.html"><small>LINEARBOOK · 14장</small>특이값 분해<br><span>입력과 출력에 서로 다른 직교 기저를 쓰면 어떤 행렬도 대각 행렬이 된다.</span></a>
+      <a href="pca.html"><small>LINEARBOOK · 15장</small>주성분 분석<br><span>데이터가 가장 넓게 퍼진 방향을 기저로. 기저를 바꾼 뒤 작은 성분을 버리는 것은 JPEG와 같은 발상이다.</span></a>
+      <a href="../../foundations/chapters/linalg.html#ccm"><small>MATHBOOK</small>카메라 색 보정 행렬<br><span>센서 RGB를 표준 RGB로 옮기는 3×3 행렬. 이 장의 YCbCr와 같은 색 공간의 기저 변환.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 기저<br><span>신호를 사인파 기저로 다시 쓰면 필터는 대각 행렬이 된다. JPEG의 DCT도 기저 변환이다.</span></a>
+      <a href="https://semi.euiyun.com/sensor/"><small>SENSORBOOK</small>이미지 센서의 색 처리<br><span>베이어 배열, 색 보간, 색 공간 변환이 이어지는 영상 신호 처리 파이프라인.</span></a>
+      <a href="https://science.euiyun.com/solid-state/"><small>고체물리</small>결정 구조와 역격자<br><span>격자 기저에 대한 분수 좌표, 밀러 지수, 역격자 벡터.</span></a>
+    </div>
+  </section>
+
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>좌표는 기저에 대한 상대적 숫자다. 기저의 <b>생성</b> 조건은 좌표가 있음을, <b>독립</b> 조건은 좌표가 하나뿐임을 보장한다.</li>
+      <li><b>기저 변환:</b> \(\mathbf{x} = P_B[\mathbf{x}]_B\), \([\mathbf{x}]_B = P_B^{-1}\mathbf{x}\), 두 비표준 기저 사이는 \(P_{C\leftarrow B} = P_C^{-1}P_B\). 직교 기저면 역행렬은 전치다.</li>
+      <li><b>기저 \(B\)에서 본 변환:</b> \([T]_B\)의 \(j\)열은 \([T(\mathbf{b}_j)]_B\)이고, \([T]_B = P^{-1}AP\)다.</li>
+      <li><b>닮은 행렬</b>은 같은 변환의 다른 기록이며, 행렬식·대각합·계수·특성 다항식(고유값)이 같다. 불변량이 다르면 닮지 않았다.</li>
+      <li><b>좋은 기저</b>를 고르면 \(A = PDP^{-1}\), \(A^k = PD^kP^{-1}\). 비스듬한 반사는 \(\operatorname{diag}(1,-1)\)이다. 회전·전단처럼 실수 대각화가 안 되는 변환도 있다.</li>
+      <li>다항식처럼 화살표가 아닌 공간도 기저를 고르면 \(\mathbb{R}^n\)과 동형이다. 미분은 대각선 바로 위에 1, 2, 3이 놓인 행렬이고, 합성은 행렬 곱이다.</li>
+      <li><b>핵</b>은 사라지는 입력, <b>상</b>은 나올 수 있는 출력. \(\dim\ker T + \dim\operatorname{im}T = \dim V\), 일대일 \(\iff \ker T = \{\mathbf{0}\}\).</li>
+      <li><b>JPEG:</b> RGB → YCbCr 기저 변환은 정보를 잃지 않지만, 밝기와 색을 다른 좌표로 나눠 색차만 줄일 수 있게 한다.</li>
+    </ol>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\mathbf{b}_1 = (1, 0)\), \(\mathbf{b}_2 = (1, 1)\)일 때 \(\mathbf{x} = (3, 2)\)의 좌표 \([\mathbf{x}]_B\)는?</p><div class="opts">
+        <button class="opt">(3, 2)</button>
+        <button class="opt" data-correct>(1, 2)</button>
+        <button class="opt">(2, 1)</button>
+        <button class="opt">(5, 2)</button>
+      </div><div class="quiz-exp">\(c_1(1,0) + c_2(1,1) = (c_1 + c_2, c_2) = (3, 2)\)에서 \(c_2 = 2\), \(c_1 = 1\). 확인: \(1\cdot(1,0) + 2\cdot(1,1) = (3,2)\). (5, 2)는 \(P_B\)를 좌표 (3, 2)에 곱한 것으로, 방향을 거꾸로 쓴 실수다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 기저 행렬 \(P_B = [\mathbf{b}_1\ \mathbf{b}_2]\)는 어느 방향의 변환인가?</p><div class="opts">
+        <button class="opt" data-correct>B-좌표를 받아 표준 좌표를 내놓는다</button>
+        <button class="opt">표준 좌표를 받아 B-좌표를 내놓는다</button>
+        <button class="opt">B-좌표를 C-좌표로 바꾼다</button>
+        <button class="opt">기저 벡터를 표준 기저로 돌린다</button>
+      </div><div class="quiz-exp">\(P_B[\mathbf{x}]_B = c_1\mathbf{b}_1 + c_2\mathbf{b}_2 = \mathbf{x}\). 좌표만큼 기저 벡터를 더하면 실제 화살표가 나온다. 표준 → B 방향은 \(P_B^{-1}\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(A\)와 \(B = P^{-1}AP\)에 대해 <b>항상</b> 같다고 할 수 <b>없는</b> 것은?</p><div class="opts">
+        <button class="opt">행렬식</button>
+        <button class="opt">대각합</button>
+        <button class="opt">고유값</button>
+        <button class="opt" data-correct>(1, 1) 원소</button>
+      </div><div class="quiz-exp">행렬식·대각합·고유값·계수는 기저에 무관한 변환 자체의 성질이라 같다. 개별 원소는 좌표계에 따라 얼마든지 바뀐다. 시뮬레이터에서 기저를 바꿔 보면 원소는 모두 바뀌지만 tr·det·rank는 그대로였다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 직선 \(y = x\)에 대한 반사를 기저 \(\mathbf{b}_1 = (1, 1)\), \(\mathbf{b}_2 = (1, -1)\)로 쓴 행렬은?</p><div class="opts">
+        <button class="opt">\(\begin{bmatrix}0 & 1\\ 1 & 0\end{bmatrix}\)</button>
+        <button class="opt" data-correct>\(\begin{bmatrix}1 & 0\\ 0 & -1\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}-1 & 0\\ 0 & 1\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}1 & 0\\ 0 & 0\end{bmatrix}\)</button>
+      </div><div class="quiz-exp">\(\mathbf{b}_1\)은 거울 위에 있어 그대로(\(+1\)), \(\mathbf{b}_2\)는 거울에 수직이라 뒤집힌다(\(-1\)). 첫째 보기는 같은 반사의 <b>표준</b> 행렬이다. 두 행렬은 닮았다: 대각합 0, 행렬식 −1로 같다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 기저 \((1, x, x^2, x^3)\)에서 미분 \(D\)의 행렬로 다항식 \(p = 2 + x^3\)을 미분한 결과의 좌표는?</p><div class="opts">
+        <button class="opt">(0, 0, 0, 3)</button>
+        <button class="opt" data-correct>(0, 0, 3, 0)</button>
+        <button class="opt">(2, 0, 3, 0)</button>
+        <button class="opt">(0, 3, 0, 0)</button>
+      </div><div class="quiz-exp">\(p' = 3x^2\)이므로 좌표는 \(x^2\) 칸에 3: (0, 0, 3, 0). 행렬로는 4열(=\(x^3\)의 미분 \(3x^2\))에 1을 곱한 것이다. 상수 2는 미분의 핵에 속해 사라진다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 선형 사상 \(T: \mathbb{R}^5\to\mathbb{R}^3\)의 상이 \(\mathbb{R}^3\) 전체이다. \(\dim\ker T\)는?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">1</button>
+        <button class="opt" data-correct>2</button>
+        <button class="opt">3</button>
+      </div><div class="quiz-exp">계수–퇴화차수 정리: \(\dim\ker T = \dim V - \dim\operatorname{im}T = 5 - 3 = 2\). 입력이 출력보다 큰 공간이면 핵이 반드시 생긴다. 즉 \(\mathbb{R}^5\to\mathbb{R}^3\) 선형 사상은 절대 일대일일 수 없다.</div></div>
+
+      <div class="quiz-q"><p>Q7. JPEG가 색차 부표본화 전에 RGB를 YCbCr로 바꾸는 가장 중요한 이유는?</p><div class="opts">
+        <button class="opt">YCbCr가 RGB보다 숫자가 적어서</button>
+        <button class="opt">변환 자체가 데이터를 압축해서</button>
+        <button class="opt" data-correct>눈이 예민한 밝기와 둔한 색차를 다른 좌표로 나눠, 색차만 줄일 수 있게 하려고</button>
+        <button class="opt">YCbCr가 음수를 표현할 수 없어서</button>
+      </div><div class="quiz-exp">기저 변환은 숫자 3개를 숫자 3개로 바꿀 뿐이고 역변환으로 되돌릴 수 있어 그 자체로는 압축이 아니다. 이득은 정보를 "버려도 되는 축"에 모은 다음 그 축의 해상도만 줄일 때 생긴다. 시뮬레이터에서 같은 양을 RGB에서 버리면 PSNR이 더 낮았다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 30° 회전 행렬 \(R\)에 대해 \(P^{-1}RP\)가 실수 대각 행렬이 되는 실수 가역 행렬 \(P\)는?</p><div class="opts">
+        <button class="opt">\(P = R\)</button>
+        <button class="opt">\(P = R^{\mathsf T}\)</button>
+        <button class="opt">\(P\)의 열이 \(x\)축, \(y\)축이면 된다</button>
+        <button class="opt" data-correct>없다</button>
+      </div><div class="quiz-exp">대각 행렬이 되려면 \(R\mathbf{b} = \lambda\mathbf{b}\)인, 즉 방향이 그대로인 실수 벡터 \(\mathbf{b}\)가 두 개 있어야 한다. 30° 회전은 모든 0이 아닌 벡터의 방향을 바꾸므로 그런 벡터가 없다. 고유값이 복소수 \(e^{\pm i\pi/6}\)이기 때문이며, 11장에서 다룬다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const CB = {
+  ap: (M, x, y) => [M[0][0] * x + M[0][1] * y, M[1][0] * x + M[1][1] * y],
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  det2: (M) => M[0][0] * M[1][1] - M[0][1] * M[1][0],
+  inv2(M) { const d = CB.det2(M); return [[M[1][1] / d, -M[0][1] / d], [-M[1][0] / d, M[0][0] / d]]; },
+  rot: (t) => [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]],
+  /** 가우스–조르당 역행렬(n×n), 특이하면 null */
+  inv(M) {
+    const n = M.length, A = M.map((r, i) => [...r, ...M.map((_, j) => (i === j ? 1 : 0))]);
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[p][k])) p = i;
+      if (Math.abs(A[p][k]) < 1e-12) return null;
+      [A[k], A[p]] = [A[p], A[k]];
+      const d = A[k][k]; A[k] = A[k].map((v) => v / d);
+      for (let i = 0; i < n; i++) if (i !== k) { const f = A[i][k]; A[i] = A[i].map((v, j) => v - f * A[k][j]); }
+    }
+    return A.map((r) => r.slice(n));
+  },
+  num(v, d = 2) {
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  vec: (v, d = 2) => "(" + v.map((x) => CB.num(x, d)).join(", ") + ")",
+  mat(M, d = 2, hl) {
+    const cells = M.map((r, i) => r.map((v, j) => `<span class="${hl ? hl(i, j, v) : ""}">${CB.num(v, d)}</span>`).join("")).join("");
+    return `<span class="cb-m" style="--c:${M[0].length}">${cells}</span>`;
+  },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : null; },
+  F: [[0.2, 0], [0.4, 0], [0.4, 0.4], [0.7, 0.4], [0.7, 0.58], [0.4, 0.58], [0.4, 0.8], [0.8, 0.8], [0.8, 1], [0.2, 1]],
+  fill(P, pts, color, alpha) {
+    const ctx = P.ctx; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y))));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  grid(P, M, o = {}) {
+    const n = o.n || 12, ctx = P.ctx;
+    ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 1; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.beginPath();
+    for (let i = -n; i <= n; i++) {
+      let [x1, y1] = CB.ap(M, i, -n), [x2, y2] = CB.ap(M, i, n);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+      [x1, y1] = CB.ap(M, -n, i); [x2, y2] = CB.ap(M, n, i);
+      ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  rank2(M, eps = 1e-9) {
+    const big = Math.max(...M.flat().map(Math.abs));
+    if (big < eps) return 0;
+    return Math.abs(CB.det2(M)) < eps * Math.max(1, big * big) ? 1 : 2;
+  },
+  tween(ms, step, done) {
+    let t0 = null, id = 0, alive = true;
+    const f = (ts) => { if (!alive) return; if (t0 === null) t0 = ts; const u = Math.min(1, (ts - t0) / ms); step(MB.smooth(0, 1, u)); if (u < 1) id = requestAnimationFrame(f); else done && done(); };
+    id = requestAnimationFrame(f);
+    return () => { alive = false; cancelAnimationFrame(id); };
+  },
+};
+
+/* ================================================================ 1. 두 잣대로 잰 같은 점 */
+(function () {
+  const PRE = {
+    tilt: [[2, 1], [-0.5, 1.2]], std: [[1, 0], [0, 1]], hex: [[1.5, 0], [0.75, 1.3]],
+    stretch: [[2, 0], [0, 0.5]], near: [[2, 1], [1.6, 1]],
+  };
+  const showGrid = MB.check("cb-c-grid", () => pl.redraw());
+  const showPath = MB.check("cb-c-path", () => pl.redraw());
+  const msg = document.getElementById("cb-c-msg");
+  const pts = [{ x: 2, y: 1, snap: 0.1, label: "b₁" }, { x: -0.5, y: 1.2, snap: 0.1, label: "b₂" }, { x: 3, y: 2, snap: 0.1, label: "x" }];
+  const pl = MB.plane("#cb-cv-coords", {
+    x: [-5, 5], aspect: 0.78, maxHeight: 540, minHeight: 300, points: pts,
+    draw(P, api) {
+      const C = P.P, [b1, b2, X] = api.points;
+      b1.color = C.accent; b2.color = C.accent2; X.color = C.text;
+      const M = [[b1.x, b2.x], [b1.y, b2.y]], d = CB.det2(M), ok = Math.abs(d) > 1e-6;
+      if (ok && showGrid()) CB.grid(P, M, { color: C.accent, alpha: 0.32, n: 16 });
+      let c = null;
+      if (ok) {
+        c = CB.ap(CB.inv2(M), X.x, X.y);
+        if (showPath()) {
+          const mx = c[0] * b1.x, my = c[0] * b1.y;
+          P.line(0, 0, mx, my, { color: C.accent, width: 2.2, dash: [6, 4] });
+          P.line(mx, my, X.x, X.y, { color: C.accent2, width: 2.2, dash: [6, 4] });
+        }
+      }
+      P.arrow(0, 0, X.x, X.y, { color: C.text, width: 2.6 });
+      P.arrow(0, 0, b1.x, b1.y, { color: C.accent, width: 3.4 });
+      P.arrow(0, 0, b2.x, b2.y, { color: C.accent2, width: 3.4 });
+      MB.stat("cb-c-x", CB.vec([X.x, X.y], 2));
+      MB.stat("cb-c-p", CB.mat(M, 2));
+      MB.stat("cb-c-det", CB.num(d, 3));
+      if (!ok) {
+        MB.stat("cb-c-xb", "정의 안 됨");
+        msg.className = "cb-msg bad";
+        msg.textContent = "b₁과 b₂가 한 직선 위에 있어 기저가 아닙니다. 이 직선 밖의 점은 어떤 결합으로도 닿지 않고, 닿는 점도 결합이 하나로 정해지지 않습니다.";
+        return;
+      }
+      MB.stat("cb-c-xb", CB.vec(c, 2));
+      const cond = (() => { const s = Math.hypot(...M.flat()); return (s * s) / Math.abs(d); })();
+      msg.className = "cb-msg";
+      msg.innerHTML = `x = <b>${CB.num(c[0])}</b>·b₁ + <b>${CB.num(c[1])}</b>·b₂ = ${CB.vec([X.x, X.y])}` + (cond > 8 ? ` · <b>기저가 거의 평행합니다</b>: x를 조금만 움직여도 좌표가 크게 변합니다.` : "");
+    },
+  });
+  document.getElementById("cb-c-pre").addEventListener("change", (e) => {
+    const B = PRE[e.target.value];
+    pts[0].x = B[0][0]; pts[0].y = B[0][1]; pts[1].x = B[1][0]; pts[1].y = B[1][1];
+    pl.redraw();
+  });
+  document.getElementById("cb-c-int").addEventListener("click", () => {
+    const M = [[pts[0].x, pts[1].x], [pts[0].y, pts[1].y]];
+    if (Math.abs(CB.det2(M)) < 1e-6) return;
+    const c = CB.ap(CB.inv2(M), pts[2].x, pts[2].y).map(Math.round);
+    const [x, y] = CB.ap(M, c[0], c[1]);
+    pts[2].x = x; pts[2].y = y; pl.redraw();
+  });
+})();
+
+/* ================================================================ 2. 같은 변환을 두 좌표계로 */
+(function () {
+  const MAPS = {
+    refl: { A: [[-0.6, 0.8], [0.8, 0.6]] }, proj: { A: [[0.2, 0.4], [0.4, 0.8]] },
+    sym: { A: [[2, 1], [1, 2]] }, shear: { A: [[1, 1], [0, 1]] }, rot: { A: CB.rot(Math.PI / 6) },
+  };
+  const TILT = [[1, -0.6], [0.4, 1]];
+  let key = "refl", t = 1, cancel = null;
+  const msg = document.getElementById("cb-s-msg");
+  const basis = MB.seg("cb-s-basis", () => update());
+  function basisMatrix() {
+    const A = MAPS[key].A, b = basis();
+    if (b === "std") return { P: [[1, 0], [0, 1]] };
+    if (b === "tilt") return { P: TILT };
+    const e = MB.mat.eig2(A);
+    if (!e.values) return { P: null, why: "회전은 방향이 그대로인 실수 벡터가 없어 맞춘 기저를 만들 수 없습니다(고유값이 복소수)." };
+    const [v1, v2] = e.vectors, P = [[v1[0], v2[0]], [v1[1], v2[1]]];
+    if (Math.abs(CB.det2(P)) < 1e-6) return { P: null, why: "전단은 그대로인 방향이 x축 하나뿐이라 기저를 이룰 두 번째 방향이 없습니다." };
+    // 길이를 보기 좋게: 단위 벡터, 첫 성분이 위를 향하도록
+    return { P };
+  }
+  const draw = (side) => (P) => {
+    const C = P.P, A = MAPS[key].A, info = basisMatrix(), Pm = info.P || [[1, 0], [0, 1]];
+    const Pi = CB.inv2(Pm);
+    const I = [[1, 0], [0, 1]], At = A.map((r, i) => r.map((v, j) => I[i][j] + (v - I[i][j]) * t));
+    if (side === "a") {
+      if (info.P) CB.grid(P, Pm, { color: C.accent2, alpha: 0.35, n: 12 });
+      CB.fill(P, CB.F.map(([x, y]) => [2 * x, 2 * y]), C.faint, 0.55);
+      CB.fill(P, CB.F.map(([x, y]) => CB.ap(At, 2 * x, 2 * y)), C.accent, 0.8);
+      if (info.P) {
+        P.arrow(0, 0, Pm[0][0], Pm[1][0], { color: C.accent2, width: 3, label: "b₁" });
+        P.arrow(0, 0, Pm[0][1], Pm[1][1], { color: C.accent2, width: 3, label: "b₂" });
+      }
+    } else {
+      const Bt = CB.mul(CB.mul(Pi, At), Pm);
+      CB.grid(P, I, { color: C.accent2, alpha: 0.35, n: 12 });
+      const F0 = CB.F.map(([x, y]) => CB.ap(Pi, 2 * x, 2 * y));
+      CB.fill(P, F0, C.faint, 0.55);
+      CB.fill(P, F0.map(([x, y]) => CB.ap(Bt, x, y)), C.accent, 0.8);
+      P.arrow(0, 0, 1, 0, { color: C.accent2, width: 3, label: "[b₁]" });
+      P.arrow(0, 0, 0, 1, { color: C.accent2, width: 3, label: "[b₂]" });
+      if (!info.P) P.text("기저를 만들 수 없음", P.x0 + 0.2, P.y1 - 0.35, { color: C.bad, bold: true, size: 13 });
+    }
+  };
+  const opt = { x: [-3.2, 3.2], aspect: 0.9, maxHeight: 400, minHeight: 220, points: [] };
+  const pa = MB.plane("#cb-cv-sim-a", { ...opt, draw: draw("a") });
+  const pb = MB.plane("#cb-cv-sim-b", { ...opt, draw: draw("b") });
+  function update() {
+    const A = MAPS[key].A, info = basisMatrix(), Pm = info.P || [[1, 0], [0, 1]];
+    const B = CB.mul(CB.mul(CB.inv2(Pm), A), Pm);
+    const diag = Math.abs(B[0][1]) < 1e-9 && Math.abs(B[1][0]) < 1e-9;
+    MB.stat("cb-s-a", CB.mat(A, 2));
+    MB.stat("cb-s-b", CB.mat(B, 2, (i, j) => (diag && i === j ? "hl" : diag ? "dim" : "")));
+    const tr = (M) => M[0][0] + M[1][1];
+    MB.stat("cb-s-inv", `${CB.num(tr(A))} · ${CB.num(CB.det2(A))} · ${CB.rank2(A)} <span style="color:var(--text-faint)">|</span> ${CB.num(tr(B))} · ${CB.num(CB.det2(B))} · ${CB.rank2(B)}`);
+    if (!info.P) { msg.className = "cb-msg bad"; msg.textContent = info.why; }
+    else if (diag) { msg.className = "cb-msg ok"; msg.textContent = `이 기저에서 변환은 대각 행렬 diag(${CB.num(B[0][0])}, ${CB.num(B[1][1])}): b₁ 방향은 ${CB.num(B[0][0])}배, b₂ 방향은 ${CB.num(B[1][1])}배 늘이기만 합니다.`; }
+    else { msg.className = "cb-msg"; msg.textContent = "오른쪽은 기저 B의 눈금을 반듯하게 편 화면입니다. 같은 변환이 다른 숫자의 행렬로 보입니다. 왼쪽과 오른쪽의 tr·det·rank를 비교해 보세요."; }
+    pa.redraw(); pb.redraw();
+  }
+  document.getElementById("cb-s-map").addEventListener("change", (e) => { key = e.target.value; update(); });
+  document.getElementById("cb-s-play").addEventListener("click", () => {
+    if (cancel) cancel();
+    cancel = CB.tween(1400, (u) => { t = u; pa.redraw(); pb.redraw(); }, () => { cancel = null; });
+  });
+  update();
+})();
+
+/* ================================================================ 3. 비스듬한 직선에 맞춘 기저 */
+(function () {
+  const pts = [{ x: 2.5, y: 0.5, snap: 0.1, label: "x" }];
+  const showGrid = MB.check("cb-r-grid", () => pl.redraw());
+  const showF = MB.check("cb-r-f", () => pl.redraw());
+  const th = MB.range("cb-r-th", (v) => v + "°", () => pl.redraw());
+  const kk = MB.range("cb-r-k", (v) => String(v), () => pl.redraw());
+  const mode = MB.seg("cb-r-mode", () => pl.redraw());
+  const DIAG = { refl: [1, -1], proj: [1, 0], stretch: [2, 1] };
+  const pl = MB.plane("#cb-cv-refl", {
+    x: [-4.5, 4.5], aspect: 0.78, maxHeight: 520, minHeight: 300, points: pts,
+    draw(P, api) {
+      const C = P.P, X = api.points[0];
+      X.color = C.text;
+      const a = (th() * Math.PI) / 180, b1 = [Math.cos(a), Math.sin(a)], b2 = [-Math.sin(a), Math.cos(a)];
+      const k = kk(), d = DIAG[mode()].map((v) => Math.pow(v, k));
+      const Pm = [[b1[0], b2[0]], [b1[1], b2[1]]], PT = [[b1[0], b1[1]], [b2[0], b2[1]]];
+      const A = CB.mul(CB.mul(Pm, [[d[0], 0], [0, d[1]]]), PT);
+      if (showGrid()) CB.grid(P, Pm, { color: C.accent2, alpha: 0.28, n: 10 });
+      P.line(-10 * b1[0], -10 * b1[1], 10 * b1[0], 10 * b1[1], { color: C.accent, width: 2, dash: [8, 5], alpha: 0.8 });
+      if (showF()) {
+        CB.fill(P, CB.F.map(([x, y]) => [1.6 * x + 0.6, 1.6 * y + 0.3]), C.faint, 0.6);
+        CB.fill(P, CB.F.map(([x, y]) => CB.ap(A, 1.6 * x + 0.6, 1.6 * y + 0.3)), C.accent, 0.75);
+      }
+      const c = [X.x * b1[0] + X.y * b1[1], X.x * b2[0] + X.y * b2[1]];
+      const Tx = CB.ap(A, X.x, X.y);
+      P.line(0, 0, c[0] * b1[0], c[0] * b1[1], { color: C.accent, width: 1.6, dash: [4, 4] });
+      P.line(c[0] * b1[0], c[0] * b1[1], X.x, X.y, { color: C.accent2, width: 1.6, dash: [4, 4] });
+      P.arrow(0, 0, b1[0], b1[1], { color: C.accent, width: 3.4, label: "b₁" });
+      P.arrow(0, 0, b2[0], b2[1], { color: C.accent2, width: 3.4, label: "b₂" });
+      P.arrow(0, 0, X.x, X.y, { color: C.text, width: 2.6 });
+      P.arrow(0, 0, Tx[0], Tx[1], { color: C.warn, width: 3, label: k === 1 ? "Ax" : `A${"⁰¹²³⁴⁵⁶".charAt(k)}x` });
+      MB.stat("cb-r-a", CB.mat(A, 2));
+      MB.stat("cb-r-d", CB.mat([[d[0], 0], [0, d[1]]], 0, (i, j) => (i === j ? "hl" : "dim")));
+      MB.stat("cb-r-xb", `${CB.vec(c, 2)} → ${CB.vec([d[0] * c[0], d[1] * c[1]], 2)}`);
+    },
+  });
+})();
+
+/* ================================================================ 4. 다항식 공간의 선형 사상 */
+(function () {
+  const a = [0, 1, 2, 3].map((i) => MB.range("cb-d-a" + i, (v) => CB.num(v, 1), () => update()));
+  const op = MB.seg("cb-d-op", () => update());
+  const basis = MB.seg("cb-d-basis", () => update());
+  const msg = document.getElementById("cb-d-msg");
+  const choose = (n, k) => { let r = 1; for (let i = 0; i < k; i++) r = (r * (n - i)) / (i + 1); return r; };
+  const D = [[0, 1, 0, 0], [0, 0, 2, 0], [0, 0, 0, 3], [0, 0, 0, 0]];
+  const OPS = { D, D2: CB.mul(D, D), E: [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 2, 0], [0, 0, 0, 3]] };
+  // S: j열 = (x−1)^j의 단항식 계수. 계수 i: C(j, i)(−1)^(j−i)
+  const S = [0, 1, 2, 3].map((i) => [0, 1, 2, 3].map((j) => (i <= j ? choose(j, i) * Math.pow(-1, j - i) : 0)));
+  const Si = CB.inv(S);
+  const mv = (M, v) => M.map((r) => r.reduce((s, x, k) => s + x * v[k], 0));
+  const evalP = (c, x) => c.reduce((s, v, i) => s + v * Math.pow(x, i), 0);
+  const SUP = ["", "", "²", "³"];
+  function polyText(c, tay) {
+    const base = tay ? (i) => (i === 0 ? "" : i === 1 ? "(x−1)" : `(x−1)${SUP[i]}`) : (i) => (i === 0 ? "" : i === 1 ? "x" : `x${SUP[i]}`);
+    const parts = c.map((v, i) => [v, i]).filter(([v]) => Math.abs(v) > 1e-9);
+    if (!parts.length) return "0";
+    return parts.map(([v, i], k) => {
+      const s = v < 0 ? "−" : k ? "+" : "", m = Math.abs(v), coef = i && Math.abs(m - 1) < 1e-9 ? "" : CB.num(m, 2);
+      return `${k ? " " + s + " " : s}${coef}${base(i)}`;
+    }).join("");
+  }
+  let coef = [1, 2, -1, 0.5], out = [0, 0, 0, 0];
+  const pl = MB.plane("#cb-cv-deriv", {
+    x: [-2.5, 2.5], y: [-7, 7], aspect: 0.8, maxHeight: 480, minHeight: 280, points: [],
+    draw(P) {
+      const C = P.P;
+      P.curve((x) => evalP(coef, x), { color: C.accent, width: 2.6 });
+      P.curve((x) => evalP(out, x), { color: C.accent2, width: 2.6, dash: [7, 4] });
+      if (basis() === "tay") P.dot(1, evalP(coef, 1), { color: C.accent, r: 5, label: "x = 1" });
+    },
+  });
+  function update() {
+    coef = a.map((g) => g());
+    const M = OPS[op()], tay = basis() === "tay";
+    out = mv(M, coef);
+    const T = tay ? CB.mul(CB.mul(Si, M), S) : M;
+    const pB = tay ? mv(Si, coef) : coef, tpB = mv(T, pB);
+    MB.stat("cb-d-p", CB.vec(pB, 2));
+    MB.stat("cb-d-m", CB.mat(T, 0, (i, j, v) => (Math.abs(v) < 1e-9 ? "dim" : "hl")));
+    MB.stat("cb-d-tp", CB.vec(tpB, 2));
+    const KER = { D: "상수 다항식(1차원)", D2: "1차 이하 다항식(2차원)", E: "상수 다항식(1차원)" };
+    const IM = { D: "2차 이하 다항식(3차원)", D2: "1차 이하 다항식(2차원)", E: "상수항이 0인 다항식(3차원)" };
+    msg.className = "cb-msg";
+    msg.innerHTML = `<span class="cb-poly">p(x) = ${polyText(pB, tay)}</span> → <span class="cb-poly">T p(x) = ${polyText(tpB, tay)}</span><br>핵: ${KER[op()]} · 상: ${IM[op()]} · 차원의 합 4 = dim 𝒫₃`;
+    pl.redraw();
+  }
+  update();
+})();
+
+/* ================================================================ 5. 핵과 상 */
+(function () {
+  const PRE = { r1: [[1, 2], [0.5, 1]], inv: [[1.5, 0.5], [-0.5, 1]], proj: [[1, 0], [0, 0]], zero: [[0, 0], [0, 0]] };
+  const ids = ["cb-k11", "cb-k12", "cb-k21", "cb-k22"], inp = ids.map((id) => document.getElementById(id));
+  let A = [[1, 2], [0.5, 1]];
+  const msg = document.getElementById("cb-k-msg");
+  const dots = []; for (let i = -3; i <= 3; i += 0.5) for (let j = -3; j <= 3; j += 0.5) if (i || j) dots.push([i, j]);
+  const col = ([x, y]) => MB.rgb(MB.colormap(((Math.atan2(y, x) / (2 * Math.PI)) + 1) % 1, "phase"));
+  function kernelDir() {
+    const r = CB.rank2(A);
+    if (r !== 1) return null;
+    const row = Math.hypot(A[0][0], A[0][1]) > Math.hypot(A[1][0], A[1][1]) ? A[0] : A[1];
+    const v = [-row[1], row[0]], n = Math.hypot(...v); return [v[0] / n, v[1] / n];
+  }
+  const pts = [{ x: 1, y: 1, snap: 0.1, label: "x" }];
+  const opt = { x: [-4, 4], aspect: 0.9, maxHeight: 400, minHeight: 220 };
+  const pa = MB.plane("#cb-cv-ker-a", {
+    ...opt, points: pts,
+    draw(P, api) {
+      const C = P.P, X = api.points[0]; X.color = C.text;
+      const r = CB.rank2(A), k = kernelDir();
+      dots.forEach((d) => P.dot(d[0], d[1], { color: col(d), r: 2.4 }));
+      if (r === 0) P.text("모든 입력이 핵", P.x0 + 0.2, P.y1 - 0.4, { color: C.bad, bold: true, size: 13 });
+      if (k) {
+        P.line(-8 * k[0], -8 * k[1], 8 * k[0], 8 * k[1], { color: C.bad, width: 3.2, alpha: 0.85 });
+        P.line(X.x - 8 * k[0], X.y - 8 * k[1], X.x + 8 * k[0], X.y + 8 * k[1], { color: C.text, width: 1.4, dash: [5, 4], alpha: 0.7 });
+      }
+      P.dot(0, 0, { color: C.bad, r: 4 });
+      P.arrow(0, 0, X.x, X.y, { color: C.text, width: 2.4 });
+    },
+    onDrag() { pb.redraw(); },
+  });
+  const pb = MB.plane("#cb-cv-ker-b", {
+    ...opt, points: [],
+    draw(P) {
+      const C = P.P, r = CB.rank2(A), X = pts[0];
+      if (r === 2) { P.poly([[-9, -9], [9, -9], [9, 9], [-9, 9]], { fill: C.accent, alpha: 0.08, stroke: false }); }
+      if (r === 1) {
+        const c = Math.hypot(A[0][0], A[1][0]) > Math.hypot(A[0][1], A[1][1]) ? [A[0][0], A[1][0]] : [A[0][1], A[1][1]];
+        const n = Math.hypot(...c);
+        P.line(-9 * c[0] / n, -9 * c[1] / n, 9 * c[0] / n, 9 * c[1] / n, { color: C.accent, width: 3.2, alpha: 0.85 });
+      }
+      dots.forEach((d) => { const [x, y] = CB.ap(A, d[0], d[1]); P.dot(x, y, { color: col(d), r: 2.4 }); });
+      P.dot(0, 0, { color: C.accent, r: 4 });
+      const [ax, ay] = CB.ap(A, X.x, X.y);
+      P.arrow(0, 0, ax, ay, { color: C.text, width: 2.4, label: "Ax" });
+    },
+  });
+  function update() {
+    const r = CB.rank2(A);
+    MB.stat("cb-k-null", String(2 - r)); MB.stat("cb-k-rank", String(r)); MB.stat("cb-k-sum", `${2 - r} + ${r} = 2`);
+    MB.stat("cb-k-inj", `${r === 2 ? "예" : "아니오"} · ${r === 2 ? "예" : "아니오"}`);
+    msg.className = r === 2 ? "cb-msg ok" : "cb-msg";
+    msg.textContent = r === 2 ? "핵은 원점 하나뿐이고 상은 평면 전체입니다. 서로 다른 입력은 서로 다른 출력으로 가므로 Ax에서 x를 되찾을 수 있습니다(가역)."
+      : r === 1 ? "입력 평면이 출력의 직선 하나로 납작해집니다. 빨간 핵 방향의 성분은 사라지고, 점선 위의 모든 입력이 같은 Ax로 갑니다."
+      : "모든 입력이 원점으로 갑니다. 핵이 2차원(평면 전체), 상이 0차원입니다.";
+    pa.redraw(); pb.redraw();
+  }
+  function fromInputs() { const v = inp.map(CB.parse); if (v.some((x) => x === null)) return; A = [[v[0], v[1]], [v[2], v[3]]]; update(); }
+  inp.forEach((el) => el.addEventListener("input", fromInputs));
+  document.getElementById("cb-k-pre").addEventListener("change", (e) => {
+    A = PRE[e.target.value].map((r) => [...r]);
+    inp[0].value = A[0][0]; inp[1].value = A[0][1]; inp[2].value = A[1][0]; inp[3].value = A[1][1];
+    update();
+  });
+  update();
+})();
+
+/* ================================================================ 6. RGB ↔ YCbCr 변환기 */
+(function () {
+  const r = MB.range("cb-y-r", String, () => update()), g = MB.range("cb-y-g", String, () => update()), b = MB.range("cb-y-b", String, () => update());
+  const clip = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  function update() {
+    const R = r(), G = g(), B = b();
+    const Y = 0.299 * R + 0.587 * G + 0.114 * B;
+    const Cb = 128 - 0.168736 * R - 0.331264 * G + 0.5 * B;
+    const Cr = 128 + 0.5 * R - 0.418688 * G - 0.081312 * B;
+    const back = [Y + 1.402 * (Cr - 128), Y - 0.344136 * (Cb - 128) - 0.714136 * (Cr - 128), Y + 1.772 * (Cb - 128)];
+    const chroma = [128 + 1.402 * (Cr - 128), 128 - 0.344136 * (Cb - 128) - 0.714136 * (Cr - 128), 128 + 1.772 * (Cb - 128)].map(clip);
+    document.getElementById("cb-y-orig").style.background = `rgb(${R},${G},${B})`;
+    document.getElementById("cb-y-lum").style.background = `rgb(${clip(Y)},${clip(Y)},${clip(Y)})`;
+    document.getElementById("cb-y-chr").style.background = `rgb(${chroma.join(",")})`;
+    document.getElementById("cb-y-orig-t").textContent = `원래 색 (${R}, ${G}, ${B})`;
+    MB.stat("cb-y-y", Y.toFixed(2)); MB.stat("cb-y-cb", Cb.toFixed(2)); MB.stat("cb-y-cr", Cr.toFixed(2));
+    MB.stat("cb-y-back", CB.vec(back, 2));
+  }
+  update();
+})();
+
+/* ================================================================ 7. 색차 부표본화 */
+(function () {
+  const W = 160, H = 100;
+  // 합성 시험 그림: 하늘색→주황 그라데이션, 원색 도형, 가는 색 줄무늬, 글자
+  const src = document.createElement("canvas"); src.width = W; src.height = H;
+  const s = src.getContext("2d");
+  const gr = s.createLinearGradient(0, 0, W, H); gr.addColorStop(0, "#5aa9e6"); gr.addColorStop(0.55, "#f4d35e"); gr.addColorStop(1, "#ee6c4d");
+  s.fillStyle = gr; s.fillRect(0, 0, W, H);
+  s.fillStyle = "#d62828"; s.beginPath(); s.arc(32, 32, 20, 0, 2 * Math.PI); s.fill();
+  s.fillStyle = "#2a9d8f"; s.fillRect(62, 12, 34, 34);
+  s.fillStyle = "#3a0ca3"; s.beginPath(); s.moveTo(110, 46); s.lineTo(130, 10); s.lineTo(150, 46); s.closePath(); s.fill();
+  for (let x = 4; x < 76; x += 4) { s.fillStyle = x % 8 ? "#e63946" : "#1d3557"; s.fillRect(x, 58, 2, 18); }
+  for (let x = 84; x < 156; x += 4) { s.fillStyle = x % 8 ? "#06d6a0" : "#ef476f"; s.fillRect(x, 58, 2, 18); }
+  s.fillStyle = "#111"; s.font = "bold 15px sans-serif"; s.textBaseline = "alphabetic"; s.fillText("LinearBook 7", 8, 95);
+  const orig = s.getImageData(0, 0, W, H).data;
+  const toYcc = (R, G, B) => [0.299 * R + 0.587 * G + 0.114 * B, 128 - 0.168736 * R - 0.331264 * G + 0.5 * B, 128 + 0.5 * R - 0.418688 * G - 0.081312 * B];
+  const toRgb = (Y, Cb, Cr) => [Y + 1.402 * (Cr - 128), Y - 0.344136 * (Cb - 128) - 0.714136 * (Cr - 128), Y + 1.772 * (Cb - 128)];
+  /** 채널 ch(0..2)들을 k×k 묶음 평균으로 바꾼다 */
+  function blockAvg(planes, chs, k) {
+    if (k === 1) return;
+    chs.forEach((c) => {
+      const p = planes[c];
+      for (let by = 0; by < H; by += k) for (let bx = 0; bx < W; bx += k) {
+        let sum = 0, n = 0;
+        for (let y = by; y < Math.min(H, by + k); y++) for (let x = bx; x < Math.min(W, bx + k); x++) { sum += p[y * W + x]; n++; }
+        const m = sum / n;
+        for (let y = by; y < Math.min(H, by + k); y++) for (let x = bx; x < Math.min(W, bx + k); x++) p[y * W + x] = m;
+      }
+    });
+  }
+  function run(space, k) {
+    const planes = [new Float64Array(W * H), new Float64Array(W * H), new Float64Array(W * H)];
+    for (let i = 0; i < W * H; i++) {
+      const v = space === "ycc" ? toYcc(orig[4 * i], orig[4 * i + 1], orig[4 * i + 2]) : [orig[4 * i], orig[4 * i + 1], orig[4 * i + 2]];
+      planes[0][i] = v[0]; planes[1][i] = v[1]; planes[2][i] = v[2];
+    }
+    blockAvg(planes, space === "ycc" ? [1, 2] : [0, 2], k);
+    const out = new Uint8ClampedArray(4 * W * H); let se = 0;
+    for (let i = 0; i < W * H; i++) {
+      const v = space === "ycc" ? toRgb(planes[0][i], planes[1][i], planes[2][i]) : [planes[0][i], planes[1][i], planes[2][i]];
+      for (let c = 0; c < 3; c++) { const q = Math.max(0, Math.min(255, Math.round(v[c]))); out[4 * i + c] = q; se += (q - orig[4 * i + c]) ** 2; }
+      out[4 * i + 3] = 255;
+    }
+    const mse = se / (3 * W * H);
+    return { out, psnr: mse < 1e-9 ? Infinity : 10 * Math.log10((255 * 255) / mse) };
+  }
+  const recon = document.createElement("canvas"); recon.width = W; recon.height = H;
+  const errc = document.createElement("canvas"); errc.width = W; errc.height = H;
+  const space = MB.seg("cb-j-space", () => update()), block = MB.seg("cb-j-block", () => update());
+  const origC = document.createElement("canvas"); origC.width = W; origC.height = H; origC.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(orig), W, H), 0, 0);
+  const view = MB.canvas("#cb-cv-jpeg", (ctx, w, h) => {
+    const wide = w >= 560, gap = 10, lab = 20;
+    const pw = wide ? (w - 4 * gap) / 3 : Math.min(w - 2 * gap, 420), ph = (pw * H) / W;
+    const items = [[origC, "원본"], [recon, "복원"], [errc, "오차 × 5"]];
+    ctx.imageSmoothingEnabled = false;
+    const P = MB.palette();
+    items.forEach(([c, t], i) => {
+      const x = wide ? gap + i * (pw + gap) : (w - pw) / 2, y = wide ? lab : lab + i * (ph + lab + gap);
+      ctx.drawImage(c, x, y, pw, ph);
+      ctx.fillStyle = P.dim; ctx.font = "12px sans-serif"; ctx.textBaseline = "bottom"; ctx.fillText(t, x, y - 4);
+    });
+  }, { aspect: (w) => (w >= 560 ? ((w - 40) / 3 * H / W + 30) / w : (3 * (Math.min(w - 20, 420) * H / W + 30) + 10) / w) });
+  function update() {
+    const k = Number(block()), sp = space();
+    const cur = run(sp, k), other = run(sp === "ycc" ? "rgb" : "ycc", k);
+    const ycc = sp === "ycc" ? cur : other, rgb = sp === "ycc" ? other : cur;
+    recon.getContext("2d").putImageData(new ImageData(cur.out, W, H), 0, 0);
+    const e = new Uint8ClampedArray(4 * W * H);
+    for (let i = 0; i < W * H; i++) {
+      let m = 0; for (let c = 0; c < 3; c++) m = Math.max(m, Math.abs(cur.out[4 * i + c] - orig[4 * i + c]));
+      const v = Math.max(0, 255 - 5 * m); e[4 * i] = 255; e[4 * i + 1] = v; e[4 * i + 2] = v; e[4 * i + 3] = 255;
+    }
+    errc.getContext("2d").putImageData(new ImageData(e, W, H), 0, 0);
+    const fmt = (p) => (isFinite(p) ? p.toFixed(1) + " dB" : "∞ (손실 없음)");
+    MB.stat("cb-j-samples", k === 1 ? "3 (그대로)" : `${CB.num(1 + 2 / (k * k), 3)} (${CB.num(100 * (1 + 2 / (k * k)) / 3, 0)}%)`);
+    MB.stat("cb-j-pycc", fmt(ycc.psnr)); MB.stat("cb-j-prgb", fmt(rgb.psnr));
+    view.redraw();
+  }
+  update();
+})();
+</script>
+</body>
+</html>

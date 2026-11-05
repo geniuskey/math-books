@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>벡터 공간과 부분공간 · LinearBook</title>
+<meta name="description" content="다항식·함수·행렬·신호도 벡터가 되는 벡터 공간의 공리, 원점을 지나는 부분공간 판정, 열공간 C(A)와 Ax = b의 풀림 조건, 영공간 N(A), 기약 행 사다리꼴(RREF)과 피벗·자유 변수, 특수해, 완전한 해 x = xₚ + xₙ, 교통망과 화학 반응식의 흐름 보존까지 직접 돌려 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .sp-m { display: inline-grid; grid-template-columns: repeat(var(--c, 4), auto); gap: 2px 4px; padding: 4px 8px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13.5px var(--mono); vertical-align: middle; }
+  .sp-m > span { text-align: right; padding: 3px 6px; border-radius: 5px; min-width: 2.2em; white-space: nowrap; }
+  .sp-m > span.aug { border-left: 1.5px dashed var(--text-faint); padding-left: 10px; }
+  .sp-m > span.pv { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .sp-m > span.pc { background: var(--accent-soft); }
+  .sp-m > span.fc { background: var(--accent-2-soft); }
+  .sp-m > span.tg { background: var(--accent-2-soft); }
+  .sp-m > span.z { color: var(--text-faint); }
+  .sp-v { display: inline-grid; grid-template-columns: auto; gap: 1px; padding: 3px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13px var(--mono); vertical-align: middle; }
+  .sp-v > span { text-align: right; min-width: 2.2em; padding: 1px 3px; border-radius: 4px; }
+  .sp-v > span.fr { background: var(--accent-2-soft); }
+  .sp-stage { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding: 16px 18px; background: var(--canvas-bg); min-height: 150px; }
+  .sp-stage .lab { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .sp-note { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); min-height: 3.2em; }
+  .sp-note b { color: var(--accent); }
+  .sp-in.mat { grid-template-columns: repeat(var(--n, 4), minmax(0, 52px)); }
+  .sp-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sp-row .btn { padding: 6px 10px; font-size: 13px; }
+  .sp-log { font: 12.5px var(--mono); color: var(--text-dim); max-height: 7.5em; overflow-y: auto; padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sp-log div.cur { color: var(--text); font-weight: 700; }
+  .sp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sp-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sp-3d { touch-action: none; cursor: grab; }
+  .sp-steps ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .sp-steps li { margin: 6px 0; }
+  .sp-sliders { display: grid; gap: 10px; }
+  .sp-dim[disabled] { opacity: .4; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="subspaces">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 05</div>
+    <h1 data-no-glossary>벡터 공간과 부분공간</h1>
+    <p class="lead">3장에서 소거는 "해가 하나 있다"는 행복한 경우를 주로 다뤘습니다. 그런데 공학 문제는 자주 그렇지 않습니다. 식보다 미지수가 많은 교통망, 계수가 정해지지 않는 화학 반응식, 측정값이 남는 센서 배열에서는 해가 <b>무수히 많거나</b> 아예 <b>없습니다</b>. 이때 묻는 질문이 바뀝니다. "해가 무엇인가"가 아니라 <b>"해들이 모인 집합은 어떤 모양인가"</b>, 그리고 <b>"어떤 우변이면 풀리는가"</b>. 답은 두 집합, 열공간과 영공간입니다. 이 장에서는 먼저 "더하고 늘일 수 있는 것"이면 무엇이든 벡터로 다루는 <b>벡터 공간</b>의 언어를 세우고, 원점을 지나는 평평한 부분집합인 <b>부분공간</b>을 판정하는 법을 익힌 뒤, 소거를 끝까지 밀어붙인 <b>기약 행 사다리꼴(RREF)</b>로 \(A\mathbf{x} = \mathbf{b}\)의 모든 해를 한 줄에 적습니다.</p>
+    <ul class="objectives">
+      <li>벡터 공간의 공리를 알고, 다항식·함수·행렬·표본화한 신호가 벡터 공간을 이룬다는 것을 확인한다.</li>
+      <li>부분공간의 세 조건(영벡터 포함, 덧셈과 스칼라배에 닫힘)으로 주어진 집합이 부분공간인지 판정하고, 원점을 지나지 않는 직선·평면이 왜 부분공간이 아닌지 설명한다.</li>
+      <li>열공간 \(C(A)\)를 "\(A\mathbf{x}\)가 닿을 수 있는 모든 곳"으로 이해하고, \(A\mathbf{x} = \mathbf{b}\)가 풀릴 조건이 \(\mathbf{b} \in C(A)\)임을 안다.</li>
+      <li>영공간 \(N(A)\)가 부분공간임을 증명하고, \(A\)의 행과 영공간의 벡터가 서로 수직임을 그림으로 본다.</li>
+      <li>행렬을 기약 행 사다리꼴 \(R\)로 바꾸고 피벗 변수·자유 변수를 구별해, 특수해로 영공간을 생성한다.</li>
+      <li>\(A\mathbf{x} = \mathbf{b}\)의 완전한 해를 \(\mathbf{x} = \mathbf{x}_p + \mathbf{x}_n\)으로 쓰고, 교통망의 흐름 보존 문제에서 영공간이 "순환 흐름"임을 해석한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>균형 맞춘 화학 반응식</b></div>
+      <div class="o-body"><p>프로페인이 타는 반응 \(x_1\,\mathrm{C_3H_8} + x_2\,\mathrm{O_2} \to x_3\,\mathrm{CO_2} + x_4\,\mathrm{H_2O}\)의 계수를 맞춰야 한다고 합시다. 원자는 생기지도 사라지지도 않으므로 원소마다 "왼쪽 개수 = 오른쪽 개수"라는 식이 하나씩 나옵니다. 탄소 \(3x_1 = x_3\), 수소 \(8x_1 = 2x_4\), 산소 \(2x_2 = 2x_3 + x_4\). 식이 셋, 미지수가 넷입니다. 이 연립방정식에는 해가 하나가 아니라 <b>무수히 많습니다</b>. \((1, 5, 3, 4)\)가 해이면 \((2, 10, 6, 8)\)도 해입니다.</p>
+        <p>이 "무수히 많은 해"는 아무렇게나 흩어져 있지 않습니다. 모두 우변이 0인 식 \(A\mathbf{x} = \mathbf{0}\)의 해이고, 서로 더하거나 몇 배를 해도 여전히 해입니다. 즉 원점을 지나는 직선 하나, <b>영공간</b>입니다. 화학 교과서의 "가장 작은 정수 계수"는 이 직선 위에서 성분이 모두 정수인 가장 짧은 점을 고른 것일 뿐입니다. 반응이 더 복잡해 영공간이 평면이 되면, 서로 독립인 반응이 둘 섞여 있다는 뜻이 됩니다.</p>
+        <div class="o-chain"><span>원소마다 개수 보존</span><i>→</i><span>미지수 &gt; 식</span><i>→</i><span class="tool">영공간 N(A)</span><i>→</i><span>해 전체 = 직선·평면</span><i>→</i><span>정수 계수 고르기</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="spaces">
+    <h2>벡터 공간: 더하고 늘일 수 있는 모든 것</h2>
+    <div class="problem"><strong>신호, 다항식, 사진도 벡터일까</strong>
+      <p>1장에서 벡터를 "숫자 n개의 목록"으로 정했습니다. 그런데 오디오 편집기는 두 소리를 더하고(믹싱) 볼륨을 바꿉니다(상수배). 사진 편집기는 두 사진을 섞고 밝기를 바꿉니다. 수치 해석은 두 다항식을 더하고 상수배합니다. 대상은 다르지만 쓰는 연산은 똑같습니다. 그렇다면 이것들에 선형대수를 그대로 쓸 수 있을까요?</p></div>
+    <p>쓸 수 있습니다. 선형대수가 실제로 쓰는 것은 "숫자 목록"이라는 겉모습이 아니라 <b>덧셈과 스칼라배가 지키는 규칙</b>뿐이기 때문입니다. 그 규칙을 모은 것이 벡터 공간의 정의입니다.</p>
+    <div class="callout"><strong>정의 5.1 (벡터 공간)</strong> 집합 \(V\)에 덧셈 \(\mathbf{u} + \mathbf{v}\)와 실수배 \(c\mathbf{v}\)가 정의되어 결과가 다시 \(V\)에 있고, 모든 \(\mathbf{u}, \mathbf{v}, \mathbf{w} \in V\), \(c, d \in \mathbb{R}\)에 대해 다음 여덟 가지가 성립하면 \(V\)를 (실수) <span class="term">벡터 공간</span><span class="en">(vector space)</span>이라 한다.
+      <ol>
+        <li>\(\mathbf{u} + \mathbf{v} = \mathbf{v} + \mathbf{u}\) &nbsp; 2. \((\mathbf{u} + \mathbf{v}) + \mathbf{w} = \mathbf{u} + (\mathbf{v} + \mathbf{w})\)</li>
+        <li value="3">영벡터 \(\mathbf{0}\)이 있어 \(\mathbf{v} + \mathbf{0} = \mathbf{v}\) &nbsp; 4. 각 \(\mathbf{v}\)마다 \(-\mathbf{v}\)가 있어 \(\mathbf{v} + (-\mathbf{v}) = \mathbf{0}\)</li>
+        <li value="5">\(1\mathbf{v} = \mathbf{v}\) &nbsp; 6. \((cd)\mathbf{v} = c(d\mathbf{v})\)</li>
+        <li value="7">\(c(\mathbf{u} + \mathbf{v}) = c\mathbf{u} + c\mathbf{v}\) &nbsp; 8. \((c + d)\mathbf{v} = c\mathbf{v} + d\mathbf{v}\)</li>
+      </ol>
+      이 규칙을 만족하는 원소를 그 공간의 벡터라 부른다. 화살표일 필요가 없다.</div>
+    <p>규칙 목록은 길지만 확인은 대개 싱겁습니다. 성분마다 더하고 곱하는 한, 여덟 규칙은 실수의 성질에서 그대로 따라오기 때문입니다. 중요한 것은 <b>결과가 다시 같은 집합에 들어가는가</b>(닫혀 있는가)입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>공간</th><th>벡터 하나</th><th>덧셈 · 스칼라배</th><th>영벡터</th><th>쓰이는 곳</th></tr></thead>
+      <tbody>
+        <tr><td>\(\mathbb{R}^n\)</td><td>\((v_1, \dots, v_n)\)</td><td>성분마다</td><td>\((0, \dots, 0)\)</td><td>좌표, 측정값 묶음</td></tr>
+        <tr><td>\(\mathcal{P}_3\) (3차 이하 다항식)</td><td>\(a_0 + a_1t + a_2t^2 + a_3t^3\)</td><td>계수마다</td><td>영 다항식 0</td><td>보간, 궤적 계획, 필터 설계</td></tr>
+        <tr><td>\(C[0, 1]\) (연속 함수)</td><td>\(f(t)\)</td><td>\((f + g)(t) = f(t) + g(t)\)</td><td>\(f(t) = 0\)</td><td>미분방정식의 해, 푸리에 급수</td></tr>
+        <tr><td>\(\mathbb{R}^{2\times 2}\) (행렬)</td><td>\(\begin{bmatrix}a & b\\ c & d\end{bmatrix}\)</td><td>칸마다</td><td>영행렬</td><td>변환 자체를 하나의 대상으로</td></tr>
+        <tr><td>표본화한 신호</td><td>\((x[0], \dots, x[N-1])\)</td><td>샘플마다(믹싱, 볼륨)</td><td>무음</td><td>오디오, 센서 로그</td></tr>
+      </tbody>
+    </table></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 240" role="img" aria-label="다항식을 계수 벡터로 보기">
+        <rect x="10" y="20" width="360" height="200" rx="10" class="f-surface"/>
+        <line x1="30" y1="160" x2="350" y2="160" class="s-axis"/>
+        <line x1="60" y1="40" x2="60" y2="205" class="s-axis"/>
+        <polyline fill="none" style="stroke:var(--accent);stroke-width:2.5" points="60.0,120.0 75.0,110.5 90.0,102.0 105.0,94.5 120.0,88.0 135.0,82.5 150.0,78.0 165.0,74.5 180.0,72.0 195.0,70.5 210.0,70.0 225.0,70.5 240.0,72.0 255.0,74.5 270.0,78.0 285.0,82.5 300.0,88.0 315.0,94.5 330.0,102.0"/>
+        <polyline fill="none" style="stroke:var(--accent-2);stroke-width:2.5" points="60.0,200.0 75.0,199.8 90.0,199.0 105.0,197.8 120.0,196.0 135.0,193.8 150.0,191.0 165.0,187.8 180.0,184.0 195.0,179.8 210.0,175.0 225.0,169.8 240.0,164.0 255.0,157.8 270.0,151.0 285.0,143.8 300.0,136.0 315.0,127.8 330.0,119.0"/>
+        <polyline fill="none" style="stroke:var(--text);stroke-width:2;stroke-dasharray:6 4" points="60.0,160.0 75.0,150.2 90.0,141.0 105.0,132.2 120.0,124.0 135.0,116.2 150.0,109.0 165.0,102.2 180.0,96.0 195.0,90.2 210.0,85.0 225.0,80.2 240.0,76.0 255.0,72.3 270.0,69.0 285.0,66.2 300.0,64.0 315.0,62.3 330.0,61.0"/>
+        <text x="120" y="104" class="t" style="fill:var(--accent);font-weight:700">p(t) = 1 + t − 0.2t²</text>
+        <text x="200" y="196" class="t" style="fill:var(--accent-2);font-weight:700">q(t) = −1 + 0.1t²</text>
+        <text x="230" y="50" class="t">p + q = t − 0.1t²</text>
+        <text x="30" y="212" class="t-dim">함수 그래프로 보면 곡선끼리 더하기</text>
+        <rect x="410" y="20" width="360" height="200" rx="10" class="f-surface"/>
+        <text x="430" y="50" class="t" style="font-weight:700">계수 (a₀, a₁, a₂)로 보면 ℝ³의 벡터</text>
+        <text x="440" y="96" class="t-mono" style="fill:var(--accent)">p  ↔ ( 1,  1, −0.2)</text>
+        <text x="440" y="126" class="t-mono" style="fill:var(--accent-2)">q  ↔ (−1,  0,  0.1)</text>
+        <line x1="440" y1="140" x2="640" y2="140" class="s-line"/>
+        <text x="440" y="164" class="t-mono">p+q ↔ ( 0,  1, −0.1)</text>
+        <text x="430" y="204" class="t-dim">덧셈·스칼라배가 계수마다 → 𝒫₂는 ℝ³과 똑같이 움직인다</text>
+      </svg>
+      <figcaption><b>그림 5-1.</b> 2차 이하 다항식은 곡선으로 그리면 "함수"이지만, 계수 세 개만 적으면 ℝ³의 벡터와 똑같이 더해지고 늘어난다. 그래서 다항식 보간, 최소제곱 곡선 적합 같은 문제가 모두 행렬 문제로 바뀐다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>왜 굳이 추상화하나</strong> 1–4장에서 얻은 정리는 모두 덧셈과 스칼라배만으로 증명되었습니다. 그러니 다항식이든 신호든 같은 정리가 그대로 성립합니다. 예를 들어 "\(n\)개를 넘는 벡터는 종속"(1장)은 \(\mathcal{P}_3\)에서 "다항식 다섯 개는 반드시 하나가 나머지의 결합"이 됩니다(\(\mathcal{P}_3\)의 차원은 4). 한 번 증명하고 여러 곳에서 쓰는 것, 이것이 추상화의 값어치입니다.</div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="subspace">
+    <h2>부분공간: 원점을 지나는 평평한 집합</h2>
+    <div class="problem"><strong>해들의 집합도 공간일까</strong>
+      <p>화학 반응식의 해 \((1, 5, 3, 4)\)와 \((2, 10, 6, 8)\)를 더하면 \((3, 15, 9, 12)\)도 해입니다. 해 전체가 \(\mathbb{R}^4\) 안에서 "더하고 늘여도 빠져나가지 않는" 작은 공간을 이룬다는 뜻입니다. 이런 집합을 어떻게 알아보고, 무엇이라 부를까요?</p></div>
+    <div class="callout"><strong>정의 5.2 (부분공간)</strong> 벡터 공간 \(V\)의 부분집합 \(S\)가 같은 덧셈과 스칼라배로 그 자체 벡터 공간이 되면 \(S\)를 \(V\)의 <span class="term">부분공간</span><span class="en">(subspace)</span>이라 한다.</div>
+    <div class="callout deep"><strong>정리 5.1 (부분공간 판정)</strong> \(V\)의 부분집합 \(S\)가 부분공간일 필요충분조건은 다음 셋이다.
+      <ol><li>\(\mathbf{0} \in S\)</li><li>\(\mathbf{u}, \mathbf{v} \in S \Rightarrow \mathbf{u} + \mathbf{v} \in S\) (덧셈에 닫힘)</li><li>\(\mathbf{v} \in S,\ c \in \mathbb{R} \Rightarrow c\mathbf{v} \in S\) (스칼라배에 닫힘)</li></ol>
+      <p><b>증명의 요지.</b> 여덟 공리 가운데 교환·결합·분배 법칙은 \(V\)에서 이미 성립하므로 \(S\)에서도 저절로 성립한다. 남는 것은 "결과가 \(S\) 안에 있는가"와 영벡터·역원의 존재다. 조건 3에서 \(c = -1\)로 두면 \(-\mathbf{v} \in S\)이고, 조건 1이 영벡터를 준다. 두 닫힘 조건은 한 줄로 "\(c\mathbf{u} + d\mathbf{v} \in S\)" (선형 결합에 닫힘)이라고 써도 같다.</p></div>
+    <p>그림으로 말하면 \(\mathbb{R}^2\)의 부분공간은 셋뿐입니다. 원점 하나 \(\{\mathbf{0}\}\), <b>원점을 지나는 직선</b>, 평면 전체. \(\mathbb{R}^3\)이면 여기에 <b>원점을 지나는 평면</b>이 더해집니다. 원점을 지나지 않는 직선은 조건 1에서 탈락하고, 사분면이나 원판은 평평하지만 스칼라배(음수배, 큰 배수)에서 밖으로 빠져나갑니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 250" role="img" aria-label="부분공간인 집합과 아닌 집합">
+        <g transform="translate(10,20)"><rect width="180" height="200" rx="10" class="f-surface"/><line x1="10" y1="110" x2="170" y2="110" class="s-axis" style="opacity:.5"/><line x1="90" y1="15" x2="90" y2="185" class="s-axis" style="opacity:.5"/><line x1="20" y1="145" x2="160" y2="75" style="stroke:var(--ok);stroke-width:3"/><circle cx="90" cy="110" r="4" style="fill:var(--text)"/><text x="90" y="196" text-anchor="middle" class="t" style="font-weight:700;fill:var(--ok)">원점 지나는 직선 ✓</text></g>
+        <g transform="translate(205,20)"><rect width="180" height="200" rx="10" class="f-surface"/><line x1="10" y1="110" x2="170" y2="110" class="s-axis" style="opacity:.5"/><line x1="90" y1="15" x2="90" y2="185" class="s-axis" style="opacity:.5"/><line x1="20" y1="115" x2="160" y2="45" style="stroke:var(--bad);stroke-width:3"/><circle cx="90" cy="110" r="4" style="fill:var(--text)"/><text x="90" y="196" text-anchor="middle" class="t" style="font-weight:700;fill:var(--bad)">원점 안 지남 ✗</text><text x="96" y="130" class="t-dim">0 ∉ S</text></g>
+        <g transform="translate(400,20)"><rect width="180" height="200" rx="10" class="f-surface"/><rect x="90" y="20" width="80" height="90" style="fill:var(--bad);opacity:.18"/><line x1="10" y1="110" x2="170" y2="110" class="s-axis" style="opacity:.5"/><line x1="90" y1="15" x2="90" y2="185" class="s-axis" style="opacity:.5"/><line x1="90" y1="110" x2="130" y2="80" style="stroke:var(--accent);stroke-width:2.5"/><line x1="90" y1="110" x2="50" y2="140" style="stroke:var(--bad);stroke-width:2.5;stroke-dasharray:5 4"/><text x="134" y="78" class="t-mono">v</text><text x="20" y="160" class="t-mono" style="fill:var(--bad)">(−1)v</text><text x="90" y="196" text-anchor="middle" class="t" style="font-weight:700;fill:var(--bad)">제1사분면 ✗</text></g>
+        <g transform="translate(595,20)"><rect width="180" height="200" rx="10" class="f-surface"/><line x1="10" y1="110" x2="170" y2="110" style="stroke:var(--bad);stroke-width:3"/><line x1="90" y1="15" x2="90" y2="185" style="stroke:var(--bad);stroke-width:3"/><line x1="90" y1="110" x2="140" y2="110" style="stroke:var(--accent);stroke-width:3"/><line x1="90" y1="110" x2="90" y2="60" style="stroke:var(--accent);stroke-width:3"/><circle cx="140" cy="60" r="5" style="fill:var(--bad)"/><text x="146" y="56" class="t-mono" style="fill:var(--bad)">u+v</text><text x="90" y="196" text-anchor="middle" class="t" style="font-weight:700;fill:var(--bad)">두 축의 합집합 ✗</text></g>
+      </svg>
+      <figcaption><b>그림 5-2.</b> 원점을 지나는 직선만 부분공간이다. 원점을 지나지 않는 직선은 영벡터가 없고, 제1사분면은 음수배에서, 두 축의 합집합은 덧셈에서 밖으로 나간다(축 위의 u와 v를 더하면 축 위에 있지 않다).</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 집합 S를 고르고, S 안에서 두 점 u, v를 끌어 보세요. 점은 S 안에서만 움직입니다. u + v와 c·u가 S 밖으로 나가는 순간 빨갛게 변합니다.</p>
+
+    <div class="sim" id="sim-sp-test">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부분공간 판정기: 더하고 늘여도 남아 있나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sp-t-cv"></canvas><span class="tag-tl">u, v를 S 안에서 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>집합 S</span><select id="sp-t-set">
+            <option value="line">원점을 지나는 직선 y = x/2</option>
+            <option value="shift">원점을 지나지 않는 직선 y = x/2 + 1</option>
+            <option value="quad">제1사분면 (x ≥ 0, y ≥ 0)</option>
+            <option value="disk">반지름 2인 원판</option>
+            <option value="axes">x축 ∪ y축</option>
+            <option value="zero">원점 하나 {0}</option>
+            <option value="plane">평면 전체 ℝ²</option>
+          </select></label>
+          <label class="ctrl"><span>스칼라 c <output id="sp-t-c-out"></output></span><input type="range" id="sp-t-c" min="-3" max="3" step="0.1" value="-1.5"></label>
+          <div class="btn-row"><button class="btn" id="sp-t-hunt">반례 찾기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">0 ∈ S ?</span><span class="v" id="sp-t-zero">—</span></div>
+        <div class="stat"><span class="k">u + v ∈ S ?</span><span class="v" id="sp-t-sum">—</span></div>
+        <div class="stat"><span class="k">c·u ∈ S ?</span><span class="v" id="sp-t-scale">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="sp-t-verdict">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '원점을 지나는 직선'에서 u, v, c를 아무리 바꿔도 셋 다 초록입니다. ② '제1사분면'은 u + v는 늘 안에 있지만 c를 음수로 내리면 c·u가 빠져나갑니다. ③ '원판'은 원점을 포함하고 −1배에도 닫혀 있지만, 큰 c나 바깥쪽 u + v에서 실패합니다. '반례 찾기'는 조건을 깨는 u, v, c를 자동으로 골라 줍니다. 모델: 판정은 지금 보이는 u, v, c에 대한 것이고, 부분공간이려면 모든 u, v, c에서 성립해야 합니다.</div>
+    </div>
+
+    <div class="callout deep"><strong>정리 5.2 (생성은 부분공간)</strong> 벡터 \(\mathbf{v}_1, \dots, \mathbf{v}_k \in V\)의 생성 \(\mathrm{span}\{\mathbf{v}_1, \dots, \mathbf{v}_k\}\)은 \(V\)의 부분공간이며, 이 벡터들을 모두 포함하는 가장 작은 부분공간이다.
+      <p><b>증명.</b> \(\mathbf{0} = 0\mathbf{v}_1 + \dots + 0\mathbf{v}_k\). 두 결합 \(\sum a_i\mathbf{v}_i\)와 \(\sum b_i\mathbf{v}_i\)의 합은 \(\sum (a_i + b_i)\mathbf{v}_i\), 상수배는 \(\sum (ca_i)\mathbf{v}_i\)로 다시 결합이다. 또 \(\mathbf{v}_i\)들을 포함하는 부분공간은 닫힘 조건 때문에 그 결합을 모두 포함해야 하므로, 생성보다 작을 수 없다.</p></div>
+    <p>이 정리 덕분에 "부분공간을 하나 주세요"라는 요구에는 언제나 "벡터 몇 개를 주고 그 생성을 취하라"로 답할 수 있습니다. 이제 행렬 하나가 자연스럽게 주는 부분공간 두 개를 만나 봅시다.</p>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="column-space">
+    <h2>열공간: Ax가 닿을 수 있는 모든 곳</h2>
+    <div class="problem"><strong>센서 세 개, 손잡이 두 개</strong>
+      <p>한 공정 장비에 손잡이(가스 유량, 전력)가 두 개 있고, 결과를 재는 센서가 세 개 있다고 합시다. 작동 범위 안에서 손잡이 변화 \(\mathbf{x} \in \mathbb{R}^2\)와 센서 변화 \(\mathbf{b} \in \mathbb{R}^3\)가 선형 관계 \(A\mathbf{x} = \mathbf{b}\)라면, 엔지니어가 원하는 센서 값 \(\mathbf{b}\)를 아무거나 만들 수 있을까요? 손잡이가 둘뿐이니 직관적으로 "아니다"입니다. 그러면 정확히 <b>어떤</b> \(\mathbf{b}\)를 만들 수 있을까요?</p></div>
+    <p>2장의 열 그림을 떠올리면 답이 바로 나옵니다. \(A\mathbf{x} = x_1\mathbf{a}_1 + x_2\mathbf{a}_2\)는 열들의 선형 결합이므로, 만들 수 있는 \(\mathbf{b}\)는 정확히 열들의 생성입니다.</p>
+    <div class="callout"><strong>정의 5.3 (열공간)</strong> \(m \times n\) 행렬 \(A\)의 열 \(\mathbf{a}_1, \dots, \mathbf{a}_n\)의 생성을 <span class="term">열공간</span><span class="en">(column space)</span>이라 하고 \(C(A)\)로 쓴다.
+      $$C(A) = \mathrm{span}\{\mathbf{a}_1, \dots, \mathbf{a}_n\} = \{\,A\mathbf{x} : \mathbf{x} \in \mathbb{R}^n\,\} \subseteq \mathbb{R}^m$$
+      정리 5.2에 의해 \(C(A)\)는 \(\mathbb{R}^m\)의 부분공간이다.</div>
+    <div class="callout deep"><strong>정리 5.3 (풀림 조건)</strong> \(A\mathbf{x} = \mathbf{b}\)에 해가 있을 필요충분조건은 \(\mathbf{b} \in C(A)\)이다.
+      <p>정의를 다시 읽은 것에 불과하지만 관점이 크게 바뀐다. "해가 있나?"라는 계산 질문이 "\(\mathbf{b}\)가 이 부분공간 안에 있나?"라는 <b>기하 질문</b>이 된다. 위 공정 문제에서 \(C(A)\)는 \(\mathbb{R}^3\) 안의 평면(열이 독립일 때)이므로, 그 평면 밖의 센서 목표는 어떤 손잡이 조합으로도 정확히 만들 수 없다. 그럴 때 할 수 있는 최선은 평면 위의 가장 가까운 점을 겨누는 것이고, 그것이 8장의 최소제곱이다.</p></div>
+    <div class="callout sp-steps"><strong>예제 5.1 · 풀림 조건을 식으로</strong>
+      <p>\(A = \begin{bmatrix} 1 & 0 \\ 2 & 1 \\ -1 & 2 \end{bmatrix}\)일 때 \(A\mathbf{x} = \mathbf{b}\)가 풀리는 \(\mathbf{b} = (b_1, b_2, b_3)\)의 조건을 구하자.</p>
+      <ol>
+        <li>첨가 행렬 \(\left[\begin{array}{rr|l} 1 & 0 & b_1 \\ 2 & 1 & b_2 \\ -1 & 2 & b_3 \end{array}\right]\)을 소거한다. 행 2 − 2·행 1, 행 3 + 행 1 → \(\left[\begin{array}{rr|l} 1 & 0 & b_1 \\ 0 & 1 & b_2 - 2b_1 \\ 0 & 2 & b_3 + b_1 \end{array}\right]\).</li>
+        <li>행 3 − 2·행 2 → 마지막 행 \([\,0 \ \ 0 \mid b_3 + b_1 - 2(b_2 - 2b_1)\,] = [\,0 \ \ 0 \mid 5b_1 - 2b_2 + b_3\,]\).</li>
+        <li>마지막 식은 "\(0 = 5b_1 - 2b_2 + b_3\)"이다. 따라서 <b>\(5b_1 - 2b_2 + b_3 = 0\)일 때만 풀린다.</b></li>
+      </ol>
+      <p>이 조건은 원점을 지나는 평면의 방정식이고, 법선 벡터 \((5, -2, 1)\)은 두 열 모두와 수직이다(확인: \(5 - 4 - 1 = 0\), \(0 - 2 + 2 = 0\)). 예를 들어 \(\mathbf{b} = (1, 4, 3)\)은 \(5 - 8 + 3 = 0\)이라 풀리고, \(\mathbf{b} = (1, 0, 0)\)은 풀리지 않는다.</p></div>
+
+    <div class="sim" id="sim-sp-colspace">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>열공간 C(A): b가 평면 위에 있어야 풀린다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sp-c-cv" class="sp-3d"></canvas><span class="tag-tl">끌어서 돌려 보기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬 A (3×2)</span><select id="sp-c-pre">
+            <option value="ex">예제 5.1 (열 독립 → 평면)</option>
+            <option value="dep">두 열이 평행 (→ 직선)</option>
+            <option value="xy">xy 평면을 덮는 열</option>
+          </select></label>
+          <label class="ctrl"><span>b₁ <output id="sp-c-b1-out"></output></span><input type="range" id="sp-c-b1" min="-3" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>b₂ <output id="sp-c-b2-out"></output></span><input type="range" id="sp-c-b2" min="-3" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>b₃ <output id="sp-c-b3-out"></output></span><input type="range" id="sp-c-b3" min="-3" max="3" step="0.1" value="2"></label>
+          <div class="btn-row"><button class="btn primary" id="sp-c-snap">b를 C(A) 위로 내리기</button></div>
+        </div>
+      </div>
+      <div class="sp-legend"><span><i style="background:var(--accent)"></i>열 a₁, a₂</span><span><i style="background:var(--accent-2)"></i>목표 b</span><span><i style="background:var(--ok)"></i>x₁a₁ + x₂a₂ (풀릴 때)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">C(A)의 모양</span><span class="v" id="sp-c-shape">—</span></div>
+        <div class="stat"><span class="k">b와 C(A)의 거리</span><span class="v" id="sp-c-dist">—</span></div>
+        <div class="stat"><span class="k">Ax = b</span><span class="v" id="sp-c-sol">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① b₃만 바꾸면 b가 평면을 뚫고 지나가는데, 평면 위에 있는 한 점에서만 '풀림'이 됩니다. ② '내리기'는 b를 평면에 수직으로 떨어뜨립니다(8장 사영의 예고). 그 점에서는 초록 경로 x₁a₁ + x₂a₂가 정확히 b에 닿습니다. ③ '두 열이 평행'에서는 C(A)가 직선으로 줄어 풀리는 b가 훨씬 적어집니다. 모델: 정사영 3D 그림, 거리가 0.01 미만이면 풀린다고 봅니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="null-space">
+    <h2>영공간: Ax = 0의 모든 해</h2>
+    <div class="problem"><strong>보이지 않는 입력</strong>
+      <p>손잡이를 돌렸는데 센서 값이 하나도 안 바뀐다면? 그 조작은 출력에 "보이지 않는" 입력입니다. 저울 세 개로 물건 네 개의 무게를 재면, 어떤 무게 변화 조합은 세 저울 모두에 0으로 찍힙니다. 이런 입력이 있으면 출력만 보고 입력을 유일하게 되찾을 수 없습니다. 보이지 않는 입력 전체는 어떤 모양일까요?</p></div>
+    <div class="callout"><strong>정의 5.4 (영공간)</strong> \(m \times n\) 행렬 \(A\)에 대해 \(A\mathbf{x} = \mathbf{0}\)을 만족하는 모든 \(\mathbf{x}\)의 집합을 <span class="term">영공간</span><span class="en">(null space)</span>이라 하고 \(N(A)\)로 쓴다. \(N(A) \subseteq \mathbb{R}^n\)이다(열공간은 \(\mathbb{R}^m\)에, 영공간은 \(\mathbb{R}^n\)에 산다는 점에 주의).</div>
+    <div class="callout deep"><strong>정리 5.4</strong> \(N(A)\)는 \(\mathbb{R}^n\)의 부분공간이다.
+      <p><b>증명.</b> \(A\mathbf{0} = \mathbf{0}\)이므로 \(\mathbf{0} \in N(A)\). \(A\mathbf{u} = \mathbf{0}\), \(A\mathbf{v} = \mathbf{0}\)이면 행렬 곱의 선형성으로 \(A(c\mathbf{u} + d\mathbf{v}) = cA\mathbf{u} + dA\mathbf{v} = \mathbf{0}\). ∎</p>
+      <p>반면 \(\mathbf{b} \ne \mathbf{0}\)인 \(A\mathbf{x} = \mathbf{b}\)의 해집합은 부분공간이 <b>아니다</b>. \(\mathbf{x} = \mathbf{0}\)이 해가 아니고, 해 둘을 더하면 \(A(\mathbf{x}_1 + \mathbf{x}_2) = 2\mathbf{b}\)가 되기 때문이다. 이 해집합이 어떤 모양인지는 7절에서 본다.</p></div>
+    <p>행 그림으로 보면 영공간은 아주 구체적입니다. \(A\mathbf{x} = \mathbf{0}\)의 i번째 식은 "\(A\)의 i번째 행 \(\cdot\ \mathbf{x} = 0\)"입니다. 즉 <b>영공간의 벡터는 \(A\)의 모든 행과 수직</b>입니다. \(\mathbb{R}^3\)에서 행이 하나면 영공간은 그 행에 수직인 평면, 독립인 행이 둘이면 두 평면이 만나는 직선(두 행의 외적 방향), 독립인 행이 셋이면 원점 하나입니다.</p>
+    <div class="callout sp-steps"><strong>예제 5.2 · 화학 반응식의 영공간</strong>
+      <p>머리말의 프로페인 연소에서 미지수 순서를 \((x_1, x_2, x_3, x_4)\) = (C₃H₈, O₂, CO₂, H₂O)로 두고, 원소별 식을 "왼쪽 − 오른쪽 = 0"으로 쓰면</p>
+      $$\underbrace{\begin{bmatrix} 3 & 0 & -1 & 0 \\ 8 & 0 & 0 & -2 \\ 0 & 2 & -2 & -1 \end{bmatrix}}_{A\ (\text{행} = \mathrm{C, H, O})} \begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \end{bmatrix} = \mathbf{0}.$$
+      <ol>
+        <li>1행에서 \(x_3 = 3x_1\), 2행에서 \(x_4 = 4x_1\).</li>
+        <li>3행에 넣으면 \(2x_2 = 2x_3 + x_4 = 6x_1 + 4x_1\), 즉 \(x_2 = 5x_1\).</li>
+        <li>따라서 \(N(A) = \{\, t(1, 5, 3, 4) : t \in \mathbb{R} \,\}\), \(\mathbb{R}^4\) 안의 직선이다.</li>
+      </ol>
+      <p>가장 작은 양의 정수 해 \(t = 1\)이 교과서의 \(\mathrm{C_3H_8} + 5\,\mathrm{O_2} \to 3\,\mathrm{CO_2} + 4\,\mathrm{H_2O}\)다. 영공간이 직선(1차원)이라는 사실이 "계수비가 하나로 정해진다"는 뜻이다.</p></div>
+
+    <div class="sim" id="sim-sp-null">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>영공간은 모든 행에 수직이다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sp-n-cv" class="sp-3d"></canvas><span class="tag-tl">끌어서 돌려 보기</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>A의 행 (m×3)</span><div class="mat sp-in" id="sp-n-in" style="--n:3"></div></div>
+          <label class="check"><input type="checkbox" id="sp-n-two" checked> 2행 사용</label>
+          <label class="ctrl"><span>preset</span><select id="sp-n-pre">
+            <option value="two">독립인 두 행 → 직선</option>
+            <option value="par">평행한 두 행 → 평면</option>
+            <option value="one">한 행 → 평면</option>
+          </select></label>
+          <label class="ctrl"><span>s (첫 기저) <output id="sp-n-s-out"></output></span><input type="range" id="sp-n-s" min="-2" max="2" step="0.05" value="1"></label>
+          <label class="ctrl sp-dim" id="sp-n-t-wrap"><span>t (둘째 기저) <output id="sp-n-t-out"></output></span><input type="range" id="sp-n-t" min="-2" max="2" step="0.05" value="0.6"></label>
+        </div>
+      </div>
+      <div class="sp-legend"><span><i style="background:var(--accent-2)"></i>A의 행</span><span><i style="background:var(--accent)"></i>N(A)</span><span><i style="background:var(--ok)"></i>x ∈ N(A)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">dim N(A) = 3 − (독립인 행 수)</span><span class="v" id="sp-n-dim">—</span></div>
+        <div class="stat"><span class="k">x</span><span class="v" id="sp-n-x">—</span></div>
+        <div class="stat"><span class="k">(행 1)·x, (행 2)·x</span><span class="v" id="sp-n-dots">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 기본 상태에서 s를 움직이면 초록 벡터가 직선 N(A) 위를 오가고, 두 행과의 내적은 늘 0입니다. ② 2행을 1행의 2배로 고치면(또는 '평행한 두 행') 둘째 행이 새 정보를 주지 못해 N(A)가 평면으로 커집니다. ③ '2행 사용'을 끄면 행 하나에 수직인 평면이 됩니다. 모델: 정사영 3D 그림, 행이 평행한지는 외적의 크기가 10⁻⁹ 미만인지로 판정합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="rref">
+    <h2>사다리꼴과 기약 행 사다리꼴(RREF)</h2>
+    <div class="problem"><strong>정사각이 아니면 소거는 어디서 멈추나</strong>
+      <p>3장의 소거는 정사각 행렬에서 피벗이 n개 나오는 경우를 주로 다뤘습니다. 화학 반응식처럼 3×4이거나, 어떤 열 아래가 모두 0이라 피벗이 없으면 어떻게 할까요? 답: <b>멈추지 말고 다음 열로 넘어간다.</b> 그 결과 생기는 계단 모양이 해의 구조를 그대로 보여 줍니다.</p></div>
+    <div class="callout"><strong>정의 5.5 (행 사다리꼴, 피벗 열)</strong> 행렬이 다음을 만족하면 <span class="term">행 사다리꼴</span><span class="en">(row echelon form)</span>이라 한다. ① 0인 행은 모두 맨 아래에 있다. ② 각 0 아닌 행의 첫 0 아닌 원소(피벗)는 위 행의 피벗보다 오른쪽에 있다. 피벗이 있는 열을 <span class="term">피벗 열</span><span class="en">(pivot column)</span>, 없는 열을 자유 열이라 하며, 해당 미지수를 각각 <span class="term">피벗 변수</span>와 <span class="term">자유 변수</span><span class="en">(free variable)</span>라 한다.</div>
+    <div class="callout"><strong>정의 5.6 (기약 행 사다리꼴)</strong> 행 사다리꼴에서 더 나아가 ③ 모든 피벗이 1이고 ④ 각 피벗의 위아래가 모두 0이면 <span class="term">기약 행 사다리꼴</span><span class="en">(reduced row echelon form, RREF)</span>이라 하고 \(R = \mathrm{rref}(A)\)로 쓴다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 230" role="img" aria-label="행 사다리꼴과 기약 행 사다리꼴의 계단 모양">
+        <g transform="translate(20,20)"><text x="0" y="0" class="t" style="font-weight:700" dy="12">행 사다리꼴 U</text>
+          <g transform="translate(0,30)" font-family="var(--mono)" font-size="16">
+            <rect x="0" y="0" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="22" y="23" text-anchor="middle" class="t-mono" style="fill:var(--accent)">p</text>
+            <text x="76" y="23" text-anchor="middle" class="t-mono">*</text><text x="126" y="23" text-anchor="middle" class="t-mono">*</text><text x="176" y="23" text-anchor="middle" class="t-mono">*</text><text x="226" y="23" text-anchor="middle" class="t-mono">*</text>
+            <text x="22" y="67" text-anchor="middle" class="t-dim">0</text><text x="76" y="67" text-anchor="middle" class="t-dim">0</text>
+            <rect x="104" y="44" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="126" y="67" text-anchor="middle" class="t-mono" style="fill:var(--accent)">p</text>
+            <text x="176" y="67" text-anchor="middle" class="t-mono">*</text><text x="226" y="67" text-anchor="middle" class="t-mono">*</text>
+            <text x="22" y="111" text-anchor="middle" class="t-dim">0</text><text x="76" y="111" text-anchor="middle" class="t-dim">0</text><text x="126" y="111" text-anchor="middle" class="t-dim">0</text><text x="176" y="111" text-anchor="middle" class="t-dim">0</text>
+            <rect x="204" y="88" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="226" y="111" text-anchor="middle" class="t-mono" style="fill:var(--accent)">p</text>
+            <path d="M0 40 H54 V84 H158 V128 H252" fill="none" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:5 4"/>
+            <text x="0" y="160" class="t-dim">p ≠ 0인 피벗, * 는 아무 수</text>
+          </g></g>
+        <g transform="translate(420,20)"><text x="0" y="0" class="t" style="font-weight:700" dy="12">기약 행 사다리꼴 R</text>
+          <g transform="translate(0,30)">
+            <rect x="0" y="0" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="22" y="23" text-anchor="middle" class="t-mono" style="fill:var(--accent)">1</text>
+            <text x="76" y="23" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">a</text><text x="126" y="23" text-anchor="middle" class="t-dim">0</text><text x="176" y="23" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">b</text><text x="226" y="23" text-anchor="middle" class="t-dim">0</text>
+            <text x="22" y="67" text-anchor="middle" class="t-dim">0</text><text x="76" y="67" text-anchor="middle" class="t-dim">0</text>
+            <rect x="104" y="44" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="126" y="67" text-anchor="middle" class="t-mono" style="fill:var(--accent)">1</text>
+            <text x="176" y="67" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">c</text><text x="226" y="67" text-anchor="middle" class="t-dim">0</text>
+            <text x="22" y="111" text-anchor="middle" class="t-dim">0</text><text x="76" y="111" text-anchor="middle" class="t-dim">0</text><text x="126" y="111" text-anchor="middle" class="t-dim">0</text><text x="176" y="111" text-anchor="middle" class="t-dim">0</text>
+            <rect x="204" y="88" width="44" height="34" rx="6" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="226" y="111" text-anchor="middle" class="t-mono" style="fill:var(--accent)">1</text>
+            <rect x="54" y="-6" width="44" height="140" rx="6" style="fill:none;stroke:var(--accent-2);stroke-dasharray:4 3"/><rect x="154" y="-6" width="44" height="140" rx="6" style="fill:none;stroke:var(--accent-2);stroke-dasharray:4 3"/>
+            <text x="0" y="160" class="t-dim">피벗 열 = 단위 벡터, 점선 = 자유 열(2열, 4열)</text>
+          </g></g>
+      </svg>
+      <figcaption><b>그림 5-3.</b> 왼쪽: 행 사다리꼴은 피벗이 계단처럼 오른쪽 아래로 내려간다. 계단이 한 칸에 두 열 이상 건너뛰면 건너뛴 열이 자유 열이다. 오른쪽: RREF에서는 피벗이 1이고 피벗 열은 단위 벡터가 되므로, 자유 열의 숫자 a, b, c가 곧 해의 공식이 된다.</figcaption>
+    </figure>
+    <p>RREF를 만드는 절차는 소거에 두 단계를 더한 것입니다. <b>(1)</b> 왼쪽 열부터 피벗을 찾고(없으면 그 열을 자유 열로 두고 넘어감), <b>(2)</b> 피벗 행을 피벗으로 나눠 1로 만들고, <b>(3)</b> 피벗 <b>위아래</b> 모두를 0으로 만든다. 이를 가우스–조르당 소거라 부르기도 합니다(4장 <a href="lu.html#gauss-jordan">가우스–조르당</a>에서 역행렬을 구할 때 쓴 바로 그 절차입니다).</p>
+    <div class="callout deep"><strong>정리 5.5 (RREF의 유일성)</strong> 어떤 행 연산 순서를 택하더라도 \(A\)의 기약 행 사다리꼴은 하나뿐이다. 따라서 피벗 열의 위치와 개수도 \(A\)만으로 정해진다.
+      <p><b>아이디어.</b> 행 연산은 \(A\mathbf{x} = \mathbf{0}\)의 해집합 \(N(A)\)를 바꾸지 않는다. 그런데 RREF는 \(N(A)\)에서 거꾸로 읽어 낼 수 있다(어느 열이 앞 열들의 결합인지가 \(N(A)\)에 적혀 있고, 그 결합 계수가 \(R\)의 자유 열 숫자다). 같은 \(N(A)\)를 주는 RREF는 하나뿐이므로 유일하다. 피벗의 개수를 <b>계수</b><span class="en">(rank)</span> \(r\)이라 하며, 6장(<a href="rank.html">기저·차원·계수</a>)의 주인공이다.</p></div>
+    <div class="callout sp-steps"><strong>예제 5.3 · 3×4 행렬을 RREF로</strong>
+      $$A = \begin{bmatrix} 1 & 3 & 0 & 2 \\ 2 & 6 & 1 & 7 \\ -1 & -3 & 2 & 4 \end{bmatrix}$$
+      <ol>
+        <li><b>1열, 피벗 1.</b> 행 2 − 2·행 1 → \((0, 0, 1, 3)\), 행 3 + 행 1 → \((0, 0, 2, 6)\).</li>
+        <li><b>2열.</b> 2행 아래(2·3행)의 2열이 모두 0이다. 피벗이 없으므로 \(x_2\)는 <b>자유 변수</b>, 다음 열로.</li>
+        <li><b>3열, 피벗 1</b>(2행). 행 3 − 2·행 2 → \((0, 0, 0, 0)\). 피벗 위(1행 3열)는 이미 0.</li>
+        <li><b>4열.</b> 남은 행(3행)이 0이라 피벗이 없다. \(x_4\)도 자유 변수.</li>
+      </ol>
+      $$R = \begin{bmatrix} 1 & 3 & 0 & 2 \\ 0 & 0 & 1 & 3 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \qquad \text{피벗 열 } 1, 3,\quad \text{자유 열 } 2, 4,\quad r = 2$$</div>
+    <p>아래 스테퍼로 직접 돌려 보세요. 행렬을 고치면 처음부터 다시 계산합니다. 테두리 친 칸이 피벗, 색칠된 행이 지금 고치는 행이며, 끝나면 피벗 열(보라)과 자유 열(청록)을 칠해 보여 줍니다.</p>
+
+    <div class="sim" id="sim-sp-rref">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>RREF 스테퍼: 피벗 열과 자유 열 찾기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sp-stage" id="sp-r-stage"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>예제</span><select id="sp-r-pre">
+            <option value="ex">예제 5.3 (3×4, r = 2)</option>
+            <option value="chem">화학 반응식 (3×4, r = 3)</option>
+            <option value="full">3×4, 피벗 셋</option>
+            <option value="inv">3×3 가역 → R = I</option>
+            <option value="one">계수 1 (모든 행이 비례)</option>
+          </select></label>
+          <div class="ctrl"><span>A 직접 고치기 (3×4)</span><div class="mat sp-in" id="sp-r-in" style="--n:4"></div></div>
+          <div class="sp-row"><button class="btn" id="sp-r-first">⏮ 처음</button><button class="btn" id="sp-r-prev">◀ 이전</button><button class="btn primary" id="sp-r-next">다음 단계 ▶</button><button class="btn" id="sp-r-last">끝까지 ⏭</button></div>
+        </div>
+      </div>
+      <div class="sp-note" id="sp-r-note">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="sp-r-k">—</span></div>
+        <div class="stat"><span class="k">피벗 열</span><span class="v" id="sp-r-piv">—</span></div>
+        <div class="stat"><span class="k">자유 열</span><span class="v" id="sp-r-free">—</span></div>
+        <div class="stat"><span class="k">계수 r</span><span class="v" id="sp-r-rank">—</span></div>
+      </div>
+      <div class="sp-log" id="sp-r-log"></div>
+      <div class="sim-note">해볼 것: ① 예제 5.3을 끝까지 넘겨 위 손계산의 R과 같은지 확인하세요. 2열에서 "피벗 없음"이 뜨는 순간이 핵심입니다. ② '3×3 가역'은 R이 단위 행렬이 됩니다. 피벗이 n개면 자유 변수가 없고 N(A) = {0}입니다. ③ '계수 1'에서는 한 행만 남고 자유 변수가 셋이 됩니다. 모델: 각 열에서 위에서부터 첫 0 아닌 원소를 피벗으로 고릅니다(손계산 순서). 크기가 10⁻¹⁰ 미만이면 0으로 보고, 분모 12 이하의 분수는 분수로 표시합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="special-solutions">
+    <h2>특수해: 자유 변수 하나씩 1로</h2>
+    <div class="problem"><strong>무수히 많은 해를 유한하게 적기</strong>
+      <p>예제 5.3의 \(A\mathbf{x} = \mathbf{0}\)에는 해가 무수히 많습니다. 하지만 정리 5.2 덕분에 "벡터 몇 개의 생성"으로 적을 수 있을 것입니다. 몇 개가 필요하고, 어떻게 찾을까요?</p></div>
+    <p>\(R\mathbf{x} = \mathbf{0}\)은 \(A\mathbf{x} = \mathbf{0}\)과 해가 같고(행 연산은 해집합을 보존), 훨씬 읽기 쉽습니다. 예제 5.3의 \(R\)에서</p>
+    <div class="formula">$$x_1 + 3x_2 + 2x_4 = 0,\qquad x_3 + 3x_4 = 0 \qquad\Longrightarrow\qquad x_1 = -3x_2 - 2x_4,\quad x_3 = -3x_4$$
+      <div class="where">피벗 변수(\(x_1, x_3\))는 자유 변수(\(x_2, x_4\))로 결정된다. 자유 변수는 말 그대로 아무 값이나 고를 수 있다.</div></div>
+    <p>자유 변수를 하나씩 1, 나머지를 0으로 두면 해가 하나씩 나옵니다. 이것을 <span class="term">특수해</span><span class="en">(special solution)</span>라 합니다.</p>
+    <div class="formula">$$\mathbf{s}_1 = \begin{bmatrix} -3 \\ 1 \\ 0 \\ 0 \end{bmatrix}\ (x_2 = 1,\ x_4 = 0), \qquad \mathbf{s}_2 = \begin{bmatrix} -2 \\ 0 \\ -3 \\ 1 \end{bmatrix}\ (x_2 = 0,\ x_4 = 1), \qquad N(A) = \{\,c_1\mathbf{s}_1 + c_2\mathbf{s}_2\,\}$$
+      <div class="where">\(c_1 = x_2\), \(c_2 = x_4\)이다. 특수해의 성분은 \(R\)의 자유 열 숫자 \((3, 0)\), \((2, 3)\)에 부호를 바꿔 피벗 자리에 놓고, 자유 변수 자리에 단위 벡터를 넣은 것이다.</div></div>
+    <div class="callout deep"><strong>정리 5.6 (특수해와 영공간)</strong> \(A\)가 \(m \times n\)이고 계수가 \(r\)이면 자유 변수는 \(n - r\)개이고, 그 특수해 \(n - r\)개는 \(N(A)\)를 생성하며 서로 일차 독립이다.
+      <p><b>증명.</b> \(R\mathbf{x} = \mathbf{0}\)의 임의의 해 \(\mathbf{x}\)를 보자. \(\mathbf{x}\)의 자유 변수 값을 \(c_1, \dots, c_{n-r}\)이라 하면 \(\mathbf{y} = \mathbf{x} - \sum c_j\mathbf{s}_j\)도 해이고 자유 변수 자리가 모두 0이다. 그런데 자유 변수가 0이면 \(R\)의 각 행이 피벗 변수를 0으로 강제하므로 \(\mathbf{y} = \mathbf{0}\). 따라서 \(\mathbf{x} = \sum c_j\mathbf{s}_j\)이다. 독립성: \(\sum c_j\mathbf{s}_j = \mathbf{0}\)이면 j번째 자유 변수 자리의 성분이 \(c_j\)이므로 모든 \(c_j = 0\). ∎</p></div>
+    <div class="callout tip"><strong>바로 얻는 결론: 미지수가 식보다 많으면</strong> \(n > m\)이면 피벗은 많아야 \(m\)개(행마다 하나)이므로 \(r \le m \lt n\), 자유 변수가 적어도 하나 있다. 즉 <b>\(A\mathbf{x} = \mathbf{0}\)에 0이 아닌 해가 반드시 있다.</b> 화학 반응식(3×4)에 0 아닌 계수가 반드시 존재하는 이유이고, 1장의 "\(\mathbb{R}^m\)에서 \(m\)개를 넘는 벡터는 종속"의 증명이기도 하다.</div>
+
+    <div class="sim" id="sim-sp-special">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>특수해를 섞어 영공간 전체 만들기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="sp-stage" id="sp-s-stage"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬 A</span><select id="sp-s-pre">
+            <option value="ex">예제 5.3 (3×4, 자유 2개)</option>
+            <option value="chem">화학 반응식 (3×4, 자유 1개)</option>
+            <option value="wide">2×5 (자유 3개)</option>
+            <option value="inv">3×3 가역 (자유 0개)</option>
+          </select></label>
+          <div class="sp-sliders" id="sp-s-sliders"></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">n − r (자유 변수 수)</span><span class="v" id="sp-s-dim">—</span></div>
+        <div class="stat"><span class="k">xₙ = Σ cⱼ sⱼ</span><span class="v" id="sp-s-x">—</span></div>
+        <div class="stat"><span class="k">A xₙ</span><span class="v" id="sp-s-ax">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 슬라이더 하나만 움직이면 그 자유 변수 자리(청록 칸)만 바뀌고 피벗 변수는 따라 정해집니다. ② 어떤 조합이든 A xₙ은 0입니다. ③ '화학 반응식'의 특수해는 x₄ = 1로 둔 (1/4, 5/4, 3/4, 1)이고, c₁ = 4로 두면 정수 계수 (1, 5, 3, 4)가 나옵니다. ④ '3×3 가역'은 자유 변수가 없어 영공간이 {0}뿐입니다. 모델: 특수해는 RREF에서 바로 읽고, 표시는 소수 둘째 자리까지입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="complete-solution">
+    <h2>완전한 해: 특수한 해 하나 + 영공간</h2>
+    <div class="problem"><strong>우변이 0이 아니면</strong>
+      <p>반응식이 아닌 대부분의 공학 문제는 \(A\mathbf{x} = \mathbf{b}\), \(\mathbf{b} \ne \mathbf{0}\)입니다. 해가 무수히 많다면 그 집합은 영공간과 어떤 관계일까요?</p></div>
+    <div class="callout deep"><strong>정리 5.7 (완전한 해)</strong> \(\mathbf{x}_p\)가 \(A\mathbf{x} = \mathbf{b}\)의 해 하나(특수한 해, <span class="en">particular solution</span>)이면, 모든 해는
+      $$\mathbf{x} = \mathbf{x}_p + \mathbf{x}_n, \qquad \mathbf{x}_n \in N(A)$$
+      꼴이고, 이런 꼴은 모두 해이다.
+      <p><b>증명.</b> \(A(\mathbf{x}_p + \mathbf{x}_n) = \mathbf{b} + \mathbf{0} = \mathbf{b}\)이므로 해이다. 거꾸로 \(\mathbf{x}\)가 해이면 \(A(\mathbf{x} - \mathbf{x}_p) = \mathbf{b} - \mathbf{b} = \mathbf{0}\), 즉 \(\mathbf{x} - \mathbf{x}_p \in N(A)\). ∎</p></div>
+    <p>그림으로 말하면 해집합은 <b>영공간을 \(\mathbf{x}_p\)만큼 평행이동한 것</b>입니다. 영공간이 원점을 지나는 직선이면 해집합은 그와 평행한 직선이고, 영공간이 평면이면 평행한 평면입니다. 원점을 지나지 않으니 부분공간은 아니지만 모양은 똑같습니다. 이 구조는 선형대수 바깥에서도 다시 나옵니다. 선형 미분방정식의 일반해 = 특수해 + 동차해가 정확히 같은 정리입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 240" role="img" aria-label="완전한 해는 영공간을 특수한 해만큼 평행이동한 것">
+        <rect x="10" y="20" width="460" height="200" rx="10" class="f-surface"/>
+        <line x1="30" y1="150" x2="450" y2="150" class="s-axis" style="opacity:.5"/>
+        <line x1="150" y1="30" x2="150" y2="210" class="s-axis" style="opacity:.5"/>
+        <line x1="40" y1="205" x2="300" y2="75" style="stroke:var(--accent);stroke-width:2.5;stroke-dasharray:7 5"/>
+        <line x1="120" y1="215" x2="440" y2="55" style="stroke:var(--ok);stroke-width:3"/>
+        <circle cx="150" cy="150" r="4" style="fill:var(--text)"/>
+        <line x1="150" y1="150" x2="250" y2="150" style="stroke:var(--accent-2);stroke-width:3"/>
+        <circle cx="250" cy="150" r="5" style="fill:var(--accent-2)"/>
+        <line x1="250" y1="150" x2="350" y2="100" style="stroke:var(--text);stroke-width:2"/>
+        <circle cx="350" cy="100" r="5" style="fill:var(--ok)"/>
+        <text x="200" y="170" class="t-mono" style="fill:var(--accent-2)">xₚ</text>
+        <text x="290" y="140" class="t-mono">xₙ</text>
+        <text x="360" y="96" class="t-mono" style="fill:var(--ok)">x = xₚ + xₙ</text>
+        <text x="44" y="190" class="t" style="fill:var(--accent)">N(A): Ax = 0</text>
+        <text x="330" y="52" class="t" style="fill:var(--ok)">Ax = b</text>
+        <rect x="490" y="20" width="280" height="200" rx="10" class="f-surface"/>
+        <text x="505" y="50" class="t" style="font-weight:700">x₁ + 3x₂ + 2x₄ = 1</text>
+        <text x="505" y="74" class="t" style="font-weight:700">x₃ + 3x₄ = 2</text>
+        <text x="505" y="108" class="t-mono" style="fill:var(--accent-2)">xₚ = (1, 0, 2, 0)</text>
+        <text x="505" y="134" class="t-mono">+ x₂(−3, 1, 0, 0)</text>
+        <text x="505" y="160" class="t-mono">+ x₄(−2, 0, −3, 1)</text>
+        <text x="505" y="198" class="t-dim">ℝ⁴ 안의 평면(평행이동된)</text>
+      </svg>
+      <figcaption><b>그림 5-4.</b> 왼쪽: Ax = b의 해(초록 직선)는 영공간(점선)과 평행하고, xₚ만큼 옮겨져 있다. xₚ를 어느 해로 고르든 같은 직선이 나온다. 오른쪽: 예제 5.4의 완전한 해. 자유 변수를 0으로 둔 해가 xₚ이고, 나머지는 특수해의 결합이다.</figcaption>
+    </figure>
+    <div class="callout sp-steps"><strong>예제 5.4 · 완전한 해를 한 번에</strong>
+      <p>예제 5.3의 \(A\)와 \(\mathbf{b} = (1, 4, 3)\)으로 \(A\mathbf{x} = \mathbf{b}\)를 풀자.</p>
+      <ol>
+        <li>첨가 행렬에 같은 행 연산을 한다. 행 2 − 2·행 1 → \((0, 0, 1, 3 \mid 2)\), 행 3 + 행 1 → \((0, 0, 2, 6 \mid 4)\), 행 3 − 2·행 2 → \((0, 0, 0, 0 \mid 0)\).</li>
+        <li>마지막 행이 \(0 = 0\)이므로 <b>풀린다</b>(우변이 0이 아니었다면 해가 없다. 풀림 조건은 \(5b_1 - 2b_2 + b_3 = 0\)이고 \(5 - 8 + 3 = 0\)).</li>
+        <li>\([\,R \mid \mathbf{d}\,] = \left[\begin{array}{rrrr|r} 1 & 3 & 0 & 2 & 1 \\ 0 & 0 & 1 & 3 & 2 \\ 0 & 0 & 0 & 0 & 0 \end{array}\right]\). 자유 변수 \(x_2 = x_4 = 0\)으로 두면 \(\mathbf{x}_p = (1, 0, 2, 0)\).</li>
+        <li>완전한 해: \(\mathbf{x} = (1, 0, 2, 0) + x_2(-3, 1, 0, 0) + x_4(-2, 0, -3, 1)\).</li>
+      </ol>
+      <p>검산: \(A\mathbf{x}_p = (1 + 0 + 0 + 0,\ 2 + 0 + 2 + 0,\ -1 + 0 + 4 + 0) = (1, 4, 3)\). ✓</p></div>
+    <p>해의 개수는 계수 \(r\)과 행렬 크기 \(m \times n\)의 관계만으로 정리됩니다. 피벗이 모든 행에 있으면(\(r = m\)) 소거 끝에 \(0 = c\) 꼴의 모순 행이 생길 수 없어 항상 풀리고, 피벗이 모든 열에 있으면(\(r = n\)) 자유 변수가 없어 해가 많아야 하나입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>경우</th><th>R의 모양</th><th>Ax = b의 해</th><th>예</th></tr></thead>
+      <tbody>
+        <tr><td>\(r = m = n\)</td><td>\(I\)</td><td>항상 정확히 1개</td><td>가역 정사각 행렬</td></tr>
+        <tr><td>\(r = n \lt m\)</td><td>\(\begin{bmatrix} I \\ 0 \end{bmatrix}\)</td><td>0개 또는 1개</td><td>센서가 손잡이보다 많은 공정(3절)</td></tr>
+        <tr><td>\(r = m \lt n\)</td><td>\([\,I \ \ F\,]\)</td><td>항상 무수히(∞)</td><td>교통망, 반응식처럼 미지수가 많은 경우</td></tr>
+        <tr><td>\(r \lt m,\ r \lt n\)</td><td>\(\begin{bmatrix} I & F \\ 0 & 0 \end{bmatrix}\)</td><td>0개 또는 ∞</td><td>예제 5.3·5.4</td></tr>
+      </tbody>
+    </table></div>
+    <p>(표의 \(R\)은 피벗 열을 앞으로 모아 그린 것입니다. 실제 \(R\)에서는 피벗 열과 자유 열이 섞여 있을 수 있습니다.)</p>
+
+    <div class="sim" id="sim-sp-complete">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>해집합 = 영공간의 평행이동 (ℝ³)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sp-x-cv" class="sp-3d"></canvas><span class="tag-tl">끌어서 돌려 보기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>식</span><select id="sp-x-pre">
+            <option value="line">식 2개: x₁ + x₂ + x₃ = b₁, x₁ − x₂ + 2x₃ = b₂</option>
+            <option value="plane">식 1개: x₁ + 2x₂ − x₃ = b₁</option>
+            <option value="par">평행한 두 평면: x₁ + x₂ + x₃ = b₁, 2x₁ + 2x₂ + 2x₃ = b₂</option>
+          </select></label>
+          <label class="ctrl"><span>b₁ <output id="sp-x-b1-out"></output></span><input type="range" id="sp-x-b1" min="-3" max="3" step="0.1" value="2"></label>
+          <label class="ctrl"><span>b₂ <output id="sp-x-b2-out"></output></span><input type="range" id="sp-x-b2" min="-3" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>자유 변수 t <output id="sp-x-t-out"></output></span><input type="range" id="sp-x-t" min="-2" max="2" step="0.05" value="0.5"></label>
+          <label class="ctrl sp-dim" id="sp-x-u-wrap"><span>자유 변수 u <output id="sp-x-u-out"></output></span><input type="range" id="sp-x-u" min="-2" max="2" step="0.05" value="0"></label>
+        </div>
+      </div>
+      <div class="sp-legend"><span><i style="background:var(--accent)"></i>N(A) (원점 지남)</span><span><i style="background:var(--ok)"></i>Ax = b의 해집합</span><span><i style="background:var(--accent-2)"></i>xₚ (자유 변수 = 0)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">해집합</span><span class="v" id="sp-x-kind">—</span></div>
+        <div class="stat"><span class="k">xₚ</span><span class="v" id="sp-x-xp">—</span></div>
+        <div class="stat"><span class="k">x = xₚ + xₙ</span><span class="v" id="sp-x-x">—</span></div>
+        <div class="stat"><span class="k">Ax</span><span class="v" id="sp-x-ax">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① b₁, b₂를 바꾸면 초록 해집합이 점선 영공간과 평행을 유지한 채 미끄러집니다. 모양은 그대로이고 위치만 바뀝니다. ② b = 0으로 두면 두 집합이 겹칩니다. ③ '평행한 두 평면'에서 b₂ ≠ 2b₁이면 해가 없고, b₂ = 2b₁일 때만 평면 하나 전체가 해가 됩니다. 모델: xₚ는 RREF에서 자유 변수를 0으로 둔 해, 정사영 3D 그림입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="flows">
+    <h2>응용: 교통망의 흐름 보존과 순환</h2>
+    <div class="problem"><strong>교차로마다 들어온 만큼 나간다</strong>
+      <p>네 교차로 A, B, C, D를 잇는 일방통행 도로 다섯 개가 있습니다. 차량 감지기로 도시 바깥에서 들어오고 나가는 교통량은 알지만, 안쪽 도로 다섯 개의 교통량은 모릅니다. 교차로에서 차가 쌓이지 않는다면 "들어온 양 = 나간 양"이라는 식이 교차로마다 하나씩, 넷 나옵니다. 미지수 다섯, 식 넷. 안쪽 교통량을 알 수 있을까요?</p></div>
+    <p>도로 \(e_1: A \to B\), \(e_2: B \to C\), \(e_3: C \to D\), \(e_4: D \to A\), \(e_5: A \to C\)의 교통량을 \(x_1, \dots, x_5\), 바깥에서 A, B로 들어오는 양을 \(a, b\), C에서 나가는 양을 \(c\), D에서 나가는 양을 \(a + b - c\)(전체 보존)라 하면, 각 교차로의 "나가는 양 − 들어오는 양 = 바깥에서 들어온 양"은</p>
+    <div class="formula">$$\underbrace{\begin{bmatrix} 1 & 0 & 0 & -1 & 1 \\ -1 & 1 & 0 & 0 & 0 \\ 0 & -1 & 1 & 0 & -1 \\ 0 & 0 & -1 & 1 & 0 \end{bmatrix}}_{A\ (\text{행} = A, B, C, D)}\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} a \\ b \\ -c \\ -(a + b - c) \end{bmatrix}$$
+      <div class="where">이런 행렬을 <span class="term">결합 행렬</span><span class="en">(incidence matrix)</span>이라 한다. 각 열(도로)에 출발 교차로 +1, 도착 교차로 −1이 하나씩 있다.</div></div>
+    <p>네 행을 모두 더하면 0이 됩니다(각 도로가 한 번은 +1, 한 번은 −1로 세어짐). 그래서 계수는 4가 아니라 \(r = 3\)이고, 자유 변수가 \(5 - 3 = 2\)개입니다. \(x_4, x_5\)를 자유 변수로 두고 풀면</p>
+    <div class="formula">$$\mathbf{x} = \underbrace{\begin{bmatrix} a \\ a + b \\ a + b - c \\ 0 \\ 0 \end{bmatrix}}_{\mathbf{x}_p} + x_4\underbrace{\begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \\ 0 \end{bmatrix}}_{A\to B\to C\to D\to A} + x_5\underbrace{\begin{bmatrix} -1 \\ -1 \\ 0 \\ 0 \\ 1 \end{bmatrix}}_{A\to C\to B\to A}$$
+      <div class="where">두 특수해는 각각 도시를 한 바퀴 도는 <b>순환</b>이다. 순환을 얼마나 더해도 교차로의 보존 법칙은 깨지지 않는다(바깥 감지기에는 보이지 않는 입력, 4절의 영공간).</div></div>
+    <p>그래서 바깥 감지기만으로는 안쪽 교통량을 <b>정할 수 없습니다</b>. 도로 두 곳에 감지기를 더 달아 \(x_4, x_5\)를 재야 비로소 나머지가 정해집니다. 반대로 일방통행이라는 조건(\(x_i \ge 0\))은 \(x_4, x_5\)가 가질 수 있는 범위를 좁혀 줍니다. 이것이 교통 공학과 회로(키르히호프 전류 법칙, 4장의 노드 해석과 같은 결합 행렬)와 배관망 해석에서 공통으로 쓰는 구조입니다.</p>
+
+    <div class="sim" id="sim-sp-flow">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>교통망: 바깥 감지기로는 보이지 않는 순환</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sp-f-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>A로 들어옴 a <output id="sp-f-a-out"></output></span><input type="range" id="sp-f-a" min="0" max="600" step="10" value="400"></label>
+          <label class="ctrl"><span>B로 들어옴 b <output id="sp-f-b-out"></output></span><input type="range" id="sp-f-b" min="0" max="600" step="10" value="200"></label>
+          <label class="ctrl"><span>C에서 나감 c <output id="sp-f-c-out"></output></span><input type="range" id="sp-f-c" min="0" max="1200" step="10" value="350"></label>
+          <label class="ctrl"><span>순환 1 (= x₄, D→A) <output id="sp-f-t-out"></output></span><input type="range" id="sp-f-t" min="0" max="600" step="10" value="100"></label>
+          <label class="ctrl"><span>순환 2 (= x₅, A→C) <output id="sp-f-u-out"></output></span><input type="range" id="sp-f-u" min="0" max="600" step="10" value="150"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x₁ … x₅ (대/시)</span><span class="v" id="sp-f-x">—</span></div>
+        <div class="stat"><span class="k">교차로 보존 오차 Ax − f</span><span class="v" id="sp-f-res">—</span></div>
+        <div class="stat"><span class="k">일방통행 (모든 xᵢ ≥ 0)</span><span class="v" id="sp-f-ok">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 순환 1·2 슬라이더만 움직여 보세요. 안쪽 도로 교통량은 크게 바뀌지만 바깥 숫자 a, b, c, D 출구는 그대로이고 보존 오차도 0입니다. 이것이 영공간입니다. ② 순환 2를 키우면 x₁ = a + x₄ − x₅가 줄다가 음수가 됩니다. 음수는 도로를 거꾸로 달린다는 뜻이라 일방통행에서는 불가능합니다. ③ c를 a + b보다 크게 하면 D 출구가 음수가 되어 바깥 조건부터 말이 안 됩니다. 모델: 교차로에서 차가 쌓이지 않는 정상 상태, 도로 용량 제한은 없습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>열공간과 영공간은 이 책 나머지의 뼈대입니다. "어떤 출력에 닿는가"와 "무엇이 보이지 않는가"는 공학 곳곳에서 같은 모양으로 나옵니다.</p>
+    <div class="uses">
+      <a href="rank.html"><small>LINEARBOOK · 6장</small>기저·차원·계수<br><span>특수해가 영공간의 기저가 되고, 계수 r로 네 부분공간의 차원이 모두 정해진다.</span></a>
+      <a href="orthogonality.html"><small>LINEARBOOK · 8장</small>직교성과 사영<br><span>b가 C(A) 밖에 있을 때 가장 가까운 점으로 내리는 최소제곱.</span></a>
+      <a href="lu.html#circuit"><small>LINEARBOOK · 4장</small>회로의 노드 해석<br><span>교통망과 같은 결합 행렬로 키르히호프 전류 법칙을 세운다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>변화율로 세상을 쓰다<br><span>선형 미분방정식의 일반해 = 특수해 + 동차해. 완전한 해와 같은 정리.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>설계 행렬의 열공간에 관측값을 사영하는 것이 최소제곱 회귀다.</span></a>
+      <a href="../../foundations/chapters/information.html"><small>MATHBOOK</small>놀라움을 재는 법<br><span>해밍 부호의 부호어는 검사 행렬의 영공간이고, 신드롬은 그 밖으로 벗어난 정도다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>벡터 공간</b>: 덧셈과 스칼라배가 닫혀 있고 여덟 공리를 지키는 집합. \(\mathbb{R}^n\)뿐 아니라 다항식, 함수, 행렬, 표본화한 신호도 벡터 공간이다.</li>
+      <li><b>부분공간 판정</b>: \(\mathbf{0} \in S\), 덧셈에 닫힘, 스칼라배에 닫힘. \(\mathbb{R}^3\)의 부분공간은 \(\{\mathbf{0}\}\), 원점을 지나는 직선·평면, \(\mathbb{R}^3\) 전체뿐이다. 벡터들의 생성은 언제나 부분공간이다.</li>
+      <li><b>열공간</b> \(C(A) = \{A\mathbf{x}\} \subseteq \mathbb{R}^m\): 열들의 생성. \(A\mathbf{x} = \mathbf{b}\)가 풀린다 ⟺ \(\mathbf{b} \in C(A)\). 소거의 마지막 행 \(0 = (\mathbf{b}\)의 결합)이 풀림 조건을 준다.</li>
+      <li><b>영공간</b> \(N(A) = \{\mathbf{x} : A\mathbf{x} = \mathbf{0}\} \subseteq \mathbb{R}^n\): 부분공간이며, 그 벡터는 \(A\)의 모든 행과 수직이다. \(\mathbf{b} \ne \mathbf{0}\)인 해집합은 부분공간이 아니다.</li>
+      <li><b>RREF</b>: 피벗을 1로, 피벗 위아래를 0으로. 피벗이 없는 열은 건너뛰며 그 미지수가 <b>자유 변수</b>다. RREF는 유일하고 피벗 수가 계수 \(r\)이다.</li>
+      <li><b>특수해</b>: 자유 변수 하나를 1, 나머지를 0으로 둔 해. \(n - r\)개의 특수해가 \(N(A)\)를 생성한다. \(n > m\)이면 \(A\mathbf{x} = \mathbf{0}\)에 0 아닌 해가 반드시 있다.</li>
+      <li><b>완전한 해</b> \(\mathbf{x} = \mathbf{x}_p + \mathbf{x}_n\): 해 하나에 영공간을 더한 것, 즉 영공간을 평행이동한 직선·평면. \(r = m\)이면 항상 풀리고, \(r = n\)이면 해는 많아야 하나다.</li>
+      <li>교통망·회로·반응식의 <b>보존 법칙</b>은 결합 행렬로 쓰이며, 그 영공간은 바깥에서 보이지 않는 <b>순환</b>이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 다음 중 \(\mathbb{R}^3\)의 부분공간인 것은?</p><div class="opts">
+        <button class="opt">평면 \(x + y + z = 1\)</button>
+        <button class="opt" data-correct>평면 \(x + y + z = 0\)</button>
+        <button class="opt">\(x \ge 0\)인 모든 점</button>
+        <button class="opt">\(x\)축과 \(y\)축의 합집합</button>
+      </div><div class="quiz-exp">\(x + y + z = 0\)은 원점을 지나고, 두 점의 합과 상수배도 같은 식을 만족한다(선형 식의 해집합 = 영공간). \(x + y + z = 1\)은 원점을 포함하지 않고, 반공간은 음수배에, 두 축의 합집합은 덧셈에 닫혀 있지 않다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(2 \times 2\) 실수 행렬 전체 \(\mathbb{R}^{2\times 2}\)에서 부분공간이 <b>아닌</b> 것은?</p><div class="opts">
+        <button class="opt">대칭 행렬 전체</button>
+        <button class="opt">위삼각 행렬 전체</button>
+        <button class="opt" data-correct>가역 행렬 전체</button>
+        <button class="opt">대각합(trace)이 0인 행렬 전체</button>
+      </div><div class="quiz-exp">가역 행렬 전체는 영행렬을 포함하지 않고, \(I + (-I) = 0\)처럼 두 가역 행렬의 합이 가역이 아닐 수도 있다. 나머지 셋은 영행렬을 포함하고 합과 상수배에 닫혀 있다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(A\)가 \(5 \times 3\)이다. \(C(A)\)와 \(N(A)\)는 각각 어디의 부분공간인가?</p><div class="opts">
+        <button class="opt">둘 다 \(\mathbb{R}^5\)</button>
+        <button class="opt">\(C(A) \subseteq \mathbb{R}^3,\ N(A) \subseteq \mathbb{R}^5\)</button>
+        <button class="opt" data-correct>\(C(A) \subseteq \mathbb{R}^5,\ N(A) \subseteq \mathbb{R}^3\)</button>
+        <button class="opt">둘 다 \(\mathbb{R}^3\)</button>
+      </div><div class="quiz-exp">열은 성분이 5개이므로 그 결합(출력 \(A\mathbf{x}\))은 \(\mathbb{R}^5\)에 산다. 영공간은 입력 \(\mathbf{x}\)의 집합이므로 \(\mathbb{R}^3\)에 산다. "열공간은 출력 쪽, 영공간은 입력 쪽."</div></div>
+
+      <div class="quiz-q"><p>Q4. 소거 결과 첨가 행렬의 마지막 행이 \([\,0 \ \ 0 \ \ 0 \mid 3\,]\)이 되었다. 옳은 것은?</p><div class="opts">
+        <button class="opt">해가 무수히 많다</button>
+        <button class="opt">해가 정확히 하나다</button>
+        <button class="opt" data-correct>해가 없다. \(\mathbf{b} \notin C(A)\)이다</button>
+        <button class="opt">\(N(A) = \{\mathbf{0}\}\)이다</button>
+      </div><div class="quiz-exp">마지막 식은 \(0 = 3\)이라는 모순이다. 우변의 그 결합이 0이어야 \(\mathbf{b}\)가 열공간에 들어간다. 영공간에 대해서는 이 정보만으로 말할 수 없다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(3 \times 7\) 행렬 \(A\)의 계수가 3이다. \(A\mathbf{x} = \mathbf{0}\)의 특수해는 몇 개인가?</p><div class="opts">
+        <button class="opt">3개</button>
+        <button class="opt" data-correct>4개</button>
+        <button class="opt">7개</button>
+        <button class="opt">0개</button>
+      </div><div class="quiz-exp">자유 변수 수 = \(n - r = 7 - 3 = 4\). 또 \(r = m = 3\)이므로 모든 \(\mathbf{b}\)에 대해 \(A\mathbf{x} = \mathbf{b}\)가 풀리고, 해집합은 \(\mathbb{R}^7\) 안의 4차원 평행이동 공간이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(R = \begin{bmatrix} 1 & 0 & 2 & 0 \\ 0 & 1 & -1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\)일 때 \(N(A)\)를 생성하는 특수해는?</p><div class="opts">
+        <button class="opt">\((2, -1, 0, 0)\)</button>
+        <button class="opt" data-correct>\((-2, 1, 1, 0)\)</button>
+        <button class="opt">\((0, 0, 0, 1)\)</button>
+        <button class="opt">\((-2, 1, 1, 1)\)</button>
+      </div><div class="quiz-exp">피벗 열은 1, 2, 4열, 자유 열은 3열뿐이다. \(x_3 = 1\)로 두면 1행에서 \(x_1 = -2\), 2행에서 \(x_2 = 1\), 3행에서 \(x_4 = 0\). 확인: \(R(-2, 1, 1, 0) = (-2 + 2, 1 - 1, 0) = \mathbf{0}\).</div></div>
+
+      <div class="quiz-q"><p>Q7. \(\mathbf{x}_p\)와 \(\mathbf{y}\)가 모두 \(A\mathbf{x} = \mathbf{b}\)의 해다. 반드시 참인 것은?</p><div class="opts">
+        <button class="opt">\(\mathbf{x}_p + \mathbf{y}\)도 해이다</button>
+        <button class="opt" data-correct>\(\mathbf{x}_p - \mathbf{y} \in N(A)\)</button>
+        <button class="opt">\(\mathbf{x}_p = \mathbf{y}\)</button>
+        <button class="opt">\(\mathbf{b} = \mathbf{0}\)</button>
+      </div><div class="quiz-exp">\(A(\mathbf{x}_p - \mathbf{y}) = \mathbf{b} - \mathbf{b} = \mathbf{0}\). 두 해의 차이는 늘 영공간에 있다(정리 5.7). 합은 \(2\mathbf{b}\)로 가므로 \(\mathbf{b} \ne \mathbf{0}\)이면 해가 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 교통망 결합 행렬의 네 행을 모두 더하면 영벡터가 된다. 이 사실이 뜻하는 것은?</p><div class="opts">
+        <button class="opt">안쪽 도로 교통량이 하나로 정해진다</button>
+        <button class="opt">모든 바깥 교통량 조합에 대해 해가 있다</button>
+        <button class="opt" data-correct>바깥 교통량의 합이 0이어야(들어온 만큼 나가야) 풀리고, 계수가 4보다 작다</button>
+        <button class="opt">영공간이 \(\{\mathbf{0}\}\)이다</button>
+      </div><div class="quiz-exp">행의 합이 0이면 우변 성분의 합도 0이어야 한다(\(a + b - c - (a + b - c) = 0\)). 독립인 행은 셋뿐이라 \(r = 3\), 자유 변수가 \(5 - 3 = 2\)개이고 영공간은 두 순환이 생성하는 평면이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const SP = {
+  EPS: 1e-10,
+  minus(s) { return String(s).replace(/-/g, "−"); },
+  num(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) return "0";
+    return SP.minus(String(Number(v.toFixed(d))));
+  },
+  frac(v) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 1e-10) return "0";
+    for (let q = 1; q <= 12; q++) {
+      const p = Math.round(v * q);
+      if (Math.abs(v * q - p) < 1e-8 * Math.max(1, Math.abs(p))) return SP.minus(q === 1 ? String(p) : p + "/" + q);
+    }
+    return SP.num(v, 3);
+  },
+  vec(v, d = 2) { return "(" + v.map((x) => SP.num(x, d)).join(", ") + ")"; },
+  clone(M) { return M.map((r) => r.slice()); },
+  dot: (a, b) => a.reduce((s, x, i) => s + x * b[i], 0),
+  add: (a, b) => a.map((x, i) => x + b[i]),
+  scale: (a, c) => a.map((x) => x * c),
+  norm: (a) => Math.hypot(...a),
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  unit(a) { const n = SP.norm(a) || 1; return a.map((x) => x / n); },
+  mulv: (A, x) => A.map((r) => SP.dot(r, x)),
+  /** n에 수직인 정규직교 두 벡터 */
+  perp(n) {
+    const u0 = Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const u = SP.unit(SP.cross(n, u0));
+    return [u, SP.unit(SP.cross(n, u))];
+  },
+  /** HTML 행렬. o: {pivot:[r,c], target, pcols:[], fcols:[], aug} */
+  matHTML(M, o = {}) {
+    const cols = M[0].length;
+    let h = `<span class="sp-m" style="--c:${cols}">`;
+    M.forEach((row, i) => row.forEach((v, j) => {
+      const cls = [];
+      if (o.aug && j === cols - 1) cls.push("aug");
+      const isP = o.pivot && o.pivot[0] === i && o.pivot[1] === j;
+      if (isP) cls.push("pv");
+      else if (o.target === i) cls.push("tg");
+      else if (o.pcols && o.pcols.includes(j)) cls.push("pc");
+      else if (o.fcols && o.fcols.includes(j)) cls.push("fc");
+      if (Math.abs(v) < 1e-10 && !isP) cls.push("z");
+      h += `<span class="${cls.join(" ")}">${o.dec ? SP.num(v, o.dec) : SP.frac(v)}</span>`;
+    }));
+    return h + "</span>";
+  },
+  colHTML(v, free = [], d = 2, frac = true) {
+    return `<span class="sp-v">${v.map((x, i) => `<span class="${free.includes(i) ? "fr" : ""}">${frac ? SP.frac(x) : SP.num(x, d)}</span>`).join("")}</span>`;
+  },
+  /** RREF 단계 기록. 각 열에서 위에서부터 첫 0 아닌 원소를 피벗으로. */
+  rrefSteps(M0) {
+    const M = SP.clone(M0), m = M.length, n = M[0].length, steps = [], pivots = [], free = [];
+    const scale = Math.max(1, ...M.flat().map(Math.abs));
+    const clean = () => M.forEach((r) => r.forEach((v, j) => { if (Math.abs(v) < SP.EPS * scale) r[j] = 0; }));
+    steps.push({ M: SP.clone(M), note: "시작: 1열부터 피벗을 찾는다.", log: "시작" });
+    let r = 0;
+    for (let c = 0; c < n; c++) {
+      if (r >= m) { free.push(c); steps.push({ M: SP.clone(M), note: `<b>${c + 1}열</b>: 남은 행이 없다 → x${c + 1}은 자유 변수.`, log: `${c + 1}열: 자유` }); continue; }
+      let p = -1; for (let i = r; i < m; i++) if (Math.abs(M[i][c]) > SP.EPS * scale) { p = i; break; }
+      if (p < 0) { free.push(c); steps.push({ M: SP.clone(M), note: `<b>${c + 1}열</b>: ${r + 1}행 아래로 모두 0, 피벗 없음 → <b>x${c + 1}은 자유 변수</b>. 다음 열로.`, log: `${c + 1}열: 피벗 없음 → 자유` }); continue; }
+      if (p !== r) { [M[p], M[r]] = [M[r], M[p]]; steps.push({ M: SP.clone(M), pivot: [r, c], note: `<b>${c + 1}열</b>: ${r + 1}행 자리가 0이라 ${p + 1}행과 교환.`, log: `행 ${r + 1} ↔ 행 ${p + 1}` }); }
+      const pv = M[r][c];
+      if (Math.abs(pv - 1) > 1e-12) { M[r] = M[r].map((v) => v / pv); clean(); steps.push({ M: SP.clone(M), pivot: [r, c], target: r, note: `피벗 ${SP.frac(pv)}을 1로: 행 ${r + 1} ← 행 ${r + 1} ÷ ${SP.frac(pv)}.`, log: `행 ${r + 1} ÷ ${SP.frac(pv)}` }); }
+      for (let i = 0; i < m; i++) {
+        if (i === r || Math.abs(M[i][c]) < SP.EPS * scale) continue;
+        const l = M[i][c];
+        M[i] = M[i].map((v, j) => v - l * M[r][j]); clean();
+        steps.push({ M: SP.clone(M), pivot: [r, c], target: i, note: `${i < r ? "피벗 <b>위</b>" : "피벗 아래"}를 0으로: 행 ${i + 1} ← 행 ${i + 1} − (${SP.frac(l)})·행 ${r + 1}.`, log: `행 ${i + 1} − (${SP.frac(l)})·행 ${r + 1}` });
+      }
+      pivots.push(c); r++;
+    }
+    const last = steps[steps.length - 1];
+    steps.push({ M: SP.clone(M), done: true, note: `완료: R = rref(A). 피벗 열 ${pivots.map((c) => c + 1).join(", ") || "없음"}, 자유 열 ${free.map((c) => c + 1).join(", ") || "없음"}, 계수 r = ${pivots.length}.`, log: "완료" });
+    void last;
+    return { steps, R: M, pivots, free };
+  },
+  rref(M) { const s = SP.rrefSteps(M); return { R: s.R, pivots: s.pivots, free: s.free }; },
+  /** 특수해: 자유 변수 하나씩 1 */
+  special(R, pivots, free, n) {
+    return free.map((f) => {
+      const x = new Array(n).fill(0); x[f] = 1;
+      pivots.forEach((pc, i) => { x[pc] = -R[i][f]; });
+      return x;
+    });
+  },
+  /** [A|b]에서 자유 변수 0인 해. 없으면 null */
+  particular(A, b) {
+    const n = A[0].length;
+    const { R, pivots } = SP.rref(A.map((r, i) => r.concat([b[i]])));
+    if (pivots.includes(n)) return null;
+    const x = new Array(n).fill(0);
+    pivots.forEach((pc, i) => { x[pc] = R[i][n]; });
+    return x;
+  },
+  /** 정사영 3D 보기. draw(P) 안에서 P.line/arrow/dot/poly/text/axes 사용 */
+  view3d(sel, draw, opts = {}) {
+    const st = { yaw: opts.yaw != null ? opts.yaw : -0.75, pitch: opts.pitch != null ? opts.pitch : 0.42, range: opts.range || 3.2 };
+    let c;
+    const P = {};
+    c = MB.canvas(sel, (ctx, w, h) => {
+      const pal = MB.palette(), s = Math.min(w, h) / (2 * st.range), cx = w / 2, cy = h / 2 + 10;
+      const cyw = Math.cos(st.yaw), syw = Math.sin(st.yaw), cp = Math.cos(st.pitch), spi = Math.sin(st.pitch);
+      const pr = (v) => { const x1 = cyw * v[0] - syw * v[1], y1 = syw * v[0] + cyw * v[1]; return [cx + s * x1, cy - s * (v[2] * cp + y1 * spi)]; };
+      Object.assign(P, { ctx, w, h, pal, pr });
+      P.line = (a, b, o = {}) => { const [x1, y1] = pr(a), [x2, y2] = pr(b); ctx.save(); ctx.strokeStyle = o.color || pal.text; ctx.lineWidth = o.width || 1.5; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; if (o.dash) ctx.setLineDash(o.dash); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); };
+      P.arrow = (a, b, o = {}) => {
+        const [x1, y1] = pr(a), [x2, y2] = pr(b), L = Math.hypot(x2 - x1, y2 - y1);
+        P.line(a, b, o); if (L < 4) return;
+        const ux = (x2 - x1) / L, uy = (y2 - y1) / L, hd = 10;
+        ctx.save(); ctx.fillStyle = o.color || pal.text; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - ux * hd - uy * hd * 0.45, y2 - uy * hd + ux * hd * 0.45); ctx.lineTo(x2 - ux * hd + uy * hd * 0.45, y2 - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill(); ctx.restore();
+        if (o.label) P.text(o.label, b, { color: o.color, dx: 8, dy: -6, bold: true });
+      };
+      P.dot = (a, o = {}) => { const [x, y] = pr(a); ctx.save(); ctx.fillStyle = o.color || pal.text; ctx.beginPath(); ctx.arc(x, y, o.r || 5, 0, 2 * Math.PI); ctx.fill(); if (o.stroke) { ctx.strokeStyle = pal.bg; ctx.lineWidth = 2; ctx.stroke(); } ctx.restore(); if (o.label) P.text(o.label, a, { color: o.color, dx: 8, dy: -8, bold: true }); };
+      P.poly = (pts, o = {}) => { ctx.save(); ctx.beginPath(); pts.forEach((v, i) => { const [x, y] = pr(v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.globalAlpha = o.alpha != null ? o.alpha : 0.18; ctx.fillStyle = o.color || pal.accent; ctx.fill(); if (o.stroke) { ctx.globalAlpha = 0.7; ctx.strokeStyle = o.color || pal.accent; ctx.lineWidth = 1.2; ctx.stroke(); } ctx.restore(); };
+      P.text = (s, a, o = {}) => { const [x, y] = pr(a); ctx.save(); ctx.fillStyle = o.color || pal.text; ctx.font = `${o.bold ? "700 " : ""}${o.size || 13}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillText(s, x + (o.dx || 0), y + (o.dy || 0)); ctx.restore(); };
+      P.axes = (L = 2.6) => {
+        [[L, 0, 0, "x₁"], [0, L, 0, "x₂"], [0, 0, L, "x₃"]].forEach(([x, y, z, lab]) => { P.line([-x * 0.6, -y * 0.6, -z * 0.6], [x, y, z], { color: pal.dim, width: 1, alpha: 0.7 }); P.text(lab, [x, y, z], { color: pal.dim, dx: 4, dy: 4, size: 12 }); });
+      };
+      /** 점 p0을 지나고 정규직교 u, v가 펼치는 평면 조각 */
+      P.plane = (p0, u, v, o = {}) => {
+        const s2 = o.size || 2.2, n = 5;
+        const pt = (a, b) => [p0[0] + a * u[0] + b * v[0], p0[1] + a * u[1] + b * v[1], p0[2] + a * u[2] + b * v[2]];
+        P.poly([pt(-s2, -s2), pt(s2, -s2), pt(s2, s2), pt(-s2, s2)], { color: o.color, alpha: o.alpha != null ? o.alpha : 0.14, stroke: true });
+        for (let k = -n; k <= n; k++) { const t = (k / n) * s2; P.line(pt(t, -s2), pt(t, s2), { color: o.color, width: 0.8, alpha: 0.28 }); P.line(pt(-s2, t), pt(s2, t), { color: o.color, width: 0.8, alpha: 0.28 }); }
+      };
+      P.lineThrough = (p0, d, o = {}) => { const L = o.len || 3.5, dd = SP.unit(d); P.line(SP.add(p0, SP.scale(dd, -L)), SP.add(p0, SP.scale(dd, L)), o); };
+      draw(P);
+    }, { aspect: 0.78, minHeight: 280, maxHeight: 460 });
+    const cv = c.canvas;
+    let drag = null;
+    cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, yaw: st.yaw, pitch: st.pitch }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", (e) => { if (!drag) return; st.yaw = drag.yaw + (e.clientX - drag.x) * 0.01; st.pitch = MB.clamp(drag.pitch + (e.clientY - drag.y) * 0.01, -1.2, 1.4); c.redraw(); });
+    const end = () => { drag = null; };
+    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+    return c;
+  },
+  readMat(container, rows, cols) {
+    const vals = [...container.querySelectorAll("input")].map((el) => { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : 0; });
+    const M = []; for (let i = 0; i < rows; i++) M.push(vals.slice(i * cols, i * cols + cols));
+    return M;
+  },
+  fillInputs(container, M) {
+    container.innerHTML = M.map((row, i) => row.map((v, j) => `<input value="${v}" inputmode="decimal" aria-label="a${i + 1}${j + 1}">`).join("")).join("");
+  },
+};
+
+/* ================================================================ 1. 부분공간 판정기 */
+(function () {
+  const SETS = {
+    line: { has: (p) => Math.abs(p[1] - p[0] / 2) < 1e-6, fit: (p) => { const d = [2, 1], t = (p[0] * 2 + p[1]) / 5; return [2 * t, t]; }, sub: true, why: "원점을 지나는 직선: 모든 조건 통과 → 부분공간" },
+    shift: { has: (p) => Math.abs(p[1] - p[0] / 2 - 1) < 1e-6, fit: (p) => { const t = (2 * p[0] + (p[1] - 1)) / 5; return [2 * t, t + 1]; }, sub: false, why: "원점이 없다 → 부분공간 아님" },
+    quad: { has: (p) => p[0] >= -1e-9 && p[1] >= -1e-9, fit: (p) => [Math.max(0, p[0]), Math.max(0, p[1])], sub: false, why: "음수배에서 빠져나간다 → 부분공간 아님" },
+    disk: { has: (p) => Math.hypot(p[0], p[1]) <= 2 + 1e-9, fit: (p) => { const r = Math.hypot(p[0], p[1]); return r > 2 ? [p[0] * 2 / r, p[1] * 2 / r] : p; }, sub: false, why: "큰 배수나 바깥쪽 합에서 빠져나간다 → 부분공간 아님" },
+    axes: { has: (p) => Math.abs(p[0]) < 1e-6 || Math.abs(p[1]) < 1e-6, fit: (p) => (Math.abs(p[0]) < Math.abs(p[1]) ? [0, p[1]] : [p[0], 0]), sub: false, why: "x축의 u와 y축의 v를 더하면 밖 → 부분공간 아님" },
+    zero: { has: (p) => Math.hypot(p[0], p[1]) < 1e-6, fit: () => [0, 0], sub: true, why: "{0}: 0 + 0 = 0, c·0 = 0 → 부분공간(가장 작은 것)" },
+    plane: { has: () => true, fit: (p) => p, sub: true, why: "ℝ² 전체는 자기 자신의 부분공간" },
+  };
+  const HUNT = { shift: [[0, 1], [2, 2], 1], quad: [[1.5, 1], [0.5, 2], -1], disk: [[1.6, 0.8], [1.2, 1.4], 1.5], axes: [[1.5, 0], [0, 1.2], 1], line: [[2, 1], [-1, -0.5], 2], zero: [[0, 0], [0, 0], 2], plane: [[1, 2], [2, -1], -1.5] };
+  let S = SETS.line;
+  const c = MB.range("sp-t-c", (v) => v.toFixed(1), () => pl.redraw());
+  const sel = document.getElementById("sp-t-set");
+  const pts = [{ x: 2, y: 1, label: "u", snap: 0.05, constrain(p) { const q = S.fit([p.x, p.y]); p.x = q[0]; p.y = q[1]; } }, { x: -1, y: -0.5, label: "v", snap: 0.05, constrain(p) { const q = S.fit([p.x, p.y]); p.x = q[0]; p.y = q[1]; } }];
+  const badge = (ok) => `<span class="badge ${ok ? "ok" : "bad"}">${ok ? "예" : "아니오"}</span>`;
+  const pl = MB.plane("#sp-t-cv", {
+    x: [-4.5, 4.5], aspect: 0.8, maxHeight: 520, minHeight: 300, points: pts,
+    draw(P, api) {
+      const C = P.P, k = sel ? sel.value : "line", [u, v] = api.points.map((p) => [p.x, p.y]), cc = c();
+      api.points[0].color = C.accent; api.points[1].color = C.accent;
+      // 집합 S 그리기
+      const ctx = P.ctx;
+      ctx.save(); ctx.globalAlpha = 0.2; ctx.fillStyle = C.accent;
+      if (k === "quad") ctx.fillRect(P.X(0), P.Y(P.y1), P.X(P.x1) - P.X(0), P.Y(0) - P.Y(P.y1));
+      if (k === "disk") { ctx.beginPath(); ctx.arc(P.X(0), P.Y(0), 2 * P.unit, 0, 2 * Math.PI); ctx.fill(); }
+      if (k === "plane") ctx.fillRect(0, 0, P.w, P.h);
+      ctx.restore();
+      if (k === "line") P.line(-10, -5, 10, 5, { color: C.accent, width: 3, alpha: 0.6 });
+      if (k === "shift") P.line(-10, -4, 10, 6, { color: C.accent, width: 3, alpha: 0.6 });
+      if (k === "axes") { P.line(-10, 0, 10, 0, { color: C.accent, width: 3, alpha: 0.6 }); P.line(0, -10, 0, 10, { color: C.accent, width: 3, alpha: 0.6 }); }
+      const sum = [u[0] + v[0], u[1] + v[1]], cu = [cc * u[0], cc * u[1]];
+      const okZ = S.has([0, 0]), okS = S.has(sum), okC = S.has(cu);
+      P.arrow(0, 0, u[0], u[1], { color: C.accent, width: 2.5 });
+      P.arrow(0, 0, v[0], v[1], { color: C.accent, width: 2.5 });
+      P.line(u[0], u[1], sum[0], sum[1], { color: C.dim, width: 1, dash: [4, 4] });
+      P.line(v[0], v[1], sum[0], sum[1], { color: C.dim, width: 1, dash: [4, 4] });
+      P.arrow(0, 0, sum[0], sum[1], { color: okS ? C.ok : C.bad, width: 3, label: "u+v" });
+      P.arrow(0, 0, cu[0], cu[1], { color: okC ? C.ok : C.bad, width: 3, label: `${SP.num(cc, 1)}·u` });
+      P.dot(0, 0, { r: 5, color: okZ ? C.ok : C.bad, stroke: C.bg });
+      MB.stat("sp-t-zero", badge(okZ)); MB.stat("sp-t-sum", badge(okS)); MB.stat("sp-t-scale", badge(okC));
+      MB.stat("sp-t-verdict", okZ && okS && okC ? (S.sub ? `<span class="badge ok">부분공간</span>` : `<span class="badge warn">이번엔 통과 · 반례 있음</span>`) : `<span class="badge bad">부분공간 아님</span>`);
+    },
+  });
+  function choose() {
+    S = SETS[sel.value];
+    pts.forEach((p) => p.constrain(p));
+    pl.redraw();
+  }
+  sel.addEventListener("change", () => { const h = HUNT[sel.value]; S = SETS[sel.value]; pts[0].x = h[0][0]; pts[0].y = h[0][1]; pts[1].x = h[1][0]; pts[1].y = h[1][1]; choose(); });
+  document.getElementById("sp-t-hunt").addEventListener("click", () => { const h = HUNT[sel.value]; pts[0].x = h[0][0]; pts[0].y = h[0][1]; pts[1].x = h[1][0]; pts[1].y = h[1][1]; c.set(h[2]); choose(); });
+  choose();
+})();
+
+/* ================================================================ 2. 열공간 */
+(function () {
+  const PRE = { ex: [[1, 0], [2, 1], [-1, 2]], dep: [[1, 2], [1, 2], [0.5, 1]], xy: [[1, 0.5], [0, 1], [0, 0]] };
+  let A = PRE.ex, b = [1, 1, 2];
+  const sl = ["sp-c-b1", "sp-c-b2", "sp-c-b3"].map((id, i) => MB.range(id, (v) => SP.num(v, 2), (v) => { b[i] = v; view.redraw(); }));
+  const view = SP.view3d("#sp-c-cv", (P) => {
+    const C = P.pal, a1 = A.map((r) => r[0]), a2 = A.map((r) => r[1]);
+    const n = SP.cross(a1, a2), nn = SP.norm(n);
+    P.axes();
+    let dist, kind, proj;
+    if (nn > 1e-9) {
+      const [u, v] = SP.perp(SP.unit(n));
+      P.plane([0, 0, 0], u, v, { color: C.accent, size: 2.4 });
+      dist = Math.abs(SP.dot(b, n)) / nn; kind = "원점을 지나는 평면";
+      proj = SP.add(b, SP.scale(n, -SP.dot(b, n) / (nn * nn)));
+    } else {
+      const d = SP.norm(a1) > 1e-9 ? a1 : a2;
+      P.lineThrough([0, 0, 0], d, { color: C.accent, width: 3, alpha: 0.6, len: 4 });
+      const du = SP.unit(d); proj = SP.scale(du, SP.dot(b, du));
+      dist = SP.norm(SP.add(b, SP.scale(proj, -1))); kind = "원점을 지나는 직선";
+    }
+    // 최소제곱 계수(풀릴 때는 정확한 해)
+    const g11 = SP.dot(a1, a1), g12 = SP.dot(a1, a2), g22 = SP.dot(a2, a2), det = g11 * g22 - g12 * g12;
+    let x = null;
+    if (Math.abs(det) > 1e-9) { const r1 = SP.dot(a1, proj), r2 = SP.dot(a2, proj); x = [(g22 * r1 - g12 * r2) / det, (g11 * r2 - g12 * r1) / det]; }
+    else { const d = SP.norm(a1) > 1e-9 ? 0 : 1, col = d ? a2 : a1; const t = SP.dot(col, proj) / SP.dot(col, col); x = d ? [0, t] : [t, 0]; }
+    const solv = dist < 0.01;
+    P.arrow([0, 0, 0], a1, { color: C.accent, width: 3, label: "a₁" });
+    P.arrow([0, 0, 0], a2, { color: C.accent, width: 3, label: "a₂" });
+    if (!solv) { P.line(b, proj, { color: C.bad, width: 1.5, dash: [4, 4] }); P.dot(proj, { r: 3.5, color: C.dim }); }
+    else { const m1 = SP.scale(a1, x[0]); P.arrow([0, 0, 0], m1, { color: C.ok, width: 2.5 }); P.arrow(m1, SP.add(m1, SP.scale(a2, x[1])), { color: C.ok, width: 2.5 }); }
+    P.dot(b, { r: 6, color: C.accent2, stroke: true, label: "b" });
+    MB.stat("sp-c-shape", kind);
+    MB.stat("sp-c-dist", SP.num(dist, 3));
+    MB.stat("sp-c-sol", solv ? `<span class="badge ok">풀림</span> x = ${SP.vec(x)}${nn > 1e-9 ? "" : " (해 무수히, 하나만 표시)"}` : `<span class="badge bad">해 없음</span> b ∉ C(A)`);
+  });
+  document.getElementById("sp-c-pre").addEventListener("change", (e) => { A = PRE[e.target.value]; view.redraw(); });
+  document.getElementById("sp-c-snap").addEventListener("click", () => {
+    const a1 = A.map((r) => r[0]), a2 = A.map((r) => r[1]), n = SP.cross(a1, a2), nn = SP.norm(n);
+    let p;
+    if (nn > 1e-9) p = SP.add(b, SP.scale(n, -SP.dot(b, n) / (nn * nn)));
+    else { const d = SP.unit(SP.norm(a1) > 1e-9 ? a1 : a2); p = SP.scale(d, SP.dot(b, d)); }
+    b = p.map((x) => MB.clamp(x, -3, 3));
+    sl.forEach((g, i) => { g.set(b[i], false); const out = document.getElementById(["sp-c-b1", "sp-c-b2", "sp-c-b3"][i] + "-out"); if (out) out.textContent = SP.num(b[i], 2); });
+    view.redraw();
+  });
+})();
+
+/* ================================================================ 3. 영공간은 행에 수직 */
+(function () {
+  const PRE = { two: [[1, 1, 1], [1, -1, 2]], par: [[1, 2, -1], [2, 4, -2]], one: [[1, 2, 2], [0, 0, 0]] };
+  const box = document.getElementById("sp-n-in"), two = document.getElementById("sp-n-two"), tw = document.getElementById("sp-n-t-wrap");
+  SP.fillInputs(box, PRE.two);
+  const s = MB.range("sp-n-s", (v) => v.toFixed(2), () => view.redraw());
+  const t = MB.range("sp-n-t", (v) => v.toFixed(2), () => view.redraw());
+  const rows = () => { const M = SP.readMat(box, 2, 3); return two.checked ? M : [M[0]]; };
+  const view = SP.view3d("#sp-n-cv", (P) => {
+    const C = P.pal, R = rows(), nz = R.filter((r) => SP.norm(r) > 1e-9);
+    P.axes();
+    let basis = [];
+    if (nz.length === 0) basis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    else if (nz.length === 2 && SP.norm(SP.cross(nz[0], nz[1])) > 1e-9) basis = [SP.unit(SP.cross(nz[0], nz[1]))];
+    else basis = SP.perp(SP.unit(nz[0]));
+    const dim = basis.length, rk = 3 - dim;
+    if (dim === 2) P.plane([0, 0, 0], basis[0], basis[1], { color: C.accent, size: 2.3 });
+    if (dim === 1) P.lineThrough([0, 0, 0], basis[0], { color: C.accent, width: 3, alpha: 0.75, len: 3.2 });
+    R.forEach((r, i) => { if (SP.norm(r) > 1e-9) P.arrow([0, 0, 0], SP.scale(SP.unit(r), Math.min(2.2, SP.norm(r))), { color: C.accent2, width: 3, label: `행 ${i + 1}` }); });
+    let x = SP.scale(basis[0], s());
+    if (dim >= 2) x = SP.add(x, SP.scale(basis[1], t()));
+    if (dim === 3) x = [s(), t(), 0];
+    P.arrow([0, 0, 0], x, { color: C.ok, width: 3.5, label: "x" });
+    tw.toggleAttribute("disabled", dim < 2); tw.querySelector("input").disabled = dim < 2;
+    MB.stat("sp-n-dim", `${dim} <small>(독립인 행 ${rk}개 → ${dim === 1 ? "직선" : dim === 2 ? "평면" : dim === 3 ? "ℝ³ 전체" : "{0}"})</small>`);
+    MB.stat("sp-n-x", SP.vec(x));
+    MB.stat("sp-n-dots", R.map((r) => SP.num(SP.dot(r, x), 3)).join(", "));
+  }, { yaw: -0.9, pitch: 0.35 });
+  box.addEventListener("input", () => view.redraw());
+  two.addEventListener("change", () => view.redraw());
+  document.getElementById("sp-n-pre").addEventListener("change", (e) => { SP.fillInputs(box, PRE[e.target.value]); two.checked = e.target.value !== "one"; view.redraw(); });
+})();
+
+/* ================================================================ 4. RREF 스테퍼 */
+(function () {
+  const PRE = {
+    ex: [[1, 3, 0, 2], [2, 6, 1, 7], [-1, -3, 2, 4]],
+    chem: [[3, 0, -1, 0], [8, 0, 0, -2], [0, 2, -2, -1]],
+    full: [[0, 2, 4, 2], [1, 1, 1, 0], [2, 3, 1, 5]],
+    inv: [[2, 1, 1, 0], [4, 1, 0, 0], [-2, 2, 1, 0]],
+    one: [[1, -2, 3, 1], [2, -4, 6, 2], [-1, 2, -3, -1]],
+  };
+  const box = document.getElementById("sp-r-in"), stage = document.getElementById("sp-r-stage"), note = document.getElementById("sp-r-note"), log = document.getElementById("sp-r-log");
+  let run = null, k = 0;
+  function compute() {
+    let M = SP.readMat(box, 3, 4);
+    if (document.getElementById("sp-r-pre").value === "inv") M = M.map((r) => r.slice(0, 3));
+    run = SP.rrefSteps(M); k = 0; show();
+  }
+  function show() {
+    const s = run.steps[k];
+    const opts = s.done ? { pcols: run.pivots, fcols: run.free } : { pivot: s.pivot, target: s.target };
+    stage.innerHTML = `<div><span class="lab">${s.done ? "R = rref(A)" : k === 0 ? "A" : "진행 중"}</span>${SP.matHTML(s.M, opts)}</div>`;
+    note.innerHTML = s.note;
+    MB.stat("sp-r-k", `${k + 1} / ${run.steps.length}`);
+    const seenP = run.pivots.filter((c, i) => run.steps.slice(0, k + 1).some((st) => st.pivot && st.pivot[1] === c) || s.done);
+    MB.stat("sp-r-piv", s.done ? run.pivots.map((c) => c + 1).join(", ") || "없음" : seenP.map((c) => c + 1).join(", ") || "—");
+    const seenF = run.free.filter((c) => run.steps.slice(0, k + 1).some((st) => st.log && st.log.startsWith(`${c + 1}열`)) || s.done);
+    MB.stat("sp-r-free", seenF.map((c) => c + 1).join(", ") || (s.done ? "없음" : "—"));
+    MB.stat("sp-r-rank", s.done ? String(run.pivots.length) : "—");
+    log.innerHTML = run.steps.slice(0, k + 1).map((st, i) => `<div class="${i === k ? "cur" : ""}">${i + 1}. ${st.log}</div>`).join("");
+    log.scrollTop = log.scrollHeight;
+  }
+  function load(key) { SP.fillInputs(box, PRE[key]); compute(); }
+  document.getElementById("sp-r-pre").addEventListener("change", (e) => load(e.target.value));
+  box.addEventListener("input", compute);
+  document.getElementById("sp-r-first").addEventListener("click", () => { k = 0; show(); });
+  document.getElementById("sp-r-prev").addEventListener("click", () => { k = Math.max(0, k - 1); show(); });
+  document.getElementById("sp-r-next").addEventListener("click", () => { k = Math.min(run.steps.length - 1, k + 1); show(); });
+  document.getElementById("sp-r-last").addEventListener("click", () => { k = run.steps.length - 1; show(); });
+  load("ex");
+})();
+
+/* ================================================================ 5. 특수해 */
+(function () {
+  const PRE = {
+    ex: [[1, 3, 0, 2], [2, 6, 1, 7], [-1, -3, 2, 4]],
+    chem: [[3, 0, -1, 0], [8, 0, 0, -2], [0, 2, -2, -1]],
+    wide: [[1, 2, 0, -1, 3], [0, 0, 1, 2, -1]],
+    inv: [[2, 1, 1], [4, 1, 0], [-2, 2, 1]],
+  };
+  const stage = document.getElementById("sp-s-stage"), box = document.getElementById("sp-s-sliders");
+  let A, R, piv, free, sp, cs = [];
+  function load(key) {
+    A = PRE[key]; const n = A[0].length;
+    ({ R, pivots: piv, free } = SP.rref(A));
+    sp = SP.special(R, piv, free, n);
+    cs = free.map((f, j) => (key === "chem" ? 4 : j === 0 ? 1 : 0.5));
+    box.innerHTML = free.length ? free.map((f, j) => `<label class="ctrl"><span>c${j + 1} = x${f + 1} <output id="sp-s-c${j}-out"></output></span><input type="range" id="sp-s-c${j}" min="-5" max="5" step="0.05" value="${cs[j]}"></label>`).join("") : `<p class="sim-msg">자유 변수가 없다: N(A) = {0}</p>`;
+    free.forEach((f, j) => MB.range(`sp-s-c${j}`, (v) => v.toFixed(2), (v) => { cs[j] = v; render(); }));
+    render();
+  }
+  function render() {
+    const n = A[0].length;
+    let x = new Array(n).fill(0);
+    sp.forEach((s, j) => { x = SP.add(x, SP.scale(s, cs[j])); });
+    const sHTML = sp.map((s, j) => `<div><span class="lab">s${j + 1} (x${free[j] + 1} = 1)</span>${SP.colHTML(s, [free[j]])}</div>`).join("");
+    stage.innerHTML = `<div><span class="lab">R = rref(A)</span>${SP.matHTML(R, { pcols: piv, fcols: free })}</div>${sHTML || '<div><span class="lab">특수해</span>없음</div>'}<div><span class="lab">xₙ = Σ cⱼ sⱼ</span>${SP.colHTML(x, free, 2, false)}</div>`;
+    MB.stat("sp-s-dim", `${free.length} <small>(n = ${n}, r = ${piv.length})</small>`);
+    MB.stat("sp-s-x", SP.vec(x));
+    MB.stat("sp-s-ax", SP.vec(SP.mulv(A, x), 3));
+  }
+  document.getElementById("sp-s-pre").addEventListener("change", (e) => load(e.target.value));
+  load("ex");
+})();
+
+/* ================================================================ 6. 완전한 해 */
+(function () {
+  const PRE = { line: [[1, 1, 1], [1, -1, 2]], plane: [[1, 2, -1]], par: [[1, 1, 1], [2, 2, 2]] };
+  let key = "line";
+  const b1 = MB.range("sp-x-b1", (v) => v.toFixed(1), () => view.redraw());
+  const b2 = MB.range("sp-x-b2", (v) => v.toFixed(1), () => view.redraw());
+  const t = MB.range("sp-x-t", (v) => v.toFixed(2), () => view.redraw());
+  const u = MB.range("sp-x-u", (v) => v.toFixed(2), () => view.redraw());
+  const uw = document.getElementById("sp-x-u-wrap"), b2w = document.getElementById("sp-x-b2").closest(".ctrl");
+  const view = SP.view3d("#sp-x-cv", (P) => {
+    const C = P.pal, A = PRE[key], b = A.length === 2 ? [b1(), b2()] : [b1()];
+    const { R, pivots, free } = SP.rref(A);
+    const sp = SP.special(R, pivots, free, 3), xp = SP.particular(A, b);
+    P.axes();
+    // 각 식이 그리는 평면(흐리게)
+    A.forEach((row, i) => { const nn = SP.norm(row); if (nn < 1e-9) return; const n = SP.unit(row), [p, q] = SP.perp(n); P.plane(SP.scale(n, b[i] / nn), p, q, { color: C.dim, size: 2.0, alpha: 0.06 }); });
+    // 영공간
+    if (sp.length === 1) P.lineThrough([0, 0, 0], sp[0], { color: C.accent, width: 2, dash: [6, 5], len: 3.6 });
+    if (sp.length === 2) { const [a, c] = SP.perp(SP.unit(SP.cross(sp[0], sp[1]))); P.plane([0, 0, 0], a, c, { color: C.accent, size: 2.0, alpha: 0.1 }); }
+    uw.toggleAttribute("disabled", sp.length < 2); uw.querySelector("input").disabled = sp.length < 2;
+    b2w.toggleAttribute("disabled", A.length < 2); b2w.querySelector("input").disabled = A.length < 2;
+    if (!xp) {
+      MB.stat("sp-x-kind", `<span class="badge bad">해 없음</span> 두 평면이 평행`);
+      MB.stat("sp-x-xp", "—"); MB.stat("sp-x-x", "—"); MB.stat("sp-x-ax", "—");
+      return;
+    }
+    if (sp.length === 1) P.lineThrough(xp, sp[0], { color: C.ok, width: 3, len: 3.6 });
+    if (sp.length === 2) { const [a, c] = SP.perp(SP.unit(SP.cross(sp[0], sp[1]))); P.plane(xp, a, c, { color: C.ok, size: 2.0, alpha: 0.16 }); }
+    let x = xp.slice(); const cvals = [t(), u()];
+    sp.forEach((s, j) => { x = SP.add(x, SP.scale(s, cvals[j])); });
+    P.arrow([0, 0, 0], xp, { color: C.accent2, width: 3, label: "xₚ" });
+    P.arrow(xp, x, { color: C.text, width: 2 });
+    P.dot(x, { r: 6, color: C.ok, stroke: true, label: "x" });
+    MB.stat("sp-x-kind", sp.length === 1 ? "직선 (영공간과 평행)" : "평면 (영공간과 평행)");
+    MB.stat("sp-x-xp", SP.vec(xp));
+    MB.stat("sp-x-x", SP.vec(x));
+    MB.stat("sp-x-ax", SP.vec(SP.mulv(A, x)) + " = b");
+  }, { yaw: -0.6, pitch: 0.4, range: 3.6 });
+  document.getElementById("sp-x-pre").addEventListener("change", (e) => { key = e.target.value; if (key === "par") { b1.set(1, false); b2.set(2, false); ["sp-x-b1", "sp-x-b2"].forEach((id) => { const o = document.getElementById(id + "-out"); if (o) o.textContent = Number(document.getElementById(id).value).toFixed(1); }); } view.redraw(); });
+})();
+
+/* ================================================================ 7. 교통망 */
+(function () {
+  const g = {};
+  ["a", "b", "c", "t", "u"].forEach((k) => { g[k] = MB.range("sp-f-" + k, (v) => String(v), () => cv.redraw()); });
+  const NODES = { A: [0.18, 0.2], B: [0.82, 0.2], C: [0.82, 0.8], D: [0.18, 0.8] };
+  const EDGES = [["A", "B", "x₁"], ["B", "C", "x₂"], ["C", "D", "x₃"], ["D", "A", "x₄"], ["A", "C", "x₅"]];
+  const Ainc = [[1, 0, 0, -1, 1], [-1, 1, 0, 0, 0], [0, -1, 1, 0, -1], [0, 0, -1, 1, 0]];
+  const cv = MB.canvas("#sp-f-cv", (ctx, w, h) => {
+    const C = MB.palette(), a = g.a(), b = g.b(), c = g.c(), t = g.t(), u = g.u();
+    const x = [a + t - u, a + b + t - u, a + b - c + t, t, u];
+    const f = [a, b, -c, -(a + b - c)];
+    const res = Ainc.map((r, i) => SP.dot(r, x) - f[i]);
+    const px = (n) => [NODES[n][0] * w, NODES[n][1] * h];
+    const font = getComputedStyle(document.body).fontFamily;
+    EDGES.forEach(([p, q, lab], i) => {
+      let [x1, y1] = px(p), [x2, y2] = px(q);
+      const neg = x[i] < -1e-9; if (neg) { [x1, y1, x2, y2] = [x2, y2, x1, y1]; }
+      const L = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / L, uy = (y2 - y1) / L, pad = 26;
+      const sx = x1 + ux * pad, sy = y1 + uy * pad, ex = x2 - ux * pad, ey = y2 - uy * pad;
+      ctx.save(); ctx.strokeStyle = neg ? C.bad : C.accent; ctx.lineWidth = 2 + Math.min(14, Math.abs(x[i]) / 60); ctx.lineCap = "round"; ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.fillStyle = neg ? C.bad : C.accent; ctx.globalAlpha = 1; const hd = 14;
+      ctx.beginPath(); ctx.moveTo(ex + ux * 4, ey + uy * 4); ctx.lineTo(ex - ux * hd - uy * hd * 0.6, ey - uy * hd + ux * hd * 0.6); ctx.lineTo(ex - ux * hd + uy * hd * 0.6, ey - uy * hd - ux * hd * 0.6); ctx.closePath(); ctx.fill();
+      const mx = (sx + ex) / 2 - uy * 16, my = (sy + ey) / 2 + ux * 16;
+      ctx.fillStyle = neg ? C.bad : C.text; ctx.font = `700 13px ${font}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`${lab} = ${SP.num(x[i], 0)}`, mx, my);
+      ctx.restore();
+    });
+    // 바깥 흐름
+    const ext = [["A", a, -1, -1], ["B", b, 1, -1], ["C", -c, 1, 1], ["D", -(a + b - c), -1, 1]];
+    ext.forEach(([n, v, dx, dy]) => {
+      const [x0, y0] = px(n), L = 38, ox = x0 + dx * L * 0.8, oy = y0 + dy * L * 0.8;
+      ctx.save(); ctx.strokeStyle = n === "D" && a + b - c < 0 ? C.bad : C.accent2; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(x0 + dx * 18, y0 + dy * 18); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.accent2; ctx.font = `600 12px ${font}`; ctx.textAlign = dx < 0 ? "left" : "right"; ctx.textBaseline = "middle";
+      ctx.fillText(v >= 0 ? `+${SP.num(v, 0)} 들어옴` : `${SP.num(-v, 0)} 나감`, dx < 0 ? 6 : w - 6, oy + (dy < 0 ? -2 : 2));
+      ctx.restore();
+    });
+    Object.keys(NODES).forEach((n) => { const [x0, y0] = px(n); ctx.save(); ctx.fillStyle = C.surface; ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x0, y0, 17, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.fillStyle = C.text; ctx.font = `700 15px ${font}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(n, x0, y0 + 1); ctx.restore(); });
+    MB.stat("sp-f-x", x.map((v) => SP.num(v, 0)).join(", "));
+    MB.stat("sp-f-res", SP.vec(res, 0));
+    const ok = x.every((v) => v >= -1e-9), outOk = a + b - c >= 0;
+    MB.stat("sp-f-ok", !outOk ? `<span class="badge bad">D 출구가 음수: c ≤ a + b 필요</span>` : ok ? `<span class="badge ok">가능</span>` : `<span class="badge bad">역주행 ${x.map((v, i) => (v < 0 ? "x" + "₁₂₃₄₅"[i] : "")).filter(Boolean).join(", ")}</span>`);
+  }, { aspect: 0.72, minHeight: 280, maxHeight: 440 });
+})();
+</script>
+</body>
+</html>

@@ -9,12 +9,12 @@
 | 경로 | 책 | 상태 | 원래 저장소 |
 |---|---|---|---|
 | `/foundations/` | MathBook · 문제에서 출발하는 공학 수학 | 공개, 13개 장 | `geniuskey/mathbook` |
-| `/linear/` | LinearBook · 선형대수 | 집필 중, 5부 16장 + 용어집 중 제1부 공개 | 이 저장소에서 집필 |
+| `/linear/` | LinearBook · 선형대수 | 공개, 5부 16장 + 용어집 | 이 저장소에서 집필 |
 | `/probability/` | 확률과 통계 | 공개, 19개 장 | `geniuskey/science-books`의 `probability-statistics/` |
 
 준비 중인 책(`roadmap.json`): CalculusBook(미적분, `/calculus/`), ODEBook(미분방정식, `/ode/`), NumericalBook(수치해석, `/numerical/`).
 
-LinearBook(`linear/`)은 MathBook의 엔진(`MB`: 좌표 평면·행렬·고유값·SVD 도구)과 장 구성 규칙을 그대로 쓰고 색과 장 목록만 바꿨습니다. 아직 쓰지 않은 장은 `linear/js/common.js`의 `CHAPTERS`에 `planned: true`로 두어 목차에만 보입니다. 집필 규칙은 [linear/CONTRIBUTING.md](linear/CONTRIBUTING.md)를 참고하세요.
+LinearBook(`linear/`)은 MathBook의 엔진(`MB`: 좌표 평면·행렬·고유값·SVD 도구)과 장 구성 규칙을 그대로 쓰고 색과 장 목록만 바꿨습니다. 벡터와 행렬, 벡터 공간, 직교성, 고유값, 분해와 응용의 5부 16장에 용어집·종합 퀴즈를 더했습니다. 새 장을 미리 목차에만 올릴 때는 `linear/js/common.js`의 `CHAPTERS`에 `planned: true`를 붙입니다. 집필 규칙은 [linear/CONTRIBUTING.md](linear/CONTRIBUTING.md)를 참고하세요.
 
 ## 구성
 

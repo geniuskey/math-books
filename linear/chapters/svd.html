@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>특이값 분해 · LinearBook</title>
+<meta name="description" content="모든 행렬은 회전·늘이기·회전이다. A = UΣVᵀ의 기하, AᵀA에서 특이값을 얻는 유도, 네 부분공간의 정규직교 기저, 랭크 1 조각의 합, 에커트–영 정리와 이미지 압축, 행렬 노름, 유사역행렬과 최소 노름 해, 조건수와 오차 증폭, 절단 SVD로 흐린 신호 복원하기까지 직접 끌어 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .sv-mx { display: inline-grid; gap: 0 10px; padding: 1px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 4px; font-family: var(--mono); font-size: 13px; text-align: right; vertical-align: middle; }
+  .sv-eq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-family: var(--mono); font-size: 13px; }
+  .sv-eq b { font-family: var(--font); }
+  .sv-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; overflow-x: auto; }
+  .sv-msg.ok { color: var(--ok); font-weight: 600; }
+  .sv-msg.bad { color: var(--bad); font-weight: 600; }
+  .sv-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sv-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sv-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .sv-two > div { position: relative; min-width: 0; }
+  .sv-two > div + div { border-left: 1px solid var(--border); }
+  .sv-two .cap { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--text-dim); pointer-events: none; }
+  @media (max-width: 640px) { .sv-two { grid-template-columns: 1fr; } .sv-two > div + div { border-left: 0; border-top: 1px solid var(--border); } }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="svd">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 14</div>
+    <h1 data-no-glossary>특이값 분해</h1>
+    <p class="lead">고유값 분해는 강력하지만 조건이 까다롭습니다. 정사각 행렬이어야 하고, 대각화가 가능해야 하고, 고유벡터가 서로 수직이려면 대칭이어야 합니다. 그런데 공학의 행렬 대부분은 정사각조차 아닙니다. 사진은 1080×1920, 측정 자료는 관측 수천 개 × 변수 몇십 개, 추천 시스템은 사용자 수백만 × 상품 수십만입니다. <b>특이값 분해</b><span class="en">(Singular Value Decomposition, SVD)</span>는 이 모든 행렬에 예외 없이 존재합니다. 어떤 행렬이든 <b>회전 → 축 방향으로 늘이기 → 회전</b>으로 나뉘고, 늘이는 배율(특이값)의 크기 순서가 그 행렬에서 무엇이 중요하고 무엇이 잡음인지를 알려 줍니다. 이 장은 그 그림에서 출발해 이미지 압축, 유사역행렬, 조건수, 흐린 신호 복원까지 갑니다.</p>
+    <ul class="objectives">
+      <li>2×2 행렬이 단위원을 타원으로 보내는 모습을 \(V^{\mathsf T}\)(회전) → \(\Sigma\)(늘이기) → \(U\)(회전)의 세 단계로 분해해 읽는다.</li>
+      <li>\(A^{\mathsf T}A\)의 고유값·고유벡터에서 특이값과 오른쪽 특이벡터를, \(A\mathbf v_i = \sigma_i\mathbf u_i\)에서 왼쪽 특이벡터를 손으로 구한다.</li>
+      <li>SVD가 네 부분공간 모두의 정규직교 기저를 한꺼번에 준다는 것을 설명하고, 축소형과 완전형 SVD를 구별한다.</li>
+      <li>\(A = \sum \sigma_i\mathbf u_i\mathbf v_i^{\mathsf T}\)를 랭크 1 조각의 합으로 읽고, 에커트–영 정리로 최선의 저랭크 근사와 그 오차를 계산한다.</li>
+      <li>스펙트럼 노름·프로베니우스 노름을 특이값으로 쓰고, 유사역행렬 \(A^+\)로 최소제곱 해 가운데 길이가 가장 짧은 해를 구한다.</li>
+      <li>조건수 \(\kappa = \sigma_1/\sigma_n\)이 오차를 얼마나 증폭하는지 실험하고, 절단 SVD로 잡음 증폭을 막는 정칙화를 해 본다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>"당신이 좋아할 만한 영화"</b></div>
+      <div class="o-body"><p>스트리밍 서비스에는 사용자 수백만 명과 작품 수만 편이 있고, 한 사람이 평점을 남긴 작품은 그중 극히 일부입니다. 비어 있는 칸이 대부분인 거대한 사용자 × 작품 표에서, 아직 보지 않은 작품의 평점을 어떻게 짐작할까요? 사용자마다, 작품마다 규칙을 따로 만들 수는 없습니다.</p>
+        <p>관찰은 이것입니다. 사람의 취향은 생각보다 <b>몇 가지 축</b>으로 요약됩니다. "액션을 얼마나 좋아하나", "잔잔한 드라마를 얼마나 좋아하나" 같은 몇 개의 숨은 요인이 평점의 대부분을 설명한다면, 평점 표는 <b>낮은 계수의 행렬</b>에 가깝습니다. SVD는 행렬을 중요도 순서의 랭크 1 조각으로 나누어 그 숨은 축을 찾아 줍니다. 2006–2009년 넷플릭스가 상금 100만 달러를 걸고 연 추천 정확도 대회(Netflix Prize)에서 상위 팀들이 공통으로 쓴 핵심 도구가 바로 이런 저랭크 행렬 분해였습니다.</p>
+        <div class="o-chain"><span>빈칸투성이 평점 표</span><i>→</i><span>규칙을 일일이? 불가능</span><i>→</i><span class="tool">저랭크 근사(SVD)</span><i>→</i><span>숨은 취향 축 몇 개</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="geometry">
+    <h2>회전 → 늘이기 → 회전</h2>
+    <div class="problem"><strong>대칭이 아닌 행렬은 어느 축을 따라 늘이나</strong>
+      <p>13장에서 대칭 행렬 \(S = Q\Lambda Q^{\mathsf T}\)는 서로 수직인 축(고유벡터)을 따라 늘이기만 한다는 것을 보았습니다. 그런데 전단 \(\begin{bmatrix}1 & 1\\ 0 & 1\end{bmatrix}\)처럼 대칭이 아닌 행렬은 고유벡터가 하나뿐이거나 서로 비스듬합니다. 그래도 이 행렬이 단위원을 보내는 모양은 분명히 <b>타원</b>입니다. 타원에는 언제나 서로 수직인 두 축(장축과 단축)이 있습니다. 그 축은 어디서 왔을까요?</p></div>
+    <p>답은 <b>입력 쪽과 출력 쪽에 서로 다른 수직 축</b>을 허락하는 것입니다. 입력 공간에서 서로 수직인 단위 벡터 \(\mathbf v_1, \mathbf v_2\)를 잘 고르면, 그 상 \(A\mathbf v_1, A\mathbf v_2\)도 서로 수직이 되고 각각 타원의 장축·단축이 됩니다. 그 길이를 \(\sigma_1 \ge \sigma_2 \ge 0\), 방향을 단위 벡터 \(\mathbf u_1, \mathbf u_2\)라 쓰면</p>
+    <div class="formula">$$A\mathbf v_1 = \sigma_1\mathbf u_1,\quad A\mathbf v_2 = \sigma_2\mathbf u_2 \quad\Longleftrightarrow\quad AV = U\Sigma \quad\Longleftrightarrow\quad A = U\Sigma V^{\mathsf T}$$
+      <div class="where">\(V = [\mathbf v_1\ \mathbf v_2]\), \(U = [\mathbf u_1\ \mathbf u_2]\)는 직교 행렬, \(\Sigma = \operatorname{diag}(\sigma_1, \sigma_2)\). \(V\)가 직교라서 \(V^{-1} = V^{\mathsf T}\)이고, 그래서 양변 오른쪽에 \(V^{\mathsf T}\)를 곱하면 분해가 나온다.</div>
+    </div>
+    <p>오른쪽에서 왼쪽으로 읽으면 그림이 됩니다. \(V^{\mathsf T}\)가 입력을 돌려 \(\mathbf v_1, \mathbf v_2\)를 좌표축에 맞추고, \(\Sigma\)가 축 방향으로 \(\sigma_1\)배, \(\sigma_2\)배 늘이고, \(U\)가 그 결과를 \(\mathbf u_1, \mathbf u_2\) 방향으로 돌려놓습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 250" role="img" aria-label="단위원이 회전, 늘이기, 회전을 거쳐 타원이 되는 네 단계"><defs><marker id="sv-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <g><rect x="8" y="30" width="176" height="180" rx="10" class="f-surface"/><line x1="20" y1="120" x2="172" y2="120" class="s-axis" style="opacity:.5"/><line x1="96" y1="40" x2="96" y2="200" class="s-axis" style="opacity:.5"/><circle cx="96" cy="120" r="34" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><line x1="96" y1="120" x2="120" y2="96" style="stroke:var(--accent);stroke-width:3"/><line x1="96" y1="120" x2="72" y2="96" style="stroke:var(--accent-2);stroke-width:3"/><text x="122" y="92" class="t-acc">v₁</text><text x="56" y="92" class="t" style="fill:var(--accent-2);font-weight:700">v₂</text><text x="96" y="232" text-anchor="middle" class="t">① 입력: 단위원</text></g>
+        <path d="M188 120h20" class="s-line" marker-end="url(#sv-ah)"/><text x="198" y="110" text-anchor="middle" class="t-mono">Vᵀ</text>
+        <g><rect x="212" y="30" width="176" height="180" rx="10" class="f-surface"/><line x1="224" y1="120" x2="376" y2="120" class="s-axis" style="opacity:.5"/><line x1="300" y1="40" x2="300" y2="200" class="s-axis" style="opacity:.5"/><circle cx="300" cy="120" r="34" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><line x1="300" y1="120" x2="334" y2="120" style="stroke:var(--accent);stroke-width:3"/><line x1="300" y1="120" x2="300" y2="86" style="stroke:var(--accent-2);stroke-width:3"/><text x="338" y="114" class="t-acc">e₁</text><text x="306" y="84" class="t" style="fill:var(--accent-2);font-weight:700">e₂</text><text x="300" y="232" text-anchor="middle" class="t">② 회전: v를 축에 맞춤</text></g>
+        <path d="M392 120h20" class="s-line" marker-end="url(#sv-ah)"/><text x="402" y="110" text-anchor="middle" class="t-mono">Σ</text>
+        <g><rect x="416" y="30" width="176" height="180" rx="10" class="f-surface"/><line x1="428" y1="120" x2="580" y2="120" class="s-axis" style="opacity:.5"/><line x1="504" y1="40" x2="504" y2="200" class="s-axis" style="opacity:.5"/><ellipse cx="504" cy="120" rx="76" ry="25.3" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><line x1="504" y1="120" x2="580" y2="120" style="stroke:var(--accent);stroke-width:3"/><line x1="504" y1="120" x2="504" y2="94.7" style="stroke:var(--accent-2);stroke-width:3"/><text x="548" y="112" class="t-acc">σ₁e₁</text><text x="510" y="90" class="t" style="fill:var(--accent-2);font-weight:700">σ₂e₂</text><text x="504" y="232" text-anchor="middle" class="t">③ 축 방향 늘이기</text></g>
+        <path d="M596 120h20" class="s-line" marker-end="url(#sv-ah)"/><text x="606" y="110" text-anchor="middle" class="t-mono">U</text>
+        <g><rect x="620" y="30" width="176" height="180" rx="10" class="f-surface"/><line x1="632" y1="120" x2="784" y2="120" class="s-axis" style="opacity:.5"/><line x1="708" y1="40" x2="708" y2="200" class="s-axis" style="opacity:.5"/><ellipse cx="708" cy="120" rx="76" ry="25.3" transform="rotate(-71.57 708 120)" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><line x1="708" y1="120" x2="732" y2="47.9" style="stroke:var(--accent);stroke-width:3"/><line x1="708" y1="120" x2="684" y2="112" style="stroke:var(--accent-2);stroke-width:3"/><text x="736" y="52" class="t-acc">σ₁u₁ = Av₁</text><text x="640" y="106" class="t" style="fill:var(--accent-2);font-weight:700">σ₂u₂</text><text x="708" y="232" text-anchor="middle" class="t">④ 회전: 출력 = A·원</text></g>
+        <text x="400" y="18" text-anchor="middle" class="t-dim">A = (1/3)·[3 0; 4 5] = UΣVᵀ,  σ₁ = √5 ≈ 2.24,  σ₂ = √5/3 ≈ 0.75</text>
+      </svg>
+      <figcaption><b>그림 14-1.</b> 예제 14.1의 행렬(1/3배)을 네 단계로 본 그림. 입력 쪽 수직 축 v₁, v₂(①)를 먼저 좌표축에 맞추고(②), 축 방향으로 σ₁, σ₂배 늘인 뒤(③), 출력 쪽 수직 축 u₁, u₂로 돌린다(④). ④의 타원은 A가 단위원을 보낸 모양 그대로이며, 그 장축·단축이 σ₁u₁, σ₂u₂다.</figcaption>
+    </figure>
+
+    <div class="callout deep"><strong>정리 14.1 (특이값 분해)</strong> 모든 실수 m×n 행렬 \(A\)는
+      $$A = U\Sigma V^{\mathsf T}$$
+      로 쓸 수 있다. \(U\)(m×m)와 \(V\)(n×n)는 직교 행렬이고, \(\Sigma\)(m×n)는 대각선에 \(\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_r > 0\)과 나머지 0을 가진 "대각" 행렬이다. \(r\)은 \(A\)의 계수다. \(\sigma_i\)를 <span class="term">특이값</span><span class="en">(singular value)</span>, \(U\)의 열 \(\mathbf u_i\)를 <span class="term">왼쪽 특이벡터</span>, \(V\)의 열 \(\mathbf v_i\)를 <span class="term">오른쪽 특이벡터</span>라 한다. 특이값은 \(A\)가 정하면 유일하다.</div>
+
+    <div class="sim" id="sim-sv-geometry">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>단위원을 세 단계로 타원으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sv-cv-geo"></canvas><span class="tag-tl" id="sv-g-tag">① 입력</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A</span>
+            <div class="mat" style="--n:2"><input id="sv-g11" value="1" inputmode="decimal" aria-label="a11"><input id="sv-g12" value="0" inputmode="decimal" aria-label="a12"><input id="sv-g21" value="1.33" inputmode="decimal" aria-label="a21"><input id="sv-g22" value="1.67" inputmode="decimal" aria-label="a22"></div></div>
+          <label class="ctrl"><span>예제</span><select id="sv-g-pre">
+            <option value="ex">예제 14.1 (1/3)·[3 0; 4 5]</option>
+            <option value="shear">전단 [1 1; 0 1]</option>
+            <option value="sym">대칭 [2 1; 1 2]</option>
+            <option value="rot">회전 30° × 1.5배</option>
+            <option value="flip">반사가 섞인 [1 2; 2 −1]</option>
+            <option value="rank1">계수 1 [1 2; 0.5 1]</option>
+          </select></label>
+          <label class="ctrl"><span>단계 t <output id="sv-gt-out"></output></span><input type="range" id="sv-gt" min="0" max="3" step="0.01" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="sv-g-play">▶ 세 단계 재생</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">σ₁, σ₂</span><span class="v" id="sv-g-s">—</span></div>
+        <div class="stat"><span class="k">v₁ 방향 / u₁ 방향</span><span class="v" id="sv-g-a">—</span></div>
+        <div class="stat"><span class="k">|det A| = σ₁σ₂</span><span class="v" id="sv-g-d">—</span></div>
+        <div class="stat"><span class="k">U는</span><span class="v" id="sv-g-u">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '전단'을 고르고 t를 천천히 밀어 보세요. 고유벡터는 x축 하나뿐이지만, 특이벡터는 입력과 출력 쪽에 수직인 쌍이 하나씩 있습니다. ② '대칭'에서는 v와 u가 같은 방향입니다(대칭 양의 정부호면 SVD = 고유분해). ③ '반사가 섞인' 행렬은 det &lt; 0이라 마지막 단계에서 원이 뒤집힙니다. ④ '계수 1'에서는 σ₂ = 0, 타원이 선분으로 납작해집니다. 모델: V는 항상 회전으로 고르고, det A &lt; 0이면 U가 반사를 맡도록 했습니다. 단계 0→1은 Vᵀ, 1→2는 Σ, 2→3은 U를 서서히 적용합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="derivation">
+    <h2>특이값은 어디서 오나: \(A^{\mathsf T}A\)</h2>
+    <div class="problem"><strong>장축 방향을 어떻게 찾나</strong>
+      <p>타원의 장축은 단위원 위의 \(\mathbf x\) 가운데 \(\|A\mathbf x\|\)를 가장 크게 만드는 방향입니다. 모든 방향을 하나씩 시험하지 않고 이 방향을 계산으로 얻을 수 있을까요?</p></div>
+    <p>길이 대신 길이의 제곱을 보면 길이 열립니다. \(\|A\mathbf x\|^2 = (A\mathbf x)^{\mathsf T}(A\mathbf x) = \mathbf x^{\mathsf T}(A^{\mathsf T}A)\mathbf x\). 그런데 \(A^{\mathsf T}A\)는 언제나 <b>대칭이고 양의 준정부호</b>입니다. 13장의 레일리 몫에 따르면 \(\|\mathbf x\| = 1\)에서 이 이차 형식의 최댓값은 \(A^{\mathsf T}A\)의 가장 큰 고유값이고, 그때의 \(\mathbf x\)가 그 고유벡터입니다. 그러니</p>
+    <div class="formula">$$A^{\mathsf T}A\,\mathbf v_i = \sigma_i^2\,\mathbf v_i, \qquad \sigma_i = \sqrt{\lambda_i(A^{\mathsf T}A)}, \qquad \mathbf u_i = \frac{A\mathbf v_i}{\sigma_i}\ (\sigma_i > 0)$$
+      <div class="where">오른쪽 특이벡터 = \(A^{\mathsf T}A\)의 고유벡터, 특이값² = 그 고유값. 같은 논리로 \(AA^{\mathsf T}\mathbf u_i = \sigma_i^2\mathbf u_i\)이므로 왼쪽 특이벡터 = \(AA^{\mathsf T}\)의 고유벡터다.</div>
+    </div>
+    <div class="callout deep"><strong>정리 14.2의 증명 (존재)</strong> \(A^{\mathsf T}A\)는 대칭이므로 스펙트럼 정리(13장)에 의해 정규직교 고유벡터 \(\mathbf v_1, \dots, \mathbf v_n\)과 고유값 \(\lambda_1 \ge \dots \ge \lambda_n\)을 가진다. \(\lambda_i = \mathbf v_i^{\mathsf T}A^{\mathsf T}A\mathbf v_i = \|A\mathbf v_i\|^2 \ge 0\)이므로 \(\sigma_i = \sqrt{\lambda_i}\)로 둘 수 있다. \(\sigma_i > 0\)인 \(i \le r\)에 대해 \(\mathbf u_i = A\mathbf v_i/\sigma_i\)로 두면 \(\mathbf u_i^{\mathsf T}\mathbf u_j = \mathbf v_i^{\mathsf T}A^{\mathsf T}A\mathbf v_j/(\sigma_i\sigma_j) = \lambda_j\mathbf v_i^{\mathsf T}\mathbf v_j/(\sigma_i\sigma_j) = \delta_{ij}\). 즉 <b>\(\mathbf u_i\)도 저절로 정규직교</b>다. 모자란 \(\mathbf u\)는 그람–슈미트로 채워 \(\mathbb R^m\)의 정규직교 기저를 완성하면 \(AV = U\Sigma\)가 된다. ∎</div>
+
+    <div class="callout"><strong>예제 14.1 (손으로 구하는 SVD)</strong> \(A = \begin{bmatrix}3 & 0\\ 4 & 5\end{bmatrix}\).
+      <ol>
+        <li>\(A^{\mathsf T}A = \begin{bmatrix}3 & 4\\ 0 & 5\end{bmatrix}\begin{bmatrix}3 & 0\\ 4 & 5\end{bmatrix} = \begin{bmatrix}25 & 20\\ 20 & 25\end{bmatrix}\). 대각합 50, 행렬식 225이므로 고유값은 \(\lambda^2 - 50\lambda + 225 = 0\)의 근 45와 5.</li>
+        <li>\(\sigma_1 = \sqrt{45} = 3\sqrt5\), \(\sigma_2 = \sqrt5\). 고유벡터는 \(\mathbf v_1 = \tfrac{1}{\sqrt2}(1, 1)\), \(\mathbf v_2 = \tfrac{1}{\sqrt2}(-1, 1)\).</li>
+        <li>\(\mathbf u_1 = A\mathbf v_1/\sigma_1 = \tfrac{1}{\sqrt2}(3, 9)/(3\sqrt5) = \tfrac{1}{\sqrt{10}}(1, 3)\), \(\mathbf u_2 = A\mathbf v_2/\sigma_2 = \tfrac{1}{\sqrt2}(-3, 1)/\sqrt5 = \tfrac{1}{\sqrt{10}}(-3, 1)\). 두 벡터의 내적은 \(-3 + 3 = 0\), 정말 수직이다.</li>
+        <li>검산: \(\sigma_1\sigma_2 = 3\sqrt5\cdot\sqrt5 = 15 = |\det A|\). 넓이 배율은 두 늘이기 배율의 곱이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-sv-stretch">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>방향마다 얼마나 늘어나나: ‖Ax‖의 최대와 최소</h3></div>
+      <div class="sv-two">
+        <div><canvas id="sv-cv-st"></canvas><span class="cap">x를 단위원 위에서 끌어 보세요</span></div>
+        <div><canvas id="sv-cv-st2"></canvas><span class="cap">‖Ax‖ — 입력 각도 θ</span></div>
+      </div>
+      <div class="sim-body"><div class="sim-controls" style="border-left:0">
+        <label class="ctrl"><span>행렬</span><select id="sv-st-pre">
+          <option value="ex">[3 0; 4 5] (예제 14.1)</option>
+          <option value="shear">[1 1; 0 1] 전단</option>
+          <option value="near">[1 1; 1 1.1] 거의 특이</option>
+        </select></label>
+      </div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">θ</span><span class="v" id="sv-st-th">—</span></div>
+        <div class="stat"><span class="k">‖Ax‖</span><span class="v" id="sv-st-n">—</span></div>
+        <div class="stat"><span class="k">σ₁ (최대)</span><span class="v" id="sv-st-s1">—</span></div>
+        <div class="stat"><span class="k">σ₂ (최소)</span><span class="v" id="sv-st-s2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x를 돌려 ‖Ax‖가 가장 커지는 각도를 찾으세요. 오른쪽 그래프의 봉우리가 σ₁이고 그 θ가 v₁의 방향입니다. ② 봉우리와 골짜기는 정확히 90° 떨어져 있습니다. v₁ ⟂ v₂. ③ '거의 특이'에서는 골짜기가 0에 가깝습니다. 그 방향의 입력은 거의 지워집니다. 모델: 그래프는 θ ∈ [0°, 180°)에서 ‖A(cos θ, sin θ)‖를 그린 것입니다(θ + 180°는 같은 값).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="four-subspaces">
+    <h2>네 부분공간의 정규직교 기저를 한 번에</h2>
+    <p>6장에서 그린 "큰 그림"을 떠올려 봅시다. 입력 공간 \(\mathbb R^n\)은 행공간 \(C(A^{\mathsf T})\)(차원 \(r\))과 영공간 \(N(A)\)(차원 \(n-r\))로 수직으로 나뉘고, 출력 공간 \(\mathbb R^m\)은 열공간 \(C(A)\)(차원 \(r\))와 왼쪽 영공간 \(N(A^{\mathsf T})\)(차원 \(m-r\))로 나뉩니다. SVD는 이 네 공간 모두에 <b>정규직교 기저</b>를, 그것도 서로 짝이 맞는 기저를 줍니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="SVD가 주는 네 부분공간의 기저">
+        <defs><marker id="sv-ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <text x="150" y="22" text-anchor="middle" class="t" style="font-weight:700">입력 ℝⁿ</text><text x="610" y="22" text-anchor="middle" class="t" style="font-weight:700">출력 ℝᵐ</text>
+        <rect x="40" y="36" width="220" height="110" rx="10" class="f-acc-soft"/><text x="150" y="64" text-anchor="middle" class="t" style="font-weight:700">행공간 C(Aᵀ) · 차원 r</text><text x="150" y="90" text-anchor="middle" class="t-mono">v₁, …, vᵣ</text><text x="150" y="114" text-anchor="middle" class="t-dim">σ &gt; 0인 오른쪽 특이벡터</text>
+        <rect x="40" y="156" width="220" height="90" rx="10" class="f-elev"/><text x="150" y="184" text-anchor="middle" class="t" style="font-weight:700">영공간 N(A) · 차원 n − r</text><text x="150" y="210" text-anchor="middle" class="t-mono">vᵣ₊₁, …, vₙ</text><text x="150" y="232" text-anchor="middle" class="t-dim">A가 0으로 보낸다</text>
+        <rect x="500" y="36" width="220" height="110" rx="10" class="f-acc-soft"/><text x="610" y="64" text-anchor="middle" class="t" style="font-weight:700">열공간 C(A) · 차원 r</text><text x="610" y="90" text-anchor="middle" class="t-mono">u₁, …, uᵣ</text><text x="610" y="114" text-anchor="middle" class="t-dim">σ &gt; 0인 왼쪽 특이벡터</text>
+        <rect x="500" y="156" width="220" height="90" rx="10" class="f-elev"/><text x="610" y="184" text-anchor="middle" class="t" style="font-weight:700">왼쪽 영공간 N(Aᵀ) · 차원 m − r</text><text x="610" y="210" text-anchor="middle" class="t-mono">uᵣ₊₁, …, uₘ</text><text x="610" y="232" text-anchor="middle" class="t-dim">A의 출력이 닿지 않는다</text>
+        <path d="M266 80H494" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#sv-ah2)"/><text x="380" y="70" text-anchor="middle" class="t-acc">A vᵢ = σᵢ uᵢ</text>
+        <path d="M494 112H266" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:5 4" marker-end="url(#sv-ah2)"/><text x="380" y="132" text-anchor="middle" class="t-mono">Aᵀ uᵢ = σᵢ vᵢ</text>
+        <path d="M266 200H360" style="stroke:var(--text-dim);stroke-width:2" marker-end="url(#sv-ah)"/><text x="372" y="205" class="t-mono">0</text>
+      </svg>
+      <figcaption><b>그림 14-2.</b> SVD가 그리는 큰 그림. 행공간의 vᵢ는 열공간의 uᵢ와 일대일로 짝지어져 σᵢ배가 되고, 영공간의 v는 0으로 간다. 거꾸로 Aᵀ는 uᵢ를 σᵢvᵢ로 돌려보낸다. 계수 r = 0이 아닌 특이값의 개수.</figcaption>
+    </figure>
+    <p>이 짝짓기가 SVD의 진짜 의미입니다. <b>A는 행공간의 정규직교 기저를 열공간의 정규직교 기저로, 축마다 σ배씩 보내는 사상</b>이고, 영공간은 버립니다. 행공간과 열공간 사이에서만 보면 A는 언제나 가역입니다(\(r\)×\(r\) 대각 \(\sigma_i > 0\)). 이 관찰이 6절의 유사역행렬로 이어집니다.</p>
+    <div class="callout deep"><strong>정의 14.3 (완전형과 축소형)</strong> 정리 14.1의 \(U\)(m×m), \(\Sigma\)(m×n), \(V\)(n×n)를 <b>완전형 SVD</b>라 한다. 0인 특이값에 해당하는 열을 버리면 \(A = U_r\Sigma_rV_r^{\mathsf T}\)(\(U_r\): m×r, \(\Sigma_r\): r×r, \(V_r\): n×r)가 되는데 이를 <span class="term">축소형 SVD</span><span class="en">(reduced/thin SVD)</span>라 한다. 계산과 저장에는 축소형을, 네 부분공간을 모두 말할 때는 완전형을 쓴다.</div>
+    <div class="callout tip"><strong>대칭 행렬과의 관계</strong> \(A\)가 대칭 양의 준정부호면 SVD와 스펙트럼 분해는 같습니다(\(U = V = Q\), \(\Sigma = \Lambda\)). 대칭이지만 음의 고유값이 있으면 \(\sigma_i = |\lambda_i|\)이고, 부호는 \(\mathbf u_i = -\mathbf v_i\)로 넘어갑니다. 일반 정사각 행렬에서는 특이값과 고유값이 다릅니다. 전단 \(\begin{bmatrix}1 & 1\\ 0 & 1\end{bmatrix}\)의 고유값은 1, 1이지만 특이값은 \(\tfrac{1+\sqrt5}{2} \approx 1.618\)과 \(\tfrac{\sqrt5-1}{2} \approx 0.618\)입니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="rank-one">
+    <h2>랭크 1 조각의 합</h2>
+    <p>\(A = U\Sigma V^{\mathsf T}\)를 2장의 "외적의 합" 곱셈으로 풀어 쓰면 SVD의 또 다른 얼굴이 나옵니다.</p>
+    <div class="formula">$$A = \sigma_1\mathbf u_1\mathbf v_1^{\mathsf T} + \sigma_2\mathbf u_2\mathbf v_2^{\mathsf T} + \dots + \sigma_r\mathbf u_r\mathbf v_r^{\mathsf T}$$
+      <div class="where">각 항 \(\mathbf u_i\mathbf v_i^{\mathsf T}\)는 계수 1인 m×n 행렬이고 프로베니우스 노름이 1이다. 조각들은 서로 직교한다(대각합 내적 \(\operatorname{tr}((\mathbf u_i\mathbf v_i^{\mathsf T})^{\mathsf T}\mathbf u_j\mathbf v_j^{\mathsf T}) = 0\), \(i \ne j\)). 그래서 σᵢ가 곧 i번째 조각의 "무게"다.</div>
+    </div>
+    <p>이미지로 생각하면 쉽습니다. \(\mathbf u\mathbf v^{\mathsf T}\)는 세로 무늬 \(\mathbf u\)와 가로 무늬 \(\mathbf v\)를 곱한 <b>체크무늬 한 장</b>입니다. SVD는 행렬을 무게 순서로 정렬된 체크무늬 레이어의 합으로 분해하고, 앞쪽 레이어 몇 장이 전체 모양의 대부분을 이룹니다. 6장의 랭크 1 행렬이 여기서 부품이 됩니다.</p>
+
+    <div class="sim" id="sim-sv-rankone">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>체크무늬 레이어를 한 장씩 쌓기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sv-cv-r1"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>쌓은 레이어 수 k <output id="sv-r1k-out"></output></span><input type="range" id="sv-r1k" min="0" max="10" step="1" value="1"></label>
+          <label class="ctrl"><span>숨은 구조</span><select id="sv-r1-pre">
+            <option value="plaid">격자무늬 (계수 3) + 잡음</option>
+            <option value="cross">십자 (계수 2)</option>
+            <option value="tri">삼각형 (계수 10)</option>
+          </select></label>
+          <label class="ctrl"><span>잡음 크기 <output id="sv-r1n-out"></output></span><input type="range" id="sv-r1n" min="0" max="0.3" step="0.01" value="0.05"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">σ₁ … σ₁₀</span><span class="v" id="sv-r1-s" style="font-size:12px">—</span></div>
+        <div class="stat"><span class="k">‖A − A_k‖_F / ‖A‖_F</span><span class="v" id="sv-r1-e">—</span></div>
+        <div class="stat"><span class="k">‖A − A_k‖₂ = σ_{k+1}</span><span class="v" id="sv-r1-e2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '격자무늬'에서 k = 3이면 오차가 잡음 수준으로 뚝 떨어집니다. 특이값 목록에서도 σ₃과 σ₄ 사이에 큰 틈이 보입니다. ② 잡음을 키우면 σ₄ 이후가 커지고 틈이 흐려집니다. 계수를 "숫자로" 판정하기 어려워지는 순간입니다(16장). ③ '삼각형'(위삼각이 모두 1)은 계수 10이지만 특이값이 빠르게 줄어 k = 3만으로도 모양이 보입니다. 모델: 10×10 행렬, 패널은 왼쪽부터 A, k번째 레이어 σ_k u_k v_kᵀ, 합 A_k, 나머지 A − A_k(파랑 음수, 빨강 양수).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="low-rank">
+    <h2>최선의 저랭크 근사: 에커트–영 정리</h2>
+    <div class="problem"><strong>숫자를 4분의 1만 남긴다면 무엇을 남길까</strong>
+      <p>64×64 흑백 사진 한 장은 숫자 4,096개입니다. 저장 공간이 4분의 1밖에 없다면, 어떤 숫자 1,000여 개를 남겨야 원래 사진과 가장 비슷할까요? 픽셀을 4개 중 하나씩만 남기면 해상도가 반으로 떨어집니다. 더 영리한 방법이 있을까요?</p></div>
+    <p>앞쪽 k개 레이어만 남긴 \(A_k = \sum_{i \le k}\sigma_i\mathbf u_i\mathbf v_i^{\mathsf T}\)는 숫자 \(k(m + n + 1)\)개로 저장됩니다(\(\mathbf u_i\) m개, \(\mathbf v_i\) n개, \(\sigma_i\) 1개). 64×64에서 k = 8이면 \(8 \times 129 = 1032\)개, 원본의 약 25%입니다. 놀라운 것은 이것이 <b>단지 좋은 방법이 아니라 최선</b>이라는 사실입니다.</p>
+    <div class="callout deep"><strong>정리 14.4 (에커트–영–미르스키)</strong> 계수가 k 이하인 모든 m×n 행렬 \(B\) 가운데
+      $$\|A - A_k\|_2 = \sigma_{k+1} \le \|A - B\|_2, \qquad \|A - A_k\|_F = \sqrt{\sigma_{k+1}^2 + \dots + \sigma_r^2} \le \|A - B\|_F$$
+      이다. 즉 특이값이 큰 k개 조각을 남긴 것이 스펙트럼 노름으로도, 프로베니우스 노름으로도 가장 가까운 랭크 k 행렬이다. <br><b>증명 아이디어(스펙트럼 노름).</b> 계수 k인 \(B\)의 영공간은 n − k차원이고 \(\mathbf v_1, \dots, \mathbf v_{k+1}\)이 생성하는 k+1차원 공간과 0이 아닌 단위 벡터 \(\mathbf w\)를 공유한다(차원의 합이 n을 넘으므로). 그러면 \(\|(A - B)\mathbf w\| = \|A\mathbf w\| \ge \sigma_{k+1}\)이다. ∎</div>
+    <p>이 정리는 1936년 에커트<span class="en">(Carl Eckart)</span>와 영<span class="en">(Gale Young)</span>이 심리측정학의 요인 분석 문제를 풀며 발표했습니다. 오늘날 PCA(15장), 이미지·영상 압축의 이론적 기준, 추천 시스템, 대형 언어 모델의 가중치 행렬을 저랭크로 줄이는 기법까지 모두 이 정리 위에 있습니다.</p>
+
+    <div class="sim" id="sim-sv-image">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>SVD로 사진 압축하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sv-cv-img"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>그림</span><select id="sv-img-kind">
+            <option value="scene">풍경</option>
+            <option value="face">얼굴</option>
+            <option value="text">글자 블록</option>
+            <option value="bars">막대</option>
+            <option value="rings">동심원</option>
+          </select></label>
+          <label class="ctrl"><span>남길 조각 수 k <output id="sv-imgk-out"></output></span><input type="range" id="sv-imgk" min="1" max="64" step="1" value="8"></label>
+          <label class="check"><input type="checkbox" id="sv-img-diff"> 오차 A − A_k 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">저장할 숫자</span><span class="v" id="sv-img-store">—</span></div>
+        <div class="stat"><span class="k">상대 오차 ‖A − A_k‖_F / ‖A‖_F</span><span class="v" id="sv-img-err">—</span></div>
+        <div class="stat"><span class="k">남긴 에너지 Σσ²</span><span class="v" id="sv-img-en">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '풍경'에서 k를 1부터 올려 보세요. k = 1은 줄무늬 한 장, k = 8쯤이면 집과 해가 알아볼 만하고 저장량은 25%입니다. ② '막대'는 k = 2에서 완벽히 복원됩니다. 행이 두 종류뿐인 계수 2 행렬이기 때문입니다. ③ '동심원'은 가로세로로 분리되지 않는 무늬라 특이값이 천천히 줄고 압축이 잘 안 됩니다. 모델: 64×64 흑백(0~1), 특이값 그래프는 로그 눈금, 세로선이 k. 실제 JPEG는 SVD가 아니라 고정된 기저(이산 코사인 변환)를 쓰는데, 영상마다 기저를 저장할 필요가 없어서입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="norms">
+    <h2>행렬의 크기는 특이값이 정한다</h2>
+    <p>벡터에는 길이가 있습니다(1장). 행렬의 "크기"는 무엇일까요? 가장 자연스러운 답은 "가장 많이 늘이는 배율"이고, 그것이 정확히 \(\sigma_1\)입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>노름</th><th>정의</th><th>특이값으로</th><th>쓰임</th></tr></thead>
+      <tbody>
+        <tr><td>스펙트럼(2-)노름</td><td>\(\|A\|_2 = \max_{\|\mathbf x\|=1}\|A\mathbf x\|\)</td><td>\(\sigma_1\)</td><td>최악의 증폭, 안정성, 오차 한계</td></tr>
+        <tr><td>프로베니우스 노름</td><td>\(\|A\|_F = \sqrt{\sum_{i,j} a_{ij}^2}\)</td><td>\(\sqrt{\sigma_1^2 + \dots + \sigma_r^2}\)</td><td>전체 에너지, 근사 오차, 최소제곱 맞춤</td></tr>
+        <tr><td>핵 노름</td><td>\(\|A\|_* \)</td><td>\(\sigma_1 + \dots + \sigma_r\)</td><td>계수 최소화의 볼록 대용(행렬 완성)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout deep"><strong>정리 14.5 (직교 불변성)</strong> 직교 행렬 \(Q_1, Q_2\)에 대해 \(\|Q_1AQ_2\|_2 = \|A\|_2\), \(\|Q_1AQ_2\|_F = \|A\|_F\)이다. 직교 변환은 길이를 바꾸지 않기 때문이다. 그래서 \(\|A\| = \|U\Sigma V^{\mathsf T}\| = \|\Sigma\|\)이고, 대각 행렬의 노름은 대각 원소로 바로 계산된다. 위 표의 세 번째 열은 이렇게 나온다. 또 \(\|A\|_F^2 = \operatorname{tr}(A^{\mathsf T}A) = \sum\lambda_i(A^{\mathsf T}A) = \sum\sigma_i^2\)로도 확인된다.</div>
+    <div class="callout"><strong>예제 14.2</strong> \(A = \begin{bmatrix}3 & 0\\ 4 & 5\end{bmatrix}\)의 프로베니우스 노름은 \(\sqrt{9 + 0 + 16 + 25} = \sqrt{50}\)이고, 특이값으로는 \(\sqrt{45 + 5} = \sqrt{50}\). 같다. 스펙트럼 노름은 \(\sigma_1 = 3\sqrt5 \approx 6.71\)로, 가장 큰 성분 5나 열의 길이 5, \(\sqrt{41}\approx 6.40\)보다 크다. 행렬은 열 하나보다 비스듬한 방향을 더 많이 늘일 수 있다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="pseudoinverse">
+    <h2>유사역행렬: 역행렬이 없을 때의 "최선의 되돌리기"</h2>
+    <div class="problem"><strong>해가 없거나 너무 많을 때</strong>
+      <p>미지수가 식보다 많으면 \(A\mathbf x = \mathbf b\)의 해는 무수히 많고(5장), 식이 미지수보다 많으면 보통 해가 없어 최소제곱을 씁니다(8장). 그런데 \(A\)의 열이 종속이면 최소제곱 해마저 무수히 많아 \(A^{\mathsf T}A\)가 가역이 아닙니다. 이 모든 경우에 "단 하나의 답"을 정하는 규칙이 있을까요?</p></div>
+    <p>3절의 그림에서 답이 보입니다. \(A\)는 행공간을 열공간으로 \(\sigma_i\)배씩 보내고 영공간은 버립니다. 그렇다면 되돌리는 쪽은 <b>열공간의 \(\mathbf u_i\)를 행공간의 \(\mathbf v_i\)로 \(1/\sigma_i\)배씩 돌려보내고, 왼쪽 영공간은 버리면</b> 됩니다.</p>
+    <div class="formula">$$A^+ = V\Sigma^+U^{\mathsf T} = \sum_{i=1}^{r}\frac{1}{\sigma_i}\mathbf v_i\mathbf u_i^{\mathsf T}, \qquad \mathbf x^+ = A^+\mathbf b$$
+      <div class="where">\(\Sigma^+\)는 \(\Sigma\)를 전치하고 0이 아닌 \(\sigma_i\)를 \(1/\sigma_i\)로 바꾼 n×m 행렬. 0인 특이값은 0으로 둔다(나누지 않는다). \(A\)가 가역이면 \(A^+ = A^{-1}\).</div>
+    </div>
+    <div class="callout deep"><strong>정리 14.6 (최소 노름 최소제곱 해)</strong> \(\mathbf x^+ = A^+\mathbf b\)는 \(\|A\mathbf x - \mathbf b\|\)를 최소로 하는 모든 \(\mathbf x\) 가운데 <b>길이가 가장 짧은</b> 유일한 해다. <br><b>증명.</b> \(\mathbf x = V\mathbf y\), \(\mathbf c = U^{\mathsf T}\mathbf b\)로 좌표를 바꾸면 직교 불변성에 의해 \(\|A\mathbf x - \mathbf b\|^2 = \|\Sigma\mathbf y - \mathbf c\|^2 = \sum_{i\le r}(\sigma_iy_i - c_i)^2 + \sum_{i>r}c_i^2\). 최소가 되려면 \(y_i = c_i/\sigma_i\) (\(i \le r\))이고 \(y_{r+1}, \dots\)는 자유다. \(\|\mathbf x\| = \|\mathbf y\|\)를 최소로 하려면 자유인 성분을 0으로 두면 된다. 그것이 \(\mathbf y = \Sigma^+\mathbf c\), 즉 \(\mathbf x = A^+\mathbf b\). ∎</div>
+    <div class="callout"><strong>예제 14.3</strong> 식 하나 \(x_1 + 2x_2 = 5\), 즉 \(A = [1\ \ 2]\). 해는 직선 전체입니다. \(A\)의 SVD는 \(\sigma_1 = \sqrt5\), \(\mathbf v_1 = (1, 2)/\sqrt5\), \(\mathbf u_1 = 1\)이므로 \(A^+ = \mathbf v_1\cdot\tfrac{1}{\sqrt5}\cdot 1 = \tfrac15(1, 2)^{\mathsf T}\), \(\mathbf x^+ = (1, 2)\). 확인: \(1 + 4 = 5\)이고, \((1, 2)\)는 행 \((1, 2)\)와 평행하므로 원점에서 해 직선에 내린 수선의 발입니다. 다른 해 \((5, 0)\)의 길이 5보다 \(\|\mathbf x^+\| = \sqrt5\)가 짧습니다.</div>
+
+    <div class="sim" id="sim-sv-pinv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>해 직선 위에서 가장 짧은 해</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sv-cv-pinv"></canvas><span class="tag-tl">초록 점을 해 직선 위에서 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>문제</span><div class="seg" id="sv-p-mode"><button data-value="under" class="on">식 1개 (해가 많음)</button><button data-value="rank1">계수 1인 2×2 (해 없음)</button></div></div>
+          <label class="ctrl"><span>a₁ <output id="sv-pa1-out"></output></span><input type="range" id="sv-pa1" min="-2" max="2" step="0.1" value="1"></label>
+          <label class="ctrl"><span>a₂ <output id="sv-pa2-out"></output></span><input type="range" id="sv-pa2" min="-2" max="2" step="0.1" value="2"></label>
+          <label class="ctrl"><span>b₁ <output id="sv-pb1-out"></output></span><input type="range" id="sv-pb1" min="-6" max="6" step="0.1" value="5"></label>
+          <label class="ctrl" id="sv-pb2-wrap"><span>b₂ <output id="sv-pb2-out"></output></span><input type="range" id="sv-pb2" min="-6" max="6" step="0.1" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x⁺ = A⁺b</span><span class="v" id="sv-p-x">—</span></div>
+        <div class="stat"><span class="k">‖x⁺‖ / ‖끈 점‖</span><span class="v" id="sv-p-n">—</span></div>
+        <div class="stat"><span class="k">잔차 ‖Ax − b‖</span><span class="v" id="sv-p-r">—</span></div>
+      </div>
+      <div class="sim-msg sv-msg" id="sv-p-msg">—</div>
+      <div class="sim-note">해볼 것: ① 초록 점을 해 직선 위에서 끌어 보세요. 잔차는 그대로인데 길이는 보라 점 x⁺에서 가장 짧습니다. ② 보라 점은 언제나 행공간(점선, 방향 a) 위에 있고, 해 직선은 영공간 방향(회색)과 평행합니다. ③ '계수 1인 2×2'에서 A = [a₁ a₂; 2a₁ 2a₂]의 출력은 늘 (t, 2t) 꼴이라 b가 그 위에 없으면 해가 없습니다. 이때도 최소제곱 해들은 직선을 이루고, x⁺는 그중 가장 짧은 것입니다. 모델: 입력 공간 ℝ²만 그렸습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="condition">
+    <h2>조건수: 오차가 몇 배로 커지나</h2>
+    <div class="problem"><strong>측정값 0.01%의 오차가 답을 얼마나 흔드나</strong>
+      <p>계측 장비로 \(\mathbf b\)를 재서 \(A\mathbf x = \mathbf b\)를 풀어 \(\mathbf x\)를 얻습니다. \(\mathbf b\)에 아주 작은 오차 \(\delta\mathbf b\)가 섞이면 답은 얼마나 틀릴까요? 같은 0.01% 오차라도 어떤 행렬에서는 답이 0.01% 틀리고, 어떤 행렬에서는 100% 틀립니다.</p></div>
+    <p>\(A^{-1} = V\Sigma^{-1}U^{\mathsf T}\)는 \(\mathbf u_i\) 방향 성분을 \(1/\sigma_i\)배 합니다. 최악의 경우는 \(\mathbf b\)가 크게 늘어나는 \(\mathbf u_1\) 방향(답이 작게 나옴)이고 오차 \(\delta\mathbf b\)가 가장 적게 늘어나는 \(\mathbf u_n\) 방향(답의 오차가 크게 나옴)일 때입니다.</p>
+    <div class="formula">$$\frac{\|\delta\mathbf x\|}{\|\mathbf x\|} \le \kappa(A)\,\frac{\|\delta\mathbf b\|}{\|\mathbf b\|}, \qquad \kappa(A) = \|A\|_2\|A^{-1}\|_2 = \frac{\sigma_1}{\sigma_n}$$
+      <div class="where">등호는 위에서 말한 최악의 방향 조합에서 성립한다. κ = 1은 직교 행렬(최상), κ = ∞는 특이 행렬. 부동소수점에서는 대략 \(\log_{10}\kappa\)자리의 유효숫자를 잃는다(16장).</div>
+    </div>
+    <div class="callout warn"><strong>행렬식은 조건수가 아니다</strong> \(\det A\)가 작다고 나쁜 행렬이 아닙니다. \(0.01I\)(100×100)의 행렬식은 \(10^{-200}\)이지만 κ = 1인 완벽한 행렬입니다. 거꾸로 \(\begin{bmatrix}1 & 10^4\\ 0 & 1\end{bmatrix}\)의 행렬식은 1이지만 κ ≈ 10⁸입니다. "거의 특이한가"를 묻는 올바른 질문은 "가장 작은 특이값이 가장 큰 것에 비해 얼마나 작은가"입니다.</div>
+
+    <div class="sim" id="sim-sv-condition">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>측정 오차의 원이 해의 타원이 된다</h3></div>
+      <div class="sv-two">
+        <div><canvas id="sv-cv-c1"></canvas><span class="cap">측정 b와 오차 원 ‖δb‖ ≤ ε</span></div>
+        <div><canvas id="sv-cv-c2"></canvas><span class="cap">해 x = A⁻¹b와 오차 타원</span></div>
+      </div>
+      <div class="sim-body"><div class="sim-controls" style="border-left:0">
+        <label class="ctrl"><span>조건수 κ = 10^<output id="sv-ck-out"></output></span><input type="range" id="sv-ck" min="0" max="2" step="0.05" value="1"></label>
+        <label class="ctrl"><span>b의 방향 (u₁에서 잰 각) <output id="sv-cb-out"></output></span><input type="range" id="sv-cb" min="0" max="90" step="1" value="0"></label>
+        <label class="ctrl"><span>오차 반지름 ε <output id="sv-ce-out"></output></span><input type="range" id="sv-ce" min="0.02" max="0.3" step="0.01" value="0.1"></label>
+      </div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">σ₁, σ₂</span><span class="v" id="sv-c-s">—</span></div>
+        <div class="stat"><span class="k">상대 오차 증폭(최악)</span><span class="v" id="sv-c-amp">—</span></div>
+        <div class="stat"><span class="k">이론 상한 κ</span><span class="v" id="sv-c-k">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① κ를 1(10⁰)에서 100(10²)으로 올리면 오른쪽 오차 타원이 한 방향(v₂)으로 길게 늘어납니다. ② b가 u₁ 방향(각 0°)일 때 증폭이 κ에 딱 닿습니다. b를 u₂ 쪽(90°)으로 돌리면 해 자체도 커져 상대 증폭은 1로 줄어듭니다. 조건수는 "최악의 경우"의 보증입니다. 모델: A = R(30°)·diag(1, 1/κ)·R(−20°), ‖b‖ = 1. 오차 원 위 120점을 A⁻¹로 보낸 뒤 최대 상대 증폭을 셉니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="truncation">
+    <h2>절단 SVD: 흐린 신호를 되살리기</h2>
+    <div class="problem"><strong>흐려진 측정을 되돌리면 왜 잡음만 남나</strong>
+      <p>망원경 사진, 초음파 신호, 센서 응답처럼 측정 장치는 신호를 조금씩 흐리게 합니다. 흐림이 선형이면 \(\mathbf b = A\mathbf x + \text{잡음}\)이고, 흐림 행렬 \(A\)를 알면 \(\mathbf x = A^{-1}\mathbf b\)로 되돌리면 될 것 같습니다. 그런데 실제로 해 보면 원래 신호 대신 거대한 지그재그가 나옵니다. 무엇이 잘못됐을까요?</p></div>
+    <p>흐림 행렬은 매끈한 무늬(작은 i의 \(\mathbf v_i\))는 거의 그대로 통과시키고 빠르게 출렁이는 무늬(큰 i)는 거의 지웁니다. 그래서 특이값이 지수적으로 작아지고 κ가 천문학적으로 커집니다. 역행렬 해를 SVD로 쓰면 원인이 보입니다.</p>
+    <div class="formula">$$A^{-1}\mathbf b = \sum_{i=1}^{n}\frac{\mathbf u_i^{\mathsf T}\mathbf b}{\sigma_i}\mathbf v_i = \mathbf x + \sum_{i=1}^{n}\frac{\mathbf u_i^{\mathsf T}\boldsymbol\varepsilon}{\sigma_i}\mathbf v_i$$
+      <div class="where">잡음 \(\boldsymbol\varepsilon\)은 모든 \(\mathbf u_i\) 방향에 고르게 섞여 있다. \(\sigma_i\)가 작은 항에서 잡음이 \(1/\sigma_i\)배로 폭발한다.</div>
+    </div>
+    <p>해법은 단순합니다. <b>잡음에 묻힌 작은 특이값의 항을 버리는 것</b>입니다. 앞쪽 k개만 남긴 \(\mathbf x_k = \sum_{i\le k}(\mathbf u_i^{\mathsf T}\mathbf b/\sigma_i)\mathbf v_i = A_k^+\mathbf b\)를 <span class="term">절단 SVD</span><span class="en">(truncated SVD)</span> 해라 합니다. k가 작으면 신호의 세부를 잃고(편향), k가 크면 잡음이 폭발합니다(분산). 그 사이의 좋은 k를 고르는 것이 <span class="term">정칙화</span><span class="en">(regularization)</span>의 핵심이고, 머신러닝의 릿지 회귀(티호노프 정칙화)는 항을 자르는 대신 \(\sigma_i^2/(\sigma_i^2 + \lambda)\)로 부드럽게 줄이는 같은 아이디어입니다.</p>
+
+    <div class="sim" id="sim-sv-truncation">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>몇 개의 특이값까지 믿을 것인가</h3></div>
+      <div class="sv-two">
+        <div><canvas id="sv-cv-t1"></canvas><span class="cap">신호: 참값 · 측정 b · 복원 x_k</span></div>
+        <div><canvas id="sv-cv-t2"></canvas><span class="cap">σᵢ와 |uᵢᵀb| (로그 눈금)</span></div>
+      </div>
+      <div class="sim-body"><div class="sim-controls" style="border-left:0">
+        <label class="ctrl"><span>남길 특이값 수 k <output id="sv-tk-out"></output></span><input type="range" id="sv-tk" min="1" max="48" step="1" value="12"></label>
+        <label class="ctrl"><span>측정 잡음 <output id="sv-tn-out"></output></span><input type="range" id="sv-tn" min="0" max="0.05" step="0.001" value="0.01"></label>
+        <label class="ctrl"><span>흐림 폭 <output id="sv-tw-out"></output></span><input type="range" id="sv-tw" min="1" max="4" step="0.1" value="2"></label>
+      </div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">복원 오차 ‖x_k − x‖/‖x‖</span><span class="v" id="sv-t-e">—</span></div>
+        <div class="stat"><span class="k">가장 좋은 k</span><span class="v" id="sv-t-best">—</span></div>
+        <div class="stat"><span class="k">κ(A) = σ₁/σ₄₈</span><span class="v" id="sv-t-k">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k를 48까지 올려 보세요(그냥 A⁻¹b). 복원이 지그재그로 폭발합니다. ② 오른쪽 그래프에서 |uᵢᵀb|(주황)가 잡음 바닥에 닿아 평평해지는 지점이 σᵢ(보라)가 그 바닥 아래로 내려가는 지점입니다. 그 근처 k가 가장 좋습니다(피카르 조건). ③ 잡음을 0으로 하면 큰 k도 괜찮아집니다. 부동소수점 반올림이라는 작은 잡음이 남아 있을 뿐입니다. 모델: 신호 48점, 가우스 흐림(행 합 1로 정규화), 잡음은 시드 고정 정규 난수입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"중요한 순서로 나누고, 덜 중요한 것을 버린다"는 SVD의 문장은 데이터, 신호, 제어, 계산 곳곳에 다른 이름으로 나타납니다.</p>
+    <div class="uses">
+      <a href="pca.html#principal-components"><small>LINEARBOOK 15장</small>PCA<br><span>평균을 뺀 데이터 행렬의 오른쪽 특이벡터가 주성분, σᵢ²/(n−1)이 그 방향의 분산이다.</span></a>
+      <a href="numerical.html#condition-number"><small>LINEARBOOK 16장</small>조건수와 수치 안정성<br><span>κ = σ₁/σₙ이 잃는 자릿수를 정한다. 라이브러리의 계수 판정과 lstsq도 SVD를 쓴다.</span></a>
+      <a href="orthogonality.html#least-squares"><small>LINEARBOOK 8장</small>최소제곱<br><span>열이 종속이어도 A⁺b는 언제나 정의되는 최소 노름 최소제곱 해다.</span></a>
+      <a href="rank.html#four-subspaces"><small>LINEARBOOK 6장</small>네 부분공간<br><span>SVD는 네 공간의 정규직교 기저를 짝지어 한 번에 준다.</span></a>
+      <a href="symmetric.html#rayleigh"><small>LINEARBOOK 13장</small>레일리 몫<br><span>σ₁² = AᵀA의 최대 고유값 = ‖Ax‖²의 최댓값.</span></a>
+      <a href="../../foundations/chapters/linalg.html#low-rank"><small>MATHBOOK</small>이미지 압축<br><span>공학 문제에서 출발해 SVD를 한 장에 맛보는 입문 데모.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>다중 공선성(열이 거의 종속)은 작은 특이값이다. 회귀 계수의 분산이 1/σᵢ²로 커진다.</span></a>
+      <a href="https://semi.euiyun.com/yield/"><small>YIELDBOOK</small>웨이퍼 맵 패턴<br><span>웨이퍼 × 측정점 행렬의 앞쪽 특이벡터가 반복되는 공간 패턴(중심–가장자리, 기울기)을 드러낸다.</span></a>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>행렬</th><th>SVD가 하는 일</th></tr></thead>
+      <tbody>
+        <tr><td>추천 시스템</td><td>사용자 × 상품 평점</td><td>저랭크 근사로 숨은 취향 요인을 찾고 빈칸을 예측(실제로는 결측값 때문에 변형된 분해를 쓴다)</td></tr>
+        <tr><td>정보 검색</td><td>단어 × 문서 빈도</td><td>잠재 의미 분석(LSA): 앞쪽 특이벡터 공간에서 비슷한 뜻의 단어·문서가 가까워진다</td></tr>
+        <tr><td>신호 처리</td><td>배열 안테나 표본 행렬</td><td>신호 부분공간과 잡음 부분공간 분리(MUSIC 같은 도래각 추정)</td></tr>
+        <tr><td>로봇·비전</td><td>대응점 상관 행렬</td><td>두 점군을 가장 잘 겹치는 회전(카브시 알고리즘), 카메라 행렬 추정</td></tr>
+        <tr><td>제어·모델 축소</td><td>그람 행렬, 한켈 행렬</td><td>균형 절단: 작은 특이값 상태를 버려 고차 모델을 저차로</td></tr>
+        <tr><td>딥러닝</td><td>가중치 행렬</td><td>저랭크 분해로 파라미터 수를 줄이는 압축·미세 조정 기법</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>모든 m×n 행렬은 \(A = U\Sigma V^{\mathsf T}\)</b>: 회전(또는 반사) → 축 방향 늘이기 → 회전. 단위원(구)은 반지름 σ₁, σ₂, …의 타원(체)이 된다. \(A\mathbf v_i = \sigma_i\mathbf u_i\).</li>
+      <li>특이값은 \(\sigma_i = \sqrt{\lambda_i(A^{\mathsf T}A)}\), 오른쪽 특이벡터는 \(A^{\mathsf T}A\)의 고유벡터, 왼쪽 특이벡터는 \(AA^{\mathsf T}\)의 고유벡터이며 \(\mathbf u_i = A\mathbf v_i/\sigma_i\)로 구한다.</li>
+      <li>SVD는 <b>네 부분공간의 정규직교 기저</b>를 짝지어 준다. v₁…v_r은 행공간, 나머지 v는 영공간, u₁…u_r은 열공간, 나머지 u는 왼쪽 영공간. 계수 = 0이 아닌 특이값의 개수.</li>
+      <li>\(A = \sum\sigma_i\mathbf u_i\mathbf v_i^{\mathsf T}\): 무게 순서의 랭크 1 조각. <b>에커트–영</b>: 앞쪽 k개가 최선의 랭크 k 근사이고 오차는 \(\|A - A_k\|_2 = \sigma_{k+1}\), \(\|A - A_k\|_F = \sqrt{\sum_{i>k}\sigma_i^2}\).</li>
+      <li>\(\|A\|_2 = \sigma_1\), \(\|A\|_F = \sqrt{\sum\sigma_i^2}\). 직교 변환은 두 노름을 바꾸지 않는다.</li>
+      <li><b>유사역행렬</b> \(A^+ = V\Sigma^+U^{\mathsf T}\)은 열공간을 행공간으로 1/σ배씩 되돌린다. \(A^+\mathbf b\)는 최소제곱 해 가운데 가장 짧은 해다.</li>
+      <li><b>조건수</b> \(\kappa = \sigma_1/\sigma_n\)은 상대 오차의 최악 증폭률이다. 행렬식은 조건을 재지 못한다. 작은 특이값 항을 버리는 <b>절단 SVD</b>는 잡음 증폭을 막는 정칙화다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 다음 중 SVD에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">정사각 행렬에만 존재한다</button>
+        <button class="opt">대각화 가능한 행렬에만 존재한다</button>
+        <button class="opt" data-correct>모든 실수 m×n 행렬에 존재하고, 특이값은 음이 아니다</button>
+        <button class="opt">특이값은 언제나 고유값과 같다</button>
+      </div><div class="quiz-exp">\(A^{\mathsf T}A\)는 어떤 행렬이든 대칭 양의 준정부호이므로 스펙트럼 정리를 쓸 수 있고, 그 고유값의 제곱근이 특이값입니다. 특이값과 고유값은 대칭 양의 준정부호일 때만 같습니다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(A = \begin{bmatrix}2 & 0\\ 0 & -3\end{bmatrix}\)의 특이값은?</p><div class="opts">
+        <button class="opt">2, −3</button>
+        <button class="opt" data-correct>3, 2</button>
+        <button class="opt">4, 9</button>
+        <button class="opt">6, 1</button>
+      </div><div class="quiz-exp">\(A^{\mathsf T}A = \operatorname{diag}(4, 9)\)이므로 특이값은 3, 2(큰 순서). 음의 부호는 \(\mathbf u_2 = -\mathbf v_2\)로 넘어갑니다. 고유값은 2, −3입니다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 3×5 행렬의 특이값이 4, 1, 0일 때 영공간 \(N(A)\)의 차원은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">0</button>
+      </div><div class="quiz-exp">0이 아닌 특이값이 2개이므로 계수 r = 2. 영공간의 차원은 n − r = 5 − 2 = 3이고, 그 기저는 \(\mathbf v_3, \mathbf v_4, \mathbf v_5\)입니다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 특이값이 10, 5, 1, 0.1인 행렬의 최선의 계수 2 근사 \(A_2\)에 대해 \(\|A - A_2\|_2\)는?</p><div class="opts">
+        <button class="opt">0.1</button>
+        <button class="opt" data-correct>1</button>
+        <button class="opt">1.1</button>
+        <button class="opt">√1.01</button>
+      </div><div class="quiz-exp">에커트–영: 스펙트럼 노름 오차는 버린 것 중 가장 큰 특이값 σ₃ = 1입니다. 프로베니우스 노름 오차라면 \(\sqrt{1^2 + 0.1^2} = \sqrt{1.01}\)입니다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 100×100 사진을 랭크 10으로 근사해 저장하면 필요한 숫자는 대략?</p><div class="opts">
+        <button class="opt">1,000개</button>
+        <button class="opt" data-correct>약 2,010개 (원본의 약 20%)</button>
+        <button class="opt">10,000개</button>
+        <button class="opt">100개</button>
+      </div><div class="quiz-exp">조각 하나에 u(100개) + v(100개) + σ(1개) = 201개. 10개면 2,010개로 원본 10,000개의 약 20%입니다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 유사역행렬 \(A^+\mathbf b\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">A가 가역일 때만 정의된다</button>
+        <button class="opt">언제나 \(A\mathbf x = \mathbf b\)를 정확히 만족한다</button>
+        <button class="opt" data-correct>최소제곱 해 가운데 길이가 가장 짧은 해이고, 행공간에 놓인다</button>
+        <button class="opt">\((A^{\mathsf T}A)^{-1}A^{\mathsf T}\mathbf b\)와 언제나 같다</button>
+      </div><div class="quiz-exp">\(A^+ = V\Sigma^+U^{\mathsf T}\)는 모든 행렬에 정의되고, 결과는 \(\mathbf v_1, \dots, \mathbf v_r\)의 결합이라 행공간에 있습니다. \((A^{\mathsf T}A)^{-1}A^{\mathsf T}\)와 같은 것은 열이 독립일 때뿐입니다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 특이값이 \(10^3\)과 \(10^{-3}\)인 2×2 행렬로 \(A\mathbf x = \mathbf b\)를 풀 때, \(\mathbf b\)의 상대 오차 \(10^{-8}\)이 해에 만들 수 있는 최악의 상대 오차는?</p><div class="opts">
+        <button class="opt">\(10^{-8}\)</button>
+        <button class="opt">\(10^{-5}\)</button>
+        <button class="opt" data-correct>\(10^{-2}\)</button>
+        <button class="opt">\(10^{-11}\)</button>
+      </div><div class="quiz-exp">κ = σ₁/σ₂ = 10⁶이므로 최악의 증폭은 10⁶배, \(10^{-8} \times 10^6 = 10^{-2}\)입니다. 유효숫자 6자리를 잃는 셈입니다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 흐려진 신호를 \(A^{-1}\mathbf b\)로 되돌리면 잡음이 폭발하는 이유와 해법으로 옳은 것은?</p><div class="opts">
+        <button class="opt">A가 대칭이 아니라서, 대칭화하면 된다</button>
+        <button class="opt">부동소수점 때문이므로 배정밀도를 쓰면 된다</button>
+        <button class="opt" data-correct>작은 특이값 항에서 잡음이 1/σᵢ배 커지므로, 그 항을 버리는 절단 SVD로 정칙화한다</button>
+        <button class="opt">흐림 행렬은 계수가 1이라서 풀 수 없다</button>
+      </div><div class="quiz-exp">\(A^{-1}\mathbf b = \sum(\mathbf u_i^{\mathsf T}\mathbf b/\sigma_i)\mathbf v_i\)에서 잡음 성분 \(\mathbf u_i^{\mathsf T}\boldsymbol\varepsilon\)은 σᵢ가 작아도 줄지 않습니다. 잡음 바닥 아래의 항을 버리거나(절단 SVD) 부드럽게 줄이면(티호노프) 안정된 복원을 얻습니다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const SV = {
+  fix(v, d = 2) { if (!isFinite(v)) return "∞"; const s = (Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v).toFixed(d); return s.replace("-", "−"); },
+  sci(v) { if (!isFinite(v)) return "∞"; if (v === 0) return "0"; const e = Math.floor(Math.log10(Math.abs(v))); if (e >= -2 && e < 4) return SV.fix(v, e >= 2 ? 0 : 3 - Math.max(0, e)); return (v / Math.pow(10, e)).toFixed(2) + "×10" + SV.sup(e); },
+  sup(e) { const m = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" }; return String(e).split("").map((c) => m[c]).join(""); },
+  rot: (t) => [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]],
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  ap: (M, x, y) => [M[0][0] * x + M[0][1] * y, M[1][0] * x + M[1][1] * y],
+  /** 2×2 SVD: V는 회전으로 고르고, det A < 0이면 U가 반사를 맡는다. */
+  svd2(A) {
+    const [[a, b], [c, d]] = A;
+    const p = a * a + c * c, q = a * b + c * d, r = b * b + d * d;
+    const tr = p + r, det = p * r - q * q, disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
+    const l1 = tr / 2 + disc, l2 = Math.max(0, tr / 2 - disc);
+    let v1 = Math.abs(q) > 1e-12 ? [q, l1 - p] : p >= r ? [1, 0] : [0, 1];
+    const nv = Math.hypot(v1[0], v1[1]); v1 = [v1[0] / nv, v1[1] / nv];
+    const v2 = [-v1[1], v1[0]];
+    const s1 = Math.sqrt(l1), s2 = Math.sqrt(l2);
+    const Av = (v) => [a * v[0] + b * v[1], c * v[0] + d * v[1]];
+    const u1 = s1 > 1e-12 ? Av(v1).map((x) => x / s1) : [1, 0];
+    const detA = a * d - b * c;
+    const u2 = s2 > 1e-9 ? Av(v2).map((x) => x / s2) : (detA < 0 ? [u1[1], -u1[0]] : [-u1[1], u1[0]]);
+    return { s1, s2, v1, v2, u1, u2, det: detA };
+  },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : null; },
+  /** m×n 행렬의 SVD(엔진의 야코비 SVD). 반환: {U(행 배열, m×n), S, V(n×n)} */
+  svd(A) { return MB.mat.svd(A); },
+  /** 앞쪽 k개 조각의 합 */
+  approx(D, k, m, n) {
+    const out = Array.from({ length: m }, () => new Float64Array(n));
+    for (let l = 0; l < k; l++) { const s = D.S[l]; if (!(s > 0)) continue; for (let i = 0; i < m; i++) { const ui = D.U[i][l] * s; if (!ui) continue; const row = out[i]; for (let j = 0; j < n; j++) row[j] += ui * D.V[j][l]; } }
+    return out;
+  },
+  box: (w, h) => ({ x: 58, y: 34, w: w - 58 - 16, h: h - 34 - 46 }),
+  heat(ctx, M, x, y, w, h, scale) {
+    const m = M.length, n = M[0].length, data = new Float64Array(m * n);
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) data[i * n + j] = 0.5 + 0.5 * MB.clamp(M[i][j] / scale, -1, 1);
+    MB.drawGray(ctx, data, n, m, x, y, w, h, { map: (t) => MB.colormap(t, "diverge") });
+  },
+};
+
+/* ================================================================ 1. 회전 → 늘이기 → 회전 */
+(function () {
+  const PRE = {
+    ex: [[1, 0], [4 / 3, 5 / 3]], shear: [[1, 1], [0, 1]], sym: [[2, 1], [1, 2]],
+    rot: [[1.5 * Math.cos(Math.PI / 6), -1.5 * Math.sin(Math.PI / 6)], [1.5 * Math.sin(Math.PI / 6), 1.5 * Math.cos(Math.PI / 6)]],
+    flip: [[1, 2], [2, -1]], rank1: [[1, 2], [0.5, 1]],
+  };
+  const inp = ["sv-g11", "sv-g12", "sv-g21", "sv-g22"].map((id) => document.getElementById(id));
+  let A = PRE.ex, D = SV.svd2(A), t = 0, anim = null;
+  const tag = document.getElementById("sv-g-tag");
+  // 단계 t의 변환 행렬: 0→1 Vᵀ, 1→2 Σ, 2→3 U
+  function M(t) {
+    const phV = Math.atan2(D.v1[1], D.v1[0]);
+    const refl = D.det < 0;
+    const phU = Math.atan2(D.u1[1], D.u1[0]);
+    const a = MB.clamp(t, 0, 1), b = MB.clamp(t - 1, 0, 1), c = MB.clamp(t - 2, 0, 1);
+    let R = SV.rot(-phV * a);
+    R = SV.mul([[MB.lerp(1, D.s1, b), 0], [0, MB.lerp(1, D.s2, b)]], R);
+    R = SV.mul([[1, 0], [0, refl ? 1 - 2 * c : 1]], R);
+    R = SV.mul(SV.rot(phU * c), R);
+    return R;
+  }
+  const pl = MB.plane("#sv-cv-geo", {
+    x: [-3.6, 3.6], aspect: 0.8, maxHeight: 520, minHeight: 280, points: [],
+    draw(P) {
+      const C = P.P, T = M(t);
+      // 입력 격자의 상
+      const ctx = P.ctx; ctx.save(); ctx.strokeStyle = C.accent; ctx.globalAlpha = 0.18; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = -6; i <= 6; i++) {
+        let [x1, y1] = SV.ap(T, i * 0.5, -3), [x2, y2] = SV.ap(T, i * 0.5, 3); ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+        [x1, y1] = SV.ap(T, -3, i * 0.5); [x2, y2] = SV.ap(T, 3, i * 0.5); ctx.moveTo(P.X(x1), P.Y(y1)); ctx.lineTo(P.X(x2), P.Y(y2));
+      }
+      ctx.stroke(); ctx.restore();
+      P.param((s) => [Math.cos(s), Math.sin(s)], 0, 2 * Math.PI, { color: C.dim, width: 1, dash: [4, 4] });
+      const pts = []; for (let k = 0; k <= 96; k++) { const s = (k / 96) * 2 * Math.PI; pts.push(SV.ap(T, Math.cos(s), Math.sin(s))); }
+      P.poly(pts, { fill: C.accent, alpha: 0.14, stroke: false, close: true });
+      P.poly(pts, { color: C.accent, width: 2, close: true });
+      // 표시 점: 원 위의 한 점(방향 확인용)
+      const [mx, my] = SV.ap(T, Math.cos(2.2), Math.sin(2.2)); P.dot(mx, my, { r: 4, color: C.warn });
+      const [ax, ay] = SV.ap(T, D.v1[0], D.v1[1]), [bx, by] = SV.ap(T, D.v2[0], D.v2[1]);
+      const lab = t < 0.5 ? ["v₁", "v₂"] : t < 1.5 ? ["e₁", "e₂"] : t < 2.5 ? ["σ₁e₁", "σ₂e₂"] : ["σ₁u₁", "σ₂u₂"];
+      P.arrow(0, 0, ax, ay, { color: C.accent, width: 3.2, label: lab[0] });
+      P.arrow(0, 0, bx, by, { color: C.accent2, width: 3.2, label: lab[1] });
+    },
+  });
+  function stats() {
+    MB.stat("sv-g-s", `${SV.fix(D.s1)}, ${SV.fix(D.s2)}`);
+    const deg = (v) => SV.fix((Math.atan2(v[1], v[0]) * 180) / Math.PI, 1) + "°";
+    MB.stat("sv-g-a", `${deg(D.v1)} / ${deg(D.u1)}`);
+    MB.stat("sv-g-d", SV.fix(D.s1 * D.s2));
+    MB.stat("sv-g-u", D.det < 0 ? "반사 포함 (det U = −1)" : "회전 (det U = 1)");
+    tag.textContent = t < 1 ? "① → ② Vᵀ: 회전" : t < 2 ? "② → ③ Σ: 축 방향 늘이기" : t < 3 ? "③ → ④ U: 회전" : "④ 출력 = A × 단위원";
+    if (t === 0) tag.textContent = "① 입력: 단위원과 v₁, v₂";
+  }
+  const rt = MB.range("sv-gt", (v) => v.toFixed(2), () => { stop(); t = rt(); pl.redraw(); stats(); });
+  function setA(M2, fill) {
+    A = M2; D = SV.svd2(A);
+    if (fill) inp.forEach((el, i) => (el.value = SV.fix(A[i >> 1][i & 1], 2)));
+    pl.redraw(); stats();
+  }
+  inp.forEach((el) => el.addEventListener("input", () => {
+    const v = inp.map(SV.parse); if (v.some((x) => x === null)) return;
+    setA([[v[0], v[1]], [v[2], v[3]]], false);
+  }));
+  document.getElementById("sv-g-pre").addEventListener("change", (e) => { stop(); setA(PRE[e.target.value], true); });
+  function stop() { if (anim) { anim(); anim = null; } }
+  document.getElementById("sv-g-play").addEventListener("click", () => {
+    stop(); let t0 = null, alive = true;
+    const f = (ts) => { if (!alive) return; if (t0 === null) t0 = ts; t = Math.min(3, (ts - t0) / 1200); rt.set(t); pl.redraw(); stats(); if (t < 3) requestAnimationFrame(f); };
+    requestAnimationFrame(f); anim = () => { alive = false; };
+  });
+  setA(PRE.ex, true);
+})();
+
+/* ================================================================ 2. 방향마다 ‖Ax‖ */
+(function () {
+  const PRE = { ex: [[3, 0], [4, 5]], shear: [[1, 1], [0, 1]], near: [[1, 1], [1, 1.1]] };
+  let A = PRE.ex, D = SV.svd2(A);
+  const pts = [{ x: Math.cos(0.3), y: Math.sin(0.3), label: "x", r: 8, constrain(p) { const n = Math.hypot(p.x, p.y) || 1; p.x /= n; p.y /= n; } }];
+  let R = 8;
+  const pl = MB.plane("#sv-cv-st", {
+    x: [-8, 8], aspect: 0.9, maxHeight: 380, minHeight: 240, points: pts,
+    draw(P, api) {
+      const C = P.P, p = api.points[0]; p.color = C.warn;
+      const ell = []; for (let k = 0; k <= 96; k++) { const s = (k / 96) * 2 * Math.PI; ell.push(SV.ap(A, Math.cos(s), Math.sin(s))); }
+      P.poly(ell, { fill: C.accent, alpha: 0.12, stroke: false, close: true });
+      P.poly(ell, { color: C.accent, width: 1.6, close: true });
+      P.param((s) => [Math.cos(s), Math.sin(s)], 0, 2 * Math.PI, { color: C.dim, width: 1.4 });
+      P.arrow(0, 0, D.s1 * D.u1[0], D.s1 * D.u1[1], { color: C.accent, width: 1.5, alpha: 0.5 });
+      P.arrow(0, 0, D.s2 * D.u2[0], D.s2 * D.u2[1], { color: C.accent2, width: 1.5, alpha: 0.5 });
+      const [ax, ay] = SV.ap(A, p.x, p.y);
+      P.arrow(0, 0, ax, ay, { color: C.warn, width: 3, label: "Ax" });
+      P.line(0, 0, p.x, p.y, { color: C.warn, width: 2 });
+    },
+    onDrag() { chart.redraw(); stats(); },
+  });
+  const chart = MB.canvas("#sv-cv-st2", (ctx, w, h) => {
+    const C = MB.palette(), data = [];
+    for (let k = 0; k <= 180; k++) { const th = (k * Math.PI) / 180; const [x, y] = SV.ap(A, Math.cos(th), Math.sin(th)); data.push([k, Math.hypot(x, y)]); }
+    const p = pl ? pl.points[0] : pts[0]; let th = (Math.atan2(p.y, p.x) * 180) / Math.PI; th = ((th % 180) + 180) % 180;
+    const v1 = (((Math.atan2(D.v1[1], D.v1[0]) * 180) / Math.PI) % 180 + 180) % 180;
+    const ymax = Math.max(1, D.s1 * 1.12);
+    MB.chart(ctx, SV.box(w, h), { x: [0, 180], y: [0, ymax], xLabel: "θ (°)", yLabel: "‖Ax‖", xTicks: [0, 45, 90, 135, 180],
+      series: [{ data, color: C.accent, width: 2.4 }],
+      hlines: [{ y: D.s1, color: C.accent, dash: [4, 4] }, { y: D.s2, color: C.accent2, dash: [4, 4] }],
+      vlines: [{ x: v1, color: C.accent, dash: [3, 3] }, { x: th, color: C.warn }],
+      points: [{ x: th, y: Math.hypot(...SV.ap(A, p.x, p.y)), color: C.warn, r: 5 }] });
+  }, { aspect: 0.9, maxHeight: 380, minHeight: 240 });
+  function stats() {
+    const p = pl.points[0]; const [ax, ay] = SV.ap(A, p.x, p.y);
+    let th = (Math.atan2(p.y, p.x) * 180) / Math.PI; th = ((th % 360) + 360) % 360;
+    MB.stat("sv-st-th", SV.fix(th, 0) + "°"); MB.stat("sv-st-n", SV.fix(Math.hypot(ax, ay)));
+    MB.stat("sv-st-s1", SV.fix(D.s1, 3)); MB.stat("sv-st-s2", SV.fix(D.s2, 3));
+  }
+  document.getElementById("sv-st-pre").addEventListener("change", (e) => {
+    A = PRE[e.target.value]; D = SV.svd2(A); R = Math.max(2.2, D.s1 * 1.25); pl.view({ x: [-R, R] }); pl.redraw(); chart.redraw(); stats();
+  });
+  R = Math.max(2.2, D.s1 * 1.25); pl.view({ x: [-R, R] }); pl.redraw(); chart.redraw(); stats();
+})();
+
+/* ================================================================ 3. 랭크 1 레이어 */
+(function () {
+  const N = 10;
+  let A = null, D = null;
+  const rk = MB.range("sv-r1k", (v) => String(v), () => draw.redraw() || stats());
+  const rn = MB.range("sv-r1n", (v) => v.toFixed(2), () => build());
+  const pre = document.getElementById("sv-r1-pre");
+  function build() {
+    const rng = MB.rng(11), kind = pre.value, nz = rn();
+    A = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => {
+      let v;
+      if (kind === "plaid") { const a = Math.sin((i + 0.5) * 0.7), b = Math.cos((j + 0.5) * 0.9); v = 0.9 * a * b + 0.6 * ((i % 3 === 0) ? 1 : -0.3) * ((j % 4 < 2) ? 1 : -0.5) + 1.1 * (i / N - 0.45) * (j % 2 ? 1 : -1); }
+      else if (kind === "cross") v = (i >= 4 && i <= 5 ? 1 : 0) + (j >= 4 && j <= 5 ? 1 : 0) - 0.5;
+      else v = j >= i ? 1 : 0;
+      return v + nz * (rng() * 2 - 1) * 1.7;
+    }));
+    D = SV.svd(A); draw.redraw(); stats();
+  }
+  const draw = MB.canvas("#sv-cv-r1", (ctx, w, h) => {
+    if (!D) return;
+    const C = MB.palette(), k = rk(), gap = 10, sz = Math.min((w - gap * 5) / 4, h - 34), y0 = 26;
+    const scale = Math.max(...A.flat().map(Math.abs)) || 1;
+    const layer = k > 0 ? SV.approx({ U: D.U.map((r) => r.map((v, l) => (l === k - 1 ? v : 0))), S: D.S, V: D.V }, k, N, N) : A.map((r) => r.map(() => 0));
+    const Ak = SV.approx(D, k, N, N), R = A.map((r, i) => r.map((v, j) => v - Ak[i][j]));
+    const panels = [[A, "A"], [layer, k ? `σ${k}u${k}v${k}ᵀ` : "—"], [Ak, `A_${k} (합)`], [R, "A − A_k"]];
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.fillStyle = C.text;
+    const x0 = (w - (sz * 4 + gap * 3)) / 2;
+    panels.forEach(([M2, label], p) => {
+      const x = x0 + p * (sz + gap);
+      SV.heat(ctx, M2, x, y0, sz, sz, scale);
+      ctx.strokeStyle = C.border; ctx.strokeRect(x + 0.5, y0 + 0.5, sz - 1, sz - 1);
+      ctx.fillStyle = C.text; ctx.fillText(label, x + sz / 2, 16);
+    });
+  }, { aspect: 0.32, minHeight: 130, maxHeight: 260 });
+  function stats() {
+    if (!D) return;
+    const k = rk(), S = D.S, tot = S.reduce((s, v) => s + v * v, 0);
+    const rest = S.slice(k).reduce((s, v) => s + v * v, 0);
+    document.getElementById("sv-r1-s").innerHTML = S.map((s, i) => (i < k ? `<b>${SV.fix(s)}</b>` : SV.fix(s))).join(" · ");
+    MB.stat("sv-r1-e", SV.fix(Math.sqrt(rest / tot) * 100, 1) + "%");
+    MB.stat("sv-r1-e2", SV.fix(S[k] || 0, 3));
+  }
+  pre.addEventListener("change", build);
+  build();
+})();
+
+/* ================================================================ 4. 사진 압축 */
+(function () {
+  const N = 64;
+  let img = null, A = null, D = null;
+  const rk = MB.range("sv-imgk", (v) => String(v), () => { view.redraw(); stats(); });
+  const diff = MB.check("sv-img-diff", () => view.redraw());
+  const kindEl = document.getElementById("sv-img-kind");
+  function build() {
+    img = MB.testImage(N, kindEl.value);
+    A = Array.from({ length: N }, (_, i) => Array.from(img.subarray(i * N, (i + 1) * N)));
+    D = SV.svd(A); view.redraw(); stats();
+  }
+  const view = MB.canvas("#sv-cv-img", (ctx, w, h) => {
+    if (!D) return;
+    const C = MB.palette(), k = rk();
+    const Ak = SV.approx(D, k, N, N), flat = new Float64Array(N * N);
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) flat[i * N + j] = diff() ? 0.5 + 2 * (A[i][j] - Ak[i][j]) : Ak[i][j];
+    const narrow = w < 520, sz = narrow ? Math.min((w - 30) / 2, 220) : Math.min((w - 40) / 3, h - 40);
+    const y0 = 24;
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.fillStyle = C.text;
+    const xs = narrow ? [10, 20 + sz] : [10, 20 + sz];
+    MB.drawGray(ctx, img, N, N, xs[0], y0, sz, sz); ctx.fillText("원본 (4096개)", xs[0] + sz / 2, 16);
+    MB.drawGray(ctx, flat, N, N, xs[1], y0, sz, sz, diff() ? { map: (t) => MB.colormap(t, "diverge") } : {}); ctx.fillText(diff() ? `오차 ×2 (k = ${k})` : `랭크 ${k} 근사`, xs[1] + sz / 2, 16);
+    const box = narrow ? { x: 46, y: y0 + sz + 20, w: w - 60, h: h - (y0 + sz + 20) - 36 } : { x: 30 + 2 * sz + 40, y: y0, w: w - (30 + 2 * sz + 40) - 12, h: sz - 20 };
+    const smax = D.S[0], smin = Math.max(1e-6, D.S[N - 1]);
+    MB.chart(ctx, box, { x: [1, N], y: [Math.max(1e-4, smin * 0.8), smax * 1.5], logY: true, xLabel: "i", series: [{ data: D.S.map((s, i) => [i + 1, Math.max(s, 1e-4)]), color: C.accent, width: 2 }], vlines: [{ x: k + 0.5, color: C.warn }] });
+  }, { aspect: 0.42, minHeight: 300, maxHeight: 360 });
+  function stats() {
+    if (!D) return;
+    const k = rk(), S = D.S, tot = S.reduce((s, v) => s + v * v, 0), kept = S.slice(0, k).reduce((s, v) => s + v * v, 0);
+    const store = k * (2 * N + 1);
+    MB.stat("sv-img-store", `${store.toLocaleString("ko-KR")}개 (${SV.fix((store / (N * N)) * 100, 0)}%)`);
+    MB.stat("sv-img-err", SV.fix(Math.sqrt(Math.max(0, tot - kept) / tot) * 100, 1) + "%");
+    MB.stat("sv-img-en", SV.fix((kept / tot) * 100, 2) + "%");
+  }
+  kindEl.addEventListener("change", build);
+  build();
+})();
+
+/* ================================================================ 5. 유사역행렬 */
+(function () {
+  let mode = "under";
+  const a1 = MB.range("sv-pa1", (v) => v.toFixed(1), () => upd()), a2 = MB.range("sv-pa2", (v) => v.toFixed(1), () => upd());
+  const b1 = MB.range("sv-pb1", (v) => v.toFixed(1), () => upd()), b2 = MB.range("sv-pb2", (v) => v.toFixed(1), () => upd());
+  const wrap = document.getElementById("sv-pb2-wrap"), msg = document.getElementById("sv-p-msg");
+  const pts = [{ x: 3, y: 1, label: "x", r: 8 }];
+  let geo = null; // {a:[..], t, xp:[..], dir:[..]}
+  function solve() {
+    const a = [a1(), a2()], n2 = a[0] * a[0] + a[1] * a[1];
+    if (n2 < 1e-9) return null;
+    // 식 1개: a·x = b1. 계수 1인 2×2: A = [a; 2a], 최소제곱으로 a·x = (b1 + 2 b2)/5
+    const t = mode === "under" ? b1() : (b1() + 2 * b2()) / 5;
+    const xp = [(t * a[0]) / n2, (t * a[1]) / n2];
+    const dir = [-a[1] / Math.sqrt(n2), a[0] / Math.sqrt(n2)];
+    return { a, t, xp, dir, n2 };
+  }
+  function project(p) {
+    if (!geo) return;
+    const s = (p.x - geo.xp[0]) * geo.dir[0] + (p.y - geo.xp[1]) * geo.dir[1];
+    p.x = geo.xp[0] + s * geo.dir[0]; p.y = geo.xp[1] + s * geo.dir[1];
+  }
+  pts[0].constrain = project;
+  const pl = MB.plane("#sv-cv-pinv", {
+    x: [-6, 6], aspect: 0.8, maxHeight: 460, minHeight: 260, points: pts,
+    draw(P, api) {
+      const C = P.P, p = api.points[0]; p.color = C.ok;
+      if (!geo) return;
+      const { a, xp, dir } = geo, na = Math.sqrt(geo.n2);
+      P.line(-20 * a[0] / na, -20 * a[1] / na, 20 * a[0] / na, 20 * a[1] / na, { color: C.accent, width: 1.2, dash: [5, 4], alpha: 0.7 });
+      P.line(-20 * dir[0], -20 * dir[1], 20 * dir[0], 20 * dir[1], { color: C.dim, width: 1.2, alpha: 0.6 });
+      P.line(xp[0] - 30 * dir[0], xp[1] - 30 * dir[1], xp[0] + 30 * dir[0], xp[1] + 30 * dir[1], { color: C.warn, width: 2.6 });
+      P.circle(0, 0, Math.hypot(xp[0], xp[1]), { color: C.accent, width: 1, dash: [3, 4], alpha: 0.6 });
+      P.line(0, 0, p.x, p.y, { color: C.ok, width: 1.6, alpha: 0.8 });
+      P.arrow(0, 0, xp[0], xp[1], { color: C.accent, width: 3, label: "x⁺" });
+      P.text("행공간 (a 방향)", 5.5 * a[0] / na, 5.5 * a[1] / na, { color: C.accent, size: 12, dx: 6, dy: -6 });
+      P.text(mode === "under" ? "해 직선 a·x = b" : "최소제곱 해 직선", xp[0] + 4 * dir[0], xp[1] + 4 * dir[1], { color: C.warn, size: 12, dx: 6, dy: 14 });
+    },
+    onDrag() { stats(); },
+  });
+  function stats() {
+    if (!geo) { MB.stat("sv-p-x", "—"); MB.stat("sv-p-n", "—"); MB.stat("sv-p-r", "—"); msg.className = "sim-msg sv-msg bad"; msg.textContent = "a = 0이면 A = 0, A⁺ = 0이고 x⁺ = 0입니다."; return; }
+    const p = pl.points[0], { xp, a } = geo;
+    MB.stat("sv-p-x", `(${SV.fix(xp[0])}, ${SV.fix(xp[1])})`);
+    MB.stat("sv-p-n", `${SV.fix(Math.hypot(xp[0], xp[1]))} / ${SV.fix(Math.hypot(p.x, p.y))}`);
+    const t = a[0] * p.x + a[1] * p.y;
+    const res = mode === "under" ? Math.abs(t - b1()) : Math.hypot(t - b1(), 2 * t - b2());
+    MB.stat("sv-p-r", SV.fix(res, 3));
+    msg.className = "sim-msg sv-msg ok";
+    msg.textContent = mode === "under"
+      ? `A = [${SV.fix(a[0], 1)} ${SV.fix(a[1], 1)}], σ₁ = ‖a‖ = ${SV.fix(Math.sqrt(geo.n2))}, A⁺ = aᵀ/‖a‖². 해는 직선 전체이고 x⁺는 원점에서 그 직선에 내린 수선의 발입니다.`
+      : `A = [a; 2a]의 출력은 (t, 2t)뿐이라 b = (${SV.fix(b1(), 1)}, ${SV.fix(b2(), 1)})에 정확히 닿지 않습니다. 가장 가까운 출력은 t = ${SV.fix(geo.t)}일 때이고, 그런 x들 중 가장 짧은 것이 x⁺입니다.`;
+  }
+  function upd() {
+    geo = solve();
+    if (geo) project(pl.points[0]);
+    pl.redraw(); stats();
+  }
+  MB.seg("sv-p-mode", (v) => { mode = v; wrap.style.display = v === "under" ? "none" : ""; upd(); });
+  wrap.style.display = "none";
+  upd();
+})();
+
+/* ================================================================ 6. 조건수 */
+(function () {
+  const rk = MB.range("sv-ck", (v) => v.toFixed(2), () => upd());
+  const rb = MB.range("sv-cb", (v) => v.toFixed(0) + "°", () => upd());
+  const re = MB.range("sv-ce", (v) => v.toFixed(2), () => upd());
+  let A, Ai, D, b, x, worst = 1;
+  function build() {
+    const k = Math.pow(10, rk());
+    const U = SV.rot(Math.PI / 6), Vt = SV.rot(-Math.PI / 9);
+    A = SV.mul(SV.mul(U, [[1, 0], [0, 1 / k]]), Vt);
+    const det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+    Ai = [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]];
+    D = { s1: 1, s2: 1 / k, k, u1: [U[0][0], U[1][0]], u2: [U[0][1], U[1][1]] };
+    const ang = (rb() * Math.PI) / 180;
+    b = [Math.cos(ang) * D.u1[0] + Math.sin(ang) * D.u2[0], Math.cos(ang) * D.u1[1] + Math.sin(ang) * D.u2[1]];
+    x = SV.ap(Ai, b[0], b[1]);
+    const eps = re(), nx = Math.hypot(x[0], x[1]);
+    worst = 0;
+    for (let i = 0; i < 120; i++) { const s = (i / 120) * 2 * Math.PI; const [dx, dy] = SV.ap(Ai, eps * Math.cos(s), eps * Math.sin(s)); worst = Math.max(worst, (Math.hypot(dx, dy) / nx) / eps); }
+  }
+  const left = MB.plane("#sv-cv-c1", {
+    x: [-1.6, 1.6], aspect: 0.9, maxHeight: 340, minHeight: 220, points: [],
+    draw(P) {
+      if (!b) return; const C = P.P;
+      P.arrow(0, 0, D.u1[0] * 1.3, D.u1[1] * 1.3, { color: C.accent, width: 1.2, alpha: 0.5, label: "u₁" });
+      P.arrow(0, 0, D.u2[0] * 1.3, D.u2[1] * 1.3, { color: C.accent2, width: 1.2, alpha: 0.5, label: "u₂" });
+      P.arrow(0, 0, b[0], b[1], { color: C.text, width: 2.6, label: "b" });
+      P.circle(b[0], b[1], re(), { color: C.warn, width: 2, fill: C.warn, alpha: 0.25 });
+    },
+  });
+  const right = MB.plane("#sv-cv-c2", {
+    x: [-4, 4], aspect: 0.9, maxHeight: 340, minHeight: 220, points: [],
+    draw(P) {
+      if (!x) return; const C = P.P, eps = re();
+      const pts = []; for (let i = 0; i <= 120; i++) { const s = (i / 120) * 2 * Math.PI; const [dx, dy] = SV.ap(Ai, eps * Math.cos(s), eps * Math.sin(s)); pts.push([x[0] + dx, x[1] + dy]); }
+      P.poly(pts, { fill: C.warn, alpha: 0.25, stroke: false, close: true });
+      P.poly(pts, { color: C.warn, width: 2, close: true });
+      P.arrow(0, 0, x[0], x[1], { color: C.text, width: 2.6, label: "x" });
+    },
+  });
+  function upd() {
+    build();
+    // 오른쪽 축척: 해와 오차 타원이 모두 보이게
+    const eps = re(), R = Math.min(400, Math.max(2, Math.hypot(x[0], x[1]) + eps * D.k * 1.05));
+    right.view({ x: [-R, R] });
+    left.redraw(); right.redraw();
+    MB.stat("sv-c-s", `1, ${SV.sci(D.s2)}`);
+    MB.stat("sv-c-amp", SV.fix(worst, worst < 10 ? 2 : 0) + "배");
+    MB.stat("sv-c-k", SV.fix(D.k, D.k < 10 ? 2 : 0));
+  }
+  upd();
+})();
+
+/* ================================================================ 7. 절단 SVD */
+(function () {
+  const N = 48;
+  const rk = MB.range("sv-tk", (v) => String(v), () => draw());
+  const rn = MB.range("sv-tn", (v) => v.toFixed(3), () => rebuild(false));
+  const rw = MB.range("sv-tw", (v) => v.toFixed(1), () => rebuild(true));
+  const xTrue = Array.from({ length: N }, (_, i) => (i >= 8 && i < 18 ? 1 : 0) + (i >= 26 && i < 30 ? 0.6 : 0) + 0.8 * Math.exp(-((i - 38) ** 2) / 8));
+  const noise = (() => { const r = MB.rng(5); const out = []; for (let i = 0; i < N; i++) { let u = 0, v = 0; while (!u) u = r(); v = r(); out.push(Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)); } return out; })();
+  let A, D, b, coef, best = 1;
+  function rebuild(newA) {
+    if (newA || !A) {
+      const w = rw();
+      A = Array.from({ length: N }, (_, i) => { const row = Array.from({ length: N }, (_, j) => Math.exp(-((i - j) ** 2) / (2 * w * w))); const s = row.reduce((p, v) => p + v, 0); return row.map((v) => v / s); });
+      D = SV.svd(A);
+    }
+    const nz = rn();
+    b = A.map((row, i) => row.reduce((s, v, j) => s + v * xTrue[j], 0) + nz * noise[i]);
+    coef = D.S.map((s, l) => { let c = 0; for (let i = 0; i < N; i++) c += D.U[i][l] * b[i]; return c; });
+    let bestE = Infinity;
+    for (let k = 1; k <= N; k++) { const e = err(recon(k)); if (e < bestE) { bestE = e; best = k; } }
+    draw();
+  }
+  function recon(k) {
+    const x = new Float64Array(N);
+    for (let l = 0; l < k; l++) { const s = D.S[l]; if (!(s > 1e-300)) continue; const c = coef[l] / s; for (let j = 0; j < N; j++) x[j] += c * D.V[j][l]; }
+    return x;
+  }
+  function err(x) { let e = 0, n = 0; for (let j = 0; j < N; j++) { e += (x[j] - xTrue[j]) ** 2; n += xTrue[j] ** 2; } return Math.sqrt(e / n); }
+  const c1 = MB.canvas("#sv-cv-t1", (ctx, w, h) => {
+    if (!D) return; const C = MB.palette(), k = rk(), x = recon(k);
+    const lim = Math.max(1.6, Math.min(6, Math.max(...Array.from(x).map(Math.abs)) * 1.1));
+    MB.chart(ctx, SV.box(w, h), { x: [0, N - 1], y: [-lim * 0.6, lim], xLabel: "위치",
+      series: [{ data: xTrue.map((v, i) => [i, v]), color: C.dim, width: 2, dash: [5, 4] }, { data: b.map((v, i) => [i, v]), color: C.accent2, width: 1.6 }, { data: Array.from(x).map((v, i) => [i, MB.clamp(v, -lim, lim * 1.2)]), color: C.accent, width: 2.4 }] });
+  }, { aspect: 0.75, maxHeight: 340, minHeight: 220 });
+  const c2 = MB.canvas("#sv-cv-t2", (ctx, w, h) => {
+    if (!D) return; const C = MB.palette(), k = rk();
+    const S = D.S.map((s, i) => [i + 1, Math.max(s, 1e-17)]), Cb = coef.map((c, i) => [i + 1, Math.max(Math.abs(c), 1e-17)]);
+    MB.chart(ctx, SV.box(w, h), { x: [1, N], y: [1e-17, 10], logY: true, xLabel: "i", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [{ data: S, color: C.accent, width: 2.2 }, { data: Cb, color: C.warn, width: 1.6 }], vlines: [{ x: k + 0.5, color: C.text, dash: [4, 4] }] });
+  }, { aspect: 0.75, maxHeight: 340, minHeight: 220 });
+  function draw() {
+    c1.redraw(); c2.redraw();
+    if (!D) return;
+    const e = err(recon(rk()));
+    MB.stat("sv-t-e", e > 100 ? SV.sci(e) : SV.fix(e * 100, 1) + "%");
+    MB.stat("sv-t-best", `k = ${best} (${SV.fix(err(recon(best)) * 100, 1)}%)`);
+    MB.stat("sv-t-k", SV.sci(D.S[0] / Math.max(D.S[N - 1], 1e-300)));
+  }
+  rebuild(true);
+})();
+</script>
+</body>
+</html>

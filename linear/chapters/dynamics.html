@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>고유값으로 보는 동역학 · LinearBook</title>
+<meta name="description" content="차분 방정식 uₖ₊₁ = Auₖ와 미분방정식 du/dt = Au를 고유값으로 푼다. 안정성 판정, 마르코프 연쇄의 정상 상태와 수렴 속도, 페이지랭크, 레슬리 인구 모형, 행렬 지수, 대각합–행렬식 평면의 위상 초상, 감쇠 진동자와 정규 모드까지 직접 돌려 본다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .dy-m { display: inline-grid; grid-template-columns: repeat(var(--c, 2), auto); gap: 3px 12px; padding: 3px 9px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13.5px var(--mono); text-align: right; font-variant-numeric: tabular-nums; vertical-align: middle; }
+  .dy-msg { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; }
+  .dy-msg b { color: var(--text); }
+  .dy-msg.ok b { color: var(--ok); }
+  .dy-msg.bad b { color: var(--bad); }
+  .dy-msg.warn b { color: var(--warn); }
+  .dy-two { display: grid; gap: 1px; grid-template-columns: minmax(0, 1fr); background: var(--border); }
+  @media (min-width: 760px) { .dy-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .dy-two > div { background: var(--canvas-bg); position: relative; min-width: 0; }
+  .dy-two .cap { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--text-dim); font-family: var(--mono); pointer-events: none; z-index: 1; }
+  .dy-links { display: inline-grid; grid-template-columns: auto repeat(5, minmax(0, 1fr)); gap: 3px; font: 600 12px var(--mono); align-items: center; text-align: center; }
+  .dy-links span { color: var(--text-dim); padding: 0 4px; }
+  .dy-links button { width: 30px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-faint); font: 600 12px var(--mono); cursor: pointer; padding: 0; }
+  .dy-links button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .dy-links button:disabled { opacity: .25; cursor: default; }
+  .dy-small { font-size: 13px; color: var(--text-dim); }
+  .dy-mat3 { --n: 3 !important; }
+  .dy-mat3 input { font-size: 13px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="dynamics">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 12</div>
+    <h1 data-no-glossary>고유값으로 보는 동역학</h1>
+    <p class="lead">11장에서 고유벡터를 "행렬이 방향을 바꾸지 않는 축"으로, 고유값을 "그 축의 배율"으로 만났습니다. 이 장에서는 그 그림에 <b>시간</b>을 더합니다. 같은 행렬을 매 단계 다시 곱하는 시스템, 즉 \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)에서는 고유벡터 방향의 성분이 매번 \(\lambda\)배씩 늘거나 줄어듭니다. 연속 시간의 \(d\mathbf{u}/dt = A\mathbf{u}\)에서는 그 성분이 \(e^{\lambda t}\)로 자랍니다. 그래서 행렬을 수백 번 곱하거나 미분방정식을 풀지 않아도 <b>고유값만 보면 미래를 압니다</b>. 무엇이 살아남고, 무엇이 사라지고, 얼마나 빨리 평형에 닿는지. 장비의 가동 상태, 웹 페이지의 순위, 생물의 개체 수, 흔들리는 구조물이 모두 같은 질문입니다.</p>
+    <ul class="objectives">
+      <li>차분 방정식 \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)의 해를 \(\mathbf{u}_k = c_1\lambda_1^k\mathbf{x}_1 + c_2\lambda_2^k\mathbf{x}_2\)로 쓰고, 피보나치 수의 닫힌 식을 유도한다.</li>
+      <li>스펙트럼 반지름 \(\rho(A)\)로 이산 시스템의 수렴·발산·진동을 판정하고, 복소 고유값 \(re^{\pm i\theta}\)를 나선으로 읽는다.</li>
+      <li>열 확률 행렬이 고유값 1을 가지는 이유를 보이고, 마르코프 연쇄의 정상 상태와 \(|\lambda_2|^k\)로 줄어드는 수렴 오차를 계산한다.</li>
+      <li>페이지랭크를 감쇠 계수가 있는 마르코프 연쇄로 세우고 거듭제곱 반복으로 계산한다. 레슬리 행렬로 연령 구조 인구의 성장률을 구한다.</li>
+      <li>\(d\mathbf{u}/dt = A\mathbf{u}\)를 \(e^{\lambda t}\mathbf{x}\)의 합으로 풀고, 행렬 지수 \(e^{At} = Xe^{\Lambda t}X^{-1}\)를 급수와 대각화로 이해한다.</li>
+      <li>대각합–행렬식 평면에서 마디·안장점·나선·중심을 구분하고, 감쇠 진동자와 결합 진동자의 정규 모드를 고유값 문제로 푼다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>웹 검색의 순위</b></div>
+      <div class="o-body"><p>1990년대 중반의 웹 검색은 검색어가 페이지에 몇 번 나오는지로 순위를 매겼고, 같은 단어를 수백 번 숨겨 넣은 페이지가 맨 위로 올라오곤 했습니다. 브린과 페이지는 1998년 논문에서 다른 접근을 제안했습니다. 중요한 페이지란 <b>중요한 페이지가 많이 링크하는 페이지</b>라는 것입니다. 정의가 자기 자신을 가리키는 순환이라 공식 하나로 계산할 수 없어 보입니다.</p>
+        <p>그런데 이 순환을 "링크를 따라 무작위로 돌아다니는 사람이 각 페이지에 머무는 비율"로 바꾸면 행렬 문제가 됩니다. 링크 행렬 \(G\)에 대해 순위 벡터는 \(G\mathbf{r} = \mathbf{r}\), 즉 <b>고유값 1의 고유벡터</b>입니다. 수십억 차원이라도 \(\mathbf{r}\leftarrow G\mathbf{r}\)를 수십 번 되풀이하면 답에 수렴하고, 그 수렴 속도를 정하는 것이 두 번째 고유값입니다.</p>
+        <div class="o-chain"><span>"중요한 페이지가 링크한 페이지"</span><i>→</i><span>순환 정의</span><i>→</i><span class="tool">Gr = r (고유값 1)</span><i>→</i><span>거듭제곱 반복</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="difference">
+    <h2>같은 행렬을 거듭 곱하면: 차분 방정식</h2>
+    <div class="problem"><strong>100단계 뒤의 상태를 행렬 곱 100번 없이 알 수 있을까</strong>
+      <p>매년 같은 규칙으로 바뀌는 시스템이 있습니다. 두 도시 사이의 인구 이동, 할인율이 붙은 재고, 디지털 필터의 상태 변수, 수치 해법의 한 스텝. 상태를 벡터 \(\mathbf{u}_k\)로 쓰면 규칙은 \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)이고, 100년 뒤는 \(\mathbf{u}_{100} = A^{100}\mathbf{u}_0\)입니다. 행렬을 100번 곱하지 않고 이 값을 알 수 있을까요? 더 중요하게는, 계산하지 않고도 "결국 0으로 사라지는가, 폭발하는가"를 알 수 있을까요?</p></div>
+    <p>열쇠는 \(\mathbf{u}_0\)를 고유벡터로 분해하는 것입니다. \(A\mathbf{x}_i = \lambda_i\mathbf{x}_i\)이면 \(A\)를 한 번 곱할 때 \(\mathbf{x}_i\) 성분은 방향은 그대로이고 크기만 \(\lambda_i\)배가 됩니다. \(k\)번 곱하면 \(\lambda_i^k\)배입니다. 다른 방향 성분과 섞이지 않으니 각 성분을 따로 계산하면 됩니다.</p>
+    <div class="callout deep"><strong>정리 12.1 (차분 방정식의 해)</strong> \(n\times n\) 행렬 \(A\)가 독립인 고유벡터 \(\mathbf{x}_1,\dots,\mathbf{x}_n\)(고유값 \(\lambda_1,\dots,\lambda_n\))을 가지면, \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)의 해는
+      $$\mathbf{u}_k = A^k\mathbf{u}_0 = c_1\lambda_1^k\mathbf{x}_1 + c_2\lambda_2^k\mathbf{x}_2 + \cdots + c_n\lambda_n^k\mathbf{x}_n$$
+      이고, 계수 \(\mathbf{c}\)는 \(\mathbf{u}_0 = X\mathbf{c}\)를 풀어 얻는다(\(X\)의 열이 고유벡터). 행렬로 쓰면 \(A^k = X\Lambda^k X^{-1}\).
+      <br><b>증명.</b> \(\mathbf{u}_0 = \sum c_i\mathbf{x}_i\)에 \(A\)를 곱하면 선형성으로 \(A\mathbf{u}_0 = \sum c_i A\mathbf{x}_i = \sum c_i\lambda_i\mathbf{x}_i\). 이를 \(k\)번 되풀이한다. 행렬식 꼴은 \(A = X\Lambda X^{-1}\)에서 \(A^k = X\Lambda X^{-1}X\Lambda X^{-1}\cdots = X\Lambda^k X^{-1}\)(가운데의 \(X^{-1}X = I\)가 모두 지워진다). ∎</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 270" role="img" aria-label="초기 벡터를 고유벡터 성분으로 나누고 각 성분이 고유값의 거듭제곱으로 변하는 그림">
+        <defs><marker id="dy-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+          <marker id="dy-ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker>
+          <marker id="dy-ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+        <g transform="translate(20,20)"><rect width="230" height="210" rx="10" class="f-surface"/>
+          <line x1="30" y1="185" x2="210" y2="35" class="s-axis" style="opacity:.5;stroke-dasharray:4 4"/>
+          <line x1="40" y1="60" x2="200" y2="170" class="s-axis" style="opacity:.5;stroke-dasharray:4 4"/>
+          <line x1="115" y1="115" x2="175" y2="65" style="stroke:var(--accent);stroke-width:3" marker-end="url(#dy-ah)"/>
+          <line x1="115" y1="115" x2="155" y2="142" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#dy-ah2)"/>
+          <line x1="115" y1="115" x2="213" y2="92" style="stroke:var(--text);stroke-width:2.5" marker-end="url(#dy-ah3)"/>
+          <text x="178" y="58" class="t-acc">c₁x₁</text><text x="150" y="162" class="t" style="fill:var(--accent-2)">c₂x₂</text><text x="196" y="82" class="t" style="font-weight:700">u₀</text>
+          <text x="115" y="202" text-anchor="middle" class="t-dim">k = 0: 고유벡터로 분해</text></g>
+        <path d="M262 125 H300" class="s-acc" marker-end="url(#dy-ah)"/><text x="281" y="112" text-anchor="middle" class="t-mono">A</text>
+        <g transform="translate(305,20)"><rect width="230" height="210" rx="10" class="f-surface"/>
+          <line x1="30" y1="185" x2="210" y2="35" class="s-axis" style="opacity:.5;stroke-dasharray:4 4"/>
+          <line x1="40" y1="60" x2="200" y2="170" class="s-axis" style="opacity:.5;stroke-dasharray:4 4"/>
+          <line x1="115" y1="115" x2="187" y2="55" style="stroke:var(--accent);stroke-width:3" marker-end="url(#dy-ah)"/>
+          <line x1="115" y1="115" x2="135" y2="128.5" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#dy-ah2)"/>
+          <text x="150" y="50" class="t-acc">λ₁c₁x₁ (λ₁ = 1.2)</text><text x="128" y="152" class="t" style="fill:var(--accent-2)">λ₂c₂x₂ (λ₂ = 0.5)</text>
+          <text x="115" y="202" text-anchor="middle" class="t-dim">k = 1: 성분마다 λ배</text></g>
+        <path d="M547 125 H585" class="s-acc" marker-end="url(#dy-ah)"/><text x="566" y="112" text-anchor="middle" class="t-mono">Aᵏ</text>
+        <g transform="translate(590,20)"><rect width="170" height="210" rx="10" class="f-acc2-soft"/>
+          <text x="85" y="56" text-anchor="middle" class="t-mono">λ₁ᵏ → ∞</text><text x="85" y="78" text-anchor="middle" class="t-mono">λ₂ᵏ → 0</text>
+          <text x="85" y="118" text-anchor="middle" class="t">결국 uₖ는</text><text x="85" y="138" text-anchor="middle" class="t" style="font-weight:700">x₁ 방향만 남는다</text>
+          <text x="85" y="202" text-anchor="middle" class="t-dim">큰 k: 지배 고유값</text></g>
+      </svg>
+      <figcaption><b>그림 12-1.</b> \(\mathbf{u}_0\)를 두 고유벡터 방향으로 나누면(왼쪽), \(A\)를 한 번 곱할 때마다 각 성분이 자기 고유값만큼 늘거나 준다(가운데). 많이 곱하면 절댓값이 가장 큰 고유값의 성분이 다른 성분을 압도해, 상태는 그 고유벡터 방향으로 정렬된다(오른쪽).</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 12.1 · 피보나치 수의 닫힌 식</strong>
+      <p>\(F_{k+2} = F_{k+1} + F_k\), \(F_0 = 0\), \(F_1 = 1\). 상태를 \(\mathbf{u}_k = (F_{k+1}, F_k)\)로 두면 \(\mathbf{u}_{k+1} = A\mathbf{u}_k\), \(A = \begin{bmatrix}1 & 1\\ 1 & 0\end{bmatrix}\).</p>
+      <ol>
+        <li>특성 방정식 \(\lambda^2 - \lambda - 1 = 0\)에서 \(\lambda_1 = \varphi = \tfrac{1+\sqrt5}{2} \approx 1.618\), \(\lambda_2 = \psi = \tfrac{1-\sqrt5}{2} \approx -0.618\).</li>
+        <li>고유벡터: \((A - \lambda I)\mathbf{x} = \mathbf{0}\)의 둘째 줄 \(x_1 - \lambda x_2 = 0\)에서 \(\mathbf{x}_i = (\lambda_i, 1)\).</li>
+        <li>\(\mathbf{u}_0 = (1, 0) = c_1(\varphi, 1) + c_2(\psi, 1)\)에서 \(c_1 = -c_2 = 1/(\varphi - \psi) = 1/\sqrt5\).</li>
+        <li>둘째 성분을 읽으면 \(F_k = \dfrac{\varphi^k - \psi^k}{\sqrt5}\) (비네 공식). \(|\psi| \lt 1\)이라 \(\psi^k\)는 금방 사라지고, \(F_k\)는 \(\varphi^k/\sqrt5\)에 가장 가까운 정수다. 예를 들어 \(\varphi^{10}/\sqrt5 \approx 55.004\)이고 \(F_{10} = 55\).</li>
+      </ol>
+      <p>정수 점화식의 답에 무리수 \(\sqrt5\)가 나오는 이유는 고유벡터 좌표계가 무리수 방향이기 때문입니다. 연속한 두 항의 비 \(F_{k+1}/F_k\)가 황금비로 가는 것은 "지배 고유값이 남는다"(그림 12-1)의 한 예입니다.</p></div>
+    <p>아래 시뮬레이터에서 시작점 \(\mathbf{u}_0\)를 끌고 행렬을 바꿔 보세요. 점들이 고유벡터 선을 따라 정렬되는 모습, 음수 고유값이 만드는 지그재그, 복소 고유값이 만드는 나선을 볼 수 있습니다.</p>
+
+    <div class="sim" id="sim-dy-iterate">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>u₀, Au₀, A²u₀, …의 궤적</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dy-cv-it"></canvas><span class="tag-tl">u₀ 점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A</span>
+            <div class="mat" style="--n:2"><input id="dy-i11" value="1.1" inputmode="decimal" aria-label="a11"><input id="dy-i12" value="0.2" inputmode="decimal" aria-label="a12"><input id="dy-i21" value="0.1" inputmode="decimal" aria-label="a21"><input id="dy-i22" value="0.6" inputmode="decimal" aria-label="a22"></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="dy-i-pre">
+            <option value="grow">한 방향 성장 (λ = 1.14, 0.56)</option>
+            <option value="decay">모두 감쇠 (λ = 0.9, 0.6)</option>
+            <option value="markov">마르코프형 (λ = 1, 0.7)</option>
+            <option value="flip">음수 고유값 (λ = −0.85, 0.7)</option>
+            <option value="spiral">감쇠 나선 (r = 0.93, θ = 25°)</option>
+            <option value="rotate">순수 회전 (r = 1, θ = 30°)</option>
+            <option value="fib">피보나치 (λ = 1.618, −0.618)</option>
+          </select></label>
+          <label class="ctrl"><span>단계 수 k <output id="dy-i-n-out"></output></span><input type="range" id="dy-i-n" min="1" max="40" value="14"></label>
+          <label class="check"><input type="checkbox" id="dy-i-eig" checked> 고유벡터 방향 보기</label>
+          <div class="btn-row"><button class="btn primary" id="dy-i-play">▶ 한 단계씩</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고유값</span><span class="v" id="dy-i-lam">—</span></div>
+        <div class="stat"><span class="k">스펙트럼 반지름 ρ(A)</span><span class="v" id="dy-i-rho">—</span></div>
+        <div class="stat"><span class="k">‖uₖ‖ (마지막 단계)</span><span class="v" id="dy-i-norm">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="dy-i-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '한 방향 성장'에서 u₀를 아무 데나 두어도 점들이 결국 λ₁ 고유벡터 선을 따라 달아납니다. u₀를 정확히 λ₂ 선 위에 놓으면(성분 c₁ = 0) 원점으로 들어옵니다. ② '음수 고유값'은 점이 원점의 양쪽을 오가는 지그재그를 만듭니다. ③ '감쇠 나선'은 매 단계 25°씩 돌며 7%씩 줄고, '순수 회전'은 같은 원 위를 영원히 돕니다. 모델: 2×2 실수 행렬, 점은 0.05 단위로 맞춰지고 화면 밖으로 나간 점은 그리지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="stability">
+    <h2>안정성: 고유값이 단위원 안에 있는가</h2>
+    <div class="problem"><strong>디지털 필터는 언제 스스로 울리기 시작할까</strong>
+      <p>오디오 이퀄라이저나 센서 신호를 거르는 디지털 필터는 지난 출력 몇 개에 계수를 곱해 다음 출력을 만듭니다. 상태 벡터로 쓰면 바로 \(\mathbf{u}_{k+1} = A\mathbf{u}_k + (\text{입력})\)입니다. 계수를 조금만 잘못 고르면 입력이 멈춰도 출력이 점점 커져 스피커가 찢어질 듯 울립니다. 계수표를 보고 미리 알 수 있을까요?</p></div>
+    <p>정리 12.1에서 답이 바로 나옵니다. \(\mathbf{u}_k\)의 각 성분은 \(\lambda_i^k\)에 비례하니, <b>모든 고유값의 절댓값이 1보다 작으면</b> 모든 성분이 0으로 갑니다. 하나라도 1보다 크면 그 성분이 지수적으로 커집니다. 고유값 중 가장 큰 절댓값을 따로 이름 붙여 둡니다.</p>
+    <div class="callout"><strong>정의 12.1 (스펙트럼 반지름)</strong> \(\rho(A) = \max_i |\lambda_i|\). 복소 고유값 \(\lambda = a + bi\)이면 \(|\lambda| = \sqrt{a^2 + b^2}\)이다.</div>
+    <div class="callout deep"><strong>정리 12.2 (이산 시스템의 안정성)</strong> \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)에 대해
+      <ul>
+        <li>\(\rho(A) \lt 1\)이면 모든 \(\mathbf{u}_0\)에서 \(\mathbf{u}_k \to \mathbf{0}\) (<b>점근 안정</b>).</li>
+        <li>\(|\lambda_i| \gt 1\)인 고유값이 하나라도 있으면 그 고유벡터 성분이 있는 \(\mathbf{u}_0\)에서 \(\|\mathbf{u}_k\| \to \infty\) (<b>불안정</b>).</li>
+        <li>\(\rho(A) = 1\)이면 경계: \(|\lambda| = 1\) 성분은 크기를 유지한다(회전, 정상 상태). 단, 고유벡터가 모자란 행렬은 \(k\lambda^k\) 꼴 항이 생겨 천천히 커질 수 있다.</li>
+      </ul>
+      <b>증명 아이디어.</b> 대각화 가능하면 \(\|\mathbf{u}_k\| \le \sum |c_i||\lambda_i|^k\|\mathbf{x}_i\|\)이고 \(|\lambda_i|^k \to 0\). 대각화가 안 되는 경우에도 조르당 형태의 항 \(k^m\lambda^k\)가 \(|\lambda| \lt 1\)이면 여전히 0으로 간다(지수 감소가 다항 증가를 이긴다). ∎</div>
+    <p>복소 고유값은 특히 중요합니다. 실수 행렬의 복소 고유값은 켤레쌍 \(re^{\pm i\theta}\)로 나오고, 그 두 방향을 묶은 평면 위에서 \(A\)는 <b>\(\theta\)만큼 돌리고 \(r\)배 하는</b> 변환처럼 작동합니다. 예를 들어</p>
+    <div class="formula">$$A = r\begin{bmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{bmatrix} \quad\Longrightarrow\quad \lambda = re^{\pm i\theta},\qquad A^k = r^k\begin{bmatrix}\cos k\theta & -\sin k\theta\\ \sin k\theta & \cos k\theta\end{bmatrix}$$
+      <div class="where">\(r \lt 1\)이면 안으로 감기는 나선, \(r = 1\)이면 원, \(r \gt 1\)이면 밖으로 풀리는 나선. 한 바퀴에 약 \(360°/\theta\) 단계가 걸린다. 진동의 "주기"가 고유값의 각도에 들어 있다.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>고유값</th><th>한 단계의 효과</th><th>궤적</th><th>예</th></tr></thead>
+      <tbody>
+        <tr><td>\(0 \lt \lambda \lt 1\)</td><td>같은 방향으로 줄어듦</td><td>원점으로 곧게 들어감</td><td>감가상각, 할인</td></tr>
+        <tr><td>\(\lambda \gt 1\)</td><td>같은 방향으로 늘어남</td><td>곧게 달아남</td><td>복리, 개체 수 증가</td></tr>
+        <tr><td>\(-1 \lt \lambda \lt 0\)</td><td>뒤집히며 줄어듦</td><td>원점 양쪽을 오가며 수렴</td><td>과보정하는 제어기</td></tr>
+        <tr><td>\(\lambda = 1\)</td><td>그대로</td><td>정상 상태</td><td>마르코프 연쇄의 평형</td></tr>
+        <tr><td>\(re^{\pm i\theta}\)</td><td>\(\theta\) 회전 후 \(r\)배</td><td>나선 또는 원</td><td>디지털 공진 필터</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><strong>연속 시간과의 다리</strong> 미분방정식 \(d\mathbf{u}/dt = A\mathbf{u}\)를 오일러 방법으로 시간 간격 \(h\)씩 풀면 \(\mathbf{u}_{k+1} = (I + hA)\mathbf{u}_k\), 차분 방정식이 됩니다. 고유값은 \(1 + h\lambda\)로 바뀌고, 수치 해가 안정하려면 \(|1 + h\lambda| \lt 1\)이어야 합니다. 원래 시스템이 안정(\(\lambda \lt 0\))해도 \(h\)가 너무 크면 \(1 + h\lambda \lt -1\)이 되어 수치 해가 폭발합니다. 이것이 수치 해석의 "안정성 조건"이며, 6절 이후의 연속 시간 이야기와 이 절을 잇는 다리입니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="markov">
+    <h2>마르코프 연쇄: 고유값 1이 정하는 평형</h2>
+    <div class="problem"><strong>장비 100대 중 장기적으로 몇 대가 멈춰 있을까</strong>
+      <p>팹의 장비는 매 시간 "가동", "대기", "수리" 중 하나의 상태에 있습니다. 기록을 보니 가동 중인 장비가 한 시간 뒤에도 가동 중일 확률은 90%, 대기로 갈 확률 7%, 고장 나 수리로 갈 확률 3%입니다. 다른 상태에서도 이런 확률이 있습니다. 오늘 모든 장비가 가동 중이라면, 일주일 뒤 수리 중인 장비의 비율은 얼마일까요? 처음 상태에 따라 답이 달라질까요?</p></div>
+    <p>상태 \(j\)에서 상태 \(i\)로 갈 확률을 \(a_{ij}\)로 적은 행렬을 <span class="term">전이 행렬</span><span class="en">(transition matrix)</span>이라 합니다. 각 상태에 있을 확률을 벡터 \(\mathbf{p}_k\)로 쓰면 \(\mathbf{p}_{k+1} = A\mathbf{p}_k\)입니다. \(j\)열은 "상태 \(j\)에서 출발한 확률이 어디로 나뉘는가"이므로 성분이 음이 아니고 합이 1입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="가동, 대기, 수리 세 상태의 전이 확률 그림과 전이 행렬">
+        <defs><marker id="dy-mk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <circle cx="90" cy="130" r="42" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/><text x="90" y="134" text-anchor="middle" class="t" style="font-weight:700">가동</text>
+        <circle cx="300" cy="60" r="38" class="f-surface" style="stroke:var(--text-dim);stroke-width:1.5"/><text x="300" y="64" text-anchor="middle" class="t" style="font-weight:700">대기</text>
+        <circle cx="300" cy="200" r="38" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/><text x="300" y="204" text-anchor="middle" class="t" style="font-weight:700">수리</text>
+        <path d="M128 110 Q 200 50 262 58" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="185" y="62" class="t-mono">0.07</text>
+        <path d="M265 75 Q 200 110 133 125" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="200" y="112" class="t-mono">0.50</text>
+        <path d="M128 150 Q 200 210 262 202" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="180" y="212" class="t-mono">0.03</text>
+        <path d="M264 188 Q 200 160 133 142" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="205" y="166" class="t-mono">0.30</text>
+        <path d="M290 98 L 290 160" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="252" y="134" class="t-mono">0.05</text>
+        <path d="M312 162 L 312 100" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="318" y="134" class="t-mono">0.10</text>
+        <path d="M60 98 C 30 60, 100 50, 98 88" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="40" y="60" class="t-mono">0.90</text>
+        <path d="M330 35 C 370 10, 380 70, 338 68" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="365" y="30" class="t-mono">0.45</text>
+        <path d="M330 225 C 370 250, 380 190, 338 192" fill="none" class="s-line" marker-end="url(#dy-mk)"/><text x="365" y="248" class="t-mono">0.60</text>
+        <g transform="translate(430,40)"><rect width="310" height="180" rx="10" class="f-surface"/>
+          <text x="20" y="28" class="t" style="font-weight:700">A (열 = 출발 상태, 행 = 도착 상태)</text>
+          <text x="110" y="58" text-anchor="middle" class="t-dim">가동</text><text x="180" y="58" text-anchor="middle" class="t-dim">대기</text><text x="250" y="58" text-anchor="middle" class="t-dim">수리</text>
+          <text x="40" y="88" class="t-dim">가동</text><text x="40" y="118" class="t-dim">대기</text><text x="40" y="148" class="t-dim">수리</text>
+          <text x="110" y="88" text-anchor="middle" class="t-mono">0.90</text><text x="180" y="88" text-anchor="middle" class="t-mono">0.50</text><text x="250" y="88" text-anchor="middle" class="t-mono">0.30</text>
+          <text x="110" y="118" text-anchor="middle" class="t-mono">0.07</text><text x="180" y="118" text-anchor="middle" class="t-mono">0.45</text><text x="250" y="118" text-anchor="middle" class="t-mono">0.10</text>
+          <text x="110" y="148" text-anchor="middle" class="t-mono">0.03</text><text x="180" y="148" text-anchor="middle" class="t-mono">0.05</text><text x="250" y="148" text-anchor="middle" class="t-mono">0.60</text>
+          <text x="180" y="172" text-anchor="middle" class="t-acc">각 열의 합 = 1</text></g>
+      </svg>
+      <figcaption><b>그림 12-2.</b> 세 상태의 전이 그림과 열 확률 행렬. 화살표 \(j \to i\)의 숫자가 \(a_{ij}\)이다. 한 상태에서 나가는 화살표(자기 자신으로 돌아오는 고리 포함)의 확률을 모두 더하면 1이므로 각 열의 합이 1이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>정의 12.2 (열 확률 행렬)</strong> 모든 성분이 \(a_{ij} \ge 0\)이고 각 열의 합이 1인 정사각 행렬. 확률 벡터(성분이 음이 아니고 합이 1)를 확률 벡터로 보낸다.</div>
+    <div class="callout deep"><strong>정리 12.3 (마르코프 행렬의 고유값)</strong> 열 확률 행렬 \(A\)에 대해
+      <ol>
+        <li>\(\lambda = 1\)은 언제나 고유값이다.</li>
+        <li>모든 고유값은 \(|\lambda| \le 1\)이다.</li>
+        <li>어떤 거듭제곱 \(A^m\)의 성분이 모두 양수이면(<b>정칙</b> 연쇄), \(\lambda = 1\)은 단순 고유값이고 나머지는 모두 \(|\lambda| \lt 1\)이며, 고유값 1의 고유벡터를 성분 합 1로 맞춘 \(\boldsymbol\pi\)(<b>정상 분포</b>)는 성분이 모두 양수이고, 모든 출발 확률 벡터에서 \(\mathbf{p}_k \to \boldsymbol\pi\)이다.</li>
+      </ol>
+      <b>증명.</b> (1) 열의 합이 1이라는 것은 \(A^{\mathsf T}\mathbf{1} = \mathbf{1}\), 즉 1이 \(A^{\mathsf T}\)의 고유값이라는 뜻이다. \(A\)와 \(A^{\mathsf T}\)는 특성 다항식이 같으므로(\(\det(A - \lambda I) = \det(A - \lambda I)^{\mathsf T}\)) 1은 \(A\)의 고유값이기도 하다. (2) \(A^{\mathsf T}\mathbf{y} = \lambda\mathbf{y}\)에서 \(|y_j|\)가 가장 큰 성분 \(j\)를 보면 \(|\lambda||y_j| = |\sum_i a_{ij}y_i| \le \sum_i a_{ij}|y_j| = |y_j|\). (3)은 페론–프로베니우스 정리의 결과이며 여기서는 증명하지 않는다. ∎</div>
+    <p>정리 12.1과 합치면 수렴 속도도 나옵니다. \(\mathbf{p}_0 = \boldsymbol\pi + c_2\mathbf{x}_2 + c_3\mathbf{x}_3\)이면 \(\mathbf{p}_k = \boldsymbol\pi + c_2\lambda_2^k\mathbf{x}_2 + c_3\lambda_3^k\mathbf{x}_3\)이므로, 평형에서의 오차는 대략 <b>\(|\lambda_2|^k\)</b>로 줄어듭니다(\(|\lambda_2|\)는 두 번째로 큰 고유값의 크기). \(|\lambda_2| = 0.5\)이면 10단계에 오차가 1/1000로, \(|\lambda_2| = 0.99\)이면 같은 감소에 약 690단계가 걸립니다(\(0.99^{690} \approx 10^{-3}\)).</p>
+    <div class="callout"><strong>예제 12.2 · 두 상태 연쇄</strong>
+      <p>\(A = \begin{bmatrix}0.9 & 0.2\\ 0.1 & 0.8\end{bmatrix}\) (맑음 → 맑음 0.9, 비 → 맑음 0.2).</p>
+      <ol>
+        <li>고유값의 합은 대각합 1.7, 하나가 1이니 다른 하나는 \(\lambda_2 = 0.7\).</li>
+        <li>\((A - I)\boldsymbol\pi = \mathbf{0}\): \(-0.1\pi_1 + 0.2\pi_2 = 0\)에서 \(\pi_1 = 2\pi_2\). 합 1로 맞추면 \(\boldsymbol\pi = (2/3,\ 1/3)\).</li>
+        <li>\(\lambda_2 = 0.7\)의 고유벡터는 \((1, -1)\) (성분 합 0: 확률의 총합을 바꾸지 않는 방향). \(\mathbf{p}_0 = (1, 0)\)이면 \(\mathbf{p}_k = (2/3, 1/3) + \tfrac13(0.7)^k(1, -1)\).</li>
+        <li>오늘 맑으면 내일 맑을 확률 \(2/3 + 0.7/3 = 0.9\) (검산: \(A\)의 1열), 일주일 뒤 \(2/3 + 0.7^7/3 \approx 0.694\), 한 달 뒤에는 사실상 \(2/3\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-dy-markov">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>장비 상태의 마르코프 연쇄: 정상 분포로 가는 길</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dy-cv-mk"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>전이 행렬 A (열 = 출발: 가동·대기·수리)</span>
+            <div class="mat dy-mat3" style="--n:3">
+              <input id="dy-m11" value="0.90" inputmode="decimal" aria-label="가동→가동"><input id="dy-m12" value="0.50" inputmode="decimal" aria-label="대기→가동"><input id="dy-m13" value="0.30" inputmode="decimal" aria-label="수리→가동">
+              <input id="dy-m21" value="0.07" inputmode="decimal" aria-label="가동→대기"><input id="dy-m22" value="0.45" inputmode="decimal" aria-label="대기→대기"><input id="dy-m23" value="0.10" inputmode="decimal" aria-label="수리→대기">
+              <input id="dy-m31" value="0.03" inputmode="decimal" aria-label="가동→수리"><input id="dy-m32" value="0.05" inputmode="decimal" aria-label="대기→수리"><input id="dy-m33" value="0.60" inputmode="decimal" aria-label="수리→수리">
+            </div></div>
+          <div class="ctrl"><span>처음 분포 p₀</span><div class="seg" id="dy-m-init"><button data-value="run" class="on">모두 가동</button><button data-value="down">모두 수리</button><button data-value="even">균등</button></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="dy-m-pre">
+            <option value="fab">팹 장비 (|λ₂| ≈ 0.57)</option>
+            <option value="sticky">잘 안 바뀌는 상태 (|λ₂| ≈ 0.95)</option>
+            <option value="cycle">거의 순환 (복소 λ₂)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn" id="dy-m-step">다음 단계</button><button class="btn primary" id="dy-m-play">▶ 재생</button><button class="btn" id="dy-m-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 k</span><span class="v" id="dy-m-k">0</span></div>
+        <div class="stat"><span class="k">정상 분포 π (가동·대기·수리)</span><span class="v" id="dy-m-pi">—</span></div>
+        <div class="stat"><span class="k">|λ₂|</span><span class="v" id="dy-m-l2">—</span></div>
+        <div class="stat"><span class="k">오차 ‖pₖ − π‖₁</span><span class="v" id="dy-m-err">—</span></div>
+      </div>
+      <div class="dy-msg" id="dy-m-msg"></div>
+      <div class="sim-note">해볼 것: ① '모두 가동'과 '모두 수리'로 각각 재생해 보세요. 출발점이 달라도 같은 막대(점선 = π)에 도착합니다. ② '잘 안 바뀌는 상태'는 |λ₂|가 1에 가까워 평형까지 수십 단계가 걸립니다. 오른쪽 그래프(로그 눈금)의 기울기가 log|λ₂|입니다. ③ '거의 순환'은 복소 λ₂ 때문에 확률이 출렁이며 수렴합니다. 모델: 열의 합이 1이 아니면 각 열을 합으로 나눠 맞춥니다. 음수는 0으로 바꿉니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="pagerank">
+    <h2>페이지랭크: 무작위 서퍼의 정상 분포</h2>
+    <div class="problem"><strong>링크 구조만으로 페이지의 중요도를 매길 수 있을까</strong>
+      <p>페이지 다섯 개가 서로 링크합니다. 링크를 많이 받는 페이지가 중요하겠지만, 아무도 찾지 않는 페이지 열 곳에서 받은 링크와 모두가 찾는 페이지 한 곳에서 받은 링크는 무게가 달라야 합니다. "중요한 페이지가 링크한 페이지가 중요하다"를 숫자로 만들면 무엇이 될까요?</p></div>
+    <p>무작위 서퍼를 상상합니다. 현재 페이지의 링크 중 하나를 같은 확률로 골라 이동합니다. 페이지 \(j\)의 바깥 링크가 \(d_j\)개면 \(j\)에서 링크된 각 페이지로 가는 확률은 \(1/d_j\)입니다. 이것을 적은 <b>링크 행렬</b> \(M\)은 열 확률 행렬이고, 서퍼가 각 페이지에 머무는 장기 비율이 순위입니다. 그런데 두 가지가 문제입니다. 바깥 링크가 없는 페이지(막다른 페이지)에서는 서퍼가 갇히고, 서로만 링크하는 무리가 있으면 정상 분포가 하나로 정해지지 않을 수 있습니다.</p>
+    <p>해결책은 서퍼가 가끔 <b>주소창에 아무 페이지나 쳐서 순간이동</b>하게 하는 것입니다. 확률 \(\alpha\)로 링크를 따라가고 \(1 - \alpha\)로 \(n\)개 페이지 중 하나로 이동합니다.</p>
+    <div class="formula">$$G = \alpha M + \frac{1-\alpha}{n}\,\mathbf{1}\mathbf{1}^{\mathsf T}, \qquad G\mathbf{r} = \mathbf{r},\quad \textstyle\sum r_i = 1$$
+      <div class="where">막다른 페이지의 열은 모든 페이지로 \(1/n\)씩 가는 것으로 채운다. \(\alpha\)는 감쇠 계수(damping factor)로, 브린과 페이지의 원 논문에서 0.85를 제안한 뒤 흔히 이 값을 예로 든다. \(G\)는 모든 성분이 양수인 열 확률 행렬이라 정리 12.3(3)이 적용된다: 정상 분포 \(\mathbf{r}\)이 하나뿐이고 거듭제곱 반복이 수렴한다.</div>
+    </div>
+    <p>\(G\)는 성분이 모두 양수라 정리 12.3에 의해 고유값 1이 단순하고, 더 나아가 \(G\)의 두 번째 고유값의 크기가 \(\alpha\) 이하라는 것이 알려져 있습니다. 그래서 \(\mathbf{r} \leftarrow G\mathbf{r}\)를 되풀이하는 <b>거듭제곱 반복</b>의 오차는 매 단계 적어도 \(\alpha\)배로 줄어듭니다. \(\alpha = 0.85\)이면 오차를 \(10^{-6}\)배로 줄이는 데 \(\log 10^{-6}/\log 0.85 \approx 85\)번이면 충분하고, 이 횟수는 페이지 수와 상관이 없습니다. 각 반복은 링크 수에 비례하는 일만 하면 되므로(\(\mathbf{1}\mathbf{1}^{\mathsf T}\mathbf{r}\)은 합 하나로 계산), 거대한 웹 그래프에서도 계산할 수 있습니다.</p>
+
+    <div class="sim" id="sim-dy-pagerank">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>다섯 페이지의 페이지랭크</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dy-cv-pr"></canvas><span class="tag-tl">원의 넓이 ∝ 순위</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>링크 (행 = 출발, 열 = 도착)</span><div class="dy-links" id="dy-p-links"></div></div>
+          <label class="ctrl"><span>감쇠 계수 α <output id="dy-p-a-out"></output></span><input type="range" id="dy-p-a" min="0.5" max="0.99" step="0.01" value="0.85"></label>
+          <div class="btn-row"><button class="btn" id="dy-p-step">반복 1번</button><button class="btn primary" id="dy-p-run">끝까지</button><button class="btn" id="dy-p-reset">균등에서 다시</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="dy-p-it">0</span></div>
+        <div class="stat"><span class="k">1위 페이지</span><span class="v" id="dy-p-top">—</span></div>
+        <div class="stat"><span class="k">이번 변화량 ‖Δr‖₁</span><span class="v" id="dy-p-d">—</span></div>
+        <div class="stat"><span class="k">10⁻⁶까지 필요한 반복</span><span class="v" id="dy-p-need">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① C는 링크를 가장 많이 받지만 A가 C의 유일한 링크를 받아 함께 높아집니다. "중요한 페이지가 링크한 페이지"의 효과입니다. ② E의 바깥 링크를 모두 끄면 E는 막다른 페이지가 되어 모든 페이지로 1/5씩 보냅니다. ③ α를 0.99로 올리면 링크 구조가 순위를 더 강하게 좌우하지만, 필요한 반복 횟수도 크게 늘어납니다. 모델: 페이지 5개, 막다른 페이지는 균등 분배, 자기 자신으로의 링크는 없음.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="population">
+    <h2>레슬리 모형: 연령 구조와 성장률</h2>
+    <div class="problem"><strong>새끼를 많이 낳는데 왜 개체 수가 줄어들까</strong>
+      <p>어떤 물고기는 나이별로 생존율과 번식률이 다릅니다. 어린 개체는 대부분 살아남지 못하고, 성체만 알을 낳습니다. 한 세대 뒤의 개체 수는 나이별 인원에 따라 달라지니 "평균 번식률" 하나로는 장기 추세를 알 수 없습니다. 이 개체군은 결국 늘어날까요, 줄어들까요? 그리고 나이별 비율은 어떻게 될까요?</p></div>
+    <p>나이를 세 계급(0살, 1살, 2살)으로 나누고, 한 세대 동안 \(i\)살 개체가 낳는 새끼 수를 \(f_i\), \(i\)살이 \(i+1\)살까지 사는 비율을 \(s_i\)라 하면</p>
+    <div class="formula">$$\begin{bmatrix}n_0\\ n_1\\ n_2\end{bmatrix}_{k+1} = \underbrace{\begin{bmatrix}f_0 & f_1 & f_2\\ s_0 & 0 & 0\\ 0 & s_1 & 0\end{bmatrix}}_{L}\begin{bmatrix}n_0\\ n_1\\ n_2\end{bmatrix}_{k}$$
+      <div class="where">첫 행은 번식(모든 나이의 새끼가 0살로 들어온다), 아래 대각은 생존(한 살씩 나이 든다). 이 꼴의 행렬을 레슬리 행렬이라 한다. 성분이 음이 아니므로 페론–프로베니우스 정리에 따라 (적절한 조건에서) 가장 큰 고유값이 양의 실수이고 고유벡터의 성분도 양수다.</div>
+    </div>
+    <p>정리 12.1에 따라 오랜 세대 뒤에는 지배 고유값 \(\lambda_1\)의 성분만 남습니다. 그러니 <b>\(\lambda_1\)이 세대당 성장률</b>이고(\(\lambda_1 \gt 1\)이면 증가, \(\lambda_1 \lt 1\)이면 감소), <b>그 고유벡터가 안정 연령 구조</b>입니다. 특성 방정식은 \(\lambda^3 - f_0\lambda^2 - f_1 s_0\lambda - f_2 s_0 s_1 = 0\)입니다.</p>
+    <div class="callout"><strong>예제 12.3</strong> \(f = (0,\ 1.5,\ 1)\), \(s_0 = 0.6\), \(s_1 = 0.5\).
+      <ol>
+        <li>특성 방정식 \(\lambda^3 - 0.9\lambda - 0.3 = 0\). \(\lambda = 1\)을 넣으면 \(-0.2 \lt 0\), \(\lambda = 1.1\)이면 \(0.041 \gt 0\)이므로 양의 근은 그 사이에 있다. 이분법으로 \(\lambda_1 \approx 1.085\): 세대마다 약 8.5% 증가.</li>
+        <li>고유벡터: 둘째·셋째 행에서 \(n_1 = s_0 n_0/\lambda\), \(n_2 = s_1 n_1/\lambda\). \(n_0 = 1\)로 두면 \((1,\ 0.553,\ 0.255)\), 합 1로 맞추면 약 \((55\%,\ 31\%,\ 14\%)\).</li>
+        <li>만약 어린 개체의 생존율이 \(s_0 = 0.4\)로 떨어지면 방정식은 \(\lambda^3 - 0.6\lambda - 0.2 = 0\)이 되고 \(\lambda = 1\)에서 \(0.2 \gt 0\)이므로 \(\lambda_1 \lt 1\): 번식률이 같아도 개체군은 줄어든다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-dy-leslie">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>레슬리 행렬로 30세대 내다보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="dy-two"><div><span class="cap">나이별 비율 (세대마다)</span><canvas id="dy-cv-ls1"></canvas></div><div><span class="cap">전체 개체 수 (로그 눈금)</span><canvas id="dy-cv-ls2"></canvas></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>1살의 번식 f₁ <output id="dy-l-f1-out"></output></span><input type="range" id="dy-l-f1" min="0" max="3" step="0.05" value="1.5"></label>
+          <label class="ctrl"><span>2살의 번식 f₂ <output id="dy-l-f2-out"></output></span><input type="range" id="dy-l-f2" min="0" max="3" step="0.05" value="1"></label>
+          <label class="ctrl"><span>0→1살 생존 s₀ <output id="dy-l-s0-out"></output></span><input type="range" id="dy-l-s0" min="0.05" max="1" step="0.01" value="0.6"></label>
+          <label class="ctrl"><span>1→2살 생존 s₁ <output id="dy-l-s1-out"></output></span><input type="range" id="dy-l-s1" min="0" max="1" step="0.01" value="0.5"></label>
+          <div class="ctrl"><span>처음 개체군</span><div class="seg" id="dy-l-init"><button data-value="young" class="on">어린 개체만</button><button data-value="old">늙은 개체만</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지배 고유값 λ₁ (세대당 배율)</span><span class="v" id="dy-l-lam">—</span></div>
+        <div class="stat"><span class="k">안정 연령 구조 (0·1·2살)</span><span class="v" id="dy-l-vec">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="dy-l-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① s₀를 0.6에서 0.4로 내려 보세요. 번식률은 그대로인데 λ₁이 1 아래로 떨어지고 로그 그래프가 내리막이 됩니다. ② 처음 개체군을 바꿔도 몇 세대 뒤의 나이별 비율은 같은 곳(안정 연령 구조)으로 모입니다. ③ f₁ = 0으로 두면 2살만 번식해 세대마다 출렁임이 커집니다(복소 고유값의 크기가 λ₁에 가까워짐). 모델: 0살 개체는 번식하지 않으며(f₀ = 0), 2살 이후에는 살아남지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="differential">
+    <h2>연속 시간: du/dt = Au와 e<sup>λt</sup></h2>
+    <div class="problem"><strong>칩 두 개가 열을 주고받으며 식는다</strong>
+      <p>패키지 안의 두 다이가 서로 열을 주고받으며 주변으로도 열을 내보냅니다. 두 온도(주변 온도와의 차) \(T_1, T_2\)는 \(dT_1/dt = -3T_1 + T_2\), \(dT_2/dt = T_1 - 3T_2\)처럼 서로 얽힌 미분방정식을 따릅니다. 한쪽만 뜨겁게 시작하면 온도가 어떻게 변할까요?</p></div>
+    <p>차분 방정식에서 고유벡터 방향의 성분이 \(\lambda^k\)배가 됐듯이, 미분방정식 \(d\mathbf{u}/dt = A\mathbf{u}\)에서는 고유벡터 방향의 성분이 \(e^{\lambda t}\)배가 됩니다. \(\mathbf{u}(t) = e^{\lambda t}\mathbf{x}\)를 넣어 보면 왼쪽은 \(\lambda e^{\lambda t}\mathbf{x}\), 오른쪽은 \(e^{\lambda t}A\mathbf{x}\)이므로 \(A\mathbf{x} = \lambda\mathbf{x}\)이기만 하면 해입니다.</p>
+    <div class="callout deep"><strong>정리 12.4 (선형 미분방정식계의 해)</strong> \(A\)가 독립인 고유벡터 \(\mathbf{x}_i\)(고유값 \(\lambda_i\))를 가지면 \(d\mathbf{u}/dt = A\mathbf{u}\), \(\mathbf{u}(0) = \mathbf{u}_0\)의 해는
+      $$\mathbf{u}(t) = c_1e^{\lambda_1 t}\mathbf{x}_1 + \cdots + c_ne^{\lambda_n t}\mathbf{x}_n, \qquad X\mathbf{c} = \mathbf{u}_0.$$
+      모든 고유값의 실수부가 음수(\(\operatorname{Re}\lambda_i \lt 0\))이면 모든 해가 \(\mathbf{0}\)으로 가고(<b>점근 안정</b>), 실수부가 양수인 고유값이 하나라도 있으면 불안정하다.
+      <br><b>증명.</b> 각 항이 해이고 방정식이 선형이라 합도 해다. \(t = 0\)에서 \(\sum c_i\mathbf{x}_i = \mathbf{u}_0\)이 되도록 \(\mathbf{c}\)를 고른다. 해의 유일성은 미분방정식의 일반 정리에서 온다. 안정성은 \(|e^{\lambda t}| = e^{(\operatorname{Re}\lambda)t}\)에서 나온다. ∎</div>
+    <div class="callout"><strong>예제 12.4 · 열을 주고받는 두 다이</strong>
+      <p>\(A = \begin{bmatrix}-3 & 1\\ 1 & -3\end{bmatrix}\), \(\mathbf{u}_0 = (10,\ 0)\) (다이 1만 10 K 뜨겁다).</p>
+      <ol>
+        <li>대칭 행렬이라 고유벡터가 직교한다. \((1, 1)\): \(A(1,1) = (-2,-2)\), \(\lambda_1 = -2\). \((1, -1)\): \(A(1,-1) = (-4, 4)\), \(\lambda_2 = -4\).</li>
+        <li>\((10, 0) = 5(1, 1) + 5(1, -1)\).</li>
+        <li>\(\mathbf{u}(t) = 5e^{-2t}(1, 1) + 5e^{-4t}(1, -1)\), 즉 \(T_1 = 5e^{-2t} + 5e^{-4t}\), \(T_2 = 5e^{-2t} - 5e^{-4t}\).</li>
+      </ol>
+      <p>읽는 법: "두 다이의 평균 온도"(모드 \((1,1)\))는 시정수 1/2로, "두 다이의 온도 차"(모드 \((1,-1)\))는 시정수 1/4로 두 배 빨리 사라진다. 다이 2는 처음엔 데워졌다가(\(T_2\)가 0에서 올라감) 함께 식는다. 두 고유값이 모두 음수이니 결국 둘 다 주변 온도에 닿는다.</p></div>
+    <p>이산과 연속의 안정 영역을 나란히 놓으면 대응이 분명합니다. 이산 시스템은 고유값이 <b>단위원 안</b>에, 연속 시스템은 <b>왼쪽 반평면</b>에 있어야 안정합니다. \(\lambda\)(연속)와 \(e^{\lambda h}\)(시간 \(h\)만큼 진행한 이산)의 관계가 왼쪽 반평면을 단위원 안으로 옮깁니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 240" role="img" aria-label="이산 시스템의 안정 영역인 단위원 내부와 연속 시스템의 안정 영역인 왼쪽 반평면">
+        <defs><marker id="dy-st" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g transform="translate(30,20)"><rect width="300" height="200" rx="10" class="f-surface"/>
+          <rect x="10" y="10" width="140" height="180" class="f-acc-soft"/>
+          <line x1="10" y1="100" x2="290" y2="100" class="s-axis"/><line x1="150" y1="10" x2="150" y2="190" class="s-axis"/>
+          <circle cx="110" cy="100" r="4" style="fill:var(--ok)"/><circle cx="95" cy="60" r="4" style="fill:var(--ok)"/><circle cx="95" cy="140" r="4" style="fill:var(--ok)"/>
+          <circle cx="210" cy="100" r="4" style="fill:var(--bad)"/>
+          <text x="80" y="30" text-anchor="middle" class="t-acc">안정: Re λ &lt; 0</text><text x="230" y="30" text-anchor="middle" class="t" style="fill:var(--bad)">불안정</text>
+          <text x="282" y="118" text-anchor="end" class="t-mono">Re</text><text x="158" y="22" class="t-mono">Im</text>
+          <text x="150" y="214" text-anchor="middle" class="t" style="font-weight:700">연속: du/dt = Au</text></g>
+        <path d="M345 120 H405" class="s-acc" marker-end="url(#dy-st)"/><text x="375" y="108" text-anchor="middle" class="t-mono">μ = e^(λh)</text>
+        <g transform="translate(420,20)"><rect width="300" height="200" rx="10" class="f-surface"/>
+          <circle cx="150" cy="100" r="70" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="10" y1="100" x2="290" y2="100" class="s-axis"/><line x1="150" y1="10" x2="150" y2="190" class="s-axis"/>
+          <circle cx="195" cy="100" r="4" style="fill:var(--ok)"/><circle cx="185" cy="75" r="4" style="fill:var(--ok)"/><circle cx="185" cy="125" r="4" style="fill:var(--ok)"/>
+          <circle cx="245" cy="100" r="4" style="fill:var(--bad)"/>
+          <text x="226" y="94" class="t-mono">1</text><text x="150" y="22" class="t-mono" text-anchor="middle">|μ| = 1</text>
+          <text x="150" y="214" text-anchor="middle" class="t" style="font-weight:700">이산: uₖ₊₁ = Auₖ</text></g>
+      </svg>
+      <figcaption><b>그림 12-3.</b> 왼쪽 반평면(연속 시스템의 안정 영역)은 \(\mu = e^{\lambda h}\)에 의해 단위원 내부(이산 시스템의 안정 영역)로 옮겨진다. 허수축(\(\operatorname{Re}\lambda = 0\), 감쇠 없는 진동)은 단위원 둘레(\(|\mu| = 1\))로 간다. 초록 점은 안정, 빨강 점은 불안정한 고유값의 예.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="matrix-exponential">
+    <h2>행렬 지수 e<sup>At</sup></h2>
+    <p>스칼라 방정식 \(du/dt = au\)의 해는 \(u(t) = e^{at}u(0)\)입니다. 행렬에서도 같은 모양의 답을 쓰고 싶습니다. \(e^x = 1 + x + x^2/2! + \cdots\)의 \(x\)에 \(At\)를 넣어 정의합니다.</p>
+    <div class="callout"><strong>정의 12.3 (행렬 지수)</strong> 정사각 행렬 \(A\)에 대해
+      $$e^{At} = I + At + \frac{(At)^2}{2!} + \frac{(At)^3}{3!} + \cdots$$
+      이 급수는 모든 \(A\)와 \(t\)에서 수렴한다.</div>
+    <div class="callout deep"><strong>정리 12.5 (행렬 지수의 성질)</strong>
+      <ol>
+        <li>\(\dfrac{d}{dt}e^{At} = Ae^{At}\)이므로 \(\mathbf{u}(t) = e^{At}\mathbf{u}_0\)가 \(d\mathbf{u}/dt = A\mathbf{u}\)의 해다.</li>
+        <li>\(A = X\Lambda X^{-1}\)이면 \(e^{At} = Xe^{\Lambda t}X^{-1}\)이고, \(e^{\Lambda t}\)는 대각 성분이 \(e^{\lambda_i t}\)인 대각 행렬이다.</li>
+        <li>\(e^{A(s+t)} = e^{As}e^{At}\), \((e^{At})^{-1} = e^{-At}\). 그러나 일반적으로 \(e^{A+B} \ne e^Ae^B\)이며, \(AB = BA\)일 때만 같다고 보장된다.</li>
+      </ol>
+      <b>증명.</b> (1) 급수를 항별로 미분하면 \(A + A^2t + A^3t^2/2! + \cdots = A(I + At + \cdots)\). (2) \((At)^k = X(\Lambda t)^kX^{-1}\)를 급수에 넣고 \(X\), \(X^{-1}\)을 밖으로 묶는다. (3) 스칼라 지수 법칙의 증명은 \((A+B)^k\)를 이항 전개하는데, 이때 \(AB = BA\)가 필요하다. ∎</div>
+    <p>두 가지 예가 이 정의의 의미를 잘 보여 줍니다.</p>
+    <div class="callout"><strong>예제 12.5 · 회전을 낳는 행렬</strong>
+      <p>\(A = \begin{bmatrix}0 & -1\\ 1 & 0\end{bmatrix}\)이면 \(A^2 = -I\), \(A^3 = -A\), \(A^4 = I\)가 되풀이된다. 급수를 짝수항과 홀수항으로 모으면</p>
+      $$e^{At} = \Big(1 - \frac{t^2}{2!} + \frac{t^4}{4!} - \cdots\Big)I + \Big(t - \frac{t^3}{3!} + \cdots\Big)A = \begin{bmatrix}\cos t & -\sin t\\ \sin t & \cos t\end{bmatrix}.$$
+      <p>고유값 \(\pm i\)(허수)는 감쇠도 증폭도 없는 <b>회전</b>이다. 단진동 \(x'' = -x\)를 \(\mathbf{u} = (x, x')\)로 쓴 행렬이 바로 이런 꼴이다.</p></div>
+    <div class="callout"><strong>예제 12.6 · 고유벡터가 모자랄 때</strong>
+      <p>\(A = \begin{bmatrix}\lambda & 1\\ 0 & \lambda\end{bmatrix}\)은 고유값 \(\lambda\)가 겹치고 고유벡터가 \((1,0)\) 하나뿐이라 대각화할 수 없다. \(A = \lambda I + N\), \(N = \begin{bmatrix}0 & 1\\ 0 & 0\end{bmatrix}\)으로 나누면 \(\lambda I\)와 \(N\)이 교환되고 \(N^2 = 0\)이므로</p>
+      $$e^{At} = e^{\lambda t}e^{Nt} = e^{\lambda t}(I + Nt) = e^{\lambda t}\begin{bmatrix}1 & t\\ 0 & 1\end{bmatrix}.$$
+      <p>\(te^{\lambda t}\) 항이 나타난다. 임계 감쇠 진동자(9절)의 \(x(t) = (1 + \omega t)e^{-\omega t}\)가 이 경우다.</p></div>
+    <div class="callout warn"><strong>계산에서는</strong> 급수를 그대로 더하는 방법은 \(\|At\|\)가 크면 큰 항들이 서로 상쇄되며 반올림 오차가 커지고, 고유벡터로 대각화하는 방법은 고유벡터가 거의 평행하면(\(X\)의 조건수가 크면) 부정확합니다. 실제 수치 라이브러리는 \(e^{At} = (e^{At/2^s})^{2^s}\)로 작게 나눈 뒤 근사하고 제곱을 되풀이하는 방법(스케일링과 제곱)을 흔히 씁니다. 고유값은 <b>해석</b>의 도구이고, 계산은 다른 문제입니다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="phase-portraits">
+    <h2>위상 초상: 대각합과 행렬식이면 충분하다</h2>
+    <div class="problem"><strong>2×2 시스템의 거동은 몇 가지뿐일까</strong>
+      <p>2차원 선형 시스템 \(d\mathbf{u}/dt = A\mathbf{u}\)의 해 곡선을 평면에 그린 것을 <span class="term">위상 초상</span><span class="en">(phase portrait)</span>이라 합니다. 숫자 네 개를 바꾸면 무한히 많은 그림이 나올 것 같지만, 질적으로 다른 그림은 손에 꼽을 만큼입니다. 무엇이 그림의 종류를 정할까요?</p></div>
+    <p>2×2 행렬의 고유값은 특성 방정식 \(\lambda^2 - T\lambda + D = 0\)의 근이고, \(T = \operatorname{tr}A = \lambda_1 + \lambda_2\), \(D = \det A = \lambda_1\lambda_2\)입니다. 그러니</p>
+    <div class="formula">$$\lambda_{1,2} = \frac{T \pm \sqrt{T^2 - 4D}}{2}$$
+      <div class="where">고유값, 그래서 위상 초상의 종류는 숫자 두 개 \((T, D)\)만으로 정해진다. 판별식 \(T^2 - 4D\)의 부호가 실수냐 복소수냐를, \(D\)의 부호가 고유값의 부호가 같으냐 다르냐를, \(T\)의 부호가 안정이냐 불안정이냐를 정한다.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>영역</th><th>고유값</th><th>이름</th><th>그림</th></tr></thead>
+      <tbody>
+        <tr><td>\(D \lt 0\)</td><td>실수, 부호 반대</td><td>안장점</td><td>한 방향으로 들어와 다른 방향으로 나감. 항상 불안정</td></tr>
+        <tr><td>\(D \gt 0,\ T^2 \gt 4D\)</td><td>실수, 부호 같음</td><td>마디(node)</td><td>\(T \lt 0\): 모든 해가 원점으로 곧게. \(T \gt 0\): 곧게 달아남</td></tr>
+        <tr><td>\(D \gt 0,\ T^2 \lt 4D\)</td><td>복소수 \(\tfrac T2 \pm i\omega\)</td><td>나선(spiral)</td><td>\(T \lt 0\): 감기며 들어옴. \(T \gt 0\): 풀리며 나감</td></tr>
+        <tr><td>\(D \gt 0,\ T = 0\)</td><td>순허수 \(\pm i\sqrt D\)</td><td>중심(center)</td><td>닫힌 타원 궤도, 영원히 진동</td></tr>
+        <tr><td>\(T^2 = 4D\)</td><td>중근</td><td>퇴화 마디·별 마디</td><td>마디와 나선의 경계</td></tr>
+      </tbody>
+    </table></div>
+    <p>결론적으로 연속 시스템은 <b>\(T \lt 0\)이고 \(D \gt 0\)일 때</b>, 즉 대각합–행렬식 평면의 제2사분면(위쪽 왼편)에 있을 때만 점근 안정합니다. 아래 시뮬레이터 왼쪽에서 점 \((T, D)\)를 끌면 오른쪽에 그 고유값을 가진 시스템의 위상 초상이 그려집니다.</p>
+
+    <div class="sim" id="sim-dy-trdet">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>대각합–행렬식 평면과 위상 초상</h3></div>
+      <div class="dy-two">
+        <div><span class="cap">(T, D) 점을 끌어 보세요 · 포물선 D = T²/4</span><canvas id="dy-cv-td"></canvas></div>
+        <div><span class="cap" id="dy-t-cap">위상 초상</span><canvas id="dy-cv-ph"></canvas></div>
+      </div>
+      <div class="sim-controls" style="border-top:1px solid var(--border);padding:12px 18px">
+        <div class="ctrl"><span>프리셋</span><div class="seg" id="dy-t-pre"><button data-value="snode">안정 마디</button><button data-value="saddle">안장점</button><button data-value="sspiral" class="on">안정 나선</button><button data-value="center">중심</button><button data-value="uspiral">불안정 나선</button></div></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">T = tr A, D = det A</span><span class="v" id="dy-t-td">—</span></div>
+        <div class="stat"><span class="k">고유값</span><span class="v" id="dy-t-lam">—</span></div>
+        <div class="stat"><span class="k">종류</span><span class="v" id="dy-t-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 점을 포물선 위아래로 넘겨 보세요. 아래(실수 고유값)는 곧은 궤적의 마디, 위(복소 고유값)는 나선입니다. ② T = 0 선 위에 놓으면 궤적이 닫힌 타원(중심)이 됩니다. 조금만 왼쪽으로 가면 안으로, 오른쪽으로 가면 밖으로 감깁니다. ③ D를 음수로 내리면 어느 T든 안장점입니다. 모델: 같은 (T, D)를 가진 동반 행렬 A = [0 1; −D T]를 쓰고, 궤적은 룽게–쿠타(RK4)로 앞뒤로 적분합니다. 회색 화살표는 방향장입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="oscillators">
+    <h2>진동자와 정규 모드</h2>
+    <div class="problem"><strong>자동차 서스펜션은 얼마나 빨리 잠잠해져야 할까</strong>
+      <p>바퀴가 턱을 넘으면 차체가 스프링 위에서 출렁입니다. 감쇠기(댐퍼)가 약하면 여러 번 출렁이고, 너무 세면 천천히 기어 돌아옵니다. 이 차이를 질량·감쇠·강성 세 숫자에서 바로 읽을 수 있을까요?</p></div>
+    <p>질량–감쇠기–스프링 \(m\ddot x + c\dot x + kx = 0\)은 2계 미분방정식이지만, 상태를 \(\mathbf{u} = (x, v)\), \(v = \dot x\)로 두면 1계 연립방정식이 됩니다.</p>
+    <div class="formula">$$\frac{d}{dt}\begin{bmatrix}x\\ v\end{bmatrix} = \begin{bmatrix}0 & 1\\ -k/m & -c/m\end{bmatrix}\begin{bmatrix}x\\ v\end{bmatrix}, \qquad T = -\frac cm,\quad D = \frac km$$
+      <div class="where">고유값은 \(\lambda^2 + (c/m)\lambda + k/m = 0\)의 근. 고유진동수 \(\omega_n = \sqrt{k/m}\)와 감쇠비 \(\zeta = c/(2\sqrt{mk})\)로 쓰면 \(\lambda = -\zeta\omega_n \pm \omega_n\sqrt{\zeta^2 - 1}\). \(\zeta \lt 1\): 부족 감쇠(나선, 출렁임), \(\zeta = 1\): 임계 감쇠(가장 빨리 출렁임 없이 복귀), \(\zeta \gt 1\): 과감쇠(마디, 느린 복귀).</div>
+    </div>
+    <p>\(D = k/m \gt 0\)이고 \(T = -c/m \le 0\)이니 이 시스템은 언제나 대각합–행렬식 평면의 위쪽 왼편, 안정 영역에 있습니다. 감쇠 \(c\)를 키우는 것은 점을 왼쪽으로 옮기는 것이고, 포물선 \(T^2 = 4D\)를 넘는 순간이 \(\zeta = 1\)입니다.</p>
+
+    <div class="sim" id="sim-dy-spring">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>질량–감쇠기–스프링: 감쇠비와 고유값</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="dy-two"><div><span class="cap">x(t), x(0) = 1</span><canvas id="dy-cv-sp1"></canvas></div><div><span class="cap">고유값 (복소평면)</span><canvas id="dy-cv-sp2"></canvas></div></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>질량 m <output id="dy-s-m-out"></output></span><input type="range" id="dy-s-m" min="0.5" max="4" step="0.1" value="1"></label>
+          <label class="ctrl"><span>감쇠 c <output id="dy-s-c-out"></output></span><input type="range" id="dy-s-c" min="0" max="8" step="0.05" value="0.6"></label>
+          <label class="ctrl"><span>강성 k <output id="dy-s-k-out"></output></span><input type="range" id="dy-s-k" min="0.5" max="8" step="0.1" value="4"></label>
+          <div class="btn-row"><button class="btn" id="dy-s-crit">임계 감쇠로</button><button class="btn primary" id="dy-s-play">▶ 움직이기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고유값 λ₁, λ₂</span><span class="v" id="dy-s-lam">—</span></div>
+        <div class="stat"><span class="k">ω<sub>n</sub> = √(k/m)</span><span class="v" id="dy-s-wn">—</span></div>
+        <div class="stat"><span class="k">감쇠비 ζ</span><span class="v" id="dy-s-z">—</span></div>
+        <div class="stat"><span class="k">종류</span><span class="v" id="dy-s-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① c를 0으로 두면 고유값이 허수축 위에 놓이고 x(t)가 끝없이 진동합니다. ② '임계 감쇠로'를 누르면 두 고유값이 실수축 위 한 점에서 만나고, x(t)가 넘치지 않고 가장 빨리 0에 닿습니다. ③ c를 더 키우면 고유값 하나가 0 쪽으로 다가가 오히려 복귀가 느려집니다(과감쇠). 모델: 선형 스프링·점성 감쇠, x(0) = 1, v(0) = 0, 정확한 해를 고유값으로 계산합니다.</div>
+    </div>
+
+    <p>자유도가 둘 이상이면 고유벡터가 <b>모양</b>의 의미를 갖습니다. 벽–질량–스프링–질량–벽 사이에 결합 스프링 \(\kappa\)가 있는 두 질량(각 \(m = 1\), 벽 쪽 스프링 \(k = 1\))을 생각합니다.</p>
+    <div class="formula">$$\ddot{\mathbf{x}} = -K\mathbf{x},\qquad K = \begin{bmatrix}k+\kappa & -\kappa\\ -\kappa & k+\kappa\end{bmatrix}$$
+      <div class="where">\(\mathbf{x} = \mathbf{v}\cos\omega t\)를 넣으면 \(K\mathbf{v} = \omega^2\mathbf{v}\): 고유값이 진동수의 제곱, 고유벡터가 <b>정규 모드</b>의 모양이다. \(\mathbf{v}_1 = (1, 1)\)(같이 움직임, 결합 스프링은 늘지 않음) \(\omega_1^2 = k\), \(\mathbf{v}_2 = (1, -1)\)(반대로 움직임) \(\omega_2^2 = k + 2\kappa\).</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 200" role="img" aria-label="두 질량 결합 진동자의 두 정규 모드">
+        <defs><marker id="dy-nm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g transform="translate(20,20)">
+          <rect x="0" y="20" width="10" height="70" class="f-elev"/><rect x="340" y="20" width="10" height="70" class="f-elev"/>
+          <path d="M10 55 l10 -10 l10 20 l10 -20 l10 20 l10 -20 l10 10" fill="none" class="s-line"/>
+          <rect x="80" y="35" width="44" height="40" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <path d="M124 55 l12 -10 l12 20 l12 -20 l12 20 l12 -20 l12 10 l12 -10 l12 20 l12 -10" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+          <rect x="226" y="35" width="44" height="40" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <path d="M270 55 l10 -10 l10 20 l10 -20 l10 20 l10 -20 l10 10" fill="none" class="s-line"/>
+          <line x1="90" y1="100" x2="125" y2="100" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#dy-nm)"/><line x1="236" y1="100" x2="271" y2="100" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#dy-nm)"/>
+          <text x="175" y="135" text-anchor="middle" class="t" style="font-weight:700">모드 1: v₁ = (1, 1), ω₁ = √k</text>
+          <text x="175" y="155" text-anchor="middle" class="t-dim">결합 스프링(주황)은 늘지도 줄지도 않는다</text></g>
+        <g transform="translate(400,20)">
+          <rect x="0" y="20" width="10" height="70" class="f-elev"/><rect x="340" y="20" width="10" height="70" class="f-elev"/>
+          <path d="M10 55 l10 -10 l10 20 l10 -20 l10 20 l10 -20 l10 10" fill="none" class="s-line"/>
+          <rect x="80" y="35" width="44" height="40" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <path d="M124 55 l12 -10 l12 20 l12 -20 l12 20 l12 -20 l12 10 l12 -10 l12 20 l12 -10" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+          <rect x="226" y="35" width="44" height="40" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <path d="M270 55 l10 -10 l10 20 l10 -20 l10 20 l10 -20 l10 10" fill="none" class="s-line"/>
+          <line x1="90" y1="100" x2="125" y2="100" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#dy-nm)"/><line x1="271" y1="100" x2="236" y2="100" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#dy-nm)"/>
+          <text x="175" y="135" text-anchor="middle" class="t" style="font-weight:700">모드 2: v₂ = (1, −1), ω₂ = √(k + 2κ)</text>
+          <text x="175" y="155" text-anchor="middle" class="t-dim">결합 스프링이 두 배로 늘었다 줄었다 한다</text></g>
+      </svg>
+      <figcaption><b>그림 12-4.</b> 두 질량 결합 진동자의 정규 모드. 같이 움직이는 모드는 결합 스프링이 일을 하지 않아 진동수가 \(\sqrt k\) 그대로이고, 반대로 움직이는 모드는 결합 스프링이 양쪽을 당겨 더 빠르다. 어떤 움직임이든 두 모드의 합이다.</figcaption>
+    </figure>
+    <p>한 질량만 당겼다 놓으면 \((1, 0) = \tfrac12(1,1) + \tfrac12(1,-1)\)이라 두 모드가 반씩 섞입니다. 진동수가 조금 다른 두 진동이 겹치면 <b>맥놀이</b>가 생겨, 에너지가 두 질량 사이를 주기 \(2\pi/(\omega_2 - \omega_1)\)로 오갑니다. 결합이 약할수록(\(\kappa\)가 작을수록) 두 진동수가 가까워 에너지가 천천히, 그러나 완전히 넘어갑니다.</p>
+
+    <div class="sim" id="sim-dy-coupled">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>결합 진동자: 정규 모드와 맥놀이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dy-cv-cp"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>결합 스프링 κ <output id="dy-c-k-out"></output></span><input type="range" id="dy-c-k" min="0.02" max="2" step="0.01" value="0.1"></label>
+          <div class="ctrl"><span>처음 변위</span><div class="seg" id="dy-c-init"><button data-value="one" class="on">한 질량만</button><button data-value="m1">모드 1</button><button data-value="m2">모드 2</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="dy-c-play">▶ 움직이기</button><button class="btn" id="dy-c-reset">t = 0으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ω₁ (같은 방향)</span><span class="v" id="dy-c-w1">—</span></div>
+        <div class="stat"><span class="k">ω₂ (반대 방향)</span><span class="v" id="dy-c-w2">—</span></div>
+        <div class="stat"><span class="k">맥놀이 주기 2π/(ω₂ − ω₁)</span><span class="v" id="dy-c-beat">—</span></div>
+        <div class="stat"><span class="k">t</span><span class="v" id="dy-c-t">0</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '한 질량만'을 재생하면 왼쪽 질량의 진동이 점점 줄며 오른쪽 질량으로 넘어갔다가 돌아옵니다. 아래 그래프의 x₁, x₂ 포락선이 엇갈립니다. ② '모드 1'이나 '모드 2'로 시작하면 모양이 그대로 유지되는 순수한 진동만 나옵니다. 고유벡터 방향은 섞이지 않습니다. ③ κ를 키우면 맥놀이 주기가 짧아지고 에너지 교환이 빨라집니다. 모델: m = k = 1, 감쇠 없음, 정확한 해 x = Σ (모드 성분)·cos(ωᵢt).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"고유값을 보면 미래가 보인다"는 생각은 시간에 따라 변하는 거의 모든 선형 모형에 그대로 쓰입니다.</p>
+    <div class="uses">
+      <a href="../../probability/chapters/stochastic.html"><small>확률과 통계</small>확률 과정<br><span>마르코프 연쇄의 전이 행렬과 정상 분포, 흡수 상태, 대기 행렬.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식<br><span>RC 회로, 칩의 열, 감염병 모형, 공진. 같은 식을 문제에서 출발해 본다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>수치 해석<br><span>오일러 방법의 안정성 조건 |1 + hλ| &lt; 1과 강성 문제.</span></a>
+      <a href="https://semi.euiyun.com/analog/"><small>ANALOGBOOK</small>회로의 안정성<br><span>증폭기의 극점은 상태 행렬의 고유값이다. 왼쪽 반평면이면 발진하지 않는다.</span></a>
+      <a href="https://semi.euiyun.com/yield/"><small>YIELDBOOK</small>장비 상태와 가동률<br><span>가동·대기·수리의 전이 확률로 장기 가동률을 추정한다.</span></a>
+      <a href="eigen.html"><small>11장</small>고유값과 고유벡터<br><span>특성 다항식과 대각화. 이 장의 모든 계산의 출발점.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>차분 방정식</b> \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)의 해는 \(\mathbf{u}_k = \sum c_i\lambda_i^k\mathbf{x}_i\), 행렬로 \(A^k = X\Lambda^kX^{-1}\). 큰 \(k\)에서는 \(|\lambda|\)가 가장 큰 성분만 남는다(피보나치 → 황금비).</li>
+      <li><b>이산 안정성</b>: 스펙트럼 반지름 \(\rho(A) \lt 1\)이면 0으로 수렴, \(|\lambda| \gt 1\)이 하나라도 있으면 발산. 음수 고유값은 지그재그, 복소 고유값 \(re^{\pm i\theta}\)는 나선.</li>
+      <li><b>마르코프 연쇄</b>: 열 확률 행렬은 언제나 \(\lambda = 1\)을 가지고 \(|\lambda| \le 1\). 정칙이면 정상 분포 \(\boldsymbol\pi\)가 하나이고 오차는 약 \(|\lambda_2|^k\)로 준다.</li>
+      <li><b>페이지랭크</b>: \(G = \alpha M + \tfrac{1-\alpha}{n}\mathbf{1}\mathbf{1}^{\mathsf T}\)의 고유값 1 고유벡터. 거듭제곱 반복의 오차는 매 단계 \(\alpha\)배 이하로 줄어 반복 횟수가 페이지 수와 무관하다.</li>
+      <li><b>레슬리 모형</b>: 지배 고유값이 세대당 성장률, 그 고유벡터가 안정 연령 구조. 생존율 하나가 성장과 감소를 가른다.</li>
+      <li><b>미분방정식</b> \(d\mathbf{u}/dt = A\mathbf{u}\)의 해는 \(\sum c_ie^{\lambda_i t}\mathbf{x}_i = e^{At}\mathbf{u}_0\), \(e^{At} = Xe^{\Lambda t}X^{-1}\). 안정 조건은 모든 \(\operatorname{Re}\lambda \lt 0\)(이산의 단위원 ↔ 연속의 왼쪽 반평면). 허수 고유값은 회전, 겹친 고유값은 \(te^{\lambda t}\).</li>
+      <li><b>2×2 위상 초상은 \((T, D)\)로 정해진다</b>: \(D \lt 0\) 안장점, \(T^2 \gt 4D\) 마디, \(T^2 \lt 4D\) 나선, \(T = 0\) 중심. 안정은 \(T \lt 0,\ D \gt 0\).</li>
+      <li><b>진동자</b>: 2계 방정식은 \((x, v)\) 상태로 1계가 된다. 감쇠비 \(\zeta\)가 1을 넘는 순간이 포물선 \(T^2 = 4D\). 다자유도에서는 \(K\mathbf{v} = \omega^2\mathbf{v}\)의 고유벡터가 정규 모드, 가까운 두 모드는 맥놀이를 만든다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(A\)의 고유값이 1.2와 0.5이다. \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)에서 일반적인 \(\mathbf{u}_0\)로 시작하면 큰 \(k\)에서 무슨 일이 일어나나?</p><div class="opts">
+        <button class="opt">0.5가 더 작으니 결국 0으로 수렴한다</button>
+        <button class="opt" data-correct>1.2의 고유벡터 방향으로 정렬되며 크기가 매 단계 약 1.2배씩 커진다</button>
+        <button class="opt">두 고유값의 평균 0.85배씩 줄어든다</button>
+        <button class="opt">진동하며 일정한 크기를 유지한다</button>
+      </div><div class="quiz-exp">\(\mathbf{u}_k = c_1(1.2)^k\mathbf{x}_1 + c_2(0.5)^k\mathbf{x}_2\). \(c_1 \ne 0\)이면 첫 항이 지수적으로 커지고 둘째 항은 사라진다. 고유값 중 하나라도 \(|\lambda| \gt 1\)이면 불안정이다. 예외는 \(\mathbf{u}_0\)가 정확히 \(\mathbf{x}_2\) 방향일 때뿐이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 실수 2×2 행렬의 고유값이 \(0.9e^{\pm i\pi/6}\)이다. 반복 \(\mathbf{u}_{k+1} = A\mathbf{u}_k\)의 궤적은?</p><div class="opts">
+        <button class="opt">원점에서 곧게 멀어진다</button>
+        <button class="opt">원점 양쪽을 오가는 지그재그로 수렴한다</button>
+        <button class="opt" data-correct>한 단계에 약 30°씩 돌며 10%씩 줄어드는 나선으로 원점에 들어간다</button>
+        <button class="opt">같은 원 위를 영원히 돈다</button>
+      </div><div class="quiz-exp">복소 고유값 \(re^{\pm i\theta}\)는 \(\theta\) 회전과 \(r\)배를 뜻한다. \(r = 0.9 \lt 1\)이라 감기며 수렴하고, \(\theta = \pi/6 = 30°\)이라 약 12단계에 한 바퀴 돈다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 열 확률 행렬(성분 ≥ 0, 각 열의 합 1)이 반드시 고유값 1을 갖는 이유는?</p><div class="opts">
+        <button class="opt">대각 성분의 합이 1이기 때문</button>
+        <button class="opt" data-correct>\(A^{\mathsf T}\mathbf{1} = \mathbf{1}\)이고 \(A\)와 \(A^{\mathsf T}\)의 고유값이 같기 때문</button>
+        <button class="opt">행렬식이 1이기 때문</button>
+        <button class="opt">모든 성분이 1보다 작기 때문</button>
+      </div><div class="quiz-exp">열의 합이 1이라는 조건은 모든 성분이 1인 벡터가 \(A^{\mathsf T}\)의 고유값 1 고유벡터라는 말이다. \(\det(A - \lambda I) = \det(A^{\mathsf T} - \lambda I)\)라 \(A\)도 고유값 1을 갖는다. 대각합과 행렬식은 일반적으로 1이 아니다(예제 12.2의 대각합은 1.7).</div></div>
+
+      <div class="quiz-q"><p>Q4. 마르코프 연쇄 A는 \(|\lambda_2| = 0.5\), 연쇄 B는 \(|\lambda_2| = 0.9\)이다. 정상 분포까지의 오차를 1/1000로 줄이는 데 필요한 단계 수는 대략?</p><div class="opts">
+        <button class="opt">A: 2단계, B: 9단계</button>
+        <button class="opt" data-correct>A: 10단계, B: 66단계</button>
+        <button class="opt">둘 다 같다(정상 분포가 같으면)</button>
+        <button class="opt">A: 1000단계, B: 1000단계</button>
+      </div><div class="quiz-exp">오차는 \(|\lambda_2|^k\)에 비례한다. \(0.5^{10} \approx 0.001\), \(0.9^k = 0.001\)에서 \(k = \ln 0.001/\ln 0.9 \approx 66\). \(|\lambda_2|\)가 1에 가까울수록 연쇄가 "기억"을 오래 간직한다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 페이지랭크에서 감쇠 계수 \(\alpha\)(순간이동 확률 \(1-\alpha\))를 두는 주된 이유로 옳지 않은 것은?</p><div class="opts">
+        <button class="opt">막다른 페이지나 고립된 무리에 서퍼가 갇히지 않게 한다</button>
+        <button class="opt">\(G\)의 성분이 모두 양수가 되어 정상 분포가 하나로 정해진다</button>
+        <button class="opt">두 번째 고유값의 크기가 \(\alpha\) 이하로 묶여 거듭제곱 반복이 빨리 수렴한다</button>
+        <button class="opt" data-correct>\(\alpha\)가 클수록 반복 횟수가 줄어든다</button>
+      </div><div class="quiz-exp">반대다. 오차는 매 단계 \(\alpha\)배 이하로 줄어드므로 \(\alpha\)가 1에 가까울수록(링크 구조를 더 충실히 반영할수록) 수렴이 느려진다. 시뮬레이터에서 α = 0.99로 올리면 필요한 반복이 크게 늘어난다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 2×2 시스템 \(d\mathbf{u}/dt = A\mathbf{u}\)에서 \(\operatorname{tr}A = -1\), \(\det A = 2\)이다. 원점 근처의 거동은?</p><div class="opts">
+        <button class="opt">안장점: 불안정</button>
+        <button class="opt">안정 마디: 곧게 원점으로</button>
+        <button class="opt" data-correct>안정 나선: 감기며 원점으로</button>
+        <button class="opt">중심: 닫힌 궤도</button>
+      </div><div class="quiz-exp">\(T^2 - 4D = 1 - 8 \lt 0\)이라 복소 고유값 \(-\tfrac12 \pm i\tfrac{\sqrt7}{2}\). 실수부가 음수이니 감쇠하는 진동, 즉 안정 나선이다. \(D \gt 0\)이라 안장점은 아니고, \(T \ne 0\)이라 중심도 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(A = \begin{bmatrix}0 & -1\\ 1 & 0\end{bmatrix}\)일 때 \(e^{At}\)는?</p><div class="opts">
+        <button class="opt">\(\begin{bmatrix}e^{t} & 0\\ 0 & e^{-t}\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}1 & -t\\ t & 1\end{bmatrix}\)</button>
+        <button class="opt" data-correct>\(\begin{bmatrix}\cos t & -\sin t\\ \sin t & \cos t\end{bmatrix}\)</button>
+        <button class="opt">성분마다 지수를 취한 \(\begin{bmatrix}1 & e^{-t}\\ e^{t} & 1\end{bmatrix}\)</button>
+      </div><div class="quiz-exp">\(A^2 = -I\)라 급수의 짝수항이 \(\cos t\), 홀수항이 \(\sin t\)로 모인다(예제 12.5). 고유값 \(\pm i\)는 회전이다. 둘째 보기는 급수의 처음 두 항 \(I + At\)뿐이고, 넷째처럼 성분마다 지수를 취하는 것은 행렬 지수가 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 결합 진동자의 정규 모드에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">질량이 둘이면 진동수는 하나뿐이다</button>
+        <button class="opt" data-correct>\(K\mathbf{v} = \omega^2\mathbf{v}\)의 고유벡터가 모드의 모양이고, 그 모양으로 시작하면 모양을 유지한 채 하나의 진동수로만 진동한다</button>
+        <button class="opt">결합 스프링 \(\kappa\)를 키우면 같은 방향 모드의 진동수가 커진다</button>
+        <button class="opt">한 질량만 당기면 그 질량만 계속 진동한다</button>
+      </div><div class="quiz-exp">같은 방향 모드 \((1, 1)\)에서는 결합 스프링 길이가 변하지 않아 \(\omega_1 = \sqrt k\)가 \(\kappa\)와 무관하다. 한 질량만 당기면 두 모드가 반씩 섞여 맥놀이로 에너지가 다른 질량에 넘어간다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const DY = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) v = 0;
+    if (Math.abs(v) >= 1e5 || (Math.abs(v) < 1e-3 && v !== 0)) return v.toExponential(2).replace("e+", "e").replace(/-/g, "−");
+    return String(Number(v.toFixed(d))).replace("-", "−");
+  },
+  /** 2×2 고유값: {re:[..], im:[..]} */
+  eig2([[a, b], [c, d]]) {
+    const T = a + d, D = a * d - b * c, disc = T * T / 4 - D;
+    if (disc >= 0) { const s = Math.sqrt(disc); return { real: true, l: [T / 2 + s, T / 2 - s], T, D }; }
+    return { real: false, re: T / 2, im: Math.sqrt(-disc), T, D };
+  },
+  lamText(e, d = 3) {
+    if (e.real) return `${DY.num(e.l[0], d)}, ${DY.num(e.l[1], d)}`;
+    return `${DY.num(e.re, d)} ± ${DY.num(e.im, d)}i`;
+  },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : null; },
+  matvec: (A, x) => A.map((r) => r.reduce((s, v, j) => s + v * x[j], 0)),
+  /** 진한 바 그리기 */
+  bar(ctx, x, y, w, h, color, alpha = 1) { ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(x, y, w, h); ctx.restore(); },
+  font: () => getComputedStyle(document.body).getPropertyValue("--font"),
+  mono: () => getComputedStyle(document.body).getPropertyValue("--mono"),
+};
+
+/* ================================================================ 1. 반복 궤적 */
+(function () {
+  const r = 0.93, th = 25 * Math.PI / 180, th2 = 30 * Math.PI / 180;
+  const PRE = {
+    grow: [[1.1, 0.2], [0.1, 0.6]], decay: [[0.8, 0.1], [0.2, 0.7]], markov: [[0.9, 0.2], [0.1, 0.8]],
+    flip: [[-0.85, 0], [0.3, 0.7]], spiral: [[r * Math.cos(th), -r * Math.sin(th)], [r * Math.sin(th), r * Math.cos(th)]],
+    rotate: [[Math.cos(th2), -Math.sin(th2)], [Math.sin(th2), Math.cos(th2)]], fib: [[1, 1], [1, 0]],
+  };
+  const START = { grow: [-1.5, 2.2], decay: [3, 2.2], markov: [1, 2.5], flip: [2.5, 1.5], spiral: [3, 0.5], rotate: [2.5, 0], fib: [0.3, 0] };
+  const ids = ["dy-i11", "dy-i12", "dy-i21", "dy-i22"].map((id) => document.getElementById(id));
+  let A = PRE.grow.map((x) => x.slice()), shown = null;
+  const nGet = MB.range("dy-i-n", (v) => String(v), () => { shown = null; pl.redraw(); });
+  const eigOn = MB.check("dy-i-eig", () => pl.redraw());
+  const pl = MB.plane("#dy-cv-it", {
+    x: [-5, 5], aspect: 0.78, maxHeight: 520, minHeight: 300,
+    points: [{ x: START.grow[0], y: START.grow[1], snap: 0.05, label: "u₀" }],
+    draw(P, api) {
+      const C = P.P, u0 = api.points[0];
+      u0.color = C.accent2;
+      const e = DY.eig2(A);
+      if (eigOn() && e.real) {
+        e.l.forEach((l, i) => {
+          const [[a, b], [c, d]] = A;
+          let v = Math.abs(b) > 1e-9 ? [b, l - a] : Math.abs(c) > 1e-9 ? [l - d, c] : (i === 0 ? [1, 0] : [0, 1]);
+          if (Math.abs(b) <= 1e-9 && Math.abs(c) <= 1e-9 && Math.abs(a - d) > 1e-9) v = Math.abs(l - a) < 1e-9 ? [1, 0] : [0, 1];
+          const n = Math.hypot(v[0], v[1]) || 1; v = [v[0] / n, v[1] / n];
+          P.line(-20 * v[0], -20 * v[1], 20 * v[0], 20 * v[1], { color: i === 0 ? C.accent : C.ok, width: 1.6, dash: [6, 5], alpha: 0.75 });
+          const lx = 4.2 * v[0], ly = 4.2 * v[1];
+          P.text(`λ = ${DY.num(l, 2)}`, Math.abs(lx) > 4.6 ? Math.sign(lx) * 4.2 : lx, Math.abs(ly) > 3.4 ? Math.sign(ly) * 3.2 : ly, { color: i === 0 ? C.accent : C.ok, bold: true, size: 12, dx: 6, dy: -8 });
+        });
+      }
+      const N = nGet(), count = shown == null ? N : Math.min(shown, N);
+      let x = [u0.x, u0.y], pts = [x];
+      for (let k = 0; k < count; k++) { x = DY.matvec(A, x); pts.push(x); if (Math.hypot(x[0], x[1]) > 1e6) break; }
+      for (let k = 1; k < pts.length; k++) P.line(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], { color: C.dim, width: 1, alpha: 0.45 });
+      pts.forEach((p, k) => { if (k && Math.abs(p[0]) < 40 && Math.abs(p[1]) < 40) P.dot(p[0], p[1], { r: 4.5, color: C.accent, alpha: 0.35 + 0.65 * (1 - k / (pts.length)) }); });
+      const last = pts[pts.length - 1];
+      if (pts.length > 1 && Math.abs(last[0]) < 40 && Math.abs(last[1]) < 40) P.text(`u${String(pts.length - 1).replace(/\d/g, (c) => "₀₁₂₃₄₅₆₇₈₉"[c])}`, last[0], last[1], { color: C.text, bold: true, size: 12, dx: 8, dy: -10 });
+      const rho = e.real ? Math.max(Math.abs(e.l[0]), Math.abs(e.l[1])) : Math.hypot(e.re, e.im);
+      MB.stat("dy-i-lam", e.real ? DY.lamText(e) : `${DY.lamText(e)} (r = ${DY.num(Math.hypot(e.re, e.im), 3)}, θ = ${DY.num(Math.atan2(e.im, e.re) * 180 / Math.PI, 1)}°)`);
+      MB.stat("dy-i-rho", DY.num(rho, 3));
+      MB.stat("dy-i-norm", DY.num(Math.hypot(last[0], last[1]), 3));
+      let kind;
+      if (rho < 0.999) kind = `<span class="badge ok">수렴</span> ${!e.real ? "나선" : (e.l[0] < 0 || e.l[1] < 0) ? "지그재그" : "곧게"}`;
+      else if (rho <= 1.001) kind = `<span class="badge warn">경계 ρ = 1</span> ${!e.real ? "원 위를 회전" : "정상 상태로"}`;
+      else kind = `<span class="badge bad">발산</span> ${!e.real ? "풀리는 나선" : "지배 방향으로"}`;
+      MB.stat("dy-i-kind", kind);
+    },
+    onDrag() { shown = null; },
+  });
+  const read = () => { const v = ids.map(DY.parse); if (v.every((x) => x !== null)) { A = [[v[0], v[1]], [v[2], v[3]]]; shown = null; pl.redraw(); } };
+  ids.forEach((el) => el.addEventListener("input", read));
+  const setA = (M) => { A = M.map((x) => x.slice()); ids.forEach((el, i) => (el.value = DY.num(M[i >> 1][i & 1], 3))); };
+  document.getElementById("dy-i-pre").addEventListener("change", (ev) => {
+    const k = ev.target.value; setA(PRE[k]); pl.points[0].x = START[k][0]; pl.points[0].y = START[k][1]; shown = null; pl.redraw();
+  });
+  let t = 0;
+  const loop = MB.loop(document.getElementById("sim-dy-iterate"), (dt) => {
+    if (shown == null) return;
+    t += dt; if (t > 0.35) { t = 0; shown++; pl.redraw(); if (shown >= nGet()) { shown = null; loop.stop(); pl.redraw(); } }
+  });
+  loop.stop();
+  document.getElementById("dy-i-play").addEventListener("click", () => { shown = 0; t = 0; pl.redraw(); loop.start(); });
+})();
+
+/* ================================================================ 2. 마르코프 연쇄 */
+(function () {
+  const PRE = {
+    fab: [[0.9, 0.5, 0.3], [0.07, 0.45, 0.1], [0.03, 0.05, 0.6]],
+    sticky: [[0.97, 0.02, 0.03], [0.02, 0.96, 0.02], [0.01, 0.02, 0.95]],
+    cycle: [[0.1, 0.05, 0.8], [0.85, 0.1, 0.05], [0.05, 0.85, 0.15]],
+  };
+  const NAMES = ["가동", "대기", "수리"];
+  const ids = [];
+  for (let i = 1; i <= 3; i++) for (let j = 1; j <= 3; j++) ids.push(document.getElementById(`dy-m${i}${j}`));
+  let A = PRE.fab, pi = [1, 0, 0], l2 = 0, l2c = false, p = [1, 0, 0], k = 0, hist = [];
+  const msg = document.getElementById("dy-m-msg");
+  const init = MB.seg("dy-m-init", () => reset());
+  function analyse() {
+    const raw = ids.map((el) => Math.max(0, DY.parse(el) ?? 0));
+    const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    let fixed = false;
+    for (let j = 0; j < 3; j++) {
+      let s = 0; for (let i = 0; i < 3; i++) s += raw[i * 3 + j];
+      if (s <= 0) { for (let i = 0; i < 3; i++) M[i][j] = i === j ? 1 : 0; fixed = true; continue; }
+      if (Math.abs(s - 1) > 1e-6) fixed = true;
+      for (let i = 0; i < 3; i++) M[i][j] = raw[i * 3 + j] / s;
+    }
+    A = M;
+    // 정상 분포: 거듭제곱(감쇠를 조금 섞어 주기적인 경우도 안정적으로)
+    let v = [1 / 3, 1 / 3, 1 / 3];
+    for (let it = 0; it < 5000; it++) { const w = DY.matvec(A, v).map((x, i) => 0.5 * x + 0.5 * v[i]); const s = w[0] + w[1] + w[2]; v = w.map((x) => x / s); }
+    pi = v;
+    const tr = A[0][0] + A[1][1] + A[2][2];
+    const det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+    const s = tr - 1, q = det, disc = s * s - 4 * q;
+    if (disc >= 0) { const r1 = (s + Math.sqrt(disc)) / 2, r2 = (s - Math.sqrt(disc)) / 2; l2 = Math.max(Math.abs(r1), Math.abs(r2)); l2c = false; }
+    else { l2 = Math.sqrt(q); l2c = true; }
+    MB.stat("dy-m-pi", pi.map((x) => (x * 100).toFixed(1) + "%").join(" · "));
+    MB.stat("dy-m-l2", DY.num(l2, 3) + (l2c ? " (복소)" : ""));
+    const steps = l2 > 1e-9 && l2 < 0.9999 ? Math.ceil(Math.log(1e-3) / Math.log(l2)) : null;
+    msg.className = "dy-msg";
+    msg.innerHTML = (fixed ? "열의 합을 1로 맞췄습니다. " : "") + (l2 >= 0.9999 ? "<b>|λ₂| = 1</b>: 정상 분포로 수렴하지 않을 수 있습니다(주기적이거나 갈라진 연쇄)." : `오차를 1/1000로 줄이는 데 약 <b>${steps}단계</b> (|λ₂|<sup>k</sup> = 10<sup>−3</sup>).`);
+  }
+  function reset() {
+    const m = init();
+    p = m === "run" ? [1, 0, 0] : m === "down" ? [0, 0, 1] : [1 / 3, 1 / 3, 1 / 3];
+    k = 0; hist = [p.slice()]; update();
+  }
+  function step() { p = DY.matvec(A, p); k++; hist.push(p.slice()); if (hist.length > 61) hist.shift(); update(); }
+  const err = (q) => Math.abs(q[0] - pi[0]) + Math.abs(q[1] - pi[1]) + Math.abs(q[2] - pi[2]);
+  function update() {
+    MB.stat("dy-m-k", String(k));
+    MB.stat("dy-m-err", DY.num(err(p), 4));
+    cv.redraw();
+  }
+  const cv = MB.canvas("#dy-cv-mk", (ctx, w, h) => {
+    const C = MB.palette(), cols = [C.accent, C.dim, C.accent2];
+    const split = w > 520 ? 0.42 : 1, bw = w * split;
+    // 막대
+    const top = 30, bottom = (split === 1 ? h * 0.48 : h) - 34, H = bottom - top;
+    ctx.font = "12px " + DY.font(); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let i = 0; i < 3; i++) {
+      const x = 24 + (i * (bw - 48)) / 3, ww = (bw - 48) / 3 - 18;
+      DY.bar(ctx, x, bottom - H * p[i], ww, H * p[i], cols[i], 0.85);
+      ctx.strokeStyle = C.text; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 4, bottom - H * pi[i]); ctx.lineTo(x + ww + 4, bottom - H * pi[i]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.text; ctx.fillText(NAMES[i], x + ww / 2, bottom + 6);
+      ctx.fillStyle = C.dim; ctx.textBaseline = "bottom"; ctx.fillText((p[i] * 100).toFixed(1) + "%", x + ww / 2, bottom - H * p[i] - 3); ctx.textBaseline = "top";
+    }
+    ctx.fillStyle = C.dim; ctx.textAlign = "left"; ctx.fillText(`p${k === 0 ? "₀" : "ₖ"} (점선 = π)`, 12, 8);
+    // 오차 그래프 (로그)
+    const box = split === 1 ? { x: 58, y: h * 0.5 + 14, w: w - 76, h: h * 0.5 - 56 } : { x: bw + 52, y: 24, w: w - bw - 70, h: h - 70 };
+    const k0 = Math.max(0, k - hist.length + 1);
+    const data = hist.map((q, i) => [k0 + i, Math.max(1e-12, err(q))]);
+    const xs = [k0, Math.max(k0 + 10, k)];
+    const ref = l2 > 1e-9 && hist.length ? hist.map((q, i) => [k0 + i, Math.max(1e-12, err(hist[0]) * Math.pow(l2, i))]) : [];
+    MB.chart(ctx, box, { x: xs, y: [1e-6, 2], logY: true, xLabel: "단계 k", series: [{ data, color: C.accent, width: 2.2 }, { data: ref, color: C.faint, width: 1.4, dash: [5, 4] }] });
+    ctx.fillStyle = C.dim; ctx.font = "11.5px " + DY.font(); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillText("오차 ‖pₖ − π‖₁  ·  점선 ∝ |λ₂|ᵏ", box.x + 6, box.y + 2);
+  }, { aspect: (w) => (w > 520 ? 0.5 : 1.05), minHeight: 300, maxHeight: 460 });
+  ids.forEach((el) => el.addEventListener("input", () => { analyse(); reset(); }));
+  document.getElementById("dy-m-pre").addEventListener("change", (ev) => {
+    const M = PRE[ev.target.value]; ids.forEach((el, n) => (el.value = M[Math.floor(n / 3)][n % 3].toFixed(2))); analyse(); reset();
+  });
+  document.getElementById("dy-m-step").addEventListener("click", step);
+  document.getElementById("dy-m-reset").addEventListener("click", reset);
+  let acc = 0;
+  const loop = MB.loop(document.getElementById("sim-dy-markov"), (dt) => { acc += dt; if (acc > 0.25) { acc = 0; step(); if (k >= 60) play.set(false), loop.stop(); } });
+  loop.stop();
+  const play = MB.playButton("dy-m-play", () => { if (k >= 60) reset(); loop.start(); }, () => loop.stop());
+  analyse(); reset();
+})();
+
+/* ================================================================ 3. 페이지랭크 */
+(function () {
+  const N = 5, NAMES = ["A", "B", "C", "D", "E"];
+  const POS = [[0.5, 0.14], [0.86, 0.4], [0.72, 0.84], [0.28, 0.84], [0.14, 0.4]];
+  const L = Array.from({ length: N }, () => Array(N).fill(false));
+  [[0, 1], [0, 2], [1, 2], [2, 0], [3, 0], [3, 2], [4, 3], [4, 2], [1, 4]].forEach(([i, j]) => (L[i][j] = true));
+  let r = Array(N).fill(1 / N), it = 0, last = null;
+  const aGet = MB.range("dy-p-a", (v) => v.toFixed(2), () => { need(); cv.redraw(); });
+  const grid = document.getElementById("dy-p-links");
+  function buildGrid() {
+    let h = "<span></span>" + NAMES.map((n) => `<span>→${n}</span>`).join("");
+    for (let i = 0; i < N; i++) {
+      h += `<span>${NAMES[i]}</span>`;
+      for (let j = 0; j < N; j++) h += `<button type="button" data-i="${i}" data-j="${j}" class="${L[i][j] ? "on" : ""}" ${i === j ? "disabled" : ""} aria-label="${NAMES[i]}에서 ${NAMES[j]}로 링크" aria-pressed="${L[i][j]}">${i === j ? "·" : L[i][j] ? "1" : "0"}</button>`;
+    }
+    grid.innerHTML = h;
+  }
+  grid.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-i]"); if (!b || b.disabled) return;
+    const i = +b.dataset.i, j = +b.dataset.j; L[i][j] = !L[i][j]; buildGrid(); need(); cv.redraw();
+  });
+  /** G·r 한 번 (열 확률: 열 j = 출발 j) */
+  function G(v) {
+    const a = aGet(), out = Array(N).fill((1 - a) / N);
+    for (let j = 0; j < N; j++) {
+      const d = L[j].filter(Boolean).length;
+      if (!d) for (let i = 0; i < N; i++) out[i] += (a * v[j]) / N;
+      else for (let i = 0; i < N; i++) if (L[j][i]) out[i] += (a * v[j]) / d;
+    }
+    return out;
+  }
+  function need() {
+    let v = Array(N).fill(1 / N), n = 0, d = 1;
+    while (d > 1e-6 && n < 5000) { const w = G(v); d = w.reduce((s, x, i) => s + Math.abs(x - v[i]), 0); v = w; n++; }
+    MB.stat("dy-p-need", `${n}번`);
+  }
+  function step() { const w = G(r); last = w.reduce((s, x, i) => s + Math.abs(x - r[i]), 0); r = w; it++; show(); }
+  function show() {
+    MB.stat("dy-p-it", String(it));
+    const top = r.indexOf(Math.max(...r));
+    MB.stat("dy-p-top", `${NAMES[top]} (${(r[top] * 100).toFixed(1)}%)`);
+    MB.stat("dy-p-d", last == null ? "—" : DY.num(last, 6));
+    cv.redraw();
+  }
+  const cv = MB.canvas("#dy-cv-pr", (ctx, w, h) => {
+    const C = MB.palette();
+    const gw = w > 520 ? w * 0.6 : w, gh = w > 520 ? h : h * 0.62;
+    const P = POS.map(([x, y]) => [20 + x * (gw - 40), 20 + y * (gh - 40)]);
+    const rad = r.map((x) => 10 + Math.sqrt(x) * Math.min(gw, gh) * 0.17);
+    // 링크 화살표
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (L[i][j]) {
+      const [x1, y1] = P[i], [x2, y2] = P[j], dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy), ux = dx / d, uy = dy / d;
+      const off = L[j][i] ? 6 : 0, nx = -uy * off, ny = ux * off;
+      const sx = x1 + ux * rad[i] + nx, sy = y1 + uy * rad[i] + ny, ex = x2 - ux * (rad[j] + 3) + nx, ey = y2 - uy * (rad[j] + 3) + ny;
+      ctx.strokeStyle = C.dim; ctx.fillStyle = C.dim; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex - ux * 8, ey - uy * 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - ux * 10 - uy * 5, ey - uy * 10 + ux * 5); ctx.lineTo(ex - ux * 10 + uy * 5, ey - uy * 10 - ux * 5); ctx.closePath(); ctx.fill();
+    }
+    const top = r.indexOf(Math.max(...r));
+    P.forEach(([x, y], i) => {
+      ctx.beginPath(); ctx.arc(x, y, rad[i], 0, Math.PI * 2);
+      ctx.fillStyle = i === top ? C.accent : C.accent2; ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = C.bg; ctx.font = "700 14px " + DY.font(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(NAMES[i], x, y);
+      if (!L[i].some(Boolean)) { ctx.fillStyle = C.warn; ctx.font = "11px " + DY.font(); ctx.fillText("막다른 페이지", x, y + rad[i] + 10); }
+    });
+    // 순위 막대
+    const box = w > 520 ? { x: gw + 16, y: 30, w: w - gw - 30, h: h - 60 } : { x: 16, y: gh + 18, w: w - 32, h: h - gh - 34 };
+    const bh = box.h / N;
+    ctx.font = "12px " + DY.mono(); ctx.textBaseline = "middle";
+    const mx = Math.max(...r, 0.3);
+    r.forEach((x, i) => {
+      const y = box.y + i * bh + bh * 0.15, ww = ((box.w - 70) * x) / mx;
+      ctx.fillStyle = C.text; ctx.textAlign = "left"; ctx.fillText(NAMES[i], box.x, y + bh * 0.35);
+      DY.bar(ctx, box.x + 18, y, ww, bh * 0.7, i === top ? C.accent : C.accent2, 0.8);
+      ctx.fillStyle = C.dim; ctx.fillText((x * 100).toFixed(1) + "%", box.x + 22 + ww, y + bh * 0.35);
+    });
+  }, { aspect: (w) => (w > 520 ? 0.62 : 1.15), minHeight: 300, maxHeight: 460 });
+  document.getElementById("dy-p-step").addEventListener("click", step);
+  document.getElementById("dy-p-run").addEventListener("click", () => { let n = 0; do { step(); n++; } while (last > 1e-6 && n < 5000); });
+  document.getElementById("dy-p-reset").addEventListener("click", () => { r = Array(N).fill(1 / N); it = 0; last = null; show(); });
+  buildGrid(); need(); show();
+})();
+
+/* ================================================================ 4. 레슬리 모형 */
+(function () {
+  const f1 = MB.range("dy-l-f1", (v) => v.toFixed(2), () => draw());
+  const f2 = MB.range("dy-l-f2", (v) => v.toFixed(2), () => draw());
+  const s0 = MB.range("dy-l-s0", (v) => v.toFixed(2), () => draw());
+  const s1 = MB.range("dy-l-s1", (v) => v.toFixed(2), () => draw());
+  const init = MB.seg("dy-l-init", () => draw());
+  let hist = [];
+  function run() {
+    const L = [[0, f1(), f2()], [s0(), 0, 0], [0, s1(), 0]];
+    let n = init() === "young" ? [100, 0, 0] : [0, 0, 100];
+    hist = [n];
+    for (let k = 0; k < 30; k++) { n = DY.matvec(L, n); hist.push(n); }
+    // 지배 고유값: 특성 방정식 λ³ − f1 s0 λ − f2 s0 s1 = 0의 양의 근(이분법)
+    const p = f1() * s0(), q = f2() * s0() * s1();
+    let lam = 0;
+    if (p + q > 0) { let a = 0, b = 1 + p + q; for (let i = 0; i < 80; i++) { const m = (a + b) / 2; (m * m * m - p * m - q > 0) ? (b = m) : (a = m); } lam = (a + b) / 2; }
+    return { lam };
+  }
+  function draw() {
+    const { lam } = run();
+    MB.stat("dy-l-lam", lam ? DY.num(lam, 4) : "0");
+    if (lam > 0) { const v = [1, s0() / lam, s0() * s1() / lam / lam], s = v[0] + v[1] + v[2]; MB.stat("dy-l-vec", v.map((x) => ((x / s) * 100).toFixed(0) + "%").join(" · ")); }
+    else MB.stat("dy-l-vec", "—");
+    MB.stat("dy-l-kind", lam > 1.0005 ? `<span class="badge ok">증가</span> 세대마다 ${((lam - 1) * 100).toFixed(1)}%` : lam < 0.9995 ? `<span class="badge bad">감소</span> 세대마다 ${((1 - lam) * 100).toFixed(1)}%` : `<span class="badge warn">유지</span>`);
+    c1.redraw(); c2.redraw();
+  }
+  const c1 = MB.canvas("#dy-cv-ls1", (ctx, w, h) => {
+    if (!hist.length) return;
+    const C = MB.palette(), cols = [C.accent, C.accent2, C.warn];
+    const x0 = 34, y0 = 28, W = w - x0 - 12, H = h - y0 - 28, bw = W / hist.length;
+    hist.forEach((n, k) => {
+      const s = n[0] + n[1] + n[2]; if (s <= 0) return;
+      let y = y0 + H;
+      n.forEach((v, i) => { const hh = (H * v) / s; DY.bar(ctx, x0 + k * bw + 0.5, y - hh, Math.max(1, bw - 1), hh, cols[i], 0.85); y -= hh; });
+    });
+    ctx.fillStyle = C.dim; ctx.font = "11px " + DY.mono(); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    [0, 10, 20, 30].forEach((k) => ctx.fillText(k, x0 + (k + 0.5) * bw, y0 + H + 4));
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText("100%", x0 - 3, y0); ctx.fillText("0", x0 - 3, y0 + H);
+    ctx.textAlign = "left"; ctx.font = "11px " + DY.font();
+    ["0살", "1살", "2살"].forEach((t, i) => { DY.bar(ctx, w - 120 + i * 38, h - 14, 9, 9, cols[i]); ctx.fillStyle = C.dim; ctx.fillText(t, w - 108 + i * 38, h - 10); });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  const c2 = MB.canvas("#dy-cv-ls2", (ctx, w, h) => {
+    if (!hist.length) return;
+    const C = MB.palette();
+    const tot = hist.map((n, k) => [k, n[0] + n[1] + n[2]]);
+    const vals = tot.map((t) => t[1]).filter((v) => v > 0);
+    const lo = Math.max(1e-3, Math.min(...vals) / 2), hi = Math.max(...vals) * 2;
+    MB.chart(ctx, { x: 52, y: 28, w: w - 66, h: h - 60 }, { x: [0, 30], y: [Math.pow(10, Math.floor(Math.log10(lo))), Math.pow(10, Math.ceil(Math.log10(hi)))], logY: true, series: [{ data: tot, color: C.accent, width: 2.2 }], hlines: [{ y: 100, color: C.faint }] });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  draw();
+})();
+
+/* ================================================================ 5. 대각합–행렬식 평면 */
+(function () {
+  const PRE = { snode: [-3, 1.5], saddle: [0.5, -1.5], sspiral: [-0.6, 2], center: [0, 2], uspiral: [0.5, 2] };
+  let T = -0.6, D = 2;
+  const pre = MB.seg("dy-t-pre", (v) => { [T, D] = PRE[v]; td.points[0].x = T; td.points[0].y = D; td.redraw(); ph.redraw(); });
+  const td = MB.plane("#dy-cv-td", {
+    x: [-4, 4], y: [-3, 5], aspect: 0.9, maxHeight: 400, minHeight: 260,
+    points: [{ x: T, y: D, snap: 0.05, label: "(T, D)" }],
+    draw(P, api) {
+      const C = P.P;
+      // 안정 영역(T < 0, D > 0) 칠하기
+      P.poly([[-4, 0], [0, 0], [0, 5], [-4, 5]], { fill: C.ok, alpha: 0.1, stroke: false });
+      P.curve((t) => t * t / 4, { color: C.accent, width: 2 });
+      P.line(0, 0, 0, 5, { color: C.warn, width: 2, dash: [5, 4] });
+      P.text("안장점", 2.4, -1.8, { color: C.dim, size: 12 });
+      P.text("안정 나선", -2.2, 3.6, { color: C.dim, size: 12, align: "center" });
+      P.text("불안정 나선", 2.2, 3.6, { color: C.dim, size: 12, align: "center" });
+      P.text("안정 마디", -3.2, 1.2, { color: C.dim, size: 12, align: "center" });
+      P.text("불안정 마디", 3.2, 1.2, { color: C.dim, size: 12, align: "center" });
+      P.text("T", 3.8, -0.3, { color: C.faint, size: 12 }); P.text("D", 0.15, 4.75, { color: C.faint, size: 12 });
+      api.points[0].color = C.accent2;
+      T = api.points[0].x; D = api.points[0].y;
+    },
+    onDrag() { ph.redraw(); },
+  });
+  const ph = MB.plane("#dy-cv-ph", {
+    x: [-3, 3], aspect: 0.9, maxHeight: 400, minHeight: 260, axes: true,
+    draw(P) {
+      const C = P.P;
+      const f = (x, y) => [y, -D * x + T * y];
+      // 방향장
+      for (let x = -2.75; x <= 2.8; x += 0.5) for (let y = Math.ceil(P.y0 * 2) / 2 + 0.25; y <= P.y1; y += 0.5) {
+        const [dx, dy] = f(x, y), n = Math.hypot(dx, dy); if (n < 1e-9) continue;
+        const s = 0.18 / n; P.line(x - dx * s, y - dy * s, x + dx * s, y + dy * s, { color: C.faint, width: 1, alpha: 0.7 });
+      }
+      // 궤적 (RK4, 앞뒤로)
+      const rk = (x, y, h) => {
+        const k1 = f(x, y), k2 = f(x + h * k1[0] / 2, y + h * k1[1] / 2), k3 = f(x + h * k2[0] / 2, y + h * k2[1] / 2), k4 = f(x + h * k3[0], y + h * k3[1]);
+        return [x + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+      };
+      for (let a = 0; a < 12; a++) {
+        const th = (a / 12) * Math.PI * 2, sx = 2.4 * Math.cos(th), sy = 1.9 * Math.sin(th);
+        [1, -1].forEach((dir) => {
+          let x = sx, y = sy; const pts = [[x, y]];
+          for (let n = 0; n < 900; n++) { [x, y] = rk(x, y, dir * 0.02); if (!isFinite(x) || Math.hypot(x, y) > 12) break; pts.push([x, y]); if (Math.hypot(x, y) < 0.01) break; }
+          P.poly(pts, { color: C.accent, width: 1.6, close: false, alpha: dir > 0 ? 0.9 : 0.45 });
+          if (dir > 0 && pts.length > 30) { const [x1, y1] = pts[20], [x2, y2] = pts[24]; P.arrow(x1, y1, x2, y2, { color: C.accent, width: 1.6, head: 9 }); }
+        });
+      }
+      // 실수 고유벡터 방향
+      const disc = T * T - 4 * D;
+      if (disc >= 0) [(T + Math.sqrt(disc)) / 2, (T - Math.sqrt(disc)) / 2].forEach((l) => { const v = [1, l], n = Math.hypot(1, l); P.line(-6 / n, -6 * l / n, 6 / n, 6 * l / n, { color: C.accent2, width: 2, dash: [6, 4] }); });
+      P.dot(0, 0, { r: 4, color: C.text });
+      // 판독
+      const e = DY.eig2([[0, 1], [-D, T]]);
+      MB.stat("dy-t-td", `T = ${DY.num(T, 2)}, D = ${DY.num(D, 2)}`);
+      MB.stat("dy-t-lam", DY.lamText(e, 3));
+      let kind;
+      if (D < -1e-9) kind = '<span class="badge bad">안장점</span>';
+      else if (Math.abs(D) <= 1e-9) kind = '<span class="badge warn">퇴화 (λ = 0)</span>';
+      else if (disc > 1e-9) kind = T < 0 ? '<span class="badge ok">안정 마디</span>' : '<span class="badge bad">불안정 마디</span>';
+      else if (disc < -1e-9) kind = Math.abs(T) < 1e-9 ? '<span class="badge warn">중심</span>' : T < 0 ? '<span class="badge ok">안정 나선</span>' : '<span class="badge bad">불안정 나선</span>';
+      else kind = T < 0 ? '<span class="badge ok">퇴화 마디 (중근)</span>' : '<span class="badge bad">퇴화 마디 (중근)</span>';
+      MB.stat("dy-t-kind", kind);
+      document.getElementById("dy-t-cap").textContent = `A = [0 1; ${DY.num(-D, 2)} ${DY.num(T, 2)}]`;
+    },
+  });
+  pre.set("sspiral", false);
+})();
+
+/* ================================================================ 6. 질량–감쇠기–스프링 */
+(function () {
+  const mG = MB.range("dy-s-m", (v) => v.toFixed(1), () => update());
+  const cG = MB.range("dy-s-c", (v) => v.toFixed(2), () => update());
+  const kG = MB.range("dy-s-k", (v) => v.toFixed(1), () => update());
+  let tNow = null;
+  /** x(t), x(0)=1, v(0)=0 의 정확한 해 */
+  function sol(t) {
+    const m = mG(), c = cG(), k = kG(), a = c / (2 * m), wn = Math.sqrt(k / m), disc = a * a - wn * wn;
+    if (disc < -1e-9) { const wd = Math.sqrt(-disc); return Math.exp(-a * t) * (Math.cos(wd * t) + (a / wd) * Math.sin(wd * t)); }
+    if (disc > 1e-9) { const s = Math.sqrt(disc), l1 = -a + s, l2 = -a - s; return (l1 * Math.exp(l2 * t) - l2 * Math.exp(l1 * t)) / (l1 - l2); }
+    return (1 + a * t) * Math.exp(-a * t);
+  }
+  function update() {
+    const m = mG(), c = cG(), k = kG(), wn = Math.sqrt(k / m), z = c / (2 * Math.sqrt(m * k));
+    const e = DY.eig2([[0, 1], [-k / m, -c / m]]);
+    MB.stat("dy-s-lam", DY.lamText(e, 3));
+    MB.stat("dy-s-wn", DY.num(wn, 3));
+    MB.stat("dy-s-z", DY.num(z, 3));
+    MB.stat("dy-s-kind", c === 0 ? '<span class="badge warn">감쇠 없음 (중심)</span>' : Math.abs(z - 1) < 0.01 ? '<span class="badge ok">임계 감쇠</span>' : z < 1 ? '<span class="badge warn">부족 감쇠 (나선)</span>' : '<span class="badge">과감쇠 (마디)</span>');
+    a.redraw(); b.redraw();
+  }
+  const a = MB.canvas("#dy-cv-sp1", (ctx, w, h) => {
+    const C = MB.palette(), data = [];
+    for (let i = 0; i <= 400; i++) { const t = (i / 400) * 15; data.push([t, sol(t)]); }
+    const r = MB.chart(ctx, { x: 40, y: 28, w: w - 54, h: h - 60 }, { x: [0, 15], y: [-1.1, 1.1], series: [{ data, color: C.accent, width: 2.2 }], hlines: [{ y: 0, color: C.faint }], xLabel: "" });
+    if (tNow != null) {
+      const x = sol(tNow);
+      ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.arc(r.X(tNow), r.Y(x), 5, 0, Math.PI * 2); ctx.fill();
+      // 질량 그림 (오른쪽 위)
+      const bx = r.box.x + r.box.w - 30, by = r.Y(x);
+      ctx.strokeStyle = C.dim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bx + 10, r.box.y); ctx.lineTo(bx + 10, by - 10); ctx.stroke();
+      DY.bar(ctx, bx, by - 10, 20, 20, C.accent2, 0.9);
+    }
+    ctx.fillStyle = C.dim; ctx.font = "11px " + DY.mono(); ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.fillText("t", w - 12, h - 18);
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  const b = MB.canvas("#dy-cv-sp2", (ctx, w, h) => {
+    const C = MB.palette(), m = mG(), c = cG(), k = kG(), e = DY.eig2([[0, 1], [-k / m, -c / m]]);
+    const R = 4.2, cx = w * 0.62, cy = h / 2, u = Math.min(w * 0.55, h * 0.85) / (2 * R) * 1.3;
+    const X = (x) => cx + x * u, Y = (y) => cy - y * u;
+    ctx.fillStyle = C.ok; ctx.globalAlpha = 0.1; ctx.fillRect(0, 0, cx, h); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+    // ω_n 원(감쇠를 바꿀 때 복소 고유값이 이 원 위를 움직인다)
+    const wn = Math.sqrt(k / m);
+    ctx.strokeStyle = C.faint; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(cx, cy, wn * u, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    const pts = e.real ? [[e.l[0], 0], [e.l[1], 0]] : [[e.re, e.im], [e.re, -e.im]];
+    pts.forEach(([x, y]) => { const px = Math.max(4, Math.min(w - 4, X(x))); ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(px - 6, Y(y) - 6); ctx.lineTo(px + 6, Y(y) + 6); ctx.moveTo(px + 6, Y(y) - 6); ctx.lineTo(px - 6, Y(y) + 6); ctx.stroke(); });
+    ctx.fillStyle = C.dim; ctx.font = "11px " + DY.font(); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillText("안정 (Re λ < 0)", 8, h - 18); ctx.fillText("점선 원: 반지름 ωₙ", 8, 26);
+    ctx.font = "11px " + DY.mono(); ctx.fillText("Im", cx + 4, 4); ctx.textAlign = "right"; ctx.fillText("Re", w - 4, cy + 4);
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  document.getElementById("dy-s-crit").addEventListener("click", () => { cG.set(Math.min(8, 2 * Math.sqrt(mG() * kG()))); });
+  const loop = MB.loop(document.getElementById("sim-dy-spring"), (dt) => { tNow += dt * 1.5; if (tNow > 15) tNow = 0; a.redraw(); });
+  loop.stop();
+  MB.playButton("dy-s-play", () => { tNow = 0; loop.start(); }, () => { loop.stop(); tNow = null; a.redraw(); });
+  update();
+})();
+
+/* ================================================================ 7. 결합 진동자 */
+(function () {
+  const kG = MB.range("dy-c-k", (v) => v.toFixed(2), () => { info(); cv.redraw(); });
+  const init = MB.seg("dy-c-init", () => { t = 0; info(); cv.redraw(); });
+  let t = 0;
+  const w = () => [1, Math.sqrt(1 + 2 * kG())];
+  function x(tt) {
+    const m = init(), x0 = m === "one" ? [1, 0] : m === "m1" ? [0.7, 0.7] : [0.7, -0.7];
+    const q1 = (x0[0] + x0[1]) / 2, q2 = (x0[0] - x0[1]) / 2, [w1, w2] = w();
+    const a = q1 * Math.cos(w1 * tt), b = q2 * Math.cos(w2 * tt);
+    return [a + b, a - b];
+  }
+  function info() {
+    const [w1, w2] = w();
+    MB.stat("dy-c-w1", DY.num(w1, 3)); MB.stat("dy-c-w2", DY.num(w2, 3));
+    MB.stat("dy-c-beat", DY.num((2 * Math.PI) / (w2 - w1), 1));
+    MB.stat("dy-c-t", t.toFixed(1));
+  }
+  const cv = MB.canvas("#dy-cv-cp", (ctx, W, H) => {
+    const C = MB.palette(), top = H * 0.36, [x1, x2] = x(t);
+    // 벽–질량–질량–벽
+    const L = 24, R = W - 24, gap = (R - L) / 3, mw = Math.min(46, gap * 0.4), amp = gap * 0.35, cy = top * 0.55;
+    const p1 = L + gap + x1 * amp, p2 = L + 2 * gap + x2 * amp;
+    DY.bar(ctx, L - 10, cy - 30, 10, 60, C.dim, 0.6); DY.bar(ctx, R, cy - 30, 10, 60, C.dim, 0.6);
+    const spring = (a, b, col, wid) => { const n = 12; ctx.strokeStyle = col; ctx.lineWidth = wid; ctx.beginPath(); ctx.moveTo(a, cy); for (let i = 1; i < n; i++) ctx.lineTo(a + ((b - a) * i) / n, cy + (i % 2 ? -9 : 9)); ctx.lineTo(b, cy); ctx.stroke(); };
+    spring(L, p1 - mw / 2, C.dim, 1.5); spring(p1 + mw / 2, p2 - mw / 2, C.accent2, 2); spring(p2 + mw / 2, R, C.dim, 1.5);
+    [p1, p2].forEach((p, i) => { DY.bar(ctx, p - mw / 2, cy - mw / 2, mw, mw, C.accent, 0.9); ctx.fillStyle = C.bg; ctx.font = "700 13px " + DY.font(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`m${i ? "₂" : "₁"}`, p, cy); });
+    // 시간 그래프
+    const span = 80, t0 = Math.max(0, t - span * 0.7);
+    const d1 = [], d2 = [];
+    for (let i = 0; i <= 600; i++) { const tt = t0 + (span * i) / 600; const [a, b] = x(tt); d1.push([tt, a]); d2.push([tt, b]); }
+    const r = MB.chart(ctx, { x: 40, y: top + 8, w: W - 54, h: H - top - 40 }, { x: [t0, t0 + span], y: [-1.15, 1.15], series: [{ data: d1, color: C.accent, width: 1.8 }, { data: d2, color: C.accent2, width: 1.8 }], vlines: [{ x: t, color: C.text }] });
+    ctx.font = "11.5px " + DY.font(); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillStyle = C.accent; ctx.fillText("x₁", r.box.x + 6, r.box.y + 2); ctx.fillStyle = C.accent2; ctx.fillText("x₂", r.box.x + 30, r.box.y + 2);
+  }, { aspect: (w) => (w > 520 ? 0.62 : 1), minHeight: 300, maxHeight: 440 });
+  const loop = MB.loop(document.getElementById("sim-dy-coupled"), (dt) => { t += dt * 4; MB.stat("dy-c-t", t.toFixed(1)); cv.redraw(); });
+  loop.stop();
+  const play = MB.playButton("dy-c-play", () => loop.start(), () => loop.stop());
+  document.getElementById("dy-c-reset").addEventListener("click", () => { t = 0; info(); cv.redraw(); });
+  info();
+})();
+</script>
+</body>
+</html>

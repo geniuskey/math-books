@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>그람–슈미트와 QR · LinearBook</title>
+<meta name="description" content="정규직교 기저가 왜 계산을 쉽게 만드는지에서 출발해 직교 행렬, 그람–슈미트 직교화, A = QR 분해, 고전·수정 그람–슈미트의 직교성 손실, 하우스홀더 반사와 기븐스 회전, QR로 푸는 최소제곱, 함수 공간의 직교 다항식까지 직접 단계별로 계산해 본다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .qr-m { display: inline-grid; grid-template-columns: repeat(var(--c, 3), auto); gap: 3px 12px; padding: 3px 9px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13.5px var(--mono); text-align: right; font-variant-numeric: tabular-nums; vertical-align: middle; }
+  .qr-m > span { padding: 1px 3px; border-radius: 4px; }
+  .qr-m > span.new { background: var(--accent); color: var(--on-accent); }
+  .qr-m > span.done { background: var(--accent-soft); }
+  .qr-m > span.zero { color: var(--text-faint); }
+  .qr-m > span.wait { color: var(--text-faint); }
+  .qr-mats { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; padding: 16px 18px; background: var(--canvas-bg); max-width: 100%; overflow-x: auto; }
+  .qr-mats figure { margin: 0; display: grid; gap: 4px; justify-items: start; }
+  .qr-mats figcaption { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+  .qr-op { font: 600 18px var(--mono); color: var(--text-dim); }
+  .qr-msg { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; }
+  .qr-msg b { color: var(--text); }
+  .qr-msg.ok { color: var(--ok); font-weight: 600; }
+  .qr-msg.bad { color: var(--bad); font-weight: 600; }
+  .qr-small { font-size: 13px; color: var(--text-dim); }
+  .qr-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .qr-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .qr-in { --n: 3; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="qr">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 09</div>
+    <h1 data-no-glossary>그람–슈미트와 QR</h1>
+    <p class="lead">8장의 최소제곱은 정규 방정식 \(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)로 풀렸습니다. 식은 깔끔하지만 컴퓨터는 이 식을 그대로 믿으면 안 됩니다. \(A^{\mathsf T}A\)를 만드는 순간 문제의 까다로움(조건수)이 <b>제곱</b>되기 때문입니다. 해결책은 기저를 바꾸는 것입니다. 서로 수직이고 길이가 1인 벡터들, 즉 <span class="term">정규직교 기저</span>로 바꾸면 계수는 내적 한 번으로 읽히고, 사영은 곱셈 몇 번이 되고, 반올림 오차는 커지지 않습니다. 이 장은 아무 기저나 정규직교 기저로 바꾸는 그람–슈미트 과정에서 출발해, 그 기록인 \(A = QR\) 분해, 그리고 실제 소프트웨어가 쓰는 하우스홀더 반사와 기븐스 회전까지 갑니다.</p>
+    <ul class="objectives">
+      <li>정규직교 기저에서는 좌표가 내적 \(c_i = \mathbf q_i\cdot\mathbf b\)로 바로 나오고 \(Q^{\mathsf T}Q = I\)임을 이해하고, 비스듬한 기저와 비교한다.</li>
+      <li>직교 행렬이 길이·각도·내적을 보존하는 회전과 반사라는 것을 보이고, \(Q^{-1} = Q^{\mathsf T}\)를 계산에 쓴다.</li>
+      <li>그람–슈미트 과정을 단계별로 실행해 정규직교 기저를 만들고, 그 계수를 모아 \(A = QR\)을 구한다.</li>
+      <li>고전·수정 그람–슈미트와 하우스홀더 QR의 직교성 손실을 실험으로 비교하고 그 원인을 설명한다.</li>
+      <li>하우스홀더 반사와 기븐스 회전으로 아래쪽 원소를 0으로 만드는 원리를 그림으로 이해한다.</li>
+      <li>최소제곱을 \(R\hat{\mathbf x} = Q^{\mathsf T}\mathbf b\)로 풀고, 정규 방정식보다 정확한 이유를 \(\kappa(A^{\mathsf T}A) = \kappa(A)^2\)로 설명한다.</li>
+      <li>함수에도 그람–슈미트를 적용해 르장드르·체비쇼프 다항식을 만들어 본다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>믿을 수 있는 데이터 적합</b></div>
+      <div class="o-body"><p>GPS 수신기는 위성 네 개 이상에서 받은 신호로 위치 (x, y, z)와 시계 오차를 구합니다. 하늘에 보이는 위성이 여덟, 열 개면 방정식이 미지수보다 많고 측정값에는 잡음이 섞여 있으니 모든 식을 정확히 만족하는 답은 없습니다. 실험실의 검량선, 센서 보정, 궤도 결정, 기계 학습의 선형 회귀도 같은 꼴, 즉 <b>과결정 최소제곱 문제</b>입니다.</p>
+        <p>교과서의 정규 방정식으로 풀면 잘 될 때도 있지만, 변수들이 서로 비슷할수록(조건수가 클수록) 유효 숫자가 두 배 빠르게 사라집니다. 그래서 수치 소프트웨어는 \(A\)를 정규직교 행렬 \(Q\)와 위삼각 행렬 \(R\)의 곱으로 쪼갠 뒤 \(R\hat{\mathbf x} = Q^{\mathsf T}\mathbf b\)를 풉니다. MATLAB의 <code>A\b</code>도 \(A\)가 정사각이 아니면 QR 분해로 최소제곱 해를 구합니다.</p>
+        <div class="o-chain"><span>식 &gt; 미지수, 잡음</span><i>→</i><span>정규 방정식: κ²</span><i>→</i><span class="tool">A = QR (직교화)</span><i>→</i><span>κ 그대로, 안정</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="orthonormal">
+    <h2>정규직교 기저는 계산을 공짜로 만든다</h2>
+    <div class="problem"><strong>좌표를 구하는 데 연립방정식이 필요할까</strong>
+      <p>평면의 벡터 \(\mathbf b\)를 기저 \(\mathbf u_1, \mathbf u_2\)로 \(\mathbf b = c_1\mathbf u_1 + c_2\mathbf u_2\)처럼 쓰려면 보통 2×2 연립방정식을 풀어야 합니다. 1000차원이면 1000×1000 시스템입니다. 신호를 주파수 성분으로, 이미지를 기저 패턴으로 나눌 때마다 이 비용을 치러야 할까요?</p></div>
+    <p>기저 벡터들이 서로 수직이고 길이가 1이면 이야기가 완전히 달라집니다. 양변에 \(\mathbf q_i\)를 내적하면 다른 항은 모두 0이 되고 \(c_i\)만 남기 때문입니다.</p>
+    <div class="callout"><strong>정의 9.1 (정규직교)</strong> 벡터 \(\mathbf q_1, \dots, \mathbf q_n\)이 \(\mathbf q_i\cdot\mathbf q_j = 0\) (\(i \ne j\)), \(\mathbf q_i\cdot\mathbf q_i = 1\)을 만족하면 <b>정규직교</b><span class="en">(orthonormal)</span>라 한다. 이들을 열로 갖는 행렬 \(Q\)는 \(Q^{\mathsf T}Q = I\)를 만족한다. \(Q^{\mathsf T}Q\)의 \((i, j)\) 칸이 바로 \(\mathbf q_i\cdot\mathbf q_j\)이기 때문이다.</div>
+    <div class="callout deep"><strong>정리 9.1 (정규직교 기저에서의 좌표)</strong> \(\mathbf q_1, \dots, \mathbf q_n\)이 \(\mathbb R^n\)의 정규직교 기저이면 모든 \(\mathbf b\)에 대해
+      $$\mathbf b = (\mathbf q_1\cdot\mathbf b)\,\mathbf q_1 + \cdots + (\mathbf q_n\cdot\mathbf b)\,\mathbf q_n, \qquad \|\mathbf b\|^2 = \sum_i (\mathbf q_i\cdot\mathbf b)^2 .$$
+      <p><b>증명.</b> \(\mathbf b = \sum_j c_j\mathbf q_j\)에 \(\mathbf q_i\)를 내적하면 \(\mathbf q_i\cdot\mathbf b = \sum_j c_j(\mathbf q_i\cdot\mathbf q_j) = c_i\). 행렬로 쓰면 \(Q\mathbf c = \mathbf b\)의 해가 \(\mathbf c = Q^{\mathsf T}\mathbf b\)이다. 길이는 \(\|\mathbf b\|^2 = \mathbf c^{\mathsf T}Q^{\mathsf T}Q\mathbf c = \mathbf c^{\mathsf T}\mathbf c\). 두 번째 식(파스발 등식)은 "에너지는 성분 에너지의 합"이라는 뜻이다. ∎</p></div>
+    <p>연립방정식 \(n^3\)이 내적 \(n\)번, 즉 곱셈 \(n^2\)번으로 줄었습니다. 아래 시뮬레이터에서 두 기저를 비교해 보세요. 정규직교 기저에서는 \(\mathbf b\)에서 각 축으로 수직으로 내린 발(내적)이 곧 좌표입니다. 비스듬한 기저에서는 수직으로 내린 값과 실제 좌표(평행사변형으로 읽은 값)가 다릅니다.</p>
+
+    <div class="sim" id="sim-qr-coords">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>좌표 읽기: 정규직교 기저 vs 비스듬한 기저</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-coords"></canvas><span class="tag-tl">b 끝점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>기저</span><div class="seg" id="qr-c-mode"><button data-value="on" class="on">정규직교</button><button data-value="skew">비스듬함</button></div></div>
+          <label class="ctrl"><span>기저 회전 θ <output id="qr-c-th-out"></output></span><input type="range" id="qr-c-th" min="0" max="180" value="25"></label>
+          <label class="ctrl"><span>두 축 사이 각 (비스듬함) <output id="qr-c-ph-out"></output></span><input type="range" id="qr-c-ph" min="25" max="155" value="55"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">실제 좌표 (c₁, c₂)</span><span class="v" id="qr-c-true">—</span></div>
+        <div class="stat"><span class="k">내적으로 읽은 값 (u₁·b, u₂·b)</span><span class="v" id="qr-c-dot">—</span></div>
+        <div class="stat"><span class="k">‖b‖² vs c₁² + c₂²</span><span class="v" id="qr-c-par">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 정규직교에서는 두 행이 항상 같습니다. 좌표를 구하는 데 연립방정식이 필요 없습니다. ② '비스듬함'으로 바꾸고 두 축 사이 각을 90°에서 멀리 보내면 내적 값과 실제 좌표가 점점 어긋나고, 피타고라스(‖b‖² = c₁² + c₂²)도 깨집니다. ③ 각을 25°까지 좁히면 실제 좌표가 크게 부풀어 오릅니다. 비슷한 두 기저로 b를 나타내려면 큰 양수와 큰 음수를 섞어야 하기 때문입니다. 모델: 정규직교는 길이 1의 수직 두 벡터, 비스듬함은 길이 1과 1.2의 두 벡터.</div>
+    </div>
+    <div class="callout tip"><strong>예제 9.1 (손으로)</strong> \(\mathbf q_1 = \tfrac15(3, 4)\), \(\mathbf q_2 = \tfrac15(-4, 3)\)은 정규직교다(\(\mathbf q_1\cdot\mathbf q_2 = (-12+12)/25 = 0\), 길이는 둘 다 1). \(\mathbf b = (2, 11)\)의 좌표는
+      <br>① \(c_1 = \mathbf q_1\cdot\mathbf b = (6 + 44)/5 = 10\), ② \(c_2 = \mathbf q_2\cdot\mathbf b = (-8 + 33)/5 = 5\).
+      <br>확인: \(10\mathbf q_1 + 5\mathbf q_2 = (6, 8) + (-4, 3) = (2, 11)\). 길이도 \(\|\mathbf b\|^2 = 4 + 121 = 125 = 10^2 + 5^2\).</div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="orthogonal-matrix">
+    <h2>직교 행렬: 길이와 각을 지키는 변환</h2>
+    <div class="problem"><strong>회전을 여러 번 곱해도 물체가 찌그러지지 않으려면</strong>
+      <p>게임 엔진이나 드론의 자세 추정은 매 프레임 회전 행렬을 곱합니다. 회전은 물체의 길이와 각을 바꾸지 않아야 합니다. 어떤 행렬이 그런 성질을 갖는지, 그리고 그 성질을 수치적으로 어떻게 확인하는지가 문제입니다.</p></div>
+    <div class="callout"><strong>정의 9.2 (직교 행렬)</strong> 정사각 행렬 \(Q\)가 \(Q^{\mathsf T}Q = I\)를 만족하면 <span class="term">직교 행렬</span><span class="en">(orthogonal matrix)</span>이라 한다. 열이 \(\mathbb R^n\)의 정규직교 기저를 이루고, 역행렬은 전치 \(Q^{-1} = Q^{\mathsf T}\)이다. (직사각 \(m\times n\) 행렬이 \(Q^{\mathsf T}Q = I_n\)을 만족하면 "정규직교 열을 가진 행렬"이라 부르며, 이때 \(QQ^{\mathsf T}\)는 \(I\)가 아니라 열공간으로의 사영이다.)</div>
+    <div class="callout deep"><strong>정리 9.2 (직교 변환은 기하를 보존한다)</strong> \(Q^{\mathsf T}Q = I\)이면 모든 \(\mathbf x, \mathbf y\)에 대해 \((Q\mathbf x)\cdot(Q\mathbf y) = \mathbf x\cdot\mathbf y\), 따라서 \(\|Q\mathbf x\| = \|\mathbf x\|\)이고 두 벡터 사이 각도 그대로다. 정사각 직교 행렬은 \(\det Q = \pm 1\)이며, \(+1\)이면 회전, \(-1\)이면 반사가 섞인 변환이다.
+      <p><b>증명.</b> \((Q\mathbf x)^{\mathsf T}(Q\mathbf y) = \mathbf x^{\mathsf T}Q^{\mathsf T}Q\mathbf y = \mathbf x^{\mathsf T}\mathbf y\). 행렬식은 \(1 = \det(Q^{\mathsf T}Q) = (\det Q)^2\)에서 나온다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="회전과 반사, 그리고 직교가 아닌 변환">
+        <g transform="translate(130,130)">
+          <circle r="80" fill="none" class="s-axis" style="stroke-dasharray:4 4"/>
+          <line x1="-100" y1="0" x2="100" y2="0" class="s-axis" style="opacity:.5"/><line x1="0" y1="-100" x2="0" y2="100" class="s-axis" style="opacity:.5"/>
+          <line x1="0" y1="0" x2="69.3" y2="-40" style="stroke:var(--green);stroke-width:3"/><line x1="0" y1="0" x2="-40" y2="-69.3" style="stroke:var(--red);stroke-width:3"/>
+          <polygon points="0,0 69.3,-40 29.3,-109.3 -40,-69.3" class="f-acc-soft" style="stroke-width:1.5"/>
+          <text x="0" y="112" text-anchor="middle" class="t" style="font-weight:700">회전 30°: det = +1</text>
+        </g>
+        <g transform="translate(380,130)">
+          <circle r="80" fill="none" class="s-axis" style="stroke-dasharray:4 4"/>
+          <line x1="-100" y1="0" x2="100" y2="0" class="s-axis" style="opacity:.5"/><line x1="0" y1="-100" x2="0" y2="100" class="s-axis" style="opacity:.5"/>
+          <line x1="-90" y1="52" x2="90" y2="-52" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:6 4"/>
+          <line x1="0" y1="0" x2="40" y2="-69.3" style="stroke:var(--green);stroke-width:3"/><line x1="0" y1="0" x2="69.3" y2="40" style="stroke:var(--red);stroke-width:3"/>
+          <polygon points="0,0 40,-69.3 109.3,-29.3 69.3,40" class="f-acc2-soft" style="stroke-width:1.5"/>
+          <text x="0" y="112" text-anchor="middle" class="t" style="font-weight:700">거울 반사: det = −1</text>
+        </g>
+        <g transform="translate(630,130)">
+          <circle r="80" fill="none" class="s-axis" style="stroke-dasharray:4 4"/>
+          <ellipse rx="104" ry="46" transform="rotate(-20)" fill="none" style="stroke:var(--bad);stroke-width:1.8"/>
+          <line x1="-100" y1="0" x2="100" y2="0" class="s-axis" style="opacity:.5"/><line x1="0" y1="-100" x2="0" y2="100" class="s-axis" style="opacity:.5"/>
+          <line x1="0" y1="0" x2="96" y2="-24" style="stroke:var(--green);stroke-width:3"/><line x1="0" y1="0" x2="40" y2="-60" style="stroke:var(--red);stroke-width:3"/>
+          <text x="0" y="112" text-anchor="middle" class="t" style="font-weight:700">직교 아님: 원 → 타원</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 9-1.</b> 직교 행렬은 단위원을 단위원으로 보낸다. 두 열(초록·빨강)은 언제나 길이 1이고 서로 수직이다. 회전(왼쪽)은 방향을 유지하고, 반사(가운데)는 점선 거울에 비춰 방향을 뒤집는다. 직교가 아닌 행렬(오른쪽)은 원을 타원으로 늘인다. 길이가 바뀌면 오차도 늘어날 수 있다.</figcaption>
+    </figure>
+    <p>직교 행렬을 곱해도 길이가 그대로라는 사실은 수치 계산에서 결정적입니다. 계산 도중 생긴 작은 오차 벡터 \(\boldsymbol\delta\)도 \(\|Q\boldsymbol\delta\| = \|\boldsymbol\delta\|\)라서 <b>커지지 않습니다</b>. 조건수로 말하면 \(\kappa(Q) = 1\), 가장 좋은 값입니다. 반면 소거에서 쓰는 행렬은 피벗이 작으면 오차를 키울 수 있었습니다(<a href="elimination.html#pivoting">3장 부분 피벗팅</a>). QR 알고리즘들이 안정한 이유가 여기에 있습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>행렬</th><th>예</th><th class="num">det</th><th>쓰이는 곳</th></tr></thead>
+      <tbody>
+        <tr><td>회전</td><td>\(\begin{bmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{bmatrix}\)</td><td class="num">1</td><td>자세 추정, 그래픽스, 기븐스 회전</td></tr>
+        <tr><td>반사</td><td>\(I - 2\mathbf u\mathbf u^{\mathsf T}\) (\(\|\mathbf u\| = 1\))</td><td class="num">−1</td><td>하우스홀더 QR</td></tr>
+        <tr><td>치환</td><td>\(\begin{bmatrix}0 & 1\\ 1 & 0\end{bmatrix}\)</td><td class="num">±1</td><td>행 교환(피벗팅)</td></tr>
+        <tr><td>이산 푸리에(정규화)</td><td>\(F/\sqrt n\) (복소수, \(F^{*}F = nI\))</td><td class="num">\(|\det| = 1\)</td><td>FFT, OFDM 통신</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="gram-schmidt">
+    <h2>그람–슈미트: 기울어진 기저를 바로 세우기</h2>
+    <div class="problem"><strong>주어진 벡터들에서 정규직교 기저를 만들려면</strong>
+      <p>측정 행렬의 열, 다항식 \(1, x, x^2\), 안테나 배열의 조향 벡터처럼 우리가 가진 기저는 대개 서로 비스듬합니다. 같은 공간을 생성하면서 서로 수직인 기저로 바꿀 수 있을까요?</p></div>
+    <p>아이디어는 단순합니다. 벡터를 하나씩 받아, <b>이미 만든 방향 성분을 빼고</b>, 남은 것을 길이 1로 맞춥니다. 1장에서 본 사영 \((\mathbf v\cdot\mathbf q)\mathbf q\)가 "이미 있는 방향 성분"입니다.</p>
+    <div class="formula">$$\mathbf v_j = \mathbf a_j - \sum_{i \lt j} (\mathbf q_i\cdot\mathbf a_j)\,\mathbf q_i, \qquad \mathbf q_j = \frac{\mathbf v_j}{\|\mathbf v_j\|}$$
+      <div class="where">\(\mathbf v_j\)는 \(\mathbf a_j\)에서 앞선 방향 \(\mathbf q_1, \dots, \mathbf q_{j-1}\)으로의 사영을 뺀 나머지다. 그래서 \(\mathbf v_j\)는 앞의 모든 \(\mathbf q_i\)와 수직이다. \(\mathbf a_j\)가 앞의 벡터들의 결합이면 \(\mathbf v_j = \mathbf 0\)이 되어 멈춘다(열이 종속).</div>
+    </div>
+    <div class="callout deep"><strong>정리 9.3 (그람–슈미트)</strong> \(\mathbf a_1, \dots, \mathbf a_n\)이 선형 독립이면 위 과정은 정규직교 벡터 \(\mathbf q_1, \dots, \mathbf q_n\)을 만들고, 모든 \(k\)에 대해 \(\operatorname{span}\{\mathbf q_1, \dots, \mathbf q_k\} = \operatorname{span}\{\mathbf a_1, \dots, \mathbf a_k\}\)이다.
+      <p><b>증명의 아이디어.</b> 귀납법. \(\mathbf q_1, \dots, \mathbf q_{j-1}\)이 정규직교라 하자. \(i \lt j\)에 대해 \(\mathbf q_i\cdot\mathbf v_j = \mathbf q_i\cdot\mathbf a_j - (\mathbf q_i\cdot\mathbf a_j)(\mathbf q_i\cdot\mathbf q_i) = 0\). \(\mathbf v_j = \mathbf 0\)이면 \(\mathbf a_j\)가 \(\mathbf a_1, \dots, \mathbf a_{j-1}\)의 결합이 되어 독립성에 모순이므로 나눌 수 있다. 생성 공간이 같은 것은 \(\mathbf q_j\)가 \(\mathbf a_1, \dots, \mathbf a_j\)의 결합이고 거꾸로 \(\mathbf a_j\)가 \(\mathbf q_1, \dots, \mathbf q_j\)의 결합이기 때문이다. ∎</p></div>
+    <p>이 과정은 덴마크의 그람(1883)과 독일의 슈미트(1907)의 이름으로 불리지만, 같은 계산은 라플라스의 연구에도 나타납니다. 아래에서 두 벡터로 한 단계씩 따라가 보세요.</p>
+
+    <div class="sim" id="sim-qr-gs">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>그람–슈미트 한 단계씩 (2차원)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-gs"></canvas><span class="tag-tl">a₁, a₂ 끝점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="btn-row"><button class="btn" id="qr-g-prev">◀ 이전</button><button class="btn primary" id="qr-g-next">다음 단계 ▶</button></div>
+          <div class="btn-row"><button class="btn" id="qr-g-reset">처음으로</button><button class="btn" id="qr-g-near">거의 평행하게</button></div>
+          <div class="ctrl"><span>R (지금까지 구한 계수)</span><div id="qr-g-R" class="qr-small"></div></div>
+        </div>
+      </div>
+      <div class="qr-msg" id="qr-g-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="qr-g-step">—</span></div>
+        <div class="stat"><span class="k">r₁₂ = q₁·a₂</span><span class="v" id="qr-g-r12">—</span></div>
+        <div class="stat"><span class="k">r₂₂ = ‖v₂‖</span><span class="v" id="qr-g-r22">—</span></div>
+        <div class="stat"><span class="k">q₁·q₂</span><span class="v" id="qr-g-dot">—</span></div>
+      </div>
+      <div class="qr-legend"><span><i style="background:var(--accent)"></i>a₁ → q₁</span><span><i style="background:var(--accent-2)"></i>a₂ → q₂</span><span><i style="background:var(--warn)"></i>빼는 사영 (q₁·a₂)q₁</span></div>
+      <div class="sim-note">해볼 것: ① 네 단계를 넘기며 a₂에서 q₁ 방향 성분(주황)을 빼면 q₁에 수직인 v₂만 남는 것을 보세요. ② '거의 평행하게'를 누르면 v₂가 아주 짧아집니다(r₂₂ ≈ 0). 짧은 벡터를 길이 1로 키우는 마지막 나눗셈이 오차를 키우는 곳이며, 4절의 직교성 손실이 여기서 시작됩니다. ③ a₂를 a₁과 같은 직선에 놓으면 v₂ = 0이 되어 q₂를 만들 수 없습니다. 두 열이 종속입니다. 모델: 정확한 실수 계산, 끈 점은 0.1 단위.</div>
+    </div>
+    <div class="callout tip"><strong>예제 9.2 (손으로, 3차원)</strong> \(\mathbf a_1 = (1, 1, 0)\), \(\mathbf a_2 = (1, 0, 1)\), \(\mathbf a_3 = (0, 1, 1)\).
+      <br>① \(\|\mathbf a_1\| = \sqrt2\), \(\mathbf q_1 = \tfrac{1}{\sqrt2}(1, 1, 0)\).
+      <br>② \(\mathbf q_1\cdot\mathbf a_2 = \tfrac{1}{\sqrt2}\). \(\mathbf v_2 = \mathbf a_2 - \tfrac{1}{\sqrt2}\mathbf q_1 = (1, 0, 1) - (\tfrac12, \tfrac12, 0) = (\tfrac12, -\tfrac12, 1)\), \(\|\mathbf v_2\| = \sqrt{3/2}\), \(\mathbf q_2 = \tfrac{1}{\sqrt6}(1, -1, 2)\).
+      <br>③ \(\mathbf q_1\cdot\mathbf a_3 = \tfrac{1}{\sqrt2}\), \(\mathbf q_2\cdot\mathbf a_3 = \tfrac{1}{\sqrt6}\). \(\mathbf v_3 = (0, 1, 1) - (\tfrac12, \tfrac12, 0) - \tfrac16(1, -1, 2) = (-\tfrac23, \tfrac23, \tfrac23)\), \(\|\mathbf v_3\| = \tfrac{2}{\sqrt3}\), \(\mathbf q_3 = \tfrac{1}{\sqrt3}(-1, 1, 1)\).
+      <br>확인: \(\mathbf q_1\cdot\mathbf q_2 = (1 - 1 + 0)/\sqrt{12} = 0\), \(\mathbf q_1\cdot\mathbf q_3 = 0\), \(\mathbf q_2\cdot\mathbf q_3 = (-1 - 1 + 2)/\sqrt{18} = 0\).</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="qr">
+    <h2>A = QR: 그람–슈미트의 기록</h2>
+    <p>4장에서 소거의 기록이 \(A = LU\)였듯, 그람–슈미트의 기록은 \(A = QR\)입니다. 식 \(\mathbf v_j = \mathbf a_j - \sum_{i\lt j} r_{ij}\mathbf q_i\)를 \(\mathbf a_j\)에 대해 다시 쓰면</p>
+    <div class="formula">$$\mathbf a_j = r_{1j}\mathbf q_1 + r_{2j}\mathbf q_2 + \cdots + r_{jj}\mathbf q_j, \qquad r_{ij} = \mathbf q_i\cdot\mathbf a_j\ (i \lt j),\quad r_{jj} = \|\mathbf v_j\|$$
+      <div class="where">\(\mathbf a_j\)는 \(\mathbf q_1, \dots, \mathbf q_j\)만으로 쓰이고 뒤의 \(\mathbf q\)는 쓰이지 않는다. 그래서 계수를 모은 \(R\)은 <b>위삼각 행렬</b>이다.</div>
+    </div>
+    <div class="callout deep"><strong>정리 9.4 (QR 분해)</strong> 열이 선형 독립인 \(m\times n\) 행렬 \(A\)는 \(A = QR\)로 쓸 수 있다. \(Q\)는 \(m\times n\)이고 정규직교 열을 가지며(\(Q^{\mathsf T}Q = I_n\)), \(R\)은 대각 원소가 양수인 \(n\times n\) 위삼각 행렬이다. 이 조건 아래 분해는 하나뿐이다.
+      <p><b>증명의 아이디어.</b> 존재는 그람–슈미트가 보여 준다. 유일성: \(A = Q_1R_1 = Q_2R_2\)이면 \(Q_2^{\mathsf T}Q_1 = R_2R_1^{-1}\)은 위삼각이면서 직교 행렬이다. 위삼각 직교 행렬은 대각 원소가 ±1인 대각 행렬뿐이고, 대각이 양수라는 조건이 +1로 정한다. ∎</p></div>
+    <p>그리고 \(R = Q^{\mathsf T}A\)입니다. \(A = QR\)의 양변에 \(Q^{\mathsf T}\)를 곱하면 \(Q^{\mathsf T}Q = I\)이니까요. \(R\)의 칸은 정말로 "각 열을 각 방향에 내적한 값"입니다. 아래에서 3×3 행렬을 넣고 열을 하나씩 처리해 보세요.</p>
+
+    <div class="sim" id="sim-qr-factor">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>QR 분해 실험실: 열을 하나씩 직교화</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="qr-mats" id="qr-f-view"></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>A (3×3, 열 = a₁, a₂, a₃)</span>
+            <div class="mat qr-in" style="--n:3" id="qr-f-in">
+              <input value="1" inputmode="decimal" aria-label="a11"><input value="1" inputmode="decimal" aria-label="a12"><input value="0" inputmode="decimal" aria-label="a13">
+              <input value="1" inputmode="decimal" aria-label="a21"><input value="0" inputmode="decimal" aria-label="a22"><input value="1" inputmode="decimal" aria-label="a23">
+              <input value="0" inputmode="decimal" aria-label="a31"><input value="1" inputmode="decimal" aria-label="a32"><input value="1" inputmode="decimal" aria-label="a33">
+            </div></div>
+          <label class="ctrl"><span>예제</span><select id="qr-f-pre">
+            <option value="ex">예제 9.2</option>
+            <option value="int">정수 행렬</option>
+            <option value="near">거의 종속인 열</option>
+            <option value="dep">종속인 열 (a₃ = a₁ + a₂)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn" id="qr-f-prev">◀ 이전</button><button class="btn primary" id="qr-f-next">다음 열 ▶</button><button class="btn" id="qr-f-all">끝까지</button></div>
+        </div>
+      </div>
+      <div class="qr-msg" id="qr-f-msg">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">처리한 열</span><span class="v" id="qr-f-k">—</span></div>
+        <div class="stat"><span class="k">‖QR − A‖ (최대 칸)</span><span class="v" id="qr-f-res">—</span></div>
+        <div class="stat"><span class="k">‖QᵀQ − I‖ (최대 칸)</span><span class="v" id="qr-f-orth">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '다음 열'을 누를 때마다 R에 한 열(파랑)이 채워집니다. 대각 아래는 늘 0입니다. ② 마지막에 QR = A, QᵀQ = I가 반올림 수준으로 맞는지 확인하세요. ③ '종속인 열'을 고르면 세 번째 열에서 v₃ = 0이 되어 멈춥니다. r₃₃ = 0은 3열이 앞 열들로 만들어진다는 뜻입니다. 모델: 고전 그람–슈미트, 배정밀도 실수 계산. 표시는 소수 셋째 자리까지.</div>
+    </div>
+    <div class="callout"><strong>QR과 LU 비교</strong> 두 분해는 짝을 이룹니다. LU는 <b>행</b>을 섞어 아래를 0으로 만들고 그 기록이 \(L\)입니다. QR은 <b>열</b>을 직교화하고 그 기록이 \(R\)입니다. LU는 정사각 시스템을 \(\tfrac23n^3\)에 풀고, QR은 직사각(\(m \gt n\)) 시스템과 최소제곱까지 다루며 대신 비용이 약 두 배입니다(하우스홀더 기준 \(2mn^2 - \tfrac23n^3\)).</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="stability">
+    <h2>고전 vs 수정 그람–슈미트: 직교성이 새는 곳</h2>
+    <div class="problem"><strong>컴퓨터가 만든 Q는 정말 직교일까</strong>
+      <p>정확한 산수에서는 그람–슈미트가 완벽한 정규직교 벡터를 만듭니다. 하지만 컴퓨터의 수는 유효 숫자 16자리뿐입니다. 열들이 거의 평행하면 큰 수에서 큰 수를 빼서 작은 \(\mathbf v_j\)를 얻는데, 이때 앞쪽 유효 숫자가 상쇄되어 사라집니다. 그렇게 만든 \(\mathbf q_j\)는 앞의 \(\mathbf q_i\)와 더 이상 수직이 아닐 수 있습니다.</p></div>
+    <p>같은 수식을 순서만 바꿔 계산하는 두 방법이 있습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th></th><th>고전 그람–슈미트 (CGS)</th><th>수정 그람–슈미트 (MGS)</th></tr></thead>
+      <tbody>
+        <tr><td>계수</td><td>\(r_{ij} = \mathbf q_i\cdot\mathbf a_j\) (원래 벡터에 내적)</td><td>\(r_{ij} = \mathbf q_i\cdot\mathbf v\) (이미 일부를 뺀 벡터에 내적)</td></tr>
+        <tr><td>빼기</td><td>모든 \(r_{ij}\)를 구한 뒤 한꺼번에</td><td>하나 빼고, 그 결과로 다음 계수를 구한다</td></tr>
+        <tr><td>정확한 산수</td><td colspan="2" style="text-align:center">같은 결과</td></tr>
+        <tr><td>직교성 손실 \(\|Q^{\mathsf T}Q - I\|\)</td><td>대략 \(\varepsilon\,\kappa(A)^2\)</td><td>대략 \(\varepsilon\,\kappa(A)\)</td></tr>
+      </tbody>
+    </table></div>
+    <p>여기서 \(\varepsilon \approx 1.1\times10^{-16}\)은 배정밀도의 단위 반올림, \(\kappa(A)\)는 \(A\)의 조건수(가장 큰 특이값 ÷ 가장 작은 특이값)입니다. 그리고 다음 절의 <b>하우스홀더 QR</b>은 \(\kappa\)와 상관없이 \(\varepsilon\) 수준의 직교성을 유지합니다. 직교 행렬만 곱해 \(R\)을 만들기 때문입니다. 시험 행렬로는 악명 높은 <b>힐베르트 행렬</b> \(H_{ij} = 1/(i+j-1)\)을 씁니다. 열들이 서로 거의 평행해서 \(n = 12\)이면 \(\kappa \approx 10^{16}\)에 이릅니다.</p>
+
+    <div class="sim" id="sim-qr-stability">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>직교성 손실 측정: CGS · MGS · 하우스홀더</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-stab"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>힐베르트 행렬 크기 n <output id="qr-s-n-out"></output></span><input type="range" id="qr-s-n" min="2" max="12" value="7"></label>
+          <label class="check"><input type="checkbox" id="qr-s-ref" checked> 기준선 εκ, εκ² 보기</label>
+          <label class="check"><input type="checkbox" id="qr-s-twice"> CGS를 두 번 (재직교화)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ(Hₙ)</span><span class="v" id="qr-s-k">—</span></div>
+        <div class="stat"><span class="k">CGS</span><span class="v" id="qr-s-cgs">—</span></div>
+        <div class="stat"><span class="k">MGS</span><span class="v" id="qr-s-mgs">—</span></div>
+        <div class="stat"><span class="k">하우스홀더</span><span class="v" id="qr-s-hh">—</span></div>
+      </div>
+      <div class="qr-legend"><span><i style="background:var(--bad)"></i>CGS</span><span><i style="background:var(--warn)"></i>MGS</span><span><i style="background:var(--ok)"></i>하우스홀더</span><span><i style="background:var(--text-faint)"></i>εκ, εκ² (점선)</span></div>
+      <div class="sim-note">해볼 것: ① n을 키우며 CGS(빨강)가 εκ² 선을 따라 올라가 n = 7 무렵 1 근처, 즉 직교성을 완전히 잃는 것을 보세요. ② MGS(주황)는 εκ 선을 따라 더 천천히 나빠집니다. ③ 하우스홀더(초록)는 n과 상관없이 10⁻¹⁵ 근처에 머뭅니다. ④ 'CGS를 두 번'을 켜면 한 번 더 직교화하는 것만으로 대부분 회복됩니다(실제 라이브러리가 쓰는 재직교화). 모델: 이 브라우저의 배정밀도(IEEE 754) 실제 계산. 직교성 손실은 ‖QᵀQ − I‖의 최대 칸, κ는 이 책 엔진의 야코비 SVD로 구해 n이 클 때는 근삿값입니다.</div>
+    </div>
+    <div class="callout warn"><strong>왜 CGS가 더 나쁠까</strong> CGS는 \(r_{ij}\)를 모두 <b>원래</b> \(\mathbf a_j\)에서 구합니다. \(\mathbf q_1\) 계산에 생긴 오차가 \(\mathbf q_2\)에 남아 있으면, \(\mathbf a_3\)에서 \(\mathbf q_1\), \(\mathbf q_2\) 성분을 따로 구해 빼도 그 오차가 걸러지지 않습니다. MGS는 \(\mathbf q_1\) 성분을 뺀 <b>결과</b>에서 \(\mathbf q_2\) 성분을 구하므로, 앞 단계에서 남은 \(\mathbf q_1\) 쪽 찌꺼기 일부까지 함께 정리합니다. 연산량은 똑같고 순서만 다릅니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="householder">
+    <h2>하우스홀더 반사와 기븐스 회전</h2>
+    <div class="problem"><strong>직교성을 잃지 않고 아래를 0으로 만들려면</strong>
+      <p>소거는 행을 빼서 아래 원소를 0으로 만들었습니다. 같은 일을 <b>직교 행렬만</b> 곱해서 할 수 있다면, 오차가 커지지 않는 상태로 위삼각 \(R\)에 도달할 것입니다. \(Q_n\cdots Q_2Q_1A = R\)이면 \(A = (Q_1^{\mathsf T}Q_2^{\mathsf T}\cdots Q_n^{\mathsf T})R = QR\)입니다.</p></div>
+    <p>열 벡터 \(\mathbf x\)를 첫 좌표축 위로, 즉 \((\pm\|\mathbf x\|, 0, \dots, 0)\)으로 보내는 직교 변환이 필요합니다. 길이를 지키면서 방향만 바꾸는 방법은 두 가지, <b>반사</b>와 <b>회전</b>입니다.</p>
+    <div class="callout"><strong>정의 9.3 (하우스홀더 반사)</strong> 0이 아닌 \(\mathbf v\)에 대해 \(H = I - 2\dfrac{\mathbf v\mathbf v^{\mathsf T}}{\mathbf v^{\mathsf T}\mathbf v}\)를 <span class="term">하우스홀더 반사</span><span class="en">(Householder reflection)</span>라 한다. \(\mathbf v\)에 수직인 초평면을 거울로 삼아 비추는 변환으로, \(H = H^{\mathsf T} = H^{-1}\), \(\det H = -1\)이다.</div>
+    <div class="callout deep"><strong>정리 9.5 (한 열을 축 위로)</strong> \(\mathbf x \ne \mathbf 0\), \(\alpha = -\operatorname{sign}(x_1)\|\mathbf x\|\), \(\mathbf v = \mathbf x - \alpha\mathbf e_1\)로 두면 \(H\mathbf x = \alpha\mathbf e_1\)이다.
+      <p><b>증명.</b> \(\|\mathbf x\| = |\alpha|\)이므로 \(\mathbf v^{\mathsf T}\mathbf v = 2(\|\mathbf x\|^2 - \alpha x_1)\), \(\mathbf v^{\mathsf T}\mathbf x = \|\mathbf x\|^2 - \alpha x_1\). 따라서 \(H\mathbf x = \mathbf x - 2\frac{\mathbf v^{\mathsf T}\mathbf x}{\mathbf v^{\mathsf T}\mathbf v}\mathbf v = \mathbf x - \mathbf v = \alpha\mathbf e_1\). 기하학으로는 \(\mathbf x\)와 \(\alpha\mathbf e_1\)이 길이가 같으니 둘을 잇는 선분의 수직이등분면이 거울이다. ∎</p></div>
+    <p>부호 \(-\operatorname{sign}(x_1)\)은 장식이 아닙니다. 반대 부호를 고르면 \(\mathbf x\)가 이미 \(\mathbf e_1\) 근처일 때 \(\mathbf v = \mathbf x - \|\mathbf x\|\mathbf e_1\)의 첫 성분이 거의 같은 두 수의 차가 되어 상쇄 오차가 생깁니다. 아래 시뮬레이터에서 직접 볼 수 있습니다.</p>
+    <div class="callout"><strong>정의 9.4 (기븐스 회전)</strong> 두 좌표 \(i, k\) 평면에서만 각 \(\theta\)만큼 도는 직교 행렬 \(G(i, k, \theta)\)를 <span class="term">기븐스 회전</span><span class="en">(Givens rotation)</span>이라 한다. \(r = \sqrt{a^2 + b^2}\), \(c = a/r\), \(s = b/r\)로 두면 \(\begin{bmatrix}c & s\\ -s & c\end{bmatrix}\begin{bmatrix}a\\ b\end{bmatrix} = \begin{bmatrix}r\\ 0\end{bmatrix}\). 원소 하나를 0으로 만들고, 다른 행은 건드리지 않는다.</div>
+
+    <div class="sim" id="sim-qr-reflect">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거울과 회전으로 x를 축 위에 눕히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-ref"></canvas><span class="tag-tl">x 끝점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="qr-r-mode"><button data-value="hh" class="on">하우스홀더 반사</button><button data-value="gv">기븐스 회전</button></div></div>
+          <div class="ctrl"><span>반사 목표 부호 (하우스홀더)</span><div class="seg" id="qr-r-sign"><button data-value="safe" class="on">α = −sign(x₁)‖x‖</button><button data-value="naive">α = +‖x‖</button></div></div>
+          <label class="check"><input type="checkbox" id="qr-r-F" checked> 글자 F도 함께 변환</label>
+          <div class="ctrl"><span>변환 행렬</span><div id="qr-r-mat" class="qr-small"></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x</span><span class="v" id="qr-r-x">—</span></div>
+        <div class="stat"><span class="k">변환 결과</span><span class="v" id="qr-r-y">—</span></div>
+        <div class="stat"><span class="k">‖v‖ (하우스홀더)</span><span class="v" id="qr-r-v">—</span></div>
+        <div class="stat"><span class="k">det</span><span class="v" id="qr-r-det">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 하우스홀더에서 점선이 거울입니다. x와 결과가 거울을 사이에 두고 대칭이고, F가 뒤집혀 읽힙니다(det = −1). ② 기븐스로 바꾸면 같은 결과를 회전으로 얻고 F가 그대로 읽힙니다(det = +1). ③ x를 x축 양의 방향 가까이 두고 부호를 'α = +‖x‖'로 바꾸면 ‖v‖가 0에 가까워집니다. 거의 같은 두 수를 빼는 상쇄가 일어나는 자리이며, 안전한 부호는 v를 언제나 길게 유지합니다. 모델: 2차원. n차원에서도 거울은 v에 수직인 초평면, 회전은 두 좌표 평면에서만 일어납니다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 190" role="img" aria-label="하우스홀더 QR이 4×3 행렬의 아래 원소를 열마다 0으로 만드는 과정">
+        <g font-family="var(--mono)" font-size="15">
+          <g transform="translate(20,30)"><text x="40" y="-10" text-anchor="middle" class="t-dim">A</text>
+            <text x="0" y="20" class="t">× × ×</text><text x="0" y="50" class="t">× × ×</text><text x="0" y="80" class="t">× × ×</text><text x="0" y="110" class="t">× × ×</text></g>
+          <text x="120" y="95" class="t-acc">H₁ →</text>
+          <g transform="translate(180,30)"><text x="40" y="-10" text-anchor="middle" class="t-dim">H₁A</text>
+            <text x="0" y="20" class="t-acc">r</text><text x="22" y="20" class="t">× ×</text><text x="0" y="50" class="t-dim">0</text><text x="22" y="50" class="t">× ×</text><text x="0" y="80" class="t-dim">0</text><text x="22" y="80" class="t">× ×</text><text x="0" y="110" class="t-dim">0</text><text x="22" y="110" class="t">× ×</text></g>
+          <text x="280" y="95" class="t-acc">H₂ →</text>
+          <g transform="translate(340,30)"><text x="40" y="-10" text-anchor="middle" class="t-dim">H₂H₁A</text>
+            <text x="0" y="20" class="t">r r ×</text><text x="0" y="50" class="t-dim">0</text><text x="22" y="50" class="t-acc">r</text><text x="44" y="50" class="t">×</text><text x="0" y="80" class="t-dim">0 0</text><text x="44" y="80" class="t">×</text><text x="0" y="110" class="t-dim">0 0</text><text x="44" y="110" class="t">×</text></g>
+          <text x="440" y="95" class="t-acc">H₃ →</text>
+          <g transform="translate(500,30)"><text x="40" y="-10" text-anchor="middle" class="t-dim">R (위삼각)</text>
+            <text x="0" y="20" class="t">r r r</text><text x="0" y="50" class="t-dim">0</text><text x="22" y="50" class="t">r r</text><text x="0" y="80" class="t-dim">0 0</text><text x="44" y="80" class="t-acc">r</text><text x="0" y="110" class="t-dim">0 0 0</text></g>
+          <text x="610" y="70" class="t">Q = H₁H₂H₃</text><text x="610" y="95" class="t-dim">(Hₖ = Hₖᵀ = Hₖ⁻¹)</text><text x="610" y="120" class="t">A = QR</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 9-2.</b> 하우스홀더 QR. k번째 반사 Hₖ는 k열의 대각 아래를 한꺼번에 0으로 만들고, 앞에서 만든 0은 건드리지 않는다(Hₖ는 k번째 이후 행만 섞는다). 기븐스 회전은 같은 일을 원소 하나씩 하며, 이미 대부분 0인 희소 행렬이나 행이 하나씩 들어오는 실시간 갱신에 알맞다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 9.3 (손으로)</strong> \(\mathbf x = (3, 4)\)를 x축 위로. \(\|\mathbf x\| = 5\), \(x_1 \gt 0\)이므로 \(\alpha = -5\), \(\mathbf v = (3 + 5, 4) = (8, 4)\), \(\mathbf v^{\mathsf T}\mathbf v = 80\).
+      <br>\(H = I - \tfrac{2}{80}\begin{bmatrix}64 & 32\\ 32 & 16\end{bmatrix} = \begin{bmatrix}-0.6 & -0.8\\ -0.8 & 0.6\end{bmatrix}\), \(H\mathbf x = (-1.8 - 3.2,\ -2.4 + 2.4) = (-5, 0)\). ✓
+      <br>기븐스로는 \(r = 5\), \(c = 0.6\), \(s = 0.8\): \(\begin{bmatrix}0.6 & 0.8\\ -0.8 & 0.6\end{bmatrix}(3, 4) = (5, 0)\). 같은 길이, 다른 부호, 다른 행렬식.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="qr-least-squares">
+    <h2>QR로 푸는 최소제곱</h2>
+    <div class="problem"><strong>정규 방정식은 왜 위험한가</strong>
+      <p>다항식 \(c_0 + c_1x + \cdots + c_dx^d\)로 측정값을 맞추는 문제는 \(A\mathbf c \approx \mathbf b\), \(A\)는 열이 \(1, x, x^2, \dots\)인 반데르몽드 행렬입니다. 구간 \([0, 1]\)에서 \(x^7\)과 \(x^8\)은 모양이 거의 같아 열이 거의 평행합니다. 정규 방정식 \(A^{\mathsf T}A\mathbf c = A^{\mathsf T}\mathbf b\)는 이 까다로움을 제곱해 버립니다.</p></div>
+    <p>8장에서 최소제곱 해 \(\hat{\mathbf x}\)는 잔차 \(\mathbf b - A\hat{\mathbf x}\)가 열공간에 수직이 되는 점이었습니다(<a href="orthogonality.html">8장</a>). \(A = QR\)을 넣으면 수직 조건이 아주 간단해집니다.</p>
+    <div class="callout deep"><strong>정리 9.6 (QR 최소제곱)</strong> 열이 독립인 \(A = QR\)에 대해 최소제곱 해는 \(R\hat{\mathbf x} = Q^{\mathsf T}\mathbf b\)의 해이다.
+      <p><b>증명.</b> 정규 방정식 \(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)에 \(A = QR\)을 넣으면 \(R^{\mathsf T}Q^{\mathsf T}QR\hat{\mathbf x} = R^{\mathsf T}Q^{\mathsf T}\mathbf b\), 즉 \(R^{\mathsf T}R\hat{\mathbf x} = R^{\mathsf T}Q^{\mathsf T}\mathbf b\). \(R\)이 가역이라 \(R^{\mathsf T}\)를 지우면 끝이다. 계산에서는 \(A^{\mathsf T}A\)를 만들지 않고 후진 대입 한 번으로 푼다. ∎</p></div>
+    <div class="formula">$$\kappa(A^{\mathsf T}A) = \kappa(A)^2, \qquad \text{정규 방정식의 상대 오차} \sim \varepsilon\,\kappa(A)^2, \qquad \text{QR의 상대 오차} \sim \varepsilon\,\kappa(A)\ (\text{잔차가 작을 때})$$
+      <div class="where">\(A\)의 특이값이 \(\sigma_i\)이면 \(A^{\mathsf T}A\)의 특이값은 \(\sigma_i^2\)이다(14장). 배정밀도에서 \(\kappa(A) = 10^8\)이면 정규 방정식은 \(\kappa^2 = 10^{16}\)으로 유효 숫자를 모두 잃지만, QR은 아직 8자리를 지킨다. 잔차가 크면 QR의 오차에도 \(\kappa^2\)에 비례하는 항이 생기지만, 이는 문제 자체의 민감도이고 어느 알고리즘도 피할 수 없다.</div>
+    </div>
+
+    <div class="sim" id="sim-qr-lsq">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>다항식 적합: 정규 방정식 vs QR</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-lsq"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식 차수 d <output id="qr-l-d-out"></output></span><input type="range" id="qr-l-d" min="1" max="15" value="8"></label>
+          <label class="ctrl"><span>점의 개수 m <output id="qr-l-m-out"></output></span><input type="range" id="qr-l-m" min="20" max="80" step="10" value="40"></label>
+          <div class="ctrl"><span>x 구간</span><div class="seg" id="qr-l-int"><button data-value="01" class="on">[0, 1]</button><button data-value="11">[−1, 1]</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ(A)</span><span class="v" id="qr-l-k">—</span></div>
+        <div class="stat"><span class="k">κ(AᵀA) = κ²</span><span class="v" id="qr-l-k2">—</span></div>
+        <div class="stat"><span class="k">계수 오차: 정규 방정식</span><span class="v" id="qr-l-ne">—</span></div>
+        <div class="stat"><span class="k">계수 오차: QR</span><span class="v" id="qr-l-qr">—</span></div>
+      </div>
+      <div class="qr-legend"><span><i style="background:var(--bad)"></i>정규 방정식</span><span><i style="background:var(--ok)"></i>하우스홀더 QR</span><span><i style="background:var(--text-faint)"></i>εκ (점선)</span></div>
+      <div class="sim-note">해볼 것: ① 차수를 1부터 올리며 두 곡선을 비교하세요. 정답 계수(모두 1)를 아는 문제라 상대 오차 ‖ĉ − c‖/‖c‖를 직접 잴 수 있습니다. [0, 1]에서 정규 방정식(빨강)은 κ²를 따라 오차가 빠르게 커져 d ≈ 10부터 100%를 넘는, 쓸모없는 답이 되지만 QR(초록)은 εκ 선을 따라 훨씬 천천히 나빠져 같은 차수에서도 여러 자리를 맞춥니다. ② 구간을 [−1, 1]로 바꾸면 열이 덜 비슷해져 κ가 작아지고 두 방법 모두 좋아집니다. 기저나 변수의 크기를 잘 고르는 것(스케일링·중심화)도 중요한 처방입니다. 모델: 잡음 없는 데이터 b = Ac, 배정밀도 실제 계산, 정규 방정식은 부분 피벗팅 소거로 풉니다.</div>
+    </div>
+    <div class="callout tip"><strong>예제 9.4 (손으로, 직선 적합)</strong> 점 \((0, 1), (1, 2), (2, 4)\)에 직선 \(c_0 + c_1t\)를. \(A = \begin{bmatrix}1 & 0\\ 1 & 1\\ 1 & 2\end{bmatrix}\), \(\mathbf b = (1, 2, 4)\).
+      <br>① \(\mathbf q_1 = \tfrac{1}{\sqrt3}(1, 1, 1)\), \(r_{11} = \sqrt3\). ② \(r_{12} = \mathbf q_1\cdot\mathbf a_2 = \sqrt3\), \(\mathbf v_2 = (0, 1, 2) - (1, 1, 1) = (-1, 0, 1)\), \(r_{22} = \sqrt2\), \(\mathbf q_2 = \tfrac{1}{\sqrt2}(-1, 0, 1)\).
+      <br>③ \(Q^{\mathsf T}\mathbf b = (7/\sqrt3,\ 3/\sqrt2)\). ④ 후진 대입: \(\sqrt2\,c_1 = 3/\sqrt2 \Rightarrow c_1 = 1.5\), \(\sqrt3\,c_0 + \sqrt3\cdot1.5 = 7/\sqrt3 \Rightarrow c_0 = 7/3 - 1.5 = 5/6\).
+      <br>직선 \(\hat y = 5/6 + 1.5t\). 정규 방정식 \(\begin{bmatrix}3 & 3\\ 3 & 5\end{bmatrix}\mathbf c = (7, 10)\)로 풀어도 같은 답이 나온다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="functions">
+    <h2>함수에도 그람–슈미트: 직교 다항식</h2>
+    <p>벡터 공간의 공리만 있으면 그람–슈미트는 어디서나 돌아갑니다. 연속 함수 \(f, g\)의 내적을 \(\langle f, g\rangle = \int_{-1}^{1} f(x)g(x)\,dx\)로 정하면 함수도 수직일 수 있습니다. 단항식 \(1, x, x^2, x^3, \dots\)은 위의 다항식 적합이 보여 주었듯 서로 아주 비슷한 "비스듬한 기저"입니다. 이것에 그람–슈미트를 적용하면</p>
+    <div class="formula">$$P_0 = 1,\quad P_1 = x,\quad P_2 = \tfrac12(3x^2 - 1),\quad P_3 = \tfrac12(5x^3 - 3x),\ \dots$$
+      <div class="where">관례에 따라 \(P_n(1) = 1\)이 되도록 크기를 맞춘 <b>르장드르 다항식</b>. \(\langle P_m, P_n\rangle = 0\) (\(m \ne n\)). 가중치 \(1/\sqrt{1-x^2}\)를 넣으면 체비쇼프 다항식 \(T_n(\cos t) = \cos nt\)가 나온다.</div>
+    </div>
+    <p>예를 들어 \(P_2\): \(x^2\)에서 \(P_0\) 성분 \(\langle x^2, 1\rangle/\langle 1, 1\rangle = (2/3)/2 = 1/3\)을 빼고, \(P_1\) 성분은 \(\langle x^2, x\rangle = 0\)이라 뺄 것이 없으니 \(x^2 - \tfrac13\), 크기를 맞추면 \(\tfrac12(3x^2-1)\)입니다. 푸리에 급수의 \(\sin nx, \cos nx\)도 같은 의미의 정규직교 기저이고, 계수를 내적(적분)으로 읽는 것은 정리 9.1 그대로입니다(<a href="../../foundations/chapters/fourier.html">MathBook 푸리에 장</a>).</p>
+
+    <div class="sim" id="sim-qr-poly">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>단항식에 그람–슈미트: 르장드르와 체비쇼프</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="qr-cv-poly"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>내적의 가중치 w(x)</span><div class="seg" id="qr-p-w"><button data-value="leg" class="on">1 (르장드르)</button><button data-value="cheb">1/√(1−x²) (체비쇼프)</button></div></div>
+          <label class="ctrl"><span>최고 차수 <output id="qr-p-k-out"></output></span><input type="range" id="qr-p-k" min="2" max="6" value="4"></label>
+          <label class="check"><input type="checkbox" id="qr-p-mono"> 원래 단항식 xⁿ 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">max |⟨qᵢ, qⱼ⟩| (i ≠ j)</span><span class="v" id="qr-p-orth">—</span></div>
+        <div class="stat"><span class="k">단항식끼리 cos 각 (xᵏ⁻², xᵏ)</span><span class="v" id="qr-p-cos">—</span></div>
+        <div class="stat"><span class="k">q₂(0) / q₂(1)</span><span class="v" id="qr-p-p2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 단항식을 겹쳐 보면 높은 차수일수록 서로 거의 같은 모양입니다. 차수가 2 차이 나는 두 단항식의 cos 각이 1에 가까워집니다(차수가 1 차이 나면 짝·홀이라 내적이 0). 그람–슈미트를 거친 다항식은 구간 안에서 고르게 진동하며 서로 수직입니다. ② 르장드르에서 q₂(0)/q₂(1) = −0.5인지 확인하세요. P₂ = (3x² − 1)/2의 값입니다. ③ 체비쇼프 가중치로 바꾸면 끝점에서도 높이가 ±1로 같은 cos nt 꼴이 나옵니다. 모델: 구간을 2000칸으로 나눈 수치 적분, 각 다항식은 q(1) = 1이 되도록 크기를 맞춰 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>직교화는 "오차를 키우지 않는 계산"의 대명사라, 정확도가 중요한 곳마다 숨어 있습니다.</p>
+    <div class="uses">
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>다중 회귀의 계수는 설계 행렬의 QR로 구한다. 통계 패키지의 기본 방법이다.</span></a>
+      <a href="eigen.html"><small>LINEARBOOK 11장</small>고유값 계산<br><span>QR 알고리즘: A = QR로 쪼개고 RQ로 다시 곱하기를 반복하면 대각에 고유값이 모인다.</span></a>
+      <a href="numerical.html"><small>LINEARBOOK 16장</small>수치 선형대수<br><span>크릴로프 부분공간의 아르놀디·GMRES는 그람–슈미트로 기저를 하나씩 직교화한다.</span></a>
+      <a href="https://semi.euiyun.com/sensor/"><small>SENSORBOOK</small>센서 보정<br><span>여러 측정점으로 보정 계수를 맞추는 과결정 최소제곱.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 급수<br><span>sin·cos는 함수 공간의 정규직교 기저, 계수는 내적이다.</span></a>
+      <a href="https://semi.euiyun.com/litho/"><small>LITHOBOOK</small>수차와 제르니케 다항식<br><span>렌즈 파면 오차를 원 위에서 직교하는 다항식으로 나눠 읽는다.</span></a>
+    </div>
+    <p>신호 처리의 적응 빔포밍과 에코 제거에서는 데이터 행이 하나씩 들어올 때마다 \(R\)을 기븐스 회전으로 갱신하는 QR 분해 기반 RLS(QRD-RLS) 알고리즘이 쓰이며, 회전을 처리 소자의 격자에 흘려보내는 시스톨릭 배열 구현이 알려져 있습니다. 행렬 전체를 다시 분해하지 않고 회전 몇 번으로 끝나기 때문입니다.</p>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>정규직교 기저에서는 좌표가 내적</b>이다: \(c_i = \mathbf q_i\cdot\mathbf b\), 즉 \(\mathbf c = Q^{\mathsf T}\mathbf b\). 길이는 \(\|\mathbf b\|^2 = \sum c_i^2\)(파스발).</li>
+      <li><b>직교 행렬</b> \(Q^{\mathsf T}Q = I\)는 길이·각·내적을 보존하는 회전(det = 1)과 반사(det = −1)이고, \(Q^{-1} = Q^{\mathsf T}\), \(\kappa(Q) = 1\). 오차를 키우지 않는다.</li>
+      <li><b>그람–슈미트</b>: 앞서 만든 방향 성분을 빼고 길이 1로 맞춘다. \(\mathbf v_j = \mathbf a_j - \sum_{i \lt j}(\mathbf q_i\cdot\mathbf a_j)\mathbf q_i\). 생성 공간은 단계마다 같다.</li>
+      <li><b>\(A = QR\)</b>: \(R = Q^{\mathsf T}A\)는 위삼각이며 \(r_{ij} = \mathbf q_i\cdot\mathbf a_j\), \(r_{jj} = \|\mathbf v_j\|\). 열이 독립이면 대각이 양수인 분해는 하나뿐이다.</li>
+      <li>컴퓨터에서 직교성 손실은 <b>CGS ≈ εκ², MGS ≈ εκ, 하우스홀더 ≈ ε</b>. 재직교화(두 번 하기)가 CGS를 살린다.</li>
+      <li><b>하우스홀더 반사</b> \(I - 2\mathbf v\mathbf v^{\mathsf T}/\mathbf v^{\mathsf T}\mathbf v\)는 한 열의 아래를 한꺼번에, <b>기븐스 회전</b>은 원소 하나씩 0으로 만든다. 부호 \(\alpha = -\operatorname{sign}(x_1)\|\mathbf x\|\)가 상쇄를 막는다.</li>
+      <li><b>최소제곱은 \(R\hat{\mathbf x} = Q^{\mathsf T}\mathbf b\)</b>로 푼다. 정규 방정식은 \(\kappa(A^{\mathsf T}A) = \kappa(A)^2\) 때문에 유효 숫자를 두 배 빨리 잃는다.</li>
+      <li>함수 공간에서도 같다. 단항식에 그람–슈미트를 하면 <b>르장드르·체비쇼프 다항식</b>, 푸리에 기저는 그 자체로 정규직교다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\mathbf q_1 = \tfrac{1}{\sqrt2}(1, 1)\), \(\mathbf q_2 = \tfrac{1}{\sqrt2}(1, -1)\)일 때 \(\mathbf b = (4, 2)\)의 좌표 \((c_1, c_2)\)는?</p><div class="opts">
+        <button class="opt">\((3, 1)\)</button>
+        <button class="opt" data-correct>\((3\sqrt2, \sqrt2)\)</button>
+        <button class="opt">\((6, 2)\)</button>
+        <button class="opt">연립방정식을 풀어야 알 수 있다</button>
+      </div><div class="quiz-exp">정규직교 기저이므로 좌표는 내적이다. \(c_1 = (4 + 2)/\sqrt2 = 3\sqrt2\), \(c_2 = (4 - 2)/\sqrt2 = \sqrt2\). 확인: \(c_1^2 + c_2^2 = 18 + 2 = 20 = \|\mathbf b\|^2\).</div></div>
+
+      <div class="quiz-q"><p>Q2. 정사각 행렬 \(Q\)가 \(Q^{\mathsf T}Q = I\)를 만족한다. 항상 옳은 것이 <b>아닌</b> 것은?</p><div class="opts">
+        <button class="opt">\(\|Q\mathbf x\| = \|\mathbf x\|\)</button>
+        <button class="opt">\(Q^{-1} = Q^{\mathsf T}\)</button>
+        <button class="opt" data-correct>\(\det Q = 1\)</button>
+        <button class="opt">\(QQ^{\mathsf T} = I\)</button>
+      </div><div class="quiz-exp">\(\det Q = \pm 1\)이다. 반사(예: 하우스홀더 행렬)는 \(\det = -1\)이다. 정사각일 때는 한쪽 역행렬이 곧 역행렬이므로 \(QQ^{\mathsf T} = I\)도 성립한다(직사각이면 성립하지 않는다).</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\mathbf a_1 = (1, 0, 0)\), \(\mathbf a_2 = (2, 3, 0)\)에 그람–슈미트를 적용하면 \(r_{12}\)와 \(\mathbf q_2\)는?</p><div class="opts">
+        <button class="opt" data-correct>\(r_{12} = 2\), \(\mathbf q_2 = (0, 1, 0)\)</button>
+        <button class="opt">\(r_{12} = 3\), \(\mathbf q_2 = (0, 1, 0)\)</button>
+        <button class="opt">\(r_{12} = 2\), \(\mathbf q_2 = \tfrac{1}{\sqrt{13}}(2, 3, 0)\)</button>
+        <button class="opt">\(r_{12} = \sqrt{13}\), \(\mathbf q_2 = (0, 0, 1)\)</button>
+      </div><div class="quiz-exp">\(\mathbf q_1 = \mathbf a_1\), \(r_{12} = \mathbf q_1\cdot\mathbf a_2 = 2\). \(\mathbf v_2 = (2, 3, 0) - 2(1, 0, 0) = (0, 3, 0)\), \(r_{22} = 3\), \(\mathbf q_2 = (0, 1, 0)\). 따라서 \(R = \begin{bmatrix}1 & 2\\ 0 & 3\end{bmatrix}\).</div></div>
+
+      <div class="quiz-q"><p>Q4. \(A = QR\)에서 \(R\)이 위삼각인 이유로 가장 알맞은 것은?</p><div class="opts">
+        <button class="opt">\(Q\)가 직교 행렬이라서</button>
+        <button class="opt" data-correct>\(\mathbf a_j\)가 \(\mathbf q_1, \dots, \mathbf q_j\)만으로 표현되고 뒤의 \(\mathbf q\)는 쓰이지 않아서</button>
+        <button class="opt">\(A\)가 대칭이라서</button>
+        <button class="opt">소거에서 행을 빼기 때문에</button>
+      </div><div class="quiz-exp">그람–슈미트는 \(\mathbf q_j\)를 \(\mathbf a_1, \dots, \mathbf a_j\)로 만들므로 거꾸로 \(\mathbf a_j \in \operatorname{span}\{\mathbf q_1, \dots, \mathbf q_j\}\). 그래서 \(r_{ij} = 0\) (\(i \gt j\)).</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\kappa(A) = 10^6\)인 최소제곱 문제를 배정밀도(\(\varepsilon \approx 10^{-16}\))로 푼다. 잔차가 작을 때 기대할 수 있는 해의 유효 숫자는 대략?</p><div class="opts">
+        <button class="opt">정규 방정식 10자리, QR 10자리</button>
+        <button class="opt" data-correct>정규 방정식 4자리, QR 10자리</button>
+        <button class="opt">정규 방정식 0자리, QR 4자리</button>
+        <button class="opt">둘 다 16자리</button>
+      </div><div class="quiz-exp">정규 방정식의 상대 오차 \(\sim \varepsilon\kappa^2 = 10^{-4}\), QR은 \(\sim\varepsilon\kappa = 10^{-10}\). \(A^{\mathsf T}A\)를 만드는 순간 조건수가 제곱된다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\mathbf x = (0.999, 0.01)\)을 하우스홀더 반사로 x축 위로 보낼 때, \(\alpha = +\|\mathbf x\|\)를 고르면 생기는 문제는?</p><div class="opts">
+        <button class="opt">결과가 x축 위에 오지 않는다</button>
+        <button class="opt">반사가 아니라 회전이 된다</button>
+        <button class="opt" data-correct>\(\mathbf v = \mathbf x - \|\mathbf x\|\mathbf e_1\)의 첫 성분이 거의 같은 두 수의 차라 상쇄 오차가 생긴다</button>
+        <button class="opt">\(\det H = +1\)이 된다</button>
+      </div><div class="quiz-exp">\(\|\mathbf x\| \approx 0.99905\)이므로 \(v_1 = 0.999 - 0.99905\)에서 앞자리가 모두 사라진다. \(\alpha = -\operatorname{sign}(x_1)\|\mathbf x\|\)이면 \(v_1 = x_1 + \operatorname{sign}(x_1)\|\mathbf x\|\)로 같은 부호끼리 더하므로 상쇄가 없다. 수학적으로는 두 선택 모두 맞다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 함수의 내적 \(\langle f, g\rangle = \int_{-1}^1 fg\,dx\)에서 \(x^2\)에 그람–슈미트를 적용할 때 \(P_1 = x\) 방향으로 뺄 성분이 0인 이유는?</p><div class="opts">
+        <button class="opt">\(x^2\)이 항상 양수라서</button>
+        <button class="opt" data-correct>\(x^2\cdot x = x^3\)이 홀함수라 \([-1, 1]\) 적분이 0이라서</button>
+        <button class="opt">\(P_1\)의 길이가 0이라서</button>
+        <button class="opt">다항식에는 그람–슈미트를 쓸 수 없어서</button>
+      </div><div class="quiz-exp">대칭 구간에서 짝함수와 홀함수의 내적은 0이다. 그래서 르장드르 다항식은 짝수 차수는 짝함수, 홀수 차수는 홀함수만 섞인다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 행이 하나씩 계속 들어오는 실시간 최소제곱(예: 적응 필터)에서 \(R\)을 갱신하기에 가장 알맞은 도구는?</p><div class="opts">
+        <button class="opt">매번 정규 방정식을 새로 만든다</button>
+        <button class="opt">매번 전체 행렬에 고전 그람–슈미트를 한다</button>
+        <button class="opt" data-correct>새 행의 원소를 기븐스 회전으로 하나씩 0으로 만든다</button>
+        <button class="opt">역행렬 \((A^{\mathsf T}A)^{-1}\)을 저장해 둔다</button>
+      </div><div class="quiz-exp">새 행을 \(R\) 아래에 붙이면 거의 위삼각인 행렬이 된다. 기븐스 회전 n번이면 다시 위삼각이 되고, 직교 변환이라 오차도 커지지 않는다. QRD-RLS가 이 방식이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const QR = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 1e-10) v = 0;
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v)).replace("-", "−");
+    if (Math.abs(v) >= 1e4 || Math.abs(v) < 1e-3) return v.toExponential(2).replace("e+", "e").replace(/-/g, "−");
+    return String(Number(v.toFixed(d))).replace("-", "−");
+  },
+  sci(v) {
+    if (!isFinite(v) || v <= 0) return v === 0 ? "0" : "—";
+    const e = Math.floor(Math.log10(v)), m = v / Math.pow(10, e);
+    if (e >= -2 && e <= 3) return String(Number(v.toPrecision(3)));
+    return `${m.toFixed(1)}×10<sup>${String(e).replace("-", "−")}</sup>`;
+  },
+  html(M, o = {}) {
+    const c = M[0].length;
+    const cells = M.map((r, i) => r.map((v, j) => {
+      const k = o.cls ? o.cls(i, j, v) : "";
+      const t = v == null ? "·" : QR.num(v, o.d);
+      return `<span${k ? ` class="${k}"` : ""}>${t}</span>`;
+    }).join("")).join("");
+    return `<span class="qr-m" style="--c:${c}">${cells}</span>`;
+  },
+  fig: (cap, html) => `<figure>${html}<figcaption>${cap}</figcaption></figure>`,
+  dot: (a, b) => a.reduce((s, v, i) => s + v * b[i], 0),
+  norm: (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0)),
+  T: (M) => M[0].map((_, j) => M.map((r) => r[j])),
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  eye: (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))),
+  zeros: (m, n) => Array.from({ length: m }, () => new Array(n).fill(0)),
+  /** 고전 그람–슈미트. reorth: 한 번 더 직교화 */
+  cgs(A, reorth) {
+    const C = QR.T(A), n = C.length, Q = [], R = QR.zeros(n, n);
+    for (let j = 0; j < n; j++) {
+      let v = C[j].slice();
+      for (let pass = 0; pass < (reorth ? 2 : 1); pass++) {
+        const r = Q.map((q) => QR.dot(q, v));
+        r.forEach((rij, i) => { R[i][j] += rij; v = v.map((x, k) => x - rij * Q[i][k]); });
+      }
+      R[j][j] = QR.norm(v);
+      Q.push(v.map((x) => x / R[j][j]));
+    }
+    return { Q: QR.T(Q), R };
+  },
+  mgs(A) {
+    const C = QR.T(A), n = C.length, Q = [], R = QR.zeros(n, n);
+    for (let j = 0; j < n; j++) {
+      let v = C[j].slice();
+      for (let i = 0; i < j; i++) { const rij = QR.dot(Q[i], v); R[i][j] = rij; v = v.map((x, k) => x - rij * Q[i][k]); }
+      R[j][j] = QR.norm(v);
+      Q.push(v.map((x) => x / R[j][j]));
+    }
+    return { Q: QR.T(Q), R };
+  },
+  /** 하우스홀더 QR: m×n (m ≥ n). 얇은 Q(m×n)와 R(n×n) */
+  house(A) {
+    const m = A.length, n = A[0].length, R = A.map((r) => r.slice()), V = [];
+    for (let k = 0; k < n; k++) {
+      const x = []; for (let i = k; i < m; i++) x.push(R[i][k]);
+      const nx = QR.norm(x), alpha = -(x[0] >= 0 ? 1 : -1) * nx;
+      const v = x.slice(); v[0] -= alpha;
+      const nv = QR.norm(v);
+      if (nv === 0) { V.push(null); continue; }
+      const u = v.map((t) => t / nv); V.push(u);
+      for (let j = k; j < n; j++) { let s = 0; for (let i = k; i < m; i++) s += u[i - k] * R[i][j]; for (let i = k; i < m; i++) R[i][j] -= 2 * u[i - k] * s; }
+    }
+    // Q = H₁H₂…Hₙ의 앞 n열: 단위 행렬의 앞 n열에 뒤에서부터 반사를 적용한다
+    const Q = Array.from({ length: m }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+    for (let k = n - 1; k >= 0; k--) {
+      const u = V[k]; if (!u) continue;
+      for (let j = 0; j < n; j++) { let s = 0; for (let i = k; i < m; i++) s += u[i - k] * Q[i][j]; for (let i = k; i < m; i++) Q[i][j] -= 2 * u[i - k] * s; }
+    }
+    return { Q, R: R.slice(0, n) };
+  },
+  loss(Q) {
+    const G = QR.mul(QR.T(Q), Q); let mx = 0;
+    G.forEach((r, i) => r.forEach((v, j) => { mx = Math.max(mx, Math.abs(v - (i === j ? 1 : 0))); }));
+    return mx;
+  },
+  back(R, c) { const n = R.length, x = c.slice(); for (let i = n - 1; i >= 0; i--) { for (let j = i + 1; j < n; j++) x[i] -= R[i][j] * x[j]; x[i] /= R[i][i]; } return x; },
+  /** 부분 피벗팅 가우스 소거 */
+  solve(A, b) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      [M[k], M[p]] = [M[p], M[k]];
+      for (let i = k + 1; i < n; i++) { const l = M[i][k] / M[k][k]; for (let j = k; j <= n; j++) M[i][j] -= l * M[k][j]; }
+    }
+    return QR.back(M.map((r) => r.slice(0, n)), M.map((r) => r[n]));
+  },
+  cond(A) { const s = MB.mat.svd(A).S; return s[0] / s[s.length - 1]; },
+  F: [[0.2, 0], [0.4, 0], [0.4, 0.4], [0.7, 0.4], [0.7, 0.58], [0.4, 0.58], [0.4, 0.8], [0.8, 0.8], [0.8, 1], [0.2, 1]],
+  fill(P, pts, color, alpha) {
+    const ctx = P.ctx; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y))));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  pair: (a, b, d = 2) => `(${QR.num(a, d)}, ${QR.num(b, d)})`,
+};
+
+/* ================================================================ 1. 좌표 읽기 */
+(function () {
+  let mode = "on";
+  const deg = Math.PI / 180;
+  const th = MB.range("qr-c-th", (v) => v + "°", () => pl.redraw());
+  const ph = MB.range("qr-c-ph", (v) => v + "°", () => pl.redraw());
+  const pl = MB.plane("#qr-cv-coords", {
+    x: [-4, 4], aspect: 0.8, maxHeight: 520, minHeight: 300,
+    points: [{ x: 2.2, y: 1.6, snap: 0.1, label: "b" }],
+    draw(P, api) {
+      const C = P.P, b = api.points[0]; b.color = C.text;
+      const t = th() * deg, a = mode === "on" ? 90 * deg : ph() * deg, l2 = mode === "on" ? 1 : 1.2;
+      const u1 = [Math.cos(t), Math.sin(t)], u2 = [l2 * Math.cos(t + a), l2 * Math.sin(t + a)];
+      // 실제 좌표: [u1 u2] c = b
+      const det = u1[0] * u2[1] - u2[0] * u1[1];
+      const c1 = (b.x * u2[1] - u2[0] * b.y) / det, c2 = (u1[0] * b.y - b.x * u1[1]) / det;
+      const d1 = u1[0] * b.x + u1[1] * b.y, d2 = u2[0] * b.x + u2[1] * b.y;
+      // 축
+      P.line(-8 * u1[0], -8 * u1[1], 8 * u1[0], 8 * u1[1], { color: C.accent, alpha: 0.35 });
+      P.line(-8 * u2[0], -8 * u2[1], 8 * u2[0], 8 * u2[1], { color: C.accent2, alpha: 0.35 });
+      // 평행사변형 분해(실제 좌표)
+      P.line(c1 * u1[0], c1 * u1[1], b.x, b.y, { color: C.accent2, dash: [5, 4], width: 1.5 });
+      P.line(c2 * u2[0], c2 * u2[1], b.x, b.y, { color: C.accent, dash: [5, 4], width: 1.5 });
+      P.dot(c1 * u1[0], c1 * u1[1], { color: C.accent, r: 4 });
+      P.dot(c2 * u2[0], c2 * u2[1], { color: C.accent2, r: 4 });
+      // 수직으로 내린 발(내적)
+      const n1 = Math.hypot(...u1), n2 = Math.hypot(...u2);
+      const f1 = [u1[0] * d1 / (n1 * n1), u1[1] * d1 / (n1 * n1)], f2 = [u2[0] * d2 / (n2 * n2), u2[1] * d2 / (n2 * n2)];
+      if (mode !== "on") {
+        P.line(b.x, b.y, f1[0], f1[1], { color: C.warn, dash: [2, 3], width: 1.2 });
+        P.line(b.x, b.y, f2[0], f2[1], { color: C.warn, dash: [2, 3], width: 1.2 });
+        P.dot(f1[0], f1[1], { color: C.warn, r: 3 }); P.dot(f2[0], f2[1], { color: C.warn, r: 3 });
+      }
+      P.arrow(0, 0, u1[0], u1[1], { color: C.accent, width: 3.5, label: mode === "on" ? "q₁" : "u₁" });
+      P.arrow(0, 0, u2[0], u2[1], { color: C.accent2, width: 3.5, label: mode === "on" ? "q₂" : "u₂" });
+      P.arrow(0, 0, b.x, b.y, { color: C.text, width: 2.5 });
+      const nb = b.x * b.x + b.y * b.y;
+      MB.stat("qr-c-true", QR.pair(c1, c2));
+      MB.stat("qr-c-dot", QR.pair(d1, d2) + (mode === "on" ? ' <span class="badge ok">같다</span>' : Math.abs(d1 - c1) + Math.abs(d2 - c2) > 0.02 ? ' <span class="badge warn">다르다</span>' : ""));
+      MB.stat("qr-c-par", `${QR.num(nb, 2)} vs ${QR.num(c1 * c1 + c2 * c2, 2)}`);
+    },
+  });
+  MB.seg("qr-c-mode", (v) => { mode = v; pl.redraw(); });
+})();
+
+/* ================================================================ 3. 그람–슈미트 2D 단계 */
+(function () {
+  let step = 0;
+  const MSG = [
+    "시작: 비스듬한 두 벡터 a₁, a₂. 같은 평면을 생성하는 서로 수직인 단위 벡터 q₁, q₂를 만든다.",
+    "<b>1단계</b> q₁ = a₁ / ‖a₁‖. 첫 방향은 그대로 두고 길이만 1로 맞춘다. r₁₁ = ‖a₁‖.",
+    "<b>2단계</b> a₂의 q₁ 방향 성분 (q₁·a₂)q₁을 구한다(주황). a₂에서 q₁ 쪽으로 수직으로 내린 발이다. r₁₂ = q₁·a₂.",
+    "<b>3단계</b> v₂ = a₂ − (q₁·a₂)q₁. 이미 있는 방향을 빼면 q₁에 수직인 부분만 남는다.",
+    "<b>4단계</b> q₂ = v₂ / ‖v₂‖. r₂₂ = ‖v₂‖. 이제 a₁ = r₁₁q₁, a₂ = r₁₂q₁ + r₂₂q₂, 즉 A = QR.",
+  ];
+  const pl = MB.plane("#qr-cv-gs", {
+    x: [-3.5, 3.5], aspect: 0.8, maxHeight: 520, minHeight: 300,
+    points: [{ x: 2, y: 0.6, snap: 0.1, label: "a₁" }, { x: 1.2, y: 1.8, snap: 0.1, label: "a₂" }],
+    draw(P, api) {
+      const C = P.P, [p1, p2] = api.points; p1.color = C.accent; p2.color = C.accent2;
+      const a1 = [p1.x, p1.y], a2 = [p2.x, p2.y];
+      const r11 = QR.norm(a1), q1 = r11 > 1e-9 ? a1.map((t) => t / r11) : [1, 0];
+      const r12 = QR.dot(q1, a2), pr = q1.map((t) => t * r12), v2 = [a2[0] - pr[0], a2[1] - pr[1]];
+      const r22 = QR.norm(v2), q2 = r22 > 1e-9 ? v2.map((t) => t / r22) : [0, 0];
+      P.circle(0, 0, 1, { color: C.dim, dash: [4, 4], width: 1 });
+      if (step >= 1) P.line(-8 * q1[0], -8 * q1[1], 8 * q1[0], 8 * q1[1], { color: C.accent, alpha: 0.25 });
+      P.arrow(0, 0, a1[0], a1[1], { color: C.accent, width: 2.5, alpha: step >= 1 ? 0.45 : 1 });
+      P.arrow(0, 0, a2[0], a2[1], { color: C.accent2, width: 2.5, alpha: step >= 3 ? 0.45 : 1 });
+      if (step >= 2) {
+        P.arrow(0, 0, pr[0], pr[1], { color: C.warn, width: 3 });
+        P.line(a2[0], a2[1], pr[0], pr[1], { color: C.warn, dash: [4, 3], width: 1.5 });
+      }
+      if (step >= 3) {
+        P.arrow(0, 0, v2[0], v2[1], { color: C.accent2, width: 3, label: "v₂" });
+        P.arrow(pr[0], pr[1], a2[0], a2[1], { color: C.accent2, width: 1.5, alpha: 0.6 });
+      }
+      if (step >= 1) P.arrow(0, 0, q1[0], q1[1], { color: C.accent, width: 4, label: "q₁" });
+      if (step >= 4) {
+        P.arrow(0, 0, q2[0], q2[1], { color: C.accent2, width: 4, label: "q₂" });
+        // 직각 표시
+        const s = 0.18; P.poly([[s * q1[0], s * q1[1]], [s * (q1[0] + q2[0]), s * (q1[1] + q2[1])], [s * q2[0], s * q2[1]]], { color: C.text, width: 1.2, close: false });
+      }
+      const show = (k, v) => (step >= k ? v : null);
+      document.getElementById("qr-g-R").innerHTML = QR.html([[show(1, r11), show(2, r12)], [step >= 1 ? 0 : null, show(4, r22)]], { d: 3, cls: (i, j, v) => (v == null ? "wait" : i > j ? "zero" : "done") });
+      MB.stat("qr-g-step", `${step} / 4`);
+      MB.stat("qr-g-r12", step >= 2 ? QR.num(r12) : "—");
+      MB.stat("qr-g-r22", step >= 3 ? QR.num(r22) + (r22 < 0.15 ? ' <span class="badge warn">아주 짧음</span>' : "") : "—");
+      MB.stat("qr-g-dot", step >= 4 ? (r22 > 1e-9 ? QR.num(QR.dot(q1, q2), 4) : "q₂ 없음") : "—");
+      const msg = document.getElementById("qr-g-msg");
+      msg.className = "qr-msg" + (r22 < 1e-6 && step >= 3 ? " bad" : step === 4 ? " ok" : "");
+      msg.innerHTML = r22 < 1e-6 && step >= 3 ? "v₂ = 0: a₂가 a₁과 같은 직선 위에 있다(종속). q₂를 만들 수 없다." : MSG[step];
+    },
+  });
+  const go = (d) => { step = Math.max(0, Math.min(4, step + d)); pl.redraw(); };
+  document.getElementById("qr-g-next").addEventListener("click", () => go(1));
+  document.getElementById("qr-g-prev").addEventListener("click", () => go(-1));
+  document.getElementById("qr-g-reset").addEventListener("click", () => { step = 0; pl.points[0].x = 2; pl.points[0].y = 0.6; pl.points[1].x = 1.2; pl.points[1].y = 1.8; pl.redraw(); });
+  document.getElementById("qr-g-near").addEventListener("click", () => { pl.points[0].x = 2; pl.points[0].y = 0.6; pl.points[1].x = 2.4; pl.points[1].y = 0.8; step = 4; pl.redraw(); });
+})();
+
+/* ================================================================ 4. QR 분해 실험실 */
+(function () {
+  const PRE = {
+    ex: [[1, 1, 0], [1, 0, 1], [0, 1, 1]],
+    int: [[3, -1, 2], [4, 2, 1], [0, 2, -3]],
+    near: [[1, 1, 1], [1, 1.001, 0], [1, 0.999, 2]],
+    dep: [[1, 2, 3], [0, 1, 1], [1, 0, 1]],
+  };
+  const inputs = [...document.querySelectorAll("#qr-f-in input")];
+  let k = 0;
+  const read = () => [0, 1, 2].map((i) => [0, 1, 2].map((j) => { const v = parseFloat(String(inputs[i * 3 + j].value).replace("−", "-")); return isFinite(v) ? v : 0; }));
+  function render() {
+    const A = read(), C = QR.T(A), Q = [], R = [[null, null, null], [null, null, null], [null, null, null]];
+    let stop = -1;
+    for (let j = 0; j < k; j++) {
+      let v = C[j].slice();
+      for (let i = 0; i < j; i++) { const r = QR.dot(Q[i], C[j]); R[i][j] = r; }
+      for (let i = 0; i < j; i++) v = v.map((x, t) => x - R[i][j] * Q[i][t]);
+      const r = QR.norm(v); R[j][j] = r;
+      for (let i = j + 1; i < 3; i++) R[i][j] = 0;
+      if (r < 1e-10 * Math.max(1, QR.norm(C[j]))) { stop = j; R[j][j] = 0; break; }
+      Q.push(v.map((x) => x / r));
+    }
+    const done = Q.length;
+    const Qm = [0, 1, 2].map((i) => [0, 1, 2].map((j) => (j < done ? Q[j][i] : null)));
+    const last = k - 1;
+    document.getElementById("qr-f-view").innerHTML =
+      QR.fig("A", QR.html(A, { cls: (i, j) => (j === last ? "new" : j < k ? "done" : "") })) + '<span class="qr-op">=</span>' +
+      QR.fig("Q (열 = q₁, q₂, q₃)", QR.html(Qm, { cls: (i, j, v) => (v == null ? "wait" : j === last ? "new" : "done") })) +
+      QR.fig("R (위삼각)", QR.html(R, { cls: (i, j, v) => (v == null ? "wait" : i > j ? "zero" : j === last ? "new" : "done") }));
+    const msg = document.getElementById("qr-f-msg");
+    if (stop >= 0) {
+      msg.className = "qr-msg bad";
+      msg.innerHTML = `${stop + 1}열에서 v${"₁₂₃"[stop]} = 0. a${"₁₂₃"[stop]}이 앞 열들의 선형 결합이라 새 방향이 없다(열이 종속, r${"₁₂₃"[stop]}${"₁₂₃"[stop]} = 0).`;
+    } else if (k === 0) { msg.className = "qr-msg"; msg.innerHTML = "'다음 열'을 눌러 a₁부터 직교화하세요. R의 j열에는 a<sub>j</sub>를 q들로 나타내는 계수가 들어갑니다."; }
+    else if (k < 3) {
+      const s = "₁₂₃"[last];
+      msg.className = "qr-msg";
+      msg.innerHTML = last === 0
+        ? `a₁을 길이 r₁₁ = ${QR.num(R[0][0])}로 나눠 q₁을 얻었다.`
+        : `a${s}에서 앞선 방향의 성분(R의 ${last + 1}열 위쪽 칸)을 빼고, 남은 벡터를 길이 r${s}${s} = ${QR.num(R[last][last])}로 나눠 q${s}를 얻었다.`;
+    }
+    else { msg.className = "qr-msg ok"; msg.innerHTML = "완료: A = QR. Q의 열은 정규직교, R은 대각이 양수인 위삼각."; }
+    MB.stat("qr-f-k", `${Math.min(k, done + (stop >= 0 ? 1 : 0))} / 3`);
+    if (done === 3) {
+      const Qf = Qm, Rf = R.map((r) => r.map((v) => v || 0)), QRm = QR.mul(Qf, Rf);
+      let e = 0; QRm.forEach((r, i) => r.forEach((v, j) => (e = Math.max(e, Math.abs(v - A[i][j])))));
+      MB.stat("qr-f-res", QR.sci(e));
+      MB.stat("qr-f-orth", QR.sci(QR.loss(Qf)));
+    } else { MB.stat("qr-f-res", "—"); MB.stat("qr-f-orth", "—"); }
+  }
+  inputs.forEach((el) => el.addEventListener("input", () => { k = 0; render(); }));
+  document.getElementById("qr-f-pre").addEventListener("change", (e) => { const M = PRE[e.target.value]; inputs.forEach((el, t) => (el.value = String(M[Math.floor(t / 3)][t % 3]))); k = 0; render(); });
+  document.getElementById("qr-f-next").addEventListener("click", () => { k = Math.min(3, k + 1); render(); });
+  document.getElementById("qr-f-prev").addEventListener("click", () => { k = Math.max(0, k - 1); render(); });
+  document.getElementById("qr-f-all").addEventListener("click", () => { k = 3; render(); });
+  render();
+})();
+
+/* ================================================================ 5. 직교성 손실 */
+(function () {
+  const EPS = 2.220446049250313e-16 / 2;
+  const hilb = (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => 1 / (i + j + 1)));
+  const data = [];
+  for (let n = 2; n <= 12; n++) {
+    const H = hilb(n);
+    data.push({ n, k: QR.cond(H), cgs: QR.loss(QR.cgs(H).Q), cgs2: QR.loss(QR.cgs(H, true).Q), mgs: QR.loss(QR.mgs(H).Q), hh: QR.loss(QR.house(H).Q) });
+  }
+  let N = 7, ref = true, twice = false;
+  const floor = (v) => Math.max(v, 1e-17);
+  const cv = MB.canvas("#qr-cv-stab", (ctx, w, h) => {
+    const C = MB.palette();
+    const series = [
+      { data: data.map((d) => [d.n, floor(twice ? d.cgs2 : d.cgs)]), color: C.bad, width: 2.5 },
+      { data: data.map((d) => [d.n, floor(d.mgs)]), color: C.warn, width: 2.5 },
+      { data: data.map((d) => [d.n, floor(d.hh)]), color: C.ok, width: 2.5 },
+    ];
+    if (ref) {
+      series.push({ data: data.map((d) => [d.n, EPS * d.k]), color: C.faint, width: 1.5, dash: [5, 4] });
+      series.push({ data: data.map((d) => [d.n, EPS * d.k * d.k]), color: C.faint, width: 1.5, dash: [2, 3] });
+    }
+    const cur = data.find((d) => d.n === N);
+    MB.chart(ctx, null, {
+      x: [2, 12], y: [1e-17, 1e2], logY: true, xLabel: "힐베르트 행렬 크기 n", yLabel: "‖QᵀQ − I‖",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], yFmt: (v) => (v === 1 ? "1" : "1e" + Math.round(Math.log10(v))),
+      series, vlines: [{ x: N, color: C.accent, label: "n = " + N }],
+      points: [{ x: N, y: floor(twice ? cur.cgs2 : cur.cgs), color: C.bad }, { x: N, y: floor(cur.mgs), color: C.warn }, { x: N, y: floor(cur.hh), color: C.ok }],
+    });
+    if (ref) { ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "right"; ctx.fillText("εκ² ┄  εκ ╌", w - 22, 30); }
+    MB.stat("qr-s-k", QR.sci(cur.k));
+    MB.stat("qr-s-cgs", QR.sci(twice ? cur.cgs2 : cur.cgs) + ((twice ? cur.cgs2 : cur.cgs) > 0.1 ? ' <span class="badge bad">직교성 상실</span>' : ""));
+    MB.stat("qr-s-mgs", QR.sci(cur.mgs));
+    MB.stat("qr-s-hh", QR.sci(cur.hh));
+  }, { aspect: 0.66, maxHeight: 460, minHeight: 280 });
+  MB.range("qr-s-n", (v) => String(v), (v) => { N = v; cv.redraw(); });
+  MB.check("qr-s-ref", (v) => { ref = v; cv.redraw(); });
+  MB.check("qr-s-twice", (v) => { twice = v; cv.redraw(); });
+})();
+
+/* ================================================================ 6. 하우스홀더와 기븐스 */
+(function () {
+  let mode = "hh", sign = "safe";
+  const showF = MB.check("qr-r-F", () => pl.redraw());
+  const pl = MB.plane("#qr-cv-ref", {
+    x: [-3.5, 3.5], aspect: 0.8, maxHeight: 520, minHeight: 300,
+    points: [{ x: 1.8, y: 1.6, snap: 0.05, label: "x" }],
+    draw(P, api) {
+      const C = P.P, p = api.points[0]; p.color = C.accent;
+      const x = [p.x, p.y], nx = QR.norm(x);
+      let M, y, vlen = null;
+      if (nx < 1e-9) { M = [[1, 0], [0, 1]]; y = [0, 0]; }
+      else if (mode === "hh") {
+        const alpha = sign === "safe" ? -(x[0] >= 0 ? 1 : -1) * nx : nx;
+        const v = [x[0] - alpha, x[1]]; vlen = QR.norm(v);
+        if (vlen < 1e-12) { M = [[1, 0], [0, 1]]; }
+        else { const vv = vlen * vlen; M = [[1 - 2 * v[0] * v[0] / vv, -2 * v[0] * v[1] / vv], [-2 * v[1] * v[0] / vv, 1 - 2 * v[1] * v[1] / vv]]; }
+        y = [M[0][0] * x[0] + M[0][1] * x[1], M[1][0] * x[0] + M[1][1] * x[1]];
+        if (vlen > 1e-12) {
+          const m = [-v[1] / vlen, v[0] / vlen];
+          P.line(-8 * m[0], -8 * m[1], 8 * m[0], 8 * m[1], { color: C.accent2, dash: [7, 5], width: 1.8 });
+          P.arrow(0, 0, v[0], v[1], { color: C.warn, width: 2, label: "v" });
+          P.line(x[0], x[1], y[0], y[1], { color: C.dim, dash: [3, 3], width: 1 });
+        }
+      } else {
+        const c = x[0] / nx, s = x[1] / nx; M = [[c, s], [-s, c]];
+        y = [nx, 0];
+        const a0 = Math.atan2(x[1], x[0]);
+        P.param((t) => [0.8 * nx * Math.cos(t), 0.8 * nx * Math.sin(t)], Math.min(0, a0), Math.max(0, a0), { color: C.accent2, width: 2 });
+      }
+      P.circle(0, 0, nx, { color: C.dim, dash: [4, 4], width: 1 });
+      if (showF()) {
+        QR.fill(P, QR.F.map(([a, b]) => [a + 0.3, b + 0.3]), C.dim, 0.25);
+        QR.fill(P, QR.F.map(([a, b]) => { const u = a + 0.3, w = b + 0.3; return [M[0][0] * u + M[0][1] * w, M[1][0] * u + M[1][1] * w]; }), C.accent2, 0.8);
+      }
+      P.arrow(0, 0, x[0], x[1], { color: C.accent, width: 3 });
+      P.arrow(0, 0, y[0], y[1], { color: C.ok, width: 3.5, label: mode === "hh" ? "Hx" : "Gx" });
+      const det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+      document.getElementById("qr-r-mat").innerHTML = (mode === "hh" ? "H = " : "G = ") + QR.html(M, { d: 3 });
+      MB.stat("qr-r-x", QR.pair(x[0], x[1]));
+      MB.stat("qr-r-y", QR.pair(y[0], y[1], 3));
+      MB.stat("qr-r-v", mode === "hh" && vlen != null ? QR.num(vlen, 4) + (vlen < 0.2 * nx ? ' <span class="badge warn">상쇄 위험</span>' : "") : "—");
+      MB.stat("qr-r-det", QR.num(det, 3) + (det < 0 ? " (반사)" : " (회전)"));
+    },
+  });
+  MB.seg("qr-r-mode", (v) => { mode = v; pl.redraw(); });
+  MB.seg("qr-r-sign", (v) => { sign = v; pl.redraw(); });
+})();
+
+/* ================================================================ 7. 다항식 적합 */
+(function () {
+  let D = 8, M = 40, iv = "01";
+  const cache = {};
+  function run(d, m, iv) {
+    const key = `${d}-${m}-${iv}`; if (cache[key]) return cache[key];
+    const xs = Array.from({ length: m }, (_, i) => (iv === "01" ? i / (m - 1) : -1 + (2 * i) / (m - 1)));
+    const A = xs.map((x) => Array.from({ length: d + 1 }, (_, j) => Math.pow(x, j)));
+    const c = new Array(d + 1).fill(1), b = A.map((r) => r.reduce((s, v) => s + v, 0));
+    const At = QR.T(A), AtA = QR.mul(At, A), Atb = At.map((r) => QR.dot(r, b));
+    const cne = QR.solve(AtA, Atb);
+    const { Q, R } = QR.house(A);
+    const cqr = QR.back(R, QR.T(Q).map((r) => QR.dot(r, b)));
+    const err = (x) => { const e = x.map((v, i) => v - c[i]); const r = QR.norm(e) / QR.norm(c); return isFinite(r) ? r : 1e3; };
+    return (cache[key] = { k: QR.cond(A), ne: err(cne), qr: err(cqr) });
+  }
+  const floor = (v) => Math.max(1e-17, Math.min(v, 1e3));
+  const cv = MB.canvas("#qr-cv-lsq", (ctx, w, h) => {
+    const C = MB.palette(), EPS = 1.1e-16;
+    const rows = []; for (let d = 1; d <= 15; d++) rows.push([d, run(d, M, iv)]);
+    const cur = run(D, M, iv);
+    MB.chart(ctx, null, {
+      x: [1, 15], y: [1e-17, 1e3], logY: true, xLabel: "다항식 차수 d", yLabel: "계수 상대 오차",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], yFmt: (v) => (v === 1 ? "1" : "1e" + Math.round(Math.log10(v))),
+      series: [
+        { data: rows.map(([d, r]) => [d, floor(r.ne)]), color: C.bad, width: 2.5 },
+        { data: rows.map(([d, r]) => [d, floor(r.qr)]), color: C.ok, width: 2.5 },
+        { data: rows.map(([d, r]) => [d, EPS * r.k]), color: C.faint, width: 1.5, dash: [5, 4] },
+      ],
+      hlines: [{ y: 1, color: C.dim, label: "오차 100%" }],
+      vlines: [{ x: D, color: C.accent, label: "d = " + D }],
+      points: [{ x: D, y: floor(cur.ne), color: C.bad }, { x: D, y: floor(cur.qr), color: C.ok }],
+    });
+    MB.stat("qr-l-k", QR.sci(cur.k));
+    MB.stat("qr-l-k2", QR.sci(cur.k * cur.k));
+    MB.stat("qr-l-ne", QR.sci(cur.ne) + (cur.ne > 0.5 ? ' <span class="badge bad">실패</span>' : ""));
+    MB.stat("qr-l-qr", QR.sci(cur.qr) + (cur.qr > 0.5 ? ' <span class="badge bad">실패</span>' : ""));
+  }, { aspect: 0.66, maxHeight: 460, minHeight: 280 });
+  MB.range("qr-l-d", (v) => String(v), (v) => { D = v; cv.redraw(); });
+  MB.range("qr-l-m", (v) => String(v), (v) => { M = v; cv.redraw(); });
+  MB.seg("qr-l-int", (v) => { iv = v; cv.redraw(); });
+})();
+
+/* ================================================================ 8. 직교 다항식 */
+(function () {
+  let W = "leg", K = 4, mono = false;
+  const N = 2000;
+  // 격자와 적분 가중치: 르장드르는 x 균일(사다리꼴), 체비쇼프는 x = cos t, t 균일(가중치가 dt로 흡수됨)
+  function grid(w) {
+    const xs = [], ws = [];
+    for (let i = 0; i <= N; i++) {
+      if (w === "leg") { xs.push(-1 + (2 * i) / N); ws.push((i === 0 || i === N ? 0.5 : 1) * (2 / N)); }
+      else { const t = Math.PI * (1 - i / N); xs.push(Math.cos(t)); ws.push((i === 0 || i === N ? 0.5 : 1) * (Math.PI / N)); }
+    }
+    return { xs, ws };
+  }
+  const G = { leg: grid("leg"), cheb: grid("cheb") };
+  function build(w, k) {
+    const { xs, ws } = G[w], ip = (f, g) => f.reduce((s, v, i) => s + v * g[i] * ws[i], 0);
+    const mon = [], Q = [];
+    for (let n = 0; n <= k; n++) {
+      const f = xs.map((x) => Math.pow(x, n)); mon.push(f);
+      let v = f.slice();
+      Q.forEach((q) => { const c = ip(q, v); v = v.map((t, i) => t - c * q[i]); });
+      const nv = Math.sqrt(ip(v, v)); Q.push(v.map((t) => t / nv));
+    }
+    let mx = 0; for (let i = 0; i <= k; i++) for (let j = 0; j < i; j++) mx = Math.max(mx, Math.abs(ip(Q[i], Q[j])));
+    const cosm = ip(mon[k - 2], mon[k]) / Math.sqrt(ip(mon[k - 2], mon[k - 2]) * ip(mon[k], mon[k]));
+    return { xs, Q, mon, mx, cosm };
+  }
+  const cv = MB.canvas("#qr-cv-poly", (ctx, w, h) => {
+    const C = MB.palette(), r = build(W, K), last = r.xs.length - 1;
+    // x가 증가하는 순서로 정렬된 인덱스 (체비쇼프 격자는 이미 증가 순)
+    const series = [];
+    const step = 10;
+    if (mono) r.mon.forEach((f) => series.push({ data: r.xs.filter((_, i) => i % step === 0).map((x, t) => [x, f[t * step]]), color: C.faint, width: 1.2, dash: [4, 3] }));
+    r.Q.forEach((q, n) => {
+      const s = q[last] || 1;
+      series.push({ data: r.xs.filter((_, i) => i % step === 0).map((x, t) => [x, q[t * step] / s]), color: C.series[n % C.series.length], width: 2.2 });
+    });
+    MB.chart(ctx, null, { x: [-1, 1], y: [-1.4, 1.4], xLabel: "x", yLabel: "qₙ(x) / qₙ(1)", series, hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "left";
+    r.Q.forEach((_, n) => { ctx.fillStyle = C.series[n % C.series.length]; ctx.fillText("q" + "₀₁₂₃₄₅₆"[n], 66 + n * 34, 30); });
+    MB.stat("qr-p-orth", QR.sci(r.mx));
+    MB.stat("qr-p-cos", QR.num(r.cosm, 4));
+    const q2 = r.Q[2]; if (q2) { const mid = r.xs.reduce((bi, x, i) => (Math.abs(x) < Math.abs(r.xs[bi]) ? i : bi), 0); MB.stat("qr-p-p2", QR.num(q2[mid] / q2[last], 4)); }
+  }, { aspect: 0.66, maxHeight: 440, minHeight: 260 });
+  MB.seg("qr-p-w", (v) => { W = v; cv.redraw(); });
+  MB.range("qr-p-k", (v) => String(v), (v) => { K = v; cv.redraw(); });
+  MB.check("qr-p-mono", (v) => { mono = v; cv.redraw(); });
+})();
+</script>
+</body>
+</html>

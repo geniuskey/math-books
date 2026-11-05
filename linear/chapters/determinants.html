@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>행렬식 · LinearBook</title>
+<meta name="description" content="행렬식을 부호 있는 부피로 보고, 세 가지 성질에서 모든 공식을 끌어낸다. 피벗의 곱으로 계산하기, 여인수 전개와 n! 공식의 비용, 크라메르 공식과 수반 행렬, 야코비안과 변수 변환, 신발끈 공식과 외적·방향 판정까지 평행육면체를 돌리고 꼭짓점을 끌며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .dt-m { display: inline-grid; grid-template-columns: repeat(var(--c, 3), auto); gap: 1px 10px; padding: 2px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 5px; font: 600 13.5px var(--mono); text-align: right; vertical-align: middle; }
+  .dt-m > span { padding: 1px 4px; border-radius: 4px; }
+  .dt-m > span.hl { background: var(--accent-soft); color: var(--accent); }
+  .dt-m > span.hl2 { background: var(--accent-2-soft); color: var(--accent-2); }
+  .dt-m > span.dim { color: var(--text-faint); }
+  .dt-m > span.piv { outline: 2px solid var(--accent); outline-offset: -1px; color: var(--accent); }
+  .dt-stage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 16px; padding: 20px 14px; background: var(--canvas-bg); min-height: 150px; }
+  .dt-stage .dt-m { font-size: 16px; gap: 3px 14px; padding: 4px 10px; }
+  .dt-stage .cap { font-size: 12px; color: var(--text-dim); font-family: var(--mono); text-align: center; margin-top: 4px; }
+  .dt-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .dt-msg b { color: var(--text); }
+  .dt-msg.ok { color: var(--ok); font-weight: 600; }
+  .dt-msg.bad { color: var(--bad); font-weight: 600; }
+  .dt-log { margin: 0; padding: 8px 18px 10px 36px; font: 12.5px/1.7 var(--mono); color: var(--text-dim); border-top: 1px solid var(--border); max-height: 150px; overflow-y: auto; }
+  .dt-terms { display: grid; gap: 8px; padding: 14px; background: var(--canvas-bg); }
+  .dt-terms .term-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font: 13px var(--mono); color: var(--text-dim); }
+  .dt-terms .term-row b { color: var(--text); }
+  .dt-terms .term-row .sg { display: inline-block; min-width: 1.6em; text-align: center; font-weight: 700; }
+  .dt-terms .sum { border-top: 1px dashed var(--border); padding-top: 8px; font: 700 14px var(--mono); color: var(--text); }
+  .dt-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .dt-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .dt-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dt-row select { flex: 1; min-width: 0; }
+  .sim-readout .stat .v .dt-m { font-size: 12.5px; }
+  .dt-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .dt-split > div { position: relative; background: var(--canvas-bg); min-width: 0; }
+  .dt-split .cap { position: absolute; left: 10px; top: 8px; font: 600 12px var(--mono); color: var(--text-dim); pointer-events: none; }
+  @media (max-width: 640px) { .dt-split { grid-template-columns: 1fr; } }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="determinants">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 10</div>
+    <h1 data-no-glossary>행렬식</h1>
+    <p class="lead">정사각 행렬 하나에 숫자 하나를 붙이는 함수가 있습니다. 그 숫자는 행렬이 공간을 <b>몇 배로 부풀리는지</b>, 그리고 공간을 <b>뒤집는지</b>를 함께 말해 줍니다. 0이면 공간이 납작해져 되돌릴 수 없고, 음수면 오른손이 왼손이 됩니다. MathBook에서는 2×2의 넓이 배율로 행렬식을 맛보았습니다. 이 장은 그 생각을 n차원으로 넓히고, <b>세 가지 성질만으로</b> 모든 공식을 끌어냅니다. 그러면 왜 컴퓨터는 여인수 전개가 아니라 소거로 행렬식을 구하는지, 극좌표의 적분에 왜 \(r\)이 붙는지, 다각형 넓이를 꼭짓점 좌표만으로 어떻게 재는지가 한 줄로 이어집니다.</p>
+    <ul class="objectives">
+      <li>2×2·3×3 행렬식을 열벡터가 만드는 평행사변형·평행육면체의 부호 있는 넓이·부피로 읽고, 부호를 손잡이(방향)로 해석한다.</li>
+      <li>행렬식을 정의하는 세 성질(\(\det I = 1\), 행 교환은 부호 반전, 각 행에 대해 선형)에서 나머지 성질을 증명한다.</li>
+      <li>소거로 행렬식을 구한다: \(\det A = \pm\)(피벗의 곱). \(\det A \ne 0\)과 가역이 같은 조건임을 보이고 \(\det AB = \det A\det B\), \(\det A^\mathsf{T} = \det A\)를 증명한다.</li>
+      <li>여인수 전개와 순열 공식으로 행렬식을 쓰고, 연산량 \(n!\)과 \(\tfrac23 n^3\)의 차이를 실감한다.</li>
+      <li>크라메르 공식과 \(A^{-1} = \operatorname{adj}A/\det A\)를 유도하고, 이론적 가치와 계산상의 한계를 구분한다.</li>
+      <li>야코비안 행렬식으로 변수 변환의 넓이 배율을 계산하고(극좌표의 \(r\,dr\,d\theta\)), 신발끈 공식·외적·방향 판정·변형의 부피 변화 \(J = \det F\)에 쓴다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>3D 그래픽의 뒷면 제거</b></div>
+      <div class="o-body"><p>게임 속 캐릭터는 수많은 삼각형으로 된 닫힌 껍질입니다. 카메라 쪽에서 보면 껍질의 절반쯤은 등을 돌리고 있어 어차피 앞면에 가려집니다. 그 삼각형들까지 칠하면 화면을 채우는 일이 거의 두 배가 됩니다. 그런데 "이 삼각형이 나를 보고 있는가"를 매번 법선 벡터와 시선 방향으로 따지기에는 삼각형이 너무 많습니다.</p>
+        <p>해법은 2×2 행렬식 하나입니다. 모델을 만들 때 모든 삼각형의 꼭짓점을 바깥에서 보아 <b>반시계 방향</b>으로 적어 둡니다. 화면에 투영한 뒤 두 변 벡터로 만든 2×2 행렬식의 <b>부호</b>를 보면, 양수면 여전히 반시계 방향이라 앞면이고 음수면 뒤집혀 보이는 뒷면입니다. 곱셈 두 번과 뺄셈 한 번이면 됩니다. OpenGL 같은 그래픽 API는 이 "감기 순서"로 앞면을 정하는 설정을 기본으로 제공합니다. 부피 배율의 <b>부호</b>가 방향을 기억한다는 사실이 이 장의 출발점입니다.</p>
+        <div class="o-chain"><span>삼각형마다 앞·뒤 판정</span><i>→</i><span>법선·시선 계산은 비쌈</span><i>→</i><span class="tool">2×2 행렬식의 부호</span><i>→</i><span>곱셈 2번으로 판정</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="volume">
+    <h2>행렬식은 부호 있는 부피다</h2>
+    <div class="problem"><strong>정사각형 하나가 변환 뒤 몇 배가 되는지, 3차원에서도 말할 수 있을까</strong>
+      <p>2×2 행렬 \(\begin{bmatrix}a&b\\c&d\end{bmatrix}\)은 단위 정사각형을 두 열이 만드는 평행사변형으로 보내고, 그 넓이는 \(|ad-bc|\)입니다(<a href="../../foundations/chapters/linalg.html#determinant">MathBook의 그림</a>). 그렇다면 3×3 행렬이 단위 정육면체를 보낸 평행육면체의 부피는? 4×4라면 눈으로 볼 수도 없는 "4차원 부피"를 어떻게 정의하고 계산할까요?</p></div>
+    <p>평면에서 두 열 \(\mathbf{a}_1, \mathbf{a}_2\)가 만드는 평행사변형의 넓이에 <b>부호</b>를 붙여 봅시다. \(\mathbf{a}_1\)에서 \(\mathbf{a}_2\)로 반시계 방향으로 돌면 \(+\), 시계 방향이면 \(-\)입니다. 이렇게 부호를 붙이면 넓이가 놀랍도록 깔끔한 대수 규칙을 따릅니다. 3차원에서는 세 열 \(\mathbf{a}_1, \mathbf{a}_2, \mathbf{a}_3\)이 평행육면체를 만들고, 세 벡터가 오른손 좌표계(엄지 \(\mathbf{a}_1\), 검지 \(\mathbf{a}_2\), 중지 \(\mathbf{a}_3\))를 이루면 \(+\), 왼손이면 \(-\)를 붙입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="평행사변형과 평행육면체의 부호 있는 부피">
+        <defs><marker id="dt-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+        <rect x="10" y="10" width="230" height="250" rx="10" class="f-surface"/>
+        <polygon points="50,210 170,190 210,110 90,130" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <line x1="50" y1="210" x2="170" y2="190" style="stroke:var(--green);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <line x1="50" y1="210" x2="90" y2="130" style="stroke:var(--red);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <path d="M120 200 A 50 50 0 0 0 70 168" style="fill:none;stroke:var(--accent);stroke-width:1.5" marker-end="url(#dt-ah)"/>
+        <text x="172" y="208" class="t" style="fill:var(--green);font-weight:700">a₁</text>
+        <text x="70" y="124" class="t" style="fill:var(--red);font-weight:700">a₂</text>
+        <text x="125" y="40" text-anchor="middle" class="t" style="font-weight:700">반시계: det &gt; 0</text>
+        <text x="125" y="245" text-anchor="middle" class="t-dim">넓이 = |det|</text>
+        <rect x="265" y="10" width="230" height="250" rx="10" class="f-surface"/>
+        <polygon points="305,210 425,190 385,130 265,150" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5" transform="translate(40,0)"/>
+        <line x1="345" y1="210" x2="465" y2="190" style="stroke:var(--green);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <line x1="345" y1="210" x2="305" y2="150" style="stroke:var(--red);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <text x="467" y="208" class="t" style="fill:var(--green);font-weight:700">a₁</text>
+        <text x="282" y="146" class="t" style="fill:var(--red);font-weight:700">a₂</text>
+        <text x="380" y="40" text-anchor="middle" class="t" style="font-weight:700">a₁, a₂ 순서 바꿈: det &lt; 0</text>
+        <text x="380" y="245" text-anchor="middle" class="t-dim">같은 넓이, 반대 부호</text>
+        <rect x="520" y="10" width="230" height="250" rx="10" class="f-surface"/>
+        <g style="stroke:var(--accent);stroke-width:1.5;fill:none">
+          <polygon points="570,200 670,200 700,170 600,170" class="f-acc-soft"/>
+          <polygon points="570,110 670,110 700,80 600,80" class="f-acc-soft"/>
+          <line x1="570" y1="200" x2="570" y2="110"/><line x1="670" y1="200" x2="670" y2="110"/><line x1="700" y1="170" x2="700" y2="80"/><line x1="600" y1="170" x2="600" y2="80" style="stroke-dasharray:4 4"/>
+        </g>
+        <line x1="570" y1="200" x2="670" y2="200" style="stroke:var(--green);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <line x1="570" y1="200" x2="600" y2="170" style="stroke:var(--red);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <line x1="570" y1="200" x2="570" y2="110" style="stroke:var(--blue);stroke-width:3" marker-end="url(#dt-ah)"/>
+        <text x="650" y="220" class="t" style="fill:var(--green);font-weight:700">a₁</text>
+        <text x="606" y="166" class="t" style="fill:var(--red);font-weight:700">a₂</text>
+        <text x="548" y="112" class="t" style="fill:var(--blue);font-weight:700">a₃</text>
+        <text x="635" y="40" text-anchor="middle" class="t" style="font-weight:700">오른손 순서: det &gt; 0</text>
+        <text x="635" y="245" text-anchor="middle" class="t-dim">부피 = |det [a₁ a₂ a₃]|</text>
+      </svg>
+      <figcaption><b>그림 10-1.</b> 왼쪽·가운데: 두 열의 순서를 바꾸면 평행사변형은 그대로이지만 도는 방향이 반대가 되어 부호가 바뀐다. 오른쪽: 세 열이 오른손 좌표계를 이루는 평행육면체는 양의 부피를 가진다. 어느 한 벡터를 반대로 뒤집으면 왼손 좌표계가 되고 부호가 바뀐다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 세 열을 직접 바꿔 보세요. 행렬식은 늘 평행육면체의 부피(부호 포함)와 같습니다. 3×3 공식은 나중에 유도하겠지만, 미리 적어 두면 다음과 같습니다.</p>
+    <div class="formula">$$\det\begin{bmatrix}a_{11}&a_{12}&a_{13}\\a_{21}&a_{22}&a_{23}\\a_{31}&a_{32}&a_{33}\end{bmatrix} = a_{11}(a_{22}a_{33}-a_{23}a_{32}) - a_{12}(a_{21}a_{33}-a_{23}a_{31}) + a_{13}(a_{21}a_{32}-a_{22}a_{31})$$
+      <div class="where">여섯 개의 곱이 부호를 바꿔 가며 더해진다. 각 곱은 행마다 하나, 열마다 하나씩 원소를 고른 것이다. 5절에서 이 구조를 일반화한다.</div>
+    </div>
+
+    <div class="sim" id="sim-dt-volume">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 열이 만드는 평행육면체</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dt-cv-vol"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A (열 = a₁, a₂, a₃)</span>
+            <div class="mat" style="--n:3"><input id="dt-v11" value="1" inputmode="decimal" aria-label="a11"><input id="dt-v12" value="0.3" inputmode="decimal" aria-label="a12"><input id="dt-v13" value="0" inputmode="decimal" aria-label="a13"><input id="dt-v21" value="0" inputmode="decimal" aria-label="a21"><input id="dt-v22" value="1" inputmode="decimal" aria-label="a22"><input id="dt-v23" value="0.4" inputmode="decimal" aria-label="a23"><input id="dt-v31" value="0" inputmode="decimal" aria-label="a31"><input id="dt-v32" value="0" inputmode="decimal" aria-label="a32"><input id="dt-v33" value="1" inputmode="decimal" aria-label="a33"></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="dt-v-pre">
+            <option value="">— 고르기 —</option>
+            <option value="id">단위 행렬 (정육면체)</option>
+            <option value="shear">전단 (부피 그대로)</option>
+            <option value="stretch">축별 확대 2 × 1 × 0.5</option>
+            <option value="swap">a₁, a₂ 교환 (왼손)</option>
+            <option value="flip">a₃ 뒤집기</option>
+            <option value="flat">a₃ = a₁ + a₂ (납작)</option>
+            <option value="gen">일반 행렬</option>
+          </select></label>
+          <label class="ctrl"><span>보는 방향 (방위각) <output id="dt-v-yaw-out"></output></span><input type="range" id="dt-v-yaw" min="-180" max="180" value="-35" step="1"></label>
+          <label class="ctrl"><span>보는 높이 (앙각) <output id="dt-v-pit-out"></output></span><input type="range" id="dt-v-pit" min="5" max="85" value="25" step="1"></label>
+          <div class="btn-row"><button class="btn primary" id="dt-v-spin">▶ 돌려 보기</button></div>
+        </div>
+      </div>
+      <div class="dt-legend"><span><i style="background:var(--red)"></i>a₁</span><span><i style="background:var(--green)"></i>a₂</span><span><i style="background:var(--blue)"></i>a₃</span><span><i style="background:var(--text-faint)"></i>단위 정육면체</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">det A</span><span class="v" id="dt-v-det">—</span></div>
+        <div class="stat"><span class="k">부피 |det A|</span><span class="v" id="dt-v-vol">—</span></div>
+        <div class="stat"><span class="k">a₁ · (a₂ × a₃)</span><span class="v" id="dt-v-trip">—</span></div>
+        <div class="stat"><span class="k">손잡이</span><span class="v" id="dt-v-hand">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '전단'은 상자를 비스듬히 밀지만 부피(det)는 1 그대로입니다. 밑면과 높이가 그대로이기 때문입니다. ② 'a₁, a₂ 교환'과 'a₃ 뒤집기'는 모양은 단위 정육면체와 같아 보이지만 det = −1입니다. 손잡이가 바뀌었습니다. ③ '납작'에서는 세 벡터가 한 평면에 놓여 부피가 0이 됩니다. 칸에 숫자를 직접 넣어 det가 0이 되는 다른 행렬도 찾아보세요. 모델: 원근 없는 정사영으로 그렸고, 스칼라 삼중곱 a₁·(a₂×a₃)를 행렬식과 나란히 계산합니다.</div>
+    </div>
+    <p>n차원에서는 눈으로 볼 수 없지만, 같은 대수 규칙을 따르는 "부호 있는 부피"를 정의할 수 있습니다. 다음 절이 그 규칙입니다. 놀랍게도 규칙 세 개면 함수가 하나로 정해집니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="properties">
+    <h2>세 가지 성질이 행렬식을 정한다</h2>
+    <div class="problem"><strong>공식을 외우지 않고 행렬식을 정의할 수 있을까</strong>
+      <p>2×2 공식 \(ad-bc\)는 외우기 쉽지만 4×4 공식은 24개 항, 10×10은 3,628,800개 항입니다. 공식으로 정의하면 성질을 증명하기도 어렵습니다. 부피가 마땅히 가져야 할 성질 몇 가지만 요구하고, 그것을 만족하는 함수를 찾으면 어떨까요?</p></div>
+    <p>부호 있는 부피를 행렬의 <b>행</b>(또는 열, 결국 같다는 것을 뒤에서 증명합니다)의 함수로 보고, 부피라면 당연히 지켜야 할 성질을 적습니다.</p>
+    <div class="callout deep"><strong>정의 10.1 (행렬식)</strong> \(n\times n\) 행렬에 실수를 붙이는 함수 \(\det\)가 다음 세 성질을 만족할 때 이를 <span class="term">행렬식</span><span class="en">(Determinant)</span>이라 한다.
+      <ol>
+        <li><b>정규화:</b> \(\det I = 1\). 단위 정육면체의 부피는 1이다.</li>
+        <li><b>교대성:</b> 두 행을 바꾸면 부호가 바뀐다. 순서를 바꾸면 방향이 뒤집힌다.</li>
+        <li><b>다중선형성:</b> 다른 행을 고정하면 한 행에 대해 선형이다. 즉 \(\det\begin{bmatrix}t\mathbf{r}\\ \cdots\end{bmatrix} = t\det\begin{bmatrix}\mathbf{r}\\ \cdots\end{bmatrix}\)이고 \(\det\begin{bmatrix}\mathbf{r}+\mathbf{r}'\\ \cdots\end{bmatrix} = \det\begin{bmatrix}\mathbf{r}\\ \cdots\end{bmatrix} + \det\begin{bmatrix}\mathbf{r}'\\ \cdots\end{bmatrix}\).</li>
+      </ol>
+    </div>
+    <p>성질 3의 첫 부분은 "한 변을 \(t\)배 하면 부피가 \(t\)배"라는 뜻입니다. 둘째 부분이 조금 놀라운데, 그림으로 보면 당연합니다. 밑변을 공유하는 두 평행사변형의 넓이는 높이의 합으로 더해지고, 높이는 위쪽 변의 "밑변에 수직인 성분"이니 벡터를 더하면 높이도 더해집니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 240" role="img" aria-label="한 행에 대한 선형성">
+        <rect x="10" y="10" width="740" height="220" rx="10" class="f-surface"/>
+        <line x1="40" y1="190" x2="720" y2="190" class="s-axis" style="opacity:.5"/>
+        <polygon points="60,190 200,190 240,140 100,140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="150" y="172" text-anchor="middle" class="t-acc">det(a, b)</text>
+        <text x="245" y="136" class="t" style="font-weight:700">b</text>
+        <text x="320" y="170" text-anchor="middle" class="t" style="font-size:22px">+</text>
+        <polygon points="360,190 500,190 470,120 330,120" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+        <text x="420" y="162" text-anchor="middle" class="t" style="fill:var(--accent-2);font-weight:700">det(a, c)</text>
+        <text x="315" y="116" class="t" style="font-weight:700">c</text>
+        <text x="540" y="170" text-anchor="middle" class="t" style="font-size:22px">=</text>
+        <polygon points="570,190 710,190 720,70 580,70" style="fill:var(--accent-soft);stroke:var(--text);stroke-width:1.5"/>
+        <line x1="570" y1="190" x2="570" y2="70" style="stroke:var(--text-dim);stroke-dasharray:4 4"/>
+        <text x="640" y="140" text-anchor="middle" class="t" style="font-weight:700">det(a, b + c)</text>
+        <text x="722" y="64" class="t" style="font-weight:700">b + c</text>
+        <text x="130" y="210" text-anchor="middle" class="t-dim">밑변 a</text><text x="430" y="210" text-anchor="middle" class="t-dim">밑변 a</text><text x="640" y="210" text-anchor="middle" class="t-dim">밑변 a</text>
+        <text x="380" y="40" text-anchor="middle" class="t-dim">높이 50 + 70 = 120: 밑변이 같으면 넓이는 높이(밑변에 수직인 성분)로 더해진다</text>
+      </svg>
+      <figcaption><b>그림 10-2.</b> 다중선형성의 그림. 밑변 a를 고정하면 넓이는 위쪽 벡터의 "a에 수직인 성분"에 비례한다. 수직 성분은 벡터 덧셈에 대해 더해지므로 det(a, b + c) = det(a, b) + det(a, c)이다. 위쪽 벡터가 밑변을 따라 옆으로 미끄러져도 넓이가 그대로라는 것도 이 그림에서 보인다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 10.2 (존재와 유일성)</strong> 각 \(n\)에 대해 정의 10.1의 세 성질을 만족하는 함수는 <b>꼭 하나</b> 있다.
+      <p style="margin:8px 0 0">유일성의 아이디어: 다음 절에서 보듯이 세 성질만으로 소거를 따라가며 어떤 행렬의 값이든 끝까지 계산할 수 있다. 계산 방법이 성질로만 정해지니 값도 하나뿐이다. 존재성은 5절의 순열 공식이 세 성질을 실제로 만족한다는 것을 확인하면 된다.</p></div>
+    <p>아래 시뮬레이터는 행렬에 기본 행 연산을 하나씩 가하면서 행렬식이 어떻게 바뀌는지 기록합니다. 세 성질이 예언하는 배수(교환은 \(-1\), \(k\)배는 \(k\), 행 더하기는 1)를 곱해 가면 언제나 실제 행렬식과 맞습니다.</p>
+
+    <div class="sim" id="sim-dt-rowops">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>행 연산 하나마다 행렬식은 몇 배가 되나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="dt-stage" id="dt-r-stage"></div></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>연산</span><div class="seg" id="dt-r-op"><button data-value="swap" class="on">행 교환</button><button data-value="scale">k배</button><button data-value="add">행 더하기</button></div></div>
+          <div class="ctrl"><span>대상 행 i · 기준 행 j</span><div class="dt-row"><select id="dt-r-i" aria-label="행 i"><option value="0">R₁</option><option value="1" selected>R₂</option><option value="2">R₃</option></select><select id="dt-r-j" aria-label="행 j"><option value="0" selected>R₁</option><option value="1">R₂</option><option value="2">R₃</option></select></div></div>
+          <label class="ctrl"><span>배수 k <output id="dt-r-k-out"></output></span><input type="range" id="dt-r-k" min="-3" max="3" value="2" step="0.5"></label>
+          <div class="btn-row"><button class="btn primary" id="dt-r-go">적용</button><button class="btn" id="dt-r-reset">처음으로</button><button class="btn" id="dt-r-rand">새 행렬</button></div>
+        </div>
+      </div>
+      <div class="dt-msg" id="dt-r-msg">연산을 고르고 '적용'을 누르세요.</div>
+      <ol class="dt-log" id="dt-r-log"></ol>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">처음 det</span><span class="v" id="dt-r-d0">—</span></div>
+        <div class="stat"><span class="k">누적 배수 (예언)</span><span class="v" id="dt-r-f">—</span></div>
+        <div class="stat"><span class="k">처음 det × 배수</span><span class="v" id="dt-r-pred">—</span></div>
+        <div class="stat"><span class="k">지금 det (직접 계산)</span><span class="v" id="dt-r-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'k배'에서 k = 0을 적용하면 한 행이 0이 되어 det = 0이 되고, 그 뒤로는 무엇을 해도 되돌릴 수 없습니다(배수 0을 곱했으니까요). ② '행 더하기'(Rᵢ ← Rᵢ + k·Rⱼ)는 몇 번을 해도 배수가 1입니다. 소거가 행렬식을 바꾸지 않는 이유입니다. ③ 같은 두 행을 교환하면(i = j) 행렬이 그대로라 det = −det, 즉 det = 0이어야 하지만 행렬이 0이 아니면 모순이죠. 그래서 i = j인 교환은 막아 두었습니다. 모델: 3×3 실수 행렬, '지금 det'는 매번 처음부터 다시 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="consequences">
+    <h2>세 성질에서 따라 나오는 것들</h2>
+    <p>이제 정의만으로 쓸모 있는 성질을 차례로 증명합니다. 각 증명은 한두 줄이지만, 이 짧은 사슬이 행렬식 계산법 전부를 만들어 냅니다.</p>
+    <div class="callout deep"><strong>정리 10.3 (기본 성질)</strong> \(n\times n\) 행렬 \(A\)에 대해
+      <ol type="a">
+        <li>두 행이 같으면 \(\det A = 0\).</li>
+        <li>한 행의 배수를 다른 행에서 빼도 \(\det A\)는 그대로다.</li>
+        <li>영인 행이 있으면 \(\det A = 0\).</li>
+        <li>\(A\)가 삼각 행렬이면 \(\det A = a_{11}a_{22}\cdots a_{nn}\) (대각 원소의 곱).</li>
+        <li>\(\det(cA) = c^n\det A\).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명.</b> (a) 같은 두 행을 바꾸면 행렬은 그대로인데 성질 2에 의해 부호가 바뀐다. \(D = -D\)이므로 \(D = 0\). (b) 성질 3으로 \(\det(\ldots, \mathbf{r}_i - \ell\mathbf{r}_j, \ldots) = \det(\ldots, \mathbf{r}_i, \ldots) - \ell\det(\ldots, \mathbf{r}_j, \ldots)\)인데, 뒤의 행렬은 \(\mathbf{r}_j\)가 두 번 나오므로 (a)에 의해 0이다. (c) 영인 행에 성질 3을 \(t = 0\)으로 쓰면 \(\det = 0\cdot\det = 0\). (d) 대각 원소가 모두 0이 아니면 (b)를 써서 대각 위(또는 아래) 원소를 모두 지워 대각 행렬로 만들고, 성질 3으로 대각 원소를 행마다 꺼내면 \(a_{11}\cdots a_{nn}\det I\). 어떤 대각 원소가 0이면 소거로 영인 행이 생겨 (c)에 의해 0이고, 대각 원소의 곱도 0이다. (e) 각 행에서 \(c\)를 하나씩, 모두 \(n\)번 꺼낸다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="소거는 넓이를 바꾸지 않는다">
+        <rect x="10" y="10" width="740" height="190" rx="10" class="f-surface"/>
+        <line x1="40" y1="170" x2="720" y2="170" class="s-axis" style="opacity:.5"/>
+        <polygon points="70,170 210,170 290,80 150,80" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="180" y="130" text-anchor="middle" class="t-acc">det = 140 × 90</text>
+        <text x="180" y="40" text-anchor="middle" class="t" style="font-weight:700">처음</text>
+        <path d="M310 120 h60" class="s-acc" style="stroke-width:2"/><path d="M370 120 l-8 -5 v10z" style="fill:var(--accent)"/>
+        <text x="340" y="108" text-anchor="middle" class="t-dim">R₂ − ℓR₁</text>
+        <polygon points="400,170 540,170 540,80 400,80" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <polygon points="400,170 540,170 620,80 480,80" style="fill:none;stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <text x="470" y="130" text-anchor="middle" class="t-acc">같은 넓이</text>
+        <text x="470" y="40" text-anchor="middle" class="t" style="font-weight:700">위쪽 변을 밑변 방향으로 밀기</text>
+        <text x="650" y="120" class="t-dim">밑변 × 높이</text>
+        <text x="650" y="140" class="t-dim">= 피벗의 곱</text>
+      </svg>
+      <figcaption><b>그림 10-3.</b> 정리 10.3(b)의 그림. 한 행에서 다른 행의 배수를 빼는 것은 평행사변형의 위쪽 변을 밑변 방향으로 미는 전단이다. 밑변과 높이가 그대로이므로 넓이도 그대로다. 소거를 끝까지 하면 직사각형(삼각 행렬)이 되고, 넓이는 대각 원소, 즉 피벗의 곱이다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="pivots">
+    <h2>컴퓨터는 피벗의 곱으로 행렬식을 구한다</h2>
+    <div class="problem"><strong>10×10 행렬의 행렬식을 손으로, 또는 컴퓨터로 어떻게 구할까</strong>
+      <p>정리 10.3에서 계산법이 바로 나옵니다. <a href="elimination.html#elimination">3장의 가우스 소거</a>로 \(A\)를 위삼각 행렬 \(U\)로 만들되, 행 더하기는 행렬식을 바꾸지 않고 행 교환만 부호를 바꾼다는 것을 기억하면 됩니다.</p></div>
+    <div class="callout deep"><strong>정리 10.4 (피벗 공식과 가역성)</strong> 행 교환을 포함한 소거 \(PA = LU\)에서 교환 횟수가 \(s\)번이면
+      $$\det A = (-1)^s\,u_{11}u_{22}\cdots u_{nn} = \pm(\text{피벗의 곱}).$$
+      따라서 \(\det A \ne 0 \iff\) 피벗이 \(n\)개 \(\iff A\)가 가역.
+      <p style="margin:8px 0 0"><b>증명.</b> 행 더하기는 행렬식을 바꾸지 않고(10.3b), 교환은 한 번에 부호를 한 번 바꾼다(성질 2). 그러므로 \(\det A = (-1)^s\det U\)이고, \(U\)는 삼각 행렬이므로 대각 원소의 곱이다(10.3d). 피벗이 모자라면 \(U\)의 대각에 0이 있어 \(\det A = 0\)이고, 피벗이 \(n\)개면 곱이 0이 아니다. <a href="lu.html#invertible">4장</a>에서 피벗 \(n\)개와 가역이 같은 조건임을 보였다. ∎</p></div>
+    <div class="callout"><strong>예제 10.1 (소거로 구하는 3×3 행렬식)</strong> 3장의 예제 행렬 \(A = \begin{bmatrix}2&1&1\\4&1&0\\-2&2&1\end{bmatrix}\).
+      <ol>
+        <li>\(R_2 - 2R_1\): \((0, -1, -2)\). \(R_3 + R_1\): \((0, 3, 2)\). 행렬식은 그대로.</li>
+        <li>\(R_3 + 3R_2\): \((0, 0, -4)\). 역시 그대로.</li>
+        <li>\(U = \begin{bmatrix}2&1&1\\0&-1&-2\\0&0&-4\end{bmatrix}\), 교환 0번. \(\det A = 2\cdot(-1)\cdot(-4) = 8\).</li>
+      </ol>
+      검산(3×3 공식): \(2(1\cdot1-0\cdot2) - 1(4\cdot1 - 0\cdot(-2)) + 1(4\cdot2-1\cdot(-2)) = 2 - 4 + 10 = 8\). ✓</div>
+    <p>이 방법의 연산량은 소거와 같은 약 \(\tfrac23 n^3\)입니다. 아래에서 4×4 행렬을 한 단계씩 소거하며 피벗의 곱과 교환 부호가 행렬식을 만드는 과정을 보세요.</p>
+
+    <div class="sim" id="sim-dt-pivots">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>소거하며 행렬식 모으기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="dt-stage" id="dt-p-stage"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>예제</span><select id="dt-p-pre">
+            <option value="a">4×4 · 교환 없음</option>
+            <option value="b">3×3 · 첫 피벗이 0 (교환 필요)</option>
+            <option value="c">3×3 · 특이 행렬</option>
+            <option value="d">4×4 · 아래 삼각</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="dt-p-pp"> 부분 피벗팅 (가장 큰 피벗 고르기)</label>
+          <div class="btn-row"><button class="btn" id="dt-p-first">⏮ 처음</button><button class="btn" id="dt-p-prev">◀ 이전</button><button class="btn primary" id="dt-p-next">다음 단계 ▶</button></div>
+          <div class="btn-row"><button class="btn" id="dt-p-rand">무작위 4×4</button></div>
+        </div>
+      </div>
+      <div class="dt-msg" id="dt-p-msg"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="dt-p-step">—</span></div>
+        <div class="stat"><span class="k">확정된 피벗</span><span class="v" id="dt-p-piv">—</span></div>
+        <div class="stat"><span class="k">교환 부호 (−1)ˢ</span><span class="v" id="dt-p-sign">—</span></div>
+        <div class="stat"><span class="k">±(피벗의 곱) vs 참값</span><span class="v" id="dt-p-det">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 첫 예제를 끝까지 넘기면 피벗 2, 1, 2, 2의 곱 8이 행렬식입니다. ② 둘째 예제는 첫 피벗 자리가 0이라 교환이 한 번 일어나고 부호가 −로 바뀝니다. 부분 피벗팅을 켜면 교환 횟수가 달라지지만 최종 det는 같습니다. ③ 특이 행렬은 피벗이 모자라 det = 0으로 끝납니다. 모델: 각 단계에서 한 열 아래를 한꺼번에 지웁니다. '참값'은 순열 공식(4×4: 24항)으로 따로 계산한 값입니다.</div>
+    </div>
+
+    <p>피벗 공식에서 곱의 법칙과 전치 법칙이 나옵니다. 둘 다 공식으로 직접 보이려면 꽤 힘들지만, 세 성질과 소거를 쓰면 짧습니다.</p>
+    <div class="callout deep"><strong>정리 10.5 (곱의 법칙)</strong> \(\det(AB) = \det A\,\det B\). 따라서 \(\det(A^{-1}) = 1/\det A\), \(\det(A^k) = (\det A)^k\).
+      <p style="margin:8px 0 0"><b>증명.</b> \(A\)가 특이하면 \(AB\)도 특이하므로(\(AB\)가 가역이면 \(A\)는 \(B(AB)^{-1}\)이라는 오른쪽 역을 가진다) 양변이 0이다. \(A\)가 가역이면 기본 행렬의 곱 \(A = E_1E_2\cdots E_k\)로 쓸 수 있다. 기본 행렬 \(E\)를 왼쪽에 곱하는 것은 행 연산이므로 세 성질에서 \(\det(EM) = \det E\,\det M\)이 모든 \(M\)에 대해 성립한다(교환 \(-1\), \(k\)배 \(k\), 행 더하기 1). 이것을 \(k\)번 쓰면 \(\det(AB) = \det E_1\cdots\det E_k\det B = \det A\det B\). ∎</p></div>
+    <p>기하적으로는 당연합니다. \(B\)가 부피를 \(\det B\)배 하고 이어서 \(A\)가 \(\det A\)배 하면 모두 \(\det A\det B\)배입니다. 주의할 것은 덧셈입니다. \(\det(A+B) \ne \det A + \det B\)가 일반적입니다(\(A = B = I\)이면 \(2^n \ne 2\)).</p>
+    <div class="callout deep"><strong>정리 10.6 (전치)</strong> \(\det A^\mathsf{T} = \det A\). 그래서 "행"에 대한 모든 성질은 "열"에도 성립한다(열 교환은 부호 반전, 각 열에 대해 선형, 같은 두 열이면 0 …).
+      <p style="margin:8px 0 0"><b>증명.</b> \(PA = LU\)이면 \(A^\mathsf{T}P^\mathsf{T} = U^\mathsf{T}L^\mathsf{T}\). 곱의 법칙으로 \(\det P\det A = \det L\det U\), \(\det A^\mathsf{T}\det P^\mathsf{T} = \det U^\mathsf{T}\det L^\mathsf{T}\). 삼각 행렬은 전치해도 대각이 같으니 \(\det L = \det L^\mathsf{T} = 1\), \(\det U = \det U^\mathsf{T}\). 치환 행렬은 \(PP^\mathsf{T} = I\)이므로 \(\det P\det P^\mathsf{T} = 1\)이고 \(\det P = \pm1\)이라 \(\det P^\mathsf{T} = \det P\). 두 식을 비교하면 \(\det A^\mathsf{T} = \det A\). ∎</p></div>
+    <p>1절에서 행렬식을 <b>열</b>이 만드는 부피로 소개하고 2절에서 <b>행</b>의 성질로 정의했는데, 이 정리 덕분에 두 관점이 같은 숫자를 줍니다.</p>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="cofactor">
+    <h2>여인수 전개와 n! 공식</h2>
+    <div class="problem"><strong>행렬식을 원소들의 식으로 직접 쓸 수 있을까</strong>
+      <p>소거는 빠르지만 "\(\det A\)가 원소들의 어떤 함수인가"는 말해 주지 않습니다. 이론에서는 행렬식을 원소의 다항식으로 써야 할 때가 많습니다. 고유값을 찾는 특성 다항식 \(\det(A - \lambda I)\)(<a href="eigen.html">11장</a>)이 대표적입니다.</p></div>
+    <p>다중선형성으로 첫 행을 \(\mathbf{r}_1 = a_{11}\mathbf{e}_1 + a_{12}\mathbf{e}_2 + \cdots + a_{1n}\mathbf{e}_n\)으로 쪼개면 행렬식이 \(n\)개 행렬식의 합이 됩니다. \(j\)번째 것은 첫 행이 \(a_{1j}\mathbf{e}_j\)인 행렬이고, 첫 행에서 \(a_{1j}\)를 꺼낸 뒤 \(j\)열 아래쪽을 행 더하기로 지우고 열 교환으로 \(j\)열을 맨 앞으로 옮기면 남는 것은 1행과 \(j\)열을 지운 \((n-1)\times(n-1)\) 행렬의 행렬식입니다. 열 교환 \(j-1\)번이 부호 \((-1)^{1+j}\)를 만듭니다.</p>
+    <div class="callout deep"><strong>정리 10.7 (여인수 전개, 라플라스 전개)</strong> \(A\)에서 \(i\)행과 \(j\)열을 지운 행렬을 \(M_{ij}\)라 하고 <span class="term">여인수</span><span class="en">(Cofactor)</span>를 \(C_{ij} = (-1)^{i+j}\det M_{ij}\)라 하자. 어느 행 \(i\)를 골라도, 또 어느 열 \(j\)를 골라도
+      $$\det A = \sum_{j=1}^n a_{ij}C_{ij} = \sum_{i=1}^n a_{ij}C_{ij}.$$
+      부호 \((-1)^{i+j}\)는 체스판처럼 \(+\,-\,+\,\cdots\)로 번갈아 놓인다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 220" role="img" aria-label="여인수 전개의 부호와 소행렬">
+        <rect x="10" y="10" width="740" height="200" rx="10" class="f-surface"/>
+        <g font-family="var(--mono)" font-size="18" font-weight="700" text-anchor="middle">
+          <rect x="50" y="50" width="40" height="40" rx="5" class="f-acc-soft"/><text x="70" y="77" class="t-acc">+</text>
+          <rect x="95" y="50" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="115" y="77" style="fill:var(--accent-2)">−</text>
+          <rect x="140" y="50" width="40" height="40" rx="5" class="f-acc-soft"/><text x="160" y="77" class="t-acc">+</text>
+          <rect x="185" y="50" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="205" y="77" style="fill:var(--accent-2)">−</text>
+          <rect x="50" y="95" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="70" y="122" style="fill:var(--accent-2)">−</text>
+          <rect x="95" y="95" width="40" height="40" rx="5" class="f-acc-soft"/><text x="115" y="122" class="t-acc">+</text>
+          <rect x="140" y="95" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="160" y="122" style="fill:var(--accent-2)">−</text>
+          <rect x="185" y="95" width="40" height="40" rx="5" class="f-acc-soft"/><text x="205" y="122" class="t-acc">+</text>
+          <rect x="50" y="140" width="40" height="40" rx="5" class="f-acc-soft"/><text x="70" y="167" class="t-acc">+</text>
+          <rect x="95" y="140" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="115" y="167" style="fill:var(--accent-2)">−</text>
+          <rect x="140" y="140" width="40" height="40" rx="5" class="f-acc-soft"/><text x="160" y="167" class="t-acc">+</text>
+          <rect x="185" y="140" width="40" height="40" rx="5" class="f-acc2-soft"/><text x="205" y="167" style="fill:var(--accent-2)">−</text>
+        </g>
+        <text x="137" y="36" text-anchor="middle" class="t" style="font-weight:700">부호 (−1)ⁱ⁺ʲ</text>
+        <g font-family="var(--mono)" font-size="16" text-anchor="middle">
+          <text x="330" y="36" class="t" style="font-weight:700">a₂₃의 소행렬 M₂₃: 2행·3열 지우기</text>
+          <text x="290" y="75" class="t">a₁₁</text><text x="330" y="75" class="t">a₁₂</text><text x="370" y="75" class="t-dim">a₁₃</text>
+          <text x="290" y="120" class="t-dim">a₂₁</text><text x="330" y="120" class="t-dim">a₂₂</text><text x="370" y="120" class="t-acc" style="font-weight:700">a₂₃</text>
+          <text x="290" y="165" class="t">a₃₁</text><text x="330" y="165" class="t">a₃₂</text><text x="370" y="165" class="t-dim">a₃₃</text>
+        </g>
+        <line x1="270" y1="115" x2="395" y2="115" style="stroke:var(--accent-2);stroke-width:2"/>
+        <line x1="370" y1="52" x2="370" y2="180" style="stroke:var(--accent-2);stroke-width:2"/>
+        <text x="560" y="80" text-anchor="middle" class="t-mono">C₂₃ = (−1)²⁺³ det M₂₃</text>
+        <text x="560" y="110" text-anchor="middle" class="t-mono">= −(a₁₁a₃₂ − a₁₂a₃₁)</text>
+        <text x="560" y="160" text-anchor="middle" class="t-dim">0이 많은 행이나 열로 전개하면 항이 줄어든다</text>
+      </svg>
+      <figcaption><b>그림 10-4.</b> 왼쪽: 여인수의 부호는 왼쪽 위에서 +로 시작하는 체스판 무늬다. 오른쪽: a₂₃의 소행렬은 2행과 3열을 지우고 남은 2×2 행렬이며, 여인수는 그 행렬식에 부호 −를 붙인 것이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 10.2 (0이 많은 행으로 전개하기)</strong> \(B = \begin{bmatrix}1&0&2&0\\3&1&0&1\\0&0&1&0\\2&0&4&3\end{bmatrix}\).
+      <ol>
+        <li>3행은 \(b_{33} = 1\)만 0이 아니다. 3행으로 전개하면 항이 하나: \(\det B = (+1)\cdot1\cdot\det M_{33}\), 부호 \((-1)^{3+3} = +1\).</li>
+        <li>\(M_{33} = \begin{bmatrix}1&0&0\\3&1&1\\2&0&3\end{bmatrix}\). 1행은 첫 원소만 0이 아니다. \(\det M_{33} = 1\cdot\det\begin{bmatrix}1&1\\0&3\end{bmatrix} = 3\).</li>
+        <li>\(\det B = 3\). 4×4의 24개 항 대부분이 0이라 두 번의 전개로 끝났다.</li>
+      </ol></div>
+    <p>전개를 끝까지 되풀이하면 모든 항이 "각 행에서 하나, 각 열에서 하나"씩 고른 원소의 곱이 됩니다. 이런 선택은 열 번호의 순열 \(\sigma\)와 일대일로 대응하고, 부호는 그 순열을 만드는 교환 횟수의 홀짝입니다.</p>
+    <div class="callout deep"><strong>정리 10.8 (순열 공식, 라이프니츠 공식)</strong>
+      $$\det A = \sum_{\sigma\in S_n}\operatorname{sgn}(\sigma)\,a_{1\sigma(1)}a_{2\sigma(2)}\cdots a_{n\sigma(n)}.$$
+      합은 \(\{1,\ldots,n\}\)의 순열 \(n!\)개 전체에 대한 것이고, \(\operatorname{sgn}\sigma = \pm1\)은 \(\sigma\)가 짝수 번의 교환으로 만들어지면 \(+1\), 홀수 번이면 \(-1\)이다. 이 식이 세 성질을 만족한다는 것을 확인하면 정리 10.2의 존재성이 증명된다.</div>
+    <p>이론에는 훌륭한 식이지만 계산에는 재앙입니다. \(n!\)은 \(n^3\)과 비교도 안 되게 빨리 자랍니다. 아래 시뮬레이터 위쪽에서는 여인수 전개를 직접 펼쳐 보고, 아래쪽 그래프에서 두 방법의 연산량을 비교하세요.</p>
+
+    <div class="sim" id="sim-dt-cofactor">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>여인수 전개 펼치기와 n!의 벽</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="dt-terms" id="dt-c-terms"></div><canvas id="dt-cv-cost"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A (3×3)</span>
+            <div class="mat" style="--n:3"><input id="dt-c11" value="2" inputmode="decimal" aria-label="a11"><input id="dt-c12" value="1" inputmode="decimal" aria-label="a12"><input id="dt-c13" value="1" inputmode="decimal" aria-label="a13"><input id="dt-c21" value="4" inputmode="decimal" aria-label="a21"><input id="dt-c22" value="1" inputmode="decimal" aria-label="a22"><input id="dt-c23" value="0" inputmode="decimal" aria-label="a23"><input id="dt-c31" value="-2" inputmode="decimal" aria-label="a31"><input id="dt-c32" value="2" inputmode="decimal" aria-label="a32"><input id="dt-c33" value="1" inputmode="decimal" aria-label="a33"></div></div>
+          <label class="ctrl"><span>전개 기준</span><select id="dt-c-along">
+            <option value="r0">1행</option><option value="r1">2행</option><option value="r2">3행</option>
+            <option value="c0">1열</option><option value="c1">2열</option><option value="c2">3열</option>
+          </select></label>
+          <label class="ctrl"><span>그래프의 행렬 크기 n <output id="dt-c-n-out"></output></span><input type="range" id="dt-c-n" min="2" max="25" value="10" step="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">순열 공식의 곱셈 (≈ n!·(n−1))</span><span class="v" id="dt-c-big">—</span></div>
+        <div class="stat"><span class="k">소거의 연산 (≈ 2n³/3)</span><span class="v" id="dt-c-elim">—</span></div>
+        <div class="stat"><span class="k">초당 10억 번일 때: 순열 공식</span><span class="v" id="dt-c-tbig">—</span></div>
+        <div class="stat"><span class="k">초당 10억 번일 때: 소거</span><span class="v" id="dt-c-telim">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 2열로 전개하면 a₂₃ = 0 같은 0인 원소의 항이 사라지지 않지만, 0이 들어 있는 2행이나 3열로 바꾸면 항 하나가 0이 됩니다. 어느 행·열로 전개해도 합은 같습니다. ② n을 20으로 올려 보세요. 순열 공식은 약 77년, 소거는 수 마이크로초입니다. n = 25면 순열 공식은 우주 나이의 수천만 배를 넘깁니다. 모델: 순열 공식 비용은 n!개 항마다 곱셈 n−1번으로 셉니다. 실제 시간은 하드웨어에 따라 다르며 비율만 의미가 있습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="cramer">
+    <h2>크라메르 공식과 수반 행렬</h2>
+    <div class="problem"><strong>Ax = b의 해를 원소들의 식으로 한 번에 쓸 수 있을까</strong>
+      <p>소거는 절차이지 공식이 아닙니다. 해 \(x_i\)가 \(A\)와 \(\mathbf{b}\)의 원소에 어떻게 의존하는지, 예를 들어 \(\mathbf{b}\)를 조금 바꾸면 \(x_i\)가 얼마나 바뀌는지를 식으로 알고 싶을 때가 있습니다.</p></div>
+    <p>요령은 단위 행렬의 \(i\)열을 \(\mathbf{x}\)로 바꾼 행렬 \(I_i(\mathbf{x})\)입니다. \(A\)를 곱하면 \(A\,I_i(\mathbf{x})\)의 \(i\)열은 \(A\mathbf{x} = \mathbf{b}\)이고 나머지 열은 \(A\)의 열 그대로입니다. 즉 \(A\,I_i(\mathbf{x}) = A_i(\mathbf{b})\), \(A\)의 \(i\)열을 \(\mathbf{b}\)로 바꾼 행렬입니다. 양변에 행렬식을 취하고 \(\det I_i(\mathbf{x}) = x_i\)(그 행렬을 \(i\)행으로 전개)를 쓰면 끝입니다.</p>
+    <div class="callout deep"><strong>정리 10.9 (크라메르 공식)</strong> \(\det A \ne 0\)이면 \(A\mathbf{x} = \mathbf{b}\)의 유일한 해는
+      $$x_i = \frac{\det A_i(\mathbf{b})}{\det A}, \qquad i = 1, \ldots, n.$$
+      2차원 그림: \(x_1\)은 "\(\mathbf{b}\)와 \(\mathbf{a}_2\)가 만드는 평행사변형"이 "\(\mathbf{a}_1\)과 \(\mathbf{a}_2\)가 만드는 평행사변형"의 몇 배인가이다.</div>
+    <div class="callout"><strong>예제 10.3 (2×2 크라메르)</strong> \(2x + y = 5\), \(x - 3y = -1\).
+      <ol>
+        <li>\(\det A = \det\begin{bmatrix}2&1\\1&-3\end{bmatrix} = -6 - 1 = -7\).</li>
+        <li>\(x = \det\begin{bmatrix}5&1\\-1&-3\end{bmatrix}/(-7) = (-15 + 1)/(-7) = 2\).</li>
+        <li>\(y = \det\begin{bmatrix}2&5\\1&-1\end{bmatrix}/(-7) = (-2 - 5)/(-7) = 1\). 검산: \(4 + 1 = 5\), \(2 - 3 = -1\). ✓</li>
+      </ol></div>
+
+    <div class="sim" id="sim-dt-cramer">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>넓이의 비로 해를 읽는 크라메르 공식</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dt-cv-cr"></canvas><span class="tag-tl">a₁, a₂, b 끝점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>분자로 보여 줄 평행사변형</span><div class="seg" id="dt-cr-which"><button data-value="1" class="on">x₁: det(b, a₂)</button><button data-value="2">x₂: det(a₁, b)</button></div></div>
+          <label class="check"><input type="checkbox" id="dt-cr-path" checked> x₁a₁ + x₂a₂ 경로 보기</label>
+          <div class="btn-row"><button class="btn" id="dt-cr-reset">예제 10.3으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">det A = det(a₁, a₂)</span><span class="v" id="dt-cr-d">—</span></div>
+        <div class="stat"><span class="k">분자</span><span class="v" id="dt-cr-num">—</span></div>
+        <div class="stat"><span class="k">해 (x₁, x₂)</span><span class="v" id="dt-cr-x">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① b를 a₂와 평행한 직선 위로 끌면 det(b, a₂) = 0이 되어 x₁ = 0입니다. b가 a₂만으로 만들어진다는 뜻이죠. ② a₁을 a₂ 쪽으로 기울여 두 열을 거의 평행하게 만들면 분모가 작아져 해가 크게 튑니다. 4장에서 본 "거의 특이한" 행렬입니다. ③ 평행사변형의 부호(색)가 바뀌면 해의 부호도 바뀝니다. 모델: 2×2, 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+
+    <p>크라메르 공식을 \(\mathbf{b} = \mathbf{e}_j\)에 쓰면 \(A^{-1}\)의 \(j\)열이 나옵니다. \(\det A_i(\mathbf{e}_j)\)를 \(i\)열로 전개하면 여인수 \(C_{ji}\) 하나만 남습니다. 그래서 역행렬도 공식으로 쓸 수 있습니다.</p>
+    <div class="callout deep"><strong>정리 10.10 (수반 행렬과 역행렬)</strong> 여인수 행렬을 전치한 \(\operatorname{adj}A = C^\mathsf{T}\)를 <span class="term">수반 행렬</span><span class="en">(Adjugate)</span>이라 하면 \(A\,\operatorname{adj}A = (\det A)\,I\)이다. 따라서 \(\det A \ne 0\)이면
+      $$A^{-1} = \frac{\operatorname{adj}A}{\det A}, \qquad 2\times2:\ \begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1} = \frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}.$$
+      <p style="margin:8px 0 0"><b>증명.</b> \((A\,\operatorname{adj}A)_{ij} = \sum_k a_{ik}C_{jk}\). \(i = j\)이면 \(i\)행 여인수 전개라 \(\det A\)이다. \(i \ne j\)이면 \(A\)의 \(j\)행을 \(i\)행으로 바꾼 행렬을 \(j\)행으로 전개한 것이고, 그 행렬은 같은 행이 두 번 있으니 0이다. ∎</p></div>
+    <div class="callout warn"><strong>이론에는 쓰고, 계산에는 쓰지 않는다</strong> 크라메르 공식으로 \(n\)개의 미지수를 구하려면 행렬식 \(n+1\)개가 필요합니다. 행렬식을 소거로 구해도 \(n^4\) 수준이라 한 번의 소거(\(n^3\))보다 훨씬 느리고, 여인수 전개로 구하면 \(n!\)입니다. 반올림 오차에도 약합니다. 대신 이 공식은 "해는 \(\mathbf{b}\)에 대해 선형이고, \(A\)의 원소에 대해서는 유리 함수이며, \(\det A\)가 0에 가까우면 터진다"는 구조를 한눈에 보여 줍니다. 정수 행렬의 역행렬이 정수일 조건(\(\det A = \pm1\)) 같은 사실도 여기서 바로 나옵니다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="jacobian">
+    <h2>야코비안: 휘어진 변환의 국소 넓이 배율</h2>
+    <div class="problem"><strong>원판의 넓이를 극좌표로 적분하면 왜 r이 붙을까</strong>
+      <p>반지름 \(R\)인 원판에서 \(r\)은 0부터 \(R\)까지, \(\theta\)는 0부터 \(2\pi\)까지입니다. 그런데 \(\int_0^{2\pi}\!\int_0^R dr\,d\theta = 2\pi R\)은 넓이가 아니라 둘레의 값입니다. 정답 \(\pi R^2\)을 얻으려면 \(\int\!\int r\,dr\,d\theta\)를 해야 합니다. 이 \(r\)은 어디서 왔을까요?</p></div>
+    <p>극좌표 변환 \(f(r, \theta) = (r\cos\theta, r\sin\theta)\)는 선형이 아닙니다. 하지만 아주 작은 영역에서는 미분이 선형 근사를 줍니다. 점 \(\mathbf{p}\) 근처의 작은 변위 \(d\mathbf{u}\)는 <span class="term">야코비 행렬</span><span class="en">(Jacobian matrix)</span> \(J\)를 곱한 \(J\,d\mathbf{u}\)로 갑니다. 그러면 작은 정사각형은 거의 평행사변형으로 가고, 그 넓이 배율이 \(|\det J|\)입니다.</p>
+    <div class="formula">$$J = \frac{\partial(x, y)}{\partial(r, \theta)} = \begin{bmatrix}\partial x/\partial r & \partial x/\partial\theta\\ \partial y/\partial r & \partial y/\partial\theta\end{bmatrix} = \begin{bmatrix}\cos\theta & -r\sin\theta\\ \sin\theta & r\cos\theta\end{bmatrix}, \qquad \det J = r\cos^2\theta + r\sin^2\theta = r$$
+      <div class="where">반지름 방향으로 \(dr\)만큼, 원주 방향으로 \(r\,d\theta\)만큼 움직이므로 작은 조각의 넓이는 \(r\,dr\,d\theta\)다. 원점에서 멀수록 같은 \(d\theta\)가 더 긴 호를 만든다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="극좌표의 작은 조각 넓이">
+        <rect x="10" y="10" width="300" height="230" rx="10" class="f-surface"/>
+        <line x1="40" y1="210" x2="290" y2="210" class="s-axis"/><line x1="40" y1="210" x2="40" y2="30" class="s-axis"/>
+        <rect x="150" y="100" width="40" height="40" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="170" y="160" text-anchor="middle" class="t-mono">dr</text><text x="200" y="125" class="t-mono">dθ</text>
+        <text x="280" y="228" text-anchor="end" class="t-dim">r</text><text x="50" y="40" class="t-dim">θ</text>
+        <text x="160" y="56" text-anchor="middle" class="t" style="font-weight:700">(r, θ) 평면: 넓이 dr·dθ</text>
+        <path d="M325 125 h60" class="s-acc" style="stroke-width:2"/><path d="M385 125 l-8 -5 v10z" style="fill:var(--accent)"/>
+        <text x="355" y="112" text-anchor="middle" class="t-mono">f</text>
+        <rect x="400" y="10" width="350" height="230" rx="10" class="f-surface"/>
+        <line x1="430" y1="210" x2="730" y2="210" class="s-axis"/><line x1="430" y1="210" x2="430" y2="30" class="s-axis"/>
+        <path d="M430 210 L 640.2 88.6" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <path d="M430 210 L 597.8 59.0" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <path d="M 587.6 119.3 A 182 182 0 0 0 565.7 88.3 L 597.8 59.0 A 225 225 0 0 1 624.8 97.5 Z" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="637" y="118" class="t-mono">dr</text><text x="600" y="50" class="t-mono">r dθ</text>
+        <path d="M 470 210 A 40 40 0 0 0 464.6 190" style="fill:none;stroke:var(--text-dim)"/><text x="478" y="198" class="t-dim">θ</text>
+        <text x="575" y="228" text-anchor="middle" class="t-dim">반지름 r에서 호의 길이 = r dθ</text>
+        <text x="575" y="40" text-anchor="middle" class="t" style="font-weight:700">(x, y) 평면: 넓이 ≈ r·dr·dθ</text>
+      </svg>
+      <figcaption><b>그림 10-5.</b> (r, θ) 평면의 작은 정사각형은 극좌표 변환으로 부채꼴 띠 조각이 된다. 반지름 방향 폭은 dr 그대로이지만 원주 방향 길이는 r dθ로 늘어난다. 그래서 국소 넓이 배율은 det J = r이다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 10.11 (변수 변환)</strong> \(f\)가 영역 \(D\)를 \(f(D)\)로 일대일로 보내고 미분 가능하며 \(\det J_f \ne 0\)이면
+      $$\iint_{f(D)} g(x, y)\,dx\,dy = \iint_D g(f(u, v))\,\bigl|\det J_f(u, v)\bigr|\,du\,dv.$$
+      n차원에서도 같다. 3차원 구면 좌표에서는 \(|\det J| = \rho^2\sin\phi\)다.</div>
+    <div class="callout"><strong>예제 10.4 (원판의 넓이와 가우스 적분)</strong>
+      <ol>
+        <li>넓이: \(\int_0^{2\pi}\!\int_0^R r\,dr\,d\theta = 2\pi\cdot R^2/2 = \pi R^2\). ✓</li>
+        <li>\(I = \int_{-\infty}^{\infty} e^{-x^2}dx\)라 하면 \(I^2 = \iint e^{-(x^2+y^2)}dx\,dy = \int_0^{2\pi}\!\int_0^\infty e^{-r^2}r\,dr\,d\theta = 2\pi\cdot\tfrac12 = \pi\). 따라서 \(I = \sqrt\pi\). 정규 분포의 정규화 상수 \(1/\sqrt{2\pi}\)가 여기서 나온다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-dt-jacobian">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>작은 정사각형은 몇 배가 되나: 야코비안</h3></div>
+      <div class="dt-split">
+        <div><canvas id="dt-cv-jd"></canvas><span class="cap">입력 평면 (점을 끄세요)</span></div>
+        <div><canvas id="dt-cv-ji"></canvas><span class="cap">출력 평면 f(입력)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>변환 f</span><select id="dt-j-map">
+            <option value="polar">극좌표 (r, θ) → (r cos θ, r sin θ)</option>
+            <option value="square">제곱 z² : (x, y) → (x² − y², 2xy)</option>
+            <option value="wave">물결 (x + 0.5 sin y, y + 0.5 sin x)</option>
+            <option value="lin">선형 [1.5 0.5; 0.3 1] (비교용)</option>
+          </select></label>
+          <label class="ctrl"><span>정사각형 한 변 h <output id="dt-j-h-out"></output></span><input type="range" id="dt-j-h" min="0.05" max="0.8" value="0.4" step="0.05"></label>
+          <label class="check"><input type="checkbox" id="dt-j-lin" checked> 선형 근사 J·(정사각형) 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">야코비 행렬 J</span><span class="v" id="dt-j-J">—</span></div>
+        <div class="stat"><span class="k">det J (국소 배율)</span><span class="v" id="dt-j-det">—</span></div>
+        <div class="stat"><span class="k">실제 넓이 배율 = 상의 넓이 / h²</span><span class="v" id="dt-j-ratio">—</span></div>
+        <div class="stat"><span class="k">상대 차이</span><span class="v" id="dt-j-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 극좌표에서 점을 r이 큰 쪽으로 끌면 상(부채꼴 조각)이 커집니다. det J = r입니다. ② h를 줄여 보세요. 실제 넓이 배율이 det J에 빠르게 다가갑니다(차이는 대략 h에 비례해 줄어듭니다). ③ 제곱 변환에서 원점 근처는 det J = 4(x² + y²) ≈ 0이라 조각이 거의 점으로 쪼그라듭니다. '선형'은 어디서나 det가 1.35로 같습니다. 모델: 상의 넓이는 경계를 160개 점으로 나눈 다각형에 신발끈 공식을 써서 셉니다.</div>
+    </div>
+    <p>확률에서도 같은 식이 쓰입니다. 확률 변수 \((U, V)\)를 \((X, Y) = f(U, V)\)로 바꾸면 밀도는 \(p_{X,Y}(f(u,v)) = p_{U,V}(u,v)/|\det J_f|\)로 바뀝니다. 넓이가 \(|\det J|\)배로 늘면 같은 확률이 그만큼 넓게 퍼져 밀도가 낮아지기 때문입니다(<a href="../../probability/chapters/joint.html">확률과 통계 · 결합 분포</a>).</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="geometry">
+    <h2>기하에서 쓰는 행렬식: 넓이, 외적, 방향</h2>
+    <div class="problem"><strong>꼭짓점 좌표만으로 땅의 넓이를 잴 수 있을까</strong>
+      <p>측량 도면이나 GIS 데이터에는 필지의 경계가 꼭짓점 좌표 목록으로 들어 있습니다. 모양이 들쭉날쭉한 다각형을 삼각형으로 나누고 하나하나 넓이를 구해야 할까요?</p></div>
+    <p>원점과 다각형의 한 변 \(\mathbf{p}_i\mathbf{p}_{i+1}\)이 만드는 삼각형의 부호 있는 넓이는 \(\tfrac12\det[\mathbf{p}_i\ \mathbf{p}_{i+1}]\)입니다. 이것을 모든 변에 대해 더하면, 다각형 바깥에 걸친 삼각형들은 양과 음으로 정확히 상쇄되고 안쪽만 남습니다. 부호 덕분에 원점이 다각형 밖에 있어도 됩니다.</p>
+    <div class="callout deep"><strong>정리 10.12 (신발끈 공식)</strong> 꼭짓점 \(\mathbf{p}_k = (x_k, y_k)\), \(k = 1, \ldots, m\)을 차례로 이은 단순 다각형(자기 교차 없음)의 넓이는
+      $$S = \frac12\Bigl|\sum_{k=1}^{m}(x_k y_{k+1} - x_{k+1}y_k)\Bigr|, \qquad \mathbf{p}_{m+1} = \mathbf{p}_1.$$
+      절댓값 안의 부호는 꼭짓점이 반시계 방향이면 \(+\), 시계 방향이면 \(-\)다.</div>
+    <div class="callout"><strong>예제 10.5 (사각형 필지)</strong> \((0,0), (4,0), (4,3), (1,4)\).
+      <ol>
+        <li>항: \(0\cdot0 - 4\cdot0 = 0\), \(4\cdot3 - 4\cdot0 = 12\), \(4\cdot4 - 1\cdot3 = 13\), \(1\cdot0 - 0\cdot4 = 0\).</li>
+        <li>\(S = \tfrac12(0 + 12 + 13 + 0) = 12.5\). 부호가 양이므로 반시계 방향.</li>
+        <li>검산: 대각선 \((0,0)\)–\((4,3)\)으로 나누면 \(\tfrac12\cdot4\cdot3 = 6\)과 \(\tfrac12|4\cdot4 - 3\cdot1| = 6.5\), 합 12.5. ✓</li>
+      </ol></div>
+
+    <div class="sim" id="sim-dt-shoelace">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>신발끈 공식: 원점에서 펼친 부채</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="dt-cv-sh"></canvas><span class="tag-tl">꼭짓점과 원점 O를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="dt-sh-fan" checked> 원점에서 각 변까지 삼각형(부호별 색)</label>
+          <div class="btn-row"><button class="btn" id="dt-sh-rev">꼭짓점 순서 뒤집기</button><button class="btn" id="dt-sh-star">자기 교차 모양</button><button class="btn" id="dt-sh-reset">예제 10.5로</button></div>
+        </div>
+      </div>
+      <div class="dt-legend"><span><i style="background:var(--accent)"></i>양의 삼각형 (반시계)</span><span><i style="background:var(--bad)"></i>음의 삼각형 (시계)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">부호 있는 넓이 ½Σ det</span><span class="v" id="dt-sh-s">—</span></div>
+        <div class="stat"><span class="k">방향</span><span class="v" id="dt-sh-o">—</span></div>
+        <div class="stat"><span class="k">모서리마다 꺾이는 방향</span><span class="v" id="dt-sh-c">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 원점 O를 다각형 밖으로 끌어내도 부호 있는 넓이는 그대로입니다. 바깥쪽 삼각형이 빨강(음)으로 바뀌어 정확히 상쇄됩니다. ② '순서 뒤집기'를 누르면 넓이의 부호만 바뀝니다. ③ 꼭짓점 하나를 안쪽으로 밀어 오목하게 만들면 '꺾이는 방향'에 다른 부호가 섞입니다. 연속한 두 변의 2×2 행렬식 부호가 모두 같으면 볼록입니다. ④ '자기 교차' 모양에서는 두 고리가 서로 반대 방향이라 넓이가 일부 상쇄됩니다. 공식은 단순 다각형에만 넓이를 줍니다.</div>
+    </div>
+
+    <p><b>외적과 삼중곱.</b> 3차원 벡터의 <span class="term">외적</span><span class="en">(Cross product)</span>은 첫 행에 기호 \(\mathbf{i}, \mathbf{j}, \mathbf{k}\)를 넣은 "형식적 행렬식"을 1행으로 전개한 것입니다.</p>
+    <div class="formula">$$\mathbf{a}\times\mathbf{b} = \det\begin{bmatrix}\mathbf{i}&\mathbf{j}&\mathbf{k}\\a_1&a_2&a_3\\b_1&b_2&b_3\end{bmatrix} = (a_2b_3 - a_3b_2,\ a_3b_1 - a_1b_3,\ a_1b_2 - a_2b_1), \qquad \mathbf{c}\cdot(\mathbf{a}\times\mathbf{b}) = \det\begin{bmatrix}\mathbf{c}^\mathsf{T}\\ \mathbf{a}^\mathsf{T}\\ \mathbf{b}^\mathsf{T}\end{bmatrix}$$
+      <div class="where">\(\mathbf{a}\times\mathbf{b}\)는 \(\mathbf{a}, \mathbf{b}\)에 수직이고(같은 행이 두 번 나오는 행렬식이 0이므로 \(\mathbf{a}\cdot(\mathbf{a}\times\mathbf{b}) = 0\)), 길이는 두 벡터가 만드는 평행사변형의 넓이, 방향은 오른손 법칙을 따른다. 스칼라 삼중곱은 세 벡터가 만드는 평행육면체의 부호 있는 부피다(1절 시뮬레이터의 a₁·(a₂×a₃)).</div>
+    </div>
+    <p><b>방향 판정.</b> 세 점 \(\mathbf{p}, \mathbf{q}, \mathbf{r}\)에 대해 \(\operatorname{orient}(\mathbf{p},\mathbf{q},\mathbf{r}) = \det[\mathbf{q}-\mathbf{p}\ \ \mathbf{r}-\mathbf{p}]\)의 부호는 \(\mathbf{r}\)이 \(\mathbf{p}\to\mathbf{q}\) 방향의 왼쪽(\(+\))·오른쪽(\(-\))·직선 위(0)인지 알려 줍니다. 볼록 껍질, 선분 교차 판정, 삼각형 안의 점 판정, 들로네 삼각분할 같은 계산 기하 알고리즘은 대부분 이 판정 하나 위에 세워집니다. 장 첫머리의 뒷면 제거도 같은 판정입니다. 부호가 0 근처일 때 반올림 오차로 잘못 판정하지 않도록, 정밀한 기하 라이브러리는 이 행렬식만큼은 오차 한계를 따져 필요하면 정확한 산술로 다시 계산합니다.</p>
+    <p><b>변형과 부피.</b> 연속체 역학에서 물체의 각 점을 \(\mathbf{X} \mapsto \mathbf{x}(\mathbf{X})\)로 옮기는 변형의 야코비 행렬을 변형 기울기 \(F = \partial\mathbf{x}/\partial\mathbf{X}\)라 부릅니다. \(J = \det F\)는 국소 부피 배율이고, 질량 보존에서 밀도는 \(\rho = \rho_0/J\)입니다. \(J > 0\)이어야 물리적으로 가능한 변형이며(물질이 스스로를 뚫고 뒤집힐 수 없음), 고무처럼 거의 비압축성인 재료는 \(J \approx 1\)입니다. 유한 요소 해석 프로그램이 메시를 검사할 때 "음의 야코비안" 요소를 오류로 내보내는 것도 같은 이유입니다. 그 요소는 안팎이 뒤집혀 있습니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>행렬식은 직접 계산하기보다 "0인가, 부호가 무엇인가, 부피가 몇 배인가"를 묻는 곳에서 빛납니다.</p>
+    <div class="uses">
+      <a href="../../foundations/chapters/linalg.html#determinant"><small>MATHBOOK</small>넓이 배율로서의 행렬식<br><span>2×2 격자 변형으로 보는 det의 첫 그림. 이 장의 출발점.</span></a>
+      <a href="eigen.html"><small>LINEARBOOK 11장</small>특성 다항식<br><span>det(A − λI) = 0의 근이 고유값. 행렬식이 0이 되는 순간을 찾는 문제.</span></a>
+      <a href="lu.html#lu"><small>LINEARBOOK 4장</small>LU 분해의 부산물<br><span>LU를 구했다면 det는 U의 대각 곱에 교환 부호만 붙이면 된다.</span></a>
+      <a href="../../probability/chapters/joint.html"><small>확률과 통계</small>확률 변수의 변환<br><span>결합 밀도는 야코비안의 절댓값으로 나눠진다. 다변량 정규 분포의 det Σ.</span></a>
+      <a href="https://science.euiyun.com/fluid-mechanics/"><small>유체역학</small>부피 변화와 연속 방정식<br><span>유체 덩어리의 부피 배율 J와 발산 ∇·u의 관계, 비압축성 J = 1.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>메시와 좌표 변환<br><span>요소의 야코비안으로 적분을 기준 요소에 옮기고, 음의 야코비안으로 뒤집힌 요소를 찾는다.</span></a>
+    </div>
+  </section>
+
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(\det A\)는 열(또는 행)이 만드는 평행육면체의 <b>부호 있는 부피</b>다. 크기는 부피 배율, 부호는 방향(손잡이)이며 0이면 공간이 납작해진다.</li>
+      <li>행렬식은 세 성질 <b>\(\det I = 1\), 행 교환은 부호 반전, 각 행에 대해 선형</b>으로 유일하게 정해진다. 여기서 같은 두 행 → 0, 행 더하기는 불변, 삼각 행렬은 대각 곱, \(\det(cA) = c^n\det A\)가 나온다.</li>
+      <li><b>\(\det A = \pm\)(피벗의 곱)</b>, 부호는 행 교환 횟수의 홀짝. 그래서 \(\det A \ne 0 \iff\) 가역이고, 계산량은 소거와 같은 \(\tfrac23 n^3\)이다.</li>
+      <li><b>\(\det AB = \det A\det B\)</b>, \(\det A^\mathsf{T} = \det A\), \(\det A^{-1} = 1/\det A\). 덧셈에 대해서는 이런 법칙이 없다.</li>
+      <li>여인수 전개와 순열 공식은 행렬식을 원소의 다항식으로 보여 주지만 <b>\(n!\)</b> 비용이라 계산에는 쓰지 않는다. 0이 많은 행·열로 전개하면 손계산이 쉬워진다.</li>
+      <li><b>크라메르 공식</b> \(x_i = \det A_i(\mathbf{b})/\det A\)와 \(A^{-1} = \operatorname{adj}A/\det A\)는 해의 구조를 보여 주는 이론의 도구다.</li>
+      <li><b>야코비안</b> \(|\det J|\)는 비선형 변환의 국소 넓이·부피 배율이다(극좌표 \(r\), 구면 좌표 \(\rho^2\sin\phi\)). 신발끈 공식, 외적·삼중곱, 방향 판정, 변형의 \(J = \det F\)가 모두 같은 생각이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 3×3 행렬 \(A\)의 행렬식이 5다. \(\det(2A)\)는?</p><div class="opts">
+        <button class="opt">10</button>
+        <button class="opt">25</button>
+        <button class="opt" data-correct>40</button>
+        <button class="opt">5</button>
+      </div><div class="quiz-exp">\(2A\)는 세 행이 모두 2배다. 다중선형성으로 행마다 2를 하나씩 꺼내므로 \(2^3\cdot5 = 40\). 기하적으로도 정육면체의 모든 변을 2배 하면 부피는 8배다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 소거 도중 행 교환을 두 번 했고, 얻은 피벗이 3, −1, 4였다. \(\det A\)는?</p><div class="opts">
+        <button class="opt">12</button>
+        <button class="opt" data-correct>−12</button>
+        <button class="opt">−48</button>
+        <button class="opt">교환 때문에 알 수 없다</button>
+      </div><div class="quiz-exp">피벗의 곱은 \(3\cdot(-1)\cdot4 = -12\)이고, 교환 두 번은 부호를 두 번 바꿔 원래대로이므로 \((-1)^2 = 1\)을 곱한다. 행 더하기는 행렬식을 바꾸지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 다음 중 항상 참인 것은? (\(A, B\)는 \(n\times n\))</p><div class="opts">
+        <button class="opt">\(\det(A + B) = \det A + \det B\)</button>
+        <button class="opt" data-correct>\(\det(AB) = \det(BA)\)</button>
+        <button class="opt">\(\det(-A) = -\det A\)</button>
+        <button class="opt">\(\det A = 0\)이면 \(A\)의 한 행이 0이다</button>
+      </div><div class="quiz-exp">곱의 법칙으로 \(\det AB = \det A\det B = \det B\det A = \det BA\)다. \(AB \ne BA\)여도 행렬식은 같다. \(\det(-A) = (-1)^n\det A\)라 \(n\)이 짝수면 틀리고, 덧셈 법칙은 \(A = B = I\)에서 깨진다. 특이 행렬은 행이 서로 종속이면 될 뿐 영인 행이 있을 필요는 없다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 여인수 전개로 \(n\times n\) 행렬식을 구하는 데 드는 곱셈 수의 규모는?</p><div class="opts">
+        <button class="opt">\(n^2\)</button>
+        <button class="opt">\(n^3\)</button>
+        <button class="opt">\(2^n\)</button>
+        <button class="opt" data-correct>\(n!\)</button>
+      </div><div class="quiz-exp">\(n\times n\) 전개가 \((n-1)\times(n-1)\) 행렬식 \(n\)개를 부르므로 \(T(n) \approx nT(n-1)\), 즉 \(n!\) 규모다. 소거는 \(\tfrac23n^3\)이다. \(n = 20\)이면 그 차이는 약 \(10^{14}\)배다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 2×2 연립방정식에서 \(\mathbf{b}\)가 \(\mathbf{a}_2\)와 평행하다. 크라메르 공식이 주는 \(x_1\)은?</p><div class="opts">
+        <button class="opt" data-correct>0</button>
+        <button class="opt">1</button>
+        <button class="opt">정의되지 않는다</button>
+        <button class="opt">\(\det A\)</button>
+      </div><div class="quiz-exp">분자 \(\det[\mathbf{b}\ \mathbf{a}_2]\)는 평행한 두 벡터가 만드는 평행사변형이라 넓이가 0이다(\(\det A \ne 0\)이라면). 실제로 \(\mathbf{b} = c\,\mathbf{a}_2\)이므로 \(x_1 = 0, x_2 = c\)다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 변환 \((u, v) \mapsto (x, y) = (2u + v,\ u + 3v)\)는 넓이를 몇 배로 만드나?</p><div class="opts">
+        <button class="opt">6</button>
+        <button class="opt" data-correct>5</button>
+        <button class="opt">7</button>
+        <button class="opt">점마다 다르다</button>
+      </div><div class="quiz-exp">선형 변환이라 야코비 행렬이 어디서나 \(\begin{bmatrix}2&1\\1&3\end{bmatrix}\)이고 \(\det = 6 - 1 = 5\)다. 비선형 변환이라면 \(|\det J|\)가 점마다 달라진다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 세 점 \(\mathbf{p} = (0,0)\), \(\mathbf{q} = (2,1)\), \(\mathbf{r} = (1,3)\)에서 \(\det[\mathbf{q}-\mathbf{p}\ \ \mathbf{r}-\mathbf{p}]\)의 부호가 말하는 것은?</p><div class="opts">
+        <button class="opt">r은 p→q 직선 위에 있다</button>
+        <button class="opt" data-correct>r은 p→q 방향의 왼쪽에 있다(p, q, r은 반시계)</button>
+        <button class="opt">r은 p→q 방향의 오른쪽에 있다</button>
+        <button class="opt">삼각형 pqr의 넓이는 5다</button>
+      </div><div class="quiz-exp">\(\det\begin{bmatrix}2&1\\1&3\end{bmatrix} = 6 - 1 = 5 > 0\)이므로 반시계, 즉 왼쪽이다. 삼각형의 넓이는 그 절반인 2.5다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(A\)가 정수 원소를 가진 가역 행렬일 때 \(A^{-1}\)도 정수 원소를 갖기 위한 조건은?</p><div class="opts">
+        <button class="opt">\(\det A > 0\)</button>
+        <button class="opt">\(A\)가 대칭</button>
+        <button class="opt" data-correct>\(\det A = \pm1\)</button>
+        <button class="opt">항상 그렇다</button>
+      </div><div class="quiz-exp">\(\operatorname{adj}A\)는 정수 행렬식들의 모임이라 정수이므로 \(\det A = \pm1\)이면 \(A^{-1} = \operatorname{adj}A/\det A\)가 정수다. 거꾸로 \(A^{-1}\)이 정수면 \(\det A\)와 \(\det A^{-1} = 1/\det A\)가 둘 다 정수라 \(\pm1\)뿐이다. 넓이를 보존하는 정수 격자 변환이 바로 이것이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const DT = {
+  mul: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0))),
+  copy: (A) => A.map((r) => r.slice()),
+  /** 부분 피벗팅 소거로 구한 행렬식 */
+  det(A) {
+    const M = DT.copy(A), n = M.length; let d = 1;
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      if (Math.abs(M[p][k]) < 1e-14) return 0;
+      if (p !== k) { [M[p], M[k]] = [M[k], M[p]]; d = -d; }
+      d *= M[k][k];
+      for (let i = k + 1; i < n; i++) { const l = M[i][k] / M[k][k]; for (let j = k; j < n; j++) M[i][j] -= l * M[k][j]; }
+    }
+    return d;
+  },
+  minor: (A, i, j) => A.filter((_, r) => r !== i).map((row) => row.filter((_, c) => c !== j)),
+  /** 순열 공식(작은 n 전용) */
+  leibniz(A) {
+    const n = A.length; let s = 0;
+    const perm = (arr, k, sign) => {
+      if (k === n) { let p = sign; for (let i = 0; i < n; i++) p *= A[i][arr[i]]; s += p; return; }
+      for (let i = k; i < n; i++) { [arr[k], arr[i]] = [arr[i], arr[k]]; perm(arr, k + 1, i === k ? sign : -sign); [arr[k], arr[i]] = [arr[i], arr[k]]; }
+    };
+    perm([...Array(n).keys()], 0, 1);
+    return s;
+  },
+  num(v, d = 2) {
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  /** 분수로 보이면 분수로 */
+  frac(v) {
+    if (Math.abs(v - Math.round(v)) < 1e-9) return DT.num(Math.round(v), 0);
+    for (let q = 2; q <= 12; q++) { const p = v * q; if (Math.abs(p - Math.round(p)) < 1e-9) return (p < 0 ? "−" : "") + Math.abs(Math.round(p)) + "/" + q; }
+    return DT.num(v, 3);
+  },
+  mat(M, hl, show) {
+    const cells = M.map((r, i) => r.map((v, j) => `<span class="${hl ? hl(i, j, v) : ""}">${show ? show(v, i, j) : DT.frac(v)}</span>`).join("")).join("");
+    return `<span class="dt-m" style="--c:${M[0].length}">${cells}</span>`;
+  },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : 0; },
+  sub: (k) => String(k).split("").map((c) => "₀₁₂₃₄₅₆₇₈₉"[+c]).join(""),
+  big(v) {
+    if (v < 1e4) return DT.num(v, 0);
+    const e = Math.floor(Math.log10(v)), m = v / Math.pow(10, e);
+    return `${DT.num(m, 2)} × 10<sup>${e}</sup>`;
+  },
+  time(s) {
+    const Y = 3.156e7, UNIV = 13.8e9 * Y;
+    if (s < 1e-6) return DT.num(s * 1e9, 1) + " ns";
+    if (s < 1e-3) return DT.num(s * 1e6, 1) + " µs";
+    if (s < 1) return DT.num(s * 1e3, 1) + " ms";
+    if (s < 120) return DT.num(s, 1) + " 초";
+    if (s < 7200) return DT.num(s / 60, 1) + " 분";
+    if (s < 2 * 86400) return DT.num(s / 3600, 1) + " 시간";
+    if (s < Y) return DT.num(s / 86400, 1) + " 일";
+    if (s < 1e6 * Y) return DT.big(s / Y) + " 년";
+    return DT.big(s / UNIV) + " × 우주 나이";
+  },
+};
+
+/* ================================================================ 1. 평행육면체 */
+(function () {
+  const deg = Math.PI / 180;
+  const ids = [[11, 12, 13], [21, 22, 23], [31, 32, 33]].map((r) => r.map((k) => document.getElementById("dt-v" + k)));
+  const yaw = MB.range("dt-v-yaw", (v) => v + "°", () => upd());
+  const pit = MB.range("dt-v-pit", (v) => v + "°", () => upd());
+  const PRE = {
+    id: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], shear: [[1, 0, 0.8], [0, 1, 0.5], [0, 0, 1]], stretch: [[2, 0, 0], [0, 1, 0], [0, 0, 0.5]],
+    swap: [[0, 1, 0], [1, 0, 0], [0, 0, 1]], flip: [[1, 0, 0], [0, 1, 0], [0, 0, -1]], flat: [[1, 0, 1], [0, 1, 1], [0, 0, 0]],
+    gen: [[1.2, 0.3, -0.2], [0.2, 1, 0.5], [-0.1, 0.4, 0.9]],
+  };
+  const A = () => ids.map((r) => r.map(DT.parse));
+  const Rx = (a) => [[1, 0, 0], [0, Math.cos(a), -Math.sin(a)], [0, Math.sin(a), Math.cos(a)]];
+  const Rz = (a) => [[Math.cos(a), -Math.sin(a), 0], [Math.sin(a), Math.cos(a), 0], [0, 0, 1]];
+  const ap = (M, v) => M.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  const add = (...vs) => vs.reduce((s, v) => s.map((x, i) => x + v[i]), [0, 0, 0]);
+  const cv = MB.canvas("#dt-cv-vol", (ctx, w, h) => {
+    const C = MB.palette(), M = A(), VIEW = DT.mul(Rx(-(90 - pit()) * deg), Rz(yaw() * deg));
+    const cols = [0, 1, 2].map((j) => M.map((r) => r[j]));
+    const u = Math.min(w, h) / 5.2, ox = w / 2, oy = h * 0.6;
+    const scr = (p) => { const q = ap(VIEW, p); return [ox + q[0] * u, oy - q[1] * u]; };
+    const seg = (a, b, col, wd, dash, alpha = 1) => { const [x1, y1] = scr(a), [x2, y2] = scr(b); ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); };
+    const face = (pts, col, alpha) => { ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.beginPath(); pts.forEach((p, i) => { const [x, y] = scr(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.fill(); ctx.restore(); };
+    const arrow = (v, col, lab) => {
+      const [x1, y1] = scr([0, 0, 0]), [x2, y2] = scr(v), L = Math.hypot(x2 - x1, y2 - y1);
+      seg([0, 0, 0], v, col, 3.5);
+      if (L > 4) { const ux = (x2 - x1) / L, uy = (y2 - y1) / L, hd = 10; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - ux * hd - uy * hd * 0.45, y2 - uy * hd + ux * hd * 0.45); ctx.lineTo(x2 - ux * hd + uy * hd * 0.45, y2 - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = col; ctx.font = "700 13px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.fillText(lab, x2 + 6, y2 - 6);
+    };
+    for (let i = -2; i <= 2; i++) { seg([i, -2, 0], [i, 2, 0], C.grid, 1); seg([-2, i, 0], [2, i, 0], C.grid, 1); }
+    seg([0, 0, 0], [2.4, 0, 0], C.axis, 1.2); seg([0, 0, 0], [0, 2.4, 0], C.axis, 1.2); seg([0, 0, 0], [0, 0, 2], C.axis, 1.2);
+    // 단위 정육면체
+    const U = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]];
+    const E = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+    E.forEach(([a, b]) => seg(U[a], U[b], C.faint, 1.1, [4, 4], 0.8));
+    const [a, b, c] = cols, V = U.map(([x, y, z]) => add(a.map((t) => t * x), b.map((t) => t * y), c.map((t) => t * z)));
+    const d = DT.det(M), col = Math.abs(d) < 1e-9 ? C.warn : d < 0 ? C.bad : C.accent;
+    [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [3, 2, 6, 7], [0, 3, 7, 4], [1, 2, 6, 5]].forEach((f) => face(f.map((k) => V[k]), col, 0.09));
+    E.forEach(([p, q]) => seg(V[p], V[q], col, 1.8));
+    arrow(a, C.red, "a₁"); arrow(b, C.green, "a₂"); arrow(c, C.blue, "a₃");
+  }, { aspect: 0.8, maxHeight: 460, minHeight: 280 });
+  // 캔버스를 끌어도 돌아간다
+  let drag = null;
+  cv.canvas.style.touchAction = "none";
+  cv.canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, yaw: yaw(), pit: pit() }; cv.canvas.setPointerCapture(e.pointerId); });
+  cv.canvas.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    let v = drag.yaw - (e.clientX - drag.x) * 0.6; v = ((v + 540) % 360) - 180;
+    yaw.set(Math.round(v), false); pit.set(Math.round(MB.clamp(drag.pit + (e.clientY - drag.y) * 0.4, 5, 85)), false); upd();
+  });
+  cv.canvas.addEventListener("pointerup", () => (drag = null));
+  let spin = false;
+  const lp = MB.loop(cv.canvas, (dt) => { if (!spin) return; let v = yaw() + 35 * dt; if (v > 180) v -= 360; yaw.set(Math.round(v * 10) / 10, false); upd(); });
+  const btn = document.getElementById("dt-v-spin");
+  btn.addEventListener("click", () => { spin = !spin; btn.textContent = spin ? "■ 멈춤" : "▶ 돌려 보기"; if (spin) lp.start(); });
+  ids.flat().forEach((el) => el.addEventListener("input", () => upd()));
+  document.getElementById("dt-v-pre").addEventListener("change", (e) => {
+    const M = PRE[e.target.value]; if (!M) return;
+    ids.forEach((r, i) => r.forEach((el, j) => (el.value = String(M[i][j]))));
+    upd();
+  });
+  function upd() {
+    cv.redraw();
+    const M = A(), d = DT.det(M), cols = [0, 1, 2].map((j) => M.map((r) => r[j]));
+    const [a, b, c] = cols, x = [b[1] * c[2] - b[2] * c[1], b[2] * c[0] - b[0] * c[2], b[0] * c[1] - b[1] * c[0]];
+    const trip = a[0] * x[0] + a[1] * x[1] + a[2] * x[2];
+    MB.stat("dt-v-det", DT.num(d, 3));
+    MB.stat("dt-v-vol", DT.num(Math.abs(d), 3));
+    MB.stat("dt-v-trip", DT.num(trip, 3));
+    MB.stat("dt-v-hand", Math.abs(d) < 1e-9 ? '<span class="badge warn">납작 · 부피 0</span>' : d > 0 ? '<span class="badge ok">오른손</span>' : '<span class="badge bad">왼손 (뒤집힘)</span>');
+  }
+  upd();
+})();
+
+/* ================================================================ 2. 행 연산과 행렬식 */
+(function () {
+  const START = [[2, 1, 1], [4, 1, 0], [-2, 2, 1]];
+  let M0 = DT.copy(START), M = DT.copy(START), factor = 1, log = [];
+  const op = MB.seg("dt-r-op", () => hint());
+  const kk = MB.range("dt-r-k", (v) => DT.num(v, 1), () => hint());
+  const si = document.getElementById("dt-r-i"), sj = document.getElementById("dt-r-j");
+  [si, sj].forEach((s) => s.addEventListener("change", hint));
+  const msg = document.getElementById("dt-r-msg");
+  const R = (i) => "R" + DT.sub(i + 1);
+  function hint() {
+    const i = +si.value, j = +sj.value, k = kk(), o = op();
+    msg.className = "dt-msg";
+    if (o === "swap") msg.innerHTML = i === j ? "교환할 두 행을 서로 다르게 고르세요." : `${R(i)} ↔ ${R(j)}: 성질 2에 의해 det에 <b>−1</b>을 곱합니다.`;
+    else if (o === "scale") msg.innerHTML = `${R(i)} ← ${DT.num(k, 1)}·${R(i)}: 성질 3에 의해 det에 <b>${DT.num(k, 1)}</b>를 곱합니다.`;
+    else msg.innerHTML = i === j ? "더할 행과 대상 행을 서로 다르게 고르세요." : `${R(i)} ← ${R(i)} + (${DT.num(k, 1)})·${R(j)}: 정리 10.3(b)에 의해 det는 <b>그대로</b>(배수 1)입니다.`;
+  }
+  function apply() {
+    const i = +si.value, j = +sj.value, k = kk(), o = op();
+    if (o !== "scale" && i === j) { msg.className = "dt-msg bad"; return; }
+    let f = 1, txt = "";
+    if (o === "swap") { [M[i], M[j]] = [M[j], M[i]]; f = -1; txt = `${R(i)} ↔ ${R(j)}  · 배수 −1`; }
+    else if (o === "scale") { M[i] = M[i].map((v) => v * k); f = k; txt = `${R(i)} ← ${DT.num(k, 1)}${R(i)}  · 배수 ${DT.num(k, 1)}`; }
+    else { M[i] = M[i].map((v, c) => v + k * M[j][c]); txt = `${R(i)} ← ${R(i)} + (${DT.num(k, 1)})${R(j)}  · 배수 1`; }
+    factor *= f; log.push(txt); render(i, o === "add" ? j : o === "swap" ? j : -1);
+  }
+  function render(hi = -1, hj = -1) {
+    document.getElementById("dt-r-stage").innerHTML =
+      `<div>${DT.mat(M0)}<div class="cap">처음 A</div></div><div style="font:700 18px var(--mono);color:var(--text-dim)">→</div><div>${DT.mat(M, (i) => (i === hi ? "hl" : i === hj ? "hl2" : ""))}<div class="cap">지금</div></div>`;
+    document.getElementById("dt-r-log").innerHTML = log.slice(-8).map((t) => `<li>${t}</li>`).join("") || "<li>아직 연산 없음</li>";
+    const d0 = DT.det(M0), d = DT.det(M), pred = d0 * factor;
+    MB.stat("dt-r-d0", DT.frac(d0));
+    MB.stat("dt-r-f", DT.frac(factor));
+    MB.stat("dt-r-pred", DT.frac(pred));
+    MB.stat("dt-r-d", DT.frac(d) + (Math.abs(d - pred) < 1e-7 * Math.max(1, Math.abs(d)) ? ' <span class="badge ok">일치</span>' : ' <span class="badge bad">불일치</span>'));
+  }
+  document.getElementById("dt-r-go").addEventListener("click", apply);
+  document.getElementById("dt-r-reset").addEventListener("click", () => { M = DT.copy(M0); factor = 1; log = []; render(); hint(); });
+  document.getElementById("dt-r-rand").addEventListener("click", () => {
+    const r = () => Math.floor(Math.random() * 9) - 4;
+    do { M0 = [[r(), r(), r()], [r(), r(), r()], [r(), r(), r()]]; } while (Math.abs(DT.det(M0)) < 0.5);
+    M = DT.copy(M0); factor = 1; log = []; render(); hint();
+  });
+  render(); hint();
+})();
+
+/* ================================================================ 3. 소거하며 행렬식 모으기 */
+(function () {
+  const PRE = {
+    a: [[2, 1, 1, 0], [4, 3, 3, 1], [8, 7, 9, 5], [6, 7, 9, 8]],
+    b: [[0, 2, 1], [1, 1, 1], [2, 1, 3]],
+    c: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+    d: [[3, 0, 0, 0], [1, 2, 0, 0], [4, -1, -1, 0], [2, 5, 3, 2]],
+  };
+  let A = PRE.a, steps = [], at = 0;
+  const pp = MB.check("dt-p-pp", () => build());
+  const msg = document.getElementById("dt-p-msg");
+  function build() {
+    const M = DT.copy(A), n = M.length, piv = [];
+    let swaps = 0;
+    steps = [{ M: DT.copy(M), note: "시작: 소거로 위삼각 행렬을 만들며 피벗을 모읍니다. 행 더하기는 det를 바꾸지 않습니다.", piv: [], swaps: 0, cur: null }];
+    for (let k = 0; k < n; k++) {
+      let p = -1;
+      if (pp()) { p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i; if (Math.abs(M[p][k]) < 1e-12) p = -1; }
+      else for (let i = k; i < n; i++) if (Math.abs(M[i][k]) > 1e-12) { p = i; break; }
+      if (p < 0) { steps.push({ M: DT.copy(M), note: `${k + 1}열에 쓸 수 있는 피벗이 없습니다. 피벗이 모자라므로 det = 0, A는 특이 행렬입니다.`, piv: piv.slice(), swaps, cur: [k, k], singular: true }); return show(); }
+      if (p !== k) { [M[p], M[k]] = [M[k], M[p]]; swaps++; steps.push({ M: DT.copy(M), note: `R${DT.sub(k + 1)} ↔ R${DT.sub(p + 1)} 교환${pp() ? "(가장 큰 피벗)" : "(피벗 자리가 0)"}. 부호가 바뀝니다: (−1)ˢ = ${swaps % 2 ? "−1" : "+1"}.`, piv: piv.slice(), swaps, cur: [k, k] }); }
+      const ls = [];
+      for (let i = k + 1; i < n; i++) { const l = M[i][k] / M[k][k]; if (Math.abs(l) > 1e-14) { ls.push(`R${DT.sub(i + 1)} − (${DT.frac(l)})R${DT.sub(k + 1)}`); for (let j = k; j < n; j++) M[i][j] -= l * M[k][j]; M[i][k] = 0; } }
+      piv.push(M[k][k]);
+      steps.push({ M: DT.copy(M), note: `피벗 ${k + 1} = <b>${DT.frac(M[k][k])}</b> 확정. ` + (ls.length ? ls.join(", ") + " (det 그대로)." : "아래가 이미 0이라 지울 것이 없습니다."), piv: piv.slice(), swaps, cur: [k, k] });
+    }
+    steps[steps.length - 1].done = true;
+    show();
+  }
+  function show() {
+    at = Math.min(at, steps.length - 1);
+    const s = steps[at], n = A.length, prod = s.piv.reduce((x, v) => x * v, 1), sign = s.swaps % 2 ? -1 : 1, truth = DT.leibniz(A);
+    document.getElementById("dt-p-stage").innerHTML = `<div>${DT.mat(s.M, (i, j, v) => (s.cur && i === s.cur[0] && j === s.cur[1] ? "piv" : i > j && Math.abs(v) < 1e-12 ? "dim" : ""))}<div class="cap">${s.done ? "U (위삼각)" : "소거 중"}</div></div>`;
+    msg.innerHTML = s.note;
+    msg.className = "dt-msg" + (s.singular ? " bad" : s.done ? " ok" : "");
+    MB.stat("dt-p-step", `${at} / ${steps.length - 1}`);
+    MB.stat("dt-p-piv", s.piv.length ? s.piv.map(DT.frac).join(" · ") : "—");
+    MB.stat("dt-p-sign", sign > 0 ? "+1" : "−1");
+    const fin = s.done || s.singular;
+    MB.stat("dt-p-det", fin ? `${s.singular ? "0" : DT.frac(sign * prod)} = ${DT.frac(truth)} <span class="badge ok">✓</span>` : `진행 중 · 참값 ${DT.frac(truth)}`);
+    document.getElementById("dt-p-next").disabled = at >= steps.length - 1;
+    document.getElementById("dt-p-prev").disabled = at <= 0;
+  }
+  document.getElementById("dt-p-next").addEventListener("click", () => { at++; show(); });
+  document.getElementById("dt-p-prev").addEventListener("click", () => { at = Math.max(0, at - 1); show(); });
+  document.getElementById("dt-p-first").addEventListener("click", () => { at = 0; show(); });
+  document.getElementById("dt-p-pre").addEventListener("change", (e) => { A = PRE[e.target.value]; at = 0; build(); });
+  document.getElementById("dt-p-rand").addEventListener("click", () => { const r = () => Math.floor(Math.random() * 7) - 3; A = Array.from({ length: 4 }, () => Array.from({ length: 4 }, r)); at = 0; build(); });
+  build();
+})();
+
+/* ================================================================ 4. 여인수 전개와 비용 */
+(function () {
+  const ids = [[11, 12, 13], [21, 22, 23], [31, 32, 33]].map((r) => r.map((k) => document.getElementById("dt-c" + k)));
+  const along = document.getElementById("dt-c-along");
+  const nn = MB.range("dt-c-n", (v) => String(v), () => upd());
+  const fact = (n) => { let f = 1; for (let i = 2; i <= n; i++) f *= i; return f; };
+  const bigOps = (n) => fact(n) * (n - 1), elimOps = (n) => (2 * n * n * n) / 3;
+  const cv = MB.canvas("#dt-cv-cost", (ctx, w, h) => {
+    const C = MB.palette(), n = nn(), b = [], e = [];
+    for (let k = 2; k <= 25; k++) { b.push([k, bigOps(k)]); e.push([k, elimOps(k)]); }
+    MB.chart(ctx, null, {
+      x: [2, 25], y: [1, 1e27], logY: true, xLabel: "행렬 크기 n", yLabel: "연산 수",
+      series: [{ data: b, color: C.bad, width: 2.5 }, { data: e, color: C.accent, width: 2.5 }],
+      vlines: [{ x: n, color: C.faint, dash: [4, 4] }],
+      hlines: [{ y: 4.35e26, color: C.warn, dash: [3, 4], label: "우주 나이 동안 할 수 있는 연산" }],
+      points: [{ x: n, y: bigOps(n), r: 6, color: C.bad, label: "순열 공식 n!" }, { x: n, y: elimOps(n), r: 6, color: C.accent, label: "소거 2n³/3" }],
+      yTicks: [1, 1e5, 1e10, 1e15, 1e20, 1e25],
+      yFmt: (v) => { const e = Math.round(Math.log10(v)); return e ? "10" + String(e).split("").map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]).join("") : "1"; },
+    });
+  }, { aspect: 0.55, maxHeight: 320, minHeight: 200 });
+  function terms() {
+    const A = ids.map((r) => r.map(DT.parse)), [kind, idx] = [along.value[0], +along.value[1]];
+    let sum = 0, rows = "";
+    for (let t = 0; t < 3; t++) {
+      const i = kind === "r" ? idx : t, j = kind === "r" ? t : idx, a = A[i][j], sg = (i + j) % 2 ? -1 : 1, m = DT.minor(A, i, j), dm = DT.det(m);
+      sum += sg * a * dm;
+      rows += `<div class="term-row"><span class="sg" style="color:${sg > 0 ? "var(--accent)" : "var(--accent-2)"}">${sg > 0 ? "+" : "−"}</span><b>a${DT.sub(i + 1)}${DT.sub(j + 1)} = ${DT.frac(a)}</b> × det ${DT.mat(m)} = ${DT.frac(a)} × ${DT.frac(dm)}${a === 0 ? ' <span class="badge">0이라 생략 가능</span>' : ""}</div>`;
+    }
+    const hl = (i, j) => ((kind === "r" ? i === idx : j === idx) ? "hl" : "");
+    document.getElementById("dt-c-terms").innerHTML = `<div class="term-row">${DT.mat(A, hl)} <span>${kind === "r" ? idx + 1 + "행" : idx + 1 + "열"}으로 전개</span></div>${rows}<div class="sum">det A = ${DT.frac(sum)}  (소거로 구한 값: ${DT.frac(DT.det(A))})</div>`;
+  }
+  function upd() {
+    cv.redraw();
+    const n = nn();
+    MB.stat("dt-c-big", DT.big(bigOps(n)));
+    MB.stat("dt-c-elim", DT.big(elimOps(n)));
+    MB.stat("dt-c-tbig", DT.time(bigOps(n) / 1e9));
+    MB.stat("dt-c-telim", DT.time(elimOps(n) / 1e9));
+  }
+  ids.flat().forEach((el) => el.addEventListener("input", terms));
+  along.addEventListener("change", terms);
+  terms(); upd();
+})();
+
+/* ================================================================ 5. 크라메르 공식 */
+(function () {
+  const START = [{ x: 2, y: 1 }, { x: 1, y: -3 }, { x: 5, y: -1 }];
+  const which = MB.seg("dt-cr-which", () => pl.redraw());
+  const path = MB.check("dt-cr-path", () => pl.redraw());
+  const pl = MB.plane("#dt-cv-cr", {
+    x: [-6, 6], aspect: 0.8, maxHeight: 500, minHeight: 300,
+    points: [{ x: 2, y: 1, snap: 0.1, label: "a₁" }, { x: 1, y: -3, snap: 0.1, label: "a₂" }, { x: 5, y: -1, snap: 0.1, label: "b" }],
+    draw(P, api) {
+      const C = P.P, [a1, a2, b] = api.points;
+      a1.color = C.red; a2.color = C.green; b.color = C.accent;
+      const D = a1.x * a2.y - a1.y * a2.x, w = which();
+      const quad = (u, v, col, alpha) => { P.poly([[0, 0], [u.x, u.y], [u.x + v.x, u.y + v.y], [v.x, v.y]], { fill: col, alpha, stroke: false }); P.poly([[0, 0], [u.x, u.y], [u.x + v.x, u.y + v.y], [v.x, v.y]], { color: col, width: 1.5, close: true }); };
+      quad(a1, a2, D >= 0 ? C.accent : C.bad, 0.14);
+      const N = w === "1" ? b.x * a2.y - b.y * a2.x : a1.x * b.y - a1.y * b.x;
+      if (w === "1") quad(b, a2, N >= 0 ? C.accent2 : C.bad, 0.22); else quad(a1, b, N >= 0 ? C.accent2 : C.bad, 0.22);
+      if (path() && Math.abs(D) > 0.05) {
+        const x1 = (b.x * a2.y - b.y * a2.x) / D, x2 = (a1.x * b.y - a1.y * b.x) / D;
+        P.line(0, 0, x1 * a1.x, x1 * a1.y, { color: C.red, width: 2, dash: [6, 4] });
+        P.line(x1 * a1.x, x1 * a1.y, b.x, b.y, { color: C.green, width: 2, dash: [6, 4] });
+      }
+      P.arrow(0, 0, a1.x, a1.y, { color: C.red, width: 3 });
+      P.arrow(0, 0, a2.x, a2.y, { color: C.green, width: 3 });
+      P.arrow(0, 0, b.x, b.y, { color: C.accent, width: 3 });
+      readout(a1, a2, b, D);
+    },
+  });
+  function readout(a1, a2, b, D) {
+    const n1 = b.x * a2.y - b.y * a2.x, n2 = a1.x * b.y - a1.y * b.x, w = which();
+    MB.stat("dt-cr-d", DT.num(D, 2) + (Math.abs(D) < 0.05 ? ' <span class="badge bad">≈ 0 · 특이</span>' : ""));
+    MB.stat("dt-cr-num", w === "1" ? `det(b, a₂) = ${DT.num(n1, 2)}` : `det(a₁, b) = ${DT.num(n2, 2)}`);
+    MB.stat("dt-cr-x", Math.abs(D) < 0.05 ? "해가 하나로 정해지지 않음" : `(${DT.num(n1 / D, 2)}, ${DT.num(n2 / D, 2)})`);
+  }
+  document.getElementById("dt-cr-reset").addEventListener("click", () => { pl.points.forEach((p, i) => { p.x = START[i].x; p.y = START[i].y; }); pl.redraw(); });
+})();
+
+/* ================================================================ 6. 야코비안 */
+(function () {
+  const MAPS = {
+    polar: { f: ([r, t]) => [r * Math.cos(t), r * Math.sin(t)], J: ([r, t]) => [[Math.cos(t), -r * Math.sin(t)], [Math.sin(t), r * Math.cos(t)]], dom: { x: [-0.2, 3.4], y: [-0.4, 6.6] }, img: { x: [-3.6, 3.6] }, p: [1.6, 0.8], step: 0.5, lab: ["r", "θ"] },
+    square: { f: ([x, y]) => [x * x - y * y, 2 * x * y], J: ([x, y]) => [[2 * x, -2 * y], [2 * y, 2 * x]], dom: { x: [-2, 2] }, img: { x: [-4.2, 4.2] }, p: [1, 0.6], step: 0.5, lab: ["x", "y"] },
+    wave: { f: ([x, y]) => [x + 0.5 * Math.sin(y), y + 0.5 * Math.sin(x)], J: ([x, y]) => [[1, 0.5 * Math.cos(y)], [0.5 * Math.cos(x), 1]], dom: { x: [-3.5, 3.5] }, img: { x: [-4, 4] }, p: [0.5, 0.5], step: 1, lab: ["x", "y"] },
+    lin: { f: ([x, y]) => [1.5 * x + 0.5 * y, 0.3 * x + y], J: () => [[1.5, 0.5], [0.3, 1]], dom: { x: [-2.5, 2.5] }, img: { x: [-4, 4] }, p: [0.5, 0.3], step: 0.5, lab: ["x", "y"] },
+  };
+  const sel = document.getElementById("dt-j-map");
+  const hh = MB.range("dt-j-h", (v) => DT.num(v, 2), () => { pd.redraw(); pi.redraw(); });
+  const lin = MB.check("dt-j-lin", () => pi.redraw());
+  let m = MAPS.polar;
+  const boundary = (p, h) => {
+    const pts = [], N = 40;
+    for (let k = 0; k < N; k++) pts.push([p[0] + (h * k) / N, p[1]]);
+    for (let k = 0; k < N; k++) pts.push([p[0] + h, p[1] + (h * k) / N]);
+    for (let k = 0; k < N; k++) pts.push([p[0] + h - (h * k) / N, p[1] + h]);
+    for (let k = 0; k < N; k++) pts.push([p[0], p[1] + h - (h * k) / N]);
+    return pts;
+  };
+  const area = (pts) => { let s = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]; s += x1 * y2 - x2 * y1; } return s / 2; };
+  const gridLines = () => {
+    const L = [], d = m.dom, ys = d.y || d.x, s = m.step;
+    for (let x = Math.ceil(d.x[0] / s) * s; x <= d.x[1] + 1e-9; x += s) { const ln = []; for (let k = 0; k <= 60; k++) ln.push([x, ys[0] + ((ys[1] - ys[0]) * k) / 60]); L.push(ln); }
+    for (let y = Math.ceil(ys[0] / s) * s; y <= ys[1] + 1e-9; y += s) { const ln = []; for (let k = 0; k <= 60; k++) ln.push([d.x[0] + ((d.x[1] - d.x[0]) * k) / 60, y]); L.push(ln); }
+    return L;
+  };
+  const pd = MB.plane("#dt-cv-jd", {
+    x: m.dom.x, y: m.dom.y || null, aspect: 0.85, maxHeight: 380, minHeight: 240, grid: false,
+    points: [{ x: m.p[0], y: m.p[1], snap: 0.05, label: "p" }],
+    draw(P, api) {
+      const C = P.P, p = api.points[0], h = hh();
+      p.color = C.accent2;
+      gridLines().forEach((ln) => P.poly(ln, { color: C.grid, width: 1, close: false }));
+      P.poly(boundary([p.x, p.y], h), { fill: C.accent, alpha: 0.3, stroke: false });
+      P.poly(boundary([p.x, p.y], h), { color: C.accent, width: 1.5, close: true });
+      P.text(m.lab[0], P.x1 - 0.1, P.y0 + 0.1 * (P.y1 - P.y0), { color: C.dim, align: "right" });
+    },
+    onDrag() { pi.redraw(); },
+  });
+  const pi = MB.plane("#dt-cv-ji", {
+    x: m.img.x, aspect: 0.85, maxHeight: 380, minHeight: 240, grid: false,
+    draw(P) {
+      const C = P.P, p = pd.points ? [pd.points[0].x, pd.points[0].y] : m.p, h = hh();
+      gridLines().forEach((ln) => P.poly(ln.map(m.f), { color: C.grid, width: 1, close: false }));
+      const img = boundary(p, h).map(m.f);
+      P.poly(img, { fill: C.accent, alpha: 0.3, stroke: false });
+      P.poly(img, { color: C.accent, width: 1.5, close: true });
+      const J = m.J(p), o = m.f(p);
+      if (lin()) {
+        const q = [[0, 0], [h, 0], [h, h], [0, h]].map(([u, v]) => [o[0] + J[0][0] * u + J[0][1] * v, o[1] + J[1][0] * u + J[1][1] * v]);
+        P.poly(q, { color: C.accent2, width: 1.5, dash: [5, 4], close: true });
+      }
+      P.dot(o[0], o[1], { color: C.accent2, r: 5 });
+      readout(p, h, img, J);
+    },
+  });
+  function readout(p, h, img, J) {
+    const d = J[0][0] * J[1][1] - J[0][1] * J[1][0], ratio = Math.abs(area(img)) / (h * h);
+    MB.stat("dt-j-J", DT.mat(J, null, (v) => DT.num(v, 2)));
+    MB.stat("dt-j-det", DT.num(d, 3));
+    MB.stat("dt-j-ratio", DT.num(ratio, 3));
+    MB.stat("dt-j-err", Math.abs(d) < 1e-6 ? "—" : DT.num((100 * (ratio - Math.abs(d))) / Math.abs(d), 1) + " %");
+  }
+  sel.addEventListener("change", () => {
+    m = MAPS[sel.value];
+    pd.points[0].x = m.p[0]; pd.points[0].y = m.p[1];
+    pd.view({ x: m.dom.x, y: m.dom.y || null }); pi.view({ x: m.img.x });
+    pd.redraw(); pi.redraw();
+  });
+  pi.redraw();
+})();
+
+/* ================================================================ 7. 신발끈 공식 */
+(function () {
+  const EX = [[0, 0], [4, 0], [4, 3], [1, 4]];
+  const STAR = [[-1, -1], [3, 3], [3, -1], [-1, 3]];
+  const fan = MB.check("dt-sh-fan", () => pl.redraw());
+  const mk = (arr) => arr.map(([x, y], i) => ({ x, y, snap: 0.1, label: "p" + DT.sub(i + 1) }));
+  const pl = MB.plane("#dt-cv-sh", {
+    x: [-3, 6], aspect: 0.8, maxHeight: 500, minHeight: 300,
+    points: [{ x: -1, y: 1, snap: 0.1, label: "O" }, ...mk(EX)],
+    draw(P, api) {
+      const C = P.P, [O, ...V] = api.points, n = V.length;
+      O.color = C.text; V.forEach((p) => (p.color = C.accent2));
+      let s = 0;
+      for (let i = 0; i < n; i++) {
+        const a = V[i], b = V[(i + 1) % n], d = (a.x - O.x) * (b.y - O.y) - (b.x - O.x) * (a.y - O.y);
+        s += d / 2;
+        if (fan()) P.poly([[O.x, O.y], [a.x, a.y], [b.x, b.y]], { fill: d >= 0 ? C.accent : C.bad, alpha: 0.16, stroke: false });
+        if (fan()) { P.line(O.x, O.y, a.x, a.y, { color: C.faint, width: 1 }); }
+      }
+      for (let i = 0; i < n; i++) { const a = V[i], b = V[(i + 1) % n]; P.arrow(a.x, a.y, b.x, b.y, { color: C.text, width: 2 }); }
+      readout(V, s);
+    },
+  });
+  function readout(V, s) {
+    const n = V.length, turns = [];
+    for (let i = 0; i < n; i++) { const a = V[(i + n - 1) % n], b = V[i], c = V[(i + 1) % n]; turns.push(Math.sign((b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x))); }
+    MB.stat("dt-sh-s", DT.num(s, 2));
+    MB.stat("dt-sh-o", Math.abs(s) < 1e-9 ? "—" : s > 0 ? '<span class="badge ok">반시계 (+)</span>' : '<span class="badge bad">시계 (−)</span>');
+    const same = turns.every((t) => t === turns[0]) && turns[0] !== 0;
+    MB.stat("dt-sh-c", turns.map((t) => (t > 0 ? "↺" : t < 0 ? "↻" : "·")).join(" ") + (same ? ' <span class="badge ok">볼록</span>' : ' <span class="badge warn">볼록 아님</span>'));
+  }
+  const set = (arr) => { arr.forEach(([x, y], i) => { pl.points[i + 1].x = x; pl.points[i + 1].y = y; }); pl.redraw(); };
+  document.getElementById("dt-sh-rev").addEventListener("click", () => set(pl.points.slice(1).map((p) => [p.x, p.y]).reverse()));
+  document.getElementById("dt-sh-star").addEventListener("click", () => set(STAR));
+  document.getElementById("dt-sh-reset").addEventListener("click", () => set(EX));
+})();
+</script>
+</body>
+</html>

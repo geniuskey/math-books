@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>대칭 행렬과 양의 정부호 · LinearBook</title>
+<meta name="description" content="대칭 행렬은 서로 수직인 축을 따라 늘이기만 한다. 스펙트럼 정리 S = QΛQᵀ, 랭크 1 사영의 합, 이차 형식과 타원, 양의 정부호 판정 다섯 가지, 콜레스키 분해, 스프링의 에너지 K = AᵀCA, 헤세 행렬과 극값 판정, 경사 하강법과 조건수, 레일리 몫과 모어 원의 주응력까지 직접 끌어 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .sy-mx { display: inline-grid; gap: 0 10px; padding: 1px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 4px; font-family: var(--mono); font-size: 13px; text-align: right; vertical-align: middle; line-height: 1.4; }
+  .sy-eq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-family: var(--mono); font-size: 13px; }
+  .sy-eq b { font-family: var(--font); }
+  .sy-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; overflow-x: auto; }
+  .sy-msg.ok { color: var(--ok); font-weight: 600; }
+  .sy-msg.bad { color: var(--bad); font-weight: 600; }
+  .sy-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sy-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sy-tests { padding: 8px 18px 12px; border-top: 1px solid var(--border); overflow-x: auto; }
+  .sy-tests table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .sy-tests th, .sy-tests td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  .sy-tests td.v { font-family: var(--mono); font-size: 12.5px; }
+  .mat.sy-m3 { --n: 3; }
+  .mat.sy-m3 input { font-size: 13px; }
+  .mat.sy-m3 input[readonly] { opacity: .55; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="symmetric">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 13</div>
+    <h1 data-no-glossary>대칭 행렬과 양의 정부호</h1>
+    <p class="lead">11장에서 본 고유벡터는 대개 서로 비스듬했고, 고유값은 복소수일 수도 있었습니다. 그런데 공학에서 만나는 행렬의 상당수는 특별합니다. 응력 텐서, 스프링 계의 강성 행렬, 공분산 행렬, 헤세 행렬, 관성 텐서는 모두 <b>대칭</b>(\(S^{\mathsf T} = S\))입니다. 대칭 행렬의 고유값은 언제나 실수이고, 고유벡터는 언제나 서로 <b>수직</b>으로 고를 수 있습니다. 그래서 대칭 행렬이 하는 일은 단 하나, <b>서로 수직인 축을 따라 늘이거나 줄이는 것</b>입니다. 이 장에서는 이 사실(스펙트럼 정리)에서 출발해, 그 늘이는 배율이 모두 양수인 <b>양의 정부호</b> 행렬이 왜 "에너지", "볼록한 그릇", "안정한 평형"과 같은 말인지 따라갑니다.</p>
+    <ul class="objectives">
+      <li>대칭 행렬의 고유값이 실수이고 서로 다른 고유값의 고유벡터가 직교함을 증명하고, 스펙트럼 정리 \(S = Q\Lambda Q^{\mathsf T}\)를 랭크 1 사영의 합으로 읽는다.</li>
+      <li>이차 형식 \(\mathbf{x}^{\mathsf T}S\mathbf{x}\)의 등위선이 타원·쌍곡선·평행선 중 무엇인지 고유값의 부호로 판정하고, 주축을 고유벡터로 찾는다.</li>
+      <li>양의 정부호를 판정하는 다섯 가지 방법(고유값, 피벗, 선행 주소행렬식, 에너지, \(A^{\mathsf T}A\))이 같은 말임을 이해하고 손으로 판정한다.</li>
+      <li>콜레스키 분해 \(S = LL^{\mathsf T}\)를 계산하고, 피벗과의 관계와 계산상의 장점을 안다.</li>
+      <li>스프링–질량 계의 강성 행렬 \(K = A^{\mathsf T}CA\)를 만들고, 양의 정부호가 "변형하면 에너지가 든다"는 뜻임을 확인한다.</li>
+      <li>헤세 행렬로 극소·극대·안장점을 판정하고, 경사 하강법의 수렴 속도가 헤세 행렬의 조건수로 정해지는 이유를 설명한다.</li>
+      <li>레일리 몫의 최댓값·최솟값이 고유값임을 보이고, 모어 원으로 주응력과 주방향을 구한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>압력 용기와 다리의 "주응력"</b></div>
+      <div class="o-body"><p>보일러 동체, 비행기 동체, 다리의 강판 한 점에는 방향마다 다른 힘이 걸립니다. 가로로 자른 면에는 인장, 비스듬히 자른 면에는 인장과 미끄러지게 하는 전단이 함께 걸리지요. 재료는 어느 방향으로든 가장 크게 당겨지는 면에서 먼저 찢어지는데, 자를 수 있는 면은 무한히 많습니다. 모든 방향을 하나하나 시험해 볼 수는 없습니다.</p>
+        <p>19세기 초 코시<span class="en">(Augustin-Louis Cauchy)</span>는 한 점의 응력 상태가 <b>대칭 행렬 하나</b>(응력 텐서)로 완전히 기술된다는 것을 보였고, 1882년 독일의 공학자 모어<span class="en">(Christian Otto Mohr)</span>는 면을 돌릴 때 응력이 어떻게 바뀌는지를 원 하나로 그리는 도식을 내놓았습니다. 선형대수로 말하면 답은 간단합니다. 응력 텐서의 <b>고유벡터</b>가 전단이 0인 면(주방향)이고, <b>고유값</b>이 그 면의 인장·압축(주응력)이며, 가장 큰 고유값이 어떤 방향으로 자른 면보다도 큰 최대 인장입니다. 대칭 행렬이라서 이 축들은 서로 수직입니다.</p>
+        <div class="o-chain"><span>어느 면이 먼저 찢어지나</span><i>→</i><span>면은 무한히 많다</span><i>→</i><span class="tool">대칭 행렬의 고유분해</span><i>→</i><span>주응력 2개(3차원은 3개)</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="spectral">
+    <h2>스펙트럼 정리: 수직인 축을 따라 늘이기만 한다</h2>
+    <div class="problem"><strong>고유벡터가 비스듬하면 무엇이 불편한가</strong>
+      <p>11장에서 대각화 \(A = X\Lambda X^{-1}\)를 배웠습니다. 그런데 \(X\)의 열(고유벡터)이 서로 비스듬하면 \(X^{-1}\)을 따로 계산해야 하고, 고유벡터가 거의 평행하면 \(X^{-1}\)이 거대해져 계산이 불안정해집니다. 고유값이 복소수가 되어 그림으로 그릴 수 없는 경우도 있습니다. 어떤 행렬이면 이런 걱정이 전혀 없을까요?</p></div>
+    <p>답은 <span class="term">대칭 행렬</span><span class="en">(symmetric matrix)</span>, 즉 \(S^{\mathsf T} = S\)인 행렬입니다. 대각선을 거울로 삼아 위아래가 같은 행렬이지요. 이 조건 하나가 고유값 문제를 놀랍도록 깔끔하게 만듭니다. 먼저 두 가지 사실을 증명합니다.</p>
+    <div class="callout deep"><strong>정리 13.1 (대칭 행렬의 고유값은 실수다)</strong> 실수 대칭 행렬 \(S\)의 모든 고유값은 실수이다.
+      <p><b>증명.</b> \(S\mathbf{x} = \lambda\mathbf{x}\), \(\mathbf{x} \ne \mathbf{0}\)이라 하고 \(\lambda\)와 \(\mathbf{x}\)가 복소수일 수도 있다고 하자. 켤레를 취하면 \(S\) 는 실수이므로 \(S\bar{\mathbf{x}} = \bar\lambda\bar{\mathbf{x}}\)이다. 이제 \(\bar{\mathbf{x}}^{\mathsf T}S\mathbf{x}\)를 두 가지로 계산한다.
+      $$\bar{\mathbf{x}}^{\mathsf T}(S\mathbf{x}) = \lambda\,\bar{\mathbf{x}}^{\mathsf T}\mathbf{x}, \qquad (\bar{\mathbf{x}}^{\mathsf T}S)\mathbf{x} = (S^{\mathsf T}\bar{\mathbf{x}})^{\mathsf T}\mathbf{x} = (S\bar{\mathbf{x}})^{\mathsf T}\mathbf{x} = \bar\lambda\,\bar{\mathbf{x}}^{\mathsf T}\mathbf{x}.$$
+      \(\bar{\mathbf{x}}^{\mathsf T}\mathbf{x} = \sum |x_i|^2 > 0\)이므로 \(\lambda = \bar\lambda\), 곧 \(\lambda\)는 실수다. 두 번째 등식에서 \(S^{\mathsf T} = S\)를 썼다는 점이 핵심이다. ∎</p></div>
+    <div class="callout deep"><strong>정리 13.2 (서로 다른 고유값의 고유벡터는 직교한다)</strong> \(S\mathbf{x}_1 = \lambda_1\mathbf{x}_1\), \(S\mathbf{x}_2 = \lambda_2\mathbf{x}_2\)이고 \(\lambda_1 \ne \lambda_2\)이면 \(\mathbf{x}_1^{\mathsf T}\mathbf{x}_2 = 0\)이다.
+      <p><b>증명.</b> \(\lambda_1\mathbf{x}_1^{\mathsf T}\mathbf{x}_2 = (S\mathbf{x}_1)^{\mathsf T}\mathbf{x}_2 = \mathbf{x}_1^{\mathsf T}S^{\mathsf T}\mathbf{x}_2 = \mathbf{x}_1^{\mathsf T}S\mathbf{x}_2 = \lambda_2\mathbf{x}_1^{\mathsf T}\mathbf{x}_2\). 따라서 \((\lambda_1 - \lambda_2)\,\mathbf{x}_1^{\mathsf T}\mathbf{x}_2 = 0\)이고, \(\lambda_1 \ne \lambda_2\)이므로 \(\mathbf{x}_1^{\mathsf T}\mathbf{x}_2 = 0\). ∎</p></div>
+    <p>고유값이 겹치는 경우(예: 단위 행렬)에도 그 고유공간 안에서 그람–슈미트로 수직인 기저를 고를 수 있고, 대칭 행렬은 고유벡터가 모자라는 일이 없다는 것이 알려져 있습니다(슈어 분해에서 상삼각 행렬이 대칭이면 대각이 된다는 논증). 이렇게 해서 선형대수에서 가장 아름다운 정리가 나옵니다.</p>
+    <div class="callout deep"><strong>정리 13.3 (스펙트럼 정리)</strong> 모든 실수 대칭 행렬 \(S\)는
+      $$S = Q\Lambda Q^{\mathsf T}, \qquad Q^{\mathsf T}Q = I, \qquad \Lambda = \operatorname{diag}(\lambda_1, \dots, \lambda_n)$$
+      로 분해된다. \(Q\)의 열은 정규직교 고유벡터 \(\mathbf{q}_1, \dots, \mathbf{q}_n\), \(\Lambda\)의 대각은 실수 고유값이다. 거꾸로, 이렇게 쓸 수 있는 행렬은 \((Q\Lambda Q^{\mathsf T})^{\mathsf T} = Q\Lambda Q^{\mathsf T}\)이므로 대칭이다.
+      <p><b>증명 아이디어.</b> 모든 정사각 행렬은 직교 행렬 \(Q\)로 \(A = QTQ^{\mathsf T}\), \(T\)는 상삼각으로 쓸 수 있다(실수 고유값일 때의 슈어 분해, 9장의 QR 알고리즘이 이것을 계산한다). \(A\)가 대칭이면 \(T = Q^{\mathsf T}AQ\)도 대칭인데, 대칭인 상삼각 행렬은 대각 행렬뿐이다. ∎</p></div>
+    <p>\(Q^{-1} = Q^{\mathsf T}\)이므로 역행렬을 따로 구할 필요가 없고, 직교 행렬은 길이와 각도를 바꾸지 않으므로 계산도 안정합니다. 그림으로 읽으면 \(S\mathbf{x} = Q\Lambda Q^{\mathsf T}\mathbf{x}\)는 ① \(Q^{\mathsf T}\): 고유벡터 축으로 좌표를 돌려 읽고, ② \(\Lambda\): 각 축을 \(\lambda_i\)배 늘이고, ③ \(Q\): 다시 원래 좌표로 돌려놓는 세 단계입니다. <b>회전–늘이기–되돌리기</b>. 그래서 단위원은 고유벡터 방향을 축으로 하는 타원이 됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 280" role="img" aria-label="대칭 행렬은 단위원을 수직인 두 고유벡터 방향의 타원으로 보낸다">
+        <defs><marker id="sy-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="sy-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="10" y="30" width="360" height="240" rx="10" class="f-surface"/>
+        <rect x="390" y="30" width="360" height="240" rx="10" class="f-surface"/>
+        <text x="20" y="20" class="t" style="font-weight:700">대칭 S = [2 1; 1 2]</text>
+        <text x="400" y="20" class="t" style="font-weight:700">비대칭 A = [2 1; 0 1]</text>
+        <g transform="translate(190,150)">
+          <line x1="-170" y1="0" x2="170" y2="0" class="s-axis" style="opacity:.5"/><line x1="0" y1="-115" x2="0" y2="115" class="s-axis" style="opacity:.5"/>
+          <circle r="30" fill="none" class="s-line" style="stroke-dasharray:4 4"/>
+          <ellipse rx="90" ry="30" transform="rotate(-45)" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="-100" y1="100" x2="100" y2="-100" style="stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 5;opacity:.6"/>
+          <line x1="-70" y1="-70" x2="70" y2="70" style="stroke:var(--accent-2);stroke-width:1.2;stroke-dasharray:6 5;opacity:.6"/>
+          <line x1="0" y1="0" x2="63.6" y2="-63.6" style="stroke:var(--accent);stroke-width:3" marker-end="url(#sy-ah-a)"/>
+          <line x1="0" y1="0" x2="21.2" y2="21.2" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#sy-ah-b)"/>
+          <rect x="3" y="-10" width="10" height="10" transform="rotate(-45)" fill="none" class="s-line"/>
+          <text x="70" y="-74" class="t-acc">λ₁ = 3, q₁ = (1, 1)/√2</text>
+          <text x="26" y="44" class="t" style="fill:var(--accent-2)">λ₂ = 1, q₂ = (1, −1)/√2</text>
+          <text x="-160" y="100" class="t-dim">두 축이 직각 · 타원의 주축 = 고유벡터</text>
+        </g>
+        <g transform="translate(570,150)">
+          <line x1="-170" y1="0" x2="170" y2="0" class="s-axis" style="opacity:.5"/><line x1="0" y1="-115" x2="0" y2="115" class="s-axis" style="opacity:.5"/>
+          <circle r="30" fill="none" class="s-line" style="stroke-dasharray:4 4"/>
+          <ellipse rx="69.6" ry="25.9" transform="rotate(-22.5)" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/>
+          <line x1="-150" y1="0" x2="150" y2="0" style="stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 5;opacity:.7"/>
+          <line x1="70" y1="70" x2="-70" y2="-70" style="stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 5;opacity:.7"/>
+          <line x1="0" y1="0" x2="60" y2="0" style="stroke:var(--accent);stroke-width:3" marker-end="url(#sy-ah-a)"/>
+          <line x1="0" y1="0" x2="-21.2" y2="-21.2" style="stroke:var(--accent);stroke-width:3" marker-end="url(#sy-ah-a)"/>
+          <text x="66" y="-8" class="t-acc">λ = 2: (1, 0)</text>
+          <text x="-120" y="-34" class="t-acc">λ = 1: (1, −1)</text>
+          <text x="-160" y="100" class="t-dim">고유벡터 사이 각 45° · 타원 축 ≠ 고유벡터</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 13-1.</b> 왼쪽: 대칭 행렬은 단위원(점선)을 고유벡터 방향을 주축으로 하는 타원으로 보낸다. 긴 반지름 = λ₁ = 3, 짧은 반지름 = λ₂ = 1. 오른쪽: 비대칭 행렬의 고유벡터는 비스듬하고(좌표상 (1, 0)과 (1, −1)), 타원의 주축과도 일치하지 않는다. 비대칭 행렬의 타원 축은 14장의 특이벡터가 알려 준다.</figcaption>
+    </figure>
+
+    <div class="callout tip"><strong>예제 13.1 (손으로 하는 스펙트럼 분해)</strong> \(S = \begin{bmatrix}2 & 1\\ 1 & 2\end{bmatrix}\).
+      <p>① 특성 방정식 \(\det(S - \lambda I) = (2-\lambda)^2 - 1 = 0\)에서 \(\lambda_1 = 3\), \(\lambda_2 = 1\). ② \((S - 3I)\mathbf{x} = \mathbf{0}\)에서 \(-x_1 + x_2 = 0\) → \(\mathbf{q}_1 = (1, 1)/\sqrt2\). \((S - I)\mathbf{x} = \mathbf{0}\)에서 \(x_1 + x_2 = 0\) → \(\mathbf{q}_2 = (1, -1)/\sqrt2\). 확인: \(\mathbf{q}_1^{\mathsf T}\mathbf{q}_2 = (1 - 1)/2 = 0\). ③ 따라서
+      $$S = \underbrace{\tfrac{1}{\sqrt2}\begin{bmatrix}1 & 1\\ 1 & -1\end{bmatrix}}_{Q}\begin{bmatrix}3 & 0\\ 0 & 1\end{bmatrix}\underbrace{\tfrac{1}{\sqrt2}\begin{bmatrix}1 & 1\\ 1 & -1\end{bmatrix}}_{Q^{\mathsf T}}.$$
+      이 \(Q\)는 대칭이기도 해서 \(Q^{\mathsf T} = Q\)이다(우연이다). 고유값 검산: 합 \(3 + 1 = 4 = \operatorname{tr} S\), 곱 \(3 \cdot 1 = 3 = \det S\).</p></div>
+
+    <p>아래 시뮬레이터에서 대칭 행렬의 세 칸 \(a, b, d\)를 바꿔 보세요. 점 \(\mathbf{x}\)는 단위원 위를 움직이고, 화살표 \(S\mathbf{x}\)는 타원 위를 움직입니다. 두 화살표가 한 직선에 겹치는 곳이 고유벡터입니다. '비대칭으로'를 켜고 왼쪽 아래 칸 \(c\)를 따로 움직이면 고유벡터가 비스듬해지고, 결국 복소수가 되어 사라지는 것도 볼 수 있습니다.</p>
+
+    <div class="sim" id="sim-sy-spectral">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>대칭 행렬의 고유분해: 단위원 → 타원</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sy-cv-spec"></canvas><span class="tag-tl">x를 원 위에서 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>a (1행 1열) <output id="sy-sa-out"></output></span><input type="range" id="sy-sa" min="-3" max="3" step="0.1" value="2"></label>
+          <label class="ctrl"><span>b (대각 밖) <output id="sy-sb-out"></output></span><input type="range" id="sy-sb" min="-3" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>d (2행 2열) <output id="sy-sd-out"></output></span><input type="range" id="sy-sd" min="-3" max="3" step="0.1" value="2"></label>
+          <label class="check"><input type="checkbox" id="sy-s-asym"> 비대칭으로 (왼쪽 아래 칸 c 따로)</label>
+          <label class="ctrl"><span>c (2행 1열, 비대칭일 때) <output id="sy-sc-out"></output></span><input type="range" id="sy-sc" min="-3" max="3" step="0.1" value="1"></label>
+          <label class="check"><input type="checkbox" id="sy-s-r1"> Sx를 랭크 1 항 두 개로 나누어 보기</label>
+          <div class="btn-row"><button class="btn primary" id="sy-s-spin">▶ x 한 바퀴</button><button class="btn" id="sy-s-eig">x를 고유벡터로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고유값 λ₁, λ₂</span><span class="v" id="sy-s-lam">—</span></div>
+        <div class="stat"><span class="k">고유벡터 사이 각</span><span class="v" id="sy-s-ang">—</span></div>
+        <div class="stat"><span class="k">xᵀSx (x가 단위 벡터)</span><span class="v" id="sy-s-r">—</span></div>
+        <div class="stat"><span class="k">x와 Sx 사이 각</span><span class="v" id="sy-s-xa">—</span></div>
+      </div>
+      <div class="sy-msg" id="sy-s-msg">—</div>
+      <div class="sim-note">해볼 것: ① 'x를 고유벡터로'를 누르면 x와 Sx가 겹칩니다. 다른 고유벡터와 정확히 90°인지 각도 표시를 보세요. ② b를 0으로 하면 고유벡터가 좌표축이 됩니다(이미 대각 행렬). ③ '비대칭으로'를 켜고 c를 −1쯤으로 내리면 고유벡터 사이 각이 줄다가, 판별식이 음수가 되는 순간 실수 고유벡터가 사라집니다. 대칭일 때는 a, b, d를 어떻게 바꿔도 이런 일이 없습니다. ④ 랭크 1 항 보기를 켜면 Sx가 λ₁(q₁ᵀx)q₁과 λ₂(q₂ᵀx)q₂ 두 화살표의 합으로 나뉩니다(다음 절). 모델: 2×2 실수 행렬, 고유값은 이차 방정식의 근으로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="rank-one-sum">
+    <h2>랭크 1 사영의 합으로 읽기</h2>
+    <div class="problem"><strong>행렬 하나를 "부품"으로 나눌 수 있을까</strong>
+      <p>소리를 주파수 성분으로 나누면 어떤 성분이 큰지, 어떤 성분은 버려도 되는지 알 수 있습니다. 행렬도 그렇게 "가장 중요한 방향부터" 나누어 볼 수 있을까요?</p></div>
+    <p>\(S = Q\Lambda Q^{\mathsf T}\)를 행렬 곱의 "열 × 행" 방법(2장의 외적의 합)으로 전개하면 다음을 얻습니다.</p>
+    <div class="formula">$$S = \lambda_1\mathbf{q}_1\mathbf{q}_1^{\mathsf T} + \lambda_2\mathbf{q}_2\mathbf{q}_2^{\mathsf T} + \cdots + \lambda_n\mathbf{q}_n\mathbf{q}_n^{\mathsf T}, \qquad S\mathbf{x} = \sum_i \lambda_i\,(\mathbf{q}_i^{\mathsf T}\mathbf{x})\,\mathbf{q}_i$$
+      <div class="where">\(P_i = \mathbf{q}_i\mathbf{q}_i^{\mathsf T}\)는 단위 벡터 \(\mathbf{q}_i\)가 놓인 직선으로의 직교 사영 행렬이다(1장의 사영, 2장의 \(P^2 = P\)). 서로 다른 \(i, j\)에 대해 \(P_iP_j = \mathbf{q}_i(\mathbf{q}_i^{\mathsf T}\mathbf{q}_j)\mathbf{q}_j^{\mathsf T} = 0\)이고, \(P_1 + \cdots + P_n = QQ^{\mathsf T} = I\)이다.</div>
+    </div>
+    <p>즉 대칭 행렬이 벡터 \(\mathbf{x}\)에 하는 일은 ① \(\mathbf{x}\)를 서로 수직인 고유벡터 방향 성분으로 쪼개고(\(\mathbf{q}_i^{\mathsf T}\mathbf{x}\)), ② 각 성분을 \(\lambda_i\)배 하고, ③ 다시 더하는 것입니다. 성분끼리 섞이지 않는다는 것이 핵심입니다. 앞 시뮬레이터의 '랭크 1 항 보기'에서 두 색 화살표가 바로 이 두 항입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 200" role="img" aria-label="대칭 행렬을 랭크 1 행렬의 합으로 나누기">
+        <g font-family="var(--mono)" font-size="14">
+          <g transform="translate(20,60)"><path d="M6 0h-6v80h6M104 0h6v80h-6" fill="none" style="stroke:var(--text-dim);stroke-width:2"/><text x="30" y="32" class="t-mono">2</text><text x="72" y="32" class="t-mono">1</text><text x="30" y="64" class="t-mono">1</text><text x="72" y="64" class="t-mono">2</text></g>
+          <text x="150" y="105" class="t" style="font-size:22px">=</text>
+          <text x="182" y="105" class="t-acc" style="font-size:18px">3 ·</text>
+          <g transform="translate(222,60)"><path d="M6 0h-6v80h6M114 0h6v80h-6" fill="none" style="stroke:var(--accent);stroke-width:2"/><text x="26" y="32" class="t-mono">½</text><text x="80" y="32" class="t-mono">½</text><text x="26" y="64" class="t-mono">½</text><text x="80" y="64" class="t-mono">½</text></g>
+          <text x="364" y="105" class="t" style="font-size:22px">+</text>
+          <text x="396" y="105" class="t" style="font-size:18px;fill:var(--accent-2)">1 ·</text>
+          <g transform="translate(436,60)"><path d="M6 0h-6v80h6M124 0h6v80h-6" fill="none" style="stroke:var(--accent-2);stroke-width:2"/><text x="26" y="32" class="t-mono">½</text><text x="80" y="32" class="t-mono">−½</text><text x="20" y="64" class="t-mono">−½</text><text x="86" y="64" class="t-mono">½</text></g>
+          <g transform="translate(640,100)"><line x1="-50" y1="0" x2="70" y2="0" class="s-axis" style="opacity:.5"/><line x1="10" y1="-60" x2="10" y2="60" class="s-axis" style="opacity:.5"/><line x1="-40" y1="50" x2="60" y2="-50" style="stroke:var(--accent);stroke-width:2.5"/><line x1="-30" y1="-40" x2="50" y2="40" style="stroke:var(--accent-2);stroke-width:2.5"/></g>
+        </g>
+        <text x="20" y="180" class="t-dim">S = λ₁ q₁q₁ᵀ + λ₂ q₂q₂ᵀ : 각 항은 한 직선으로의 사영(랭크 1)에 고유값을 곱한 것. 오른쪽: 두 사영의 방향은 서로 수직이다.</text>
+        <text x="20" y="40" class="t" style="font-weight:700">행렬 = (배율) × (직선으로의 그림자) 의 합</text>
+      </svg>
+      <figcaption><b>그림 13-2.</b> 예제 13.1의 행렬을 랭크 1 항 두 개로 나눈 것. 각 항의 행 합과 열 합을 보면 q₁q₁ᵀ는 (1, 1) 방향, q₂q₂ᵀ는 (1, −1) 방향만 남기는 사영임을 알 수 있다.</figcaption>
+    </figure>
+    <p>이 분해는 세 가지 중요한 결과를 줍니다.</p>
+    <ul>
+      <li><b>함수를 행렬에 적용하기.</b> \(S^k = Q\Lambda^kQ^{\mathsf T} = \sum\lambda_i^k P_i\), \(S^{-1} = \sum \lambda_i^{-1}P_i\), \(e^{St} = \sum e^{\lambda_i t}P_i\). 행렬의 함수는 고유값의 함수다. 특히 고유값이 모두 양수면 제곱근 \(\sqrt S = \sum\sqrt{\lambda_i}P_i\)도 정의된다.</li>
+      <li><b>최선의 근사.</b> 가장 큰 \(|\lambda_i|\) 몇 개만 남긴 합이 같은 계수(랭크)의 대칭 행렬 중 가장 가까운 근사다. 일반 행렬로 확장한 것이 14장의 특이값 분해와 15장의 PCA다.</li>
+      <li><b>분광 해석.</b> "스펙트럼"이라는 이름 그대로, 진동계의 행렬을 분해하면 고유값이 고유진동수², 사영이 각 모드에 해당한다(MathBook의 <a href="../../foundations/chapters/linalg.html#modes">건물의 공진 모드</a>).</li>
+    </ul>
+    <div class="callout tip"><strong>예제 13.2 (사영의 합으로 Sⁿx 계산하기)</strong> 예제 13.1의 \(S\)와 \(\mathbf{x} = (1, 0)\)에 대해 \(S^{10}\mathbf{x}\)를 구하자.
+      <p>\(\mathbf{q}_1^{\mathsf T}\mathbf{x} = 1/\sqrt2\), \(\mathbf{q}_2^{\mathsf T}\mathbf{x} = 1/\sqrt2\)이므로 \(S^{10}\mathbf{x} = 3^{10}\cdot\tfrac{1}{\sqrt2}\mathbf{q}_1 + 1^{10}\cdot\tfrac{1}{\sqrt2}\mathbf{q}_2 = \tfrac{59049}{2}(1, 1) + \tfrac12(1, -1) = (29525, 29524)\). 행렬을 열 번 곱하지 않았다. 그리고 결과가 거의 \(\mathbf{q}_1\) 방향이라는 것도 바로 보인다. 큰 고유값의 성분이 다른 성분을 압도하기 때문이다(16장의 거듭제곱법).</p></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="quadratic-forms">
+    <h2>이차 형식: 타원, 쌍곡선, 그리고 주축</h2>
+    <div class="problem"><strong>5x² + 4xy + 2y² = 1은 어떤 곡선인가</strong>
+      <p>궤도 계산, 렌즈 설계, 측량 오차의 신뢰 영역에서 \(ax^2 + 2bxy + cy^2 = 1\) 꼴의 곡선이 자주 나옵니다. \(xy\) 항이 있으면 곡선이 비스듬히 놓여 있어 모양을 알기 어렵습니다. 타원일까요, 쌍곡선일까요? 축은 어느 방향이고 반지름은 얼마일까요?</p></div>
+    <p>이런 식은 대칭 행렬로 깔끔하게 쓸 수 있습니다. 이것을 <span class="term">이차 형식</span><span class="en">(quadratic form)</span>이라 합니다.</p>
+    <div class="formula">$$q(\mathbf{x}) = \mathbf{x}^{\mathsf T}S\mathbf{x} = \begin{bmatrix}x & y\end{bmatrix}\begin{bmatrix}a & b\\ b & c\end{bmatrix}\begin{bmatrix}x\\ y\end{bmatrix} = ax^2 + 2bxy + cy^2$$
+      <div class="where">\(xy\) 항의 계수 \(2b\)가 대각 밖 두 칸에 반씩 나뉜다. 비대칭 행렬 \(A\)로 써도 \(\mathbf{x}^{\mathsf T}A\mathbf{x} = \mathbf{x}^{\mathsf T}\tfrac{A + A^{\mathsf T}}{2}\mathbf{x}\)이므로, 이차 형식은 언제나 대칭 부분만 본다.</div>
+    </div>
+    <p>스펙트럼 정리로 좌표를 고유벡터 축으로 돌리면(\(\mathbf{y} = Q^{\mathsf T}\mathbf{x}\)) 섞인 항이 사라집니다.</p>
+    <div class="formula">$$\mathbf{x}^{\mathsf T}S\mathbf{x} = \mathbf{x}^{\mathsf T}Q\Lambda Q^{\mathsf T}\mathbf{x} = \mathbf{y}^{\mathsf T}\Lambda\mathbf{y} = \lambda_1 y_1^2 + \lambda_2 y_2^2$$
+      <div class="where">이것이 <b>주축 정리</b><span class="en">(principal axis theorem)</span>다. 고유벡터 방향이 곡선의 주축이고, \(q = 1\)인 등위선은 \(y_i\) 축 방향으로 반지름 \(1/\sqrt{\lambda_i}\)를 가진다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 230" role="img" aria-label="고유값 부호에 따른 이차 형식 등위선의 세 가지 모양">
+        <g transform="translate(130,115)">
+          <rect x="-120" y="-95" width="240" height="190" rx="10" class="f-surface"/>
+          <line x1="-110" y1="0" x2="110" y2="0" class="s-axis" style="opacity:.4"/><line x1="0" y1="-85" x2="0" y2="85" class="s-axis" style="opacity:.4"/>
+          <ellipse rx="80" ry="40" transform="rotate(-30)" fill="none" style="stroke:var(--accent);stroke-width:2"/>
+          <ellipse rx="56.6" ry="28.3" transform="rotate(-30)" fill="none" style="stroke:var(--accent);stroke-width:1.5;opacity:.65"/>
+          <ellipse rx="28.3" ry="14.1" transform="rotate(-30)" fill="none" style="stroke:var(--accent);stroke-width:1.2;opacity:.45"/>
+          <text x="0" y="-102" text-anchor="middle" class="t" style="font-weight:700">λ₁, λ₂ > 0 : 타원</text>
+          <text x="0" y="90" text-anchor="middle" class="t-dim">그릇 모양, 원점이 최솟값</text>
+        </g>
+        <g transform="translate(390,115)">
+          <rect x="-120" y="-95" width="240" height="190" rx="10" class="f-surface"/>
+          <line x1="-110" y1="0" x2="110" y2="0" class="s-axis" style="opacity:.4"/><line x1="0" y1="-85" x2="0" y2="85" class="s-axis" style="opacity:.4"/>
+          <path d="M30 0 C 40 -20, 70 -45, 105 -70 M30 0 C 40 20, 70 45, 105 70 M-30 0 C -40 -20, -70 -45, -105 -70 M-30 0 C -40 20, -70 45, -105 70" fill="none" style="stroke:var(--accent);stroke-width:2"/>
+          <path d="M0 -30 C -20 -40, -45 -70, -70 -85 M0 -30 C 20 -40, 45 -70, 70 -85 M0 30 C -20 40, -45 70, -70 85 M0 30 C 20 40, 45 70, 70 85" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+          <line x1="-90" y1="-85" x2="90" y2="85" class="s-line" style="stroke-dasharray:4 4"/><line x1="-90" y1="85" x2="90" y2="-85" class="s-line" style="stroke-dasharray:4 4"/>
+          <text x="0" y="-102" text-anchor="middle" class="t" style="font-weight:700">λ₁ > 0 > λ₂ : 쌍곡선</text>
+          <text x="0" y="90" text-anchor="middle" class="t-dim">말안장, q = +1과 q = −1이 다른 쌍</text>
+        </g>
+        <g transform="translate(650,115)">
+          <rect x="-120" y="-95" width="240" height="190" rx="10" class="f-surface"/>
+          <line x1="-110" y1="0" x2="110" y2="0" class="s-axis" style="opacity:.4"/><line x1="0" y1="-85" x2="0" y2="85" class="s-axis" style="opacity:.4"/>
+          <line x1="-100" y1="-30" x2="100" y2="-30" style="stroke:var(--accent);stroke-width:2"/><line x1="-100" y1="30" x2="100" y2="30" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="-100" y1="-55" x2="100" y2="-55" style="stroke:var(--accent);stroke-width:1.4;opacity:.6"/><line x1="-100" y1="55" x2="100" y2="55" style="stroke:var(--accent);stroke-width:1.4;opacity:.6"/>
+          <text x="0" y="-102" text-anchor="middle" class="t" style="font-weight:700">λ₁ > 0 = λ₂ : 평행선</text>
+          <text x="0" y="90" text-anchor="middle" class="t-dim">골짜기, x축 방향은 평평</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 13-3.</b> 등위선 \(\mathbf{x}^{\mathsf T}S\mathbf{x} = k\)의 세 가지 모양. 고유값 두 개가 같은 부호면 타원(양수면 그릇, 음수면 뒤집힌 그릇), 다른 부호면 쌍곡선(안장), 하나가 0이면 평행한 직선(골짜기)이다. 2×2 행렬에서는 \(\det S = \lambda_1\lambda_2\)의 부호만 보아도 구분된다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 13.3 (5x² + 4xy + 2y² = 1의 정체)</strong>
+      <p>\(S = \begin{bmatrix}5 & 2\\ 2 & 2\end{bmatrix}\). \(\operatorname{tr} S = 7\), \(\det S = 6\)이므로 \(\lambda^2 - 7\lambda + 6 = 0\), \(\lambda_1 = 6\), \(\lambda_2 = 1\). 둘 다 양수이므로 <b>타원</b>이다. \((S - 6I)\mathbf{x} = \mathbf{0}\): \(-x + 2y = 0\) → \(\mathbf{q}_1 = (2, 1)/\sqrt5\). \(\mathbf{q}_2 = (-1, 2)/\sqrt5\). 따라서 타원의 짧은 반지름은 \((2, 1)\) 방향으로 \(1/\sqrt6 \approx 0.41\), 긴 반지름은 \((-1, 2)\) 방향으로 \(1/\sqrt1 = 1\)이다. 짧은 축이 큰 고유값 쪽이라는 데 주의하자. 값이 빨리 커지는 방향일수록 등위선이 원점에 가깝다.</p></div>
+    <div class="sim" id="sim-sy-quad">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이차 형식의 지형과 등위선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sy-cv-quad"></canvas><span class="tag-tl">색: q(x) 값 (따뜻한 색 +, 차가운 색 −)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>a (x² 계수) <output id="sy-qa-out"></output></span><input type="range" id="sy-qa" min="-3" max="6" step="0.1" value="5"></label>
+          <label class="ctrl"><span>b (2b가 xy 계수) <output id="sy-qb-out"></output></span><input type="range" id="sy-qb" min="-4" max="4" step="0.1" value="2"></label>
+          <label class="ctrl"><span>c (y² 계수) <output id="sy-qc-out"></output></span><input type="range" id="sy-qc" min="-3" max="6" step="0.1" value="2"></label>
+          <label class="ctrl"><span>예제</span><select id="sy-q-pre">
+            <option value="ex">예제 13.3: 5x² + 4xy + 2y²</option>
+            <option value="circle">원: x² + y²</option>
+            <option value="saddle">안장: x² + 4xy + y²</option>
+            <option value="valley">골짜기: x² + 2xy + y²</option>
+            <option value="neg">뒤집힌 그릇: −2x² + 2xy − 2y²</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="sy-q-axes" checked> 주축(고유벡터) 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">식</span><span class="v" id="sy-q-f">—</span></div>
+        <div class="stat"><span class="k">λ₁, λ₂</span><span class="v" id="sy-q-l">—</span></div>
+        <div class="stat"><span class="k">det S = λ₁λ₂</span><span class="v" id="sy-q-d">—</span></div>
+        <div class="stat"><span class="k">모양</span><span class="v" id="sy-q-t">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '예제 13.3'에서 q = 1 등위선(굵은 선)이 주황 축 방향으로 0.41, 청록 축 방향으로 1인지 눈금으로 확인하세요. ② b를 키워 b² > ac가 되는 순간 타원이 쌍곡선으로 갈라집니다. 그 경계에서 det = 0, 등위선은 평행선입니다. ③ '뒤집힌 그릇'은 등위선은 타원이지만 값이 모두 음수입니다(음의 정부호). 모델: 굵은 선은 q = ±1, 가는 선은 q = ±0.25, ±2.25, ±4. 등위선은 고유벡터 좌표에서 매개변수로 그렸습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="positive-definite">
+    <h2>양의 정부호: 다섯 가지 얼굴, 하나의 성질</h2>
+    <div class="problem"><strong>이 행렬은 "그릇"인가</strong>
+      <p>최적화 프로그램은 극소점을 찾았는지, 구조 해석 프로그램은 구조물이 안정한지, 통계 프로그램은 공분산 행렬이 올바른지 확인해야 합니다. 모두 같은 질문입니다. "모든 방향으로 \(\mathbf{x}^{\mathsf T}S\mathbf{x} > 0\)인가?" 그런데 방향은 무한히 많습니다. 하나하나 시험할 수 없다면 무엇을 계산해야 할까요?</p></div>
+    <div class="callout deep"><strong>정의 13.1 (양의 정부호)</strong> 대칭 행렬 \(S\)가 <span class="term">양의 정부호</span><span class="en">(positive definite)</span>라는 것은 \(\mathbf{0}\)이 아닌 모든 \(\mathbf{x}\)에 대해 \(\mathbf{x}^{\mathsf T}S\mathbf{x} > 0\)이라는 뜻이다. \(\ge 0\)이면 <span class="term">양의 준정부호</span><span class="en">(positive semidefinite)</span>, 양수와 음수가 모두 나오면 <b>부정부호</b><span class="en">(indefinite)</span>, \(-S\)가 양의 정부호이면 <b>음의 정부호</b>라 한다.</div>
+    <div class="callout deep"><strong>정리 13.4 (양의 정부호 판정)</strong> \(n \times n\) 대칭 행렬 \(S\)에 대해 다음은 모두 동치이다.
+      <ol>
+        <li><b>에너지:</b> 모든 \(\mathbf{x} \ne \mathbf{0}\)에 대해 \(\mathbf{x}^{\mathsf T}S\mathbf{x} > 0\).</li>
+        <li><b>고유값:</b> 모든 고유값 \(\lambda_i > 0\).</li>
+        <li><b>피벗:</b> 행 교환 없이 소거하면 피벗 \(n\)개가 모두 양수다.</li>
+        <li><b>선행 주소행렬식:</b> 왼쪽 위 \(k \times k\) 부분 행렬의 행렬식 \(D_1, D_2, \dots, D_n\)이 모두 양수다.</li>
+        <li><b>\(A^{\mathsf T}A\):</b> 열이 선형 독립인 어떤 행렬 \(A\)로 \(S = A^{\mathsf T}A\)라 쓸 수 있다.</li>
+      </ol>
+      <p><b>증명의 고리.</b> (1⇒2) \(S\mathbf{q} = \lambda\mathbf{q}\)이면 \(\mathbf{q}^{\mathsf T}S\mathbf{q} = \lambda\lVert\mathbf{q}\rVert^2 > 0\). (2⇒1) \(\mathbf{x} = Q\mathbf{y}\)로 쓰면 \(\mathbf{x}^{\mathsf T}S\mathbf{x} = \sum\lambda_i y_i^2 > 0\). (3⇔4) \(k\)번째 피벗은 \(D_k/D_{k-1}\)이다(소거는 왼쪽 위 블록부터 끝나므로). (3⇒5) 피벗이 양수면 \(S = LDL^{\mathsf T} = (L\sqrt D)(L\sqrt D)^{\mathsf T}\), \(A = (L\sqrt D)^{\mathsf T}\). (5⇒1) \(\mathbf{x}^{\mathsf T}A^{\mathsf T}A\mathbf{x} = \lVert A\mathbf{x}\rVert^2 \ge 0\)이고, 열이 독립이므로 \(\mathbf{x} \ne \mathbf{0}\)이면 \(A\mathbf{x} \ne \mathbf{0}\). (1⇒3)은 피벗이 \(D_k/D_{k-1}\)이고 \(D_k\)가 왼쪽 위 블록(역시 에너지가 양수인 행렬)의 고유값의 곱이라는 데서 나온다. ∎</p></div>
+    <p>실제 계산에서는 3번(피벗, 곧 콜레스키 분해를 시도해 보는 것)이 가장 빠릅니다. 고유값을 구하는 것보다 몇 배 싸고, 실패하면 그 자리에서 멈추기 때문입니다. 4번은 손계산에, 5번은 "왜 이 행렬이 양의 정부호인가"를 설명할 때 가장 쓸모 있습니다. 공분산 행렬, 최소제곱의 \(A^{\mathsf T}A\), 강성 행렬 \(A^{\mathsf T}CA\)가 양의 (준)정부호인 이유가 모두 5번입니다.</p>
+    <div class="callout tip"><strong>예제 13.4 (2차 차분 행렬 판정하기)</strong> \(K = \begin{bmatrix}2 & -1 & 0\\ -1 & 2 & -1\\ 0 & -1 & 2\end{bmatrix}\).
+      <p><b>피벗:</b> \(2\), \(2 - \tfrac12 = \tfrac32\), \(2 - \tfrac{1}{3/2} = \tfrac43\). 모두 양수. <b>주소행렬식:</b> \(D_1 = 2\), \(D_2 = 3\), \(D_3 = 4\). 피벗 = \(D_k/D_{k-1}\) = \(2, \tfrac32, \tfrac43\) ✓. <b>고유값:</b> \(2 - \sqrt2,\ 2,\ 2 + \sqrt2\) ≈ 0.59, 2, 3.41. 곱 = 4 = \(\det K\) ✓. <b>에너지:</b> 전개하면
+      $$\mathbf{x}^{\mathsf T}K\mathbf{x} = 2x_1^2 + 2x_2^2 + 2x_3^2 - 2x_1x_2 - 2x_2x_3 = x_1^2 + (x_1 - x_2)^2 + (x_2 - x_3)^2 + x_3^2 > 0.$$
+      제곱의 합이고, 0이 되려면 \(x_1 = x_1 - x_2 = x_2 - x_3 = x_3 = 0\)이어야 한다. <b>\(A^{\mathsf T}A\):</b> 제곱 안의 네 식이 곧 \(A\mathbf{x}\)이고, \(A\)는 아래 6절의 4×3 차분 행렬이다. 다섯 판정이 모두 같은 답을 준다.</p></div>
+    <div class="sim" id="sim-sy-pd">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>양의 정부호 판정기: 다섯 가지 시험</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view">
+          <div class="sy-tests"><table><thead><tr><th>시험</th><th>값</th><th>결과</th></tr></thead><tbody id="sy-pd-tbody"></tbody></table></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>대칭 행렬 S (위 삼각을 고치면 아래가 따라감)</span>
+            <div class="mat sy-m3" id="sy-pd-mat"></div></div>
+          <label class="ctrl"><span>예제</span><select id="sy-pd-pre">
+            <option value="k">2차 차분 K (예제 13.4)</option>
+            <option value="ata">AᵀA (A는 무작위 4×3)</option>
+            <option value="ones">모두 1 (준정부호)</option>
+            <option value="ind">부정부호 [1 2 0; 2 1 0; 0 0 1]</option>
+            <option value="trap">대각은 양수인데… [1 2 2; 2 1 2; 2 2 1]</option>
+            <option value="near">거의 특이 [1 1 1; 1 1.01 1; 1 1 1.0001]</option>
+          </select></label>
+          <div class="btn-row"><button class="btn" id="sy-pd-rand">무작위 대칭 행렬</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">판정</span><span class="v" id="sy-pd-verdict">—</span></div>
+        <div class="stat"><span class="k">콜레스키 L</span><span class="v" id="sy-pd-l">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '대각은 양수인데…'는 대각 원소가 모두 양수지만 양의 정부호가 아닙니다. 어느 시험이 가장 먼저 실패하는지 보세요. ② 'AᵀA'는 몇 번을 눌러도 언제나 통과합니다(정리 13.4의 5번). ③ '모두 1'은 피벗 하나가 0이 되어 콜레스키가 멈추고, 가장 작은 고유값은 0, 무작위 방향 최솟값도 0에 가깝습니다. ④ '거의 특이'는 판정은 통과하지만 가장 작은 고유값이 매우 작습니다. 수치적으로 위험한 행렬입니다(16장). 모델: 고유값은 야코비 방법, 무작위 방향 시험은 단위 벡터 3,000개의 최솟값입니다(증명이 아니라 표본입니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="cholesky">
+    <h2>콜레스키 분해: 양의 정부호 행렬의 제곱근</h2>
+    <div class="problem"><strong>대칭이면 계산도 절반으로 줄일 수 없을까</strong>
+      <p>유한 요소 구조 해석, 칼만 필터, 몬테카를로 시뮬레이션의 상관된 난수 생성은 매번 양의 정부호 행렬로 연립방정식을 풀거나 "행렬의 제곱근"을 필요로 합니다. 대칭이라 칸의 절반이 중복인데, LU 분해는 그 사실을 쓰지 않습니다.</p></div>
+    <p>4장에서 대칭 행렬은 \(S = LDL^{\mathsf T}\)로 분해된다는 것을 보았습니다(<a href="lu.html#ldu">4장 LDLᵀ</a>). 양의 정부호면 피벗 \(D\)가 모두 양수이므로 \(\sqrt D\)를 양쪽으로 나눠 가질 수 있습니다.</p>
+    <div class="callout deep"><strong>정리 13.5 (콜레스키 분해)</strong> 대칭 행렬 \(S\)가 양의 정부호일 필요충분조건은 대각 원소가 양수인 하삼각 행렬 \(L\)이 있어 \(S = LL^{\mathsf T}\)인 것이다. 이 \(L\)은 유일하며, \(L = L_{\text{LDU}}\sqrt D\)이다. 대각 원소의 제곱 \(\ell_{kk}^2\)이 곧 \(k\)번째 피벗이다.</div>
+    <p>\(LL^{\mathsf T}\)의 \((i, j)\) 성분을 맞추면 알고리즘이 바로 나옵니다. 첫 열부터 차례로,</p>
+    <div class="formula">$$\ell_{kk} = \sqrt{s_{kk} - \sum_{j \lt k}\ell_{kj}^2}, \qquad \ell_{ik} = \frac{1}{\ell_{kk}}\Bigl(s_{ik} - \sum_{j \lt k}\ell_{ij}\ell_{kj}\Bigr)\quad (i > k)$$
+      <div class="where">제곱근 안이 0 이하가 되는 순간 행렬은 양의 정부호가 아니다. 그래서 콜레스키 분해는 "판정하면서 동시에 분해하는" 가장 빠른 방법이다. 연산량은 약 \(n^3/3\) flop으로 LU의 절반이고, 피벗팅이 필요 없으며 수치적으로 안정하다.</div>
+    </div>
+    <div class="callout tip"><strong>예제 13.5 (콜레스키 손계산)</strong>
+      <p>\(S = \begin{bmatrix}4 & 2\\ 2 & 3\end{bmatrix}\): \(\ell_{11} = \sqrt4 = 2\), \(\ell_{21} = 2/2 = 1\), \(\ell_{22} = \sqrt{3 - 1^2} = \sqrt2\). 검산: \(\begin{bmatrix}2 & 0\\ 1 & \sqrt2\end{bmatrix}\begin{bmatrix}2 & 1\\ 0 & \sqrt2\end{bmatrix} = \begin{bmatrix}4 & 2\\ 2 & 3\end{bmatrix}\) ✓.</p>
+      <p>예제 13.4의 \(K\): \(\ell_{11} = \sqrt2\), \(\ell_{21} = -1/\sqrt2\), \(\ell_{22} = \sqrt{2 - \tfrac12} = \sqrt{3/2}\), \(\ell_{32} = -1/\sqrt{3/2}\), \(\ell_{33} = \sqrt{2 - \tfrac23} = \sqrt{4/3}\). 대각의 제곱 \(2, \tfrac32, \tfrac43\)이 정확히 피벗이다.</p></div>
+    <div class="callout"><strong>쓰이는 곳: 상관된 잡음 만들기</strong> 서로 독립인 표준 정규 난수 벡터 \(\mathbf{z}\)에 \(L\)을 곱하면 \(\mathbf{x} = L\mathbf{z}\)의 공분산은 \(E[\mathbf{x}\mathbf{x}^{\mathsf T}] = L\,E[\mathbf{z}\mathbf{z}^{\mathsf T}]\,L^{\mathsf T} = LL^{\mathsf T} = \Sigma\)가 된다. 금융의 위험 시뮬레이션, 공정 변동의 몬테카를로 해석, 통신 채널 모의 실험이 상관된 난수를 이렇게 만든다(<a href="../../probability/chapters/joint.html">확률과 통계 · 결합 분포</a>).</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="energy">
+    <h2>에너지로 읽기: 스프링과 K = AᵀCA</h2>
+    <div class="problem"><strong>양의 정부호는 물리적으로 무슨 뜻인가</strong>
+      <p>스프링으로 연결된 질량 세 개를 양쪽 벽에 매달고 힘을 가하면 어디까지 밀릴까요? 그리고 왜 벽 하나를 떼어도 답이 나오는데 양쪽 벽을 모두 떼면 답이 사라질까요?</p></div>
+    <p>질량의 변위를 \(\mathbf{u} = (u_1, u_2, u_3)\)라 합시다. 스프링 \(i\)의 늘어난 길이 \(e_i\)는 양 끝 변위의 차이입니다(벽은 움직이지 않음). 훅의 법칙으로 스프링 힘은 \(w_i = c_ie_i\), 각 질량에서 힘의 평형은 들어오고 나가는 스프링 힘의 차이입니다. 세 단계를 행렬로 쓰면,</p>
+    <div class="formula">$$\mathbf{e} = A\mathbf{u}, \quad \mathbf{w} = C\mathbf{e}, \quad \mathbf{f} = A^{\mathsf T}\mathbf{w} \quad\Longrightarrow\quad K\mathbf{u} = \mathbf{f}, \quad K = A^{\mathsf T}CA, \qquad A = \begin{bmatrix}1 & 0 & 0\\ -1 & 1 & 0\\ 0 & -1 & 1\\ 0 & 0 & -1\end{bmatrix}$$
+      <div class="where">\(C = \operatorname{diag}(c_1, c_2, c_3, c_4)\)는 스프링 상수. 늘어남을 구하는 \(A\)와 힘의 평형을 세우는 \(A^{\mathsf T}\)가 서로 전치라는 것이 핵심이다(가상일의 원리). 모든 \(c_i = 1\)이면 \(K\)는 예제 13.4의 2차 차분 행렬이 된다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 170" role="img" aria-label="벽과 벽 사이에 스프링 네 개와 질량 세 개가 놓인 계">
+        <rect x="20" y="30" width="16" height="110" class="f-elev"/><rect x="724" y="30" width="16" height="110" class="f-elev"/>
+        <g style="stroke:var(--text-dim);stroke-width:2;fill:none">
+          <path d="M36 85 h20 l8 -14 l16 28 l16 -28 l16 28 l16 -28 l16 28 l8 -14 h20"/>
+          <path d="M232 85 h20 l8 -14 l16 28 l16 -28 l16 28 l16 -28 l16 28 l8 -14 h10"/>
+          <path d="M418 85 h10 l8 -14 l16 28 l16 -28 l16 28 l16 -28 l16 28 l8 -14 h10"/>
+          <path d="M594 85 h10 l8 -14 l16 28 l16 -28 l16 28 l16 -28 l16 28 l8 -14 h16"/>
+        </g>
+        <rect x="172" y="55" width="60" height="60" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <rect x="358" y="55" width="60" height="60" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <rect x="534" y="55" width="60" height="60" rx="6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <text x="202" y="90" text-anchor="middle" class="t-acc">m₁</text><text x="388" y="90" text-anchor="middle" class="t-acc">m₂</text><text x="564" y="90" text-anchor="middle" class="t-acc">m₃</text>
+        <text x="104" y="52" text-anchor="middle" class="t-mono">c₁, e₁ = u₁</text><text x="295" y="52" text-anchor="middle" class="t-mono">c₂, e₂ = u₂ − u₁</text><text x="476" y="52" text-anchor="middle" class="t-mono">c₃, e₃ = u₃ − u₂</text><text x="660" y="52" text-anchor="middle" class="t-mono">c₄, e₄ = −u₃</text>
+        <text x="202" y="138" text-anchor="middle" class="t-dim">u₁ →</text><text x="388" y="138" text-anchor="middle" class="t-dim">u₂ →</text><text x="564" y="138" text-anchor="middle" class="t-dim">u₃ →</text>
+        <text x="380" y="162" text-anchor="middle" class="t-dim">변위 u → 늘어남 e = Au → 스프링 힘 w = Ce → 외력 f = Aᵀw</text>
+      </svg>
+      <figcaption><b>그림 13-4.</b> 고정–고정 스프링 사슬. 늘어남 e = Au, 힘 w = Ce, 평형 f = Aᵀw의 세 단계가 K = AᵀCA를 만든다. 이 틀은 저항 회로(전위 → 전압 강하 → 전류 → 키르히호프 법칙)와 트러스 구조물에도 똑같이 나타난다.</figcaption>
+    </figure>
+    <p>\(\mathbf{u}^{\mathsf T}K\mathbf{u} = (A\mathbf{u})^{\mathsf T}C(A\mathbf{u}) = \sum c_ie_i^2\)이고, \(\tfrac12\mathbf{u}^{\mathsf T}K\mathbf{u}\)는 스프링에 저장된 탄성 에너지입니다. 그러니 <b>양의 정부호 = 어떻게 움직이든 에너지가 든다</b>는 뜻입니다. 양쪽 벽을 모두 떼면 세 질량을 똑같이 옮기는 \(\mathbf{u} = (1, 1, 1)\)이 스프링을 전혀 늘이지 않아 에너지가 0입니다. 이 강체 운동이 \(K\)의 영공간이고, \(K\)는 준정부호로 떨어져 \(K\mathbf{u} = \mathbf{f}\)가 풀리지 않습니다(힘이 평형을 이루지 않으면 계 전체가 날아갑니다). 구조 해석에서 "경계 조건이 부족하다"는 오류 메시지가 바로 이것입니다.</p>
+    <div class="callout deep"><strong>정리 13.6 (최소 에너지 원리)</strong> \(K\)가 양의 정부호이면 \(K\mathbf{u} = \mathbf{f}\)의 해는 총 퍼텐셜 에너지 \(P(\mathbf{u}) = \tfrac12\mathbf{u}^{\mathsf T}K\mathbf{u} - \mathbf{u}^{\mathsf T}\mathbf{f}\)를 최소로 하는 유일한 점이고, 최솟값은 \(-\tfrac12\mathbf{f}^{\mathsf T}K^{-1}\mathbf{f}\)이다.
+      <p><b>증명.</b> \(\mathbf{u}^* = K^{-1}\mathbf{f}\)라 하면 \(P(\mathbf{u}) - P(\mathbf{u}^*) = \tfrac12(\mathbf{u} - \mathbf{u}^*)^{\mathsf T}K(\mathbf{u} - \mathbf{u}^*) \ge 0\)(전개해서 확인). 등호는 \(\mathbf{u} = \mathbf{u}^*\)일 때뿐이다. ∎ 연립방정식을 푸는 것과 그릇의 바닥을 찾는 것은 같은 일이다. 이 생각이 유한 요소법과 켤레 기울기법(16장)의 출발점이다.</p></div>
+    <div class="sim" id="sim-sy-spring">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>스프링 사슬: K = AᵀCA와 에너지</h3></div>
+      <div class="sim-body">
+        <div class="sim-view"><canvas id="sy-cv-spring"></canvas></div>
+        <div class="sim-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px">
+          <label class="ctrl"><span>c₁ <output id="sy-c1-out"></output></span><input type="range" id="sy-c1" min="0" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>c₂ <output id="sy-c2-out"></output></span><input type="range" id="sy-c2" min="0.1" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>c₃ <output id="sy-c3-out"></output></span><input type="range" id="sy-c3" min="0.1" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>c₄ <output id="sy-c4-out"></output></span><input type="range" id="sy-c4" min="0" max="3" step="0.1" value="1"></label>
+          <label class="ctrl"><span>힘 f (오른쪽 +) <output id="sy-f-out"></output></span><input type="range" id="sy-f" min="-1" max="1" step="0.05" value="0.5"></label>
+          <div class="ctrl"><span>힘을 받는 질량</span><div class="seg" id="sy-f-at"><button data-value="0">m₁</button><button data-value="1" class="on">m₂</button><button data-value="2">m₃</button><button data-value="all">셋 모두</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">K = AᵀCA</span><span class="v" id="sy-k-m">—</span></div>
+        <div class="stat"><span class="k">변위 u = K⁻¹f</span><span class="v" id="sy-k-u">—</span></div>
+        <div class="stat"><span class="k">K의 고유값</span><span class="v" id="sy-k-l">—</span></div>
+        <div class="stat"><span class="k">저장 에너지 ½uᵀKu</span><span class="v" id="sy-k-e">—</span></div>
+      </div>
+      <div class="sy-msg" id="sy-k-msg">—</div>
+      <div class="sim-note">해볼 것: ① c₄를 0으로 내리면(오른쪽 벽 떼기) K의 가장 작은 고유값이 줄지만 여전히 양수라 답이 나옵니다. ② c₁과 c₄를 모두 0으로 하면 가장 작은 고유값이 0이 되고, '셋 모두'처럼 힘의 합이 0이 아니면 해가 없습니다. ③ c₂를 아주 작게 하면 m₁이 거의 따로 놀고 K는 거의 블록 대각이 됩니다. 모델: 정적 평형만 다룹니다. 그림의 변위는 보기 좋게 확대했습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="hessian">
+    <h2>헤세 행렬: 극소, 극대, 안장점</h2>
+    <div class="problem"><strong>기울기가 0인 곳이 바닥인지 고개인지</strong>
+      <p>신경망 학습, 공정 조건 최적화, 분자 구조 계산은 함수 \(f(x_1, \dots, x_n)\)의 기울기가 0인 점을 찾습니다. 그런데 기울기가 0인 점은 바닥(극소)일 수도, 꼭대기(극대)일 수도, 한쪽으로는 오르막이고 다른 쪽으로는 내리막인 고개(안장점)일 수도 있습니다. 일변수에서는 \(f''\)의 부호로 판정했지요. 다변수에서는 무엇이 \(f''\)일까요?</p></div>
+    <p>임계점 \(\mathbf{x}_0\) 근처에서 테일러 전개를 하면 1차 항이 사라지고 2차 항이 남습니다.</p>
+    <div class="formula">$$f(\mathbf{x}_0 + \mathbf{h}) \approx f(\mathbf{x}_0) + \underbrace{\nabla f^{\mathsf T}\mathbf{h}}_{=\,0} + \tfrac12\mathbf{h}^{\mathsf T}H\mathbf{h}, \qquad H = \begin{bmatrix}f_{xx} & f_{xy}\\ f_{yx} & f_{yy}\end{bmatrix}$$
+      <div class="where">\(H\)는 이계 편도함수를 모은 <span class="term">헤세 행렬</span><span class="en">(Hessian matrix)</span>이다. 이계 편도함수가 연속이면 \(f_{xy} = f_{yx}\)(슈바르츠 정리)이므로 \(H\)는 <b>대칭</b>이다. 임계점 근처의 함수는 이차 형식 \(\tfrac12\mathbf{h}^{\mathsf T}H\mathbf{h}\)처럼 생겼다.</div>
+    </div>
+    <div class="callout deep"><strong>정리 13.7 (이계 도함수 판정)</strong> \(\nabla f(\mathbf{x}_0) = \mathbf{0}\)일 때, \(H(\mathbf{x}_0)\)가 양의 정부호면 극소, 음의 정부호면 극대, 고유값에 양수와 음수가 모두 있으면 안장점이다. 고유값 중 0이 있으면(준정부호) 이 판정만으로는 알 수 없다. 2×2에서는 \(\det H > 0\)이고 \(f_{xx} > 0\)이면 극소, \(\det H > 0\)이고 \(f_{xx} \lt 0\)이면 극대, \(\det H \lt 0\)이면 안장점이다.</div>
+    <div class="callout tip"><strong>예제 13.6 (임계점 분류)</strong>
+      <p>① \(f = x^2 + 3xy + y^2\): \(H = \begin{bmatrix}2 & 3\\ 3 & 2\end{bmatrix}\), 고유값 5와 −1 → <b>안장점</b>. 대각 원소 \(f_{xx} = f_{yy} = 2\)가 모두 양수여서 x축, y축 방향으로는 오르막인데도 그렇다. 내리막 방향은 고유값 −1의 고유벡터 \((1, -1)\)이다: \(f(t, -t) = t^2 - 3t^2 + t^2 = -t^2\).</p>
+      <p>② \(f = x^3 - 3x + y^2\): \(\nabla f = (3x^2 - 3, 2y) = \mathbf{0}\)에서 임계점 \((\pm1, 0)\). \(H = \begin{bmatrix}6x & 0\\ 0 & 2\end{bmatrix}\). \((1, 0)\)에서 \(\operatorname{diag}(6, 2)\) → 극소. \((-1, 0)\)에서 \(\operatorname{diag}(-6, 2)\) → 안장점.</p></div>
+    <div class="sim" id="sim-sy-hess">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>지형 위의 점: 기울기와 헤세 행렬</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sy-cv-hess"></canvas><span class="tag-tl">점을 끌어 보세요 · 등고선 간격 일정</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 f(x, y)</span><select id="sy-h-fn">
+            <option value="bowl">x² + xy + y² (그릇)</option>
+            <option value="saddle">x² + 3xy + y² (예제 ①)</option>
+            <option value="cubic">x³ − 3x + y² (예제 ②)</option>
+            <option value="flat">x⁴ + y² (헤세가 준정부호)</option>
+            <option value="ring">(x² + y² − 1)² (원형 골짜기)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="sy-h-newton">뉴턴법으로 임계점 찾기</button></div>
+          <label class="check"><input type="checkbox" id="sy-h-axes" checked> 헤세 고유벡터 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">점 (x, y)</span><span class="v" id="sy-h-p">—</span></div>
+        <div class="stat"><span class="k">기울기 ∇f</span><span class="v" id="sy-h-g">—</span></div>
+        <div class="stat"><span class="k">헤세 H</span><span class="v" id="sy-h-h">—</span></div>
+        <div class="stat"><span class="k">H의 고유값</span><span class="v" id="sy-h-l">—</span></div>
+      </div>
+      <div class="sy-msg" id="sy-h-msg">—</div>
+      <div class="sim-note">해볼 것: ① '예제 ①'에서 원점의 두 고유벡터 중 주황(양수)은 오르막, 청록(음수)은 내리막 방향입니다. ② '예제 ②'에서 뉴턴법을 여러 번 눌러 두 임계점을 각각 찾아보세요. 출발점에 따라 극소에도, 안장점에도 도착합니다. 뉴턴법은 바닥과 고개를 가리지 않습니다. ③ 'x⁴ + y²'의 원점은 분명히 극소인데 헤세 고유값 하나가 0이라 정리 13.7로는 판정할 수 없습니다. ④ '원형 골짜기'의 바닥 원 위에서는 원을 따라가는 방향의 고유값이 0입니다. 모델: 헤세와 기울기는 해석적으로 계산하고, 화살표 길이는 |λ|의 제곱근에 비례합니다.</div>
+    </div>
+
+    <h3 id="condition">경사 하강법의 속도는 헤세의 조건수가 정한다</h3>
+    <p>극소점을 찾는 가장 단순한 방법은 기울기 반대 방향으로 조금씩 내려가는 <b>경사 하강법</b>입니다. 극소점 근처의 함수는 \(f \approx \tfrac12\mathbf{x}^{\mathsf T}S\mathbf{x}\)(\(S\)는 헤세)이므로 \(\nabla f = S\mathbf{x}\)이고 한 걸음은 \(\mathbf{x}_{k+1} = \mathbf{x}_k - \eta S\mathbf{x}_k = (I - \eta S)\mathbf{x}_k\)입니다. 고유벡터 방향 성분은 서로 섞이지 않고 각각 매 걸음 \(1 - \eta\lambda_i\)배가 됩니다.</p>
+    <div class="formula">$$|1 - \eta\lambda_i| \lt 1 \iff 0 \lt \eta \lt \frac{2}{\lambda_{\max}}, \qquad \eta^* = \frac{2}{\lambda_{\max} + \lambda_{\min}}\ \Rightarrow\ \text{수렴률} = \frac{\kappa - 1}{\kappa + 1}, \quad \kappa = \frac{\lambda_{\max}}{\lambda_{\min}}$$
+      <div class="where">\(\kappa\)는 헤세의 <span class="term">조건수</span><span class="en">(condition number)</span>. 보폭은 가장 가파른 방향(\(\lambda_{\max}\)) 때문에 작아야 하고, 그 작은 보폭으로는 가장 완만한 방향(\(\lambda_{\min}\))이 거의 움직이지 않는다. \(\kappa = 100\)이면 수렴률 \(99/101 \approx 0.980\)이라 오차를 \(10^{-6}\)으로 줄이는 데 약 690걸음이 든다.</div>
+    </div>
+    <div class="sim" id="sim-sy-gd">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>길쭉한 그릇에서 지그재그로 내려가기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sy-cv-gd"></canvas><span class="tag-tl">출발점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>조건수 κ = λmax/λmin <output id="sy-gk-out"></output></span><input type="range" id="sy-gk" min="0" max="2" step="0.05" value="1"></label>
+          <label class="ctrl"><span>보폭 η × λmax <output id="sy-ge-out"></output></span><input type="range" id="sy-ge" min="0.1" max="2.2" step="0.05" value="1"></label>
+          <label class="ctrl"><span>그릇의 기울기 각 <output id="sy-gr-out"></output></span><input type="range" id="sy-gr" min="0" max="90" step="5" value="30"></label>
+          <div class="btn-row"><button class="btn primary" id="sy-g-opt">최적 보폭 η*</button><button class="btn" id="sy-g-newton">뉴턴 한 걸음 비교</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음마다 줄어드는 비율(최악 방향)</span><span class="v" id="sy-g-rate">—</span></div>
+        <div class="stat"><span class="k">f를 10⁻⁶배로 줄이는 데 걸린 걸음</span><span class="v" id="sy-g-it">—</span></div>
+        <div class="stat"><span class="k">이론 최적 수렴률 (κ−1)/(κ+1)</span><span class="v" id="sy-g-th">—</span></div>
+      </div>
+      <div class="sy-msg" id="sy-g-msg">—</div>
+      <div class="sim-note">해볼 것: ① κ = 1이면 등고선이 원이고 최적 보폭에서 한 걸음에 바닥에 닿습니다. ② κ를 30 이상으로 키우면 경로가 골짜기 벽을 오가며 지그재그로 느리게 내려갑니다. ③ 보폭을 2/λmax(표시값 2.0) 넘게 키우면 가파른 방향 성분이 매 걸음 부호를 바꾸며 커져 발산합니다. ④ '뉴턴 한 걸음'은 헤세의 역행렬을 곱해 그릇을 원으로 펴 주므로 이차 함수에서는 한 걸음에 끝납니다. 모델: f = ½xᵀSx, S의 고유값은 1과 κ, 최대 1,000걸음까지 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="rayleigh">
+    <h2>레일리 몫과 주축: 응력, 관성, 공분산</h2>
+    <div class="problem"><strong>어느 방향이 가장 많이 늘어나는가</strong>
+      <p>응력 텐서에서는 "어느 면에 인장이 가장 크게 걸리는가", 관성 텐서에서는 "어느 축으로 돌리기가 가장 어려운가", 공분산 행렬에서는 "데이터가 어느 방향으로 가장 넓게 퍼졌는가"를 묻습니다. 모두 단위 벡터 \(\mathbf{n}\)에 대해 \(\mathbf{n}^{\mathsf T}S\mathbf{n}\)을 최대로 하는 문제입니다.</p></div>
+    <div class="callout deep"><strong>정리 13.8 (레일리 몫)</strong> 대칭 행렬 \(S\)의 고유값을 \(\lambda_1 \ge \cdots \ge \lambda_n\)이라 하면, \(\mathbf{x} \ne \mathbf{0}\)에 대한 <span class="term">레일리 몫</span><span class="en">(Rayleigh quotient)</span>은
+      $$\lambda_n \le R(\mathbf{x}) = \frac{\mathbf{x}^{\mathsf T}S\mathbf{x}}{\mathbf{x}^{\mathsf T}\mathbf{x}} \le \lambda_1$$
+      을 만족하고, 최댓값은 \(\mathbf{x} = \mathbf{q}_1\)에서, 최솟값은 \(\mathbf{x} = \mathbf{q}_n\)에서 얻는다.
+      <p><b>증명.</b> \(\mathbf{x} = Q\mathbf{y}\)로 쓰면 \(R = \dfrac{\sum\lambda_iy_i^2}{\sum y_i^2}\), 곧 고유값들의 가중 평균(가중치 \(y_i^2 \ge 0\))이다. 가중 평균은 가장 큰 값과 가장 작은 값 사이에 있고, 가중치를 한 곳에 몰면 양 끝에 닿는다. ∎ 첫 고유벡터에 수직인 방향 중에서 최대를 찾으면 \(\lambda_2\)가 나오고, 이렇게 고유값을 차례로 "최대화 문제의 답"으로 얻을 수 있다(쿠란트–피셔 최소최대 정리).</p></div>
+    <p>2차원 응력 텐서 \(\sigma = \begin{bmatrix}\sigma_x & \tau\\ \tau & \sigma_y\end{bmatrix}\)에서 법선이 \(\mathbf{n} = (\cos\theta, \sin\theta)\)인 면의 수직 응력은 \(\sigma_n = \mathbf{n}^{\mathsf T}\sigma\mathbf{n}\)(레일리 몫), 전단 응력은 면 방향 \(\mathbf{t} = (-\sin\theta, \cos\theta)\)에 대해 \(\tau_n = \mathbf{t}^{\mathsf T}\sigma\mathbf{n}\)입니다. 배각 공식으로 정리하면</p>
+    <div class="formula">$$\sigma_n = \frac{\sigma_x + \sigma_y}{2} + \frac{\sigma_x - \sigma_y}{2}\cos2\theta + \tau\sin2\theta, \qquad \tau_n = -\frac{\sigma_x - \sigma_y}{2}\sin2\theta + \tau\cos2\theta$$
+      <div class="where">\((\sigma_n, \tau_n)\)은 중심 \(\tfrac{\sigma_x + \sigma_y}{2}\), 반지름 \(r = \sqrt{(\tfrac{\sigma_x - \sigma_y}{2})^2 + \tau^2}\)인 원 위를 각 \(2\theta\)로 돈다. 이것이 <span class="term">모어 원</span><span class="en">(Mohr's circle)</span>이다. 원이 가로축과 만나는 두 점(전단 0)이 주응력 \(\sigma_{1,2} = \text{중심} \pm r\), 곧 \(\sigma\)의 두 고유값이다.</div>
+    </div>
+    <div class="callout tip"><strong>예제 13.7 (주응력 구하기)</strong> \(\sigma_x = 80\), \(\sigma_y = 20\), \(\tau = 40\) (단위 MPa).
+      <p>중심 \(50\), 반지름 \(\sqrt{30^2 + 40^2} = 50\)이므로 주응력은 \(100\)과 \(0\) MPa. 주방향은 \(\tan2\theta_p = 2\tau/(\sigma_x - \sigma_y) = 80/60\)에서 \(2\theta_p \approx 53.1°\), \(\theta_p \approx 26.6°\). 고유값으로 확인하면 \(\operatorname{tr} = 100\), \(\det = 80 \cdot 20 - 40^2 = 0\)이므로 \(\lambda = 100, 0\) ✓. 가로나 세로로 자른 면의 수직 응력 80 MPa보다 26.6° 기울인 면의 100 MPa가 더 크다. 재료의 파손 판정은 이 값으로 해야 한다.</p></div>
+    <div class="sim" id="sim-sy-mohr">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>면을 돌리면 응력이 바뀐다: 레일리 몫과 모어 원</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sy-cv-mohr"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>σx (MPa) <output id="sy-mx-out"></output></span><input type="range" id="sy-mx" min="-100" max="120" step="5" value="80"></label>
+          <label class="ctrl"><span>σy (MPa) <output id="sy-my-out"></output></span><input type="range" id="sy-my" min="-100" max="120" step="5" value="20"></label>
+          <label class="ctrl"><span>τ (MPa) <output id="sy-mt-out"></output></span><input type="range" id="sy-mt" min="-80" max="80" step="5" value="40"></label>
+          <label class="ctrl"><span>면의 법선 각 θ <output id="sy-mth-out"></output></span><input type="range" id="sy-mth" min="0" max="180" step="1" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="sy-m-p1">주방향 1로</button><button class="btn" id="sy-m-p2">주방향 2로</button><button class="btn" id="sy-m-spin">▶ 한 바퀴</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">수직 응력 σn = nᵀσn</span><span class="v" id="sy-m-sn">—</span></div>
+        <div class="stat"><span class="k">전단 응력 τn = tᵀσn</span><span class="v" id="sy-m-tn">—</span></div>
+        <div class="stat"><span class="k">주응력 = 고유값</span><span class="v" id="sy-m-l">—</span></div>
+        <div class="stat"><span class="k">주방향 θp</span><span class="v" id="sy-m-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① θ를 움직이면 왼쪽의 작은 요소가 돌고, 오른쪽 모어 원 위의 점은 2θ만큼 돕니다. 아래 그래프의 R(θ) = σn은 고유값 두 개 사이를 오갑니다. ② '주방향 1로'를 누르면 전단이 0이 되고 σn이 최대가 됩니다. 그 방향이 고유벡터입니다. ③ τ = 0, σx = σy로 하면 원이 한 점이 되어 모든 방향이 주방향입니다(고유값 중복). 모델: 2차원 평면 응력, 부호 약속은 인장 +, 전단은 반시계 회전을 + 로 봅니다.</div>
+    </div>
+    <p>같은 수학이 다른 두 곳에도 그대로 나옵니다.</p>
+    <ul>
+      <li><b>관성 텐서.</b> 강체의 회전 운동 에너지는 \(\tfrac12\boldsymbol\omega^{\mathsf T}I\boldsymbol\omega\)이고 관성 텐서 \(I\)는 대칭 양의 정부호다. 고유벡터가 <b>관성 주축</b>, 고유값이 주관성 모멘트다. 주축 둘레로는 축이 흔들리지 않고 돌며, 세 주축 중 가운데 값의 축 둘레 회전은 불안정하다는 사실(테니스 라켓 정리)이 잘 알려져 있다. 위성의 자세 제어가 주축을 기준으로 설계되는 이유다.</li>
+      <li><b>공분산 타원.</b> 평균을 뺀 데이터의 공분산 행렬 \(\Sigma\)는 대칭 준정부호다. \(\mathbf{x}^{\mathsf T}\Sigma^{-1}\mathbf{x} = 1\)인 타원은 고유벡터 방향으로 반지름 \(\sqrt{\lambda_i}\)를 가지며 데이터가 퍼진 모양을 요약한다. 가장 큰 고유값의 방향이 "데이터가 가장 넓게 퍼진 방향"이고, 이것이 15장 <a href="pca.html">PCA</a>의 첫 주성분이다.</li>
+    </ul>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 240" role="img" aria-label="응력 요소와 모어 원">
+        <g transform="translate(150,120)">
+          <rect x="-40" y="-40" width="80" height="80" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <g style="stroke:var(--accent-2);stroke-width:2.5"><line x1="40" y1="0" x2="95" y2="0"/><line x1="-40" y1="0" x2="-95" y2="0"/><line x1="0" y1="-40" x2="0" y2="-68"/><line x1="0" y1="40" x2="0" y2="68"/></g>
+          <g style="stroke:var(--text-dim);stroke-width:1.6"><line x1="-30" y1="-48" x2="30" y2="-48"/><line x1="30" y1="48" x2="-30" y2="48"/><line x1="48" y1="30" x2="48" y2="-30"/><line x1="-48" y1="-30" x2="-48" y2="30"/></g>
+          <text x="100" y="-6" class="t-mono">σx = 80</text><text x="6" y="-74" class="t-mono">σy = 20</text><text x="54" y="40" class="t-dim">τ = 40</text>
+          <text x="0" y="105" text-anchor="middle" class="t-dim">가로·세로 면의 응력</text>
+        </g>
+        <g transform="translate(500,130)">
+          <line x1="-150" y1="0" x2="230" y2="0" class="s-axis"/><line x1="-130" y1="-95" x2="-130" y2="95" class="s-axis"/>
+          <text x="225" y="-8" class="t-dim" text-anchor="end">σn</text><text x="-124" y="-84" class="t-dim">τn</text>
+          <circle cx="0" cy="0" r="90" fill="none" style="stroke:var(--accent);stroke-width:2"/>
+          <circle cx="54" cy="-72" r="5" style="fill:var(--accent-2)"/><circle cx="-54" cy="72" r="5" style="fill:var(--accent-2)"/>
+          <line x1="54" y1="-72" x2="-54" y2="72" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:5 4"/>
+          <circle cx="90" cy="0" r="5" style="fill:var(--ok)"/><circle cx="-90" cy="0" r="5" style="fill:var(--ok)"/>
+          <text x="96" y="18" class="t" style="fill:var(--ok);font-weight:700">σ₁ = 100</text><text x="-120" y="18" class="t" style="fill:var(--ok);font-weight:700">σ₂ = 0</text>
+          <text x="60" y="-80" class="t-mono">(80, 40)</text><text x="-50" y="94" class="t-mono">(20, −40)</text>
+          <text x="-6" y="16" class="t-dim">중심 50</text>
+          <path d="M40 0 A40 40 0 0 0 24 -32" fill="none" style="stroke:var(--text-dim)"/><text x="44" y="-18" class="t-dim">2θp</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 13-5.</b> 예제 13.7의 응력 요소와 모어 원. 가로 면의 응력 (80, 40)과 세로 면의 응력 (20, −40)이 원의 지름 양 끝이다. 원이 가로축과 만나는 초록 점이 주응력(고유값) 100과 0 MPa, 그 점까지 돌아간 각 2θp ≈ 53.1°의 절반이 주방향이다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"대칭 = 수직인 축으로 늘이기", "양의 정부호 = 에너지가 양수 = 그릇"이라는 두 문장은 시리즈 곳곳에 다른 이름으로 나타납니다.</p>
+    <div class="uses">
+      <a href="pca.html"><small>LINEARBOOK 15장</small>PCA와 데이터<br><span>공분산 행렬의 고유분해가 주성분이다. 레일리 몫의 최대화가 곧 첫 주성분 찾기.</span></a>
+      <a href="svd.html"><small>LINEARBOOK 14장</small>특이값 분해<br><span>AᵀA와 AAᵀ의 스펙트럼 분해에서 특이값과 특이벡터가 나온다.</span></a>
+      <a href="numerical.html"><small>LINEARBOOK 16장</small>켤레 기울기법<br><span>양의 정부호 시스템을 최소 에너지 문제로 풀며, 수렴 속도는 √κ에 비례한다.</span></a>
+      <a href="../../foundations/chapters/optimization.html"><small>MATHBOOK</small>가장 낮은 곳 찾기<br><span>학습률과 볼록성. 헤세의 조건수가 경사 하강법의 지그재그를 만든다.</span></a>
+      <a href="../../foundations/chapters/linalg.html#modes"><small>MATHBOOK</small>공진 모드<br><span>Kφ = ω²Mφ: 대칭 강성 행렬의 고유값이 고유진동수², 고유벡터가 모드 형상.</span></a>
+      <a href="../../probability/chapters/joint.html"><small>확률과 통계</small>공분산과 이변량 정규 분포<br><span>공분산 행렬은 대칭 준정부호, 정규 분포의 등고선은 그 타원이다.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>소자 시뮬레이션<br><span>확산·포아송 방정식의 이산화가 대칭 양의 정부호 행렬을 만들고, 콜레스키와 켤레 기울기로 푼다.</span></a>
+      <a href="lu.html#ldu"><small>LINEARBOOK 4장</small>LDLᵀ와 콜레스키<br><span>대칭 행렬의 소거는 절반의 비용으로 끝나고, 피벗이 양수면 콜레스키가 된다.</span></a>
+    </div>
+  </section>
+
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>대칭 행렬의 고유값은 실수, 고유벡터는 직교</b>(정리 13.1, 13.2). 그래서 \(S = Q\Lambda Q^{\mathsf T}\), \(Q^{-1} = Q^{\mathsf T}\): 수직인 축으로 돌려 읽고, 늘이고, 되돌린다.</li>
+      <li><b>\(S = \sum\lambda_i\mathbf{q}_i\mathbf{q}_i^{\mathsf T}\)</b>: 대칭 행렬은 서로 수직인 직선으로의 사영에 배율을 곱한 것의 합이다. \(S^k\), \(S^{-1}\), \(e^{St}\)는 고유값에 함수를 적용해 얻는다.</li>
+      <li>이차 형식 \(\mathbf{x}^{\mathsf T}S\mathbf{x}\)는 고유벡터 좌표에서 \(\sum\lambda_iy_i^2\). 고유값 부호가 같으면 타원, 다르면 쌍곡선, 0이 있으면 평행선. 주축 = 고유벡터, \(q = 1\)의 반지름 = \(1/\sqrt{\lambda_i}\).</li>
+      <li><b>양의 정부호</b>의 다섯 판정(에너지 > 0, 고유값 > 0, 피벗 > 0, 선행 주소행렬식 > 0, \(S = A^{\mathsf T}A\)·열 독립)은 모두 동치. 계산은 피벗(콜레스키)이 가장 빠르다. 대각 원소가 모두 양수라는 것만으로는 부족하다.</li>
+      <li><b>콜레스키</b> \(S = LL^{\mathsf T}\): 양의 정부호일 때만 존재, \(\ell_{kk}^2\) = 피벗, 연산량 \(n^3/3\), 피벗팅 불필요. 상관된 난수 \(L\mathbf{z}\) 생성에도 쓴다.</li>
+      <li>강성 행렬 \(K = A^{\mathsf T}CA\)는 에너지 \(\tfrac12\mathbf{u}^{\mathsf T}K\mathbf{u} = \tfrac12\sum c_ie_i^2\). 강체 운동이 가능하면 준정부호로 떨어진다. \(K\mathbf{u} = \mathbf{f}\)는 퍼텐셜 에너지의 최소점이다.</li>
+      <li>헤세 행렬은 대칭이고 임계점에서 양의 정부호면 극소, 부정부호면 안장점. 경사 하강법의 수렴률은 최적 보폭에서 \((\kappa - 1)/(\kappa + 1)\), \(\kappa = \lambda_{\max}/\lambda_{\min}\).</li>
+      <li><b>레일리 몫</b> \(R(\mathbf{x}) = \mathbf{x}^{\mathsf T}S\mathbf{x}/\mathbf{x}^{\mathsf T}\mathbf{x}\)는 \([\lambda_{\min}, \lambda_{\max}]\) 안에 있고 양 끝은 고유벡터에서 얻는다. 주응력(모어 원), 관성 주축, 공분산의 주성분이 모두 이것이다.</li>
+    </ol>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 대칭 행렬 \(S\)의 서로 다른 고유값 3과 5에 대한 고유벡터 \(\mathbf{x}\), \(\mathbf{y}\)가 있다. \(\mathbf{x}^{\mathsf T}\mathbf{y}\)는?</p><div class="opts">
+        <button class="opt">15</button>
+        <button class="opt" data-correct>0</button>
+        <button class="opt">\(\lVert\mathbf{x}\rVert\lVert\mathbf{y}\rVert\)</button>
+        <button class="opt">고유벡터의 크기에 따라 다르다</button>
+      </div><div class="quiz-exp">정리 13.2: \(3\mathbf{x}^{\mathsf T}\mathbf{y} = (S\mathbf{x})^{\mathsf T}\mathbf{y} = \mathbf{x}^{\mathsf T}S\mathbf{y} = 5\mathbf{x}^{\mathsf T}\mathbf{y}\)에서 \(2\mathbf{x}^{\mathsf T}\mathbf{y} = 0\). 크기와 상관없이 언제나 직교한다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(S = \begin{bmatrix}1 & 2\\ 2 & 1\end{bmatrix}\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">대각 원소가 모두 양수이므로 양의 정부호다</button>
+        <button class="opt">대칭이므로 양의 정부호다</button>
+        <button class="opt" data-correct>고유값이 3과 −1이므로 부정부호이고, \(\mathbf{x}^{\mathsf T}S\mathbf{x} = 1\)은 쌍곡선이다</button>
+        <button class="opt">det = −3이므로 역행렬이 없다</button>
+      </div><div class="quiz-exp">\(\operatorname{tr} = 2\), \(\det = 1 - 4 = -3\)이므로 \(\lambda = 3, -1\). 부호가 다르면 안장, 등위선은 쌍곡선이다. 방향 \((1, -1)\)에서 \(\mathbf{x}^{\mathsf T}S\mathbf{x} = 1 - 4 + 1 = -2 \lt 0\). 대각이 양수인 것도, 대칭인 것도 양의 정부호의 충분조건이 아니다. det ≠ 0이므로 역행렬은 있다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 다음 중 양의 정부호 판정으로 <b>충분하지 않은</b> 것은?</p><div class="opts">
+        <button class="opt">행 교환 없는 소거의 피벗이 모두 양수</button>
+        <button class="opt">선행 주소행렬식 \(D_1, \dots, D_n\)이 모두 양수</button>
+        <button class="opt" data-correct>행렬식과 대각합(trace)이 모두 양수 (3×3 행렬)</button>
+        <button class="opt">열이 독립인 \(A\)로 \(S = A^{\mathsf T}A\)</button>
+      </div><div class="quiz-exp">3×3에서 \(\det = \lambda_1\lambda_2\lambda_3 > 0\), \(\operatorname{tr} > 0\)이어도 고유값이 \(5, -1, -1\)일 수 있다(합 3, 곱 5). 2×2에서는 det > 0과 trace > 0이 충분하지만 일반적으로는 아니다. 나머지 셋은 정리 13.4의 동치 조건이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(S = \begin{bmatrix}9 & 3\\ 3 & 5\end{bmatrix}\)의 콜레스키 인수 \(L\)은?</p><div class="opts">
+        <button class="opt">\(\begin{bmatrix}3 & 0\\ 3 & 5\end{bmatrix}\)</button>
+        <button class="opt" data-correct>\(\begin{bmatrix}3 & 0\\ 1 & 2\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}9 & 0\\ 3 & 4\end{bmatrix}\)</button>
+        <button class="opt">\(\begin{bmatrix}1 & 0\\ 1/3 & 1\end{bmatrix}\)</button>
+      </div><div class="quiz-exp">\(\ell_{11} = \sqrt9 = 3\), \(\ell_{21} = 3/3 = 1\), \(\ell_{22} = \sqrt{5 - 1} = 2\). 검산: \(LL^{\mathsf T} = \begin{bmatrix}9 & 3\\ 3 & 1 + 4\end{bmatrix}\). 마지막 보기는 LDLᵀ의 \(L\)(단위 하삼각)이다. 피벗은 \(9\)와 \(4 = \ell_{22}^2\).</div></div>
+
+      <div class="quiz-q"><p>Q5. 스프링 사슬에서 양쪽 벽을 모두 떼어 내면 \(K = A^{\mathsf T}CA\)는 어떻게 되나?</p><div class="opts">
+        <button class="opt">여전히 양의 정부호다</button>
+        <button class="opt" data-correct>준정부호가 되어 \((1, 1, 1)\)이 영공간에 들어간다</button>
+        <button class="opt">음의 정부호가 된다</button>
+        <button class="opt">대칭이 깨진다</button>
+      </div><div class="quiz-exp">세 질량을 똑같이 옮기면 어느 스프링도 늘어나지 않으므로 \(A\mathbf{u} = \mathbf{0}\), 에너지 0이다. \(A\)의 열이 종속이 되어 정리 13.4의 5번이 깨진다. \(K\)는 여전히 \(A^{\mathsf T}CA\) 꼴이므로 대칭이고 준정부호다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(f(x, y) = x^2 + 4xy + 5y^2\)의 원점은?</p><div class="opts">
+        <button class="opt" data-correct>극소점 (헤세가 양의 정부호)</button>
+        <button class="opt">안장점 (xy 항의 계수가 크므로)</button>
+        <button class="opt">극대점</button>
+        <button class="opt">판정할 수 없다</button>
+      </div><div class="quiz-exp">\(H = \begin{bmatrix}2 & 4\\ 4 & 10\end{bmatrix}\), \(D_1 = 2 > 0\), \(D_2 = 20 - 16 = 4 > 0\)이므로 양의 정부호. 완전제곱으로도 확인된다: \(f = (x + 2y)^2 + y^2\).</div></div>
+
+      <div class="quiz-q"><p>Q7. 헤세의 고유값이 1과 400인 이차 함수에 최적 보폭으로 경사 하강법을 쓸 때, 걸음당 오차가 줄어드는 비율에 가장 가까운 것은?</p><div class="opts">
+        <button class="opt">0.0025</button>
+        <button class="opt">0.5</button>
+        <button class="opt" data-correct>0.995</button>
+        <button class="opt">발산한다</button>
+      </div><div class="quiz-exp">\(\kappa = 400\), \((\kappa - 1)/(\kappa + 1) = 399/401 \approx 0.995\). 오차를 \(10^{-6}\)배로 줄이려면 약 \(\ln 10^6/0.005 \approx 2{,}760\)걸음이 든다. 보폭을 \(2/400\)보다 크게 잡으면 발산하지만 최적 보폭은 그보다 작다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 평면 응력 \(\sigma_x = 50\), \(\sigma_y = -30\), \(\tau = 30\) MPa의 최대 주응력은?</p><div class="opts">
+        <button class="opt">50 MPa</button>
+        <button class="opt">80 MPa</button>
+        <button class="opt" data-correct>60 MPa</button>
+        <button class="opt">30 MPa</button>
+      </div><div class="quiz-exp">모어 원의 중심 \((50 - 30)/2 = 10\), 반지름 \(\sqrt{40^2 + 30^2} = 50\). 주응력은 \(10 \pm 50\), 곧 60과 −40 MPa. 고유값으로도 \(\operatorname{tr} = 20\), \(\det = -1500 - 900 = -2400\) → \(\lambda^2 - 20\lambda - 2400 = 0\), \(\lambda = 60, -40\).</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const SY = {
+  num(v, d = 2) { const r = Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v; let t = r.toFixed(d); if (t.includes(".")) t = t.replace(/0+$/, "").replace(/\.$/, ""); return t.replace("-", "−"); },
+  fix(v, d = 2) { const r = Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v; return r.toFixed(d).replace("-", "−"); },
+  mat(M, d = 2) { return `<span class="sy-mx" style="grid-template-columns:repeat(${M[0].length},auto)">${M.flat().map((v) => `<span>${SY.num(v, d)}</span>`).join("")}</span>`; },
+  col(v, d = 2) { return SY.mat(v.map((x) => [x]), d); },
+  /** 2×2 대칭 [[a,b],[b,c]] 고유분해: λ1 ≥ λ2, 단위 고유벡터 */
+  eigS(a, b, c) {
+    const m = (a + c) / 2, r = Math.hypot((a - c) / 2, b), l1 = m + r, l2 = m - r;
+    const th = 0.5 * Math.atan2(2 * b, a - c);
+    return { l1, l2, q1: [Math.cos(th), Math.sin(th)], q2: [-Math.sin(th), Math.cos(th)], th };
+  },
+  badge(ok, yes, no) { return `<span class="badge ${ok ? "ok" : "bad"}">${ok ? yes : no}</span>`; },
+  tween(ms, step, done) {
+    let t0 = null, alive = true;
+    const f = (ts) => { if (!alive) return; if (t0 === null) t0 = ts; const u = Math.min(1, (ts - t0) / ms); step(u); if (u < 1) requestAnimationFrame(f); else done && done(); };
+    requestAnimationFrame(f);
+    return () => { alive = false; };
+  },
+};
+
+/* ================================================================ 1. 스펙트럼 분해 */
+(function () {
+  let th = 0.35, cancel = null;
+  const asym = MB.check("sy-s-asym", () => upd());
+  const r1 = MB.check("sy-s-r1", () => upd());
+  const ra = MB.range("sy-sa", (v) => v.toFixed(1), () => upd());
+  const rb = MB.range("sy-sb", (v) => v.toFixed(1), () => upd());
+  const rd = MB.range("sy-sd", (v) => v.toFixed(1), () => upd());
+  const rc = MB.range("sy-sc", (v) => v.toFixed(1), () => upd());
+  const M = () => { const a = ra(), b = rb(), d = rd(), c = asym() ? rc() : b; return [[a, b], [c, d]]; };
+  const pts = [{ x: Math.cos(th), y: Math.sin(th), label: "x", constrain(p) { const n = Math.hypot(p.x, p.y) || 1; p.x /= n; p.y /= n; } }];
+  const pl = MB.plane("#sy-cv-spec", {
+    x: [-4, 4], aspect: 0.8, maxHeight: 520, minHeight: 300, points: pts,
+    draw(P, api) {
+      const C = P.P, A = M(), p = api.points[0];
+      p.color = C.accent2;
+      P.param((t) => [Math.cos(t), Math.sin(t)], 0, 2 * Math.PI, { color: C.dim, width: 1.2, dash: [4, 4] });
+      P.param((t) => [A[0][0] * Math.cos(t) + A[0][1] * Math.sin(t), A[1][0] * Math.cos(t) + A[1][1] * Math.sin(t)], 0, 2 * Math.PI, { color: C.accent, width: 2, alpha: 0.8 });
+      const e = MB.mat.eig2(A);
+      if (e.values) e.vectors.forEach((v, i) => P.line(-8 * v[0], -8 * v[1], 8 * v[0], 8 * v[1], { color: i ? C.ok : C.warn, width: 1.4, dash: [6, 5], alpha: 0.8 }));
+      const ax = A[0][0] * p.x + A[0][1] * p.y, ay = A[1][0] * p.x + A[1][1] * p.y;
+      if (r1() && !asym()) {
+        const s = SY.eigS(A[0][0], A[0][1], A[1][1]);
+        const c1 = s.q1[0] * p.x + s.q1[1] * p.y, c2 = s.q2[0] * p.x + s.q2[1] * p.y;
+        const t1 = [s.l1 * c1 * s.q1[0], s.l1 * c1 * s.q1[1]];
+        P.arrow(0, 0, t1[0], t1[1], { color: C.warn, width: 2.6, label: "λ₁(q₁ᵀx)q₁" });
+        P.arrow(t1[0], t1[1], ax, ay, { color: C.ok, width: 2.6, label: "λ₂(q₂ᵀx)q₂" });
+      }
+      P.arrow(0, 0, ax, ay, { color: C.accent, width: 3.2, label: "Sx" });
+      P.arrow(0, 0, p.x, p.y, { color: C.accent2, width: 3 });
+    },
+    onDrag() { stop(); upd(); },
+  });
+  function upd() {
+    const A = M(), p = pl.points[0], e = MB.mat.eig2(A);
+    document.getElementById("sy-sc").disabled = !asym();
+    if (e.values) {
+      MB.stat("sy-s-lam", `${SY.fix(e.values[0])}, ${SY.fix(e.values[1])}`);
+      const [u, v] = e.vectors, cos = Math.abs(u[0] * v[0] + u[1] * v[1]);
+      const ang = (Math.acos(Math.min(1, cos)) * 180) / Math.PI;
+      MB.stat("sy-s-ang", Math.abs(e.values[0] - e.values[1]) < 1e-9 && Math.abs(A[0][1]) < 1e-9 && Math.abs(A[1][0]) < 1e-9 ? "모든 방향(중복)" : SY.fix(ang, 1) + "°");
+    } else { MB.stat("sy-s-lam", `${SY.fix(e.complex[0])} ± ${SY.fix(e.complex[1])}i`); MB.stat("sy-s-ang", "실수 고유벡터 없음"); }
+    const ax = A[0][0] * p.x + A[0][1] * p.y, ay = A[1][0] * p.x + A[1][1] * p.y;
+    MB.stat("sy-s-r", SY.fix(p.x * ax + p.y * ay));
+    const n2 = Math.hypot(ax, ay);
+    MB.stat("sy-s-xa", n2 < 1e-9 ? "Sx = 0" : SY.fix((Math.acos(MB.clamp((p.x * ax + p.y * ay) / n2, -1, 1)) * 180) / Math.PI, 1) + "°");
+    const msg = document.getElementById("sy-s-msg");
+    if (!asym()) {
+      const s = SY.eigS(A[0][0], A[0][1], A[1][1]);
+      const Q = [[s.q1[0], s.q2[0]], [s.q1[1], s.q2[1]]];
+      msg.className = "sy-msg";
+      msg.innerHTML = `<span class="sy-eq"><b>S =</b>${SY.mat(A, 1)}<b>= Q Λ Qᵀ =</b>${SY.mat(Q)}${SY.mat([[s.l1, 0], [0, s.l2]])}${SY.mat([[Q[0][0], Q[1][0]], [Q[0][1], Q[1][1]]])}</span>`;
+    } else if (e.values) {
+      msg.className = "sy-msg bad"; msg.textContent = "비대칭: 고유벡터가 서로 수직이 아니므로 S = QΛQᵀ로 쓸 수 없습니다. 대각화는 A = XΛX⁻¹(X는 직교 행렬이 아님).";
+    } else { msg.className = "sy-msg bad"; msg.textContent = "비대칭: 판별식이 음수라 실수 고유값이 없습니다. 대칭 행렬에서는 일어나지 않는 일입니다."; }
+    pl.redraw();
+  }
+  function stop() { if (cancel) { cancel(); cancel = null; } }
+  document.getElementById("sy-s-spin").addEventListener("click", () => {
+    stop(); const p = pl.points[0], t0 = Math.atan2(p.y, p.x);
+    cancel = SY.tween(6000, (u) => { const t = t0 + u * 2 * Math.PI; p.x = Math.cos(t); p.y = Math.sin(t); upd(); });
+  });
+  document.getElementById("sy-s-eig").addEventListener("click", () => {
+    stop(); const e = MB.mat.eig2(M()); if (!e.values) return;
+    const p = pl.points[0], v = e.vectors[0];
+    const s = p.x * v[0] + p.y * v[1] >= 0 ? 1 : -1; p.x = s * v[0]; p.y = s * v[1]; upd();
+  });
+  upd();
+})();
+
+/* ================================================================ 2. 이차 형식 */
+(function () {
+  const PRE = { ex: [5, 2, 2], circle: [1, 0, 1], saddle: [1, 2, 1], valley: [1, 1, 1], neg: [-2, 1, -2] };
+  const ra = MB.range("sy-qa", (v) => v.toFixed(1), () => upd());
+  const rb = MB.range("sy-qb", (v) => v.toFixed(1), () => upd());
+  const rc = MB.range("sy-qc", (v) => v.toFixed(1), () => upd());
+  const axes = MB.check("sy-q-axes", () => pl.redraw());
+  document.getElementById("sy-q-pre").addEventListener("change", (ev) => { const [a, b, c] = PRE[ev.target.value]; ra.set(a, false); rb.set(b, false); rc.set(c, false); upd(); });
+  const LEV = [0.25, 1, 2.25, 4];
+  const pl = MB.plane("#sy-cv-quad", {
+    x: [-2.6, 2.6], aspect: 0.8, maxHeight: 520, minHeight: 300, grid: true,
+    draw(P) {
+      const C = P.P, a = ra(), b = rb(), c = rc(), ctx = P.ctx, step = 6;
+      // 값에 따른 배경색
+      const hot = MB.isDark() ? [255, 140, 70] : [230, 110, 40], cold = MB.isDark() ? [90, 170, 255] : [40, 110, 220];
+      for (let py = 0; py < P.h; py += step) for (let px = 0; px < P.w; px += step) {
+        const x = P.ix(px + step / 2), y = P.iy(py + step / 2), q = a * x * x + 2 * b * x * y + c * y * y;
+        const t = Math.min(1, Math.abs(q) / 6);
+        if (t < 0.01) continue;
+        const col = q > 0 ? hot : cold;
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${(0.06 + 0.32 * t).toFixed(3)})`;
+        ctx.fillRect(px, py, step, step);
+      }
+      const s = SY.eigS(a, b, c), R = (y1, y2) => [y1 * s.q1[0] + y2 * s.q2[0], y1 * s.q1[1] + y2 * s.q2[1]];
+      const L = 8, tiny = 1e-6;
+      [1, -1].forEach((sg) => LEV.forEach((k) => {
+        const w = k === 1 ? 2.4 : 1.1, al = k === 1 ? 0.95 : 0.55, col = sg > 0 ? C.warn : C.blue, kk = sg * k;
+        const l1 = s.l1, l2 = s.l2;
+        if (l1 > tiny && l2 > tiny && kk > 0) P.param((t) => R(Math.sqrt(kk / l1) * Math.cos(t), Math.sqrt(kk / l2) * Math.sin(t)), 0, 2 * Math.PI, { color: col, width: w, alpha: al });
+        else if (l1 < -tiny && l2 < -tiny && kk < 0) P.param((t) => R(Math.sqrt(kk / l1) * Math.cos(t), Math.sqrt(kk / l2) * Math.sin(t)), 0, 2 * Math.PI, { color: col, width: w, alpha: al });
+        else if (l1 > tiny && l2 < -tiny) {
+          // λ1 y1² + λ2 y2² = kk : kk>0이면 y1 축으로 열린 쌍곡선, kk<0이면 y2 축으로
+          [1, -1].forEach((br) => {
+            if (kk > 0) P.param((t) => R(br * Math.sqrt(kk / l1) * Math.cosh(t), Math.sqrt(kk / -l2) * Math.sinh(t)), -3, 3, { color: col, width: w, alpha: al });
+            else P.param((t) => R(Math.sqrt(-kk / l1) * Math.sinh(t), br * Math.sqrt(-kk / -l2) * Math.cosh(t)), -3, 3, { color: col, width: w, alpha: al });
+          });
+        } else if (Math.abs(l2) <= tiny && l1 * kk > 0) {
+          [1, -1].forEach((br) => { const y1 = br * Math.sqrt(kk / l1), p1 = R(y1, -L), p2 = R(y1, L); P.line(p1[0], p1[1], p2[0], p2[1], { color: col, width: w, alpha: al }); });
+        } else if (Math.abs(l1) <= tiny && l2 * kk > 0) {
+          [1, -1].forEach((br) => { const y2 = br * Math.sqrt(kk / l2), p1 = R(-L, y2), p2 = R(L, y2); P.line(p1[0], p1[1], p2[0], p2[1], { color: col, width: w, alpha: al }); });
+        }
+      }));
+      if (axes()) {
+        P.line(-L * s.q1[0], -L * s.q1[1], L * s.q1[0], L * s.q1[1], { color: C.warn, width: 1.4, dash: [6, 5], alpha: 0.9 });
+        P.line(-L * s.q2[0], -L * s.q2[1], L * s.q2[0], L * s.q2[1], { color: C.ok, width: 1.4, dash: [6, 5], alpha: 0.9 });
+        P.text("q₁ (λ₁)", 2.1 * s.q1[0], 2.1 * s.q1[1], { color: C.warn, bold: true, dx: 6 });
+        P.text("q₂ (λ₂)", 2.1 * s.q2[0], 2.1 * s.q2[1], { color: C.ok, bold: true, dx: 6 });
+      }
+    },
+  });
+  function upd() {
+    const a = ra(), b = rb(), c = rc(), s = SY.eigS(a, b, c), d = a * c - b * b;
+    const term = (k, v, first) => (Math.abs(k) < 1e-9 ? "" : (k < 0 ? " − " : first ? "" : " + ") + (Math.abs(Math.abs(k) - 1) < 1e-9 ? "" : SY.num(Math.abs(k), 1)) + v);
+    let f = term(a, "x²", true); f += term(2 * b, "xy", !f); f += term(c, "y²", !f);
+    MB.stat("sy-q-f", f || "0");
+    MB.stat("sy-q-l", `${SY.fix(s.l1)}, ${SY.fix(s.l2)}`);
+    MB.stat("sy-q-d", SY.fix(d));
+    const eps = 1e-6; let t;
+    if (s.l2 > eps) t = '<span class="badge ok">타원 · 양의 정부호</span>';
+    else if (s.l1 < -eps) t = '<span class="badge warn">타원 · 음의 정부호</span>';
+    else if (s.l1 > eps && s.l2 < -eps) t = '<span class="badge bad">쌍곡선 · 부정부호</span>';
+    else if (Math.abs(s.l1) <= eps && Math.abs(s.l2) <= eps) t = "영행렬";
+    else t = '<span class="badge warn">평행선 · 준정부호</span>';
+    MB.stat("sy-q-t", t);
+    pl.redraw();
+  }
+  upd();
+})();
+
+/* ================================================================ 3. 양의 정부호 판정기 */
+(function () {
+  const box = document.getElementById("sy-pd-mat");
+  box.innerHTML = [0, 1, 2].map((i) => [0, 1, 2].map((j) => `<input id="sy-pd-${i}${j}" inputmode="decimal" aria-label="S ${i + 1}행 ${j + 1}열"${j < i ? " readonly tabindex=\"-1\"" : ""}>`).join("")).join("");
+  const cell = (i, j) => document.getElementById(`sy-pd-${i}${j}`);
+  const set = (S) => { for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) cell(i, j).value = SY.num(S[i][j], 4); run(); };
+  const read = () => { const S = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; for (let i = 0; i < 3; i++) for (let j = i; j < 3; j++) { const v = parseFloat(String(cell(i, j).value).replace("−", "-")); S[i][j] = S[j][i] = isFinite(v) ? v : 0; } return S; };
+  for (let i = 0; i < 3; i++) for (let j = i; j < 3; j++) cell(i, j).addEventListener("input", () => { if (j > i) cell(j, i).value = cell(i, j).value; run(); });
+  const rnd = MB.rng(7);
+  const PRE = {
+    k: () => [[2, -1, 0], [-1, 2, -1], [0, -1, 2]],
+    ata: () => { const A = [0, 1, 2, 3].map(() => [0, 1, 2].map(() => Math.round(rnd.range(-2, 2) * 2) / 2)); return MB.mat.mul(MB.mat.transpose(A), A); },
+    ones: () => [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+    ind: () => [[1, 2, 0], [2, 1, 0], [0, 0, 1]],
+    trap: () => [[1, 2, 2], [2, 1, 2], [2, 2, 1]],
+    near: () => [[1, 1, 1], [1, 1.01, 1], [1, 1, 1.0001]],
+  };
+  const pre = document.getElementById("sy-pd-pre");
+  pre.addEventListener("change", () => set(PRE[pre.value]()));
+  document.getElementById("sy-pd-rand").addEventListener("click", () => { const S = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; for (let i = 0; i < 3; i++) for (let j = i; j < 3; j++) S[i][j] = S[j][i] = Math.round(rnd.range(-3, 3)) + (i === j ? 2 : 0); set(S); });
+  const det2 = (S) => S[0][0] * S[1][1] - S[0][1] * S[1][0];
+  const det3 = (S) => S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) - S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) + S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
+  function run() {
+    const S = read(), n = 3, tol = 1e-10, row = [];
+    const scale = Math.max(1, ...S.flat().map(Math.abs)), eps = 1e-9 * scale;
+    // 고유값
+    const ev = MB.mat.eigSym(S).values;
+    const evOK = ev.every((l) => l > eps), evSemi = ev.every((l) => l > -eps);
+    row.push(["① 고유값 모두 > 0", ev.map((l) => SY.fix(l, 4)).join(", "), evOK]);
+    // 피벗 (행 교환 없이)
+    const U = S.map((r) => r.slice()), piv = []; let stuck = false;
+    for (let k = 0; k < n; k++) {
+      piv.push(U[k][k]);
+      if (Math.abs(U[k][k]) < tol) { stuck = k < n - 1; break; }
+      for (let i = k + 1; i < n; i++) { const m = U[i][k] / U[k][k]; for (let j = k; j < n; j++) U[i][j] -= m * U[k][j]; }
+    }
+    const pivOK = piv.length === n && piv.every((p) => p > eps);
+    row.push(["② 피벗 모두 > 0", piv.map((p) => SY.fix(p, 4)).join(", ") + (piv.length < n ? (stuck ? " (0 피벗: 행 교환 없이 멈춤)" : "") : ""), pivOK]);
+    // 주소행렬식
+    const D = [S[0][0], det2(S), det3(S)];
+    row.push(["③ 선행 주소행렬식 > 0", D.map((x) => SY.fix(x, 4)).join(", "), D.every((x) => x > eps)]);
+    // 에너지 (무작위 방향)
+    let mn = Infinity; const r = MB.rng(11);
+    for (let t = 0; t < 3000; t++) {
+      const x = [MB.randn(), MB.randn(), MB.randn()], nn = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+      const Sx = MB.mat.apply(S, x), q = (x[0] * Sx[0] + x[1] * Sx[1] + x[2] * Sx[2]) / nn; if (q < mn) mn = q;
+    }
+    r();
+    row.push(["④ xᵀSx / xᵀx 의 최솟값 (3,000방향)", SY.fix(mn, 4), mn > eps]);
+    // 콜레스키
+    const L = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; let fail = -1;
+    for (let k = 0; k < n && fail < 0; k++) {
+      let s = S[k][k]; for (let j = 0; j < k; j++) s -= L[k][j] * L[k][j];
+      if (s <= eps) { fail = k; break; }
+      L[k][k] = Math.sqrt(s);
+      for (let i = k + 1; i < n; i++) { let t = S[i][k]; for (let j = 0; j < k; j++) t -= L[i][j] * L[k][j]; L[i][k] = t / L[k][k]; }
+    }
+    row.push(["⑤ 콜레스키 S = LLᵀ (= AᵀA 꼴)", fail < 0 ? "성공" : `${fail + 1}번째 대각에서 √(0 이하)`, fail < 0]);
+    document.getElementById("sy-pd-tbody").innerHTML = row.map(([k, v, ok]) => `<tr><td>${k}</td><td class="v">${v}</td><td>${SY.badge(ok, "통과", "실패")}</td></tr>`).join("");
+    let verdict;
+    if (evOK) verdict = '<span class="badge ok">양의 정부호</span>';
+    else if (evSemi) verdict = '<span class="badge warn">양의 준정부호</span>';
+    else if (ev.every((l) => l < -eps)) verdict = '<span class="badge bad">음의 정부호</span>';
+    else verdict = '<span class="badge bad">부정부호</span>';
+    MB.stat("sy-pd-verdict", verdict + (evOK && Math.min(...ev) / Math.max(...ev) < 1e-3 ? ' <span class="badge warn">조건수 큼</span>' : ""));
+    MB.stat("sy-pd-l", fail < 0 ? SY.mat(L, 3) : "없음");
+  }
+  set(PRE.k());
+})();
+
+/* ================================================================ 4. 스프링 사슬 */
+(function () {
+  const rs = [1, 2, 3, 4].map((i) => MB.range("sy-c" + i, (v) => v.toFixed(1), () => upd()));
+  const rf = MB.range("sy-f", (v) => v.toFixed(2), () => upd());
+  const at = MB.seg("sy-f-at", () => upd());
+  let state = null;
+  const cv = MB.canvas("#sy-cv-spring", (ctx, w, h) => {
+    const P = MB.palette();
+    if (!state) return;
+    const { c, u, ok } = state;
+    const wall = 14, inner = w - 2 * wall - 20, rest = [1, 2, 3].map((k) => wall + 10 + (inner * k) / 4), mw = Math.min(54, inner / 9), y = h * 0.5;
+    const umax = ok ? Math.max(1e-9, ...u.map(Math.abs)) : 1, sc = ok ? Math.min(1, 0.9 / umax) * (inner / 4) * 0.55 : 0;
+    const pos = rest.map((x, i) => x + (ok ? u[i] * sc : 0));
+    // 벽
+    ctx.fillStyle = P.surface; ctx.strokeStyle = P.border;
+    [[0, c[0] > 0], [w - wall, c[3] > 0]].forEach(([x, on]) => { ctx.globalAlpha = on ? 1 : 0.25; ctx.fillRect(x, y - 60, wall, 120); ctx.strokeRect(x, y - 60, wall, 120); ctx.globalAlpha = 1; });
+    // 스프링
+    const ends = [[wall, pos[0] - mw / 2], [pos[0] + mw / 2, pos[1] - mw / 2], [pos[1] + mw / 2, pos[2] - mw / 2], [pos[2] + mw / 2, w - wall]];
+    ends.forEach(([x0, x1], i) => {
+      if (c[i] <= 0) return;
+      const n = 10, amp = 8 + 3 * Math.min(3, c[i]), L = x1 - x0;
+      ctx.strokeStyle = P.dim; ctx.lineWidth = 1 + c[i] * 0.8; ctx.beginPath(); ctx.moveTo(x0, y);
+      for (let k = 1; k < n; k++) ctx.lineTo(x0 + (L * k) / n, y + (k % 2 ? -amp : amp));
+      ctx.lineTo(x1, y); ctx.stroke();
+      ctx.fillStyle = P.faint; ctx.font = "12px var(--mono, monospace)"; ctx.textAlign = "center"; ctx.fillText("c" + "₁₂₃₄"[i] + " = " + c[i].toFixed(1), (x0 + x1) / 2, y - 26);
+    });
+    // 질량과 힘
+    const fa = state.fvec;
+    pos.forEach((x, i) => {
+      ctx.globalAlpha = 0.25; ctx.strokeStyle = P.dim; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(rest[i], y + 34); ctx.lineTo(rest[i], y + 50); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = P.accent; ctx.globalAlpha = 0.2; ctx.fillRect(x - mw / 2, y - mw / 2, mw, mw); ctx.globalAlpha = 1;
+      ctx.strokeStyle = P.accent; ctx.lineWidth = 2; ctx.strokeRect(x - mw / 2, y - mw / 2, mw, mw);
+      ctx.fillStyle = P.text; ctx.textAlign = "center"; ctx.font = "bold 13px sans-serif"; ctx.fillText("m" + "₁₂₃"[i], x, y + 5);
+      if (Math.abs(fa[i]) > 1e-9) {
+        const L = 40 * fa[i], yy = y + mw / 2 + 18;
+        ctx.strokeStyle = P.accent2; ctx.fillStyle = P.accent2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + L, yy); ctx.stroke();
+        const s = Math.sign(L); ctx.beginPath(); ctx.moveTo(x + L + s * 7, yy); ctx.lineTo(x + L - s * 2, yy - 6); ctx.lineTo(x + L - s * 2, yy + 6); ctx.fill();
+      }
+      if (ok) { ctx.fillStyle = P.dim; ctx.font = "12px monospace"; ctx.fillText("u = " + SY.fix(u[i], 2), x, y - mw / 2 - 8 - 28 * ((i + 1) % 2 === 0 ? 0 : 0)); }
+    });
+    if (!ok) { ctx.fillStyle = P.bad; ctx.textAlign = "center"; ctx.font = "bold 14px sans-serif"; ctx.fillText("평형 없음: 계가 통째로 미끄러집니다", w / 2, h - 12); }
+    ctx.textAlign = "left";
+  }, { aspect: 0.32, minHeight: 190, maxHeight: 280 });
+  function upd() {
+    const c = rs.map((r) => r()), f = rf(), a = at();
+    const fvec = a === "all" ? [f, f, f] : [0, 1, 2].map((i) => (String(i) === a ? f : 0));
+    const A = [[1, 0, 0], [-1, 1, 0], [0, -1, 1], [0, 0, -1]], C = c.map((x, i) => c.map((_, j) => (i === j ? x : 0)));
+    const K = MB.mat.mul(MB.mat.mul(MB.mat.transpose(A), C), A);
+    const ev = MB.mat.eigSym(K).values;
+    const sing = Math.min(...ev) < 1e-9;
+    let u = null, ok = !sing;
+    if (!sing) u = MB.mat.solve(K, fvec);
+    else {
+      // 준정부호: 힘의 합이 0이면 해가 있다(강체 운동만큼 정해지지 않음). 최소 노름 해를 보인다.
+      const tot = fvec[0] + fvec[1] + fvec[2];
+      if (Math.abs(tot) < 1e-9) { const Kp = K.map((r, i) => r.map((v, j) => v + 1 / 3)); u = MB.mat.solve(Kp, fvec); ok = true; }
+    }
+    state = { c, u, ok, fvec };
+    MB.stat("sy-k-m", SY.mat(K, 2));
+    MB.stat("sy-k-u", u && ok ? SY.col(u, 3) : "해 없음");
+    MB.stat("sy-k-l", ev.slice().reverse().map((l) => SY.fix(l, 3)).join(", "));
+    MB.stat("sy-k-e", u && ok ? SY.fix(0.5 * u.reduce((s, x, i) => s + x * MB.mat.apply(K, u)[i], 0), 4) : "—");
+    const msg = document.getElementById("sy-k-msg");
+    if (!sing) { msg.className = "sy-msg ok"; msg.textContent = `K는 양의 정부호(가장 작은 고유값 ${SY.fix(Math.min(...ev), 3)} > 0): 어떤 힘에도 평형 위치가 하나 있습니다.`; }
+    else if (ok) { msg.className = "sy-msg"; msg.textContent = "K는 준정부호(고유값 0, 영공간 = (1, 1, 1)). 힘의 합이 0이라 평형은 있지만 계 전체를 옮겨도 똑같이 평형이라 해가 하나로 정해지지 않습니다(평균 변위 0인 해를 표시)."; }
+    else { msg.className = "sy-msg bad"; msg.textContent = "K는 준정부호(고유값 0). 벽이 없는데 힘의 합이 0이 아니어서 Ku = f의 해가 없습니다. 구조 해석의 '경계 조건 부족'입니다."; }
+    cv.redraw();
+  }
+  upd();
+})();
+
+/* ================================================================ 5. 헤세 행렬 */
+(function () {
+  const F = {
+    bowl: { f: (x, y) => x * x + x * y + y * y, g: (x, y) => [2 * x + y, x + 2 * y], H: () => [[2, 1], [1, 2]], v: [-2.5, 2.5], st: [1.4, 0.8] },
+    saddle: { f: (x, y) => x * x + 3 * x * y + y * y, g: (x, y) => [2 * x + 3 * y, 3 * x + 2 * y], H: () => [[2, 3], [3, 2]], v: [-2.5, 2.5], st: [0, 0] },
+    cubic: { f: (x, y) => x * x * x - 3 * x + y * y, g: (x, y) => [3 * x * x - 3, 2 * y], H: (x) => [[6 * x, 0], [0, 2]], v: [-2.6, 2.6], st: [0.3, 1.2] },
+    flat: { f: (x, y) => x ** 4 + y * y, g: (x, y) => [4 * x ** 3, 2 * y], H: (x) => [[12 * x * x, 0], [0, 2]], v: [-1.8, 1.8], st: [0, 0] },
+    ring: { f: (x, y) => (x * x + y * y - 1) ** 2, g: (x, y) => { const r = x * x + y * y - 1; return [4 * x * r, 4 * y * r]; }, H: (x, y) => { const r = x * x + y * y - 1; return [[4 * r + 8 * x * x, 8 * x * y], [8 * x * y, 4 * r + 8 * y * y]]; }, v: [-1.8, 1.8], st: [0.8, 0.3] },
+  };
+  const sel = document.getElementById("sy-h-fn");
+  const axes = MB.check("sy-h-axes", () => upd());
+  let fn = F.bowl;
+  const pts = [{ x: fn.st[0], y: fn.st[1], snap: 0.05, label: "" }];
+  const pl = MB.plane("#sy-cv-hess", {
+    x: fn.v, aspect: 0.8, maxHeight: 520, minHeight: 300, points: pts, grid: false,
+    draw(P, api) {
+      const C = P.P, ctx = P.ctx, step = 4, p = api.points[0];
+      p.color = C.accent2;
+      // 값 범위
+      let lo = Infinity, hi = -Infinity; const vals = [];
+      for (let py = 0; py < P.h; py += step) { const row = []; for (let px = 0; px < P.w; px += step) { const v = fn.f(P.ix(px), P.iy(py)); row.push(v); if (v < lo) lo = v; if (v > hi) hi = v; } vals.push(row); }
+      const span = hi - lo || 1, bands = 16;
+      vals.forEach((row, j) => row.forEach((v, i) => {
+        const t = (v - lo) / span, k = Math.floor(Math.pow(t, 0.6) * bands);
+        const c = MB.colormap(Math.pow(t, 0.6), "viridis");
+        ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${k % 2 ? 0.34 : 0.22})`;
+        ctx.fillRect(i * step, j * step, step, step);
+      }));
+      P.axes({ step: 1 });
+      const H = fn.H(p.x, p.y), e = SY.eigS(H[0][0], H[0][1], H[1][1]);
+      if (axes()) [[e.q1, e.l1], [e.q2, e.l2]].forEach(([q, l]) => {
+        const len = 0.25 + 0.35 * Math.sqrt(Math.abs(l)), col = l > 1e-9 ? C.warn : l < -1e-9 ? C.blue : C.dim;
+        P.line(p.x - len * q[0], p.y - len * q[1], p.x + len * q[0], p.y + len * q[1], { color: col, width: 3 });
+      });
+      const g = fn.g(p.x, p.y), gn = Math.hypot(g[0], g[1]);
+      if (gn > 1e-6) { const s = Math.min(0.8, 0.25 * gn) / gn; P.arrow(p.x, p.y, p.x - s * g[0], p.y - s * g[1], { color: C.bad, width: 2.2, label: "−∇f" }); }
+    },
+    onDrag() { upd(); },
+  });
+  function upd() {
+    const p = pl.points[0], g = fn.g(p.x, p.y), H = fn.H(p.x, p.y), e = SY.eigS(H[0][0], H[0][1], H[1][1]);
+    MB.stat("sy-h-p", `(${SY.fix(p.x)}, ${SY.fix(p.y)})`);
+    MB.stat("sy-h-g", `(${SY.fix(g[0], 3)}, ${SY.fix(g[1], 3)})`);
+    MB.stat("sy-h-h", SY.mat(H, 2));
+    MB.stat("sy-h-l", `${SY.fix(e.l1, 3)}, ${SY.fix(e.l2, 3)}`);
+    const crit = Math.hypot(g[0], g[1]) < 1e-3, eps = 1e-6, msg = document.getElementById("sy-h-msg");
+    if (!crit) { msg.className = "sy-msg"; msg.textContent = "기울기가 0이 아니므로 임계점이 아닙니다. 빨간 화살표(−∇f) 방향으로 내려가면 값이 줄어듭니다. 헤세는 이 점에서 지형이 휜 정도를 말합니다."; }
+    else if (e.l2 > eps) { msg.className = "sy-msg ok"; msg.textContent = "임계점 · 헤세 양의 정부호 → 극소점"; }
+    else if (e.l1 < -eps) { msg.className = "sy-msg ok"; msg.textContent = "임계점 · 헤세 음의 정부호 → 극대점"; }
+    else if (e.l1 > eps && e.l2 < -eps) { msg.className = "sy-msg bad"; msg.textContent = "임계점 · 헤세 부정부호 → 안장점 (주황 방향은 오르막, 파랑 방향은 내리막)"; }
+    else { msg.className = "sy-msg"; msg.textContent = "임계점 · 헤세에 고유값 0 → 이계 판정으로는 알 수 없습니다(더 높은 차수의 항을 봐야 함)."; }
+    pl.redraw();
+  }
+  sel.addEventListener("change", () => { fn = F[sel.value]; pl.points[0].x = fn.st[0]; pl.points[0].y = fn.st[1]; pl.view({ x: fn.v }); upd(); });
+  document.getElementById("sy-h-newton").addEventListener("click", () => {
+    const p = pl.points[0];
+    for (let k = 0; k < 30; k++) {
+      const g = fn.g(p.x, p.y), H = fn.H(p.x, p.y), d = H[0][0] * H[1][1] - H[0][1] * H[1][0];
+      if (Math.abs(d) < 1e-10 || Math.hypot(g[0], g[1]) < 1e-12) break;
+      p.x -= (H[1][1] * g[0] - H[0][1] * g[1]) / d; p.y -= (-H[1][0] * g[0] + H[0][0] * g[1]) / d;
+    }
+    p.x = MB.clamp(p.x, fn.v[0], fn.v[1]); p.y = MB.clamp(p.y, -2.5, 2.5);
+    upd();
+  });
+  upd();
+})();
+
+/* ================================================================ 6. 경사 하강법과 조건수 */
+(function () {
+  const rk = MB.range("sy-gk", (v) => SY.num(Math.pow(10, v), 1), () => upd());
+  const re = MB.range("sy-ge", (v) => v.toFixed(2), () => upd());
+  const rr = MB.range("sy-gr", (v) => v + "°", () => upd());
+  let newton = false, path = [];
+  const pts = [{ x: -2.2, y: 1.2, label: "x₀", snap: 0.05 }];
+  const S = () => { const k = Math.pow(10, rk()), t = (rr() * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t); return { S: [[c * c * k + s * s, c * s * (k - 1)], [c * s * (k - 1), s * s * k + c * c]], k, q: [c, s] }; };
+  const pl = MB.plane("#sy-cv-gd", {
+    x: [-3, 3], aspect: 0.75, maxHeight: 480, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P, { S: M, k, q } = S(), p = api.points[0];
+      p.color = C.accent2;
+      // 등고선: λ=k 방향 q, λ=1 방향 q⊥
+      [0.05, 0.2, 0.5, 1, 2, 4, 8].forEach((lev) => P.param((t) => { const a = Math.sqrt(2 * lev / k) * Math.cos(t), b = Math.sqrt(2 * lev) * Math.sin(t); return [a * q[0] - b * q[1], a * q[1] + b * q[0]]; }, 0, 2 * Math.PI, { color: C.accent, width: 1, alpha: 0.45 }));
+      if (path.length > 1) P.poly(path, { color: C.warn, width: 1.8 });
+      path.slice(0, 60).forEach(([x, y]) => P.dot(x, y, { r: 2.4, color: C.warn }));
+      if (newton) { P.arrow(p.x, p.y, 0, 0, { color: C.ok, width: 2.6, label: "뉴턴" }); }
+      P.dot(0, 0, { r: 4, color: C.text });
+    },
+    onDrag() { upd(); },
+  });
+  function upd() {
+    const { S: M, k } = S(), eta = re() / k, p = pl.points[0];
+    const f = (x) => 0.5 * (x[0] * (M[0][0] * x[0] + M[0][1] * x[1]) + x[1] * (M[1][0] * x[0] + M[1][1] * x[1]));
+    let x = [p.x, p.y]; path = [x.slice()];
+    const f0 = f(x); let it = -1;
+    for (let n = 1; n <= 1000; n++) {
+      const g = [M[0][0] * x[0] + M[0][1] * x[1], M[1][0] * x[0] + M[1][1] * x[1]];
+      x = [x[0] - eta * g[0], x[1] - eta * g[1]];
+      if (n <= 400) path.push(x.slice());
+      const fx = f(x);
+      if (!isFinite(fx) || fx > 1e8) { it = -2; break; }
+      if (it < 0 && fx <= 1e-6 * f0) { it = n; break; }
+    }
+    const rate = Math.max(Math.abs(1 - eta * k), Math.abs(1 - eta));
+    MB.stat("sy-g-rate", SY.fix(rate, 4));
+    MB.stat("sy-g-it", it === -2 ? '<span class="badge bad">발산</span>' : it < 0 ? "1,000걸음 넘음" : String(it));
+    MB.stat("sy-g-th", SY.fix((k - 1) / (k + 1), 4));
+    const msg = document.getElementById("sy-g-msg");
+    if (re() >= 2) { msg.className = "sy-msg bad"; msg.textContent = `η·λmax = ${re().toFixed(2)} ≥ 2: 가파른 방향 성분이 매 걸음 ${SY.fix(Math.abs(1 - re()), 2)}배(부호 반전)가 되어 발산합니다.`; }
+    else if (k < 1.05) { msg.className = "sy-msg ok"; msg.textContent = "κ ≈ 1: 등고선이 원이라 기울기가 곧장 바닥을 가리킵니다."; }
+    else { msg.className = "sy-msg"; msg.textContent = `가파른 방향은 걸음마다 ${SY.fix(1 - re(), 3)}배, 완만한 방향은 ${SY.fix(1 - re() / k, 4)}배. 느린 쪽이 전체 속도를 정합니다.`; }
+    pl.redraw();
+  }
+  document.getElementById("sy-g-opt").addEventListener("click", () => { const k = Math.pow(10, rk()); re.set(Math.min(2.2, (2 * k) / (k + 1)), true); });
+  document.getElementById("sy-g-newton").addEventListener("click", () => { newton = !newton; pl.redraw(); });
+  upd();
+})();
+
+/* ================================================================ 7. 레일리 몫과 모어 원 */
+(function () {
+  const rx = MB.range("sy-mx", (v) => String(v), () => upd());
+  const ry = MB.range("sy-my", (v) => String(v), () => upd());
+  const rt = MB.range("sy-mt", (v) => String(v), () => upd());
+  const rth = MB.range("sy-mth", (v) => v + "°", () => upd());
+  let cancel = null;
+  const st = () => ({ sx: rx(), sy: ry(), t: rt(), th: (rth() * Math.PI) / 180 });
+  const cv = MB.canvas("#sy-cv-mohr", (ctx, w, h) => {
+    const P = MB.palette(), { sx, sy, t, th } = st();
+    const c = (sx + sy) / 2, r = Math.hypot((sx - sy) / 2, t);
+    const sn = (a) => c + ((sx - sy) / 2) * Math.cos(2 * a) + t * Math.sin(2 * a);
+    const tn = (a) => -((sx - sy) / 2) * Math.sin(2 * a) + t * Math.cos(2 * a);
+    const topH = h * 0.62, font = getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.font = "12px " + font;
+    // 왼쪽: 회전한 요소
+    const ex = w * 0.2, ey = topH * 0.5, s = Math.min(w * 0.08, topH * 0.17);
+    ctx.save(); ctx.translate(ex, ey); ctx.rotate(-th);
+    ctx.fillStyle = P.accent; ctx.globalAlpha = 0.16; ctx.fillRect(-s, -s, 2 * s, 2 * s); ctx.globalAlpha = 1;
+    ctx.strokeStyle = P.accent; ctx.lineWidth = 2; ctx.strokeRect(-s, -s, 2 * s, 2 * s);
+    const k = (s * 1.3) / Math.max(40, Math.abs(sx), Math.abs(sy), Math.abs(r + Math.abs(c)));
+    const vn = sn(th), vt = tn(th);
+    ctx.strokeStyle = P.accent2; ctx.lineWidth = 3;
+    [1, -1].forEach((sg) => { ctx.beginPath(); ctx.moveTo(sg * s, 0); ctx.lineTo(sg * (s + vn * k), 0); ctx.stroke(); });
+    ctx.strokeStyle = P.warn; ctx.lineWidth = 2.2;
+    [1, -1].forEach((sg) => { ctx.beginPath(); ctx.moveTo(sg * (s + 6), -sg * vt * k * 0.8); ctx.lineTo(sg * (s + 6), sg * vt * k * 0.8); ctx.stroke(); });
+    ctx.restore();
+    ctx.fillStyle = P.dim; ctx.textAlign = "center"; ctx.fillText(`θ = ${rth()}° 면`, ex, topH - 6);
+    ctx.fillStyle = P.accent2; ctx.fillText("σn", ex + s * 2.3, ey - s * 1.6); ctx.fillStyle = P.warn; ctx.fillText("τn", ex - s * 2.3, ey - s * 1.6);
+    // 오른쪽: 모어 원
+    const ox = w * 0.42, ow = w * 0.55, lo = Math.min(0, c - r) - 15, hi = Math.max(0, c + r) + 15, R = Math.max(r, 20) + 15;
+    const sc = Math.min(ow / (hi - lo), (topH - 24) / (2 * R)), cx0 = ox + (-lo) * sc, cy0 = topH * 0.5;
+    const X = (v) => cx0 + v * sc, Y = (v) => cy0 + v * sc; // τ 아래로 + (공학 관례)
+    ctx.strokeStyle = P.axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ox, cy0); ctx.lineTo(ox + ow, cy0); ctx.moveTo(X(0), cy0 - R * sc); ctx.lineTo(X(0), cy0 + R * sc); ctx.stroke();
+    ctx.strokeStyle = P.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(c), cy0, Math.max(0.5, r * sc), 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = P.ok; [c + r, c - r].forEach((v) => { ctx.beginPath(); ctx.arc(X(v), cy0, 4.5, 0, 2 * Math.PI); ctx.fill(); });
+    const px = X(sn(th)), py = Y(tn(th));
+    ctx.strokeStyle = P.dim; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X(c), cy0); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = P.accent2; ctx.beginPath(); ctx.arc(px, py, 6, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = P.dim; ctx.textAlign = "right"; ctx.fillText("σn →", ox + ow, cy0 - 6); ctx.textAlign = "left"; ctx.fillText("τn ↓", X(0) + 4, cy0 - R * sc + 12);
+    ctx.fillStyle = P.ok; ctx.textAlign = "center"; ctx.fillText("σ₁ = " + SY.num(c + r, 1), X(c + r), cy0 + 18); ctx.fillText("σ₂ = " + SY.num(c - r, 1), X(c - r), cy0 + 18);
+    // 아래: R(θ) 그래프
+    const box = { x: 46, y: topH + 8, w: w - 60, h: h - topH - 30 };
+    MB.chart(ctx, box, { x: [0, 180], y: [Math.min(c - r, 0) - 10, Math.max(c + r, 0) + 10], xLabel: "θ (°)", yLabel: "σn = R(n)", xTicks: [0, 45, 90, 135, 180],
+      series: [{ data: Array.from({ length: 181 }, (_, i) => [i, sn((i * Math.PI) / 180)]), color: P.accent2, width: 2 }],
+      hlines: [{ y: c + r, color: P.ok, dash: [4, 4] }, { y: c - r, color: P.ok, dash: [4, 4] }],
+      vlines: [{ x: rth(), color: P.dim }], points: [{ x: rth(), y: sn(th), color: P.accent2 }] });
+    ctx.textAlign = "left";
+  }, { aspect: 0.82, minHeight: 360, maxHeight: 560 });
+  const pdir = () => { const { sx, sy, t } = st(); let a = (0.5 * Math.atan2(2 * t, sx - sy) * 180) / Math.PI; if (a < 0) a += 180; return a; };
+  function upd() {
+    const { sx, sy, t, th } = st(), c = (sx + sy) / 2, r = Math.hypot((sx - sy) / 2, t);
+    MB.stat("sy-m-sn", SY.fix(c + ((sx - sy) / 2) * Math.cos(2 * th) + t * Math.sin(2 * th), 1) + " MPa");
+    MB.stat("sy-m-tn", SY.fix(-((sx - sy) / 2) * Math.sin(2 * th) + t * Math.cos(2 * th), 1) + " MPa");
+    MB.stat("sy-m-l", `${SY.num(c + r, 1)}, ${SY.num(c - r, 1)} MPa`);
+    MB.stat("sy-m-p", r < 1e-9 ? "모든 방향" : `${SY.fix(pdir(), 1)}° 와 ${SY.fix((pdir() + 90) % 180, 1)}°`);
+    cv.redraw();
+  }
+  const stop = () => { if (cancel) { cancel(); cancel = null; } };
+  document.getElementById("sy-m-p1").addEventListener("click", () => { stop(); rth.set(Math.round(pdir())); });
+  document.getElementById("sy-m-p2").addEventListener("click", () => { stop(); rth.set(Math.round((pdir() + 90) % 180)); });
+  document.getElementById("sy-m-spin").addEventListener("click", () => { stop(); cancel = SY.tween(6000, (u) => rth.set(Math.round(u * 180))); });
+  upd();
+})();
+</script>
+</body>
+</html>

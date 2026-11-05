@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>기저·차원·계수 · LinearBook</title>
+<meta name="description" content="선형 독립을 Ax = 0으로 다시 보고, 기저와 좌표, 모든 기저의 크기가 같다는 차원, 피벗의 개수인 계수, 네 부분공간과 그 차원 r·n−r·r·m−r, 계수–퇴화차수 정리, Ax = b의 네 가지 경우, 계수 1 행렬과 수치 계수, 회로의 독립 루프 수까지 직접 계산하며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .rk-m { display: inline-grid; grid-template-columns: repeat(var(--c, 3), auto); gap: 2px 4px; padding: 4px 8px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13px var(--mono); vertical-align: middle; }
+  .rk-m > span { text-align: right; padding: 2px 5px; border-radius: 5px; min-width: 1.9em; white-space: nowrap; }
+  .rk-m > span.z { color: var(--text-faint); }
+  .rk-m > span.pc { background: var(--accent-soft); }
+  .rk-m > span.pv { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .rk-m > span.pr { background: var(--accent-2-soft); }
+  .rk-m > span.aug { border-left: 1.5px dashed var(--text-faint); padding-left: 9px; }
+  .rk-v { --c: 1 !important; }
+  .rk-stage { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-start; padding: 16px 18px; background: var(--canvas-bg); min-height: 120px; }
+  .rk-stage .lab { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .rk-subs { display: grid; gap: 1px; background: var(--border); grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); border-top: 1px solid var(--border); }
+  .rk-subs > div { background: var(--bg-elev); padding: 10px 14px; min-width: 0; }
+  .rk-subs h4 { margin: 0 0 6px; font-size: 13.5px; }
+  .rk-subs h4 small { color: var(--text-dim); font-weight: 500; margin-left: 6px; }
+  .rk-subs .vs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rk-empty { font: 13px var(--mono); color: var(--text-dim); }
+  .rk-in.mat { grid-template-columns: repeat(var(--n, 3), minmax(0, 52px)); }
+  .rk-in.mat input.rhs { border-color: var(--accent-2); }
+  .rk-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rk-row .btn { padding: 6px 10px; font-size: 13px; }
+  .rk-note { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); min-height: 2.6em; }
+  .rk-note b { color: var(--accent); }
+  .rk-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .rk-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .rk-cases { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rk-cases td, .rk-cases th { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  .rk-cases tr.on td { background: var(--accent-soft); color: var(--text); font-weight: 700; }
+  .rk-cases-wrap { padding: 4px 14px 10px; overflow-x: auto; background: var(--bg-elev); border-top: 1px solid var(--border); }
+  .rk-inc { padding: 10px 18px; border-top: 1px solid var(--border); overflow-x: auto; background: var(--bg-elev); }
+  .rk-inc .lab { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; display: block; }
+  .rk-loops { font: 13px var(--mono); padding: 8px 18px; border-top: 1px solid var(--border); color: var(--text-dim); }
+  .rk-loops span.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+  .rk-steps ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .rk-steps li { margin: 6px 0; }
+  #rk-cv-ind, #rk-cv-p3 { touch-action: pan-y; cursor: grab; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="rank">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 06</div>
+    <h1 data-no-glossary>기저·차원·계수</h1>
+    <p class="lead">행렬에 숫자가 백 개 적혀 있어도 그 안에 든 "진짜 정보"는 훨씬 적을 수 있습니다. 어떤 열이 다른 열들의 합이라면 그 열은 새로운 것을 말해 주지 않습니다. 이 장은 그 "진짜 정보의 양"을 재는 세 개념을 세웁니다. 공간을 빠짐없이, 군더더기 없이 재는 자인 <b>기저</b>, 그 자의 눈금 수인 <b>차원</b>, 그리고 행렬이 실제로 품은 독립 방향의 수인 <b>계수</b>입니다. 계수 하나만 알면 행렬이 만드는 네 개의 부분공간 크기가 모두 정해지고, \(A\mathbf{x} = \mathbf{b}\)에 해가 있는지, 몇 개나 있는지도 정해집니다. 마지막에는 이 숫자들이 전기 회로에서 "독립인 루프가 몇 개인가"라는 오래된 질문에 답하는 것을 봅니다.</p>
+    <ul class="objectives">
+      <li>벡터들의 선형 독립을 \(A\mathbf{x} = \mathbf{0}\)의 해가 \(\mathbf{x} = \mathbf{0}\)뿐이라는 조건으로 바꾸어 소거로 판정하고, 종속이면 그 관계식을 구한다.</li>
+      <li>기저의 두 조건(독립, 생성)을 설명하고, 기저가 정해지면 좌표가 하나로 정해짐을 증명하며, 같은 공간의 다른 기저에서 좌표를 계산한다.</li>
+      <li>한 공간의 모든 기저가 같은 개수의 벡터를 가짐을 보이고, 여러 공간(ℝⁿ의 부분공간, 다항식, 행렬)의 차원을 구한다.</li>
+      <li>계수를 피벗의 개수로 정의하고, 피벗 열이 열공간의 기저, RREF의 0이 아닌 행이 행공간의 기저임을 이용해 "행 계수 = 열 계수"를 설명한다.</li>
+      <li>네 부분공간 \(C(A), N(A), C(A^{\mathsf T}), N(A^{\mathsf T})\)의 차원 \(r, n-r, r, m-r\)과 직교 관계를 그림으로 설명하고, 계수–퇴화차수 정리를 쓴다.</li>
+      <li>\(r = m = n\), \(r = n \lt m\), \(r = m \lt n\), \(r \lt m, r \lt n\) 네 경우에 \(A\mathbf{x} = \mathbf{b}\)의 해가 몇 개인지 판정하고, 계수 1 행렬과 수치 계수, 회로의 독립 루프 수 \(E - N + 1\)을 계산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>전기 회로의 방정식 세우기</b></div>
+      <div class="o-body"><p>가지(branch)가 수십 개인 회로를 풀려고 키르히호프 법칙을 세우면 곧 문제가 생깁니다. 마디마다 "들어온 전류 = 나간 전류"를 쓰고, 눈에 보이는 고리마다 "전압 강하의 합 = 0"을 쓰면 식이 미지수보다 훨씬 많아집니다. 그중 어느 것이 새로운 정보이고 어느 것이 이미 쓴 식의 조합일까요? 몇 개를 골라야 충분하고, 몇 개를 넘기면 군더더기일까요?</p>
+        <p>1847년 구스타프 키르히호프는 바로 이 문제를 다룬 논문에서, 연결된 회로의 독립인 고리 방정식은 정확히 <b>가지 수 − 마디 수 + 1</b>개이고 이를 고르는 체계적인 방법이 있음을 보였습니다. 오늘날의 언어로 말하면 이것은 회로의 연결 행렬이 가진 <b>계수</b>와 <b>영공간의 차원</b>에 관한 정리입니다. 회로 시뮬레이터가 방정식을 빠짐없이, 그러나 중복 없이 세우는 원리가 이 장의 내용입니다.</p>
+        <div class="o-chain"><span>식이 미지수보다 많다</span><i>→</i><span>어느 식이 군더더기?</span><i>→</i><span class="tool">계수와 차원</span><i>→</i><span>독립 루프 = E − N + 1</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="independence">
+    <h2>선형 독립, Ax = 0으로 다시 보기</h2>
+    <div class="problem"><strong>세 센서가 주는 정보는 정말 세 가지일까</strong>
+      <p>공장의 한 공정에서 세 센서가 매번 세 성분짜리 측정 벡터를 기록한다고 합시다. 그런데 세 번째 센서의 값이 언제나 첫 번째의 두 배와 두 번째의 합이라면, 세 번째 센서는 아무 새 정보도 주지 않습니다. 벡터가 둘일 때는 "한 직선 위에 있나"를 눈으로 보면 되지만, 벡터가 열 개, 성분이 백 개라면 어떻게 판정할까요?</p></div>
+    <p>1장에서 <span class="term">선형 독립</span><span class="en">(linear independence)</span>을 "어느 벡터도 나머지의 선형 결합이 아니다"로 정의했습니다(<a href="vectors.html#independence">1장 5절</a>). 벡터들을 행렬의 열로 세우면 이 정의는 연립방정식 하나로 바뀝니다. 선형 결합 \(c_1\mathbf{v}_1 + \cdots + c_n\mathbf{v}_n\)은 바로 \(A\mathbf{c}\)이기 때문입니다.</p>
+    <div class="callout"><strong>정의 6.1 (선형 독립, 행렬로)</strong> 열벡터 \(\mathbf{v}_1, \dots, \mathbf{v}_n \in \mathbb{R}^m\)을 열로 갖는 \(m \times n\) 행렬을 \(A\)라 하자. 이 벡터들이 <b>선형 독립</b>이라는 것은
+      $$A\mathbf{x} = \mathbf{0} \ \text{의 해가}\ \mathbf{x} = \mathbf{0}\ \text{하나뿐이다}$$
+      라는 뜻이다. 0이 아닌 해 \(\mathbf{x}\)가 있으면 \(x_1\mathbf{v}_1 + \cdots + x_n\mathbf{v}_n = \mathbf{0}\)이 곧 종속 관계식이다.</div>
+    <p>판정은 3장의 소거 그대로입니다. 소거 뒤 <b>모든 열에 피벗이 있으면</b> 자유 변수가 없어 해는 0뿐이고(독립), 피벗이 없는 열이 하나라도 있으면 그 열의 변수를 1로 두고 거꾸로 풀어 0이 아닌 해를 만들 수 있습니다(종속). 여기서 바로 강력한 결론이 나옵니다.</p>
+    <div class="callout"><strong>정리 6.1 (너무 많은 벡터는 종속이다)</strong> \(\mathbb{R}^m\)의 벡터 \(n\)개에서 \(n > m\)이면 반드시 선형 종속이다.
+      <p><i>증명.</i> 피벗은 행마다 최대 하나이므로 피벗 수는 \(m\) 이하다. 열이 \(n > m\)개이므로 피벗이 없는 열, 즉 자유 변수가 적어도 \(n - m\)개 있다. 자유 변수 하나를 1로 두면 \(A\mathbf{x} = \mathbf{0}\)의 0이 아닌 해가 생긴다. ∎</p></div>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="세 벡터의 생성: 공간, 평면, 직선"><defs><marker id="rk-ah-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker><marker id="rk-ah-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker><marker id="rk-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker><marker id="rk-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="rk-ah-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="rk-ah-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs><clipPath id="rk-c1130"><rect x="15" y="30" width="230" height="250" rx="10"/></clipPath><rect x="15" y="30" width="230" height="250" rx="10" class="f-surface"/><g clip-path="url(#rk-c1130)"><line x1="110" y1="205" x2="218.8" y2="205" class="s-axis" style="opacity:.45"/><line x1="110" y1="205" x2="50.2" y2="163.7" class="s-axis" style="opacity:.45"/><line x1="110" y1="205" x2="110" y2="82.6" class="s-axis" style="opacity:.45"/><polygon points="110,205 184.8,194.8 149.8,154.4 75,164.6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><polygon points="110,205 184.8,194.8 191.3,114 116.5,124.2" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><polygon points="110,205 75,164.6 81.4,83.8 116.5,124.2" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><polygon points="116.5,124.2 191.3,114 156.2,73.6 81.4,83.8" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><polygon points="184.8,194.8 149.8,154.4 156.2,73.6 191.3,114" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><polygon points="75,164.6 149.8,154.4 156.2,73.6 81.4,83.8" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1;opacity:.75"/><line x1="110" y1="205" x2="184.8" y2="194.8" style="stroke:var(--red);stroke-width:3" marker-end="url(#rk-ah-r)"/><text x="189.8" y="190.8" class="t" text-anchor="start" style="fill:var(--red);font-weight:700">v<tspan baseline-shift="sub" font-size="9">1</tspan></text><line x1="110" y1="205" x2="75" y2="164.6" style="stroke:var(--green);stroke-width:3" marker-end="url(#rk-ah-g)"/><text x="80" y="160.6" class="t" text-anchor="start" style="fill:var(--green);font-weight:700">v<tspan baseline-shift="sub" font-size="9">2</tspan></text><line x1="110" y1="205" x2="116.5" y2="124.2" style="stroke:var(--blue);stroke-width:3" marker-end="url(#rk-ah-b)"/><text x="121.5" y="120.2" class="t" text-anchor="start" style="fill:var(--blue);font-weight:700">v<tspan baseline-shift="sub" font-size="9">3</tspan></text></g><text x="130" y="52" class="t" text-anchor="middle" style="font-weight:700">독립: 계수 3</text><text x="130" y="270" class="t-dim" text-anchor="middle">생성 = ℝ³ 전체</text><clipPath id="rk-c1380"><rect x="265" y="30" width="230" height="250" rx="10"/></clipPath><rect x="265" y="30" width="230" height="250" rx="10" class="f-surface"/><g clip-path="url(#rk-c1380)"><line x1="360" y1="205" x2="468.8" y2="205" class="s-axis" style="opacity:.45"/><line x1="360" y1="205" x2="300.2" y2="163.7" class="s-axis" style="opacity:.45"/><line x1="360" y1="205" x2="360" y2="82.6" class="s-axis" style="opacity:.45"/><polygon points="341.3,240 484.1,211.5 419.8,92.9 277,121.5" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><line x1="360" y1="205" x2="428" y2="191.4" style="stroke:var(--red);stroke-width:3" marker-end="url(#rk-ah-r)"/><text x="433" y="187.4" class="t" text-anchor="start" style="fill:var(--red);font-weight:700">v<tspan baseline-shift="sub" font-size="9">1</tspan></text><line x1="360" y1="205" x2="329.4" y2="148.6" style="stroke:var(--green);stroke-width:3" marker-end="url(#rk-ah-g)"/><text x="334.4" y="144.6" class="t" text-anchor="start" style="fill:var(--green);font-weight:700">v<tspan baseline-shift="sub" font-size="9">2</tspan></text><line x1="360" y1="205" x2="397.4" y2="135" style="stroke:var(--blue);stroke-width:3" marker-end="url(#rk-ah-b)"/><text x="402.4" y="131" class="t" text-anchor="start" style="fill:var(--blue);font-weight:700">v<tspan baseline-shift="sub" font-size="9">3</tspan></text></g><text x="380" y="52" class="t" text-anchor="middle" style="font-weight:700">평면에 눕다: 계수 2</text><text x="380" y="270" class="t-dim" text-anchor="middle">v₃ = v₁ + v₂ → 생성 = 평면</text><clipPath id="rk-c1630"><rect x="515" y="30" width="230" height="250" rx="10"/></clipPath><rect x="515" y="30" width="230" height="250" rx="10" class="f-surface"/><g clip-path="url(#rk-c1630)"><line x1="610" y1="205" x2="718.8" y2="205" class="s-axis" style="opacity:.45"/><line x1="610" y1="205" x2="550.2" y2="163.7" class="s-axis" style="opacity:.45"/><line x1="610" y1="205" x2="610" y2="82.6" class="s-axis" style="opacity:.45"/><line x1="597.7" y1="221.8" x2="669.2" y2="124.2" style="stroke:var(--accent);stroke-width:2.5;opacity:.6"/><line x1="610" y1="205" x2="634.6" y2="171.3" style="stroke:var(--red);stroke-width:3" marker-end="url(#rk-ah-r)"/><text x="639.6" y="167.3" class="t" text-anchor="start" style="fill:var(--red);font-weight:700">v<tspan baseline-shift="sub" font-size="9">1</tspan></text><line x1="610" y1="205" x2="659.3" y2="137.7" style="stroke:var(--green);stroke-width:3" marker-end="url(#rk-ah-g)"/><text x="664.3" y="133.7" class="t" text-anchor="start" style="fill:var(--green);font-weight:700">v<tspan baseline-shift="sub" font-size="9">2</tspan></text><line x1="610" y1="205" x2="590.3" y2="231.9" style="stroke:var(--blue);stroke-width:3" marker-end="url(#rk-ah-b)"/><text x="595.3" y="227.9" class="t" text-anchor="start" style="fill:var(--blue);font-weight:700">v<tspan baseline-shift="sub" font-size="9">3</tspan></text></g><text x="630" y="52" class="t" text-anchor="middle" style="font-weight:700">한 직선 위: 계수 1</text><text x="630" y="270" class="t-dim" text-anchor="middle">모두 v₁의 배수 → 생성 = 직선</text></svg>
+      <figcaption><b>그림 6-1.</b> ℝ³의 세 벡터가 만드는 생성. 왼쪽: 독립이면 세 벡터가 평행육면체를 이루며 공간 전체를 채운다. 가운데: v₃가 v₁, v₂의 결합이면 세 벡터가 한 평면에 눕는다. 오른쪽: 모두 한 직선 위에 있으면 생성은 직선뿐이다. 괄호 안의 수가 곧 이 장의 주인공인 계수다.</figcaption>
+    </figure>
+
+    <div class="callout rk-steps"><strong>예제 6.1 · 종속 관계식 찾기</strong>
+      <p>\(\mathbf{v}_1 = (1, 2, 0),\ \mathbf{v}_2 = (0, 1, 1),\ \mathbf{v}_3 = (2, 5, 1)\)은 독립인가?</p>
+      <ol>
+        <li>열로 세워 소거한다. 행 2 − 2·행 1, 그다음 행 3 − 행 2:
+          $$\begin{bmatrix}1&0&2\\2&1&5\\0&1&1\end{bmatrix} \to \begin{bmatrix}1&0&2\\0&1&1\\0&1&1\end{bmatrix} \to \begin{bmatrix}1&0&2\\0&1&1\\0&0&0\end{bmatrix}$$</li>
+        <li>3열에 피벗이 없다. 자유 변수 \(x_3 = 1\)로 두고 거꾸로 풀면 \(x_2 = -1\), \(x_1 = -2\).</li>
+        <li>따라서 \(-2\mathbf{v}_1 - \mathbf{v}_2 + \mathbf{v}_3 = \mathbf{0}\), 즉 \(\mathbf{v}_3 = 2\mathbf{v}_1 + \mathbf{v}_2\). 세 벡터는 종속이고 한 평면 위에 있다.</li>
+      </ol></div>
+
+    <p>아래 시뮬레이터에서 세 열벡터를 직접 고쳐 보세요. 소거로 피벗을 세어 생성이 공간 전체인지, 평면인지, 직선인지 보여 주고, 종속이면 관계식을 정수 계수로 찾아 줍니다. 캔버스를 좌우로 끌면 시점이 돌아갑니다.</p>
+
+    <div class="sim" id="sim-rk-indep">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 벡터는 독립인가: 생성과 종속 관계식</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rk-cv-ind"></canvas><span class="tag-tl">좌우로 끌어 돌려 보기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="rk-i-pre">
+            <option value="ind">독립인 세 벡터</option>
+            <option value="ex">예제 6.1 (v₃ = 2v₁ + v₂)</option>
+            <option value="plane">한 평면 위의 세 벡터</option>
+            <option value="line">한 직선 위의 세 벡터</option>
+            <option value="zero">영벡터가 섞인 경우</option>
+          </select></label>
+          <div class="ctrl"><span>열 = v₁, v₂, v₃</span><div class="mat rk-in" id="rk-i-in" style="--n:3"></div></div>
+          <label class="ctrl"><span>시점 방위각 <output id="rk-i-az-out"></output></span><input type="range" id="rk-i-az" min="-180" max="180" value="-35" step="1"></label>
+          <div class="btn-row"><button class="btn" id="rk-i-spin">▶ 자동 회전</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">피벗 수 = 계수</span><span class="v" id="rk-i-rank">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="rk-i-ind">—</span></div>
+        <div class="stat"><span class="k">생성</span><span class="v" id="rk-i-span">—</span></div>
+      </div>
+      <div class="rk-note" id="rk-i-rel">—</div>
+      <div class="sim-note">해볼 것: ① '예제 6.1'에서 관계식이 −2v₁ − v₂ + v₃ = 0으로 나오는지 확인하세요. ② v₃의 셋째 성분을 1에서 1.5로 바꾸면 평면에서 빠져나와 독립이 됩니다. ③ '영벡터가 섞인 경우'는 항상 종속입니다. 0·v₁ + 0·v₂ + 1·0 = 0이니까요. 모델: 부분 피벗팅 소거, 절댓값 10⁻⁹ 이하는 0으로 봅니다. 관계식은 분모 12 이하의 분수로 나타낼 수 있으면 정수 계수로 바꿉니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="basis">
+    <h2>기저: 공간을 재는 자</h2>
+    <div class="problem"><strong>좌표는 어디에서 오는가</strong>
+      <p>지도에서 위치를 "동쪽으로 3, 북쪽으로 1"이라고 말할 수 있는 것은 동쪽과 북쪽이라는 두 기준 방향을 정해 두었기 때문입니다. 그런데 도시의 길이 비스듬히 나 있다면 "큰길을 따라 2블록, 골목을 따라 1블록"이 더 편할 수 있습니다. 어떤 기준 방향들이면 모든 위치를 빠짐없이, 그리고 단 한 가지 방법으로 말할 수 있을까요?</p></div>
+    <div class="callout"><strong>정의 6.2 (기저)</strong> 벡터 공간(또는 부분공간) \(V\)의 벡터 \(\mathbf{b}_1, \dots, \mathbf{b}_k\)가 다음 두 조건을 만족하면 \(V\)의 <span class="term">기저</span><span class="en">(basis)</span>라 한다.
+      <ol><li><b>생성</b>: \(V\)의 모든 벡터가 \(\mathbf{b}_1, \dots, \mathbf{b}_k\)의 선형 결합이다. (빠짐이 없다)</li>
+      <li><b>독립</b>: \(\mathbf{b}_1, \dots, \mathbf{b}_k\)가 선형 독립이다. (군더더기가 없다)</li></ol></div>
+    <p>두 조건은 서로 반대 방향으로 당깁니다. 생성을 보장하려면 벡터가 많을수록 좋고, 독립을 보장하려면 적을수록 좋습니다. 기저는 그 균형점, 즉 <b>생성하는 가장 작은 집합</b>이자 <b>독립인 가장 큰 집합</b>입니다. 기저가 왜 좋은지는 다음 정리가 말해 줍니다.</p>
+    <div class="callout"><strong>정리 6.2 (좌표는 하나뿐이다)</strong> \(\mathbf{b}_1, \dots, \mathbf{b}_k\)가 \(V\)의 기저이면, \(V\)의 모든 벡터 \(\mathbf{x}\)는 \(\mathbf{x} = c_1\mathbf{b}_1 + \cdots + c_k\mathbf{b}_k\)로 <b>정확히 한 가지 방법으로</b> 쓸 수 있다. 이 계수 \((c_1, \dots, c_k)\)를 기저에 대한 \(\mathbf{x}\)의 <span class="term">좌표</span><span class="en">(coordinates)</span>라 한다.
+      <p><i>증명.</i> 생성 조건 때문에 적어도 한 가지 방법은 있다. 두 가지 \(\sum c_i\mathbf{b}_i = \sum d_i\mathbf{b}_i\)가 있다면 빼서 \(\sum (c_i - d_i)\mathbf{b}_i = \mathbf{0}\). 독립이므로 모든 \(c_i - d_i = 0\)이다. ∎</p></div>
+    <p>한 공간의 기저는 하나가 아닙니다. ℝ²의 <b>표준 기저</b> \(\mathbf{e}_1 = (1,0), \mathbf{e}_2 = (0,1)\)에서 좌표는 성분 그 자체이지만, 평행하지 않은 아무 두 벡터도 ℝ²의 기저입니다. 같은 점이 기저마다 다른 좌표를 갖습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="같은 점을 두 기저로 재기"><defs><marker id="rk-ah-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker><marker id="rk-ah-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker><marker id="rk-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker><marker id="rk-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="rk-ah-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="rk-ah-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs><clipPath id="rk-c220"><rect x="20" y="40" width="340" height="250" rx="10"/></clipPath><rect x="20" y="40" width="340" height="250" rx="10" class="f-surface"/><g clip-path="url(#rk-c220)"><line x1="-189" y1="494" x2="-189" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="494" x2="419" y2="494" class="s-axis" style="opacity:0.3"/><line x1="-151" y1="494" x2="-151" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="456" x2="419" y2="456" class="s-axis" style="opacity:0.3"/><line x1="-113" y1="494" x2="-113" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="418" x2="419" y2="418" class="s-axis" style="opacity:0.3"/><line x1="-75" y1="494" x2="-75" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="380" x2="419" y2="380" class="s-axis" style="opacity:0.3"/><line x1="-37" y1="494" x2="-37" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="342" x2="419" y2="342" class="s-axis" style="opacity:0.3"/><line x1="1" y1="494" x2="1" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="304" x2="419" y2="304" class="s-axis" style="opacity:0.3"/><line x1="39" y1="494" x2="39" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="266" x2="419" y2="266" class="s-axis" style="opacity:0.3"/><line x1="77" y1="494" x2="77" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="228" x2="419" y2="228" class="s-axis" style="opacity:0.3"/><line x1="115" y1="494" x2="115" y2="-114" class="s-axis" style="opacity:0.9"/><line x1="-189" y1="190" x2="419" y2="190" class="s-axis" style="opacity:0.9"/><line x1="153" y1="494" x2="153" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="152" x2="419" y2="152" class="s-axis" style="opacity:0.3"/><line x1="191" y1="494" x2="191" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="114" x2="419" y2="114" class="s-axis" style="opacity:0.3"/><line x1="229" y1="494" x2="229" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="76" x2="419" y2="76" class="s-axis" style="opacity:0.3"/><line x1="267" y1="494" x2="267" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="38" x2="419" y2="38" class="s-axis" style="opacity:0.3"/><line x1="305" y1="494" x2="305" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="0" x2="419" y2="0" class="s-axis" style="opacity:0.3"/><line x1="343" y1="494" x2="343" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="-38" x2="419" y2="-38" class="s-axis" style="opacity:0.3"/><line x1="381" y1="494" x2="381" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="-76" x2="419" y2="-76" class="s-axis" style="opacity:0.3"/><line x1="419" y1="494" x2="419" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="-189" y1="-114" x2="419" y2="-114" class="s-axis" style="opacity:0.3"/><line x1="115" y1="190" x2="229" y2="190" style="stroke:var(--green);stroke-width:2;stroke-dasharray:5 4"/><line x1="229" y1="190" x2="229" y2="152" style="stroke:var(--red);stroke-width:2;stroke-dasharray:5 4"/><line x1="115" y1="190" x2="153" y2="190" style="stroke:var(--green);stroke-width:3.5" marker-end="url(#rk-ah-g)"/><line x1="115" y1="190" x2="115" y2="152" style="stroke:var(--red);stroke-width:3.5" marker-end="url(#rk-ah-r)"/><line x1="115" y1="190" x2="229" y2="152" style="stroke:var(--accent);stroke-width:3" marker-end="url(#rk-ah-a)"/><circle cx="229" cy="152" r="4" style="fill:var(--accent)"/></g><text x="157" y="206" class="t" text-anchor="start" style="fill:var(--green);font-weight:700">e₁</text><text x="109" y="146" class="t" text-anchor="end" style="fill:var(--red);font-weight:700">e₂</text><text x="237" y="144" class="t-acc" text-anchor="start">x = (3, 1)</text><text x="32" y="276" class="t-mono" text-anchor="start">x = 3e₁ + 1e₂ → 좌표 (3, 1)</text><text x="20" y="28" class="t" text-anchor="start" style="font-weight:700">표준 기저 e₁, e₂</text><clipPath id="rk-c2400"><rect x="400" y="40" width="340" height="250" rx="10"/></clipPath><rect x="400" y="40" width="340" height="250" rx="10" class="f-surface"/><g clip-path="url(#rk-c2400)"><line x1="-113" y1="190" x2="495" y2="798" class="s-axis" style="opacity:0.3"/><line x1="-113" y1="190" x2="495" y2="-418" class="s-axis" style="opacity:0.3"/><line x1="-75" y1="152" x2="533" y2="760" class="s-axis" style="opacity:0.3"/><line x1="-75" y1="228" x2="533" y2="-380" class="s-axis" style="opacity:0.3"/><line x1="-37" y1="114" x2="571" y2="722" class="s-axis" style="opacity:0.3"/><line x1="-37" y1="266" x2="571" y2="-342" class="s-axis" style="opacity:0.3"/><line x1="1" y1="76" x2="609" y2="684" class="s-axis" style="opacity:0.3"/><line x1="1" y1="304" x2="609" y2="-304" class="s-axis" style="opacity:0.3"/><line x1="39" y1="38" x2="647" y2="646" class="s-axis" style="opacity:0.3"/><line x1="39" y1="342" x2="647" y2="-266" class="s-axis" style="opacity:0.3"/><line x1="77" y1="0" x2="685" y2="608" class="s-axis" style="opacity:0.3"/><line x1="77" y1="380" x2="685" y2="-228" class="s-axis" style="opacity:0.3"/><line x1="115" y1="-38" x2="723" y2="570" class="s-axis" style="opacity:0.3"/><line x1="115" y1="418" x2="723" y2="-190" class="s-axis" style="opacity:0.3"/><line x1="153" y1="-76" x2="761" y2="532" class="s-axis" style="opacity:0.3"/><line x1="153" y1="456" x2="761" y2="-152" class="s-axis" style="opacity:0.3"/><line x1="191" y1="-114" x2="799" y2="494" class="s-axis" style="opacity:0.9"/><line x1="191" y1="494" x2="799" y2="-114" class="s-axis" style="opacity:0.9"/><line x1="229" y1="-152" x2="837" y2="456" class="s-axis" style="opacity:0.3"/><line x1="229" y1="532" x2="837" y2="-76" class="s-axis" style="opacity:0.3"/><line x1="267" y1="-190" x2="875" y2="418" class="s-axis" style="opacity:0.3"/><line x1="267" y1="570" x2="875" y2="-38" class="s-axis" style="opacity:0.3"/><line x1="305" y1="-228" x2="913" y2="380" class="s-axis" style="opacity:0.3"/><line x1="305" y1="608" x2="913" y2="0" class="s-axis" style="opacity:0.3"/><line x1="343" y1="-266" x2="951" y2="342" class="s-axis" style="opacity:0.3"/><line x1="343" y1="646" x2="951" y2="38" class="s-axis" style="opacity:0.3"/><line x1="381" y1="-304" x2="989" y2="304" class="s-axis" style="opacity:0.3"/><line x1="381" y1="684" x2="989" y2="76" class="s-axis" style="opacity:0.3"/><line x1="419" y1="-342" x2="1027" y2="266" class="s-axis" style="opacity:0.3"/><line x1="419" y1="722" x2="1027" y2="114" class="s-axis" style="opacity:0.3"/><line x1="457" y1="-380" x2="1065" y2="228" class="s-axis" style="opacity:0.3"/><line x1="457" y1="760" x2="1065" y2="152" class="s-axis" style="opacity:0.3"/><line x1="495" y1="-418" x2="1103" y2="190" class="s-axis" style="opacity:0.3"/><line x1="495" y1="798" x2="1103" y2="190" class="s-axis" style="opacity:0.3"/><line x1="495" y1="190" x2="571" y2="114" style="stroke:var(--green);stroke-width:2;stroke-dasharray:5 4"/><line x1="571" y1="114" x2="609" y2="152" style="stroke:var(--red);stroke-width:2;stroke-dasharray:5 4"/><line x1="495" y1="190" x2="533" y2="152" style="stroke:var(--green);stroke-width:3.5" marker-end="url(#rk-ah-g)"/><line x1="495" y1="190" x2="533" y2="228" style="stroke:var(--red);stroke-width:3.5" marker-end="url(#rk-ah-r)"/><line x1="495" y1="190" x2="609" y2="152" style="stroke:var(--accent);stroke-width:3" marker-end="url(#rk-ah-a)"/><circle cx="609" cy="152" r="4" style="fill:var(--accent)"/></g><text x="537" y="146" class="t" text-anchor="start" style="fill:var(--green);font-weight:700">b₁</text><text x="527" y="246" class="t" text-anchor="end" style="fill:var(--red);font-weight:700">b₂</text><text x="617" y="144" class="t-acc" text-anchor="start">x = (3, 1)</text><text x="412" y="276" class="t-mono" text-anchor="start">x = 2b₁ + 1b₂ → 좌표 (2, 1)</text><text x="400" y="28" class="t" text-anchor="start" style="font-weight:700">기저 b₁ = (1, 1), b₂ = (1, −1)</text></svg>
+      <figcaption><b>그림 6-2.</b> 같은 점 x = (3, 1)을 두 기저로 재기. 왼쪽: 표준 기저에서는 e₁로 3칸, e₂로 1칸. 오른쪽: 기저 b₁ = (1, 1), b₂ = (1, −1)이 만드는 비스듬한 격자에서는 b₁로 2칸, b₂로 1칸이므로 좌표는 (2, 1)이다. 점은 그대로이고 자만 바뀌었다.</figcaption>
+    </figure>
+    <div class="callout rk-steps"><strong>예제 6.2 · 다른 기저에서의 좌표</strong>
+      <p>기저 \(\mathbf{b}_1 = (1, 1),\ \mathbf{b}_2 = (1, -1)\)에서 \(\mathbf{x} = (3, 1)\)의 좌표를 구하라.</p>
+      <ol>
+        <li>\(c_1\mathbf{b}_1 + c_2\mathbf{b}_2 = \mathbf{x}\)는 기저를 열로 세운 연립방정식이다: \(\begin{bmatrix}1&1\\1&-1\end{bmatrix}\begin{bmatrix}c_1\\c_2\end{bmatrix} = \begin{bmatrix}3\\1\end{bmatrix}\).</li>
+        <li>두 식을 더하면 \(2c_1 = 4\), 빼면 \(2c_2 = 2\). 따라서 \(c_1 = 2,\ c_2 = 1\).</li>
+        <li>검산: \(2(1,1) + 1(1,-1) = (3, 1)\). 좌표를 구하는 일은 언제나 "기저 행렬 \(B\)로 \(B\mathbf{c} = \mathbf{x}\)를 푸는 일"이다. 기저를 바꾸는 체계적인 방법은 <a href="change-of-basis.html">7장</a>에서 다룬다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-rk-coords">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>내 기저로 좌표 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rk-cv-co"></canvas><span class="tag-tl">b₁, b₂, x를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="rk-c2-pre">
+            <option value="ex">예제 6.2: b₁ = (1, 1), b₂ = (1, −1)</option>
+            <option value="std">표준 기저 e₁, e₂</option>
+            <option value="skew">많이 기운 기저</option>
+            <option value="near">거의 평행한 두 벡터</option>
+            <option value="par">평행한 두 벡터 (기저 아님)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="rk-c2-grid" checked> 기저가 만드는 격자 보기</label>
+          <label class="check"><input type="checkbox" id="rk-c2-path" checked> c₁b₁ + c₂b₂ 경로 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">표준 좌표 x</span><span class="v" id="rk-c2-x">—</span></div>
+        <div class="stat"><span class="k">기저 좌표 (c₁, c₂)</span><span class="v" id="rk-c2-c">—</span></div>
+        <div class="stat"><span class="k">det [b₁ b₂]</span><span class="v" id="rk-c2-det">—</span></div>
+        <div class="stat"><span class="k">기저인가</span><span class="v" id="rk-c2-ok">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x를 끌며 비스듬한 격자의 눈금을 세어 좌표를 읽고 숫자와 비교하세요. ② '거의 평행한 두 벡터'에서 x를 조금만 움직여도 좌표가 크게 출렁입니다. 기저는 맞지만 나쁜 자입니다. ③ b₂를 b₁과 한 직선 위에 놓으면 격자가 사라지고 좌표가 정해지지 않습니다. 모델: 2×2 연립방정식 Bc = x를 크라메르 공식으로 풉니다. 끈 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="dimension">
+    <h2>차원: 모든 기저는 크기가 같다</h2>
+    <div class="problem"><strong>평면은 왜 "2"차원인가</strong>
+      <p>원점을 지나는 평면의 기저는 무수히 많습니다. 어떤 사람은 두 벡터를, 어떤 사람은 다른 두 벡터를 고릅니다. 그런데 누군가 같은 평면의 기저를 세 벡터로 만들었다고 주장한다면 그 사람이 틀렸다고 확신할 수 있을까요? "차원"이라는 단어가 의미를 가지려면 이것이 보장되어야 합니다.</p></div>
+    <div class="callout"><strong>정리 6.3 (기저의 크기는 일정하다)</strong> \(\mathbf{v}_1, \dots, \mathbf{v}_m\)과 \(\mathbf{w}_1, \dots, \mathbf{w}_n\)이 모두 같은 공간 \(V\)의 기저이면 \(m = n\)이다.
+      <p><i>증명.</i> \(n > m\)이라 가정하자. 각 \(\mathbf{w}_j\)는 \(V\)에 있으므로 \(\mathbf{v}\)들의 결합이다: \(\mathbf{w}_j = \sum_i a_{ij}\mathbf{v}_i\). 행렬로 쓰면 \(W = VA\)이고, \(A\)는 \(m \times n\)이다. \(n > m\)이므로 정리 6.1에 의해 \(A\mathbf{x} = \mathbf{0}\)의 0이 아닌 해 \(\mathbf{x}\)가 있다. 그러면 \(W\mathbf{x} = VA\mathbf{x} = \mathbf{0}\)이 되어 \(\mathbf{w}\)들이 종속이라는 모순이 생긴다. \(m > n\)도 같은 논리로 불가능하다. ∎</p></div>
+    <div class="callout"><strong>정의 6.3 (차원)</strong> 공간 \(V\)의 기저가 가진 벡터의 수를 \(V\)의 <span class="term">차원</span><span class="en">(dimension)</span>이라 하고 \(\dim V\)로 쓴다. 영공간 \(\{\mathbf{0}\}\)의 차원은 0으로 정한다(기저는 빈 집합).</div>
+    <p>증명의 핵심은 "독립인 벡터는 생성하는 벡터보다 많을 수 없다"는 것입니다. 이 한 줄에서 기저를 다루는 실용적인 규칙들이 모두 나옵니다.</p>
+    <div class="callout"><strong>정리 6.4 (차원을 알 때의 지름길)</strong> \(\dim V = k\)라 하자.
+      <ol><li>\(V\)의 독립인 벡터는 \(k\)개를 넘을 수 없고, \(V\)를 생성하는 벡터는 \(k\)개보다 적을 수 없다.</li>
+      <li>\(V\)의 벡터 정확히 \(k\)개가 독립이면 자동으로 생성하고, 생성하면 자동으로 독립이다. 둘 중 하나만 확인하면 기저다.</li>
+      <li>독립인 집합은 벡터를 더해 기저로 <b>늘릴</b> 수 있고, 생성하는 집합은 군더더기를 빼서 기저로 <b>줄일</b> 수 있다.</li></ol></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>공간</th><th>기저의 예</th><th class="num">차원</th></tr></thead>
+      <tbody>
+        <tr><td>\(\mathbb{R}^n\)</td><td>표준 기저 \(\mathbf{e}_1, \dots, \mathbf{e}_n\)</td><td class="num">n</td></tr>
+        <tr><td>ℝ³에서 원점을 지나는 평면 \(x + y + z = 0\)</td><td>\((1, -1, 0),\ (1, 0, -1)\)</td><td class="num">2</td></tr>
+        <tr><td>차수 2 이하 다항식 \(a + bt + ct^2\)</td><td>\(1,\ t,\ t^2\)</td><td class="num">3</td></tr>
+        <tr><td>2×2 행렬 전체</td><td>칸 하나만 1인 행렬 4개</td><td class="num">4</td></tr>
+        <tr><td>2×2 대칭 행렬</td><td>\(\begin{bmatrix}1&0\\0&0\end{bmatrix}, \begin{bmatrix}0&1\\1&0\end{bmatrix}, \begin{bmatrix}0&0\\0&1\end{bmatrix}\)</td><td class="num">3</td></tr>
+        <tr><td>8×8 화소 블록(흑백 사진의 한 조각)</td><td>화소 하나씩, 또는 JPEG의 DCT 무늬 64개</td><td class="num">64</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><strong>같은 공간, 다른 자</strong> 마지막 줄이 기저를 바꾸는 이유를 보여 줍니다. 8×8 블록은 화소 64개로 재도 되고, JPEG처럼 천천히 변하는 무늬부터 빠르게 변하는 무늬까지 64개의 코사인 무늬(DCT 기저)로 재도 됩니다. 차원은 둘 다 64지만, 두 번째 자로 재면 대부분의 좌표가 0에 가까워 버리기 쉽습니다. 차원은 공간의 성질이고, 어떤 기저를 고르는가는 문제를 쉽게 만드는 선택입니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="rank">
+    <h2>계수: 피벗의 개수가 말해 주는 것</h2>
+    <div class="problem"><strong>표 속에 든 진짜 정보의 양</strong>
+      <p>3×4 행렬에는 숫자가 12개 있습니다. 그런데 셋째 행이 첫째와 둘째 행의 합이고, 둘째 열이 첫째 열의 두 배라면 실제로 독립인 방향은 몇 개일까요? 행으로 세면 몇이고, 열로 세면 몇일까요? 둘이 다를 수도 있을까요?</p></div>
+    <div class="callout"><strong>정의 6.4 (계수)</strong> 행렬 \(A\)를 소거했을 때 나오는 피벗의 수를 \(A\)의 <span class="term">계수</span><span class="en">(rank)</span>라 하고 \(r\) 또는 \(\operatorname{rank} A\)로 쓴다.</div>
+    <p>소거를 끝까지 밀어 피벗을 1로, 피벗 위아래를 모두 0으로 만든 것을 <span class="term">기약 행 사다리꼴</span><span class="en">(reduced row echelon form, RREF)</span> \(R\)이라 합니다. \(R\)을 보면 피벗 열과 자유 열이 한눈에 드러납니다. 행 연산이 무엇을 바꾸고 무엇을 지키는지 정확히 알면 계수의 뜻이 보입니다.</p>
+    <div class="callout"><strong>정리 6.5 (행 계수 = 열 계수)</strong>
+      <ol><li><b>A의 피벗 열</b>이 열공간 \(C(A)\)의 기저다. 행 연산은 열들 사이의 선형 관계(\(A\mathbf{x} = \mathbf{0}\)의 해)를 바꾸지 않으므로, \(R\)에서 독립인 열의 위치가 \(A\)에서도 독립인 열의 위치다. 단, 기저로 쓰는 것은 \(R\)이 아니라 <b>원래 \(A\)의 열</b>이다.</li>
+      <li><b>R의 0이 아닌 행</b>이 행공간 \(C(A^{\mathsf T})\)의 기저다. 행 연산은 행들의 결합만 만들므로 행공간을 바꾸지 않고, 0이 아닌 행들은 피벗 위치 때문에 독립이다.</li>
+      <li>따라서 \(\dim C(A) = \dim C(A^{\mathsf T}) = r\). 독립인 열의 수와 독립인 행의 수는 언제나 같다.</li></ol></div>
+    <div class="callout rk-steps"><strong>예제 6.3 · 3×4 행렬의 계수</strong>
+      $$A = \begin{bmatrix}1&2&0&1\\2&4&1&4\\3&6&1&5\end{bmatrix} \;\to\; \begin{bmatrix}1&2&0&1\\0&0&1&2\\0&0&1&2\end{bmatrix} \;\to\; R = \begin{bmatrix}1&2&0&1\\0&0&1&2\\0&0&0&0\end{bmatrix}$$
+      <ol>
+        <li>행 2 − 2·행 1, 행 3 − 3·행 1, 그다음 행 3 − 행 2. 피벗은 1열과 3열에 있으므로 \(r = 2\).</li>
+        <li>열공간의 기저: A의 1열과 3열 \((1, 2, 3),\ (0, 1, 1)\). 실제로 2열 = 2·(1열), 4열 = 1열 + 2·(3열)이다.</li>
+        <li>행공간의 기저: R의 두 행 \((1, 2, 0, 1),\ (0, 0, 1, 2)\). 실제로 A의 3행 = 1행 + 2행이다.</li>
+        <li>열 4개 중 독립은 2개, 행 3개 중 독립도 2개. 숫자 12개에 든 정보는 "벡터 2개 + 섞는 법"이다.</li>
+      </ol></div>
+    <p>아래 계산기는 행렬을 RREF까지 소거하고 피벗 열, 행공간의 기저, 그리고 다음 절에서 다룰 두 영공간의 기저까지 모두 보여 줍니다. 칸을 고치면 바로 다시 계산합니다.</p>
+
+    <div class="sim" id="sim-rk-rref">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>RREF와 네 부분공간 계산기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="rk-stage" id="rk-r-stage"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="rk-r-pre">
+            <option value="ex">예제 6.3 (3×4, r = 2)</option>
+            <option value="inv">가역 3×3 (r = 3)</option>
+            <option value="one">계수 1 (3×3)</option>
+            <option value="wide">가로로 긴 2×3 (r = 2)</option>
+            <option value="tall">세로로 긴 4×3 (r = 2)</option>
+            <option value="zero">영행렬 2×3</option>
+          </select></label>
+          <div class="ctrl"><span>A 직접 고치기</span><div class="mat rk-in" id="rk-r-in"></div></div>
+          <div class="ctrl"><span>무작위 정수 행렬</span><div class="seg" id="rk-r-size"><button data-value="3x3" class="on">3×3</button><button data-value="3x4">3×4</button><button data-value="4x3">4×3</button><button data-value="2x4">2×4</button></div></div>
+          <button class="btn" id="rk-r-rand">새로 뽑기</button>
+        </div>
+      </div>
+      <div class="rk-subs" id="rk-r-subs"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">크기 m × n</span><span class="v" id="rk-r-mn">—</span></div>
+        <div class="stat"><span class="k">계수 r</span><span class="v" id="rk-r-r">—</span></div>
+        <div class="stat"><span class="k">r + dim N(A) = n</span><span class="v" id="rk-r-n">—</span></div>
+        <div class="stat"><span class="k">r + dim N(Aᵀ) = m</span><span class="v" id="rk-r-m">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 6.3에서 N(A)의 두 벡터가 (−2, 1, 0, 0), (−1, 0, −2, 1)인지, N(Aᵀ)가 (1, 1, −1)인지 확인하세요. ② 아무 칸이나 바꿔 계수가 바뀌는 순간 네 차원이 함께 바뀌는 것을 보세요. 합은 언제나 n과 m입니다. ③ '세로로 긴 4×3'에서 피벗 열은 A의 열을 그대로 가져온 것입니다(R의 열이 아님). 모델: 부분 피벗팅 RREF, 절댓값 10⁻⁹ 이하는 0. 표시는 분모 12 이하의 분수로 나타낼 수 있으면 분수로 보여 줍니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="four-subspaces">
+    <h2>네 부분공간과 큰 그림</h2>
+    <div class="problem"><strong>행렬 하나가 만드는 네 개의 세계</strong>
+      <p>\(m \times n\) 행렬 \(A\)는 ℝⁿ의 벡터를 받아 ℝᵐ의 벡터를 내놓습니다. 입력 쪽에서는 "무엇이 0으로 사라지는가", 출력 쪽에서는 "무엇에 닿을 수 있는가"가 궁금합니다. 그리고 \(A^{\mathsf T}\)는 반대 방향으로 같은 질문을 합니다. 이 네 질문의 답은 서로 어떻게 엮여 있을까요?</p></div>
+    <div class="cards">
+      <div><span class="big">C(A)</span><b>열공간 ⊂ ℝᵐ</b>A의 열들의 결합. Ax가 닿을 수 있는 곳. 차원 r.</div>
+      <div><span class="big">N(A)</span><b>영공간 ⊂ ℝⁿ</b>Ax = 0의 해 전체. A가 지워 버리는 입력. 차원 n − r.</div>
+      <div><span class="big">C(Aᵀ)</span><b>행공간 ⊂ ℝⁿ</b>A의 행들의 결합. 차원 r.</div>
+      <div><span class="big">N(Aᵀ)</span><b>왼쪽 영공간 ⊂ ℝᵐ</b>Aᵀy = 0, 곧 yᵀA = 0ᵀ의 해. 행들의 종속 관계. 차원 m − r.</div>
+    </div>
+    <div class="callout"><strong>정리 6.6 (선형대수의 기본 정리, 1부: 차원)</strong> 계수가 \(r\)인 \(m \times n\) 행렬에서
+      $$\dim C(A) = r, \quad \dim N(A) = n - r, \quad \dim C(A^{\mathsf T}) = r, \quad \dim N(A^{\mathsf T}) = m - r.$$
+      <p><i>증명.</i> 첫째와 셋째는 정리 6.5다. 영공간은 자유 변수마다 하나씩 나오는 <b>특수해</b>(그 자유 변수만 1, 나머지 자유 변수는 0)가 기저다. 특수해들은 자유 변수 자리에서 서로 다른 칸에 1을 가지므로 독립이고, 모든 해는 자유 변수 값을 계수로 한 특수해들의 결합이다. 자유 변수는 \(n - r\)개다. 넷째는 \(A^{\mathsf T}\)(크기 \(n \times m\), 계수 \(r\))에 같은 논리를 쓰면 \(m - r\)이다. ∎</p></div>
+    <div class="callout" id="rank-nullity"><strong>정리 6.7 (계수–퇴화차수 정리)</strong> \(m \times n\) 행렬 \(A\)에 대해
+      $$\operatorname{rank} A + \dim N(A) = n.$$
+      <p>영공간의 차원을 <span class="term">퇴화차수</span><span class="en">(nullity)</span>라 한다. 말로 하면 "<b>입력의 차원 = 살아남는 차원 + 사라지는 차원</b>"이다. 피벗 변수 \(r\)개와 자유 변수 \(n - r\)개를 합하면 변수 \(n\)개라는 사실을 다르게 쓴 것이지만, 기저나 소거를 언급하지 않는 형태라 어떤 선형 사상에도 그대로 쓸 수 있다.</p></div>
+    <p>차원만이 아닙니다. 네 공간은 둘씩 짝지어 <b>직교</b>합니다. \(A\mathbf{x} = \mathbf{0}\)은 "\(A\)의 모든 행과 \(\mathbf{x}\)의 내적이 0"이라는 뜻이므로, 영공간의 모든 벡터는 행공간의 모든 벡터와 수직입니다.</p>
+    <div class="callout"><strong>정리 6.8 (선형대수의 기본 정리, 2부: 직교)</strong> ℝⁿ 안에서 \(N(A) \perp C(A^{\mathsf T})\)이고, ℝᵐ 안에서 \(N(A^{\mathsf T}) \perp C(A)\)이다. 차원이 \(r + (n - r) = n\)으로 꼭 맞으므로 두 공간은 ℝⁿ을 빈틈없이 나눈다. 모든 \(\mathbf{x} \in \mathbb{R}^n\)은 \(\mathbf{x} = \mathbf{x}_r + \mathbf{x}_n\) (\(\mathbf{x}_r \in C(A^{\mathsf T}),\ \mathbf{x}_n \in N(A)\))으로 하나뿐인 방법으로 쪼개진다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 -20 760 350" role="img" aria-label="네 부분공간의 큰 그림"><defs><marker id="rk-ah-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker><marker id="rk-ah-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker><marker id="rk-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker><marker id="rk-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="rk-ah-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="rk-ah-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs><rect x="20" y="40" width="300" height="250" rx="12" class="f-surface"/><text x="170" y="62" class="t" text-anchor="middle" style="font-weight:700">입력 공간 ℝⁿ</text><rect x="440" y="40" width="300" height="250" rx="12" class="f-surface"/><text x="590" y="62" class="t" text-anchor="middle" style="font-weight:700">출력 공간 ℝᵐ</text><polygon points="75,215 190,215 245,140 130,140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/><line x1="161.6" y1="193.0" x2="209.9" y2="89.5" style="stroke:var(--accent-2);stroke-width:3"/><path d="M173.36 167.8 l9 3 l-3.5 7.6" fill="none" class="s-line"/><text x="85" y="237" class="t" text-anchor="start" style="fill:var(--accent);font-weight:700">행공간 C(Aᵀ) · 차원 r</text><text x="198" y="91" class="t" text-anchor="end" style="fill:var(--accent-2);font-weight:700">영공간 N(A)</text><text x="198" y="107" class="t-dim" text-anchor="end">차원 n − r</text><line x1="170" y1="175" x2="210" y2="187" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#rk-ah-a)"/><line x1="170" y1="175" x2="188.9" y2="134.5" style="stroke:var(--accent-2);stroke-width:2.5" marker-end="url(#rk-ah-a2)"/><line x1="170" y1="175" x2="228.9" y2="146.5" style="stroke:var(--text);stroke-width:2.5" marker-end="url(#rk-ah-t)"/><line x1="210" y1="187" x2="228.89999999999998" y2="146.5" class="s-line" style="stroke-dasharray:4 3"/><line x1="188.9" y1="134.5" x2="228.89999999999998" y2="146.5" class="s-line" style="stroke-dasharray:4 3"/><text x="214" y="203" class="t" text-anchor="start" style="fill:var(--accent);font-weight:700">xᵣ</text><text x="168.9" y="136.5" class="t" text-anchor="start" style="fill:var(--accent-2);font-weight:700">xₙ</text><text x="236.9" y="160.5" class="t" text-anchor="start">x = xᵣ + xₙ</text><polygon points="495,215 610,215 665,140 550,140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/><line x1="581.6" y1="193.0" x2="629.9" y2="89.5" style="stroke:var(--accent-2);stroke-width:3;opacity:.8"/><text x="505" y="237" class="t" text-anchor="start" style="fill:var(--accent);font-weight:700">열공간 C(A) · 차원 r</text><text x="618" y="91" class="t" text-anchor="end" style="fill:var(--accent-2);font-weight:700">왼쪽 영공간 N(Aᵀ)</text><text x="618" y="107" class="t-dim" text-anchor="end">차원 m − r</text><line x1="590" y1="175" x2="625" y2="183" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#rk-ah-a)"/><text x="631" y="199" class="t" text-anchor="start" style="fill:var(--accent);font-weight:700">Ax = Axᵣ</text><circle cx="590" cy="175" r="4" style="fill:var(--text)"/><circle cx="170" cy="175" r="3" style="fill:var(--text)"/><path d="M200 245 C 300 330, 470 330, 530 227" fill="none" style="stroke:var(--accent);stroke-width:2" marker-end="url(#rk-ah-a)"/><text x="380" y="325" class="t" text-anchor="middle" style="fill:var(--accent)">A가 xᵣ을 Axᵣ으로 (행공간 ↔ 열공간은 일대일)</text><path d="M213.9 85.5 C 330 -10, 500 -10, 584 167" fill="none" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:6 4" marker-end="url(#rk-ah-a2)"/><text x="380" y="16" class="t" text-anchor="middle" style="fill:var(--accent-2)">A가 xₙ을 0으로</text></svg>
+      <figcaption><b>그림 6-3.</b> 선형대수의 큰 그림. 입력 공간 ℝⁿ은 행공간(차원 r)과 영공간(차원 n − r)이 직각으로 나누고, 출력 공간 ℝᵐ은 열공간(차원 r)과 왼쪽 영공간(차원 m − r)이 나눈다. A는 영공간 성분 xₙ을 0으로 보내고, 행공간 성분 xᵣ을 열공간의 Ax로 보낸다. 그래서 Ax = Axᵣ이다. 행공간에서 열공간으로 가는 이 부분만 보면 A는 차원 r끼리의 일대일 대응이다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터는 2×3 행렬로 이 그림을 실제로 보여 줍니다. 왼쪽은 입력 공간 ℝ³, 오른쪽은 출력 공간 ℝ²입니다. \(\mathbf{x}\)를 움직이면 행공간 성분과 영공간 성분으로 쪼개지고, 영공간 방향으로 아무리 밀어도 출력 \(A\mathbf{x}\)는 꿈쩍하지 않습니다.</p>
+
+    <div class="sim" id="sim-rk-perp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>큰 그림: 행공간 ⟂ 영공간, 그리고 Ax = Axᵣ</h3></div>
+      <div class="split">
+        <div><canvas id="rk-cv-p3"></canvas><span class="cap">입력 ℝ³ · 좌우로 끌어 돌리기</span></div>
+        <div><canvas id="rk-cv-p2"></canvas><span class="cap">출력 ℝ²</span></div>
+      </div>
+      <div class="sim-body side">
+        <div class="sim-controls" style="grid-column:1/-1">
+          <label class="ctrl"><span>프리셋</span><select id="rk-p-pre">
+            <option value="r2">계수 2: 행공간 = 평면, 영공간 = 직선</option>
+            <option value="r1">계수 1: 행공간 = 직선, 영공간 = 평면</option>
+            <option value="r2b">계수 2: 기울어진 평면</option>
+          </select></label>
+          <div class="ctrl"><span>A (2×3)</span><div class="mat rk-in" id="rk-p-in" style="--n:3"></div></div>
+          <label class="ctrl"><span>x₁ <output id="rk-p-x1-out"></output></span><input type="range" id="rk-p-x1" min="-2" max="2" value="1.2" step="0.1"></label>
+          <label class="ctrl"><span>x₂ <output id="rk-p-x2-out"></output></span><input type="range" id="rk-p-x2" min="-2" max="2" value="0.4" step="0.1"></label>
+          <label class="ctrl"><span>x₃ <output id="rk-p-x3-out"></output></span><input type="range" id="rk-p-x3" min="-2" max="2" value="1" step="0.1"></label>
+          <div class="btn-row"><button class="btn primary" id="rk-p-slide">▶ 영공간 방향으로 밀기</button></div>
+        </div>
+      </div>
+      <div class="rk-legend"><span><i style="background:var(--accent)"></i>행공간 C(Aᵀ)와 xᵣ</span><span><i style="background:var(--accent-2)"></i>영공간 N(A)와 xₙ</span><span><i style="background:var(--text)"></i>x</span><span><i style="background:var(--ok)"></i>Ax</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">xᵣ (행공간 성분)</span><span class="v" id="rk-p-xr">—</span></div>
+        <div class="stat"><span class="k">xₙ (영공간 성분)</span><span class="v" id="rk-p-xn">—</span></div>
+        <div class="stat"><span class="k">xᵣ · xₙ</span><span class="v" id="rk-p-dot">—</span></div>
+        <div class="stat"><span class="k">Ax 와 Axᵣ</span><span class="v" id="rk-p-ax">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '영공간 방향으로 밀기'를 누르면 x가 영공간을 따라 움직이는데 오른쪽의 Ax는 그대로입니다. ② xᵣ · xₙ이 언제나 0인지 보세요. 두 공간은 수직입니다. ③ 계수 1 프리셋에서는 영공간이 평면이 되고, 출력은 직선(열공간) 위에서만 움직입니다. 모델: 행공간 성분은 행들을 그람–슈미트로 정규직교화해 정사영으로 구합니다(8장의 사영). 3차원 그림은 고정된 앙각의 정사영입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="cases">
+    <h2>Ax = b의 네 가지 경우</h2>
+    <div class="problem"><strong>풀어 보기 전에 답의 개수를 안다</strong>
+      <p>미지수 1,000개, 식 1,200개인 연립방정식을 받았습니다. 해가 있을까요? 있다면 하나일까요, 무수히 많을까요? 식이 더 많으니 해가 없다고 단정해도 될까요? 계수 \(r\)과 크기 \(m, n\)만으로 상당 부분을 미리 말할 수 있습니다.</p></div>
+    <div class="callout"><strong>정리 6.9 (해가 있을 조건)</strong> 다음은 모두 같은 말이다.
+      <ol><li>\(A\mathbf{x} = \mathbf{b}\)에 해가 있다.</li>
+      <li>\(\mathbf{b} \in C(A)\), 즉 \(\mathbf{b}\)는 \(A\)의 열들의 결합이다.</li>
+      <li>\(\operatorname{rank}[A \mid \mathbf{b}] = \operatorname{rank} A\). (\(\mathbf{b}\)를 덧붙여도 피벗이 늘지 않는다)</li>
+      <li>왼쪽 영공간의 모든 \(\mathbf{y}\)에 대해 \(\mathbf{y}^{\mathsf T}\mathbf{b} = 0\). (행들 사이의 관계를 \(\mathbf{b}\)도 지킨다)</li></ol>
+      <p>해가 있으면 모든 해는 \(\mathbf{x} = \mathbf{x}_p + \mathbf{x}_n\)이다. \(\mathbf{x}_p\)는 해 하나(자유 변수를 0으로 둔 <b>특수해</b>가 편하다), \(\mathbf{x}_n\)은 영공간의 아무 벡터다. 해의 "개수"는 영공간의 차원 \(n - r\)이 정한다.</p></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>경우</th><th>모양</th><th>R의 모양</th><th>Ax = b의 해</th><th>대표적인 상황</th></tr></thead>
+      <tbody>
+        <tr><td>\(r = m = n\)</td><td>정사각, 가역</td><td>\(I\)</td><td>언제나 정확히 하나</td><td>회로·구조 해석의 잘 세운 방정식</td></tr>
+        <tr><td>\(r = n \lt m\)</td><td>세로로 긺, 열 완전 계수</td><td>\(\begin{bmatrix}I\\0\end{bmatrix}\)</td><td>0개 또는 1개</td><td>측정이 미지수보다 많은 데이터 적합 → 최소제곱(8장)</td></tr>
+        <tr><td>\(r = m \lt n\)</td><td>가로로 긺, 행 완전 계수</td><td>\(\begin{bmatrix}I & F\end{bmatrix}\)</td><td>언제나 무수히 (자유 변수 n − m개)</td><td>여유 자유도가 있는 로봇 팔, 제약이 적은 설계</td></tr>
+        <tr><td>\(r \lt m,\ r \lt n\)</td><td>계수 부족</td><td>\(\begin{bmatrix}I & F\\0&0\end{bmatrix}\)</td><td>0개 또는 무수히</td><td>중복 센서, 연결 행렬, 특이 시스템</td></tr>
+      </tbody>
+    </table></div>
+    <p>열 완전 계수(\(r = n\))는 "영공간이 \(\{\mathbf{0}\}\)", 즉 해가 있다면 유일하다는 뜻이고, 행 완전 계수(\(r = m\))는 "열공간이 ℝᵐ 전체", 즉 어떤 \(\mathbf{b}\)든 해가 있다는 뜻입니다. 둘 다이면 정사각 가역 행렬입니다.</p>
+    <div class="callout rk-steps"><strong>예제 6.4 · 완전한 해</strong>
+      <p>예제 6.3의 \(A\)와 \(\mathbf{b} = (1, 4, 5)\)에 대해 \(A\mathbf{x} = \mathbf{b}\)를 풀어라.</p>
+      <ol>
+        <li>왼쪽 영공간 \(\mathbf{y} = (1, 1, -1)\)로 검사: \(\mathbf{y}^{\mathsf T}\mathbf{b} = 1 + 4 - 5 = 0\). 해가 있다. (\(\mathbf{b} = (1, 4, 6)\)이었다면 \(-1 \ne 0\)으로 해가 없다.)</li>
+        <li>\([A \mid \mathbf{b}]\)를 소거하면 \(\left[\begin{array}{rrrr|r}1&2&0&1&1\\0&0&1&2&2\\0&0&0&0&0\end{array}\right]\). 자유 변수 \(x_2 = x_4 = 0\)으로 두면 \(\mathbf{x}_p = (1, 0, 2, 0)\).</li>
+        <li>완전한 해: \(\mathbf{x} = (1, 0, 2, 0) + s(-2, 1, 0, 0) + t(-1, 0, -2, 1)\). 해 집합은 ℝ⁴ 안에서 원점을 지나지 않는 평면(차원 \(n - r = 2\))이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-rk-cases">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>해의 개수 판정기: rank A와 rank [A | b]</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="rk-stage" id="rk-k-stage"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="rk-k-pre">
+            <option value="sq">정사각 가역 (r = m = n)</option>
+            <option value="tall">세로로 긴 3×2 (r = n)</option>
+            <option value="wide">가로로 긴 2×3 (r = m)</option>
+            <option value="def" selected>예제 6.4 (계수 부족)</option>
+          </select></label>
+          <div class="ctrl"><span>[A | b] 직접 고치기 (마지막 열 = b)</span><div class="mat rk-in" id="rk-k-in"></div></div>
+          <div class="rk-row"><button class="btn" id="rk-k-in-c">b를 열공간 안으로</button><button class="btn" id="rk-k-out-c">b를 바깥으로</button></div>
+        </div>
+      </div>
+      <div class="rk-cases-wrap"><table class="rk-cases" id="rk-k-tab">
+        <tr data-case="1"><td>r = m = n</td><td>언제나 해 하나</td></tr>
+        <tr data-case="2"><td>r = n &lt; m</td><td>해 0개 또는 1개</td></tr>
+        <tr data-case="3"><td>r = m &lt; n</td><td>언제나 해가 무수히</td></tr>
+        <tr data-case="4"><td>r &lt; m, r &lt; n</td><td>해 0개 또는 무수히</td></tr>
+      </table></div>
+      <div class="rk-note" id="rk-k-note">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">rank A</span><span class="v" id="rk-k-ra">—</span></div>
+        <div class="stat"><span class="k">rank [A | b]</span><span class="v" id="rk-k-rb">—</span></div>
+        <div class="stat"><span class="k">해</span><span class="v" id="rk-k-sol">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 6.4에서 b의 마지막 칸을 5에서 6으로 바꾸면 rank [A | b]가 3으로 늘며 해가 사라집니다. ② '세로로 긴 3×2'에서 '바깥으로'를 누르면 해가 없어지고, '안으로'를 누르면 정확히 하나가 됩니다. 무수히 많아지는 일은 없습니다. ③ '가로로 긴 2×3'에서는 b를 어떻게 바꿔도 해가 있습니다. 모델: [A | b]의 부분 피벗팅 RREF. '안으로'는 b = A·(무작위 정수 벡터), '바깥으로'는 b에 왼쪽 영공간 벡터를 더합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="rank-one">
+    <h2>계수 1 행렬과 수치 계수</h2>
+    <div class="problem"><strong>백만 개의 숫자를 이천 개로</strong>
+      <p>1,000×1,000 행렬의 모든 행이 한 행벡터의 배수라면, 숫자 백만 개를 저장할 필요가 있을까요? 행벡터 하나(1,000개)와 각 행의 배수(1,000개)만 있으면 됩니다. 계수가 작은 행렬은 겉보기보다 훨씬 작습니다. 그런데 실제 측정값에는 잡음이 섞여 "정확히 배수"인 경우가 없습니다. 그럴 때 계수는 몇이라고 말해야 할까요?</p></div>
+    <p>계수 1인 행렬은 모든 열이 한 벡터 \(\mathbf{u}\)의 배수이고, 그 배수들을 모으면 행벡터 \(\mathbf{v}^{\mathsf T}\)가 됩니다. 곧 열벡터와 행벡터의 곱, <span class="term">외적</span><span class="en">(outer product)</span>입니다(<a href="matrices.html#multiply">2장 3절</a>).</p>
+    <div class="callout"><strong>정리 6.10 (계수 1 행렬)</strong> \(A \ne 0\)의 계수가 1인 것은 \(A = \mathbf{u}\mathbf{v}^{\mathsf T}\) (\(\mathbf{u} \in \mathbb{R}^m, \mathbf{v} \in \mathbb{R}^n\), 둘 다 0이 아님)로 쓸 수 있는 것과 같다. 이때 \(C(A)\)는 \(\mathbf{u}\)가 놓인 직선, \(C(A^{\mathsf T})\)는 \(\mathbf{v}\)가 놓인 직선이고, \(A\mathbf{x} = \mathbf{u}(\mathbf{v}^{\mathsf T}\mathbf{x})\)는 "\(\mathbf{v}\) 방향 성분을 재서 \(\mathbf{u}\) 방향으로 내보내기"다. 저장에는 \(mn\)개 대신 \(m + n\)개면 된다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="계수 1 행렬 uvᵀ"><text x="110" y="40" class="t" text-anchor="middle" style="font-weight:700;fill:var(--accent-2)">u</text><text x="260" y="30" class="t" text-anchor="middle" style="font-weight:700;fill:var(--accent)">vᵀ = (2, 1, 0, 1, 3)</text><text x="172" y="58" class="t-mono" text-anchor="middle" style="fill:var(--accent)">2</text><text x="216" y="58" class="t-mono" text-anchor="middle" style="fill:var(--accent)">1</text><text x="260" y="58" class="t-mono" text-anchor="middle" style="fill:var(--accent)">0</text><text x="304" y="58" class="t-mono" text-anchor="middle" style="fill:var(--accent)">1</text><text x="348" y="58" class="t-mono" text-anchor="middle" style="fill:var(--accent)">3</text><text x="110" y="97" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">1</text><rect x="150" y="70" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.27"/><text x="170.5" y="96" class="t-mono" text-anchor="middle" style="font-weight:700">2</text><rect x="194" y="70" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.17"/><text x="214.5" y="96" class="t-mono" text-anchor="middle" style="font-weight:700">1</text><rect x="238" y="70" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.08"/><text x="258.5" y="96" class="t-mono" text-anchor="middle" style="font-weight:700">0</text><rect x="282" y="70" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.17"/><text x="302.5" y="96" class="t-mono" text-anchor="middle" style="font-weight:700">1</text><rect x="326" y="70" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.36"/><text x="346.5" y="96" class="t-mono" text-anchor="middle" style="font-weight:700">3</text><text x="110" y="141" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">2</text><rect x="150" y="114" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.46"/><text x="170.5" y="140" class="t-mono" text-anchor="middle" style="font-weight:700">4</text><rect x="194" y="114" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.27"/><text x="214.5" y="140" class="t-mono" text-anchor="middle" style="font-weight:700">2</text><rect x="238" y="114" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.08"/><text x="258.5" y="140" class="t-mono" text-anchor="middle" style="font-weight:700">0</text><rect x="282" y="114" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.27"/><text x="302.5" y="140" class="t-mono" text-anchor="middle" style="font-weight:700">2</text><rect x="326" y="114" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.65"/><text x="346.5" y="140" class="t-mono" text-anchor="middle" style="font-weight:700;fill:var(--on-accent)">6</text><text x="110" y="185" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">3</text><rect x="150" y="158" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.65"/><text x="170.5" y="184" class="t-mono" text-anchor="middle" style="font-weight:700;fill:var(--on-accent)">6</text><rect x="194" y="158" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.36"/><text x="214.5" y="184" class="t-mono" text-anchor="middle" style="font-weight:700">3</text><rect x="238" y="158" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.08"/><text x="258.5" y="184" class="t-mono" text-anchor="middle" style="font-weight:700">0</text><rect x="282" y="158" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.36"/><text x="302.5" y="184" class="t-mono" text-anchor="middle" style="font-weight:700">3</text><rect x="326" y="158" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.93"/><text x="346.5" y="184" class="t-mono" text-anchor="middle" style="font-weight:700;fill:var(--on-accent)">9</text><text x="110" y="229" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">2</text><rect x="150" y="202" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.46"/><text x="170.5" y="228" class="t-mono" text-anchor="middle" style="font-weight:700">4</text><rect x="194" y="202" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.27"/><text x="214.5" y="228" class="t-mono" text-anchor="middle" style="font-weight:700">2</text><rect x="238" y="202" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.08"/><text x="258.5" y="228" class="t-mono" text-anchor="middle" style="font-weight:700">0</text><rect x="282" y="202" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.27"/><text x="302.5" y="228" class="t-mono" text-anchor="middle" style="font-weight:700">2</text><rect x="326" y="202" width="41" height="41" rx="5" style="fill:var(--accent);opacity:0.65"/><text x="346.5" y="228" class="t-mono" text-anchor="middle" style="font-weight:700;fill:var(--on-accent)">6</text><text x="260" y="272" class="t-dim" text-anchor="middle">uvᵀ (4 × 5): 숫자 20개</text><text x="470" y="110" class="t" text-anchor="start" style="font-weight:700">모든 행 = uᵢ · vᵀ</text><text x="470" y="132" class="t" text-anchor="start" style="font-weight:700">모든 열 = vⱼ · u</text><text x="470" y="166" class="t-acc" text-anchor="start">계수 = 1</text><text x="470" y="190" class="t-dim" text-anchor="start">저장: u 4개 + v 5개 = 9개</text><text x="470" y="212" class="t-dim" text-anchor="start">가운데 열은 v₃ = 0이라 전부 0</text></svg>
+      <figcaption><b>그림 6-4.</b> 계수 1 행렬 uvᵀ의 모습. 칸 (i, j)의 값은 uᵢvⱼ이다. 모든 행은 vᵀ = (2, 1, 0, 1, 3)의 배수이고 모든 열은 u = (1, 2, 3, 2)의 배수라서, 색의 무늬가 가로·세로로 같은 모양을 되풀이한다. 숫자 20개를 9개로 저장할 수 있다.</figcaption>
+    </figure>
+    <p>계수 \(r\)인 행렬은 계수 1 행렬 \(r\)개의 합입니다. 사실 소거가 이미 그 분해를 줍니다. 예제 6.3의 피벗 열을 모은 \(C\)와 RREF의 0이 아닌 행을 모은 \(R\)을 곱하면 \(A\)가 그대로 나옵니다.</p>
+    <div class="formula">$$A = CR = \begin{bmatrix}1&0\\2&1\\3&1\end{bmatrix}\begin{bmatrix}1&2&0&1\\0&0&1&2\end{bmatrix} = \begin{bmatrix}1\\2\\3\end{bmatrix}\begin{bmatrix}1&2&0&1\end{bmatrix} + \begin{bmatrix}0\\1\\1\end{bmatrix}\begin{bmatrix}0&0&1&2\end{bmatrix}$$
+      <div class="where">\(C\)는 열공간의 기저(\(m \times r\)), \(R\)은 행공간의 기저(\(r \times n\)). \(R\)의 각 열은 "A의 그 열을 피벗 열로 어떻게 만드는가"를 적은 좌표다. 숫자 12개가 6 + 8 = 14개로 늘어 보이지만, 큰 행렬에서 \(r\)이 작으면 \(r(m + n) \ll mn\)이다.</div>
+    </div>
+    <h3 id="numerical-rank">수치 계수: 잡음 속에서 계수 세기</h3>
+    <p>정확한 산수에서 계수는 정수이고 명확합니다. 하지만 부동소수점에서는 정확히 0인 피벗이 거의 나오지 않습니다. 세 번째 센서가 "거의" 앞 두 센서의 합이라면, 피벗은 0이 아니라 \(10^{-15}\)이나 \(10^{-6}\) 같은 작은 수가 됩니다. 이것을 0으로 볼지는 <b>허용 오차</b>를 정해야 판단할 수 있습니다. 실무에서는 피벗보다 믿을 만한 지표로 <b>특이값</b> \(\sigma_1 \ge \sigma_2 \ge \cdots \ge 0\)을 씁니다. 행렬이 공간을 각 방향으로 늘이는 배율이며, 0에 가까운 특이값의 개수가 "거의 사라지는 방향"의 수입니다(<a href="svd.html">14장</a>).</p>
+    <div class="callout"><strong>정의 6.5 (수치 계수)</strong> 허용 오차 \(\tau\)에 대해 \(\sigma_i > \tau\,\sigma_1\)인 특이값의 개수를 <span class="term">수치 계수</span><span class="en">(numerical rank)</span>라 한다. 배정밀도 계산에서 흔히 \(\tau \approx \max(m, n)\cdot 2.2\times 10^{-16}\)를 쓰고, 측정 데이터에서는 잡음 수준에 맞춰 더 크게 잡는다.</div>
+
+    <div class="sim" id="sim-rk-numrank">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거의 종속인 센서: 수치 계수는 허용 오차가 정한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rk-cv-nr"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>센서 3의 독립 성분 ε <output id="rk-n-eps-out"></output></span><input type="range" id="rk-n-eps"></label>
+          <label class="ctrl"><span>허용 오차 τ (σ₁ 대비) <output id="rk-n-tol-out"></output></span><input type="range" id="rk-n-tol"></label>
+          <label class="check"><input type="checkbox" id="rk-n-noise"> 세 센서 모두에 측정 잡음(표준 편차 10⁻³) 더하기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">소거의 피벗 |u₁₁|, |u₂₂|, |u₃₃|</span><span class="v" id="rk-n-piv">—</span></div>
+        <div class="stat"><span class="k">특이값 σ₁, σ₂, σ₃</span><span class="v" id="rk-n-sig">—</span></div>
+        <div class="stat"><span class="k">수치 계수</span><span class="v" id="rk-n-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ε = 0이어도 σ₃가 정확히 0이 아니라 10⁻¹⁶ 근처입니다. 부동소수점의 반올림입니다. τ를 10⁻¹⁴ 아래로 내리면 계수가 3으로 잘못 세어집니다. ② ε를 10⁻⁶으로 두고 τ를 10⁻⁸과 10⁻⁴ 사이에서 움직이면 계수가 3과 2 사이를 오갑니다. "센서 3은 새 정보인가"는 허용 오차를 정해야 답할 수 있습니다. ③ 잡음을 켜면 σ₃가 잡음 수준(약 10⁻³)까지 올라옵니다. 이 밑의 차이는 측정으로 구별할 수 없습니다. 모델: 6회 측정 × 센서 3개 행렬. 센서 3 = 센서 1 + 센서 2 + ε·(고정된 무늬). 특이값은 단측 야코비 SVD, 피벗은 부분 피벗팅 소거.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="graphs">
+    <h2>응용: 회로의 독립 루프 세기</h2>
+    <div class="problem"><strong>키르히호프의 질문</strong>
+      <p>마디 N개, 가지 E개인 회로에서 전류 법칙(KCL)과 전압 법칙(KVL)을 세우면 식이 몇 개 필요할까요? 고리는 셀 수 없이 많이 그릴 수 있지만, 그중 독립인 것은 몇 개일까요? 이 장의 도구로 답이 한 줄에 나옵니다.</p></div>
+    <p>회로를 <b>그래프</b>로 보고, 가지마다 임의로 방향을 정합니다. 가지 k가 마디 i에서 j로 가면 행렬의 k행에 i열은 −1, j열은 +1을 적습니다. 이것이 E×N <span class="term">연결 행렬</span><span class="en">(incidence matrix)</span> \(A\)입니다. 네 부분공간이 모두 물리적인 뜻을 가집니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 320" role="img" aria-label="마디 4개 가지 5개 회로와 연결 행렬"><defs><marker id="rk-ah-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker><marker id="rk-ah-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker><marker id="rk-ah-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker><marker id="rk-ah-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="rk-ah-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="rk-ah-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs><polygon points="90,70 290,70 90,250" style="fill:var(--accent);opacity:.12"/><polygon points="290,70 290,250 90,250" style="fill:var(--accent-2);opacity:.12"/><text x="150" y="130" class="t-dim" text-anchor="middle">고리 ①</text><text x="235" y="205" class="t-dim" text-anchor="middle">고리 ②</text><line x1="108" y1="70" x2="270" y2="70" style="stroke:var(--text);stroke-width:2.2" marker-end="url(#rk-ah-t)"/><text x="190" y="88" class="t" text-anchor="middle" style="font-weight:700">e<tspan baseline-shift="sub" font-size="9">1</tspan></text><line x1="290" y1="88" x2="290" y2="230" style="stroke:var(--text);stroke-width:2.2" marker-end="url(#rk-ah-t)"/><text x="276" y="164" class="t" text-anchor="middle" style="font-weight:700">e<tspan baseline-shift="sub" font-size="9">2</tspan></text><line x1="272" y1="250" x2="110" y2="250" style="stroke:var(--text);stroke-width:2.2" marker-end="url(#rk-ah-t)"/><text x="190" y="240" class="t" text-anchor="middle" style="font-weight:700">e<tspan baseline-shift="sub" font-size="9">3</tspan></text><line x1="90" y1="88" x2="90" y2="230" style="stroke:var(--text);stroke-width:2.2" marker-end="url(#rk-ah-t)"/><text x="76" y="164" class="t" text-anchor="middle" style="font-weight:700">e<tspan baseline-shift="sub" font-size="9">4</tspan></text><line x1="276.6" y1="82" x2="104.9" y2="236.6" style="stroke:var(--text);stroke-width:2.2" marker-end="url(#rk-ah-t)"/><text x="180.6" y="153.6" class="t" text-anchor="middle" style="font-weight:700">e<tspan baseline-shift="sub" font-size="9">5</tspan></text><circle cx="90" cy="70" r="15" class="f-elev" style="stroke:var(--text);stroke-width:1.5"/><text x="90" y="75" class="t" text-anchor="middle" style="font-weight:700">1</text><circle cx="290" cy="70" r="15" class="f-elev" style="stroke:var(--text);stroke-width:1.5"/><text x="290" y="75" class="t" text-anchor="middle" style="font-weight:700">2</text><circle cx="290" cy="250" r="15" class="f-elev" style="stroke:var(--text);stroke-width:1.5"/><text x="290" y="255" class="t" text-anchor="middle" style="font-weight:700">3</text><circle cx="90" cy="250" r="15" class="f-elev" style="stroke:var(--text);stroke-width:1.5"/><text x="90" y="255" class="t" text-anchor="middle" style="font-weight:700">4</text><text x="562" y="50" class="t" text-anchor="middle" style="font-weight:700">연결 행렬 A (5 × 4)</text><text x="493" y="72" class="t-dim" text-anchor="middle" style="font-size:11px">마디 1</text><text x="539" y="72" class="t-dim" text-anchor="middle" style="font-size:11px">마디 2</text><text x="585" y="72" class="t-dim" text-anchor="middle" style="font-size:11px">마디 3</text><text x="631" y="72" class="t-dim" text-anchor="middle" style="font-size:11px">마디 4</text><text x="454" y="103" class="t" text-anchor="end">e<tspan baseline-shift="sub" font-size="9">1</tspan></text><text x="493" y="103" class="t-mono" text-anchor="middle" style="fill:var(--bad);font-weight:700">−1</text><text x="539" y="103" class="t-mono" text-anchor="middle" style="fill:var(--ok);font-weight:700">1</text><text x="585" y="103" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="631" y="103" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="454" y="139" class="t" text-anchor="end">e<tspan baseline-shift="sub" font-size="9">2</tspan></text><text x="493" y="139" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="539" y="139" class="t-mono" text-anchor="middle" style="fill:var(--bad);font-weight:700">−1</text><text x="585" y="139" class="t-mono" text-anchor="middle" style="fill:var(--ok);font-weight:700">1</text><text x="631" y="139" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="454" y="175" class="t" text-anchor="end">e<tspan baseline-shift="sub" font-size="9">3</tspan></text><text x="493" y="175" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="539" y="175" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="585" y="175" class="t-mono" text-anchor="middle" style="fill:var(--bad);font-weight:700">−1</text><text x="631" y="175" class="t-mono" text-anchor="middle" style="fill:var(--ok);font-weight:700">1</text><text x="454" y="211" class="t" text-anchor="end">e<tspan baseline-shift="sub" font-size="9">4</tspan></text><text x="493" y="211" class="t-mono" text-anchor="middle" style="fill:var(--bad);font-weight:700">−1</text><text x="539" y="211" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="585" y="211" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="631" y="211" class="t-mono" text-anchor="middle" style="fill:var(--ok);font-weight:700">1</text><text x="454" y="247" class="t" text-anchor="end">e<tspan baseline-shift="sub" font-size="9">5</tspan></text><text x="493" y="247" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="539" y="247" class="t-mono" text-anchor="middle" style="fill:var(--bad);font-weight:700">−1</text><text x="585" y="247" class="t-mono" text-anchor="middle" style="fill:var(--text-faint);font-weight:700">0</text><text x="631" y="247" class="t-mono" text-anchor="middle" style="fill:var(--ok);font-weight:700">1</text><path d="M466 82h-6v176h6M658 82h6v176h-6" fill="none" class="s-line"/><text x="562" y="284" class="t-dim" text-anchor="middle">행 = 가지 (출발 −1, 도착 +1), 계수 r = N − 1 = 3</text><text x="562" y="304" class="t-acc" text-anchor="middle">독립 루프 = E − r = 5 − 3 = 2</text></svg>
+      <figcaption><b>그림 6-5.</b> 마디 4개, 가지 5개인 회로(사각형과 대각선)와 그 연결 행렬. 대각선 e₅가 사각형을 두 고리로 나눈다. 독립 루프는 E − N + 1 = 5 − 4 + 1 = 2개이고, 바깥 큰 고리는 두 작은 고리의 합이라 새 식을 주지 않는다.</figcaption>
+    </figure>
+    <div class="table-wrap"><table>
+      <thead><tr><th>부분공간</th><th>회로에서의 뜻</th><th class="num">차원 (연결 그래프)</th></tr></thead>
+      <tbody>
+        <tr><td>\(N(A)\): \(A\mathbf{x} = \mathbf{0}\)</td><td>\(A\mathbf{x}\)는 각 가지의 전위차. 전위차가 모두 0이면 모든 마디의 전위가 같다. 영공간 = 상수 벡터 \((1, \dots, 1)\)</td><td class="num">1</td></tr>
+        <tr><td>\(C(A^{\mathsf T})\)</td><td>나머지 차원. 접지 하나를 정하면 남는 독립 전위의 수</td><td class="num">N − 1</td></tr>
+        <tr><td>\(N(A^{\mathsf T})\): \(A^{\mathsf T}\mathbf{y} = \mathbf{0}\)</td><td>\(A^{\mathsf T}\mathbf{y}\)는 각 마디로 들어온 알짜 전류. 0이면 KCL을 만족하는 가지 전류 = <b>루프 전류</b></td><td class="num">E − N + 1</td></tr>
+        <tr><td>\(C(A)\)</td><td>실현 가능한 전위차 패턴. 루프 전류와 수직 = 고리를 한 바퀴 돌면 전위차의 합이 0 (KVL)</td><td class="num">N − 1</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><strong>정리 6.11 (독립 루프의 수)</strong> 마디 N개, 가지 E개, 연결 성분 c개인 그래프의 연결 행렬은 계수가 \(r = N - c\)이고, 독립인 루프의 수는
+      $$\dim N(A^{\mathsf T}) = E - r = E - N + c$$
+      이다. 연결된 회로(\(c = 1\))면 \(E - N + 1\)이다.
+      <p><i>증명의 핵심.</i> \(A\mathbf{x} = \mathbf{0}\)이면 가지로 이어진 두 마디의 전위가 같으므로, 연결 성분마다 전위가 상수다. 따라서 \(\dim N(A) = c\)이고, 계수–퇴화차수 정리로 \(r = N - c\). 왼쪽 영공간의 차원은 \(E - r\)이다. ∎</p></div>
+    <p>그래프에서 고리를 하나도 만들지 않으면서 모든 마디를 잇는 가지 집합을 <b>생성 나무</b><span class="en">(spanning tree)</span>라 합니다. 나무에 들지 않은 가지 하나를 더할 때마다 정확히 하나의 고리가 생기고, 그렇게 얻은 \(E - N + 1\)개의 <b>기본 고리</b>가 루프 공간의 기저가 됩니다. 이것이 키르히호프가 1847년에 쓴 방법이고, 회로 시뮬레이터가 KVL 식을 고르는 방법입니다. 아래에서 가지를 눌러 켜고 끄며 확인해 보세요.</p>
+
+    <div class="sim" id="sim-rk-graph">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가지를 켜고 끄며 독립 루프 세기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rk-cv-gr"></canvas><span class="tag-tl">가지(선)를 눌러 켜고 끄기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="rk-g-pre">
+            <option value="fig">그림 6-5 (사각형 + 대각선)</option>
+            <option value="tree">생성 나무 (루프 0)</option>
+            <option value="wheel">바퀴 (테두리 + 바큇살)</option>
+            <option value="full">완전 연결</option>
+            <option value="two">끊어진 두 조각</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="rk-g-tree" checked> 생성 나무 강조</label>
+          <label class="check"><input type="checkbox" id="rk-g-mat"> 연결 행렬 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">마디 N · 가지 E · 성분 c</span><span class="v" id="rk-g-nec">—</span></div>
+        <div class="stat"><span class="k">rank A (소거로 계산)</span><span class="v" id="rk-g-r">—</span></div>
+        <div class="stat"><span class="k">독립 루프 E − r</span><span class="v" id="rk-g-l">—</span></div>
+      </div>
+      <div class="rk-loops" id="rk-g-loops">—</div>
+      <div class="rk-inc" id="rk-g-inc" hidden></div>
+      <div class="sim-note">해볼 것: ① '생성 나무'에서 가지를 하나 더할 때마다 루프가 정확히 하나씩 늘어납니다. ② 사각형의 대각선을 끄고 켜며 루프 수가 1과 2를 오가는지 보세요. ③ '끊어진 두 조각'에서는 계수가 N − 2가 됩니다. 성분마다 전위를 하나씩 따로 정할 수 있기 때문입니다. 모델: 가지 방향은 번호가 작은 마디에서 큰 마디로. 계수는 연결 행렬을 실제로 소거해 세고, 기본 고리는 너비 우선 탐색으로 만든 생성 나무에서 찾습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>계수와 차원은 "얼마나 많은 정보가 있는가"를 묻는 모든 곳에 나옵니다. 이 책의 다음 장들과 시리즈의 다른 책에서 다시 만납니다.</p>
+    <div class="uses">
+      <a href="subspaces.html"><small>LINEARBOOK · 5장</small>벡터 공간과 부분공간<br><span>열공간·영공간의 정의, RREF와 Ax = b의 완전한 해.</span></a>
+      <a href="orthogonality.html"><small>LINEARBOOK · 8장</small>직교성과 사영<br><span>열 완전 계수일 때 AᵀA가 가역이 되고 최소제곱 해가 유일해진다.</span></a>
+      <a href="svd.html"><small>LINEARBOOK · 14장</small>특이값 분해<br><span>네 부분공간의 정규직교 기저를 한 번에 주고, 수치 계수와 저랭크 근사를 정확히 정의한다.</span></a>
+      <a href="../../foundations/chapters/linalg.html"><small>MATHBOOK</small>행렬은 변환이다<br><span>det = 0이면 공간이 납작해진다. 계수는 납작해진 뒤 남는 차원이다.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>설명 변수가 서로 거의 종속이면(다중공선성) 계수가 무너지고 회귀 계수가 불안정해진다.</span></a>
+      <a href="https://semi.euiyun.com/analog/"><small>ANALOGBOOK</small>아날로그 회로<br><span>노드·메시 해석에서 필요한 식의 수는 연결 행렬의 계수와 루프 공간의 차원이 정한다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>열벡터들이 <b>독립</b> ⟺ \(A\mathbf{x} = \mathbf{0}\)의 해가 0뿐 ⟺ 모든 열에 피벗. ℝᵐ의 벡터가 m개를 넘으면 반드시 종속이다.</li>
+      <li><b>기저</b> = 생성 + 독립. 기저가 있으면 좌표는 하나뿐이고, 좌표를 구하는 일은 \(B\mathbf{c} = \mathbf{x}\)를 푸는 일이다. 한 공간에 기저는 무수히 많다.</li>
+      <li>한 공간의 모든 기저는 크기가 같고 그 수가 <b>차원</b>이다. 차원이 k인 공간에서 k개의 벡터는 독립이거나 생성하기만 하면 기저다.</li>
+      <li><b>계수 r</b> = 피벗 수 = dim C(A) = dim C(Aᵀ). A의 피벗 열이 열공간의 기저, R의 0이 아닌 행이 행공간의 기저다. 행 계수 = 열 계수.</li>
+      <li><b>네 부분공간</b>의 차원은 r, n − r, r, m − r. ℝⁿ에서 N(A) ⟂ C(Aᵀ), ℝᵐ에서 N(Aᵀ) ⟂ C(A). <b>계수–퇴화차수</b>: rank A + dim N(A) = n.</li>
+      <li>\(A\mathbf{x} = \mathbf{b}\)는 \(\mathbf{b} \in C(A)\)일 때만 풀리고, 해는 \(\mathbf{x}_p + N(A)\). r = m = n: 하나, r = n &lt; m: 0 또는 1, r = m &lt; n: 무수히, 그 밖: 0 또는 무수히.</li>
+      <li>계수 1 행렬은 \(\mathbf{u}\mathbf{v}^{\mathsf T}\)이고, 계수 r 행렬은 A = CR로 계수 1 행렬 r개의 합이다. 부동소수점에서는 허용 오차를 정한 <b>수치 계수</b>(특이값으로 센다)를 쓴다.</li>
+      <li>연결 행렬의 계수는 N − c, 독립 루프 수는 E − N + c. 키르히호프의 고리 방정식 수가 바로 왼쪽 영공간의 차원이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. ℝ⁴의 벡터 5개는?</p><div class="opts">
+        <button class="opt">항상 독립이다</button>
+        <button class="opt" data-correct>항상 종속이다</button>
+        <button class="opt">독립일 수도, 종속일 수도 있다</button>
+        <button class="opt">ℝ⁴를 항상 생성한다</button>
+      </div><div class="quiz-exp">정리 6.1. 4×5 행렬의 피벗은 최대 4개이므로 자유 변수가 적어도 하나 있어 Ax = 0의 0이 아닌 해가 생긴다. 생성은 보장되지 않는다. 5개가 모두 한 평면 위에 있을 수도 있다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\mathbf{b}_1 = (1, 1),\ \mathbf{b}_2 = (1, -1)\)을 기저로 할 때 \(\mathbf{x} = (5, 1)\)의 좌표는?</p><div class="opts">
+        <button class="opt">(5, 1)</button>
+        <button class="opt" data-correct>(3, 2)</button>
+        <button class="opt">(2, 3)</button>
+        <button class="opt">(6, 4)</button>
+      </div><div class="quiz-exp">c₁ + c₂ = 5, c₁ − c₂ = 1을 풀면 c₁ = 3, c₂ = 2. 검산: 3(1, 1) + 2(1, −1) = (5, 1).</div></div>
+
+      <div class="quiz-q"><p>Q3. 5×7 행렬의 계수가 3이다. 영공간과 왼쪽 영공간의 차원은?</p><div class="opts">
+        <button class="opt">dim N(A) = 2, dim N(Aᵀ) = 4</button>
+        <button class="opt" data-correct>dim N(A) = 4, dim N(Aᵀ) = 2</button>
+        <button class="opt">dim N(A) = 3, dim N(Aᵀ) = 3</button>
+        <button class="opt">dim N(A) = 7, dim N(Aᵀ) = 5</button>
+      </div><div class="quiz-exp">m = 5, n = 7, r = 3. N(A) ⊂ ℝ⁷이고 차원 n − r = 4. N(Aᵀ) ⊂ ℝ⁵이고 차원 m − r = 2. 행공간과 열공간은 둘 다 3이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 열공간의 기저로 쓸 수 있는 것은?</p><div class="opts">
+        <button class="opt">RREF R의 피벗 열</button>
+        <button class="opt" data-correct>원래 행렬 A의 피벗 열</button>
+        <button class="opt">R의 0이 아닌 행</button>
+        <button class="opt">A의 모든 열</button>
+      </div><div class="quiz-exp">행 연산은 열들의 선형 관계는 지키지만 열공간 자체는 바꾼다. 예제 6.3에서 R의 열은 모두 셋째 성분이 0이지만 A의 열공간에는 셋째 성분이 0이 아닌 벡터가 있다. 피벗이 어느 열에 있는지는 R로 알고, 기저 벡터는 A에서 가져온다. R의 0이 아닌 행은 행공간의 기저다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 10×6 행렬 A의 계수가 6이다. 옳은 것은?</p><div class="opts">
+        <button class="opt">모든 b에 대해 Ax = b의 해가 있다</button>
+        <button class="opt">Ax = b의 해는 항상 무수히 많다</button>
+        <button class="opt" data-correct>Ax = b의 해는 없거나 정확히 하나다</button>
+        <button class="opt">A는 가역이다</button>
+      </div><div class="quiz-exp">r = n = 6 &lt; m = 10: 열 완전 계수. 영공간이 {0}이라 해가 있다면 유일하지만, 열공간은 ℝ¹⁰ 안의 6차원 부분공간이라 대부분의 b는 닿지 않는다. 그럴 때 가장 가까운 답을 찾는 것이 8장의 최소제곱이다. 정사각이 아니므로 가역이 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(A = \mathbf{u}\mathbf{v}^{\mathsf T}\)이고 \(\mathbf{u} = (1, 2, 3)\), \(\mathbf{v} = (1, 0, -1, 2)\)이다. 옳지 <b>않은</b> 것은?</p><div class="opts">
+        <button class="opt">A는 3×4이고 계수는 1이다</button>
+        <button class="opt">A의 모든 열은 (1, 2, 3)의 배수다</button>
+        <button class="opt" data-correct>dim N(A) = 1이다</button>
+        <button class="opt">x가 v와 수직이면 Ax = 0이다</button>
+      </div><div class="quiz-exp">dim N(A) = n − r = 4 − 1 = 3이다. Ax = u(vᵀx)이므로 vᵀx = 0인 x, 즉 v와 수직인 ℝ⁴의 3차원 공간 전체가 영공간이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 마디 6개, 가지 9개인 연결된 회로에서 독립인 KVL(고리) 방정식은 몇 개인가?</p><div class="opts">
+        <button class="opt">3개</button>
+        <button class="opt" data-correct>4개</button>
+        <button class="opt">5개</button>
+        <button class="opt">9개</button>
+      </div><div class="quiz-exp">E − N + 1 = 9 − 6 + 1 = 4. 연결 행렬(9×6)의 계수는 N − 1 = 5이고, 왼쪽 영공간(루프 전류의 공간)의 차원은 E − r = 4다. 독립인 KCL 방정식은 N − 1 = 5개다. 합하면 미지수(가지 전류) 9개와 꼭 맞는다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 측정 행렬의 특이값이 4.1, 0.9, 3×10⁻⁷이고 측정 잡음 수준이 약 10⁻³이다. 이 데이터의 실질적인 계수는?</p><div class="opts">
+        <button class="opt">3. 특이값이 0이 아니므로</button>
+        <button class="opt" data-correct>2. 세 번째 방향은 잡음보다 훨씬 작아 구별할 수 없다</button>
+        <button class="opt">1. 가장 큰 특이값만 의미가 있다</button>
+        <button class="opt">알 수 없다. 피벗을 봐야 한다</button>
+      </div><div class="quiz-exp">수치 계수는 허용 오차가 정한다. 3×10⁻⁷은 잡음(10⁻³)보다 수천 배 작으므로 그 방향의 "정보"는 측정으로 확인할 수 없다. 0.9는 잡음보다 훨씬 커서 진짜 방향이다. 피벗도 비슷한 정보를 주지만 특이값이 더 믿을 만한 지표다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const RK = {
+  TOL: 1e-9,
+  SUB: "₀₁₂₃₄₅₆₇₈₉",
+  sub(n) { return String(n).split("").map((d) => RK.SUB[+d]).join(""); },
+  minus(s) { return String(s).replace(/-/g, "−"); },
+  num(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) return "0";
+    return RK.minus(String(Number(v.toFixed(d))));
+  },
+  sci(v) {
+    if (v === 0) return "0";
+    const e = Math.floor(Math.log10(Math.abs(v))), m = v / Math.pow(10, e);
+    if (e >= -2 && e <= 2) return RK.num(v, 3);
+    const sup = String(e).split("").map((c) => (c === "-" ? "⁻" : "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c])).join("");
+    return `${m.toFixed(1)}×10${sup}`;
+  },
+  denom(v) { for (let q = 1; q <= 12; q++) if (Math.abs(Math.round(v * q) / q - v) < 1e-9) return q; return 0; },
+  frac(v) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 1e-9) return "0";
+    const q = RK.denom(v);
+    if (q === 1) return RK.minus(String(Math.round(v)));
+    if (q) return RK.minus(Math.round(v * q) + "/" + q);
+    return RK.num(v, 3);
+  },
+  /** 분수 성분의 벡터를 서로소 정수 벡터로(첫 0이 아닌 성분을 양수로). 안 되면 null */
+  intVec(v) {
+    const g = (a, b) => (b ? g(b, a % b) : a);
+    let L = 1;
+    for (const x of v) { const q = RK.denom(x); if (!q) return null; L = (L * q) / g(L, q); }
+    let w = v.map((x) => Math.round(x * L));
+    const G = w.reduce((a, b) => g(a, Math.abs(b)), 0) || 1;
+    w = w.map((x) => x / G);
+    const f = w.find((x) => x !== 0);
+    return f < 0 ? w.map((x) => -x) : w;
+  },
+  T(A) { return A[0].map((_, j) => A.map((r) => r[j])); },
+  mulv(A, x) { return A.map((r) => r.reduce((s, a, j) => s + a * x[j], 0)); },
+  dot(a, b) { return a.reduce((s, x, i) => s + x * b[i], 0); },
+  norm(a) { return Math.sqrt(RK.dot(a, a)); },
+  /** 부분 피벗팅 RREF → { R, piv: 피벗 열 번호들, rank } */
+  rref(A, tol = RK.TOL) {
+    const R = A.map((r) => r.slice()), m = R.length, n = R[0].length, piv = [];
+    const scale = Math.max(1, ...A.flat().map(Math.abs));
+    let r = 0;
+    for (let c = 0; c < n && r < m; c++) {
+      let p = r, best = Math.abs(R[r][c]);
+      for (let i = r + 1; i < m; i++) if (Math.abs(R[i][c]) > best) { best = Math.abs(R[i][c]); p = i; }
+      if (best <= tol * scale) { for (let i = r; i < m; i++) R[i][c] = 0; continue; }
+      [R[r], R[p]] = [R[p], R[r]];
+      const pv = R[r][c];
+      for (let j = 0; j < n; j++) R[r][j] /= pv;
+      for (let i = 0; i < m; i++) if (i !== r) { const f = R[i][c]; if (f) for (let j = 0; j < n; j++) R[i][j] -= f * R[r][j]; }
+      piv.push(c); r++;
+    }
+    R.forEach((row) => row.forEach((v, j) => { if (Math.abs(v) < 1e-12) row[j] = 0; }));
+    return { R, piv, rank: piv.length };
+  },
+  /** 영공간의 특수해 기저 */
+  nullBasis(A, tol) {
+    const { R, piv } = RK.rref(A, tol), n = A[0].length;
+    const free = [...Array(n).keys()].filter((j) => !piv.includes(j));
+    return free.map((f) => { const x = Array(n).fill(0); x[f] = 1; piv.forEach((pc, i) => { x[pc] = -R[i][f]; }); return x; });
+  },
+  /** 그람–슈미트 정규직교화 (거의 종속인 벡터는 버림) */
+  orth(vs) {
+    const Q = [];
+    vs.forEach((v) => { let w = v.slice(); Q.forEach((q) => { const c = RK.dot(w, q); w = w.map((x, i) => x - c * q[i]); }); const L = RK.norm(w); if (L > 1e-9) Q.push(w.map((x) => x / L)); });
+    return Q;
+  },
+  mat(M, o = {}) {
+    const n = M[0].length, pc = o.pcols || [], pv = o.pivots || [], pr = o.prows || [];
+    return `<span class="rk-m" style="--c:${n}">` + M.map((r, i) => r.map((v, j) => {
+      const cls = [pv.some(([a, b]) => a === i && b === j) ? "pv" : pc.includes(j) ? "pc" : pr.includes(i) ? "pr" : "", o.aug === j ? "aug" : "", Math.abs(v) < 1e-12 ? "z" : ""].filter(Boolean).join(" ");
+      return `<span class="${cls}">${RK.frac(v)}</span>`;
+    }).join("")).join("") + "</span>";
+  },
+  colv(v) { return `<span class="rk-m rk-v" style="--c:1">${v.map((x) => `<span${Math.abs(x) < 1e-12 ? ' class="z"' : ""}>${RK.frac(x)}</span>`).join("")}</span>`; },
+  vecs(list) { return list.length ? `<div class="vs">${list.map((v) => RK.colv(v)).join("")}</div>` : '<span class="rk-empty">{ 0 } 뿐 (기저는 빈 집합)</span>'; },
+  tuple(v, d = 2) { return "(" + v.map((x) => RK.num(x, d)).join(", ") + ")"; },
+  parse(el) { const v = parseFloat(String(el.value).replace("−", "-")); return isFinite(v) ? v : 0; },
+  /** 입력 칸 격자 만들기: rows×cols, rhs = 마지막 열을 우변으로 칠하기 */
+  grid(el, M, onInput, rhs = false) {
+    const n = M[0].length;
+    el.style.setProperty("--n", n);
+    el.innerHTML = M.map((r, i) => r.map((v, j) => `<input data-i="${i}" data-j="${j}" value="${RK.frac(v).replace("−", "-")}" inputmode="decimal" aria-label="(${i + 1}, ${j + 1})"${rhs && j === n - 1 ? ' class="rhs"' : ""}>`).join("")).join("");
+    el.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", () => onInput(+inp.dataset.i, +inp.dataset.j, RK.parse(inp))));
+  },
+  /** 3차원 정사영 그리기 도구 */
+  scene(ctx, w, h, az, el, span) {
+    const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+    const u = Math.min(w, h * 1.15) / span, ox = w / 2, oy = h * 0.58;
+    const S = (p) => { const x1 = p[0] * ca - p[1] * sa, y1 = p[0] * sa + p[1] * ca; return [ox + x1 * u, oy - (p[2] * ce + y1 * se) * u]; };
+    const font = getComputedStyle(document.body).getPropertyValue("--font");
+    const api = {
+      S,
+      seg(a, b, col, wd = 1, dash, alpha = 1) { const [x1, y1] = S(a), [x2, y2] = S(b); ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); },
+      arrow(v, col, lab, from = [0, 0, 0], wd = 3) {
+        const [x1, y1] = S(from), [x2, y2] = S([from[0] + v[0], from[1] + v[1], from[2] + v[2]]), L = Math.hypot(x2 - x1, y2 - y1);
+        ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (L > 6) { const ux = (x2 - x1) / L, uy = (y2 - y1) / L, hd = 10; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - ux * hd - uy * hd * 0.45, y2 - uy * hd + ux * hd * 0.45); ctx.lineTo(x2 - ux * hd + uy * hd * 0.45, y2 - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill(); }
+        if (lab) { ctx.fillStyle = col; ctx.font = "700 13px " + font; ctx.fillText(lab, x2 + 6, y2 - 6); }
+        ctx.restore();
+      },
+      poly(pts, col, alpha) { ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.beginPath(); pts.forEach((p, i) => { const [x, y] = S(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.fill(); ctx.restore(); },
+      /** 두 정규직교 벡터 p, q가 펼치는 평면 조각 */
+      plane(p, q, L, col, alpha) {
+        const c = (a, b) => [a * p[0] + b * q[0], a * p[1] + b * q[1], a * p[2] + b * q[2]];
+        api.poly([c(-L, -L), c(L, -L), c(L, L), c(-L, L)], col, alpha);
+        for (let k = -2; k <= 2; k++) { api.seg(c(k * L / 2, -L), c(k * L / 2, L), col, 1, null, 0.35); api.seg(c(-L, k * L / 2), c(L, k * L / 2), col, 1, null, 0.35); }
+      },
+      line(d, L, col, wd = 2, alpha = 0.8) { const n = RK.norm(d) || 1; api.seg(d.map((x) => (-L * x) / n), d.map((x) => (L * x) / n), col, wd, null, alpha); },
+      axes(C, L) {
+        for (let i = -2; i <= 2; i++) { api.seg([i, -2, 0], [i, 2, 0], C.grid, 1); api.seg([-2, i, 0], [2, i, 0], C.grid, 1); }
+        [[L, 0, 0], [0, L, 0], [0, 0, L]].forEach((v, k) => { api.seg([0, 0, 0], v, C.axis, 1.2); const [x, y] = S(v); ctx.fillStyle = C.dim; ctx.font = "12px " + font; ctx.fillText(["x₁", "x₂", "x₃"][k], x + 4, y - 2); });
+      },
+    };
+    return api;
+  },
+  /** 캔버스를 좌우로 끌어 시점 돌리기 */
+  dragRotate(canvas, get, set) {
+    let x0 = null, a0 = 0;
+    canvas.addEventListener("pointerdown", (e) => { x0 = e.clientX; a0 = get(); });
+    addEventListener("pointermove", (e) => { if (x0 === null) return; set(a0 + (e.clientX - x0) * 0.6); });
+    addEventListener("pointerup", () => { x0 = null; });
+    addEventListener("pointercancel", () => { x0 = null; });
+  },
+};
+
+/* ================================================================ 1. 세 벡터는 독립인가 */
+(function () {
+  const PRE = {
+    ind: [[1.5, 0, 0], [0.5, 1.5, 0], [0.3, 0.4, 1.5]],
+    ex: [[1, 2, 0], [0, 1, 1], [2, 5, 1]],
+    plane: [[1.5, 0.3, 0.2], [0.2, 1.4, 0.6], [0.85, 0.85, 0.4]],
+    line: [[1, 1, 0.5], [-2, -2, -1], [0.5, 0.5, 0.25]],
+    zero: [[1.2, 0.2, 0.4], [0.1, 1.3, 0.5], [0, 0, 0]],
+  };
+  let V = PRE.ind.map((v) => v.slice()); // V[j] = v_j
+  const inEl = document.getElementById("rk-i-in"), sel = document.getElementById("rk-i-pre");
+  const az = MB.range("rk-i-az", (v) => v + "°", () => cv.redraw());
+  let state = { rank: 3, piv: [0, 1, 2] };
+  function analyse() {
+    const A = RK.T(V); // 열 = v_j
+    const { piv, rank } = RK.rref(A);
+    state = { rank, piv, A };
+  }
+  analyse();
+  const cv = MB.canvas("#rk-cv-ind", (ctx, w, h) => {
+    const C = MB.palette(), maxN = Math.max(1.5, ...V.map(RK.norm));
+    const span = Math.max(5, maxN * 2.6);
+    const sc = RK.scene(ctx, w, h, az() * Math.PI / 180, 0.42, span);
+    sc.axes(C, 2.2);
+    const cols = [C.red, C.green, C.blue], L = maxN * 1.1;
+    if (state.rank === 3) {
+      // 평행육면체 모서리
+      const [a, b, c] = V, add = (...xs) => xs.reduce((s, x) => s.map((t, i) => t + x[i]), [0, 0, 0]);
+      const P = [[0, 0, 0], a, b, c, add(a, b), add(a, c), add(b, c), add(a, b, c)];
+      [[0, 1], [0, 2], [0, 3], [1, 4], [1, 5], [2, 4], [2, 6], [3, 5], [3, 6], [4, 7], [5, 7], [6, 7]].forEach(([i, j]) => sc.seg(P[i], P[j], C.accent, 1.2, [4, 3], 0.7));
+      sc.poly([P[0], P[1], P[4], P[2]], C.accent, 0.12);
+    } else if (state.rank === 2) {
+      const Q = RK.orth(state.piv.map((j) => V[j]));
+      sc.plane(Q[0], Q[1], L, C.accent, 0.16);
+    } else if (state.rank === 1) {
+      sc.line(V[state.piv[0]], L * 1.4, C.accent, 2.5, 0.8);
+    }
+    V.forEach((v, j) => sc.arrow(v, cols[j], "v" + RK.sub(j + 1)));
+  }, { aspect: 0.8, maxHeight: 460, minHeight: 280 });
+  RK.dragRotate(cv.canvas, () => az(), (v) => { let a = ((v + 180) % 360 + 360) % 360 - 180; az.set(Math.round(a), false); cv.redraw(); });
+  let spin = false;
+  const lp = MB.loop(cv.canvas, (dt) => { if (!spin) return; let a = az() + 30 * dt; if (a > 180) a -= 360; az.set(Math.round(a * 10) / 10, false); cv.redraw(); });
+  const sb = document.getElementById("rk-i-spin");
+  sb.addEventListener("click", () => { spin = !spin; sb.textContent = spin ? "■ 멈춤" : "▶ 자동 회전"; if (spin) lp.start(); });
+  function build() { RK.grid(inEl, RK.T(V), (i, j, v) => { V[j][i] = v; upd(); }); }
+  function upd() {
+    analyse(); cv.redraw();
+    const r = state.rank;
+    MB.stat("rk-i-rank", String(r));
+    MB.stat("rk-i-ind", r === 3 ? '<span class="badge ok">독립</span>' : '<span class="badge bad">종속</span>');
+    MB.stat("rk-i-span", ["점 { 0 }", "직선", "평면", "ℝ³ 전체"][r]);
+    const note = document.getElementById("rk-i-rel");
+    if (r === 3) { note.innerHTML = "모든 열에 피벗이 있다. Ax = 0의 해는 <b>x = 0</b>뿐이므로 어떤 벡터도 나머지의 결합으로 만들 수 없다."; return; }
+    const ns = RK.nullBasis(state.A);
+    const x = RK.intVec(ns[0]) || ns[0];
+    const terms = x.map((c, j) => (Math.abs(c) < 1e-12 ? null : { c, j })).filter(Boolean);
+    const txt = terms.map(({ c, j }, k) => { const s = c < 0 ? " − " : k ? " + " : ""; const a = Math.abs(c); return `${k === 0 && c < 0 ? "−" : s}${Math.abs(a - 1) < 1e-12 ? "" : RK.frac(a)}v${RK.sub(j + 1)}`; }).join("");
+    const free = 3 - r;
+    note.innerHTML = `피벗이 없는 열이 ${free}개(자유 변수 ${free}개). 영공간의 벡터 x = ${RK.tuple(x, 3)}가 종속 관계식을 준다: <b>${txt} = 0</b>${free > 1 ? " (자유 변수가 둘이므로 이런 관계식이 두 개 독립으로 있다)" : ""}.`;
+  }
+  sel.addEventListener("change", () => { V = PRE[sel.value].map((v) => v.slice()); build(); upd(); });
+  build(); upd();
+})();
+
+/* ================================================================ 2. 내 기저로 좌표 재기 */
+(function () {
+  const PRE = { ex: [[1, 1], [1, -1], [3, 1]], std: [[1, 0], [0, 1], [3, 1]], skew: [[2, 0.5], [0.5, 1.5], [3, 2]], near: [[2, 1], [2, 1.2], [3, 1]], par: [[1, 0.5], [-2, -1], [2, 2]] };
+  const sel = document.getElementById("rk-c2-pre");
+  const gridOn = MB.check("rk-c2-grid", () => pl.redraw());
+  const pathOn = MB.check("rk-c2-path", () => pl.redraw());
+  const pts = [{ x: 1, y: 1, snap: 0.1, label: "b₁" }, { x: 1, y: -1, snap: 0.1, label: "b₂" }, { x: 3, y: 1, snap: 0.1, label: "x" }];
+  const pl = MB.plane("#rk-cv-co", {
+    x: [-5, 5], aspect: 0.75, maxHeight: 480, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P, [b1, b2, x] = api.points;
+      b1.color = C.green; b2.color = C.red; x.color = C.accent2;
+      const d = b1.x * b2.y - b1.y * b2.x;
+      if (gridOn() && Math.abs(d) > 1e-6) {
+        for (let k = -14; k <= 14; k++) {
+          P.line(k * b1.x - 14 * b2.x, k * b1.y - 14 * b2.y, k * b1.x + 14 * b2.x, k * b1.y + 14 * b2.y, { color: C.accent, width: k ? 1 : 1.6, alpha: k ? 0.3 : 0.7 });
+          P.line(k * b2.x - 14 * b1.x, k * b2.y - 14 * b1.y, k * b2.x + 14 * b1.x, k * b2.y + 14 * b1.y, { color: C.accent, width: k ? 1 : 1.6, alpha: k ? 0.3 : 0.7 });
+        }
+      } else if (Math.abs(d) <= 1e-6) {
+        const L = Math.hypot(b1.x, b1.y) > 1e-9 ? [b1.x, b1.y] : [b2.x, b2.y], n = Math.hypot(...L) || 1;
+        P.line(-12 * L[0] / n, -12 * L[1] / n, 12 * L[0] / n, 12 * L[1] / n, { color: C.bad, width: 2, alpha: 0.6 });
+      }
+      if (pathOn() && Math.abs(d) > 1e-6) {
+        const c1 = (x.x * b2.y - x.y * b2.x) / d, c2 = (b1.x * x.y - b1.y * x.x) / d;
+        P.line(0, 0, c1 * b1.x, c1 * b1.y, { color: C.green, width: 2.5, dash: [6, 4] });
+        P.line(c1 * b1.x, c1 * b1.y, x.x, x.y, { color: C.red, width: 2.5, dash: [6, 4] });
+      }
+      P.arrow(0, 0, b1.x, b1.y, { color: C.green, width: 3.5 });
+      P.arrow(0, 0, b2.x, b2.y, { color: C.red, width: 3.5 });
+      P.arrow(0, 0, x.x, x.y, { color: C.accent2, width: 2.5 });
+    },
+    onDrag() { upd(); },
+  });
+  function upd() {
+    const [b1, b2, x] = pl.points, d = b1.x * b2.y - b1.y * b2.x;
+    MB.stat("rk-c2-x", RK.tuple([x.x, x.y], 1));
+    MB.stat("rk-c2-det", RK.num(d, 2));
+    if (Math.abs(d) < 1e-6) {
+      MB.stat("rk-c2-c", "정해지지 않음");
+      MB.stat("rk-c2-ok", '<span class="badge bad">아님 · 두 벡터가 평행</span>');
+      return;
+    }
+    const c1 = (x.x * b2.y - x.y * b2.x) / d, c2 = (b1.x * x.y - b1.y * x.x) / d;
+    MB.stat("rk-c2-c", RK.tuple([c1, c2], 2));
+    const cosang = Math.abs(b1.x * b2.x + b1.y * b2.y) / (Math.hypot(b1.x, b1.y) * Math.hypot(b2.x, b2.y));
+    MB.stat("rk-c2-ok", cosang > 0.98 ? '<span class="badge warn">예 · 그러나 거의 평행</span>' : '<span class="badge ok">예</span>');
+  }
+  sel.addEventListener("change", () => { PRE[sel.value].forEach(([a, b], i) => { pl.points[i].x = a; pl.points[i].y = b; }); pl.redraw(); upd(); });
+  upd();
+})();
+
+/* ================================================================ 3. RREF와 네 부분공간 계산기 */
+(function () {
+  const PRE = {
+    ex: [[1, 2, 0, 1], [2, 4, 1, 4], [3, 6, 1, 5]],
+    inv: [[2, 1, 1], [4, 1, 0], [-2, 2, 1]],
+    one: [[1, 2, 3], [2, 4, 6], [-1, -2, -3]],
+    wide: [[1, 2, 3], [0, 1, 4]],
+    tall: [[1, 0, 1], [2, 1, 3], [0, 1, 1], [1, 1, 2]],
+    zero: [[0, 0, 0], [0, 0, 0]],
+  };
+  let A = PRE.ex.map((r) => r.slice());
+  const inEl = document.getElementById("rk-r-in"), sel = document.getElementById("rk-r-pre");
+  const size = MB.seg("rk-r-size", () => {});
+  function build() { RK.grid(inEl, A, (i, j, v) => { A[i][j] = v; upd(); }); }
+  function upd() {
+    const m = A.length, n = A[0].length, { R, piv, rank: r } = RK.rref(A);
+    const pivots = piv.map((c, i) => [i, c]);
+    document.getElementById("rk-r-stage").innerHTML =
+      `<div><span class="lab">A (색칠 = 피벗 열)</span>${RK.mat(A, { pcols: piv })}</div>` +
+      `<div><span class="lab">R = rref(A) (테두리 = 피벗)</span>${RK.mat(R, { pivots, prows: [...Array(r).keys()] })}</div>`;
+    const colBasis = piv.map((c) => A.map((row) => row[c]));
+    const rowBasis = R.slice(0, r);
+    const nA = RK.nullBasis(A), nAT = RK.nullBasis(RK.T(A));
+    const chk = (vs, M) => vs.every((v) => RK.norm(RK.mulv(M, v)) < 1e-8);
+    document.getElementById("rk-r-subs").innerHTML =
+      `<div><h4>열공간 C(A) <small>ℝ${RK.sub(m).replace(/./g, (c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"["₀₁₂₃₄₅₆₇₈₉".indexOf(c)])} 안, 차원 ${r}</small></h4>${RK.vecs(colBasis)}</div>` +
+      `<div><h4>행공간 C(Aᵀ) <small>ℝ${sup(n)} 안, 차원 ${r}</small></h4>${RK.vecs(rowBasis)}</div>` +
+      `<div><h4>영공간 N(A) <small>ℝ${sup(n)} 안, 차원 ${n - r}${nA.length && chk(nA, A) ? " · A·s = 0 ✓" : ""}</small></h4>${RK.vecs(nA)}</div>` +
+      `<div><h4>왼쪽 영공간 N(Aᵀ) <small>ℝ${sup(m)} 안, 차원 ${m - r}${nAT.length && chk(nAT, RK.T(A)) ? " · Aᵀ·y = 0 ✓" : ""}</small></h4>${RK.vecs(nAT)}</div>`;
+    MB.stat("rk-r-mn", `${m} × ${n}`);
+    MB.stat("rk-r-r", String(r));
+    MB.stat("rk-r-n", `${r} + ${n - r} = ${n}`);
+    MB.stat("rk-r-m", `${r} + ${m - r} = ${m}`);
+  }
+  function sup(k) { return String(k).split("").map((d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+d]).join(""); }
+  sel.addEventListener("change", () => { A = PRE[sel.value].map((r) => r.slice()); build(); upd(); });
+  document.getElementById("rk-r-rand").addEventListener("click", () => {
+    const [m, n] = size().split("x").map(Number), r = 1 + Math.floor(Math.random() * Math.min(m, n));
+    const ri = () => Math.floor(Math.random() * 7) - 3;
+    // 계수 r인 정수 행렬: (m×r 정수) × (r×n 정수), 계수가 모자라면 다시 뽑는다
+    for (let t = 0; t < 30; t++) {
+      const Cm = Array.from({ length: m }, () => Array.from({ length: r }, ri)), Rm = Array.from({ length: r }, () => Array.from({ length: n }, ri));
+      const M = Cm.map((row) => Rm[0].map((_, j) => row.reduce((s, c, k) => s + c * Rm[k][j], 0)));
+      if (RK.rref(M).rank === r && Math.max(...M.flat().map(Math.abs)) <= 12) { A = M; break; }
+    }
+    build(); upd();
+  });
+  build(); upd();
+})();
+
+/* ================================================================ 4. 큰 그림: 행공간 ⟂ 영공간 */
+(function () {
+  const PRE = { r2: [[1, 0, 1], [0, 1, 1]], r1: [[1, 2, 2], [0.5, 1, 1]], r2b: [[1, 1, 0], [0, 1, 2]] };
+  let A = PRE.r2.map((r) => r.slice());
+  const inEl = document.getElementById("rk-p-in"), sel = document.getElementById("rk-p-pre");
+  const xs = ["rk-p-x1", "rk-p-x2", "rk-p-x3"].map((id) => MB.range(id, (v) => v.toFixed(1), () => upd()));
+  let az = -35, slideT = 0, sliding = false, base = null;
+  const X = () => xs.map((g) => g());
+  function parts() {
+    const x = X(), Q = RK.orth(A), xr = [0, 0, 0];
+    Q.forEach((q) => { const c = RK.dot(x, q); for (let i = 0; i < 3; i++) xr[i] += c * q[i]; });
+    const xn = x.map((v, i) => v - xr[i]);
+    return { x, xr, xn, Q, N: RK.orth(RK.nullBasis(A)) };
+  }
+  const cv3 = MB.canvas("#rk-cv-p3", (ctx, w, h) => {
+    const C = MB.palette(), { x, xr, xn, Q, N } = parts();
+    const sc = RK.scene(ctx, w, h, az * Math.PI / 180, 0.42, 6.4);
+    sc.axes(C, 2.2);
+    if (Q.length === 2) sc.plane(Q[0], Q[1], 2, C.accent, 0.13); else if (Q.length === 1) sc.line(Q[0], 3, C.accent, 2.5);
+    if (N.length === 2) sc.plane(N[0], N[1], 2, C.accent2, 0.13); else if (N.length === 1) sc.line(N[0], 3, C.accent2, 2.5);
+    sc.seg(xr, x, C.dim, 1.2, [4, 3]); sc.seg(xn, x, C.dim, 1.2, [4, 3]);
+    sc.arrow(xr, C.accent, "xᵣ"); sc.arrow(xn, C.accent2, "xₙ"); sc.arrow(x, C.text, "x");
+  }, { aspect: 0.85, maxHeight: 400, minHeight: 240 });
+  RK.dragRotate(cv3.canvas, () => az, (v) => { az = v; cv3.redraw(); });
+  const pl = MB.plane("#rk-cv-p2", {
+    x: [-4, 4], aspect: 0.85, maxHeight: 400, minHeight: 240,
+    draw(P) {
+      const C = P.P, { x, xr } = parts(), r = RK.rref(A).rank, Ax = RK.mulv(A, x), Axr = RK.mulv(A, xr);
+      if (r === 2) P.text("열공간 = ℝ² 전체", P.x0 + 0.2, P.y1 - 0.35, { color: C.ok, bold: true });
+      else if (r === 1) { const c = RK.rref(RK.T(A)).piv.length ? A.map((row) => row[RK.rref(A).piv[0]]) : [1, 0], n = Math.hypot(...c) || 1; P.line(-8 * c[0] / n, -8 * c[1] / n, 8 * c[0] / n, 8 * c[1] / n, { color: C.ok, width: 2.5, alpha: 0.6 }); P.text("열공간 = 직선", P.x0 + 0.2, P.y1 - 0.35, { color: C.ok, bold: true }); }
+      P.arrow(0, 0, Axr[0], Axr[1], { color: C.accent, width: 6, alpha: 0.35 });
+      P.arrow(0, 0, Ax[0], Ax[1], { color: C.ok, width: 3, label: "Ax" });
+    },
+  });
+  const lp = MB.loop(cv3.canvas, (dt) => {
+    if (!sliding) return;
+    slideT += dt;
+    const N = RK.orth(RK.nullBasis(A));
+    if (!N.length || slideT > 4) { sliding = false; btn.textContent = "▶ 영공간 방향으로 밀기"; return; }
+    const s = 1.4 * Math.sin(slideT * Math.PI / 2);
+    xs.forEach((g, i) => { const v = Math.max(-2, Math.min(2, base[i] + s * N[0][i])); g.set(Math.round(v * 10) / 10, false); });
+    upd();
+  });
+  const btn = document.getElementById("rk-p-slide");
+  btn.addEventListener("click", () => { if (sliding) { sliding = false; btn.textContent = "▶ 영공간 방향으로 밀기"; return; } base = X(); slideT = 0; sliding = true; btn.textContent = "■ 멈춤"; lp.start(); });
+  function build() { RK.grid(inEl, A, (i, j, v) => { A[i][j] = v; upd(); }); }
+  function upd() {
+    cv3.redraw(); pl.redraw();
+    const { x, xr, xn } = parts();
+    MB.stat("rk-p-xr", RK.tuple(xr));
+    MB.stat("rk-p-xn", RK.tuple(xn));
+    MB.stat("rk-p-dot", RK.num(RK.dot(xr, xn), 3));
+    const Ax = RK.mulv(A, x), Axr = RK.mulv(A, xr);
+    MB.stat("rk-p-ax", `${RK.tuple(Ax)} = ${RK.tuple(Axr)}`);
+  }
+  sel.addEventListener("change", () => { A = PRE[sel.value].map((r) => r.slice()); build(); upd(); });
+  build(); upd();
+})();
+
+/* ================================================================ 5. 해의 개수 판정기 */
+(function () {
+  const PRE = {
+    sq: [[2, 1, 1, 5], [4, 1, 0, 6], [-2, 2, 1, 3]],
+    tall: [[1, 0, 1], [0, 1, 2], [1, 1, 3]],
+    wide: [[1, 2, 3, 6], [0, 1, 4, 5]],
+    def: [[1, 2, 0, 1, 1], [2, 4, 1, 4, 4], [3, 6, 1, 5, 5]],
+  };
+  let M = PRE.def.map((r) => r.slice());
+  const inEl = document.getElementById("rk-k-in"), sel = document.getElementById("rk-k-pre");
+  const Apart = () => M.map((r) => r.slice(0, -1)), bpart = () => M.map((r) => r[r.length - 1]);
+  function build() { RK.grid(inEl, M, (i, j, v) => { M[i][j] = v; upd(); }, true); }
+  function upd() {
+    const A = Apart(), b = bpart(), m = A.length, n = A[0].length;
+    const ra = RK.rref(A).rank, { R, piv } = RK.rref(M), rb = piv.length;
+    document.getElementById("rk-k-stage").innerHTML = `<div><span class="lab">rref [A | b]</span>${RK.mat(R, { pivots: piv.map((c, i) => [i, c]), aug: n })}</div>`;
+    const kase = ra === m && ra === n ? 1 : ra === n ? 2 : ra === m ? 3 : 4;
+    document.querySelectorAll("#rk-k-tab tr").forEach((tr) => tr.classList.toggle("on", +tr.dataset.case === kase));
+    MB.stat("rk-k-ra", String(ra));
+    MB.stat("rk-k-rb", String(rb));
+    const note = document.getElementById("rk-k-note");
+    if (rb > ra) {
+      MB.stat("rk-k-sol", '<span class="badge bad">없음</span>');
+      const y = RK.nullBasis(RK.T(A)).find((v) => Math.abs(RK.dot(v, b)) > 1e-8);
+      note.innerHTML = `b를 덧붙이자 마지막 열에 피벗이 생겼다(0 = 1 꼴의 행). b는 열공간 밖에 있다.${y ? ` 왼쪽 영공간의 y = ${RK.tuple(RK.intVec(y) || y, 3)}에 대해 yᵀb = ${RK.num(RK.dot(RK.intVec(y) || y, b), 3)} ≠ 0.` : ""}`;
+      return;
+    }
+    const free = n - ra, xp = Array(n).fill(0);
+    piv.forEach((c, i) => { if (c < n) xp[c] = R[i][n]; });
+    if (free === 0) { MB.stat("rk-k-sol", '<span class="badge ok">정확히 하나</span>'); note.innerHTML = `b는 열공간 안에 있고 자유 변수가 없다. 유일한 해 <b>x = ${xp.map(RK.frac).join(", ").replace(/^/, "(")})</b>.`; }
+    else {
+      MB.stat("rk-k-sol", `<span class="badge warn">무수히 · 자유 변수 ${free}개</span>`);
+      const ns = RK.nullBasis(A);
+      note.innerHTML = `b는 열공간 안에 있다. 특수해 x<sub>p</sub> = (${xp.map(RK.frac).join(", ")}) 에 영공간(차원 ${free})의 아무 벡터나 더해도 해다: x = x<sub>p</sub> + ${ns.map((v, k) => `${"stuvw"[k]}·(${v.map(RK.frac).join(", ")})`).join(" + ")}.`;
+    }
+  }
+  sel.addEventListener("change", () => { M = PRE[sel.value].map((r) => r.slice()); build(); upd(); });
+  document.getElementById("rk-k-in-c").addEventListener("click", () => {
+    const A = Apart(), x = A[0].map(() => Math.floor(Math.random() * 5) - 2), b = RK.mulv(A, x);
+    M.forEach((r, i) => { r[r.length - 1] = b[i]; }); build(); upd();
+  });
+  document.getElementById("rk-k-out-c").addEventListener("click", () => {
+    const A = Apart(), ys = RK.nullBasis(RK.T(A));
+    const note = document.getElementById("rk-k-note");
+    if (!ys.length) { upd(); note.innerHTML += " <b>왼쪽 영공간이 {0}이라 열공간이 ℝᵐ 전체다. b를 바깥으로 보낼 수 없다.</b>"; return; }
+    const y = RK.intVec(ys[0]) || ys[0];
+    M.forEach((r, i) => { r[r.length - 1] += y[i]; }); build(); upd();
+  });
+  build(); upd();
+})();
+
+/* ================================================================ 6. 수치 계수 */
+(function () {
+  const EPS = [0, 1e-12, 1e-9, 1e-6, 1e-4, 1e-3, 1e-2, 0.1, 1];
+  const TOLS = [1e-15, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2];
+  const a1 = [1, 0.8, 0.5, 0.3, 0.1, 0], a2 = [0, 0.3, 0.6, 0.8, 1, 0.9], e = [0.3, -0.5, 0.2, 0.4, -0.1, -0.6];
+  const rng = MB.rng(7), noise = Array.from({ length: 6 }, () => [MB.randn(), MB.randn(), MB.randn()]);
+  void rng;
+  const fe = (v) => (v === 0 ? "0" : RK.sci(v));
+  const eps = MB.steps("rk-n-eps", EPS, fe, 1e-6, () => upd());
+  const tol = MB.steps("rk-n-tol", TOLS, fe, 1e-10, () => upd());
+  const noiseOn = MB.check("rk-n-noise", () => upd());
+  let data = { sig: [1, 1, 1], piv: [1, 1, 1] };
+  function build() {
+    const A = a1.map((_, i) => [a1[i], a2[i], a1[i] + a2[i] + eps() * e[i]]);
+    if (noiseOn()) A.forEach((r, i) => r.forEach((_, j) => { r[j] += 1e-3 * noise[i][j]; }));
+    const sig = MB.mat.svd(A).S;
+    // 부분 피벗팅 소거의 피벗
+    const U = A.map((r) => r.slice()), piv = [];
+    for (let k = 0; k < 3; k++) {
+      let p = k; for (let i = k + 1; i < 6; i++) if (Math.abs(U[i][k]) > Math.abs(U[p][k])) p = i;
+      [U[k], U[p]] = [U[p], U[k]]; piv.push(Math.abs(U[k][k]));
+      if (U[k][k] !== 0) for (let i = k + 1; i < 6; i++) { const f = U[i][k] / U[k][k]; for (let j = k; j < 3; j++) U[i][j] -= f * U[k][j]; }
+    }
+    data = { sig, piv };
+  }
+  build();
+  const cv = MB.canvas("#rk-cv-nr", (ctx, w, h) => {
+    const C = MB.palette(), font = getComputedStyle(document.body).getPropertyValue("--font");
+    const L = 46, Rr = w - 16, T = 18, B = h - 34, lo = -17, hi = 1;
+    const Y = (v) => B - ((Math.log10(Math.max(v, 1e-17)) - lo) / (hi - lo)) * (B - T);
+    ctx.font = "12px " + font; ctx.fillStyle = C.dim; ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    for (let k = lo + 1; k <= hi; k += 2) { const y = Y(Math.pow(10, k)); ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(Rr, y); ctx.stroke(); ctx.fillText("10" + String(k).split("").map((c) => (c === "-" ? "⁻" : "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c])).join(""), 4, y + 4); }
+    const groups = [["피벗 |uₖₖ|", data.piv, C.accent2], ["특이값 σₖ", data.sig, C.accent]];
+    const gw = (Rr - L) / 2;
+    const thr = tol() * data.sig[0];
+    groups.forEach(([name, vals, col], g) => {
+      const x0 = L + g * gw + gw * 0.15, bw = (gw * 0.7) / 3;
+      vals.forEach((v, k) => {
+        const y = Y(v), alive = name.startsWith("특이") ? v > thr : v > tol() * data.piv[0];
+        ctx.globalAlpha = alive ? 0.85 : 0.3; ctx.fillStyle = col; ctx.fillRect(x0 + k * bw + 3, y, bw - 6, B - y); ctx.globalAlpha = 1;
+        ctx.fillStyle = C.text; ctx.textAlign = "center"; ctx.fillText(String(k + 1), x0 + k * bw + bw / 2, B + 14);
+      });
+      ctx.fillStyle = C.dim; ctx.textAlign = "center"; ctx.fillText(name, x0 + bw * 1.5, B + 28); ctx.textAlign = "left";
+    });
+    const y = Y(thr); ctx.strokeStyle = C.bad; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(Rr, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.bad; ctx.fillText("허용 오차 τ·σ₁", Rr - 100, y - 5);
+  }, { aspect: 0.72, maxHeight: 420, minHeight: 260 });
+  function upd() {
+    build(); cv.redraw();
+    MB.stat("rk-n-piv", data.piv.map(RK.sci).join(", "));
+    MB.stat("rk-n-sig", data.sig.map(RK.sci).join(", "));
+    const r = data.sig.filter((s) => s > tol() * data.sig[0]).length;
+    MB.stat("rk-n-r", `${r}${r === 3 ? ' <span class="badge">센서 3도 새 정보</span>' : ' <span class="badge warn">센서 3은 중복</span>'}`);
+  }
+  upd();
+})();
+
+/* ================================================================ 7. 독립 루프 세기 */
+(function () {
+  // 마디 6개: 사각형 네 꼭짓점(0–3)과 오른쪽 두 마디(4, 5)
+  const NODES = [[-3, 1.5], [-0.5, 1.5], [-0.5, -1], [-3, -1], [2, 1.5], [2, -1]];
+  const EDGES = [[0, 1], [1, 2], [2, 3], [0, 3], [1, 3], [0, 2], [1, 4], [4, 5], [2, 5], [1, 5], [2, 4]];
+  const PRE = {
+    fig: [0, 1, 2, 3, 4], tree: [0, 1, 2, 6, 7], wheel: [0, 1, 2, 3, 4, 6, 7, 8, 9],
+    full: EDGES.map((_, i) => i), two: [0, 1, 2, 3, 7],
+  };
+  const sel = document.getElementById("rk-g-pre");
+  const treeOn = MB.check("rk-g-tree", () => upd());
+  const matOn = MB.check("rk-g-mat", () => upd());
+  let on = new Set(PRE.fig), info = null;
+  function analyse() {
+    const act = EDGES.map((e, k) => k).filter((k) => on.has(k));
+    // 이 프리셋에서 쓰지 않는 마디(가지가 하나도 없는 마디)도 마디로 센다
+    const used = new Set(NODES.map((_, i) => i).filter((i) => i < 4 || act.some((k) => EDGES[k].includes(i))));
+    const nodes = [...used].sort((a, b) => a - b), idx = new Map(nodes.map((v, i) => [v, i]));
+    const A = act.map((k) => { const row = Array(nodes.length).fill(0); row[idx.get(EDGES[k][0])] = -1; row[idx.get(EDGES[k][1])] = 1; return row; });
+    const r = A.length ? RK.rref(A).rank : 0;
+    // 너비 우선 생성 숲
+    const adj = new Map(nodes.map((v) => [v, []]));
+    act.forEach((k) => { const [a, b] = EDGES[k]; adj.get(a).push([b, k]); adj.get(b).push([a, k]); });
+    const parent = new Map(), pedge = new Map(), depth = new Map(), tree = new Set(); let comps = 0;
+    nodes.forEach((s) => {
+      if (parent.has(s)) return; comps++; parent.set(s, null); depth.set(s, 0);
+      const q = [s];
+      while (q.length) { const v = q.shift(); adj.get(v).forEach(([w, k]) => { if (!parent.has(w)) { parent.set(w, v); pedge.set(w, k); depth.set(w, depth.get(v) + 1); tree.add(k); q.push(w); } }); }
+    });
+    const loops = act.filter((k) => !tree.has(k)).map((k) => {
+      let [a, b] = EDGES[k]; const pa = [a], pb = [b];
+      while (a !== b) { if (depth.get(a) >= depth.get(b)) { a = parent.get(a); pa.push(a); } else { b = parent.get(b); pb.push(b); } }
+      pb.pop();
+      return { k, path: pa.concat(pb.reverse()) };
+    });
+    info = { act, nodes, A, r, comps, tree, loops };
+  }
+  analyse();
+  const pl = MB.plane("#rk-cv-gr", {
+    x: [-4.2, 3.2], aspect: 0.62, maxHeight: 420, minHeight: 240, grid: false, axes: false,
+    points: NODES.map(([x, y], i) => ({ x, y, fixed: true, label: String(i + 1), r: 9 })),
+    draw(P, api) {
+      const C = P.P, cols = C.series;
+      api.points.forEach((p, i) => { p.color = info.nodes.includes(i) ? C.text : C.faint; });
+      EDGES.forEach(([a, b], k) => {
+        const [x1, y1] = NODES[a], [x2, y2] = NODES[b];
+        if (!on.has(k)) { P.line(x1, y1, x2, y2, { color: C.faint, width: 1.5, dash: [5, 5], alpha: 0.7 }); return; }
+        const inTree = info.tree.has(k);
+        P.line(x1, y1, x2, y2, { color: treeOn() && inTree ? C.accent : C.text, width: treeOn() && inTree ? 4 : 2.5, alpha: 0.9 });
+        P.text("e" + RK.sub(info.act.indexOf(k) + 1), (x1 + x2) / 2, (y1 + y2) / 2, { color: C.dim, size: 11, dx: 6, dy: -6 });
+      });
+      info.loops.forEach((L, i) => {
+        const pts = L.path.map((v) => NODES[v]), cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+        const shrink = pts.map(([x, y]) => [cx + (x - cx) * 0.82, cy + (y - cy) * 0.82]);
+        P.poly(shrink, { fill: cols[i % cols.length], alpha: 0.16, stroke: false });
+        P.poly(shrink, { color: cols[i % cols.length], width: 2, dash: [4, 3], close: true });
+      });
+    },
+    onPointer(x, y, kind) {
+      if (kind !== "down") return;
+      let best = -1, bd = 0.35;
+      EDGES.forEach(([a, b], k) => {
+        const [x1, y1] = NODES[a], [x2, y2] = NODES[b], dx = x2 - x1, dy = y2 - y1;
+        const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
+        const d = Math.hypot(x - x1 - t * dx, y - y1 - t * dy);
+        if (d < bd) { bd = d; best = k; }
+      });
+      if (best >= 0) { on.has(best) ? on.delete(best) : on.add(best); upd(); }
+    },
+  });
+  function upd() {
+    analyse(); pl.redraw();
+    const { act, nodes, A, r, comps, loops } = info, E = act.length, N = nodes.length;
+    MB.stat("rk-g-nec", `${N} · ${E} · ${comps}`);
+    MB.stat("rk-g-r", `${r} = N − c = ${N - comps}`);
+    MB.stat("rk-g-l", `${E - r} = E − N + c`);
+    const cols = MB.palette().series;
+    document.getElementById("rk-g-loops").innerHTML = loops.length
+      ? "기본 고리: " + loops.map((L, i) => `<span style="white-space:nowrap;margin-right:12px"><span class="sw" style="background:${cols[i % cols.length]}"></span>${L.path.concat(L.path[0]).map((v) => v + 1).join("→")}</span>`).join("")
+      : "고리가 없다. 이 그래프는 나무(또는 숲)다. 왼쪽 영공간은 {0}이다.";
+    const box = document.getElementById("rk-g-inc");
+    box.hidden = !matOn();
+    if (matOn()) box.innerHTML = E ? `<span class="lab">연결 행렬 A (행 = 가지 e₁…, 열 = 마디 ${nodes.map((v) => v + 1).join(", ")})</span>${RK.mat(A)}` : "가지가 없다.";
+  }
+  sel.addEventListener("change", () => { on = new Set(PRE[sel.value]); upd(); });
+  upd();
+})();
+</script>
+</body>
+</html>

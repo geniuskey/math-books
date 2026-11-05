@@ -61,7 +61,7 @@ window.MATH_BOOKS = [
     "headline": "숫자의 표가 아니라 공간을 움직이는 기계",
     "description": "벡터와 행렬에서 시작해 가우스 소거와 LU 분해, 벡터 공간과 계수, 직교성과 최소제곱, 행렬식, 고유값과 동역학, 대칭 행렬, 특이값 분해와 PCA, 수치 선형대수까지 — 격자를 직접 휘고 벡터를 끌며 한 학기 선형대수를 익히는 교과서.",
     "stage": "core",
-    "status": "writing",
+    "status": "published",
     "color": "#5f3dc4",
     "colorDark": "#b197fc",
     "topics": [
@@ -77,8 +77,8 @@ window.MATH_BOOKS = [
     "legacyUrl": null,
     "slug": "linear",
     "url": "linear/",
-    "chapters": 4,
-    "simulators": 29
+    "chapters": 17,
+    "simulators": 114
   },
   {
     "id": "calculusbook",

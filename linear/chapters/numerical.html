@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>수치 선형대수 · LinearBook</title>
+<meta name="description" content="부동소수점과 기계 엡실론, 조건수와 섭동 한계, 힐베르트 행렬이 잃는 자릿수, 후방 안정성, 거듭제곱법과 역반복·레일리 몫, QR 알고리즘, 야코비·가우스–자이델·SOR 반복법, 켤레 기울기법과 전처리, 희소 행렬 CSR까지 컴퓨터가 큰 행렬을 실제로 푸는 방법을 직접 돌려 본다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .nm-m { display: inline-grid; grid-template-columns: repeat(var(--c, 3), auto); gap: 2px 4px; padding: 4px 8px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 600 13px var(--mono); vertical-align: middle; }
+  .nm-m > span { text-align: right; padding: 3px 6px; border-radius: 5px; min-width: 3.4em; white-space: nowrap; }
+  .nm-m > span.dg { background: var(--accent-soft); color: var(--accent); }
+  .nm-m > span.sd { background: var(--accent-2-soft); }
+  .nm-m > span.sd.small { color: var(--text-faint); background: transparent; }
+  .nm-stage { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding: 14px 18px; background: var(--canvas-bg); }
+  .nm-stage .lab { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .nm-note { padding: 10px 18px; font-size: 14.5px; border-top: 1px solid var(--border); background: var(--bg-elev); min-height: 2.6em; }
+  .nm-note b { color: var(--accent); }
+  .nm-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nm-row .btn { padding: 6px 10px; font-size: 13px; }
+  .nm-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .nm-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .nm-legend i.dash { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px) !important; height: 3px; }
+  .nm-xs { font: 12.5px var(--mono); color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); overflow-x: auto; white-space: nowrap; }
+  .nm-csr { display: grid; gap: 6px; font: 13px var(--mono); }
+  .nm-steps ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .nm-steps li { margin: 6px 0; }
+  .nm-algo { font: 13.5px/1.7 var(--mono); background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; overflow-x: auto; }
+  .nm-algo .c { color: var(--text-faint); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="numerical">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 16</div>
+    <h1 data-no-glossary>수치 선형대수</h1>
+    <p class="lead">지금까지 이 책의 계산은 모두 "정확한 실수"로 했습니다. 하지만 실제로 행렬을 푸는 것은 컴퓨터이고, 컴퓨터의 실수는 유효 숫자 약 16자리에서 잘린 <b>부동소수점 수</b>입니다. 미지수가 수백만 개인 행렬에서는 소거의 \(n^3\) 연산조차 너무 비쌉니다. 그래서 두 가지 질문이 남습니다. <b>틀린 숫자로 계산해도 답을 믿을 수 있는가?</b> 그리고 <b>정확한 분해 대신 근사를 되풀이해 더 빨리 풀 수 있는가?</b> 첫 질문의 답은 문제의 예민함을 재는 <b>조건수</b>와 알고리즘의 정직함을 재는 <b>안정성</b>이고, 둘째 질문의 답은 <b>거듭제곱법·QR 알고리즘·반복법·켤레 기울기법</b>입니다. 이 장은 선형대수가 실제 컴퓨터 안에서 돌아가는 방식을 다룹니다.</p>
+    <ul class="objectives">
+      <li>부동소수점 모델 \(\mathrm{fl}(x) = x(1+\delta)\), \(|\delta| \le u\)와 기계 엡실론 \(2^{-52}\)을 이해하고, 상쇄 오차가 생기는 식을 안정한 식으로 바꾼다.</li>
+      <li>유도 행렬 노름과 조건수 \(\kappa(A) = \|A\|\,\|A^{-1}\|\)를 정의하고, 섭동 한계 \(\|\delta\mathbf{x}\|/\|\mathbf{x}\| \le \kappa\,\|\delta\mathbf{b}\|/\|\mathbf{b}\|\)를 증명한다.</li>
+      <li>전방 오차와 후방 오차를 구별하고, "전방 오차 ≲ 조건수 × 후방 오차"로 결과의 정확도를 미리 가늠한다.</li>
+      <li>거듭제곱법이 \(|\lambda_2/\lambda_1|^k\)로 수렴함을 보이고, 이동 역반복과 레일리 몫 반복으로 원하는 고유값을 빠르게 찾는다.</li>
+      <li>QR 알고리즘 \(A_{k+1} = R_kQ_k\)가 닮음 변환이며 상삼각 꼴로 수렴하는 이유를 설명한다.</li>
+      <li>야코비·가우스–자이델·SOR의 수렴을 반복 행렬의 스펙트럼 반지름으로 판정하고, 켤레 기울기법이 SPD 행렬에서 최대 n단계에 끝나는 이유와 전처리의 역할을 안다.</li>
+      <li>희소 행렬을 CSR로 저장하고, 문제 크기와 구조에 따라 직접법과 반복법을 고른다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>슈퍼컴퓨터 순위표</b></div>
+      <div class="o-body"><p>세계에서 가장 빠른 컴퓨터를 뽑는 TOP500 목록은 1993년부터 해마다 두 번 발표됩니다. 순위를 정하는 시험은 놀랍게도 단 하나, <b>거대한 밀집 연립방정식 \(A\mathbf{x} = \mathbf{b}\)를 부분 피벗팅 LU 분해로 푸는 데 걸린 시간</b>입니다(HPL, High-Performance LINPACK). 연산량이 \(\tfrac{2}{3}n^3\)으로 정확히 알려져 있으니 걸린 시간으로 나누면 초당 부동소수점 연산 수(flop/s)가 나옵니다.</p>
+        <p>그런데 이 시험에는 조건이 하나 더 붙습니다. 답이 <b>맞아야</b> 합니다. 정확히는 잔차 \(\|A\hat{\mathbf{x}} - \mathbf{b}\|\)가 행렬 크기·기계 엡실론으로 정한 한계보다 작아야 결과를 인정합니다. 수십억 번의 반올림을 거친 답을 어떻게 "맞다"고 판정할까요? 그 근거가 이 장의 <b>후방 안정성</b>과 <b>조건수</b>입니다. 그리고 행렬이 수십억 차원으로 커지면 \(n^3\)도 감당할 수 없어서, 실제 과학 계산은 행렬을 곱하기만 하는 <b>반복법</b>으로 넘어갑니다.</p>
+        <div class="o-chain"><span>밀집 Ax = b</span><i>→</i><span>반올림 수십억 번</span><i>→</i><span class="tool">후방 안정성 · 조건수</span><i>→</i><span>답을 믿을 근거</span><i>→</i><span>더 크면 반복법</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="floating-point">
+    <h2>부동소수점: 컴퓨터의 실수는 격자다</h2>
+    <div class="problem"><strong>0.1을 열 번 더하면 1이 아니다</strong>
+      <p>대부분의 프로그래밍 언어에서 <code>0.1 + 0.1 + … + 0.1</code>(열 번)을 계산하면 <code>0.9999999999999999</code>가 나옵니다. 0.1은 2진수로 끝나지 않는 무한소수라 가장 가까운 2진 분수로 잘리기 때문입니다. 오차는 \(10^{-16}\) 정도로 작지만, 소거는 이런 연산을 \(n^3\)번 합니다. 오차가 쌓여서 답을 망칠까요, 아니면 서로 상쇄될까요? 답하려면 먼저 "잘림"을 수학으로 적어야 합니다.</p></div>
+    <p>컴퓨터의 실수는 연속된 직선이 아니라 <b>유한한 점들의 격자</b>입니다. IEEE 754 배정밀도(double)는 수를 \(\pm(1.f_1f_2\cdots f_{52})_2 \times 2^{e}\)로 저장합니다. 가수부 52비트, 지수 11비트, 부호 1비트, 모두 64비트입니다. 지수가 같은 구간 \([2^e, 2^{e+1})\) 안에서 점들은 <b>같은 간격</b> \(2^{e-52}\)으로 놓이고, 구간이 두 배 커질 때마다 간격도 두 배가 됩니다. 그래서 절대 간격은 수의 크기에 따라 달라지지만 <b>상대 간격은 거의 일정</b>합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 190" role="img" aria-label="부동소수점 수의 분포">
+        <line x1="30" y1="90" x2="740" y2="90" class="s-axis"/>
+        <g class="s-acc" style="stroke-width:2">
+          <line x1="60" y1="80" x2="60" y2="100"/><line x1="82" y1="82" x2="82" y2="98"/><line x1="104" y1="82" x2="104" y2="98"/><line x1="126" y1="82" x2="126" y2="98"/>
+          <line x1="148" y1="80" x2="148" y2="100"/><line x1="192" y1="82" x2="192" y2="98"/><line x1="236" y1="82" x2="236" y2="98"/><line x1="280" y1="82" x2="280" y2="98"/>
+          <line x1="324" y1="80" x2="324" y2="100"/><line x1="412" y1="82" x2="412" y2="98"/><line x1="500" y1="82" x2="500" y2="98"/><line x1="588" y1="82" x2="588" y2="98"/>
+          <line x1="676" y1="80" x2="676" y2="100"/>
+        </g>
+        <text x="60" y="122" text-anchor="middle" class="t-mono">1/2</text><text x="148" y="122" text-anchor="middle" class="t-mono">1</text><text x="324" y="122" text-anchor="middle" class="t-mono">2</text><text x="676" y="122" text-anchor="middle" class="t-mono">4</text>
+        <path d="M148 64 h44" class="s-line"/><text x="170" y="56" text-anchor="middle" class="t-dim">간격 h</text>
+        <path d="M324 64 h88" class="s-line"/><text x="368" y="56" text-anchor="middle" class="t-dim">간격 2h</text>
+        <path d="M60 64 h22" class="s-line"/><text x="71" y="56" text-anchor="middle" class="t-dim">h/2</text>
+        <circle cx="455" cy="90" r="5" style="fill:var(--accent-2)"/><text x="455" y="150" text-anchor="middle" class="t" style="fill:var(--accent-2)">실수 x</text>
+        <path d="M455 140 L455 100" class="s-line" style="stroke-dasharray:3 3"/>
+        <path d="M455 76 Q478 52 500 76" fill="none" style="stroke:var(--accent-2);stroke-width:1.8"/><text x="478" y="44" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">fl(x)</text>
+        <text x="380" y="180" text-anchor="middle" class="t-dim">가수부를 3비트로 줄인 장난감 체계. 2배 구간마다 점 4개, 간격은 구간 크기에 비례해 두 배씩 커진다.</text>
+      </svg>
+      <figcaption><b>그림 16-1.</b> 부동소수점 수는 2의 거듭제곱 구간마다 같은 개수로 놓인다. 실수 x는 가장 가까운 점 fl(x)로 반올림되고, 그 상대 오차는 구간에 관계없이 간격의 절반 / 구간 시작점 이하, 즉 단위 반올림 u 이하다. 실제 double은 구간마다 점이 2⁵²개다.</figcaption>
+    </figure>
+    <div class="callout"><strong>정의 16.1 (기계 엡실론과 단위 반올림)</strong> 1과 그다음 부동소수점 수 사이의 간격을 <span class="term">기계 엡실론</span><span class="en">(machine epsilon)</span> \(\varepsilon_{\text{mach}}\)이라 한다. 배정밀도에서 \(\varepsilon_{\text{mach}} = 2^{-52} \approx 2.22\times 10^{-16}\)이다. 가장 가까운 수로 반올림할 때 생기는 최대 상대 오차 \(u = \varepsilon_{\text{mach}}/2 = 2^{-53} \approx 1.11\times10^{-16}\)를 <span class="term">단위 반올림</span><span class="en">(unit roundoff)</span>이라 한다.</div>
+    <div class="callout"><strong>정리 16.1 (부동소수점 산술의 표준 모델)</strong> 넘침·바닥 넘침이 없으면, 정규화된 실수 \(x\)와 부동소수점 수 \(a, b\), 연산 \(\circ \in \{+,-,\times,\div\}\)에 대해
+      $$\mathrm{fl}(x) = x(1+\delta), \qquad \mathrm{fl}(a\circ b) = (a\circ b)(1+\delta), \qquad |\delta| \le u.$$
+      IEEE 754는 사칙연산과 제곱근이 "정확한 결과를 구한 뒤 한 번 반올림한 것"과 같도록 규정하므로 이 모델이 성립한다. 즉 <b>연산 하나하나는 상대 오차 u 이내로 정확하다.</b></div>
+    <p>연산 하나는 이렇게 정확한데 왜 계산이 틀릴까요? 범인은 대부분 <span class="term">상쇄 오차</span><span class="en">(catastrophic cancellation)</span>입니다. 거의 같은 두 수 \(a \approx b\)를 빼면, 뺄셈 자체는 정확해도 <b>a와 b에 이미 들어 있던 반올림 오차</b>가 결과의 크기에 비해 엄청나게 커집니다. 예를 들어 \(x = 10^{-8}\)일 때 \(\cos x = 1 - 5\times10^{-17}\)인데 double은 이 값을 1과 구별하지 못하므로 \(1 - \cos x\)는 0이 됩니다. 정답은 \(5\times10^{-17}\)인데 말이죠.</p>
+    <p>해결책은 대수적으로 같지만 뺄셈이 없는 식으로 바꾸는 것입니다. \(1 - \cos x = 2\sin^2(x/2)\), \(\sqrt{1+x} - 1 = x/(\sqrt{1+x}+1)\), 그리고 \(e^x - 1\)은 라이브러리의 <code>expm1</code>이 정확히 계산합니다. 아래 시뮬레이터에서 x를 0으로 보내며 두 식을 비교해 보세요.</p>
+
+    <div class="sim" id="sim-nm-float">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>상쇄 오차: 같은 식, 다른 정확도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nm-cv-float"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>식</span><div class="seg" id="nm-f-expr"><button data-value="cos" class="on">(1−cos x)/x²</button><button data-value="sqrt">(√(1+x)−1)/x</button><button data-value="exp">(eˣ−1)/x</button></div></div>
+          <label class="ctrl"><span>x = 10^k 의 k <output id="nm-f-k-out"></output></span><input type="range" id="nm-f-k" min="-16" max="0" step="0.25" value="-5"></label>
+          <label class="check"><input type="checkbox" id="nm-f-pred" checked> 이론 예측(u ÷ 결과의 크기) 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">그대로 계산</span><span class="v" id="nm-f-naive">—</span></div>
+        <div class="stat"><span class="k">고친 식</span><span class="v" id="nm-f-good">—</span></div>
+        <div class="stat"><span class="k">그대로 계산의 상대 오차</span><span class="v" id="nm-f-err">—</span></div>
+        <div class="stat"><span class="k">맞는 자릿수</span><span class="v" id="nm-f-dig">—</span></div>
+      </div>
+      <div class="nm-legend"><span><i style="background:var(--bad)"></i>그대로 계산한 식의 상대 오차</span><span><i style="background:var(--ok)"></i>고친 식(1e−17 바닥에 붙으면 오차 없음)</span><span style="color:var(--text-dim)"><i class="dash"></i>예측 u/|a−b| 비율</span></div>
+      <div class="sim-note">해볼 것: ① (1−cos x)/x²에서 k를 −8 아래로 내리면 결과가 0이 되어 오차가 100%가 됩니다. ② 세 식 모두 오차 곡선이 예측선(빼는 두 수 크기 ÷ 결과 크기 × u)을 따라 올라갑니다. 상쇄 오차는 "얼마나 많이 지워졌나"에 비례합니다. ③ 고친 식은 어느 x에서나 거의 기계 정밀도입니다. 모델: 브라우저의 JavaScript Number(IEEE 754 배정밀도)로 실제 계산한 값이며, 참값은 고친 식으로 구했습니다.</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 16.1 · 이차방정식의 근</strong> \(x^2 - 10^8x + 1 = 0\)의 작은 근을 근의 공식 \(x = (10^8 - \sqrt{10^{16}-4})/2\)로 구하면, 거의 같은 두 수를 빼서 double에서 \(7.45\times10^{-9}\)처럼 자릿수가 거의 남지 않은 값이 나옵니다(참값 \(\approx 1.000\times10^{-8}\)). 대신 큰 근 \(x_1 = (10^8 + \sqrt{10^{16}-4})/2 \approx 10^8\)을 먼저 구하고 근과 계수의 관계 \(x_1x_2 = 1\)로 \(x_2 = 1/x_1\)을 구하면 뺄셈 없이 유효 숫자 16자리를 모두 얻습니다. 같은 수학, 다른 알고리즘입니다.</div>
+    <p>더 자세한 부동소수점 이야기(0.1의 2진 표현, 반올림 오차가 쌓여 생긴 실제 사고)는 <a href="../../foundations/chapters/numerics.html">MathBook "컴퓨터는 어떻게 틀리는가"</a>에 있습니다. 이 장의 관심은 행렬입니다. 연산 하나의 오차가 u라면, n×n 행렬을 다루는 알고리즘 전체의 오차는 얼마일까요?</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="condition-number">
+    <h2>조건수: 문제 자체가 얼마나 예민한가</h2>
+    <div class="problem"><strong>측정값이 0.01% 틀리면 답은 몇 % 틀릴까</strong>
+      <p>센서 두 개로 측정한 값 \(\mathbf{b}\)로 \(A\mathbf{x} = \mathbf{b}\)를 풀어 위치를 구한다고 합시다. 측정에는 언제나 작은 오차 \(\delta\mathbf{b}\)가 섞입니다. 두 센서가 거의 같은 방향을 본다면(두 직선이 거의 평행하다면) 교점은 측정 오차에 매우 민감할 것입니다. 이 민감도를 숫자 하나로 잴 수 있을까요? 그 숫자는 알고리즘이 아니라 <b>행렬 A 자체</b>의 성질이어야 합니다. 어떤 알고리즘으로 풀든 입력이 흔들리면 답도 흔들리니까요.</p></div>
+    <p>벡터의 크기는 <a href="vectors.html#norms">1장의 노름</a>으로 잽니다. 행렬의 크기는 "벡터를 최대 몇 배까지 늘이는가"로 재는 것이 자연스럽습니다.</p>
+    <div class="callout"><strong>정의 16.2 (유도 행렬 노름)</strong> 벡터 노름 \(\|\cdot\|\)에 대해 행렬 \(A\)의 <span class="term">유도 노름</span><span class="en">(induced norm)</span>은
+      $$\|A\| = \max_{\mathbf{x} \ne \mathbf{0}} \frac{\|A\mathbf{x}\|}{\|\mathbf{x}\|}.$$
+      정의에서 곧바로 \(\|A\mathbf{x}\| \le \|A\|\,\|\mathbf{x}\|\), \(\|AB\| \le \|A\|\,\|B\|\)가 나온다. 2-노름에서는 \(\|A\|_2 = \sigma_1\)(가장 큰 특이값, <a href="svd.html">14장</a>), ∞-노름에서는 \(\|A\|_\infty = \max_i \sum_j |a_{ij}|\)(행 절댓값 합의 최댓값)이다.</div>
+    <div class="callout"><strong>정의 16.3 (조건수)</strong> 가역 행렬 \(A\)의 <span class="term">조건수</span><span class="en">(condition number)</span>는 \(\kappa(A) = \|A\|\,\|A^{-1}\|\)이다. 언제나 \(\kappa(A) \ge \|AA^{-1}\| = 1\)이고, 2-노름에서는 \(\kappa_2(A) = \sigma_1/\sigma_n\), 즉 <b>가장 많이 늘이는 방향과 가장 적게 늘이는 방향의 비</b>다. 특이 행렬은 \(\kappa = \infty\)로 둔다.</div>
+    <div class="callout"><strong>정리 16.2 (우변 섭동의 한계)</strong> \(A\mathbf{x} = \mathbf{b}\), \(A(\mathbf{x}+\delta\mathbf{x}) = \mathbf{b}+\delta\mathbf{b}\), \(\mathbf{b}\ne\mathbf{0}\)이면
+      $$\frac{\|\delta\mathbf{x}\|}{\|\mathbf{x}\|} \le \kappa(A)\,\frac{\|\delta\mathbf{b}\|}{\|\mathbf{b}\|}.$$
+      또한 행렬 자체가 \(A + \delta A\)로 흔들리고 \(\kappa(A)\,\|\delta A\|/\|A\| \lt 1\)이면 \(\dfrac{\|\delta\mathbf{x}\|}{\|\mathbf{x}+\delta\mathbf{x}\|} \le \kappa(A)\dfrac{\|\delta A\|}{\|A\|}\)가 성립한다.
+      <br><b>증명.</b> 두 식을 빼면 \(A\,\delta\mathbf{x} = \delta\mathbf{b}\), 즉 \(\delta\mathbf{x} = A^{-1}\delta\mathbf{b}\)이므로 \(\|\delta\mathbf{x}\| \le \|A^{-1}\|\,\|\delta\mathbf{b}\|\). 한편 \(\|\mathbf{b}\| = \|A\mathbf{x}\| \le \|A\|\,\|\mathbf{x}\|\)이므로 \(1/\|\mathbf{x}\| \le \|A\|/\|\mathbf{b}\|\). 두 부등식을 곱하면 결론이다. 행렬 섭동의 경우는 \((A+\delta A)(\mathbf{x}+\delta\mathbf{x}) = \mathbf{b}\)에서 \(A\,\delta\mathbf{x} = -\delta A(\mathbf{x}+\delta\mathbf{x})\)로 같은 논리를 쓴다. ∎</div>
+    <p>등호가 성립하는 경우도 있습니다. \(\mathbf{x}\)가 A가 가장 많이 늘이는 방향이고 \(\delta\mathbf{b}\)가 가장 적게 늘이는 방향일 때입니다. 그러니 κ는 과장된 상한이 아니라 <b>실제로 일어날 수 있는 최악의 증폭률</b>입니다. 기하로 보면, 우변 오차가 반지름 r인 원 위에 있을 때 해의 오차는 \(A^{-1}\)이 그 원을 보낸 <b>타원</b> 위에 있고, 타원의 긴 축이 \(r/\sigma_n\), 짧은 축이 \(r/\sigma_1\)입니다.</p>
+
+    <div class="sim" id="sim-nm-perturb">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거의 평행한 두 직선: 측정 오차가 해를 흔든다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nm-cv-perturb"></canvas><span class="tag-tl">원: δb의 모든 방향 · 타원: 해가 갈 수 있는 곳</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>두 식의 차이 d (A = [1 1; 1 1+d]) <output id="nm-p-d-out"></output></span><input type="range" id="nm-p-d" min="-3" max="0" step="0.05" value="-1"></label>
+          <label class="ctrl"><span>상대 측정 오차 ‖δb‖/‖b‖ <output id="nm-p-r-out"></output></span><input type="range" id="nm-p-r" min="0.1" max="5" step="0.1" value="1"></label>
+          <label class="ctrl"><span>δb의 방향 φ <output id="nm-p-phi-out"></output></span><input type="range" id="nm-p-phi" min="0" max="360" step="1" value="135"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ₂(A) = σ₁/σ₂</span><span class="v" id="nm-p-kappa">—</span></div>
+        <div class="stat"><span class="k">‖δx‖/‖x‖ (현재 방향)</span><span class="v" id="nm-p-rel">—</span></div>
+        <div class="stat"><span class="k">상한 κ·‖δb‖/‖b‖</span><span class="v" id="nm-p-bound">—</span></div>
+        <div class="stat"><span class="k">증폭률</span><span class="v" id="nm-p-amp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① d를 줄이면 두 직선이 거의 겹치고 타원이 직선 방향으로 길게 늘어납니다. d = 0.01이면 κ ≈ 400입니다. ② φ를 돌려 증폭률이 최대가 되는 방향(타원의 긴 축)을 찾아보세요. 그때 상대 오차가 상한과 거의 같아집니다. ③ d = 1이면 κ ≈ 2.6이라 측정 오차가 거의 그대로 전달됩니다. 모델: 참해 x = (1, 1), b = Ax. 2-노름을 씁니다.</div>
+    </div>
+
+    <p>조건수가 큰 행렬의 고전적인 예는 <span class="term">힐베르트 행렬</span><span class="en">(Hilbert matrix)</span> \(H_{ij} = 1/(i+j-1)\)입니다. 구간 [0, 1]에서 다항식 \(1, x, x^2, \dots\)로 함수를 최소제곱 근사할 때 나오는 행렬이고(\(H_{ij} = \int_0^1 x^{i-1}x^{j-1}\,dx\)), 모든 원소가 깔끔한 분수인데도 n이 커질수록 조건수가 대략 \(e^{3.5n}\)꼴로 폭발합니다. 아래에서 참해가 \(\mathbf{x} = (1, 1, \dots, 1)\)이 되도록 \(\mathbf{b} = H\mathbf{1}\)을 만들고 부분 피벗팅 소거로 풀어 봅니다.</p>
+
+    <div class="sim" id="sim-nm-hilbert">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>힐베르트 행렬이 잃는 자릿수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nm-cv-hilbert"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>크기 n <output id="nm-h-n-out"></output></span><input type="range" id="nm-h-n" min="2" max="14" step="1" value="8"></label>
+          <label class="check"><input type="checkbox" id="nm-h-rel" checked> 잔차 ‖b − Hx̂‖/‖b‖ 도 그리기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ∞(Hₙ)</span><span class="v" id="nm-h-kappa">—</span></div>
+        <div class="stat"><span class="k">해의 상대 오차</span><span class="v" id="nm-h-err">—</span></div>
+        <div class="stat"><span class="k">맞는 자릿수 (측정)</span><span class="v" id="nm-h-dig">—</span></div>
+        <div class="stat"><span class="k">어림 16 − log₁₀κ</span><span class="v" id="nm-h-pred">—</span></div>
+      </div>
+      <div class="nm-xs" id="nm-h-x">—</div>
+      <div class="sim-note">해볼 것: ① n = 8이면 κ ≈ 3×10¹⁰이라 16자리 중 6~7자리만 맞습니다. ② n = 12를 넘기면 κ가 10¹⁶에 다가가 해의 성분이 1과 전혀 다른 값이 됩니다. ③ 그런데도 잔차(초록)는 끝까지 10⁻¹⁶ 근처입니다. 소거는 "거의 같은 행렬의 정확한 답"을 냈고, 틀린 것은 문제의 예민함 때문입니다(다음 절). 모델: κ∞는 힐베르트 역행렬의 정수 공식으로 계산하고, 해는 double로 부분 피벗팅 소거를 해서 구했습니다.</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 16.2 · 조건수를 손으로</strong> \(A = \begin{bmatrix}1 & 1\\ 1 & 1.0001\end{bmatrix}\)이면 \(\det A = 10^{-4}\), \(A^{-1} = 10^4\begin{bmatrix}1.0001 & -1\\ -1 & 1\end{bmatrix}\). ∞-노름으로 \(\|A\|_\infty = 2.0001\), \(\|A^{-1}\|_\infty = 10^4 \times 2.0001\)이므로 \(\kappa_\infty \approx 4.0\times10^4\). 우변이 \(10^{-4}\)만큼 흔들리면 해는 최대 4배, 즉 100% 넘게 흔들릴 수 있습니다. 실제로 \(\mathbf{b} = (2, 2.0001)\)이면 \(\mathbf{x} = (1, 1)\)이지만, \(\mathbf{b} = (2, 2.0002)\)로 바꾸면 \(\mathbf{x} = (0, 2)\)입니다.</div>
+    <div class="callout warn"><strong>행렬식은 조건수가 아니다</strong> \(\det A\)가 작다고 해서 조건이 나쁜 것은 아닙니다. \(A = 0.1\,I_{20}\)의 행렬식은 \(10^{-20}\)이지만 \(\kappa = 1\)로 완벽한 조건입니다. 행렬식은 크기 배율(스케일)에 민감하고, 조건수는 <b>모양</b>(늘이는 비율의 차이)에 민감합니다. 행렬이 특이에 얼마나 가까운지는 \(\sigma_n/\sigma_1 = 1/\kappa_2\)가 알려 줍니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="stability">
+    <h2>안정성: 알고리즘이 문제를 망치지 않는가</h2>
+    <div class="problem"><strong>틀린 답의 책임은 누구에게 있나</strong>
+      <p>힐베르트 행렬의 해는 크게 틀렸습니다. 소거 알고리즘이 나쁜 걸까요, 문제가 나쁜 걸까요? 이 둘을 분리해야 "더 좋은 알고리즘을 찾아야 할지", "문제를 다시 세워야 할지" 결정할 수 있습니다.</p></div>
+    <p>답 \(\hat{\mathbf{x}}\)의 오차를 재는 방법은 두 가지입니다. <span class="term">전방 오차</span><span class="en">(forward error)</span>는 답이 참값에서 얼마나 떨어졌나 \(\|\hat{\mathbf{x}} - \mathbf{x}\|/\|\mathbf{x}\|\)입니다. <span class="term">후방 오차</span><span class="en">(backward error)</span>는 거꾸로 묻습니다. "\(\hat{\mathbf{x}}\)가 <b>정확한 답</b>이 되려면 문제를 얼마나 바꿔야 하나?" 즉 \((A + \delta A)\hat{\mathbf{x}} = \mathbf{b}\)를 만족하는 가장 작은 \(\|\delta A\|/\|A\|\)입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="전방 오차와 후방 오차">
+        <rect x="30" y="30" width="300" height="170" rx="14" class="f-surface"/><text x="180" y="22" text-anchor="middle" class="t" style="font-weight:700">입력 공간 (문제 A, b)</text>
+        <rect x="430" y="30" width="300" height="170" rx="14" class="f-surface"/><text x="580" y="22" text-anchor="middle" class="t" style="font-weight:700">출력 공간 (해 x)</text>
+        <circle cx="120" cy="120" r="6" style="fill:var(--text)"/><text x="120" y="148" text-anchor="middle" class="t-mono">(A, b)</text>
+        <circle cx="220" cy="80" r="6" style="fill:var(--accent-2)"/><text x="228" y="68" class="t-mono" style="fill:var(--accent-2)">(A+δA, b)</text>
+        <circle cx="520" cy="130" r="6" style="fill:var(--text)"/><text x="520" y="158" text-anchor="middle" class="t-mono">x (참해)</text>
+        <circle cx="650" cy="80" r="6" style="fill:var(--accent)"/><text x="650" y="68" text-anchor="middle" class="t-mono" style="fill:var(--accent)">x̂ (계산한 해)</text>
+        <path d="M126 122 C 260 160, 380 170, 512 132" fill="none" class="s-line" marker-end="url(#nm-ar1)"/><text x="320" y="178" text-anchor="middle" class="t-dim">정확한 풀이</text>
+        <path d="M126 118 C 250 40, 450 30, 642 78" fill="none" style="stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4" marker-end="url(#nm-ar2)"/><text x="380" y="40" text-anchor="middle" class="t" style="fill:var(--accent)">컴퓨터의 풀이 (반올림)</text>
+        <path d="M226 82 C 380 70, 500 70, 642 80" fill="none" class="s-line" style="opacity:.6"/>
+        <line x1="126" y1="116" x2="214" y2="84" style="stroke:var(--accent-2);stroke-width:3"/><text x="150" y="92" class="t-mono" style="fill:var(--accent-2)">후방 오차</text>
+        <line x1="526" y1="126" x2="644" y2="84" style="stroke:var(--bad);stroke-width:3"/><text x="610" y="124" class="t-mono" style="fill:var(--bad)">전방 오차</text>
+        <text x="380" y="222" text-anchor="middle" class="t-dim">전방 오차 ≲ 조건수 × 후방 오차</text>
+        <defs><marker id="nm-ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker><marker id="nm-ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+      </svg>
+      <figcaption><b>그림 16-2.</b> 컴퓨터가 낸 답 x̂는 조금 바뀐 문제 (A+δA, b)의 정확한 답이다. 문제를 바꾼 크기가 후방 오차, 답이 빗나간 크기가 전방 오차다. 후방 오차를 전방 오차로 옮기는 증폭률이 조건수다.</figcaption>
+    </figure>
+    <div class="callout"><strong>정의 16.4 (후방 안정성)</strong> 알고리즘이 내놓은 답이 언제나 상대 크기 \(O(u)\)만큼만 바뀐 입력의 정확한 답이면 그 알고리즘을 <span class="term">후방 안정</span><span class="en">(backward stable)</span>하다고 한다.</div>
+    <div class="callout"><strong>정리 16.3 (부분 피벗팅 소거의 후방 안정성, 윌킨슨)</strong> 부분 피벗팅을 쓴 가우스 소거(<a href="lu.html">PA = LU</a>)와 삼각 대입으로 구한 \(\hat{\mathbf{x}}\)는
+      $$(A + \delta A)\hat{\mathbf{x}} = \mathbf{b}, \qquad \frac{\|\delta A\|_\infty}{\|A\|_\infty} \le c\,n^3\rho\,u$$
+      를 만족한다. 여기서 c는 작은 상수, \(\rho\)는 소거 중 원소가 커지는 정도인 <span class="term">성장 인자</span><span class="en">(growth factor)</span>다. 실제 계산에서 n에 대한 의존은 이 상한보다 훨씬 약하게 나타나고, 부분 피벗팅을 쓰면 실제 응용의 행렬에서 \(\rho\)가 작게 유지되므로 사실상 후방 안정하다. 피벗팅을 하지 않으면 \(\rho\)가 무한히 커질 수 있다(<a href="elimination.html#pivoting">3장의 작은 피벗 예</a>).</div>
+    <p>두 정리를 합치면 실무의 어림셈이 나옵니다. 후방 안정한 알고리즘의 후방 오차는 \(u \approx 10^{-16}\) 정도이므로 정리 16.2에 의해</p>
+    <div class="formula">$$\frac{\|\hat{\mathbf{x}} - \mathbf{x}\|}{\|\mathbf{x}\|} \lesssim \kappa(A)\cdot u \qquad\Longrightarrow\qquad \text{맞는 자릿수} \approx 16 - \log_{10}\kappa(A).$$
+      <div class="where">힐베르트 시뮬레이터의 "어림" 값이 바로 이것이다. 조건수 10ᵏ마다 유효 숫자 k자리를 잃는다. 알고리즘이 아무리 좋아도 이보다 나을 수는 없고, 후방 안정한 알고리즘은 이 한계에 거의 닿는다.</div>
+    </div>
+    <div class="callout warn"><strong>잔차가 작다고 답이 맞는 것은 아니다</strong> 잔차 \(\mathbf{r} = \mathbf{b} - A\hat{\mathbf{x}}\)는 계산하기 쉬워서 자주 확인합니다. \(\|\mathbf{r}\|/(\|A\|\,\|\hat{\mathbf{x}}\|)\)는 사실상 후방 오차이므로, 잔차가 작다는 것은 "알고리즘이 정직했다"는 증거일 뿐입니다. 전방 오차는 여전히 κ배까지 클 수 있습니다. 힐베르트 시뮬레이터에서 잔차는 10⁻¹⁶인데 해가 완전히 틀린 것이 그 예입니다. TOP500의 HPL 검사도 잔차(후방 오차)를 확인합니다.</div>
+    <div class="callout deep"><strong>그렇다면 역행렬은?</strong> \(A^{-1}\)을 구해 \(\mathbf{x} = A^{-1}\mathbf{b}\)로 곱하는 방법은 LU로 푸는 것보다 약 세 배 비싸고, 후방 안정하지도 않습니다. 구한 역행렬 자체의 오차는 κ·u 수준이지만 \(\hat{A^{-1}}\mathbf{b}\)의 잔차는 κ에 비례해 커질 수 있기 때문입니다. "역행렬을 구하지 말고 분해해서 풀어라"(<a href="lu.html">4장</a>)는 속도뿐 아니라 정확도의 원칙이기도 합니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="power-iteration">
+    <h2>거듭제곱법: 곱하기만 해서 고유벡터 찾기</h2>
+    <div class="problem"><strong>특성 다항식은 쓸 수 없다</strong>
+      <p>교과서에서는 고유값을 \(\det(A - \lambda I) = 0\)의 근으로 구합니다(<a href="eigen.html">11장</a>). 그런데 5차 이상 다항식의 근에는 일반적인 근의 공식이 없고(아벨–루피니 정리), 계수에서 근을 구하는 문제는 조건이 아주 나쁩니다. 1000×1000 행렬의 특성 다항식을 만드는 것 자체가 수치적으로 의미가 없습니다. 고유값은 <b>반복</b>으로만 구할 수 있습니다. 가장 단순한 반복은 무엇일까요?</p></div>
+    <p>아무 벡터 \(\mathbf{x}_0\)에 A를 계속 곱해 봅시다. A가 고유벡터 \(\mathbf{v}_1,\dots,\mathbf{v}_n\)으로 대각화되고 \(|\lambda_1| \gt |\lambda_2| \ge \cdots\)라 하면, \(\mathbf{x}_0 = c_1\mathbf{v}_1 + \cdots + c_n\mathbf{v}_n\)에서</p>
+    <div class="formula">$$A^k\mathbf{x}_0 = c_1\lambda_1^k\mathbf{v}_1 + c_2\lambda_2^k\mathbf{v}_2 + \cdots = \lambda_1^k\Big(c_1\mathbf{v}_1 + c_2\big(\tfrac{\lambda_2}{\lambda_1}\big)^k\mathbf{v}_2 + \cdots\Big).$$
+      <div class="where">괄호 안의 둘째 항부터는 \(|\lambda_i/\lambda_1|^k \to 0\)으로 사라진다. 길이가 넘치거나 사라지지 않도록 매번 정규화하면 방향만 \(\mathbf{v}_1\)로 모인다.</div>
+    </div>
+    <div class="nm-algo"><span class="c">// 거듭제곱법 (power iteration)</span><br>x ← 임의의 단위 벡터<br>반복: y ← A x;  x ← y / ‖y‖;  λ̂ ← xᵀ A x   <span class="c">// 레일리 몫</span></div>
+    <div class="callout"><strong>정리 16.4 (거듭제곱법의 수렴)</strong> A가 대각화 가능하고 \(|\lambda_1| \gt |\lambda_2|\), 시작 벡터가 \(c_1 \ne 0\)이면, 정규화한 반복 벡터와 \(\pm\mathbf{v}_1\) 사이의 각은 \(O(|\lambda_2/\lambda_1|^k)\)로 줄어든다. A가 대칭이면 <span class="term">레일리 몫</span><span class="en">(Rayleigh quotient)</span> \(r(\mathbf{x}) = \mathbf{x}^{\mathsf T}A\mathbf{x}/\mathbf{x}^{\mathsf T}\mathbf{x}\)로 구한 고유값 근사의 오차는 그 제곱 \(O(|\lambda_2/\lambda_1|^{2k})\)로 줄어든다.
+      <br><b>증명 아이디어.</b> 위 전개식에서 \(\mathbf{v}_1\) 이외 성분과 \(\mathbf{v}_1\) 성분의 비가 \(|\lambda_2/\lambda_1|^k\) 배율로 준다. 대칭이면 고유벡터가 직교해서 \(\mathbf{x} = \mathbf{v}_1 + \boldsymbol\epsilon\)일 때 \(r(\mathbf{x}) - \lambda_1 = O(\|\boldsymbol\epsilon\|^2)\)이다(레일리 몫은 고유벡터에서 정류점). ∎</div>
+    <p>수렴 속도가 \(|\lambda_2/\lambda_1|\)로 정해진다는 것이 약점입니다. 두 고유값이 가까우면 한없이 느립니다. 해결책은 <b>A를 바꿔서 비율을 좋게 만드는 것</b>입니다. \((A - \sigma I)^{-1}\)의 고유값은 \(1/(\lambda_i - \sigma)\)이므로, 이동량 σ를 원하는 고유값 근처에 두면 그 고유값이 압도적으로 커집니다. 이것이 <span class="term">이동 역반복</span><span class="en">(shifted inverse iteration)</span>이고, 매 단계 곱셈 대신 \((A - \sigma I)\mathbf{y} = \mathbf{x}\)를 풉니다(LU는 한 번만 분해하면 됩니다). 수렴비는 \(|\lambda_j - \sigma| / |\lambda_k - \sigma|\)(가장 가까운 것 ÷ 두 번째로 가까운 것)입니다.</p>
+    <p>한 걸음 더 나가면, 매 단계 σ를 현재의 레일리 몫으로 바꿀 수 있습니다. 이것이 <span class="term">레일리 몫 반복</span><span class="en">(Rayleigh quotient iteration)</span>이고, 대칭 행렬에서는 대개 <b>3차 수렴</b>합니다. 맞는 자릿수가 매 단계 세 배씩 늘어 서너 번이면 기계 정밀도에 닿습니다. 대신 매번 새 행렬을 분해해야 하고, 어느 고유값으로 갈지는 시작점에 달려 있습니다.</p>
+
+    <div class="sim" id="sim-nm-power">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거듭제곱법 · 역반복 · 레일리 몫 반복</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nm-cv-power"></canvas><span class="tag-tl">보라 점(시작 벡터)을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="nm-pw-method"><button data-value="power" class="on">거듭제곱</button><button data-value="inverse">이동 역반복</button><button data-value="rqi">레일리 몫</button></div></div>
+          <label class="ctrl"><span>λ₂/λ₁ (λ₁ = 2) <output id="nm-pw-r-out"></output></span><input type="range" id="nm-pw-r" min="-0.95" max="0.95" step="0.01" value="0.8"></label>
+          <label class="ctrl"><span>이동량 σ (역반복) <output id="nm-pw-s-out"></output></span><input type="range" id="nm-pw-s" min="-2.5" max="2.5" step="0.05" value="1.4"></label>
+          <div class="btn-row"><button class="btn primary" id="nm-pw-step">한 단계</button><button class="btn" id="nm-pw-run">10단계</button><button class="btn" id="nm-pw-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="nm-pw-k">0</span></div>
+        <div class="stat"><span class="k">레일리 몫 λ̂</span><span class="v" id="nm-pw-lam">—</span></div>
+        <div class="stat"><span class="k">고유벡터와의 각 sin θ</span><span class="v" id="nm-pw-err">—</span></div>
+        <div class="stat"><span class="k">이론 수렴비</span><span class="v" id="nm-pw-rate">—</span></div>
+      </div>
+      <div class="split"><div><span class="cap">log₁₀ sin θ (단계별)</span><canvas id="nm-cv-power-err"></canvas></div></div>
+      <div class="sim-note">해볼 것: ① 거듭제곱에서 λ₂/λ₁ = 0.95로 두면 수십 단계가 지나도 수렴이 느립니다. 오차 막대가 점선(이론 기울기)을 따라 내려갑니다. ② λ₂/λ₁을 음수로 하면 반복 벡터가 좌우로 튀면서 수렴합니다. ③ 이동 역반복에서 σ를 λ₂ 근처에 두면 이번에는 작은 고유값의 고유벡터로 빠르게 갑니다. ④ 레일리 몫 반복은 서너 단계 만에 기계 정밀도(10⁻¹⁵)에 닿습니다. 모델: A = R diag(λ₁, λ₂) Rᵀ, 고유벡터는 30°와 120° 방향(대칭 행렬).</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 16.3 · 거듭제곱법 두 단계</strong> \(A = \begin{bmatrix}2 & 1\\ 1 & 2\end{bmatrix}\)(고유값 3, 1, 고유벡터 \((1,1), (1,-1)\)), \(\mathbf{x}_0 = (1, 0)\).
+      <div class="nm-steps"><ol>
+        <li>\(A\mathbf{x}_0 = (2, 1)\), 정규화 \(\mathbf{x}_1 = (0.894, 0.447)\). 레일리 몫 \(r = \mathbf{x}_1^{\mathsf T}A\mathbf{x}_1 = 2.8\).</li>
+        <li>\(A\mathbf{x}_1 = (2.236, 1.789)\), 정규화 \(\mathbf{x}_2 = (0.781, 0.625)\). \(r = 2.976\).</li>
+        <li>각 단계 \((1,-1)\) 성분 대 \((1,1)\) 성분의 비가 1, 1/3, 1/9로 \(|\lambda_2/\lambda_1| = 1/3\)씩 줄고, 고유값 오차는 0.2, 0.024로 약 \(1/9\)씩 준다(대칭이라 제곱 수렴).</li>
+      </ol></div></div>
+    <p>거듭제곱법은 단순하지만 아주 큰 행렬에서 여전히 쓰입니다. 곱셈만 하면 되므로 행렬을 저장하지 않고 "곱하는 방법"만 알아도 됩니다. 웹 페이지의 링크 구조에서 중요도를 매긴 초기 페이지랭크가 대표적인 예로, 전이 행렬의 가장 큰 고유값(=1)의 고유벡터를 거듭제곱법으로 구했습니다(<a href="dynamics.html">12장</a>).</p>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="qr-algorithm">
+    <h2>QR 알고리즘: 모든 고유값을 한꺼번에</h2>
+    <div class="problem"><strong>고유값을 전부 구하는 표준 방법</strong>
+      <p>거듭제곱법은 고유값 하나씩 찾습니다. 행렬의 고유값을 <b>모두</b> 원한다면? MATLAB의 <code>eig</code>, NumPy의 <code>numpy.linalg.eig</code>는 LAPACK을 거쳐 거의 언제나 같은 알고리즘을 부릅니다. 1961년 무렵 영국의 프랜시스와 소련의 쿠블라놉스카야가 각각 독립적으로 발표한 <span class="term">QR 알고리즘</span><span class="en">(QR algorithm)</span>입니다.</p></div>
+    <p>아이디어는 놀랄 만큼 짧습니다. A를 <a href="qr.html">QR 분해</a>하고, 두 인수를 <b>거꾸로 곱합니다.</b></p>
+    <div class="formula">$$A_0 = A, \qquad A_k = Q_kR_k \;(\text{QR 분해}), \qquad A_{k+1} = R_kQ_k.$$
+      <div class="where">\(R_k = Q_k^{\mathsf T}A_k\)이므로 \(A_{k+1} = Q_k^{\mathsf T}A_kQ_k\). 직교 닮음 변환이라 고유값이 그대로 보존되고, 반올림 오차도 커지지 않는다.</div>
+    </div>
+    <div class="callout"><strong>정리 16.5 (QR 알고리즘의 수렴)</strong> A의 고유값이 \(|\lambda_1| \gt |\lambda_2| \gt \cdots \gt |\lambda_n| \gt 0\)으로 절댓값이 모두 다르면(그리고 일반적인 위치 조건을 만족하면), \(A_k\)는 대각에 \(\lambda_1, \dots, \lambda_n\)이 차례로 놓인 상삼각 행렬로 수렴한다. 대각 아래 \((i+1, i)\) 원소는 대략 \(|\lambda_{i+1}/\lambda_i|^k\)의 비율로 0에 간다. A가 대칭이면 극한은 대각 행렬이다.
+      <br><b>증명 아이디어.</b> \(Q_0Q_1\cdots Q_{k-1}\)의 열들은 \(A^k\)의 열에 그람–슈미트를 한 결과와 같다. 즉 QR 알고리즘은 <b>n개의 벡터에 동시에 거듭제곱법을 하면서 서로 직교하게 유지하는</b>(동시 반복) 방법이다. 첫 열은 \(\mathbf{v}_1\)로, 둘째 열은 그것에 수직인 성분 중 \(\mathbf{v}_2\) 쪽으로 … 모인다. ∎</div>
+
+    <div class="sim" id="sim-nm-qr">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>QR 알고리즘: Aₖ₊₁ = RₖQₖ 를 되풀이하면</h3></div>
+      <div class="nm-stage"><div><span class="lab" id="nm-qr-lab">A₀</span><span id="nm-qr-mat"></span></div><div style="flex:1;min-width:220px"><canvas id="nm-cv-qr"></canvas></div></div>
+      <div class="sim-body"><div class="sim-controls">
+        <label class="ctrl"><span>행렬</span><select id="nm-qr-pre">
+          <option value="sym">대칭 3×3 (고유값 실수, 직교)</option>
+          <option value="gen">일반 3×3 (고유값 5, 3, 1)</option>
+          <option value="close">가까운 고유값 (3, 2.8, 1)</option>
+          <option value="rot">복소 고유값 쌍 (±i, 2)</option>
+        </select></label>
+        <div class="btn-row"><button class="btn primary" id="nm-qr-step">한 단계</button><button class="btn" id="nm-qr-run">10단계</button><button class="btn" id="nm-qr-reset">처음으로</button></div>
+      </div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="nm-qr-k">0</span></div>
+        <div class="stat"><span class="k">대각 원소</span><span class="v" id="nm-qr-diag">—</span></div>
+        <div class="stat"><span class="k">참 고유값</span><span class="v" id="nm-qr-true">—</span></div>
+      </div>
+      <div class="nm-legend"><span><i style="background:var(--accent)"></i>|a₂₁| (기대 비 |λ₂/λ₁|)</span><span><i style="background:var(--accent-2)"></i>|a₃₂| (기대 비 |λ₃/λ₂|)</span></div>
+      <div class="sim-note">해볼 것: ① 일반 행렬에서 10단계를 누르면 대각 아래가 사라지고 대각에 5, 3, 1이 나타납니다. a₃₂(비 1/3)가 a₂₁(비 3/5)보다 빨리 줄어듭니다. ② 가까운 고유값에서는 a₂₁의 비가 2.8/3 ≈ 0.93이라 아주 느립니다. 실제 라이브러리가 이동(shift)을 쓰는 이유입니다. ③ 복소 고유값 쌍은 실수 행렬로 대각에 놓을 수 없어 위쪽 2×2 블록이 끝까지 돌기만 합니다. 모델: 이동 없는 QR 알고리즘, QR 분해는 수정 그람–슈미트.</div>
+    </div>
+
+    <p>실제 라이브러리의 QR 알고리즘은 세 가지를 더합니다. ① 먼저 직교 닮음 변환으로 A를 <b>헤센베르크 꼴</b>(대각 바로 아래 한 줄 밑은 모두 0)로 만들어 한 단계의 비용을 \(O(n^3)\)에서 \(O(n^2)\)로 줄입니다. ② 역반복처럼 <b>이동</b> \(A_k - \sigma_k I = Q_kR_k,\; A_{k+1} = R_kQ_k + \sigma_kI\)를 써서 수렴을 2차~3차로 빠르게 합니다. ③ 대각 아래 원소가 충분히 작아지면 그 고유값을 떼어 내고(<b>감축</b>, deflation) 더 작은 행렬로 계속합니다. 그 결과 n×n 행렬의 고유값 전부를 대략 \(10n^3\) flop 정도에 구합니다. 복소 고유값 쌍은 실수 연산으로 2×2 블록을 남기는 "실수 슈르 꼴"로 처리합니다.</p>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="stationary">
+    <h2>반복법: 야코비, 가우스–자이델, SOR</h2>
+    <div class="problem"><strong>백만 개의 미지수, 이웃은 넷뿐</strong>
+      <p>금속판의 정상 상태 온도 분포를 1000×1000 격자로 계산하면 미지수가 10⁶개입니다. 각 격자점의 온도는 상하좌우 네 이웃의 평균이라는 식 하나로 묶여 있어, 행렬은 한 행에 0이 아닌 원소가 다섯 개뿐입니다. 밀집 소거라면 \(\tfrac{2}{3}(10^6)^3 \approx 7\times10^{17}\) flop이 들고, 띠 LU로도 띠 폭이 1000이라 채움 때문에 10¹² flop과 수 GB의 메모리가 필요합니다. 행렬을 건드리지 않고 "이웃의 평균"만 되풀이해서 풀 수는 없을까요?</p></div>
+    <p>A를 쉽게 풀리는 부분 M과 나머지로 쪼갭니다: \(A = M - N\). 그러면 \(A\mathbf{x} = \mathbf{b}\)는 \(M\mathbf{x} = N\mathbf{x} + \mathbf{b}\)이고, 이것을 반복식으로 바꿉니다.</p>
+    <div class="formula">$$M\mathbf{x}_{k+1} = N\mathbf{x}_k + \mathbf{b} \quad\Longleftrightarrow\quad \mathbf{x}_{k+1} = \mathbf{x}_k + M^{-1}(\mathbf{b} - A\mathbf{x}_k).$$
+      <div class="where">\(A = D - L - U\)(대각, 순하삼각의 부호 반대, 순상삼각의 부호 반대)로 쓰면 <b>야코비</b>는 \(M = D\), <b>가우스–자이델</b>은 \(M = D - L\), <b>SOR</b>은 \(M = \tfrac{1}{\omega}D - L\). 야코비는 이전 값만, 가우스–자이델은 방금 갱신한 값을 바로 쓴다.</div>
+    </div>
+    <p>오차 \(\mathbf{e}_k = \mathbf{x}_k - \mathbf{x}\)는 \(\mathbf{e}_{k+1} = G\mathbf{e}_k\), \(G = M^{-1}N\)을 따릅니다. 그러므로 수렴 여부는 반복 행렬 G의 고유값 크기가 결정합니다. G의 고유값 절댓값의 최댓값을 <span class="term">스펙트럼 반지름</span><span class="en">(spectral radius)</span> \(\rho(G)\)라 합니다.</p>
+    <div class="callout"><strong>정리 16.6 (정상 반복법의 수렴 조건)</strong> 반복 \(\mathbf{x}_{k+1} = G\mathbf{x}_k + \mathbf{c}\)가 모든 시작점에서 수렴할 필요충분조건은 \(\rho(G) \lt 1\)이다. 이때 오차는 대략 단계마다 \(\rho(G)\)배로 줄어, 오차를 \(10^{-m}\)배로 줄이는 데 약 \(m / (-\log_{10}\rho)\)단계가 든다.
+      <br><b>증명 아이디어.</b> \(\mathbf{e}_k = G^k\mathbf{e}_0\)이다. G가 대각화 가능하면 \(\mathbf{e}_0\)를 고유벡터로 전개해 각 성분이 \(\lambda_i^k\)배가 되므로 모든 \(|\lambda_i| \lt 1\)일 때만 0으로 간다. 일반적인 경우는 조르당 꼴로 \(\|G^k\|^{1/k} \to \rho(G)\)를 보인다. ∎
+      <br>A가 <b>엄격한 대각 우세</b>(각 행에서 \(|a_{ii}| \gt \sum_{j\ne i}|a_{ij}|\))이면 야코비와 가우스–자이델은 반드시 수렴한다(야코비는 \(\|G\|_\infty \lt 1\)에서 바로 나온다). A가 대칭 양의 정부호이면 가우스–자이델과 \(0 \lt \omega \lt 2\)인 SOR이 수렴한다.</div>
+    <p>위의 온도 문제(2차원 라플라스 방정식, 한 변 n칸, \(h = 1/(n+1)\))에서는 스펙트럼 반지름을 정확히 계산할 수 있습니다. 야코비는 \(\rho_J = \cos(\pi h)\), 가우스–자이델은 \(\rho_{GS} = \rho_J^2\)(두 배 빠름), 최적 \(\omega^* = 2/(1+\sin\pi h)\)를 쓴 SOR은 \(\rho = \omega^* - 1 \approx 1 - 2\pi h\)입니다. 격자가 촘촘해질수록 \(\rho_J \approx 1 - \tfrac{\pi^2h^2}{2}\)는 1에 붙어 버리므로 야코비는 \(O(n^2)\)단계, 최적 SOR은 \(O(n)\)단계가 필요합니다.</p>
+
+    <div class="sim" id="sim-nm-iter">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>금속판의 온도: 반복법 경주</h3></div>
+      <div class="split"><div><span class="cap" id="nm-it-cap">온도 분포</span><canvas id="nm-cv-iter-grid"></canvas></div><div><span class="cap">log₁₀(상대 잔차) — 반복 횟수</span><canvas id="nm-cv-iter-res"></canvas></div></div>
+      <div class="sim-body"><div class="sim-controls">
+        <div class="ctrl"><span>방법</span><div class="seg" id="nm-it-method"><button data-value="jacobi" class="on">야코비</button><button data-value="gs">가우스–자이델</button><button data-value="sor">SOR</button><button data-value="cg">CG</button></div></div>
+        <div class="ctrl"><span>격자 한 변 n</span><div class="seg" id="nm-it-n"><button data-value="10">10</button><button data-value="20" class="on">20</button><button data-value="40">40</button></div></div>
+        <label class="ctrl"><span>SOR 이완 계수 ω <output id="nm-it-w-out"></output></span><input type="range" id="nm-it-w" min="1" max="1.98" step="0.01" value="1.73"></label>
+        <div class="btn-row"><button class="btn primary" id="nm-it-play">▶ 반복 실행</button><button class="btn" id="nm-it-all">네 방법 모두 비교</button><button class="btn" id="nm-it-wopt">ω* 로 맞추기</button><button class="btn" id="nm-it-reset">초기화</button></div>
+      </div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="nm-it-k">0</span></div>
+        <div class="stat"><span class="k">상대 잔차 ‖b − Ax‖/‖b‖</span><span class="v" id="nm-it-res">—</span></div>
+        <div class="stat"><span class="k">이론 ρ(G)</span><span class="v" id="nm-it-rho">—</span></div>
+        <div class="stat"><span class="k">10⁻⁶까지 예상 반복</span><span class="v" id="nm-it-pred">—</span></div>
+      </div>
+      <div class="nm-legend"><span><i style="background:var(--bad)"></i>야코비</span><span><i style="background:var(--warn)"></i>가우스–자이델</span><span><i style="background:var(--accent-2)"></i>SOR</span><span><i style="background:var(--accent)"></i>켤레 기울기(CG)</span></div>
+      <div class="sim-note">해볼 것: ① '네 방법 모두 비교'를 누르면 잔차 곡선의 기울기가 log₁₀ρ와 맞는 직선으로 나옵니다. 가우스–자이델의 기울기는 야코비의 두 배입니다. ② n을 40으로 늘리면 야코비와 가우스–자이델은 1500번으로도 한참 모자라고, SOR과 CG는 백몇십 번이면 됩니다. ③ ω를 ω*에서 조금만 벗어나게 해도 SOR이 눈에 띄게 느려집니다. ω ≥ 2이면 발산합니다(이 슬라이더는 1.98까지). 모델: 위쪽 가장자리 온도 1, 나머지 가장자리 0인 정사각형 판의 5점 차분 라플라스 방정식. 시작값은 모두 0.</div>
+    </div>
+
+    <div class="callout tip"><strong>예제 16.4 · 야코비 두 단계</strong> \(\begin{cases}4x_1 - x_2 = 3\\ -x_1 + 4x_2 = 3\end{cases}\)(해 \(x_1 = x_2 = 1\)). 야코비 반복은 \(x_1^{(k+1)} = (3 + x_2^{(k)})/4\), \(x_2^{(k+1)} = (3 + x_1^{(k)})/4\).
+      <div class="nm-steps"><ol>
+        <li>\(\mathbf{x}^{(0)} = (0,0)\) → \(\mathbf{x}^{(1)} = (0.75, 0.75)\) → \(\mathbf{x}^{(2)} = (0.9375, 0.9375)\) → \(\mathbf{x}^{(3)} = (0.984, 0.984)\).</li>
+        <li>오차가 1, 0.25, 0.0625, 0.0156으로 매번 1/4배. \(G = D^{-1}(L+U) = \begin{bmatrix}0 & 1/4\\ 1/4 & 0\end{bmatrix}\)의 고유값이 \(\pm 1/4\)이므로 \(\rho = 1/4\)과 맞다.</li>
+        <li>가우스–자이델이면 \(x_1^{(1)} = 0.75\)를 곧바로 써서 \(x_2^{(1)} = (3 + 0.75)/4 = 0.9375\). 반복 행렬의 스펙트럼 반지름은 \(1/16 = \rho_J^2\)이다.</li>
+      </ol></div></div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="conjugate-gradient">
+    <h2>켤레 기울기법: 가장 빠른 내리막을 똑똑하게</h2>
+    <div class="problem"><strong>방정식 풀기 = 그릇의 바닥 찾기</strong>
+      <p>SOR은 좋은 ω를 알아야 빠릅니다. ω*는 이렇게 단순한 모델 문제에서나 공식으로 구할 수 있지요. 매개변수 없이, 대칭 양의 정부호 행렬이면 무엇이든 빠르게 풀리는 반복법은 없을까요? 실마리는 연립방정식을 <b>최솟값 문제</b>로 바꾸는 데 있습니다.</p></div>
+    <div class="callout"><strong>정리 16.7 (연립방정식과 이차 함수의 최솟값)</strong> A가 대칭 양의 정부호(SPD, <a href="symmetric.html">13장</a>)이면 \(A\mathbf{x} = \mathbf{b}\)의 해는 이차 함수
+      $$f(\mathbf{x}) = \tfrac12\mathbf{x}^{\mathsf T}A\mathbf{x} - \mathbf{b}^{\mathsf T}\mathbf{x}$$
+      의 유일한 최솟점이다. <b>증명.</b> 기울기가 \(\nabla f = A\mathbf{x} - \mathbf{b}\)이므로 정류점은 해이고, \(f(\mathbf{x}^\ast + \mathbf{e}) = f(\mathbf{x}^\ast) + \tfrac12\mathbf{e}^{\mathsf T}A\mathbf{e} \gt f(\mathbf{x}^\ast)\) (\(\mathbf{e}\ne\mathbf{0}\)). ∎</div>
+    <p>f의 등고선은 A의 고유벡터를 축으로 하는 타원이고, 축 길이 비가 \(\sqrt{\kappa}\)입니다. 가장 단순한 전략은 매번 가장 가파른 방향 \(-\nabla f = \mathbf{r}_k\)(잔차!)로 그 직선 위의 최솟점까지 가는 <span class="term">최급강하법</span><span class="en">(steepest descent)</span>입니다. 그런데 타원이 길쭉하면 골짜기 벽 사이를 지그재그로 오가며 매 단계 오차가 \((\kappa-1)/(\kappa+1)\)배밖에 줄지 않습니다.</p>
+    <p>1952년 헤스테네스와 슈티펠이 발표한 <span class="term">켤레 기울기법</span><span class="en">(conjugate gradient, CG)</span>은 방향을 더 똑똑하게 고릅니다. 새 방향을 이전 방향들과 <b>A-켤레</b>(\(\mathbf{p}_i^{\mathsf T}A\mathbf{p}_j = 0\))가 되도록 잡으면, 한 방향에서 최소화한 것을 다음 방향이 망치지 않습니다. 타원을 원으로 펴는 좌표에서 보면 서로 수직인 방향으로 한 번씩만 가는 것과 같습니다.</p>
+    <div class="nm-algo"><span class="c">// 켤레 기울기법 (A는 SPD)</span><br>r ← b − A x;  p ← r<br>반복:  α ← (rᵀr) / (pᵀAp)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x ← x + α p;  r_new ← r − α A p<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;β ← (r_newᵀ r_new) / (rᵀr);  p ← r_new + β p;  r ← r_new</div>
+    <div class="callout"><strong>정리 16.8 (켤레 기울기법의 성질)</strong> A가 n×n SPD이면 정확한 산술에서 CG는 최대 n단계 만에 정확한 해에 닿는다. k단계의 \(\mathbf{x}_k\)는 크릴로프 공간 \(\mathbf{x}_0 + \mathrm{span}\{\mathbf{r}_0, A\mathbf{r}_0, \dots, A^{k-1}\mathbf{r}_0\}\)에서 A-노름 오차 \(\|\mathbf{e}\|_A = \sqrt{\mathbf{e}^{\mathsf T}A\mathbf{e}}\)를 최소로 하는 점이며,
+      $$\|\mathbf{e}_k\|_A \le 2\left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\right)^{k}\|\mathbf{e}_0\|_A.$$
+      <b>증명 아이디어.</b> 잔차들이 서로 직교하고 방향들이 서로 A-켤레임을 귀납법으로 보인다. ℝⁿ에서 0이 아닌 직교 벡터는 n개를 넘을 수 없으니 n단계 안에 잔차가 0이 된다. 오차 한계는 크릴로프 공간의 최적성을 체비쇼프 다항식으로 어림해서 얻는다. ∎</div>
+    <p>최급강하법의 \((\kappa-1)/(\kappa+1)\)과 비교하면 CG는 κ 대신 \(\sqrt{\kappa}\)가 들어갑니다. κ = 10⁴이면 최급강하법은 오차를 10배 줄이는 데 약 1만 단계, CG는 약 100단계가 듭니다. 실제 계산에서는 반올림 때문에 정확히 n단계에 끝나지 않지만, 행렬이 클 때 CG는 n보다 훨씬 적은 단계에서 충분히 정확해지므로 "직접법"이 아니라 반복법으로 씁니다.</p>
+
+    <div class="sim" id="sim-nm-cg">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최급강하법 대 켤레 기울기법</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nm-cv-cg"></canvas><span class="tag-tl">시작점을 끌어 보세요 · 바닥은 원점</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>조건수 κ = λ₁/λ₂ <output id="nm-cg-k-out"></output></span><input type="range" id="nm-cg-k" min="1" max="50" step="0.5" value="10"></label>
+          <label class="ctrl"><span>타원의 기울기 θ <output id="nm-cg-th-out"></output></span><input type="range" id="nm-cg-th" min="0" max="180" step="1" value="30"></label>
+          <div class="ctrl"><span>보기</span><div class="seg" id="nm-cg-show"><button data-value="both" class="on">둘 다</button><button data-value="sd">최급강하</button><button data-value="cg">CG</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최급강하: 오차 10⁻⁶까지</span><span class="v" id="nm-cg-sd">—</span></div>
+        <div class="stat"><span class="k">CG: 정확한 해까지</span><span class="v" id="nm-cg-cgn">—</span></div>
+        <div class="stat"><span class="k">최급강하 단계당 비 (κ−1)/(κ+1)</span><span class="v" id="nm-cg-rate">—</span></div>
+        <div class="stat"><span class="k">CG 한계의 비 (√κ−1)/(√κ+1)</span><span class="v" id="nm-cg-rate2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① κ = 1이면 등고선이 원이라 두 방법 모두 한 걸음에 바닥에 닿습니다. ② κ를 키우면 최급강하(빨강)가 골짜기에서 지그재그로 수십~수백 단계를 헤맵니다. 연속한 두 걸음은 언제나 서로 수직입니다. ③ CG(보라)는 κ와 시작점에 관계없이 정확히 두 걸음 만에 끝납니다(2차원이므로 n = 2). 시작점을 고유벡터 축 위에 두면 둘 다 한 걸음입니다. 모델: f(x) = ½xᵀAx, A = R diag(κ, 1) Rᵀ, 해 x* = 0. 각 걸음은 그 방향의 정확한 직선 최소화.</div>
+    </div>
+
+    <p>CG의 수렴은 κ에 달려 있으니, 같은 해를 갖되 조건수가 작은 문제로 바꿔 풀면 됩니다. 이것이 <span class="term">전처리</span><span class="en">(preconditioning)</span>입니다. A와 비슷하면서 풀기 쉬운 SPD 행렬 M을 골라 \(M^{-1}A\mathbf{x} = M^{-1}\mathbf{b}\)를 풉니다(대칭성을 지키도록 변형한 "전처리 CG"는 매 단계 \(M\mathbf{z} = \mathbf{r}\) 하나를 더 풉니다). M = A면 κ = 1이지만 M을 푸는 것이 원래 문제만큼 어렵고, M = I면 쉽지만 효과가 없습니다. 그 사이의 절충으로 대각만 쓰는 야코비 전처리, 채움을 버린 <b>불완전 콜레스키</b>, 격자 문제에서 거의 최적인 <b>다중 격자</b> 같은 방법이 쓰입니다. 큰 문제를 빨리 푸는 기술의 대부분은 좋은 전처리기를 설계하는 기술입니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="sparse">
+    <h2>희소 행렬과 계산 규모</h2>
+    <div class="problem"><strong>0을 저장하지 않으면</strong>
+      <p>10⁶×10⁶ 행렬을 double로 다 저장하면 8 TB입니다. 그런데 온도 격자의 행렬은 0이 아닌 원소가 약 5×10⁶개(40 MB)뿐입니다. 99.9995%가 0입니다. 0을 저장하지도, 곱하지도 않는 자료 구조가 있으면 반복법의 한 단계(행렬–벡터 곱)가 \(n^2\)이 아니라 <b>0이 아닌 원소 수</b>에 비례하게 됩니다.</p></div>
+    <p>대부분의 원소가 0인 행렬을 <span class="term">희소 행렬</span><span class="en">(sparse matrix)</span>이라 하고, 0이 아닌 원소 수를 nnz라 씁니다. 가장 널리 쓰는 저장 형식은 <span class="term">CSR</span><span class="en">(compressed sparse row)</span>입니다. 0이 아닌 값을 행 순서대로 늘어놓은 <code>values</code>, 각 값의 열 번호 <code>col_idx</code>, 그리고 각 행이 <code>values</code>의 어디서 시작하는지 적은 <code>row_ptr</code>(길이 n+1) 세 배열로 행렬을 표현합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="CSR 저장 형식">
+        <g transform="translate(30,40)">
+          <text x="80" y="-14" text-anchor="middle" class="t" style="font-weight:700">A (4×4)</text>
+          <rect x="0" y="0" width="160" height="160" rx="8" class="f-surface"/>
+          <g class="t-mono" text-anchor="middle">
+            <text x="20" y="26" style="fill:var(--accent);font-weight:700">4</text><text x="60" y="26" style="fill:var(--accent);font-weight:700">−1</text><text x="100" y="26" class="t-dim">0</text><text x="140" y="26" class="t-dim">0</text>
+            <text x="20" y="66" style="fill:var(--accent);font-weight:700">−1</text><text x="60" y="66" style="fill:var(--accent);font-weight:700">4</text><text x="100" y="66" style="fill:var(--accent);font-weight:700">−1</text><text x="140" y="66" class="t-dim">0</text>
+            <text x="20" y="106" class="t-dim">0</text><text x="60" y="106" style="fill:var(--accent);font-weight:700">−1</text><text x="100" y="106" style="fill:var(--accent);font-weight:700">4</text><text x="140" y="106" style="fill:var(--accent);font-weight:700">−1</text>
+            <text x="20" y="146" class="t-dim">0</text><text x="60" y="146" class="t-dim">0</text><text x="100" y="146" style="fill:var(--accent);font-weight:700">−1</text><text x="140" y="146" style="fill:var(--accent);font-weight:700">4</text>
+          </g>
+        </g>
+        <g transform="translate(230,58)" class="t-mono">
+          <text x="0" y="0" class="t" style="font-weight:700">values</text>
+          <g transform="translate(90,-16)">
+            <rect width="420" height="24" rx="4" class="f-acc-soft"/>
+            <text x="17" y="17" text-anchor="middle">4</text><text x="52" y="17" text-anchor="middle">−1</text><text x="87" y="17" text-anchor="middle">−1</text><text x="122" y="17" text-anchor="middle">4</text><text x="157" y="17" text-anchor="middle">−1</text><text x="192" y="17" text-anchor="middle">−1</text><text x="227" y="17" text-anchor="middle">4</text><text x="262" y="17" text-anchor="middle">−1</text><text x="297" y="17" text-anchor="middle">−1</text><text x="332" y="17" text-anchor="middle">4</text>
+          </g>
+          <text x="0" y="50" class="t" style="font-weight:700">col_idx</text>
+          <g transform="translate(90,34)">
+            <rect width="420" height="24" rx="4" class="f-surface"/>
+            <text x="17" y="17" text-anchor="middle">0</text><text x="52" y="17" text-anchor="middle">1</text><text x="87" y="17" text-anchor="middle">0</text><text x="122" y="17" text-anchor="middle">1</text><text x="157" y="17" text-anchor="middle">2</text><text x="192" y="17" text-anchor="middle">1</text><text x="227" y="17" text-anchor="middle">2</text><text x="262" y="17" text-anchor="middle">3</text><text x="297" y="17" text-anchor="middle">2</text><text x="332" y="17" text-anchor="middle">3</text>
+          </g>
+          <text x="0" y="100" class="t" style="font-weight:700">row_ptr</text>
+          <g transform="translate(90,84)">
+            <rect width="180" height="24" rx="4" class="f-acc2-soft"/>
+            <text x="17" y="17" text-anchor="middle">0</text><text x="52" y="17" text-anchor="middle">2</text><text x="87" y="17" text-anchor="middle">5</text><text x="122" y="17" text-anchor="middle">8</text><text x="157" y="17" text-anchor="middle">10</text>
+          </g>
+          <path d="M142 108 v 22 M177 108 v 22" class="s-line"/>
+          <text x="90" y="150" class="t-dim">2행(0부터 셈)의 값은 values[5 .. 7]: −1, 4, −1 이고 열은 1, 2, 3</text>
+          <text x="90" y="174" class="t-dim">메모리: nnz개 값 + nnz개 열 번호 + (n+1)개 포인터</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-3.</b> 삼중대각 행렬의 CSR 저장. 행렬–벡터 곱 y = Ax는 각 행 i마다 values[row_ptr[i]]부터 values[row_ptr[i+1]−1]까지만 돌면 되므로 연산량이 약 2·nnz다.</figcaption>
+    </figure>
+    <p>희소 행렬에도 직접법을 쓸 수 있습니다. 다만 LU 분해가 0이었던 칸을 채우는 <a href="lu.html#banded">채움</a> 때문에 미지수의 번호를 잘 매기는 것(재순서화)이 성능을 좌우합니다. 2차원 격자 문제는 희소 직접법이 여전히 강하고, 3차원 문제나 아주 큰 문제는 채움이 감당할 수 없을 만큼 커져서 전처리한 반복법이 주로 쓰입니다. 대략적인 비교는 다음과 같습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방법</th><th>대상</th><th>연산량(대략)</th><th>메모리</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td>밀집 LU (부분 피벗팅)</td><td>모든 가역 행렬</td><td>\(\tfrac23 n^3\)</td><td>\(n^2\)</td><td>후방 안정, 예측 가능. n이 수만까지 현실적</td></tr>
+        <tr><td>콜레스키</td><td>SPD</td><td>\(\tfrac13 n^3\)</td><td>\(n^2/2\)</td><td>피벗팅 불필요</td></tr>
+        <tr><td>띠 LU</td><td>띠 폭 w</td><td>\(\approx 2nw^2\)</td><td>\(nw\)</td><td>1차원 문제는 \(O(n)\)</td></tr>
+        <tr><td>희소 직접법</td><td>희소 행렬</td><td>채움에 좌우</td><td>nnz + 채움</td><td>재순서화가 핵심. 여러 우변에 강함</td></tr>
+        <tr><td>야코비·가우스–자이델</td><td>대각 우세 등</td><td>반복당 ≈ 2·nnz</td><td>nnz</td><td>단순하지만 느림. 다중 격자의 평활기</td></tr>
+        <tr><td>CG (+전처리)</td><td>SPD</td><td>반복당 ≈ 2·nnz, 반복 수 ∝ √κ</td><td>nnz + 벡터 몇 개</td><td>큰 희소 SPD 문제의 주력</td></tr>
+        <tr><td>GMRES 등 크릴로프 방법</td><td>일반 희소</td><td>반복당 행렬 곱 1번 + 직교화</td><td>nnz + 벡터 k개</td><td>비대칭 행렬용 CG의 일반화</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout deep"><strong>직접 짜지 말고 라이브러리를 쓰자</strong> 밀집 행렬 계산은 1970년대 말부터 정해진 <b>BLAS</b>(Basic Linear Algebra Subprograms; 벡터·행렬–벡터·행렬–행렬 연산의 표준 인터페이스)와 그 위에 1990년대 초 발표된 <b>LAPACK</b>(연립방정식, 최소제곱, 고유값, SVD)이 사실상 표준입니다. MATLAB, NumPy·SciPy, R, Julia 같은 환경의 선형대수 함수는 대부분 LAPACK을 부르고, CPU·GPU 제조사는 자기 하드웨어에 맞춘 BLAS를 제공합니다. 같은 \(\tfrac23n^3\) 알고리즘이라도 캐시와 벡터 명령을 잘 쓰는 블록 구현은 교과서식 삼중 루프보다 수십 배 빠를 수 있습니다(<a href="matrices.html#cost">2장의 행렬 곱 비용</a>). 희소 행렬은 SciPy의 <code>scipy.sparse</code>, PETSc, SuiteSparse 같은 라이브러리가 저장 형식·직접법·반복법·전처리기를 제공합니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>수치 선형대수는 계산 과학과 공학 시뮬레이션의 밑바닥입니다. 이 책의 앞 장들이 "무엇을 계산하는가"였다면 이 장은 "어떻게 믿을 만하게, 충분히 빨리 계산하는가"입니다.</p>
+    <div class="uses">
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>컴퓨터는 어떻게 틀리는가<br><span>부동소수점의 2진 표현, 반올림 오차의 누적, 유한 차분과 안정성 조건.</span></a>
+      <a href="lu.html"><small>LINEARBOOK · 4장</small>역행렬과 LU 분해<br><span>후방 안정한 직접법의 실체. 띠 행렬과 채움, 회로의 노드 해석.</span></a>
+      <a href="svd.html"><small>LINEARBOOK · 14장</small>특이값 분해<br><span>κ₂ = σ₁/σₙ, 수치 계수(rank)와 잘린 SVD로 나쁜 조건 다루기.</span></a>
+      <a href="dynamics.html"><small>LINEARBOOK · 12장</small>고유값으로 보는 동역학<br><span>마르코프 연쇄와 페이지랭크의 정상 분포를 거듭제곱법으로.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>정규 방정식의 κ(AᵀA) = κ(A)². 다중 공선성이 회귀 계수를 흔드는 이유.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>소자·공정 시뮬레이션<br><span>격자로 이산화한 편미분방정식이 거대한 희소 연립방정식이 되고, 전처리 반복법으로 푼다.</span></a>
+    </div>
+  </section>
+
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>부동소수점</b>은 상대 간격이 일정한 격자다. 연산 하나는 \(\mathrm{fl}(a\circ b) = (a\circ b)(1+\delta)\), \(|\delta| \le u = 2^{-53}\)으로 정확하고(\(\varepsilon_{\text{mach}} = 2^{-52}\)), 문제는 거의 같은 수를 빼는 <b>상쇄 오차</b>다. 대수적으로 같은 안정한 식으로 바꿔 피한다.</li>
+      <li><b>조건수</b> \(\kappa(A) = \|A\|\,\|A^{-1}\|\) (2-노름에서 \(\sigma_1/\sigma_n\))는 문제의 예민함이다. \(\|\delta\mathbf{x}\|/\|\mathbf{x}\| \le \kappa\,\|\delta\mathbf{b}\|/\|\mathbf{b}\|\)이고 등호가 실제로 일어난다. 행렬식의 크기는 조건과 무관하다.</li>
+      <li><b>후방 안정</b>한 알고리즘(부분 피벗팅 LU, QR 분해, 직교 변환)은 "거의 같은 문제의 정확한 답"을 낸다. 그래서 <b>전방 오차 ≲ κ·u</b>, 맞는 자릿수 ≈ 16 − log₁₀κ. 잔차가 작아도 답이 맞는다는 보장은 없다.</li>
+      <li><b>거듭제곱법</b>은 \(|\lambda_2/\lambda_1|^k\)로 가장 큰 고유값의 고유벡터에 수렴한다. 이동 역반복은 원하는 고유값을 가깝게 끌어오고, 레일리 몫 반복은 대칭 행렬에서 3차 수렴한다.</li>
+      <li><b>QR 알고리즘</b> \(A_{k+1} = R_kQ_k = Q_k^{\mathsf T}A_kQ_k\)는 직교 닮음 변환을 되풀이해 상삼각(대칭이면 대각)으로 수렴하는 동시 반복이다. 실제로는 헤센베르크 꼴·이동·감축을 더해 \(O(n^3)\)에 모든 고유값을 구한다.</li>
+      <li><b>정상 반복법</b> \(\mathbf{x}_{k+1} = \mathbf{x}_k + M^{-1}(\mathbf{b} - A\mathbf{x}_k)\)는 \(\rho(M^{-1}N) \lt 1\)일 때만 수렴하고 단계마다 오차가 ρ배 준다. 라플라스 모델 문제에서 \(\rho_{GS} = \rho_J^2\), 최적 SOR은 필요한 반복을 \(O(n^2)\)에서 \(O(n)\)으로 줄인다.</li>
+      <li><b>켤레 기울기법</b>은 SPD 문제를 이차 함수의 최소화로 보고 A-켤레 방향으로만 움직여 최대 n단계에 끝나며, 오차가 \(((\sqrt\kappa-1)/(\sqrt\kappa+1))^k\)로 준다. <b>전처리</b>는 κ를 줄여 반복 수를 줄인다.</li>
+      <li><b>희소 행렬</b>은 CSR 등으로 0이 아닌 원소만 저장하고, 행렬–벡터 곱이 nnz에 비례한다. 크고 희소하면 전처리 반복법, 작거나 밀집이면 LAPACK의 직접법을 쓴다.</li>
+    </ol>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 배정밀도 부동소수점에서 \(1 + 10^{-17}\)을 계산하면?</p><div class="opts">
+        <button class="opt">1.00000000000000001</button>
+        <button class="opt" data-correct>정확히 1</button>
+        <button class="opt">오버플로 오류</button>
+        <button class="opt">1 + 2⁻⁵²</button>
+      </div><div class="quiz-exp">1 다음의 double은 \(1 + 2^{-52} \approx 1 + 2.2\times10^{-16}\)이다. \(10^{-17}\)은 그 간격의 절반(u ≈ 1.1×10⁻¹⁶)보다 훨씬 작아서 가장 가까운 수인 1로 반올림된다. 연산 하나의 상대 오차는 u 이하라는 표준 모델과 맞는다.</div></div>
+
+      <div class="quiz-q"><p>Q2. κ(A) = 10¹⁰인 행렬로 \(A\mathbf{x} = \mathbf{b}\)를 부분 피벗팅 LU로 배정밀도에서 풀었다. 해의 정확도로 가장 알맞은 기대는?</p><div class="opts">
+        <button class="opt">16자리 모두 맞는다(알고리즘이 안정하므로)</button>
+        <button class="opt" data-correct>대략 6자리 정도 맞는다</button>
+        <button class="opt">한 자리도 맞지 않는다</button>
+        <button class="opt">잔차를 보기 전에는 전혀 알 수 없다</button>
+      </div><div class="quiz-exp">후방 안정한 알고리즘의 전방 오차는 대략 κ·u ≈ 10¹⁰ × 10⁻¹⁶ = 10⁻⁶. 맞는 자릿수 ≈ 16 − log₁₀κ = 6. 알고리즘이 안정해도 문제의 예민함은 피할 수 없다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 다음 중 조건수가 가장 좋은(1에 가장 가까운) 행렬은?</p><div class="opts">
+        <button class="opt">\(\begin{bmatrix}1 & 1\\ 1 & 1.001\end{bmatrix}\) (det = 0.001)</button>
+        <button class="opt" data-correct>\(10^{-6}I_3\) (det = 10⁻¹⁸)</button>
+        <button class="opt">\(\begin{bmatrix}1 & 1000\\ 0 & 1\end{bmatrix}\) (det = 1)</button>
+        <button class="opt">\(\mathrm{diag}(1, 10^{-3})\) (det = 0.001)</button>
+      </div><div class="quiz-exp">\(10^{-6}I\)는 모든 방향을 같은 비율로 줄이므로 σ₁ = σ₃ = 10⁻⁶, κ = 1이다. 행렬식이 아주 작아도 조건은 완벽하다. 반면 전단 행렬은 det = 1이지만 κ ≈ 10⁶이다. 첫째는 κ ≈ 4000, 넷째는 κ = 1000.</div></div>
+
+      <div class="quiz-q"><p>Q4. 계산한 해 \(\hat{\mathbf{x}}\)의 상대 잔차 \(\|\mathbf{b} - A\hat{\mathbf{x}}\|/\|\mathbf{b}\|\)가 10⁻¹⁶이다. 옳은 결론은?</p><div class="opts">
+        <button class="opt">\(\hat{\mathbf{x}}\)의 성분은 15자리 이상 맞는다</button>
+        <button class="opt" data-correct>\(\hat{\mathbf{x}}\)는 거의 같은 문제의 정확한 해이며, 전방 오차는 κ에 따라 클 수 있다</button>
+        <button class="opt">A는 조건이 좋은 행렬이다</button>
+        <button class="opt">알고리즘에 버그가 있다</button>
+      </div><div class="quiz-exp">작은 잔차는 작은 후방 오차를 뜻한다. 전방 오차는 최대 κ배로 커질 수 있다. 힐베르트 행렬(n = 13)이 바로 잔차는 10⁻¹⁶인데 해는 완전히 틀린 예다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 대칭 행렬의 고유값이 10, 9, 1이다. 거듭제곱법으로 가장 큰 고유벡터를 구할 때 단계당 수렴비와, 이동 역반복을 σ = 9.8로 할 때의 수렴비는?</p><div class="opts">
+        <button class="opt">0.1과 0.9</button>
+        <button class="opt" data-correct>0.9와 0.25</button>
+        <button class="opt">0.9와 0.1</button>
+        <button class="opt">둘 다 0.9</button>
+      </div><div class="quiz-exp">거듭제곱법은 |λ₂/λ₁| = 9/10 = 0.9. 역반복은 (A − σI)⁻¹의 고유값 1/(λ − σ)의 비이므로, 가장 가까운 10까지 거리 0.2, 다음으로 가까운 9까지 거리 0.8: 비율 0.2/0.8 = 0.25. 이동을 잘 고르면 훨씬 빠르다.</div></div>
+
+      <div class="quiz-q"><p>Q6. QR 알고리즘 한 단계 \(A_{k+1} = R_kQ_k\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">\(A_{k+1} = A_k\)이므로 아무 변화가 없다</button>
+        <button class="opt">\(A_{k+1}\)의 고유값은 \(A_k\)의 고유값의 제곱이다</button>
+        <button class="opt" data-correct>\(A_{k+1} = Q_k^{\mathsf T}A_kQ_k\)라 고유값이 같고, 대각 아래가 점점 0에 간다</button>
+        <button class="opt">복소 고유값이 있어도 언제나 대각 행렬로 수렴한다</button>
+      </div><div class="quiz-exp">\(R_k = Q_k^{\mathsf T}A_k\)를 대입하면 직교 닮음 변환이다. 고유값 절댓값이 서로 다르면 상삼각으로 수렴한다. 실수 행렬의 복소 고유값 쌍은 대각에 놓일 수 없어 2×2 블록으로 남는다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 반복 행렬의 스펙트럼 반지름이 ρ = 0.99인 정상 반복법으로 오차를 10⁻⁶배로 줄이려면 대략 몇 번 반복해야 할까?</p><div class="opts">
+        <button class="opt">약 6번</button>
+        <button class="opt">약 100번</button>
+        <button class="opt" data-correct>약 1400번</button>
+        <button class="opt">수렴하지 않는다</button>
+      </div><div class="quiz-exp">k ≈ 6 / (−log₁₀0.99) ≈ 6 / 0.00436 ≈ 1375. ρ가 1에 가까우면 반복법은 아주 느리다. 격자를 촘촘하게 할수록 야코비의 ρ가 1에 다가가는 이유로 SOR·CG·다중 격자가 필요하다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 100×100 SPD 행렬의 조건수가 10⁴일 때 켤레 기울기법에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">정확한 산술에서도 수렴이 보장되지 않는다</button>
+        <button class="opt">최급강하법과 수렴 속도가 같다</button>
+        <button class="opt" data-correct>정확한 산술이면 최대 100단계에 끝나고, 오차 한계는 단계마다 약 (100−1)/(100+1)배 준다</button>
+        <button class="opt">전처리를 하면 해가 달라진다</button>
+      </div><div class="quiz-exp">CG는 최대 n단계에 끝나고 \(\sqrt{\kappa} = 100\)이므로 한계의 비는 99/101 ≈ 0.98이다(최급강하는 (10⁴−1)/(10⁴+1) ≈ 0.9998). 전처리는 같은 해를 갖는 문제로 바꿀 뿐 해를 바꾸지 않는다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const NM = {
+  SUP: { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" },
+  minus(s) { return String(s).replace(/-/g, "−"); },
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    if (Math.abs(v) < 0.5 * Math.pow(10, -d)) return "0";
+    return NM.minus(String(Number(v.toFixed(d))));
+  },
+  /** 과학 표기: 1.23×10⁻⁵ */
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "∞";
+    if (v === 0) return "0";
+    const e = Math.floor(Math.log10(Math.abs(v)));
+    if (e >= -2 && e <= 3) return NM.num(v, Math.max(0, d + 1 - Math.max(e, 0)));
+    const m = v / Math.pow(10, e);
+    return NM.minus(m.toFixed(d)) + "×10" + String(e).split("").map((c) => NM.SUP[c]).join("");
+  },
+  matHTML(M, cls) {
+    const c = M[0].length;
+    let h = `<span class="nm-m" style="--c:${c}">`;
+    M.forEach((row, i) => row.forEach((v, j) => { h += `<span class="${cls ? cls(i, j, v) : ""}">${NM.num(v, 4)}</span>`; }));
+    return h + "</span>";
+  },
+  matvec(A, x) { return A.map((r) => r.reduce((s, a, j) => s + a * x[j], 0)); },
+  dot(a, b) { return a.reduce((s, v, i) => s + v * b[i], 0); },
+  norm(a) { return Math.sqrt(NM.dot(a, a)); },
+  normInf(a) { return Math.max(...a.map(Math.abs)); },
+  /** 부분 피벗팅 가우스 소거로 Ax = b */
+  solve(A0, b0) {
+    const n = b0.length, A = A0.map((r) => r.slice()), b = b0.slice();
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[p][k])) p = i;
+      [A[k], A[p]] = [A[p], A[k]]; [b[k], b[p]] = [b[p], b[k]];
+      for (let i = k + 1; i < n; i++) { const l = A[i][k] / A[k][k]; for (let j = k; j < n; j++) A[i][j] -= l * A[k][j]; b[i] -= l * b[k]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; }
+    return x;
+  },
+  /** 2×2 특이값 [σ1, σ2] */
+  sv2([[a, b], [c, d]]) {
+    const E = (a + d) / 2, F = (a - d) / 2, G = (c + b) / 2, H = (c - b) / 2;
+    const Q = Math.hypot(E, H), R = Math.hypot(F, G);
+    return [Q + R, Math.abs(Q - R)];
+  },
+  /** 3×3 수정 그람–슈미트 QR */
+  qr(A) {
+    const n = A.length, Q = A.map((r) => r.map(() => 0)), R = A.map((r) => r.map(() => 0));
+    const V = []; for (let j = 0; j < n; j++) V.push(A.map((r) => r[j]));
+    for (let j = 0; j < n; j++) {
+      R[j][j] = NM.norm(V[j]);
+      const q = V[j].map((v) => v / R[j][j]);
+      for (let i = 0; i < n; i++) Q[i][j] = q[i];
+      for (let k = j + 1; k < n; k++) { R[j][k] = NM.dot(q, V[k]); V[k] = V[k].map((v, i) => v - R[j][k] * q[i]); }
+    }
+    return { Q, R };
+  },
+  mul(A, B) { return A.map((r) => B[0].map((_, j) => r.reduce((s, a, k) => s + a * B[k][j], 0))); },
+  /** 막대·선 공통 범례 색 */
+  pal() { return MB.palette(); },
+};
+
+/* ================================================================ 1. 상쇄 오차 */
+(function () {
+  const EXPR = {
+    cos: { naive: (x) => (1 - Math.cos(x)) / (x * x), good: (x) => { const s = Math.sin(x / 2); return 2 * s * s / (x * x); }, pred: (x) => 1.11e-16 * 2 / (x * x) },
+    sqrt: { naive: (x) => (Math.sqrt(1 + x) - 1) / x, good: (x) => 1 / (Math.sqrt(1 + x) + 1), pred: (x) => 1.11e-16 * 2 / x },
+    exp: { naive: (x) => (Math.exp(x) - 1) / x, good: (x) => Math.expm1(x) / x, pred: (x) => 1.11e-16 / x },
+  };
+  let expr = "cos";
+  const pred = MB.check("nm-f-pred", () => { cv.redraw(); });
+  const kk = MB.range("nm-f-k", (v) => `${NM.minus(v.toFixed(2))} (x = ${NM.sci(Math.pow(10, v), 1)})`, () => cv.redraw());
+  const relErr = (e, x) => { const t = e.good(x), v = e.naive(x); return Math.max(1e-17, Math.min(10, Math.abs(v - t) / Math.abs(t))); };
+  const cv = MB.canvas("#nm-cv-float", (ctx, w, h) => {
+    const P = MB.palette(), e = EXPR[expr];
+    const A = [], C = [];
+    for (let k = -16; k <= 0.001; k += 0.125) { const x = Math.pow(10, k); A.push([k, relErr(e, x)]); C.push([k, Math.min(10, Math.max(1e-17, e.pred(x)))]); }
+    const series = [{ data: A, color: P.bad, width: 2.4 }, { data: A.map(([k]) => [k, 1e-17]), color: P.ok, width: 3 }];
+    if (pred()) series.push({ data: C, color: P.dim, width: 1.5, dash: [5, 4] });
+    const cur = kk();
+    MB.chart(ctx, null, {
+      x: [-16, 0], y: [1e-17, 10], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "x = 10^k 의 k", yLabel: "상대 오차",
+      xFmt: (v) => NM.minus(String(v)), yFmt: (v) => NM.sci(v, 0),
+      series, vlines: [{ x: cur, color: P.accent, label: "현재 x" }], hlines: [{ y: 1, color: P.dim, label: "오차 100%" }],
+    });
+    const x = Math.pow(10, cur), nv = e.naive(x), gv = e.good(x), er = Math.abs(nv - gv) / Math.abs(gv);
+    MB.stat("nm-f-naive", NM.sci(nv, 6));
+    MB.stat("nm-f-good", NM.sci(gv, 6));
+    MB.stat("nm-f-err", er < 1e-17 ? "&lt; 10⁻¹⁶" : NM.sci(er, 1));
+    MB.stat("nm-f-dig", er < 1e-16 ? "≈ 16자리" : er >= 1 ? "0자리" : `≈ ${Math.max(0, -Math.log10(er)).toFixed(1)}자리`);
+  }, { aspect: 0.62, maxHeight: 420, minHeight: 260 });
+  MB.seg("nm-f-expr", (v) => { expr = v; cv.redraw(); });
+})();
+
+/* ================================================================ 2. 섭동과 조건수 */
+(function () {
+  let d = 0.1, r = 0.01, phi = 135 * Math.PI / 180;
+  const dd = MB.range("nm-p-d", (v) => NM.sci(Math.pow(10, v), 2), (v) => { d = Math.pow(10, v); pl.redraw(); });
+  const rr = MB.range("nm-p-r", (v) => v.toFixed(1) + "%", (v) => { r = v / 100; pl.redraw(); });
+  const pp = MB.range("nm-p-phi", (v) => v + "°", (v) => { phi = v * Math.PI / 180; pl.redraw(); });
+  d = Math.pow(10, dd()); r = rr() / 100; phi = pp() * Math.PI / 180;
+  const pl = MB.plane("#nm-cv-perturb", {
+    x: [-2.2, 4.2], aspect: 0.78, maxHeight: 480, minHeight: 280,
+    draw(P) {
+      const C = P.P;
+      const A = [[1, 1], [1, 1 + d]], x = [1, 1], b = NM.matvec(A, x), nb = NM.norm(b);
+      const det = 1 + d - 1, inv = [[(1 + d) / det, -1 / det], [-1 / det, 1 / det]];
+      // 두 직선: x + y = b1, x + (1+d) y = b2
+      P.line(-10, b[0] + 10, 10, b[0] - 10, { color: C.accent, width: 2 });
+      P.line(-10, (b[1] + 10) / (1 + d), 10, (b[1] - 10) / (1 + d), { color: C.accent2, width: 2 });
+      // 해가 갈 수 있는 타원: x + A⁻¹ δb, ‖δb‖ = r‖b‖
+      const R = r * nb;
+      P.param((t) => { const db = [R * Math.cos(t), R * Math.sin(t)], dx = NM.matvec(inv, db); return [1 + dx[0], 1 + dx[1]]; }, 0, 2 * Math.PI, { color: C.warn, width: 2, fill: C.warn, alpha: 0.18, n: 240 });
+      P.param((t) => { const dx = NM.matvec(inv, [R * Math.cos(t), R * Math.sin(t)]); return [1 + dx[0], 1 + dx[1]]; }, 0, 2 * Math.PI, { color: C.warn, width: 2, n: 240 });
+      const db = [R * Math.cos(phi), R * Math.sin(phi)], dx = NM.matvec(inv, db);
+      P.dot(1, 1, { color: C.text, r: 5, label: "x" });
+      P.arrow(1, 1, 1 + dx[0], 1 + dx[1], { color: C.bad, width: 2.6, label: "x + δx" });
+      // δb 원(크게 보이도록 오른쪽 아래 작은 그림에 확대)
+      const cx = P.x1 - 0.9, cy = P.y0 + 0.9, s = 0.6 / Math.max(R, 1e-9);
+      P.circle(cx, cy, 0.6, { color: C.dim, width: 1.2 });
+      P.arrow(cx, cy, cx + db[0] * s, cy + db[1] * s, { color: C.bad, width: 2 });
+      P.text("δb (확대)", cx, cy - 0.82, { color: C.dim, align: "center", size: 12 });
+      const [s1, s2] = NM.sv2(A), kap = s1 / s2;
+      const rel = NM.norm(dx) / NM.norm(x), rb = NM.norm(db) / nb;
+      MB.stat("nm-p-kappa", NM.sci(kap, 2));
+      MB.stat("nm-p-rel", (rel * 100 < 1000 ? NM.num(rel * 100, 2) : NM.sci(rel * 100, 2)) + "%");
+      MB.stat("nm-p-bound", (kap * rb * 100 < 1000 ? NM.num(kap * rb * 100, 2) : NM.sci(kap * rb * 100, 2)) + "%");
+      MB.stat("nm-p-amp", NM.num(rel / rb, 1) + "배");
+    },
+  });
+})();
+
+/* ================================================================ 3. 힐베르트 행렬 */
+(function () {
+  const C = (n, k) => { if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+  const hilb = (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => 1 / (i + j + 1)));
+  const hinvNormInf = (n) => {
+    let best = 0;
+    for (let i = 1; i <= n; i++) {
+      let s = 0;
+      for (let j = 1; j <= n; j++) { const c = C(i + j - 2, i - 1); s += (i + j - 1) * C(n + i - 1, n - j) * C(n + j - 1, n - i) * c * c; }
+      best = Math.max(best, s);
+    }
+    return best;
+  };
+  const data = {};
+  for (let n = 2; n <= 14; n++) {
+    const H = hilb(n), b = H.map((r) => r.reduce((s, v) => s + v, 0)), x = NM.solve(H, b);
+    const nH = Math.max(...H.map((r) => r.reduce((s, v) => s + Math.abs(v), 0)));
+    const kap = nH * hinvNormInf(n);
+    const err = NM.normInf(x.map((v) => v - 1));
+    const res = NM.norm(NM.matvec(H, x).map((v, i) => v - b[i])) / NM.norm(b);
+    data[n] = { kap, err: Math.max(err, 1e-17), res: Math.max(res, 1e-18), x };
+  }
+  const showRes = MB.check("nm-h-rel", () => cv.redraw());
+  const nn = MB.range("nm-h-n", (v) => String(v), () => cv.redraw());
+  const cv = MB.canvas("#nm-cv-hilbert", (ctx) => {
+    const P = MB.palette(), n = nn(), ns = Object.keys(data).map(Number);
+    const series = [
+      { data: ns.map((k) => [k, data[k].kap * 1.11e-16]), color: P.dim, width: 1.6, dash: [5, 4] },
+      { data: ns.map((k) => [k, Math.min(1e3, data[k].err)]), color: P.bad, width: 2.6 },
+    ];
+    if (showRes()) series.push({ data: ns.map((k) => [k, data[k].res]), color: P.ok, width: 2.2 });
+    MB.chart(ctx, null, {
+      x: [2, 14], y: [1e-18, 1e3], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "행렬 크기 n", yLabel: "오차",
+      xTicks: [2, 4, 6, 8, 10, 12, 14], yFmt: (v) => NM.sci(v, 0),
+      series, vlines: [{ x: n, color: P.accent, label: "n" }], hlines: [{ y: 1, color: P.dim, label: "오차 100%" }],
+      points: [{ x: n, y: Math.min(1e3, data[n].err), color: P.bad }],
+    });
+    const D = data[n];
+    MB.stat("nm-h-kappa", NM.sci(D.kap, 2));
+    MB.stat("nm-h-err", NM.sci(D.err, 1));
+    MB.stat("nm-h-dig", D.err >= 1 ? "0자리" : `≈ ${Math.max(0, -Math.log10(D.err)).toFixed(1)}자리`);
+    MB.stat("nm-h-pred", `≈ ${Math.max(0, 16 - Math.log10(D.kap)).toFixed(1)}자리`);
+    document.getElementById("nm-h-x").textContent = "x̂ = (" + D.x.slice(0, 7).map((v) => NM.minus(Math.abs(v) >= 1e4 ? v.toExponential(2) : v.toFixed(6))).join(", ") + (n > 7 ? ", …)" : ")") + "   참해 = (1, 1, …, 1)";
+  }, { aspect: 0.62, maxHeight: 420, minHeight: 260 });
+})();
+
+/* ================================================================ 4. 거듭제곱법 */
+(function () {
+  const TH = Math.PI / 6, v1 = [Math.cos(TH), Math.sin(TH)], v2 = [-Math.sin(TH), Math.cos(TH)];
+  let ratio = 0.8, sigma = 1.4, method = "power";
+  let hist = [], errs = [];
+  const A = () => { const l1 = 2, l2 = 2 * ratio; return [[l1 * v1[0] * v1[0] + l2 * v2[0] * v2[0], l1 * v1[0] * v1[1] + l2 * v2[0] * v2[1]], [l1 * v1[1] * v1[0] + l2 * v2[1] * v2[0], l1 * v1[1] * v1[1] + l2 * v2[1] * v2[1]]]; };
+  const unit = (x) => { const n = Math.hypot(x[0], x[1]) || 1; return [x[0] / n, x[1] / n]; };
+  const sinTo = (x, v) => Math.abs(x[0] * v[1] - x[1] * v[0]);
+  const target = (x) => {
+    const l1 = 2, l2 = 2 * ratio;
+    if (method === "power") return v1;
+    if (method === "inverse") return Math.abs(l1 - sigma) <= Math.abs(l2 - sigma) ? v1 : v2;
+    return sinTo(x, v1) <= sinTo(x, v2) ? v1 : v2;
+  };
+  const errOf = (x) => Math.max(1e-17, sinTo(x, target(x)));
+  const pts = [{ x: Math.cos(1.9) * 1.6, y: Math.sin(1.9) * 1.6, label: "x₀", snap: 0.05 }];
+  function reset() { const x = unit([pts[0].x, pts[0].y]); hist = [x]; errs = [errOf(x)]; }
+  let ecv = null;
+  reset();
+  function step() {
+    const M = A(), x = hist[hist.length - 1];
+    let y;
+    if (method === "power") y = NM.matvec(M, x);
+    else {
+      const s = method === "inverse" ? sigma : NM.dot(x, NM.matvec(M, x));
+      const B = [[M[0][0] - s, M[0][1]], [M[1][0], M[1][1] - s]], det = B[0][0] * B[1][1] - B[0][1] * B[1][0];
+      if (Math.abs(det) < 1e-300) { hist.push(x); errs.push(1e-17); return; }
+      y = [(B[1][1] * x[0] - B[0][1] * x[1]) / det, (-B[1][0] * x[0] + B[0][0] * x[1]) / det];
+      if (!isFinite(y[0]) || !isFinite(y[1])) { hist.push(x); errs.push(1e-17); return; }
+    }
+    const xn = unit(y);
+    // 부호를 이전 벡터와 맞춰 화살표가 덜 튀게(거듭제곱법의 음의 비는 그대로 보여 준다)
+    hist.push(xn); errs.push(errOf(xn));
+  }
+  const pl = MB.plane("#nm-cv-power", {
+    x: [-2.2, 2.2], aspect: 0.8, maxHeight: 420, minHeight: 260, points: pts,
+    draw(P, api) {
+      const C = P.P; api.points[0].color = C.accent;
+      const l1 = 2, l2 = 2 * ratio;
+      P.circle(0, 0, 1, { color: C.dim, width: 1, dash: [4, 4] });
+      P.line(-3 * v1[0], -3 * v1[1], 3 * v1[0], 3 * v1[1], { color: C.ok, width: 1.6, dash: [6, 5] });
+      P.line(-3 * v2[0], -3 * v2[1], 3 * v2[0], 3 * v2[1], { color: C.warn, width: 1.6, dash: [6, 5] });
+      P.text(`λ₁ = ${NM.num(l1, 2)}`, 1.9 * v1[0], 1.9 * v1[1] + 0.12, { color: C.ok, size: 12 });
+      P.text(`λ₂ = ${NM.num(l2, 2)}`, 1.6 * v2[0] - 0.1, 1.6 * v2[1], { color: C.warn, size: 12, align: "right" });
+      const H = hist.slice(-12);
+      H.forEach((x, i) => { const a = 0.2 + 0.8 * (i + 1) / H.length; P.arrow(0, 0, x[0], x[1], { color: C.accent2, width: i === H.length - 1 ? 3 : 1.6, alpha: a }); });
+      const x = hist[hist.length - 1], M = A();
+      const lam = NM.dot(x, NM.matvec(M, x));
+      MB.stat("nm-pw-k", String(hist.length - 1));
+      MB.stat("nm-pw-lam", NM.num(lam, 10));
+      MB.stat("nm-pw-err", NM.sci(errs[errs.length - 1], 2));
+      let rate;
+      if (method === "power") rate = `|λ₂/λ₁| = ${NM.num(Math.abs(ratio), 2)}`;
+      else if (method === "inverse") { const a = Math.abs(l1 - sigma), b = Math.abs(l2 - sigma); rate = `${NM.num(Math.min(a, b) / Math.max(a, b), 3)}`; }
+      else rate = "3차 수렴(대칭)";
+      MB.stat("nm-pw-rate", rate);
+      ecv && ecv.redraw();
+    },
+    onDrag() { reset(); },
+  });
+  ecv = MB.canvas("#nm-cv-power-err", (ctx, w, h) => {
+    const P = MB.palette(), N = Math.max(10, errs.length - 1);
+    const series = [{ data: errs.map((e, k) => [k, e]), color: P.accent2, width: 2.4 }];
+    let r = null;
+    if (method === "power") r = Math.abs(ratio);
+    else if (method === "inverse") { const a = Math.abs(2 - sigma), b = Math.abs(2 * ratio - sigma); r = Math.min(a, b) / Math.max(a, b); }
+    if (r !== null && r > 0) series.push({ data: Array.from({ length: N + 1 }, (_, k) => [k, Math.max(1e-17, errs[0] * Math.pow(r, k))]), color: P.dim, width: 1.4, dash: [5, 4] });
+    MB.chart(ctx, null, { x: [0, N], y: [1e-17, 1.5], logY: true, yTicks: [1e-15, 1e-10, 1e-5, 1], xLabel: "반복 k", yFmt: (v) => NM.sci(v, 0), series, points: errs.length ? [{ x: errs.length - 1, y: errs[errs.length - 1], color: P.accent2 }] : [] });
+  }, { aspect: 0.32, maxHeight: 220, minHeight: 160 });
+  reset(); pl.redraw();
+  MB.range("nm-pw-r", (v) => NM.num(v, 2), (v) => { ratio = v; reset(); pl.redraw(); });
+  MB.range("nm-pw-s", (v) => NM.num(v, 2), (v) => { sigma = v; reset(); pl.redraw(); });
+  MB.seg("nm-pw-method", (v) => { method = v; reset(); pl.redraw(); });
+  document.getElementById("nm-pw-step").addEventListener("click", () => { if (hist.length < 200) step(); pl.redraw(); });
+  document.getElementById("nm-pw-run").addEventListener("click", () => { for (let i = 0; i < 10 && hist.length < 200; i++) step(); pl.redraw(); });
+  document.getElementById("nm-pw-reset").addEventListener("click", () => { reset(); pl.redraw(); });
+})();
+
+/* ================================================================ 5. QR 알고리즘 */
+(function () {
+  const S = [[1, 0.5, 0.2], [0.3, 1, 0.4], [0.1, 0.2, 1]];
+  const invS = (() => { const n = 3, I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; const cols = I.map((e) => NM.solve(S, e)); return [0, 1, 2].map((i) => cols.map((c) => c[i])); })();
+  const sim = (T) => NM.mul(NM.mul(S, T), invS);
+  const PRE = {
+    sym: { A: [[4, 1, 0], [1, 3, 1], [0, 1, 2]], eig: null },
+    gen: { A: sim([[5, 1, 2], [0, 3, 1], [0, 0, 1]]), eig: "5, 3, 1" },
+    close: { A: sim([[3, 1, 0.5], [0, 2.8, 1], [0, 0, 1]]), eig: "3, 2.8, 1" },
+    rot: { A: [[0, -1, 0.3], [1, 0, 0.5], [0.2, 0.4, 2]], eig: null },
+  };
+  // 대칭 프리셋과 회전 프리셋의 참 고유값
+  (() => {
+    const e = MB.mat.eigSym(PRE.sym.A); const vals = (e.values || e).map ? (e.values || e) : [];
+    PRE.sym.eig = vals.map((v) => NM.num(v, 4)).join(", ");
+  })();
+  (() => {
+    // 3×3 실수 행렬의 고유값: 특성 다항식 근(실근 하나 + 복소쌍)을 뉴턴으로
+    const A = PRE.rot.A;
+    const tr = A[0][0] + A[1][1] + A[2][2];
+    const m2 = A[0][0] * A[1][1] - A[0][1] * A[1][0] + A[0][0] * A[2][2] - A[0][2] * A[2][0] + A[1][1] * A[2][2] - A[1][2] * A[2][1];
+    const det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+    const p = (l) => -l * l * l + tr * l * l - m2 * l + det, dp = (l) => -3 * l * l + 2 * tr * l - m2;
+    let l = 2; for (let i = 0; i < 60; i++) l -= p(l) / dp(l);
+    const s = tr - l, q = det / l, disc = s * s - 4 * q;
+    PRE.rot.eig = `${NM.num(l, 4)}, ${NM.num(s / 2, 3)} ± ${NM.num(Math.sqrt(Math.max(0, -disc)) / 2, 3)}i`;
+  })();
+  let key = "sym", Ak, k, h21, h32;
+  function reset() { Ak = PRE[key].A.map((r) => r.slice()); k = 0; h21 = [Math.abs(Ak[1][0])]; h32 = [Math.abs(Ak[2][1])]; }
+  function step() { const { Q, R } = NM.qr(Ak); Ak = NM.mul(R, Q); k++; h21.push(Math.max(1e-17, Math.abs(Ak[1][0]))); h32.push(Math.max(1e-17, Math.abs(Ak[2][1]))); }
+  function show() {
+    document.getElementById("nm-qr-lab").textContent = `A${String(k).split("").map((c) => "₀₁₂₃₄₅₆₇₈₉"[+c]).join("")}`;
+    document.getElementById("nm-qr-mat").innerHTML = NM.matHTML(Ak, (i, j, v) => (i === j ? "dg" : i > j ? (Math.abs(v) < 1e-6 ? "sd small" : "sd") : ""));
+    MB.stat("nm-qr-k", String(k));
+    MB.stat("nm-qr-diag", Ak.map((r, i) => NM.num(r[i], 4)).join(", "));
+    MB.stat("nm-qr-true", PRE[key].eig);
+    cv.redraw();
+  }
+  const cv = MB.canvas("#nm-cv-qr", (ctx) => {
+    const P = MB.palette(), N = Math.max(10, k);
+    MB.chart(ctx, null, {
+      x: [0, N], y: [1e-17, 10], logY: true, yTicks: [1e-15, 1e-10, 1e-5, 1], xLabel: "반복 k", yLabel: "대각 아래 |a|", yFmt: (v) => NM.sci(v, 0),
+      series: [{ data: h21 ? h21.map((v, i) => [i, Math.max(1e-17, v)]) : [], color: P.accent, width: 2.4 }, { data: h32 ? h32.map((v, i) => [i, Math.max(1e-17, v)]) : [], color: P.accent2, width: 2.4 }],
+    });
+  }, { aspect: 0.55, maxHeight: 260, minHeight: 180 });
+  reset(); show();
+  document.getElementById("nm-qr-pre").addEventListener("change", (e) => { key = e.target.value; reset(); show(); });
+  document.getElementById("nm-qr-step").addEventListener("click", () => { if (k < 300) step(); show(); });
+  document.getElementById("nm-qr-run").addEventListener("click", () => { for (let i = 0; i < 10 && k < 300; i++) step(); show(); });
+  document.getElementById("nm-qr-reset").addEventListener("click", () => { reset(); show(); });
+})();
+
+/* ================================================================ 6. 반복법 경주 (라플라스) */
+(function () {
+  let n = 20, method = "jacobi", omega = 1.73;
+  let u, b, k, hist = {}, cg = null, playing = false;
+  const MAXIT = 1500;
+  const idx = (i, j) => i * n + j;
+  function setup() {
+    u = new Float64Array(n * n); b = new Float64Array(n * n);
+    for (let j = 0; j < n; j++) b[idx(0, j)] += 1; // 위쪽 가장자리 온도 1
+    k = 0; cg = null; hist[method] = [1];
+  }
+  const Ax = (x, out) => {
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      let s = 4 * x[idx(i, j)];
+      if (i > 0) s -= x[idx(i - 1, j)]; if (i < n - 1) s -= x[idx(i + 1, j)];
+      if (j > 0) s -= x[idx(i, j - 1)]; if (j < n - 1) s -= x[idx(i, j + 1)];
+      out[idx(i, j)] = s;
+    }
+    return out;
+  };
+  const nb = () => Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+  const resid = () => { const r = Ax(u, new Float64Array(n * n)); let s = 0; for (let t = 0; t < r.length; t++) { const d = b[t] - r[t]; s += d * d; } return Math.sqrt(s) / nb(); };
+  const nbr = (x, i, j) => (i > 0 ? x[idx(i - 1, j)] : 0) + (i < n - 1 ? x[idx(i + 1, j)] : 0) + (j > 0 ? x[idx(i, j - 1)] : 0) + (j < n - 1 ? x[idx(i, j + 1)] : 0);
+  function iterate(m) {
+    if (m === "jacobi") { const v = new Float64Array(n * n); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) v[idx(i, j)] = (b[idx(i, j)] + nbr(u, i, j)) / 4; u = v; }
+    else if (m === "gs" || m === "sor") {
+      const w = m === "gs" ? 1 : omega;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const g = (b[idx(i, j)] + nbr(u, i, j)) / 4; u[idx(i, j)] = (1 - w) * u[idx(i, j)] + w * g; }
+    } else {
+      if (!cg) { const r = new Float64Array(n * n); const Au = Ax(u, new Float64Array(n * n)); for (let t = 0; t < r.length; t++) r[t] = b[t] - Au[t]; cg = { r, p: r.slice(), rr: r.reduce((s, v) => s + v * v, 0) }; }
+      if (cg.rr < 1e-30) return;
+      const Ap = Ax(cg.p, new Float64Array(n * n)); let pAp = 0; for (let t = 0; t < Ap.length; t++) pAp += cg.p[t] * Ap[t];
+      const a = cg.rr / pAp; let rr2 = 0;
+      for (let t = 0; t < u.length; t++) { u[t] += a * cg.p[t]; cg.r[t] -= a * Ap[t]; rr2 += cg.r[t] * cg.r[t]; }
+      const beta = rr2 / cg.rr; for (let t = 0; t < u.length; t++) cg.p[t] = cg.r[t] + beta * cg.p[t]; cg.rr = rr2;
+    }
+  }
+  function advance(steps) {
+    for (let s = 0; s < steps && k < MAXIT; s++) { iterate(method); k++; const r = resid(); hist[method].push(Math.max(1e-16, r)); if (r < 1e-13) { k = MAXIT; break; } }
+  }
+  const rhoOf = (m) => { const hh = Math.PI / (n + 1), rj = Math.cos(hh); if (m === "jacobi") return rj; if (m === "gs") return rj * rj; if (m === "sor") { const wo = 2 / (1 + Math.sin(hh)); return omega >= wo ? omega - 1 : (() => { const t = omega * rj; const disc = t * t - 4 * (omega - 1); return Math.pow((t + Math.sqrt(Math.max(0, disc))) / 2, 2); })(); } return null; };
+  setup();
+  const gcv = MB.canvas("#nm-cv-iter-grid", (ctx, w, h) => {
+    const P = MB.palette(), sz = Math.min(w, h) - 24, x0 = (w - sz) / 2, y0 = 16, c = sz / (n + 2);
+    ctx.fillStyle = MB.rgb(MB.colormap(1, "viridis")); ctx.fillRect(x0, y0, sz, c);
+    ctx.fillStyle = MB.rgb(MB.colormap(0, "viridis")); ctx.fillRect(x0, y0 + c, c, sz - c); ctx.fillRect(x0 + sz - c, y0 + c, c, sz - c); ctx.fillRect(x0, y0 + sz - c, sz, c);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { ctx.fillStyle = MB.rgb(MB.colormap(Math.min(1, Math.max(0, u[idx(i, j)])), "viridis")); ctx.fillRect(x0 + (j + 1) * c, y0 + (i + 1) * c, c + 0.6, c + 0.6); }
+    ctx.strokeStyle = P.border; ctx.strokeRect(x0, y0, sz, sz);
+  }, { aspect: 0.78, maxHeight: 340, minHeight: 220 });
+  const rcv = MB.canvas("#nm-cv-iter-res", (ctx, w, h) => {
+    const P = MB.palette(), col = { jacobi: P.bad, gs: P.warn, sor: P.accent2, cg: P.accent };
+    const N = Math.max(50, ...Object.values(hist).map((a) => a.length - 1));
+    const series = Object.entries(hist).map(([m, a]) => ({ data: a.map((v, i) => [i, v]), color: col[m], width: m === method ? 2.8 : 1.8 }));
+    MB.chart(ctx, { x: 46, y: 26, w: w - 46 - 12, h: h - 26 - 40 }, { x: [0, N], y: [1e-14, 2], logY: true, yTicks: [1e-12, 1e-9, 1e-6, 1e-3, 1], xLabel: "반복", yFmt: (v) => NM.sci(v, 0), series, hlines: [{ y: 1e-6, color: P.dim, label: "10⁻⁶" }] });
+  }, { aspect: 0.78, maxHeight: 340, minHeight: 220 });
+  function show() {
+    const r = hist[method][hist[method].length - 1];
+    MB.stat("nm-it-k", String(hist[method].length - 1));
+    MB.stat("nm-it-res", NM.sci(r, 2));
+    const rho = rhoOf(method);
+    MB.stat("nm-it-rho", rho === null ? "— (CG는 √κ로)" : NM.num(rho, 5));
+    if (rho === null) { const hh = Math.PI / (n + 1), kap = (1 + Math.cos(hh)) / (1 - Math.cos(hh)), q = (Math.sqrt(kap) - 1) / (Math.sqrt(kap) + 1); MB.stat("nm-it-pred", "≲ " + Math.ceil(Math.log(1e-6 / 2) / Math.log(q)) + "번"); }
+    else MB.stat("nm-it-pred", rho >= 1 ? "발산" : "≈ " + Math.ceil(6 / -Math.log10(rho)).toLocaleString("ko-KR") + "번");
+    document.getElementById("nm-it-cap").textContent = `온도 분포 · ${({ jacobi: "야코비", gs: "가우스–자이델", sor: "SOR", cg: "CG" })[method]} ${hist[method].length - 1}회`;
+    gcv.redraw(); rcv.redraw();
+  }
+  const loop = MB.loop(document.getElementById("sim-nm-iter"), () => {
+    if (!playing) return;
+    advance(method === "cg" ? 1 : 6);
+    show();
+    if (k >= MAXIT) { playing = false; document.getElementById("nm-it-play").textContent = "▶ 반복 실행"; }
+  });
+  const togglePlay = () => { if (k >= MAXIT) setup(); playing = !playing; document.getElementById("nm-it-play").textContent = playing ? "■ 정지" : "▶ 반복 실행"; if (playing) loop.start(); };
+  setup(); show();
+  MB.seg("nm-it-method", (v) => { method = v; playing = false; document.getElementById("nm-it-play").textContent = "▶ 반복 실행"; setup(); show(); });
+  MB.seg("nm-it-n", (v) => { n = +v; hist = {}; playing = false; document.getElementById("nm-it-play").textContent = "▶ 반복 실행"; setup(); show(); });
+  const ww = MB.range("nm-it-w", (v) => v.toFixed(2), (v) => { omega = v; if (method === "sor") { setup(); } delete hist.sor; if (method === "sor") hist.sor = [1]; show(); });
+  document.getElementById("nm-it-play").addEventListener("click", togglePlay);
+  document.getElementById("nm-it-wopt").addEventListener("click", () => { ww.set(Math.min(1.98, 2 / (1 + Math.sin(Math.PI / (n + 1))))); });
+  document.getElementById("nm-it-reset").addEventListener("click", () => { playing = false; document.getElementById("nm-it-play").textContent = "▶ 반복 실행"; hist = {}; setup(); show(); });
+  document.getElementById("nm-it-all").addEventListener("click", () => {
+    playing = false; document.getElementById("nm-it-play").textContent = "▶ 반복 실행";
+    const keep = method;
+    hist = {};
+    ["jacobi", "gs", "sor", "cg"].forEach((m) => { method = m; setup(); advance(MAXIT); });
+    method = keep;
+    // 화면의 온도 분포는 현재 방법으로 다시 계산
+    const saved = hist[keep]; setup(); advance(Math.max(0, saved.length - 1)); hist[keep] = saved;
+    show();
+  });
+})();
+
+/* ================================================================ 7. 최급강하 대 CG */
+(function () {
+  let kap = 10, th = 30 * Math.PI / 180, show = "both";
+  const pts = [{ x: -3.2, y: 1.6, label: "x₀", snap: 0.05 }];
+  const Amat = () => { const c = Math.cos(th), s = Math.sin(th), l1 = kap, l2 = 1; return [[l1 * c * c + l2 * s * s, (l1 - l2) * c * s], [(l1 - l2) * c * s, l1 * s * s + l2 * c * c]]; };
+  const fA = (A, x) => 0.5 * NM.dot(x, NM.matvec(A, x));
+  function sdPath(A, x0) {
+    const path = [x0.slice()]; let x = x0.slice(); const e0 = Math.sqrt(2 * fA(A, x0)) || 1;
+    for (let i = 0; i < 2000; i++) {
+      const r = NM.matvec(A, x).map((v) => -v), rr = NM.dot(r, r);
+      if (Math.sqrt(2 * fA(A, x)) / e0 < 1e-6 || rr < 1e-30) break;
+      const a = rr / NM.dot(r, NM.matvec(A, r)); x = [x[0] + a * r[0], x[1] + a * r[1]]; path.push(x);
+    }
+    return path;
+  }
+  function cgPath(A, x0) {
+    const path = [x0.slice()]; let x = x0.slice(), r = NM.matvec(A, x).map((v) => -v), p = r.slice(), rr = NM.dot(r, r);
+    for (let i = 0; i < 2 && rr > 1e-28; i++) {
+      const Ap = NM.matvec(A, p), a = rr / NM.dot(p, Ap);
+      x = [x[0] + a * p[0], x[1] + a * p[1]]; path.push(x);
+      const rn = [r[0] - a * Ap[0], r[1] - a * Ap[1]], rr2 = NM.dot(rn, rn);
+      p = [rn[0] + (rr2 / rr) * p[0], rn[1] + (rr2 / rr) * p[1]]; r = rn; rr = rr2;
+    }
+    return path;
+  }
+  const pl = MB.plane("#nm-cv-cg", {
+    x: [-4.5, 4.5], aspect: 0.72, maxHeight: 460, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P; api.points[0].color = C.text;
+      const A = Amat(), c = Math.cos(th), s = Math.sin(th), x0 = [api.points[0].x, api.points[0].y];
+      const f0 = Math.max(0.05, fA(A, x0));
+      for (let q = 1; q <= 8; q++) {
+        const lev = f0 * Math.pow(q / 8, 2) * 1.0;
+        const a1 = Math.sqrt(2 * lev / kap), a2 = Math.sqrt(2 * lev / 1);
+        P.param((t) => [c * a1 * Math.cos(t) - s * a2 * Math.sin(t), s * a1 * Math.cos(t) + c * a2 * Math.sin(t)], 0, 2 * Math.PI, { color: C.dim, width: 1, alpha: 0.55, n: 160 });
+      }
+      P.dot(0, 0, { color: C.ok, r: 4 });
+      const sd = sdPath(A, x0), cg = cgPath(A, x0);
+      if (show !== "cg") { P.poly(sd, { color: C.bad, width: 2 }); sd.slice(0, 60).forEach((p) => P.dot(p[0], p[1], { color: C.bad, r: 2.5 })); }
+      if (show !== "sd") { P.poly(cg, { color: C.accent, width: 3.2 }); cg.forEach((p) => P.dot(p[0], p[1], { color: C.accent, r: 4 })); }
+      MB.stat("nm-cg-sd", (sd.length - 1).toLocaleString("ko-KR") + (sd.length - 1 >= 2000 ? "+ 단계" : " 단계"));
+      MB.stat("nm-cg-cgn", (cg.length - 1) + " 단계");
+      MB.stat("nm-cg-rate", NM.num((kap - 1) / (kap + 1), 3));
+      MB.stat("nm-cg-rate2", NM.num((Math.sqrt(kap) - 1) / (Math.sqrt(kap) + 1), 3));
+    },
+  });
+  MB.range("nm-cg-k", (v) => NM.num(v, 1), (v) => { kap = v; pl.redraw(); });
+  MB.range("nm-cg-th", (v) => v + "°", (v) => { th = v * Math.PI / 180; pl.redraw(); });
+  MB.seg("nm-cg-show", (v) => { show = v; pl.redraw(); });
+})();
+</script>
+</body>
+</html>

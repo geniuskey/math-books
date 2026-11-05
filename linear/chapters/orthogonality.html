@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>직교성과 사영 · LinearBook</title>
+<meta name="description" content="내적이 0인 벡터와 직교 부분공간, 직교 여공간과 네 부분공간의 직교 관계, 직선과 평면으로의 사영 행렬, 풀 수 없는 Ax = b의 최소제곱 해와 정규 방정식, 직선·다항식 적합과 과적합, 가중 최소제곱, GPS 위치 계산까지 직접 끌어 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .or-mx { display: inline-grid; gap: 0 10px; padding: 1px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 4px; font-family: var(--mono); font-size: 13px; text-align: right; vertical-align: middle; line-height: 1.4; }
+  .or-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; }
+  .or-msg.ok { color: var(--ok); font-weight: 600; }
+  .or-msg.bad { color: var(--bad); font-weight: 600; }
+  .or-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .or-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .or-mats { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .or-steps { margin: 0; padding-left: 1.3em; }
+  .or-steps li { margin: 4px 0; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="orthogonality">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 08</div>
+    <h1 data-no-glossary>직교성과 사영</h1>
+    <p class="lead">측정은 언제나 조금씩 틀립니다. 그래서 공학에서 만나는 연립방정식은 미지수보다 식이 훨씬 많고, 식끼리 서로 어긋나서 <b>정확한 해가 없는</b> 경우가 대부분입니다. 3장과 4장의 소거법은 여기서 멈춥니다. 이 장은 질문을 바꿉니다. "Ax = b를 만족하는 x"가 없다면, "Ax가 b에 <b>가장 가까워지는</b> x"는 무엇인가? 답은 기하에 있습니다. 가장 가까운 점은 수직으로 내린 발, 곧 <b>사영</b>이고, 수직이라는 조건 하나가 풀 수 있는 새 방정식 \(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)를 줍니다. 이것이 <b>최소제곱법</b>이며, 센서 검량선에서 GPS 수신기까지 데이터를 다루는 거의 모든 계산의 밑바닥에 있습니다.</p>
+    <ul class="objectives">
+      <li>직교 벡터와 직교 부분공간을 정의하고, 0이 아닌 직교 벡터들이 선형 독립임을 피타고라스 정리로 보인다.</li>
+      <li>직교 여공간 \(V^\perp\)을 계산하고, 행공간 ⟂ 영공간, 열공간 ⟂ 좌영공간이라는 네 부분공간의 직교 관계를 설명한다.</li>
+      <li>직선으로의 사영 \(\mathbf p = \dfrac{\mathbf a^{\mathsf T}\mathbf b}{\mathbf a^{\mathsf T}\mathbf a}\mathbf a\)와 사영 행렬 \(P = \dfrac{\mathbf a\mathbf a^{\mathsf T}}{\mathbf a^{\mathsf T}\mathbf a}\)를 유도하고, \(P^2 = P\), \(P^{\mathsf T} = P\)를 확인한다.</li>
+      <li>부분공간으로의 사영에서 정규 방정식 \(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)를 이끌고, 사영 행렬 \(P = A(A^{\mathsf T}A)^{-1}A^{\mathsf T}\)를 손으로 계산한다.</li>
+      <li>최소제곱 직선·다항식을 맞추고, 잔차가 열공간에 수직임을 확인하며, 차수를 올릴 때 생기는 과적합을 실험으로 본다.</li>
+      <li>가중 최소제곱과 GPS의 선형화 위치 계산을 이해하고, \(A^{\mathsf T}A\)가 조건수를 제곱한다는 경고의 뜻을 안다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>스마트폰의 GPS 위치</b></div>
+      <div class="o-body"><p>GPS 수신기는 위성이 보낸 신호가 도착하기까지 걸린 시간을 재서 위성까지의 거리를 구합니다. 그런데 휴대폰의 시계는 위성의 원자시계만큼 정확하지 않습니다. 수신기 시계가 1마이크로초만 틀려도 빛은 그동안 약 300 m를 가므로, 잰 거리는 모두 같은 양만큼 틀립니다. 그래서 이 거리를 <b>의사거리</b><span class="en">(pseudorange)</span>라 부르고, 미지수는 위치 셋(x, y, z)에 시계 오차 하나를 더한 넷이 됩니다. 위성은 최소 네 개가 필요합니다.</p>
+        <p>실제 수신기는 보통 그보다 많은 위성을 봅니다. 식은 미지수보다 많고, 측정 잡음 때문에 모든 식을 동시에 만족하는 위치는 없습니다. 수신기는 "모든 식을 조금씩 덜 틀리게" 하는 위치, 곧 <b>잔차 제곱합이 가장 작은 위치</b>를 찾습니다. 거리 식은 비선형이므로 현재 추정 위치 근처에서 선형화한 뒤 최소제곱 문제를 풀고, 이를 몇 번 되풀이합니다. 이 장의 마지막 시뮬레이터에서 그 과정을 직접 돌려 봅니다.</p>
+        <div class="o-chain"><span>식 &gt; 미지수, 잡음</span><i>→</i><span>정확한 해 없음</span><i>→</i><span class="tool">수직 사영 = 최소제곱</span><i>→</i><span>AᵀAx̂ = Aᵀb</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="orthogonal">
+    <h2>직교 벡터와 직교 부분공간</h2>
+    <div class="problem"><strong>잡음을 신호에서 "깔끔하게" 떼어 낼 수 있을까</strong>
+      <p>센서가 낸 값 \(\mathbf b\)가 진짜 신호와 잡음의 합이라고 합시다. 진짜 신호가 어떤 공간(예: 느리게 변하는 신호들의 공간) 안에 있다는 것을 안다면, \(\mathbf b\)를 "그 공간 안의 부분"과 "그 공간과 전혀 관계없는 부분"으로 나눌 수 있을까요? 그리고 그렇게 나눈 두 조각은 서로 간섭하지 않을까요? "관계없다"를 수학으로 정확히 말하는 것이 이 절의 일입니다.</p></div>
+    <p>1장에서 두 벡터의 내적이 0이면 둘이 수직이라는 것을 보았습니다. 이것을 정의로 삼습니다.</p>
+    <div class="callout deep"><strong>정의 8.1 (직교)</strong> \(\mathbb R^n\)의 두 벡터 \(\mathbf u, \mathbf v\)가 \(\mathbf u^{\mathsf T}\mathbf v = u_1v_1 + \cdots + u_nv_n = 0\)이면 둘은 <span class="term">직교</span><span class="en">(orthogonal)</span>한다고 하고 \(\mathbf u \perp \mathbf v\)로 쓴다. 영벡터는 모든 벡터와 직교한다.</div>
+    <p>직교가 왜 "간섭하지 않는다"는 뜻인지는 길이를 재 보면 드러납니다. \(\lVert\mathbf u+\mathbf v\rVert^2 = (\mathbf u+\mathbf v)^{\mathsf T}(\mathbf u+\mathbf v) = \lVert\mathbf u\rVert^2 + 2\mathbf u^{\mathsf T}\mathbf v + \lVert\mathbf v\rVert^2\)이고, 가운데의 교차항이 바로 내적입니다. 직교하면 교차항이 사라져 에너지(제곱 길이)가 그냥 더해집니다.</p>
+    <div class="callout deep"><strong>정리 8.1 (피타고라스와 독립)</strong> ① \(\mathbf u \perp \mathbf v\)이면 \(\lVert\mathbf u+\mathbf v\rVert^2 = \lVert\mathbf u\rVert^2 + \lVert\mathbf v\rVert^2\). ② 0이 아닌 벡터 \(\mathbf v_1, \dots, \mathbf v_k\)가 서로 직교하면 선형 독립이다.
+      <p><b>증명.</b> ①은 위의 전개에서 교차항이 0이 되는 것이다. ②는 \(c_1\mathbf v_1 + \cdots + c_k\mathbf v_k = \mathbf 0\)의 양변에 \(\mathbf v_i^{\mathsf T}\)를 곱한다. 직교성 때문에 \(i\)번째 항만 남아 \(c_i\lVert\mathbf v_i\rVert^2 = 0\)이고, \(\mathbf v_i \ne \mathbf 0\)이므로 \(c_i = 0\). 모든 \(i\)에 대해 그렇다. ∎</p></div>
+    <p>이제 벡터 하나가 아니라 <b>공간 전체</b>끼리의 직교를 생각합니다.</p>
+    <div class="callout deep"><strong>정의 8.2 (직교 부분공간)</strong> 부분공간 \(V, W \subseteq \mathbb R^n\)에서 \(V\)의 <b>모든</b> 벡터가 \(W\)의 <b>모든</b> 벡터와 직교하면 \(V\)와 \(W\)는 <span class="term">직교 부분공간</span><span class="en">(orthogonal subspaces)</span>이라 하고 \(V \perp W\)로 쓴다.</div>
+    <p>조건이 생각보다 강합니다. 방의 바닥과 벽은 "수직으로 만난다"고 말하지만 직교 부분공간이 <b>아닙니다</b>. 바닥과 벽이 만나는 모서리 직선 위의 벡터는 두 평면 모두에 들어 있고, 자기 자신과의 내적은 0이 아니기 때문입니다. 직교 부분공간은 영벡터 말고는 공통 원소가 없습니다(\(\mathbf v \in V\cap W\)이면 \(\mathbf v^{\mathsf T}\mathbf v = 0\)이므로 \(\mathbf v = \mathbf 0\)). 그래서 \(\mathbb R^3\)에서 두 평면은 결코 직교 부분공간이 될 수 없고, 직교하는 쌍은 "직선과 평면" 또는 "직선과 직선"입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="직교 부분공간의 예와 반례">
+        <defs><marker id="or-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="or-ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="10" y="34" width="360" height="226" rx="10" class="f-surface"/>
+        <text x="20" y="24" class="t" style="font-weight:700">직교 부분공간: z축 ⟂ xy평면</text>
+        <polygon points="70,200 230,236 340,180 180,148" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="300" y="226" class="t-acc">V = xy평면</text>
+        <line x1="205" y1="192" x2="205" y2="60" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#or-ah2)"/>
+        <line x1="205" y1="192" x2="205" y2="240" style="stroke:var(--accent-2);stroke-width:3;stroke-dasharray:5 4"/>
+        <text x="214" y="70" class="t" style="fill:var(--accent-2);font-weight:700">W = z축</text>
+        <line x1="205" y1="192" x2="290" y2="176" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#or-ah)"/>
+        <line x1="205" y1="192" x2="128" y2="178" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#or-ah)"/>
+        <path d="M205 180 h10 v12" fill="none" style="stroke:var(--text-dim)"/>
+        <text x="24" y="250" class="t-dim">평면 위 어느 벡터를 골라도 z축과 내적이 0</text>
+        <rect x="390" y="34" width="360" height="226" rx="10" class="f-surface"/>
+        <text x="400" y="24" class="t" style="font-weight:700">반례: 바닥과 벽</text>
+        <polygon points="430,210 580,240 720,196 570,168" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <polygon points="570,168 720,196 720,70 570,46" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+        <line x1="570" y1="168" x2="720" y2="196" style="stroke:var(--bad);stroke-width:3.5"/>
+        <text x="470" y="232" class="t-acc">바닥</text><text x="680" y="90" class="t" style="fill:var(--accent-2);font-weight:700">벽</text>
+        <text x="600" y="212" class="t" style="fill:var(--bad);font-weight:700">공통 모서리</text>
+        <text x="404" y="252" class="t-dim">모서리 방향 벡터는 두 평면에 다 있다 → 직교 아님</text>
+      </svg>
+      <figcaption><b>그림 8-1.</b> 왼쪽: z축과 xy평면은 직교 부분공간이다. 차원도 1 + 2 = 3으로 공간을 정확히 나눈다. 오른쪽: 바닥과 벽은 서로 "수직으로 세워져" 있지만 모서리를 공유하므로 직교 부분공간이 아니다. 직교 부분공간의 교집합은 {0}뿐이다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="complements">
+    <h2>직교 여공간과 네 부분공간</h2>
+    <div class="problem"><strong>Ax = 0의 해는 A의 어디와 수직일까</strong>
+      <p>5장에서 영공간 \(N(A)\)을 "\(A\mathbf x = \mathbf 0\)의 해 전체"로 정의했습니다. 연립방정식으로 쓰면 \(A\)의 각 행과 \(\mathbf x\)의 내적이 0이라는 뜻입니다. 그렇다면 영공간은 행들과, 나아가 행들이 만드는 공간 전체와 수직이어야 하지 않을까요?</p></div>
+    <p>그렇습니다. 그리고 이 관찰은 "수직인 것 <b>전부</b>"라는 개념으로 정리됩니다.</p>
+    <div class="callout deep"><strong>정의 8.3 (직교 여공간)</strong> 부분공간 \(V\subseteq\mathbb R^n\)의 <span class="term">직교 여공간</span><span class="en">(orthogonal complement)</span> \(V^\perp\)("V 퍼프")는 \(V\)의 모든 벡터와 직교하는 벡터 전체의 집합이다. \(V^\perp = \{\mathbf w \in \mathbb R^n : \mathbf v^{\mathsf T}\mathbf w = 0\ \text{for all}\ \mathbf v \in V\}\). \(V^\perp\)은 부분공간이고, \(\dim V + \dim V^\perp = n\), \((V^\perp)^\perp = V\)이다.</div>
+    <div class="callout deep"><strong>정리 8.2 (선형대수의 기본 정리, 직교 부분)</strong> \(m\times n\) 행렬 \(A\)에 대해
+      $$N(A) = C(A^{\mathsf T})^\perp \ \ (\text{in } \mathbb R^n), \qquad N(A^{\mathsf T}) = C(A)^\perp \ \ (\text{in } \mathbb R^m).$$
+      <p><b>증명.</b> \(A\mathbf x = \mathbf 0\)은 "모든 행 \(\mathbf r_i\)에 대해 \(\mathbf r_i^{\mathsf T}\mathbf x = 0\)"과 같다. 행들에 수직이면 행들의 모든 선형 결합, 곧 행공간 \(C(A^{\mathsf T})\) 전체에 수직이고, 거꾸로 행공간 전체에 수직이면 특히 각 행에 수직이다. 따라서 \(N(A)\)는 정확히 행공간에 수직인 벡터 전체다. 두 번째 식은 첫 번째 식을 \(A^{\mathsf T}\)에 적용한 것이다. ∎</p></div>
+    <p>계수가 \(r\)이면 행공간과 영공간의 차원은 \(r\)과 \(n-r\)이고, 열공간과 좌영공간의 차원은 \(r\)과 \(m-r\)입니다(6장). 직교 여공간이므로 차원이 정확히 맞아떨어집니다. 그 결과 \(\mathbb R^n\)의 모든 벡터는 <b>하나뿐인 방법으로</b> "행공간 조각 + 영공간 조각"으로 나뉩니다.</p>
+    <div class="formula">$$\mathbf x = \mathbf x_r + \mathbf x_n, \qquad \mathbf x_r \in C(A^{\mathsf T}),\ \ \mathbf x_n \in N(A), \qquad A\mathbf x = A\mathbf x_r + \underbrace{A\mathbf x_n}_{=\,\mathbf 0} = A\mathbf x_r$$
+      <div class="where">영공간 조각은 \(A\)를 지나면 사라진다. \(A\)가 실제로 "보는" 것은 행공간 조각뿐이고, 행공간에서 열공간으로 가는 이 대응은 일대일이다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 300" role="img" aria-label="네 부분공간의 직교 관계">
+        <defs><marker id="or-ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <text x="150" y="22" text-anchor="middle" class="t" style="font-weight:700">ℝⁿ (입력)</text>
+        <text x="630" y="22" text-anchor="middle" class="t" style="font-weight:700">ℝᵐ (출력)</text>
+        <g transform="translate(150,150) rotate(-30)"><rect x="-120" y="-92" width="120" height="92" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/><rect x="0" y="0" width="100" height="70" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/><path d="M0 -12 h12 v12" fill="none" style="stroke:var(--text-dim)"/></g>
+        <text x="36" y="92" class="t-acc">행공간 C(Aᵀ)</text><text x="44" y="110" class="t-mono">차원 r</text>
+        <text x="190" y="246" class="t" style="fill:var(--accent-2);font-weight:700">영공간 N(A)</text><text x="198" y="264" class="t-mono">차원 n − r</text>
+        <g transform="translate(630,150) rotate(30)"><rect x="0" y="-92" width="120" height="92" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/><rect x="-100" y="0" width="100" height="70" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/><path d="M0 -12 h-12 v12" fill="none" style="stroke:var(--text-dim)"/></g>
+        <text x="640" y="80" class="t-acc">열공간 C(A)</text><text x="648" y="98" class="t-mono">차원 r</text>
+        <text x="476" y="250" class="t" style="fill:var(--accent-2);font-weight:700">좌영공간 N(Aᵀ)</text><text x="484" y="268" class="t-mono">차원 m − r</text>
+        <path d="M210 110 C 330 60, 460 60, 580 100" fill="none" style="stroke:var(--text-dim);stroke-width:2" marker-end="url(#or-ah3)"/>
+        <text x="395" y="62" text-anchor="middle" class="t">A xᵣ = A x = b</text>
+        <path d="M220 196 C 290 200, 330 170, 380 156" fill="none" style="stroke:var(--text-dim);stroke-width:1.6;stroke-dasharray:5 4" marker-end="url(#or-ah3)"/>
+        <circle cx="390" cy="152" r="5" style="fill:var(--text)"/><text x="396" y="176" class="t-dim">A xₙ = 0</text>
+        <text x="150" y="294" text-anchor="middle" class="t-dim">두 공간은 직각: 차원 합 n</text>
+        <text x="630" y="294" text-anchor="middle" class="t-dim">두 공간은 직각: 차원 합 m</text>
+      </svg>
+      <figcaption><b>그림 8-2.</b> 선형대수의 큰 그림. 입력 공간 ℝⁿ은 행공간과 영공간으로, 출력 공간 ℝᵐ은 열공간과 좌영공간으로 직각을 이루며 나뉜다. A는 영공간을 0으로 보내고, 행공간을 열공간으로 일대일로 옮긴다. 이 장의 최소제곱은 b가 열공간 밖으로 삐져나와 좌영공간 성분을 가질 때의 이야기다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 8.1 직교 여공간 구하기</strong>
+      <p>\(\mathbb R^3\)에서 \(V = \operatorname{span}\{(1,1,0), (0,1,1)\}\)의 직교 여공간을 구하라.</p>
+      <ol class="or-steps">
+        <li>두 벡터를 <b>행</b>으로 쌓은 \(A = \begin{bmatrix}1&1&0\\0&1&1\end{bmatrix}\)를 만들면 \(V = C(A^{\mathsf T})\)이고, 정리 8.2에 의해 \(V^\perp = N(A)\)이다.</li>
+        <li>\(A\mathbf x = \mathbf 0\): 둘째 식에서 \(x_2 = -x_3\), 첫째 식에서 \(x_1 = -x_2 = x_3\). 자유 변수 \(x_3 = t\).</li>
+        <li>\(V^\perp = \operatorname{span}\{(1, -1, 1)\}\). 검산: \((1,1,0)\cdot(1,-1,1) = 0\), \((0,1,1)\cdot(1,-1,1) = 0\). 차원 2 + 1 = 3. ✓</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 \(\mathbb R^3\)의 직선과 그 직교 여공간(평면)을 돌려 봅니다. 직선의 방향을 바꾸면 평면이 함께 돌아 언제나 직각을 유지하고, 임의의 벡터 \(\mathbf x\)가 두 조각으로 나뉩니다.</p>
+
+    <div class="sim" id="sim-or-complement">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>ℝ³에서 직선과 그 직교 여공간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="or-cv-comp"></canvas><span class="tag-tl">방향을 바꾸면 V⊥가 따라 돈다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>V로 볼 것</span><div class="seg" id="or-c-mode"><button data-value="line" class="on">직선 V</button><button data-value="plane">평면 V</button></div></div>
+          <label class="ctrl"><span>방향 d의 방위각 <output id="or-c-th-out"></output></span><input type="range" id="or-c-th" min="0" max="360" step="1" value="40"></label>
+          <label class="ctrl"><span>방향 d의 고도 <output id="or-c-ph-out"></output></span><input type="range" id="or-c-ph" min="-85" max="85" step="1" value="55"></label>
+          <label class="ctrl"><span>보는 각도 <output id="or-c-yaw-out"></output></span><input type="range" id="or-c-yaw" min="-180" max="180" step="1" value="-30"></label>
+          <label class="check"><input type="checkbox" id="or-c-x" checked> 벡터 x = (1.3, 0.6, 1.1) 나누기</label>
+          <div class="btn-row"><button class="btn" id="or-c-spin">▶ 천천히 돌리기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">dim V + dim V⊥</span><span class="v" id="or-c-dim">—</span></div>
+        <div class="stat"><span class="k">x의 V 조각</span><span class="v" id="or-c-xv">—</span></div>
+        <div class="stat"><span class="k">x의 V⊥ 조각</span><span class="v" id="or-c-xw">—</span></div>
+        <div class="stat"><span class="k">두 조각의 내적</span><span class="v" id="or-c-dot">—</span></div>
+      </div>
+      <div class="or-legend"><span><i style="background:var(--accent)"></i>V</span><span><i style="background:var(--accent-2)"></i>V⊥</span><span><i style="background:var(--text)"></i>x</span></div>
+      <div class="sim-note">해볼 것: ① 고도를 85°로 올리면 V는 거의 z축, V⊥는 거의 xy평면이 됩니다(그림 8-1). ② '평면 V'로 바꾸면 이름만 바뀌고 그림은 그대로입니다. (V⊥)⊥ = V이기 때문입니다. ③ 방향을 어떻게 바꿔도 두 조각의 내적은 0이고 두 조각의 합은 언제나 x입니다. 모델: 정사영으로 그린 3차원 그림이며, 평면은 원점 근처의 정사각형 조각만 그립니다.</div>
+    </div>
+
+    <p>2×2 행렬로 네 부분공간을 모두 한 번에 볼 수도 있습니다. 계수가 1인 행렬을 고르면 행공간과 영공간이 입력 평면에서 수직인 두 직선이 되고, 열공간과 좌영공간이 출력 평면에서 수직인 두 직선이 됩니다.</p>
+
+    <div class="sim" id="sim-or-four">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2×2 행렬의 네 부분공간</h3></div>
+      <div class="split">
+        <div><canvas id="or-cv-four-in"></canvas><span class="cap">입력 ℝ²: x를 끌어 보세요</span></div>
+        <div><canvas id="or-cv-four-out"></canvas><span class="cap">출력 ℝ²: Ax</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <div class="or-mats">
+            <div class="ctrl"><span>행렬 A</span><div class="mat" style="--n:2"><input id="or-f11" value="1" inputmode="decimal" aria-label="a11"><input id="or-f12" value="2" inputmode="decimal" aria-label="a12"><input id="or-f21" value="0.5" inputmode="decimal" aria-label="a21"><input id="or-f22" value="1" inputmode="decimal" aria-label="a22"></div></div>
+            <label class="ctrl"><span>프리셋</span><select id="or-f-pre">
+              <option value="r1a">계수 1: [1 2; 0.5 1]</option>
+              <option value="r1b">계수 1, 대칭: [1 2; 2 4]</option>
+              <option value="r1c">계수 1: [2 −1; −2 1]</option>
+              <option value="r2">계수 2: [2 1; 1 3]</option>
+              <option value="r0">영행렬</option>
+            </select></label>
+          </div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">계수 r</span><span class="v" id="or-f-rank">—</span></div>
+        <div class="stat"><span class="k">x = xᵣ + xₙ</span><span class="v" id="or-f-split">—</span></div>
+        <div class="stat"><span class="k">Ax 와 Axᵣ</span><span class="v" id="or-f-ax">—</span></div>
+        <div class="stat"><span class="k">xᵣ · xₙ</span><span class="v" id="or-f-dot">—</span></div>
+      </div>
+      <div class="or-legend"><span><i style="background:var(--accent)"></i>행공간 C(Aᵀ) · 열공간 C(A)</span><span><i style="background:var(--accent-2)"></i>영공간 N(A) · 좌영공간 N(Aᵀ)</span></div>
+      <div class="sim-note">해볼 것: ① x를 영공간 직선 위로 끌면 Ax가 원점에 붙습니다. ② x를 어디로 끌든 Ax는 열공간 직선을 벗어나지 못하고, Ax와 Axᵣ는 언제나 같은 점입니다. ③ '계수 1, 대칭'에서는 행공간과 열공간이 같은 직선입니다(A = Aᵀ). '계수 2'에서는 행공간이 평면 전체, 영공간은 {0}입니다. 모델: 2×2 행렬만 다루며, |det| &lt; 10⁻⁹이면 계수 1 이하로 봅니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="projection-line">
+    <h2>직선으로의 사영</h2>
+    <div class="problem"><strong>바람 중 활주로 방향 성분은 얼마인가</strong>
+      <p>활주로 방향을 \(\mathbf a\), 지금 부는 바람을 \(\mathbf b\)라 합시다. 조종사는 바람 중 활주로를 따라 부는 성분(맞바람·뒷바람)과 활주로를 가로지르는 성분(옆바람)을 따로 알고 싶어 합니다. \(\mathbf b\)를 \(\mathbf a\)의 직선 위의 점 \(\mathbf p\)와 나머지로 나누되, 나머지가 "직선과 관계없도록" 나누려면 \(\mathbf p\)를 어디에 잡아야 할까요?</p></div>
+    <p>직선 위의 점은 \(\mathbf p = \hat x\,\mathbf a\) 꼴입니다. 나머지를 <span class="term">오차</span><span class="en">(error)</span> \(\mathbf e = \mathbf b - \mathbf p\)라 하면, 조건은 \(\mathbf e \perp \mathbf a\) 하나입니다.</p>
+    <div class="formula">$$\mathbf a^{\mathsf T}(\mathbf b - \hat x\,\mathbf a) = 0 \quad\Longrightarrow\quad \hat x = \frac{\mathbf a^{\mathsf T}\mathbf b}{\mathbf a^{\mathsf T}\mathbf a}, \qquad \mathbf p = \frac{\mathbf a^{\mathsf T}\mathbf b}{\mathbf a^{\mathsf T}\mathbf a}\,\mathbf a$$
+      <div class="where">분모 \(\mathbf a^{\mathsf T}\mathbf a = \lVert\mathbf a\rVert^2\)이 있어 \(\mathbf a\)를 몇 배 해도 \(\mathbf p\)는 바뀌지 않는다. 사영은 벡터 \(\mathbf a\)가 아니라 직선에 대한 것이다.</div>
+    </div>
+    <p>이 \(\mathbf p\)를 \(\mathbf b\)의 \(\mathbf a\) 방향 <span class="term">사영</span><span class="en">(projection)</span>이라 합니다. 1장에서 "그림자"로 처음 본 그 벡터입니다. 이 점이 특별한 이유는 직선 위에서 \(\mathbf b\)에 <b>가장 가까운 점</b>이기 때문입니다. 직선 위의 다른 점 \(\mathbf q\)를 잡으면 \(\mathbf b - \mathbf q = \mathbf e + (\mathbf p - \mathbf q)\)이고 두 조각이 직교하므로, 피타고라스에 의해 \(\lVert\mathbf b - \mathbf q\rVert^2 = \lVert\mathbf e\rVert^2 + \lVert\mathbf p-\mathbf q\rVert^2 \ge \lVert\mathbf e\rVert^2\)입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 700 250" role="img" aria-label="직선으로의 사영">
+        <defs><marker id="or-ah4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="or-ah5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="or-ah6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+        <rect x="10" y="10" width="680" height="230" rx="10" class="f-surface"/>
+        <line x1="40" y1="215" x2="660" y2="92" class="s-line" style="stroke-dasharray:6 5"/>
+        <text x="600" y="92" class="t-dim">a의 직선</text>
+        <line x1="90" y1="205" x2="300" y2="163" style="stroke:var(--accent);stroke-width:3" marker-end="url(#or-ah4)"/>
+        <text x="190" y="205" class="t-acc">a</text>
+        <line x1="90" y1="205" x2="360" y2="45" style="stroke:var(--text);stroke-width:3" marker-end="url(#or-ah6)"/>
+        <text x="240" y="100" class="t" style="font-weight:700">b</text>
+        <line x1="90" y1="205" x2="406" y2="142" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#or-ah5)"/>
+        <text x="410" y="166" class="t" style="fill:var(--accent-2);font-weight:700">p = x̂a</text>
+        <line x1="406" y1="142" x2="360" y2="45" style="stroke:var(--bad);stroke-width:2.5;stroke-dasharray:6 4"/>
+        <text x="392" y="88" class="t" style="fill:var(--bad);font-weight:700">e = b − p</text>
+        <path d="M394 144.4 l-2.4 -12 l12 -2.4" fill="none" style="stroke:var(--text-dim);stroke-width:1.5"/>
+        <circle cx="520" cy="119" r="5" style="fill:var(--warn)"/><text x="528" y="138" class="t" style="fill:var(--warn)">다른 점 q</text>
+        <line x1="520" y1="119" x2="360" y2="45" style="stroke:var(--warn);stroke-width:1.5;stroke-dasharray:3 4"/>
+        <text x="460" y="214" class="t-dim">‖b − q‖² = ‖e‖² + ‖p − q‖² ≥ ‖e‖²</text>
+      </svg>
+      <figcaption><b>그림 8-3.</b> b를 a의 직선으로 사영한 p는 수선의 발이다. 오차 e는 직선과 직각이고, 직선 위의 다른 점 q까지의 거리는 피타고라스 정리에 의해 언제나 ‖e‖보다 길다. "가장 가까운 점 = 수직으로 내린 점"이 이 장 전체의 원리다.</figcaption>
+    </figure>
+    <p>\(\mathbf p\)를 \(\mathbf b\)에 행렬을 곱한 것으로 쓸 수 있습니다. 스칼라 \(\hat x\)는 앞으로 옮겨도 되므로 \(\mathbf p = \mathbf a\,\hat x = \mathbf a\dfrac{\mathbf a^{\mathsf T}\mathbf b}{\mathbf a^{\mathsf T}\mathbf a} = \dfrac{\mathbf a\mathbf a^{\mathsf T}}{\mathbf a^{\mathsf T}\mathbf a}\mathbf b\)입니다.</p>
+    <div class="callout deep"><strong>정리 8.3 (직선 사영 행렬)</strong> \(\mathbf a\ne\mathbf 0\)일 때 \(\mathbf a\)의 직선으로 사영하는 행렬은
+      $$P = \frac{\mathbf a\mathbf a^{\mathsf T}}{\mathbf a^{\mathsf T}\mathbf a}$$
+      이다. \(P\)는 열 하나의 외적이므로 계수가 1이고, 열공간은 \(\mathbf a\)의 직선, 영공간은 그 직교 여공간인 평면이다. 또 \(P^{\mathsf T} = P\)이고 \(P^2 = P\)이다. (\(P^2 = \dfrac{\mathbf a(\mathbf a^{\mathsf T}\mathbf a)\mathbf a^{\mathsf T}}{(\mathbf a^{\mathsf T}\mathbf a)^2} = P\): 그림자의 그림자는 그림자 자신이다.)</div>
+    <div class="callout tip"><strong>예제 8.2 손으로 사영하기</strong>
+      <p>\(\mathbf a = (1, 2, 2)\), \(\mathbf b = (1, 1, 1)\)일 때 \(\mathbf p\), \(\mathbf e\), \(P\)를 구하라.</p>
+      <ol class="or-steps">
+        <li>\(\mathbf a^{\mathsf T}\mathbf b = 1 + 2 + 2 = 5\), \(\mathbf a^{\mathsf T}\mathbf a = 1 + 4 + 4 = 9\), 따라서 \(\hat x = 5/9\).</li>
+        <li>\(\mathbf p = \tfrac59(1,2,2) = (\tfrac59, \tfrac{10}9, \tfrac{10}9)\), \(\mathbf e = \mathbf b - \mathbf p = (\tfrac49, -\tfrac19, -\tfrac19)\).</li>
+        <li>검산: \(\mathbf a^{\mathsf T}\mathbf e = \tfrac49 - \tfrac29 - \tfrac29 = 0\). ✓</li>
+        <li>\(P = \dfrac19\begin{bmatrix}1&2&2\\2&4&4\\2&4&4\end{bmatrix}\). 대각합(trace)은 \(9/9 = 1\)로 계수와 같다. 사영 행렬의 대각합은 언제나 사영하는 공간의 차원이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-or-projline">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>수선의 발 찾기: b를 a의 직선으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="or-cv-pl"></canvas><span class="tag-tl">a, b, 노란 q를 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="or-pl-q" checked> 직선 위의 다른 점 q와 비교</label>
+          <label class="check"><input type="checkbox" id="or-pl-pp"> 한 번 더 사영: P(Pb)</label>
+          <label class="check"><input type="checkbox" id="or-pl-perp"> 직교 여공간으로의 사영 (I − P)b도 보기</label>
+          <div class="btn-row"><button class="btn primary" id="or-pl-snap">q를 p에 놓기</button><button class="btn" id="or-pl-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x̂ = aᵀb / aᵀa</span><span class="v" id="or-pl-x">—</span></div>
+        <div class="stat"><span class="k">‖e‖ 와 ‖b − q‖</span><span class="v" id="or-pl-d">—</span></div>
+        <div class="stat"><span class="k">e · a</span><span class="v" id="or-pl-dot">—</span></div>
+        <div class="stat"><span class="k">P = aaᵀ / aᵀa</span><span class="v" id="or-pl-P">—</span></div>
+      </div>
+      <div class="or-msg" id="or-pl-msg">q를 직선 위에서 움직여 b까지 거리가 가장 짧아지는 곳을 찾아보세요.</div>
+      <div class="sim-note">해볼 것: ① q를 움직이면 ‖b − q‖는 q가 p에 올 때 가장 작고, 그 값이 ‖e‖입니다. ② a를 길게 늘이거나 반대로 뒤집어도 p와 P는 그대로입니다. ③ 'P(Pb)'를 켜면 두 번째 사영이 첫 번째와 정확히 겹칩니다(P² = P). '(I − P)b'는 e와 같은 벡터를 원점에서 그린 것입니다. 모델: 평면 ℝ², 점은 0.1 단위로 맞춰집니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="projection-subspace">
+    <h2>부분공간으로의 사영과 정규 방정식</h2>
+    <div class="problem"><strong>직선이 아니라 평면에 그림자를 내리려면</strong>
+      <p>측정값 \(\mathbf b \in \mathbb R^3\)을 두 기준 벡터 \(\mathbf a_1, \mathbf a_2\)가 만드는 평면에 가장 가깝게 맞추고 싶습니다. 평면 위의 점은 \(\hat x_1\mathbf a_1 + \hat x_2\mathbf a_2 = A\hat{\mathbf x}\) 꼴(\(A\)의 열이 \(\mathbf a_1, \mathbf a_2\))입니다. 계수 두 개를 어떻게 정할까요? 직선일 때의 공식을 열마다 따로 쓰면 될까요? (\(\mathbf a_1, \mathbf a_2\)가 직교하지 않으면 안 됩니다.)</p></div>
+    <p>원리는 같습니다. 가장 가까운 점 \(\mathbf p = A\hat{\mathbf x}\)에서 오차 \(\mathbf e = \mathbf b - A\hat{\mathbf x}\)는 평면 전체, 곧 <b>모든 열에 수직</b>이어야 합니다. 열마다 내적이 0이라는 조건 \(n\)개를 한 줄로 모으면 \(A^{\mathsf T}\mathbf e = \mathbf 0\)입니다. 정리 8.2의 말로는 "오차는 좌영공간 \(N(A^{\mathsf T}) = C(A)^\perp\)에 있다"입니다.</p>
+    <div class="formula">$$A^{\mathsf T}(\mathbf b - A\hat{\mathbf x}) = \mathbf 0 \quad\Longleftrightarrow\quad A^{\mathsf T}A\,\hat{\mathbf x} = A^{\mathsf T}\mathbf b$$
+      <div class="where">이것이 <span class="term">정규 방정식</span><span class="en">(normal equations)</span>이다. "normal"은 "수직"이라는 뜻이다. \(A\)가 \(m\times n\)이면 \(A^{\mathsf T}A\)는 \(n\times n\) 정사각 대칭 행렬이다.</div>
+    </div>
+    <div class="callout deep"><strong>정리 8.4 (AᵀA가 가역일 조건)</strong> \(A^{\mathsf T}A\)가 가역인 것은 \(A\)의 열들이 선형 독립인 것과 동치이다.
+      <p><b>증명.</b> \(A^{\mathsf T}A\)와 \(A\)의 영공간이 같음을 보이면 된다. \(A\mathbf x = \mathbf 0\)이면 당연히 \(A^{\mathsf T}A\mathbf x = \mathbf 0\). 거꾸로 \(A^{\mathsf T}A\mathbf x = \mathbf 0\)이면 왼쪽에 \(\mathbf x^{\mathsf T}\)를 곱해 \(\mathbf x^{\mathsf T}A^{\mathsf T}A\mathbf x = \lVert A\mathbf x\rVert^2 = 0\), 따라서 \(A\mathbf x = \mathbf 0\). 열이 독립이면 \(N(A) = \{\mathbf 0\}\)이므로 정사각 행렬 \(A^{\mathsf T}A\)는 가역이다. ∎</p></div>
+    <p>열이 독립이면 \(\hat{\mathbf x} = (A^{\mathsf T}A)^{-1}A^{\mathsf T}\mathbf b\)이고, \(\mathbf p = A\hat{\mathbf x}\)에서 사영 행렬이 나옵니다.</p>
+    <div class="callout deep"><strong>정리 8.5 (사영 행렬)</strong> 열이 독립인 \(A\)의 열공간으로 사영하는 행렬은
+      $$P = A(A^{\mathsf T}A)^{-1}A^{\mathsf T}$$
+      이다. \(P^2 = P\), \(P^{\mathsf T} = P\)이고, \(I - P\)는 직교 여공간 \(N(A^{\mathsf T})\)으로의 사영이다. 거꾸로 \(P^2 = P\)이고 \(P^{\mathsf T} = P\)인 행렬은 모두 자기 열공간으로의 직교 사영이다.
+      <p>\(P^2 = A(A^{\mathsf T}A)^{-1}\underbrace{A^{\mathsf T}A(A^{\mathsf T}A)^{-1}}_{I}A^{\mathsf T} = P\). 주의: \(A\)가 정사각 가역이 아니면 \((A^{\mathsf T}A)^{-1}\)을 \(A^{-1}(A^{\mathsf T})^{-1}\)로 쪼갤 수 없다. 쪼갤 수 있다면 \(P = I\)가 되는데, 이는 열공간이 공간 전체인 경우뿐이다.</p></div>
+    <div class="callout tip"><strong>예제 8.3 평면으로의 사영</strong>
+      <p>\(A = \begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix}\), \(\mathbf b = (6, 0, 0)\)일 때 \(\hat{\mathbf x}\), \(\mathbf p\), \(\mathbf e\), \(P\)를 구하라.</p>
+      <ol class="or-steps">
+        <li>\(A^{\mathsf T}A = \begin{bmatrix}3&3\\3&5\end{bmatrix}\), \(A^{\mathsf T}\mathbf b = \begin{bmatrix}6\\0\end{bmatrix}\).</li>
+        <li>\(\begin{bmatrix}3&3\\3&5\end{bmatrix}\hat{\mathbf x} = \begin{bmatrix}6\\0\end{bmatrix}\)을 소거로 풀면 둘째 식에서 첫째 식을 빼 \(2\hat x_2 = -6\), \(\hat x_2 = -3\), \(\hat x_1 = 5\).</li>
+        <li>\(\mathbf p = 5\,(1,1,1) - 3\,(0,1,2) = (5, 2, -1)\), \(\mathbf e = \mathbf b - \mathbf p = (1, -2, 1)\).</li>
+        <li>검산: \(\mathbf e\cdot(1,1,1) = 0\), \(\mathbf e\cdot(0,1,2) = -2+2 = 0\). ✓ \(\lVert\mathbf e\rVert^2 = 6\).</li>
+        <li>\((A^{\mathsf T}A)^{-1} = \tfrac16\begin{bmatrix}5&-3\\-3&3\end{bmatrix}\)이므로 \(P = \dfrac16\begin{bmatrix}5&2&-1\\2&2&2\\-1&2&5\end{bmatrix}\). 대각합 = 12/6 = 2 = 평면의 차원.</li>
+      </ol></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 700 260" role="img" aria-label="평면으로의 사영">
+        <defs><marker id="or-ah7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker><marker id="or-ah8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="or-ah9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="680" height="240" rx="10" class="f-surface"/>
+        <polygon points="60,200 330,240 640,180 370,140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="560" y="222" class="t-acc">열공간 C(A)</text>
+        <line x1="200" y1="196" x2="300" y2="180" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#or-ah9)"/><text x="284" y="202" class="t-acc">a₁</text>
+        <line x1="200" y1="196" x2="250" y2="214" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#or-ah9)"/><text x="232" y="232" class="t-acc">a₂</text>
+        <line x1="200" y1="196" x2="430" y2="40" style="stroke:var(--text);stroke-width:3" marker-end="url(#or-ah7)"/><text x="300" y="100" class="t" style="font-weight:700">b</text>
+        <line x1="200" y1="196" x2="430" y2="178" style="stroke:var(--accent-2);stroke-width:3.5" marker-end="url(#or-ah8)"/><text x="440" y="196" class="t" style="fill:var(--accent-2);font-weight:700">p = Ax̂</text>
+        <line x1="430" y1="178" x2="430" y2="40" style="stroke:var(--bad);stroke-width:2.5;stroke-dasharray:6 4"/>
+        <text x="440" y="96" class="t" style="fill:var(--bad);font-weight:700">e = b − Ax̂</text><text x="440" y="114" class="t-dim">모든 열에 수직: Aᵀe = 0</text>
+        <path d="M430 164 h-12 v14" fill="none" style="stroke:var(--text-dim);stroke-width:1.5"/>
+      </svg>
+      <figcaption><b>그림 8-4.</b> b를 A의 열공간(여기서는 평면)으로 사영한다. 오차 e가 평면 위의 모든 벡터, 특히 두 열 a₁, a₂에 수직이라는 조건을 모으면 Aᵀ(b − Ax̂) = 0, 곧 정규 방정식이다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-or-projplane">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>ℝ³의 b를 평면 C(A)로 사영하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="or-cv-pp"></canvas><span class="tag-tl">b의 성분과 보는 각도를 바꿔 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>평면(두 열 a₁, a₂)</span><select id="or-pp-pre">
+            <option value="ex">예제 8.3: (1,1,1), (0,1,2)</option>
+            <option value="xy">xy평면: (1,0,0), (0,1,0)</option>
+            <option value="tilt">기울어진 평면: (1,0,1), (0,1,1)</option>
+            <option value="near">거의 평행한 두 열: (1,1,1), (1,1.1,0.9)</option>
+          </select></label>
+          <label class="ctrl"><span>b₁ <output id="or-pp-b1-out"></output></span><input type="range" id="or-pp-b1" min="-6" max="6" step="0.5" value="6"></label>
+          <label class="ctrl"><span>b₂ <output id="or-pp-b2-out"></output></span><input type="range" id="or-pp-b2" min="-6" max="6" step="0.5" value="0"></label>
+          <label class="ctrl"><span>b₃ <output id="or-pp-b3-out"></output></span><input type="range" id="or-pp-b3" min="-6" max="6" step="0.5" value="0"></label>
+          <label class="ctrl"><span>보는 각도 <output id="or-pp-yaw-out"></output></span><input type="range" id="or-pp-yaw" min="-180" max="180" step="1" value="-35"></label>
+          <div class="btn-row"><button class="btn" id="or-pp-spin">▶ 천천히 돌리기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x̂ (정규 방정식의 해)</span><span class="v" id="or-pp-x">—</span></div>
+        <div class="stat"><span class="k">p = Ax̂ / e = b − p</span><span class="v" id="or-pp-pe">—</span></div>
+        <div class="stat"><span class="k">e·a₁, e·a₂</span><span class="v" id="or-pp-dot">—</span></div>
+        <div class="stat"><span class="k">P = A(AᵀA)⁻¹Aᵀ</span><span class="v" id="or-pp-P">—</span></div>
+      </div>
+      <div class="or-msg" id="or-pp-msg">—</div>
+      <div class="sim-note">해볼 것: ① 기본값이 예제 8.3입니다. x̂ = (5, −3), p = (5, 2, −1), e = (1, −2, 1)을 확인하세요. ② b를 평면 위의 점(예제 평면에서 b = (1, 2, 3))으로 옮기면 e = 0, p = b입니다. ③ '거의 평행한 두 열'에서는 P는 멀쩡하지만 x̂가 크게 흔들립니다. 평면은 잘 정해져도, 두 열로 그 점을 나타내는 계수는 불안정합니다(9장의 QR이 다루는 문제). 모델: 정사영 그림, 평면은 원점과 p 근처의 조각만 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="least-squares">
+    <h2>최소제곱: 풀 수 없는 방정식의 가장 좋은 답</h2>
+    <div class="problem"><strong>측정 세 번, 미지수 둘</strong>
+      <p>어떤 양이 시간에 따라 직선 \(y = C + Dt\)로 변한다고 믿고, \(t = 0, 1, 2\)에서 \(y = 6, 0, 0\)을 쟀습니다. 식은 \(C = 6\), \(C + D = 0\), \(C + 2D = 0\) 셋인데 미지수는 둘입니다. 세 점은 한 직선 위에 있지 않으니 이 연립방정식은 해가 없습니다. 소거를 하면 \(0 = 6\) 같은 모순이 나옵니다. 그래도 "가장 그럴듯한" 직선은 있어야 합니다.</p></div>
+    <p>행렬로 쓰면 \(A\mathbf x = \mathbf b\)이고, \(A = \begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix}\), \(\mathbf x = (C, D)\), \(\mathbf b = (6,0,0)\)입니다. 예제 8.3과 <b>똑같은</b> 행렬입니다. 해가 없다는 것은 \(\mathbf b\)가 열공간 밖에 있다는 뜻이고, "가장 그럴듯하다"를 "오차 벡터가 가장 짧다", 즉 잔차 제곱합 \(\lVert A\mathbf x - \mathbf b\rVert^2\)이 가장 작다로 정하면 답은 이미 구했습니다. 열공간에서 \(\mathbf b\)에 가장 가까운 점은 사영 \(\mathbf p\)이고, 그 계수가 \(\hat{\mathbf x} = (5, -3)\)입니다. 최선의 직선은 \(y = 5 - 3t\)입니다.</p>
+    <div class="callout deep"><strong>정리 8.6 (최소제곱 해)</strong> \(\hat{\mathbf x}\)가 \(\lVert A\mathbf x - \mathbf b\rVert^2\)을 최소로 하는 것은 정규 방정식 \(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)를 만족하는 것과 동치이다. \(A\)의 열이 독립이면 이 <span class="term">최소제곱 해</span><span class="en">(least-squares solution)</span>는 하나뿐이다.
+      <p><b>증명(기하).</b> 임의의 \(\mathbf x\)에 대해 \(\mathbf b - A\mathbf x = (\mathbf b - A\hat{\mathbf x}) + A(\hat{\mathbf x} - \mathbf x)\). 첫 항은 \(C(A)^\perp\)에, 둘째 항은 \(C(A)\)에 있으므로 직교하고, \(\lVert\mathbf b - A\mathbf x\rVert^2 = \lVert\mathbf b - A\hat{\mathbf x}\rVert^2 + \lVert A(\hat{\mathbf x}-\mathbf x)\rVert^2 \ge \lVert\mathbf b - A\hat{\mathbf x}\rVert^2\). <b>증명(미적분).</b> \(E(\mathbf x) = \mathbf x^{\mathsf T}A^{\mathsf T}A\mathbf x - 2\mathbf x^{\mathsf T}A^{\mathsf T}\mathbf b + \mathbf b^{\mathsf T}\mathbf b\)의 기울기 \(2A^{\mathsf T}A\mathbf x - 2A^{\mathsf T}\mathbf b\)를 0으로 놓아도 같은 식이 나온다. ∎</p></div>
+    <p>두 증명은 같은 사실을 다른 말로 합니다. 미적분은 "기울기가 0인 곳", 기하는 "오차가 수직인 곳"이라고 말하는데, 이차 함수 \(E\)의 기울기가 바로 \(-2A^{\mathsf T}\mathbf e\)이기 때문입니다. 9장 최적화 관점에서는 \(E\)가 볼록한 그릇 모양이라 바닥이 하나뿐인 것이고, 그 바닥을 정규 방정식이 한 번에 찾습니다.</p>
+    <div class="callout"><strong>역사 한 토막</strong> 최소제곱법을 처음 출판한 사람은 르장드르<span class="en">(Adrien-Marie Legendre, 1805)</span>입니다. 가우스<span class="en">(Carl Friedrich Gauss)</span>는 1809년 책에서 자신이 1795년 무렵부터 이 방법을 써 왔다고 밝혔고, 1801년 시야에서 사라진 소행성 세레스의 위치를 예측할 때 이 방법을 썼다고 알려져 있습니다. 가우스는 나아가 측정 오차가 정규 분포를 따르면 최소제곱 해가 가장 그럴듯한 추정이 된다는 확률적 근거를 제시했습니다.</div>
+    <h3>잔차 제곱인가, 다른 것인가</h3>
+    <p>왜 오차의 <b>제곱</b>합일까요? 절댓값의 합(\(L^1\))이나 가장 큰 오차(\(L^\infty\))를 줄일 수도 있습니다(1장의 노름). 제곱합을 고르는 이유는 셋입니다. 첫째, 미분해서 0으로 놓으면 <b>선형</b> 방정식이 나와 한 번에 풀립니다. 둘째, 기하적으로 피타고라스가 성립하는 유클리드 길이라 "수직"이라는 그림이 생깁니다. 셋째, 잡음이 독립인 정규 분포를 따르면 최소제곱 해가 최대 가능도 추정과 같습니다. 대신 큰 오차를 제곱해 크게 벌하므로 <b>이상값에 약하다</b>는 대가가 있습니다. 다음 절의 시뮬레이터에서 확인합니다.</p>
+    <h3>가중 최소제곱</h3>
+    <p>측정마다 믿을 만한 정도가 다르면 잔차마다 가중치 \(w_i \gt 0\)를 붙여 \(\sum w_i e_i^2\)을 최소로 합니다. 대각 행렬 \(W = \operatorname{diag}(w_i)\)를 쓰면</p>
+    <div class="formula">$$\min_{\mathbf x}\ (\mathbf b - A\mathbf x)^{\mathsf T}W(\mathbf b - A\mathbf x) \quad\Longrightarrow\quad A^{\mathsf T}WA\,\hat{\mathbf x} = A^{\mathsf T}W\mathbf b$$
+      <div class="where">\(w_i = 1/\sigma_i^2\)(측정 잡음 분산의 역수)로 두는 것이 표준이다. 잡음이 독립이고 평균이 0이면 이 선택이 선형 불편 추정량 가운데 분산이 가장 작은 추정을 준다. 이는 내적을 \(\langle\mathbf u,\mathbf v\rangle_W = \mathbf u^{\mathsf T}W\mathbf v\)로 바꾼 공간에서의 직교 사영이다.</div>
+    </div>
+    <h3>경고: AᵀA는 조건수를 제곱한다</h3>
+    <div class="callout warn"><strong>정리 8.7 (정규 방정식의 조건수)</strong> \(A\)의 2-노름 조건수가 \(\kappa(A) = \sigma_{\max}/\sigma_{\min}\)이면 \(\kappa(A^{\mathsf T}A) = \kappa(A)^2\)이다(14장의 특이값으로 증명된다). 배정밀도의 반올림 단위는 약 \(1.1\times10^{-16}\)이므로, \(\kappa(A) = 10^8\)인 문제를 정규 방정식으로 풀면 \(\kappa(A^{\mathsf T}A) \approx 10^{16}\)이 되어 유효 숫자가 거의 남지 않는다. 같은 문제를 \(A\)에 직접 작용하는 <a href="qr.html">QR 분해</a>(9장)로 풀면 오차는 대략 \(\kappa(A)\)에 비례해 훨씬 작다. 정규 방정식은 이론과 작은 문제에, 실제 수치 계산에는 QR이나 SVD를 쓴다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="line-fit">
+    <h2>직선 맞추기: 센서 검량선</h2>
+    <div class="problem"><strong>온도 센서의 눈금 매기기</strong>
+      <p>새 온도 센서의 출력 전압을 정확한 기준 온도계 옆에서 일곱 번 쟀습니다. 센서 출력이 온도에 대해 직선(\(y = C + Dt\))이라고 보고, 이 직선을 <b>검량선</b><span class="en">(calibration curve)</span>으로 써서 이후 측정값을 온도로 바꾸려 합니다. 일곱 점은 잡음 때문에 한 직선 위에 있지 않습니다. 어떤 직선을 그어야 할까요?</p></div>
+    <p>데이터 \((t_i, y_i)\), \(i = 1,\dots,m\)에 대해 \(A\)의 첫 열은 모두 1, 둘째 열은 \(t_i\)입니다. 정규 방정식의 성분을 쓰면 합만으로 이루어진 2×2 연립방정식이 됩니다.</p>
+    <div class="formula">$$A = \begin{bmatrix}1&t_1\\ \vdots&\vdots\\ 1&t_m\end{bmatrix}, \qquad \begin{bmatrix} m & \sum t_i \\ \sum t_i & \sum t_i^2\end{bmatrix}\begin{bmatrix}\hat C\\ \hat D\end{bmatrix} = \begin{bmatrix}\sum y_i \\ \sum t_iy_i\end{bmatrix}$$
+      <div class="where">첫째 식을 \(m\)으로 나누면 \(\hat C + \hat D\bar t = \bar y\): 최소제곱 직선은 언제나 데이터의 무게중심 \((\bar t, \bar y)\)를 지난다. 첫째 식은 또 \(\sum e_i = 0\)과 같다. 1로 이루어진 열이 \(\mathbf e\)와 수직이기 때문이다.</div>
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 640 260" role="img" aria-label="세 점에 맞춘 최소제곱 직선과 잔차">
+        <rect x="10" y="10" width="620" height="240" rx="10" class="f-surface"/>
+        <line x1="80" y1="220" x2="600" y2="220" class="s-axis"/><line x1="80" y1="230" x2="80" y2="24" class="s-axis"/>
+        <text x="604" y="236" class="t-dim">t</text><text x="66" y="30" class="t-dim">y</text>
+        <g class="t-mono"><text x="80" y="238" text-anchor="middle">0</text><text x="280" y="238" text-anchor="middle">1</text><text x="480" y="238" text-anchor="middle">2</text><text x="70" y="50" text-anchor="end">6</text><text x="70" y="80" text-anchor="end">5</text><text x="70" y="166" text-anchor="end">2</text></g>
+        <line x1="80" y1="76" x2="580" y2="292" style="stroke:var(--accent);stroke-width:2.5" clip-path="inset(0)"/>
+        <line x1="80" y1="76" x2="80" y2="47" style="stroke:var(--bad);stroke-width:3"/>
+        <line x1="280" y1="162" x2="280" y2="220" style="stroke:var(--bad);stroke-width:3"/>
+        <line x1="480" y1="249" x2="480" y2="220" style="stroke:var(--bad);stroke-width:3"/>
+        <circle cx="80" cy="47" r="6" style="fill:var(--text)"/><circle cx="280" cy="220" r="6" style="fill:var(--text)"/><circle cx="480" cy="220" r="6" style="fill:var(--text)"/>
+        <text x="92" y="60" class="t" style="fill:var(--bad)">e₁ = 1</text><text x="292" y="196" class="t" style="fill:var(--bad)">e₂ = −2</text><text x="492" y="210" class="t" style="fill:var(--bad)">e₃ = 1</text>
+        <text x="330" y="80" class="t-acc">최선의 직선 y = 5 − 3t</text>
+        <text x="330" y="102" class="t-dim">e = (1, −2, 1), ‖e‖² = 6, e₁ + e₂ + e₃ = 0</text>
+      </svg>
+      <figcaption><b>그림 8-5.</b> 세 점 (0, 6), (1, 0), (2, 0)에 맞춘 최소제곱 직선. 잔차 벡터 e = (1, −2, 1)은 예제 8.3의 오차 벡터와 같다. "점들에 가장 가까운 직선"(그림 공간 ℝ²)과 "열공간에 가장 가까운 점"(측정 공간 ℝ³)은 같은 계산의 두 그림이다.</figcaption>
+    </figure>
+    <div class="callout tip"><strong>예제 8.4 합으로 푸는 직선</strong>
+      <p>점 \((1, 1), (2, 2), (3, 2), (4, 4)\)에 최소제곱 직선을 맞춰라.</p>
+      <ol class="or-steps">
+        <li>\(m = 4\), \(\sum t = 10\), \(\sum t^2 = 30\), \(\sum y = 9\), \(\sum ty = 1 + 4 + 6 + 16 = 27\).</li>
+        <li>\(\begin{bmatrix}4&10\\10&30\end{bmatrix}\begin{bmatrix}\hat C\\ \hat D\end{bmatrix} = \begin{bmatrix}9\\27\end{bmatrix}\). 행렬식 \(120 - 100 = 20\).</li>
+        <li>\(\hat D = (4\cdot27 - 10\cdot9)/20 = 18/20 = 0.9\), \(\hat C = (30\cdot9 - 10\cdot27)/20 = 0\).</li>
+        <li>직선 \(y = 0.9t\). 잔차 \((0.1, 0.2, -0.7, 0.4)\), 합 0. ✓ 무게중심 \((2.5, 2.25)\)도 직선 위에 있다(\(0.9\times2.5 = 2.25\)).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-or-linefit">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점을 끌며 맞추는 최소제곱 직선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="or-cv-lf"></canvas><span class="tag-tl">데이터 점을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="or-lf-sq"> 잔차 제곱을 정사각형으로 보기</label>
+          <label class="check"><input type="checkbox" id="or-lf-c"> 무게중심 (t̄, ȳ) 표시</label>
+          <label class="ctrl"><span>마지막 점의 가중치 w₇ <output id="or-lf-w-out"></output></span><input type="range" id="or-lf-w" min="0" max="10" step="0.5" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="or-lf-out">이상값 하나 만들기</button><button class="btn" id="or-lf-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">직선 y = C + Dt</span><span class="v" id="or-lf-line">—</span></div>
+        <div class="stat"><span class="k">Σ wᵢeᵢ² (최소)</span><span class="v" id="or-lf-sse">—</span></div>
+        <div class="stat"><span class="k">AᵀWA</span><span class="v" id="or-lf-ata">—</span></div>
+        <div class="stat"><span class="k">AᵀWb</span><span class="v" id="or-lf-atb">—</span></div>
+      </div>
+      <div class="or-msg" id="or-lf-msg">—</div>
+      <div class="sim-note">해볼 것: ① 아무 점이나 끌면 직선이 곧바로 다시 맞춰집니다. 잔차(빨강·청록 막대)의 합은 가중치가 모두 1일 때 언제나 0입니다. ② '이상값 하나 만들기'를 누르면 한 점이 직선 전체를 끌어당깁니다. 제곱이 큰 오차를 크게 벌하기 때문입니다. ③ w₇을 0으로 내리면 마지막 점을 무시하고, 10으로 올리면 직선이 그 점을 거의 지나갑니다. 모델: 세로 방향 잔차(y 오차)만 고려합니다. t도 잡음이 있으면 '전체 최소제곱'(15장의 PCA와 같은 계산)을 씁니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="polynomial-fit">
+    <h2>다항식 맞추기와 과적합</h2>
+    <div class="problem"><strong>곡선이 더 잘 맞으면 더 좋은 모델일까</strong>
+      <p>데이터가 직선처럼 보이지 않으면 \(y = c_0 + c_1t + c_2t^2 + \cdots + c_dt^d\)처럼 다항식을 맞출 수 있습니다. 차수 \(d\)를 올릴수록 잔차는 줄어들고, 점이 \(m\)개일 때 \(d = m-1\)이면 모든 점을 정확히 지나는 곡선이 생깁니다. 그러면 가장 높은 차수가 가장 좋은 모델일까요?</p></div>
+    <p>다항식도 계수에 대해서는 <b>선형</b>이므로 똑같이 최소제곱입니다. \(A\)의 \(j\)번째 열이 \(t_i^{\,j}\)인 <span class="term">방데르몽드 행렬</span><span class="en">(Vandermonde matrix)</span>을 만들고 정규 방정식을 풉니다. "선형" 최소제곱의 선형은 \(t\)가 아니라 미지수 \(c_j\)에 대한 것입니다. 지수 함수 \(y = Ce^{kt}\)처럼 계수에 비선형인 모델은 로그를 취하거나(\(\ln y = \ln C + kt\)) GPS처럼 반복 선형화로 다룹니다.</p>
+    <div class="formula">$$A = \begin{bmatrix}1 & t_1 & t_1^2 & \cdots & t_1^d\\ \vdots & & & & \vdots\\ 1 & t_m & t_m^2 & \cdots & t_m^d\end{bmatrix}, \qquad A^{\mathsf T}A\,\hat{\mathbf c} = A^{\mathsf T}\mathbf y$$
+      <div class="where">\(t_i\)가 서로 다르고 \(d \le m-1\)이면 열이 독립이라 해가 하나뿐이다. \(d = m-1\)이면 \(A\)가 정사각 가역이 되어 잔차가 0인 보간 다항식이 된다.</div>
+    </div>
+    <p>잔차가 0이 된다고 좋은 것은 아닙니다. 데이터에는 진짜 법칙과 함께 <b>잡음</b>이 들어 있는데, 차수가 지나치게 높으면 곡선이 잡음까지 따라 휘어 새 데이터에서는 크게 틀립니다. 이것이 <span class="term">과적합</span><span class="en">(overfitting)</span>입니다. 모델을 만들 때 쓴 데이터(훈련 데이터)의 오차는 차수와 함께 계속 줄지만, 쓰지 않은 데이터(시험 데이터)의 오차는 어느 차수에서 바닥을 찍고 다시 올라갑니다. 또 높은 차수에서는 방데르몽드 행렬의 열들(\(t^9\)과 \(t^{10}\)은 [−1, 1]에서 거의 같은 모양)이 거의 종속이 되어 \(A^{\mathsf T}A\)의 조건수가 폭발합니다. 정리 8.7의 경고가 실제로 나타나는 곳입니다.</p>
+
+    <div class="sim" id="sim-or-polyfit">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>차수를 올리면: 훈련 오차와 시험 오차</h3></div>
+      <div class="split">
+        <div><canvas id="or-cv-pf"></canvas><span class="cap">데이터와 맞춘 다항식</span></div>
+        <div><canvas id="or-cv-pf-err"></canvas><span class="cap">RMS 오차 대 차수 (로그 눈금)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식 차수 d <output id="or-pf-d-out"></output></span><input type="range" id="or-pf-d" min="0" max="11" step="1" value="3"></label>
+          <label class="ctrl"><span>잡음 크기 σ <output id="or-pf-s-out"></output></span><input type="range" id="or-pf-s" min="0" max="0.5" step="0.01" value="0.15"></label>
+          <label class="check"><input type="checkbox" id="or-pf-test" checked> 시험 데이터(속 빈 점) 보기</label>
+          <div class="btn-row"><button class="btn" id="or-pf-new">잡음 새로 뽑기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">훈련 RMS 오차 (12점)</span><span class="v" id="or-pf-tr">—</span></div>
+        <div class="stat"><span class="k">시험 RMS 오차 (60점)</span><span class="v" id="or-pf-te">—</span></div>
+        <div class="stat"><span class="k">cond(AᵀA)</span><span class="v" id="or-pf-cond">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="or-pf-verdict">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 차수를 0부터 11까지 올려 보세요. 훈련 오차(실선)는 계속 내려가고, 차수 11에서는 12개 점을 모두 지나지만 시험 오차(점선)는 다시 올라갑니다. ② σ를 0으로 줄이면 높은 차수도 덜 위험해집니다. 과적합은 잡음을 외우는 현상입니다. ③ cond(AᵀA)가 10¹²을 넘어서면 정규 방정식의 해 자체도 반올림 오차로 흔들립니다. 모델: 진짜 법칙 y = 0.9 sin(2.6t) + 0.25t, t ∈ [−1, 1], 독립 정규 잡음. 계수는 정규 방정식을 부분 피벗팅 소거로 풀었습니다.</div>
+    </div>
+    <div class="callout"><strong>모델 고르기</strong> 실무에서는 데이터를 훈련용과 검증용으로 나누거나(교차 검증), 계수가 커지는 것에 벌점을 주는 정칙화<span class="en">(ridge regression)</span> \(\min\lVert A\mathbf x - \mathbf b\rVert^2 + \lambda\lVert\mathbf x\rVert^2\)을 씁니다. 정칙화의 정규 방정식은 \((A^{\mathsf T}A + \lambda I)\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)이고, \(\lambda \gt 0\)이면 언제나 가역이며 조건수도 줄어듭니다. 회귀 계수의 신뢰 구간 같은 통계적 판단은 <a href="../../probability/chapters/regression.html">확률과 통계의 회귀 분석</a>에서 다룹니다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="gps">
+    <h2>응용: GPS는 위치를 어떻게 계산하나</h2>
+    <div class="problem"><strong>원 네 개가 한 점에서 만나지 않는다</strong>
+      <p>위성 \(i\)의 위치 \(\mathbf s_i\)는 위성이 보내는 궤도 정보로 압니다. 수신기는 신호 도착 시간에 광속을 곱해 의사거리 \(\rho_i\)를 얻습니다. 시계 오차가 없고 잡음도 없다면 위성마다 반지름 \(\rho_i\)인 구(2차원이면 원)를 그려 교점을 찾으면 됩니다. 실제로는 모든 \(\rho_i\)에 같은 시계 오차 \(b\)(거리 단위)가 더해지고 잡음도 섞여, 원들이 한 점에서 만나지 않습니다.</p></div>
+    <p>미지수를 \(\mathbf z = (x, y, b)\)(2차원 예)로 두면 모델은 \(\rho_i \approx f_i(\mathbf z) = \lVert\mathbf s_i - (x,y)\rVert + b\)입니다. \(f_i\)는 \(x, y\)에 대해 비선형이라 바로 최소제곱을 쓸 수 없습니다. 그래서 현재 추정값 \(\mathbf z_k\) 근처에서 1차 테일러 근사로 선형화합니다.</p>
+    <div class="formula">$$f_i(\mathbf z_k + \Delta) \approx f_i(\mathbf z_k) + J_i\,\Delta, \qquad J_i = \Big[\ \frac{x_k - s_{ix}}{r_i}\ \ \ \frac{y_k - s_{iy}}{r_i}\ \ \ 1\ \Big],\quad r_i = \lVert\mathbf s_i - (x_k,y_k)\rVert$$
+      <div class="where">\(J\)의 각 행 앞쪽 두 성분은 위성에서 수신기로 향하는 단위 벡터다. 잔차 \(\mathbf r = \boldsymbol\rho - \mathbf f(\mathbf z_k)\)에 대해 \(J\Delta \approx \mathbf r\)을 최소제곱으로 풀어(\(J^{\mathsf T}J\Delta = J^{\mathsf T}\mathbf r\)) \(\mathbf z_{k+1} = \mathbf z_k + \Delta\)로 고친다. 이 반복을 <span class="term">가우스–뉴턴 방법</span><span class="en">(Gauss–Newton method)</span>이라 한다.</div>
+    </div>
+    <p>보통 몇 번 만에 수렴합니다. 위성이 미지수 수(3차원에서는 4)보다 많으면 잡음이 평균되어 정확도가 좋아지고, 위성들이 하늘 한쪽에 몰려 있으면 \(J\)의 행들이 비슷해져 \(J^{\mathsf T}J\)가 특이 행렬에 가까워집니다. GPS 분야에서는 이 기하적 나쁨을 정밀도 저하율<span class="en">(DOP, dilution of precision)</span>이라는 수치로 나타내는데, \((J^{\mathsf T}J)^{-1}\)의 대각 원소에서 계산합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 640 250" role="img" aria-label="의사거리와 시계 오차">
+        <rect x="10" y="10" width="620" height="230" rx="10" class="f-surface"/>
+        <circle cx="140" cy="70" r="7" style="fill:var(--accent-2)"/><text x="152" y="62" class="t">위성 1</text>
+        <circle cx="500" cy="60" r="7" style="fill:var(--accent-2)"/><text x="512" y="52" class="t">위성 2</text>
+        <circle cx="560" cy="200" r="7" style="fill:var(--accent-2)"/><text x="520" y="230" class="t">위성 3</text>
+        <circle cx="140" cy="70" r="162" fill="none" style="stroke:var(--accent-2);stroke-dasharray:5 4;opacity:.7"/>
+        <circle cx="500" cy="60" r="200" fill="none" style="stroke:var(--accent-2);stroke-dasharray:5 4;opacity:.7"/>
+        <circle cx="560" cy="200" r="250" fill="none" style="stroke:var(--accent-2);stroke-dasharray:5 4;opacity:.7"/>
+        <circle cx="300" cy="150" r="7" style="fill:var(--ok)"/><text x="312" y="146" class="t" style="fill:var(--ok);font-weight:700">진짜 위치</text>
+        <text x="40" y="226" class="t-dim">점선 원 = 의사거리 ρᵢ (모두 b만큼 길다) → 한 점에서 만나지 않는다</text>
+      </svg>
+      <figcaption><b>그림 8-6.</b> 수신기 시계가 늦으면 모든 의사거리가 같은 양 b만큼 길어져 원들이 진짜 위치를 감싸며 어긋난다. b를 미지수에 넣고 모든 원의 반지름에서 같은 양을 빼는 문제로 바꾸면, 위성이 미지수보다 많을 때 최소제곱으로 위치와 b를 함께 구한다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-or-gps">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2차원 GPS: 선형화와 최소제곱을 되풀이하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="or-cv-gps"></canvas><span class="tag-tl">위성(청록)과 진짜 위치(초록)를 끌 수 있다</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>시계 오차 b (거리 단위) <output id="or-g-b-out"></output></span><input type="range" id="or-g-b" min="0" max="4" step="0.1" value="2"></label>
+          <label class="ctrl"><span>거리 잡음 σ <output id="or-g-s-out"></output></span><input type="range" id="or-g-s" min="0" max="0.6" step="0.02" value="0.15"></label>
+          <div class="ctrl"><span>쓰는 위성</span><div class="seg" id="or-g-n"><button data-value="5" class="on">5개</button><button data-value="4">4개</button><button data-value="3">3개</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="or-g-step">한 단계</button><button class="btn" id="or-g-run">수렴까지</button><button class="btn" id="or-g-reset">처음부터</button><button class="btn" id="or-g-noise">잡음 새로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="or-g-k">—</span></div>
+        <div class="stat"><span class="k">추정 (x, y), b̂</span><span class="v" id="or-g-z">—</span></div>
+        <div class="stat"><span class="k">잔차 ‖ρ − f(z)‖</span><span class="v" id="or-g-r">—</span></div>
+        <div class="stat"><span class="k">진짜 위치와의 거리</span><span class="v" id="or-g-err">—</span></div>
+      </div>
+      <div class="or-msg" id="or-g-msg">'한 단계'를 눌러 선형화–최소제곱 한 번을 실행하세요.</div>
+      <div class="sim-note">해볼 것: ① '한 단계'를 몇 번 누르면 추정점(노랑)이 3~5번 만에 진짜 위치 근처로 수렴하고, 점선 원(ρᵢ − b̂)이 거의 한 점에서 만납니다. ② 위성 3개만 쓰면 미지수와 식의 수가 같아 잔차가 0이 되지만, 잡음이 평균되지 않아 위치 오차는 보통 더 큽니다. ③ 위성들을 한쪽으로 몰아 놓으면 같은 잡음에서도 위치 오차가 커집니다(나쁜 기하, 높은 DOP). 모델: 평면 위의 장난감 문제, 단위는 임의의 거리 단위이며 광속·대기 지연·위성 시계 오차는 무시했습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"수직으로 내린 발이 가장 가깝다"는 원리와 정규 방정식은 데이터가 있는 곳 어디에나 있습니다.</p>
+    <div class="uses">
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀 분석<br><span>최소제곱 계수의 신뢰 구간, 결정 계수, 다중 회귀의 행렬 표기.</span></a>
+      <a href="qr.html"><small>LINEARBOOK 9장</small>그람–슈미트와 QR<br><span>정규 방정식 대신 A = QR로 최소제곱을 정확하게 푼다.</span></a>
+      <a href="svd.html"><small>LINEARBOOK 14장</small>특이값 분해<br><span>열이 종속일 때도 쓰는 유사역행렬, 조건수 κ = σ₁/σₙ.</span></a>
+      <a href="../../foundations/chapters/optimization.html"><small>MATHBOOK</small>가장 낮은 곳 찾기<br><span>최소제곱은 바닥이 하나인 볼록 이차 함수. 경사 하강법과 비교.</span></a>
+      <a href="https://semi.euiyun.com/process/chapters/metrology.html"><small>PROCESSBOOK</small>계측과 검량<br><span>막 두께·임계 치수 계측기의 검량선과 측정 모델 적합.</span></a>
+      <a href="https://semi.euiyun.com/litho/"><small>LITHOBOOK</small>오버레이 보정<br><span>웨이퍼 위 수십 점의 정렬 오차에 이동·회전·배율 모델을 최소제곱으로 맞춘다.</span></a>
+    </div>
+  </section>
+
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(\mathbf u^{\mathsf T}\mathbf v = 0\)이면 직교. 직교하면 제곱 길이가 더해지고(피타고라스), 0이 아닌 직교 벡터들은 독립이다. 직교 부분공간은 {0}만 공유한다.</li>
+      <li><b>\(N(A) = C(A^{\mathsf T})^\perp\), \(N(A^{\mathsf T}) = C(A)^\perp\).</b> 입력 공간은 행공간 ⊕ 영공간, 출력 공간은 열공간 ⊕ 좌영공간으로 직각을 이루며 나뉘고, 차원은 \(r + (n-r)\), \(r + (m-r)\)이다.</li>
+      <li>직선 사영: \(\hat x = \mathbf a^{\mathsf T}\mathbf b/\mathbf a^{\mathsf T}\mathbf a\), \(P = \mathbf a\mathbf a^{\mathsf T}/\mathbf a^{\mathsf T}\mathbf a\). 사영 \(\mathbf p\)는 직선 위에서 \(\mathbf b\)에 가장 가까운 점이고 오차 \(\mathbf e\)는 직선에 수직이다.</li>
+      <li>부분공간 사영: 오차가 모든 열에 수직 → <b>\(A^{\mathsf T}A\hat{\mathbf x} = A^{\mathsf T}\mathbf b\)</b>, \(P = A(A^{\mathsf T}A)^{-1}A^{\mathsf T}\). \(P^2 = P = P^{\mathsf T}\), \(I-P\)는 직교 여공간으로의 사영. \(A^{\mathsf T}A\)는 열이 독립일 때만 가역이다.</li>
+      <li>해가 없는 \(A\mathbf x = \mathbf b\)의 <b>최소제곱 해</b>는 \(\lVert A\mathbf x - \mathbf b\rVert^2\)을 최소로 하고, 정규 방정식의 해와 같다. 직선 적합에서 잔차의 합은 0이고 직선은 무게중심을 지난다.</li>
+      <li>가중 최소제곱은 \(A^{\mathsf T}WA\hat{\mathbf x} = A^{\mathsf T}W\mathbf b\)(\(w_i = 1/\sigma_i^2\)). 다항식 적합은 방데르몽드 행렬의 최소제곱이며, 차수가 너무 높으면 잡음을 외우는 <b>과적합</b>이 생긴다.</li>
+      <li><b>\(\kappa(A^{\mathsf T}A) = \kappa(A)^2\)</b>: 정규 방정식은 조건수를 제곱한다. 나쁜 조건의 문제는 QR(9장)이나 SVD(14장)로 푼다. GPS처럼 비선형인 문제는 선형화한 최소제곱을 되풀이한다(가우스–뉴턴).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. ℝ³에서 두 부분공간이 직교 부분공간이 될 수 있는 경우는?</p><div class="opts">
+        <button class="opt">서로 수직으로 만나는 두 평면</button>
+        <button class="opt" data-correct>원점을 지나는 직선과, 그 직선에 수직인 원점을 지나는 평면</button>
+        <button class="opt">같은 직선 두 개</button>
+        <button class="opt">평면과 그 평면 안의 직선</button>
+      </div><div class="quiz-exp">직교 부분공간은 {0}만 공유하고 차원의 합이 3을 넘을 수 없다. 두 평면은 차원 합이 4라 반드시 직선 하나를 공유하므로 직교할 수 없다. 직선과 그 수직 평면은 서로의 직교 여공간이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 3×5 행렬 A의 계수가 2이다. 영공간 N(A)는 어디에 있고 차원은 얼마이며 무엇과 수직인가?</p><div class="opts">
+        <button class="opt">ℝ³, 차원 1, 열공간과 수직</button>
+        <button class="opt" data-correct>ℝ⁵, 차원 3, 행공간과 수직</button>
+        <button class="opt">ℝ⁵, 차원 2, 열공간과 수직</button>
+        <button class="opt">ℝ³, 차원 3, 좌영공간과 수직</button>
+      </div><div class="quiz-exp">Ax = 0의 x는 입력 공간 ℝ⁵에 있다. 차원은 n − r = 5 − 2 = 3이고, 각 행과의 내적이 0이므로 행공간 C(Aᵀ)(차원 2)의 직교 여공간이다. 2 + 3 = 5.</div></div>
+
+      <div class="quiz-q"><p>Q3. a = (2, 0), b = (3, 4)일 때 b를 a의 직선으로 사영한 p와 오차 e는?</p><div class="opts">
+        <button class="opt">p = (6, 0), e = (−3, 4)</button>
+        <button class="opt" data-correct>p = (3, 0), e = (0, 4)</button>
+        <button class="opt">p = (1.5, 0), e = (1.5, 4)</button>
+        <button class="opt">p = (3, 4), e = (0, 0)</button>
+      </div><div class="quiz-exp">x̂ = aᵀb/aᵀa = 6/4 = 1.5, p = 1.5·(2, 0) = (3, 0). e = b − p = (0, 4)는 a와 수직이다. a의 길이(2)가 결과에 영향을 주지 않는다는 점도 확인하자. 첫 보기는 aᵀb·a처럼 분모를 빠뜨린 실수다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 사영 행렬 P에 대해 틀린 것은?</p><div class="opts">
+        <button class="opt">P² = P</button>
+        <button class="opt">I − P도 사영 행렬이다</button>
+        <button class="opt" data-correct>P는 언제나 가역이다</button>
+        <button class="opt">P의 대각합은 사영하는 부분공간의 차원과 같다</button>
+      </div><div class="quiz-exp">P는 직교 여공간의 벡터를 모두 0으로 보내므로 P = I인 경우를 빼면 가역이 아니다. 그림자에서 원래 물체를 되살릴 수 없는 것과 같다. 고유값으로 보면 P의 고유값은 1(부분공간 방향)과 0(직교 여공간 방향)뿐이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 정규 방정식 AᵀAx̂ = Aᵀb가 하나의 해를 가질 조건은?</p><div class="opts">
+        <button class="opt">b가 A의 열공간에 있을 때</button>
+        <button class="opt">A가 정사각 행렬일 때</button>
+        <button class="opt" data-correct>A의 열이 선형 독립일 때</button>
+        <button class="opt">A의 행이 선형 독립일 때</button>
+      </div><div class="quiz-exp">AᵀA와 A는 영공간이 같다(xᵀAᵀAx = ‖Ax‖²). 열이 독립이면 N(A) = {0}이므로 AᵀA가 가역이다. b가 열공간에 있는지는 해의 유일성과 상관없고, 있으면 잔차가 0이 될 뿐이다. 정규 방정식은 b가 무엇이든 언제나 해가 있다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 점 (0, 1), (1, 3), (2, 5)에 맞춘 최소제곱 직선과 잔차 제곱합은?</p><div class="opts">
+        <button class="opt" data-correct>y = 1 + 2t, 잔차 제곱합 0</button>
+        <button class="opt">y = 3t, 잔차 제곱합 2</button>
+        <button class="opt">y = 1.5 + 1.5t, 잔차 제곱합 1.5</button>
+        <button class="opt">해가 없다</button>
+      </div><div class="quiz-exp">세 점은 이미 한 직선 y = 1 + 2t 위에 있다. b가 열공간 안에 있으므로 사영은 b 자신이고 e = 0이다. 최소제곱 해는 정확한 해가 있으면 그것과 일치한다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 점 12개에 다항식을 맞출 때 차수를 11로 올렸더니 훈련 오차는 0이 되었지만 새 데이터의 오차는 커졌다. 가장 알맞은 설명은?</p><div class="opts">
+        <button class="opt">반올림 오차 때문이며 배정밀도를 쓰면 해결된다</button>
+        <button class="opt" data-correct>곡선이 잡음까지 따라가는 과적합이다</button>
+        <button class="opt">최소제곱법은 다항식에 쓸 수 없다</button>
+        <button class="opt">점의 수가 너무 많아서다</button>
+      </div><div class="quiz-exp">차수 11이면 방데르몽드 행렬이 12×12 정사각 가역이라 모든 점을 지나는 보간 다항식이 된다. 잡음까지 맞췄으므로 점 사이에서 크게 출렁인다. 높은 차수에서는 조건수도 커지지만, 정확히 계산해도 과적합은 남는다.</div></div>
+
+      <div class="quiz-q"><p>Q8. κ(A) = 10⁶인 최소제곱 문제를 배정밀도(반올림 단위 약 10⁻¹⁶)로 풀 때, 정규 방정식이 위험한 이유는?</p><div class="opts">
+        <button class="opt">AᵀA가 대칭이 아니어서</button>
+        <button class="opt">AᵀA를 만드는 데 연산이 너무 많아서</button>
+        <button class="opt" data-correct>κ(AᵀA) = 10¹²이 되어 해의 유효 숫자가 4자리 정도밖에 안 남을 수 있어서</button>
+        <button class="opt">정규 방정식은 근사식이라 정확한 최소제곱 해를 주지 않아서</button>
+      </div><div class="quiz-exp">정규 방정식은 수학적으로는 정확하지만 조건수를 제곱한다. 상대 오차가 대략 κ × 반올림 단위로 커지므로 10¹² × 10⁻¹⁶ = 10⁻⁴, 유효 숫자 약 4자리다. A에 직접 작용하는 QR은 κ(A) = 10⁶ 수준의 오차로 약 10자리를 지킨다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const OR = {
+  num(v, d = 2) { const r = Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v; let t = r.toFixed(d); if (t.includes(".")) t = t.replace(/0+$/, "").replace(/\.$/, ""); return t.replace("-", "−"); },
+  tup(a, d = 2) { return "(" + a.map((x) => OR.num(x, d)).join(", ") + ")"; },
+  dot: (a, b) => a.reduce((s, x, i) => s + x * b[i], 0),
+  len: (a) => Math.hypot(...a),
+  add: (a, b) => a.map((x, i) => x + b[i]),
+  sub: (a, b) => a.map((x, i) => x - b[i]),
+  mul: (c, a) => a.map((x) => c * x),
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  unit(a) { const n = OR.len(a) || 1; return a.map((x) => x / n); },
+  T: (M) => M[0].map((_, j) => M.map((r) => r[j])),
+  mm: (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0))),
+  mv: (A, x) => A.map((r) => OR.dot(r, x)),
+  /** 행렬을 HTML 격자로 */
+  mat(M, d = 2) { return `<span class="or-mx" style="grid-template-columns:repeat(${M[0].length},auto)">${M.flat().map((v) => `<span>${OR.num(v, d)}</span>`).join("")}</span>`; },
+  /** 부분 피벗팅 가우스 소거. 특이하면 null */
+  solve(A, b) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      if (Math.abs(M[p][k]) < 1e-300) return null;
+      [M[k], M[p]] = [M[p], M[k]];
+      for (let i = k + 1; i < n; i++) { const l = M[i][k] / M[k][k]; for (let j = k; j <= n; j++) M[i][j] -= l * M[k][j]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+    return x;
+  },
+  /** 정사영 3차원 보기: z가 위. yaw(방위)와 pitch(내려다보는 각) */
+  view(w, h, yaw, pitch, s, ctr = [0, 0, 0]) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    return (q) => {
+      const x = q[0] - ctr[0], y = q[1] - ctr[1], z = q[2] - ctr[2];
+      const x1 = x * cy - y * sy, y1 = x * sy + y * cy;
+      return [w / 2 + s * x1, h / 2 - s * (y1 * sp + z * cp)];
+    };
+  },
+  /** 픽셀 좌표 화살표 */
+  arrow(ctx, a, b, color, width = 2.5, dash) {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 1) return;
+    const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, hd = Math.min(11, L * 0.45);
+    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0] - ux * hd * 0.8, b[1] - uy * hd * 0.8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - ux * hd - uy * hd * 0.45, b[1] - uy * hd + ux * hd * 0.45); ctx.lineTo(b[0] - ux * hd + uy * hd * 0.45, b[1] - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  },
+  seg(ctx, a, b, color, width = 1.5, dash, alpha = 1) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.globalAlpha = alpha; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); },
+  poly(ctx, pts, fill, alpha, stroke) { ctx.save(); ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.globalAlpha = alpha; ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.globalAlpha = 1; ctx.strokeStyle = stroke; ctx.lineWidth = 1.2; ctx.stroke(); } ctx.restore(); },
+  label(ctx, s, p, color, dx = 6, dy = -6, bold = true) { ctx.save(); ctx.fillStyle = color; ctx.font = `${bold ? "700 " : ""}13px ${getComputedStyle(document.body).getPropertyValue("--font")}`; ctx.textBaseline = "middle"; ctx.fillText(s, p[0] + dx, p[1] + dy); ctx.restore(); },
+  /** 3차원 좌표축 */
+  axes3(ctx, pr, L, P) {
+    [[[L, 0, 0], "x"], [[0, L, 0], "y"], [[0, 0, L], "z"]].forEach(([e, n]) => {
+      OR.seg(ctx, pr(OR.mul(-1, e)), pr(e), P.axis, 1, [3, 4], 0.8);
+      OR.label(ctx, n, pr(e), P.faint, 4, 0, false);
+    });
+  },
+  /** 3차원 그림에서 직각 표시: 꼭짓점 c, 두 방향 u, v(단위) */
+  right3(ctx, pr, c, u, v, k, color) {
+    const a = OR.add(c, OR.mul(k, u)), b = OR.add(a, OR.mul(k, v)), d = OR.add(c, OR.mul(k, v));
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.beginPath(); const A = pr(a), B = pr(b), D = pr(d); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.lineTo(D[0], D[1]); ctx.stroke(); ctx.restore();
+  },
+};
+
+/* ================================================================ 1. ℝ³에서 직선과 직교 여공간 */
+(function () {
+  let th = 40, ph = 55, yaw = -30;
+  const X = [1.3, 0.6, 1.1];
+  const mode = MB.seg("or-c-mode", () => cv.redraw());
+  const showX = MB.check("or-c-x", () => cv.redraw());
+  const cv = MB.canvas("#or-cv-comp", (ctx, w, h) => {
+    const P = MB.palette();
+    const t = (th * Math.PI) / 180, p = (ph * Math.PI) / 180;
+    const d = [Math.cos(p) * Math.cos(t), Math.cos(p) * Math.sin(t), Math.sin(p)];
+    const u1 = OR.unit(OR.cross(d, Math.abs(d[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0])), u2 = OR.cross(d, u1);
+    const s = Math.min(w, h) / 5.6;
+    const pr = OR.view(w, h, (yaw * Math.PI) / 180, 0.42, s);
+    const lineV = mode() === "line";
+    const cLine = lineV ? P.accent : P.accent2, cPlane = lineV ? P.accent2 : P.accent;
+    OR.axes3(ctx, pr, 2.3, P);
+    // 평면 조각과 격자
+    const L = 1.9, corner = (a, b) => pr(OR.add(OR.mul(a * L, u1), OR.mul(b * L, u2)));
+    OR.poly(ctx, [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], cPlane, 0.16, cPlane);
+    for (let k = -3; k <= 3; k++) {
+      OR.seg(ctx, corner(k / 3, -1), corner(k / 3, 1), cPlane, 1, null, 0.3);
+      OR.seg(ctx, corner(-1, k / 3), corner(1, k / 3), cPlane, 1, null, 0.3);
+    }
+    // 직선
+    OR.seg(ctx, pr(OR.mul(-2.5, d)), pr(OR.mul(2.5, d)), cLine, 3, null, 0.9);
+    OR.label(ctx, lineV ? "V (직선)" : "V⊥ (직선)", pr(OR.mul(2.4, d)), cLine);
+    OR.label(ctx, lineV ? "V⊥ (평면)" : "V (평면)", corner(1, -1), cPlane, 4, 10);
+    OR.right3(ctx, pr, [0, 0, 0], d, u1, 0.28, P.dim);
+    // x 분해
+    const xd = OR.mul(OR.dot(X, d), d), xp = OR.sub(X, xd);
+    const xV = lineV ? xd : xp, xW = lineV ? xp : xd;
+    if (showX()) {
+      OR.seg(ctx, pr(xd), pr(X), P.dim, 1.2, [4, 4]);
+      OR.seg(ctx, pr(xp), pr(X), P.dim, 1.2, [4, 4]);
+      OR.arrow(ctx, pr([0, 0, 0]), pr(xd), cLine, 3);
+      OR.arrow(ctx, pr([0, 0, 0]), pr(xp), cPlane, 3);
+      OR.arrow(ctx, pr([0, 0, 0]), pr(X), P.text, 2.5);
+      OR.label(ctx, "x", pr(X), P.text);
+    }
+    MB.stat("or-c-dim", `${lineV ? 1 : 2} + ${lineV ? 2 : 1} = 3`);
+    MB.stat("or-c-xv", OR.tup(xV));
+    MB.stat("or-c-xw", OR.tup(xW));
+    MB.stat("or-c-dot", OR.num(OR.dot(xV, xW), 3));
+  }, { aspect: 0.75, minHeight: 280, maxHeight: 460 });
+  MB.range("or-c-th", (v) => v + "°", (v) => { th = v; cv.redraw(); });
+  MB.range("or-c-ph", (v) => v + "°", (v) => { ph = v; cv.redraw(); });
+  const yawR = MB.range("or-c-yaw", (v) => Math.round(v) + "°", (v) => { yaw = v; cv.redraw(); });
+  const loop = MB.loop(document.getElementById("sim-or-complement"), (dt) => { yaw += dt * 25; if (yaw > 180) yaw -= 360; yawR.set(Math.round(yaw), false); cv.redraw(); });
+  loop.stop();
+  const btn = document.getElementById("or-c-spin");
+  btn.addEventListener("click", () => { const on = loop.toggle(); btn.textContent = on ? "■ 멈추기" : "▶ 천천히 돌리기"; });
+})();
+
+/* ================================================================ 2. 2×2 행렬의 네 부분공간 */
+(function () {
+  const PRE = { r1a: [[1, 2], [0.5, 1]], r1b: [[1, 2], [2, 4]], r1c: [[2, -1], [-2, 1]], r2: [[2, 1], [1, 3]], r0: [[0, 0], [0, 0]] };
+  const ids = ["or-f11", "or-f12", "or-f21", "or-f22"], inp = ids.map((id) => document.getElementById(id));
+  let A = PRE.r1a.map((r) => r.slice());
+  const info = () => {
+    const [[a, b], [c, d]] = A, det = a * d - b * c, big = Math.max(...A.flat().map(Math.abs));
+    if (Math.abs(det) > 1e-9) return { r: 2 };
+    if (big < 1e-12) return { r: 0 };
+    const row = Math.hypot(a, b) >= Math.hypot(c, d) ? [a, b] : [c, d];
+    const col = Math.hypot(a, c) >= Math.hypot(b, d) ? [a, c] : [b, d];
+    const rd = OR.unit(row), cd = OR.unit(col);
+    return { r: 1, rd, nd: [-rd[1], rd[0]], cd, ld: [-cd[1], cd[0]] };
+  };
+  const pts = [{ x: 1.5, y: 1, snap: 0.1, label: "x" }];
+  const opt = { x: [-4, 4], aspect: 0.8, maxHeight: 360, minHeight: 220 };
+  let I = info(), xr = [0, 0], xn = [0, 0];
+  function decompose() {
+    const x = [pts[0].x, pts[0].y];
+    if (I.r === 2) { xr = x; xn = [0, 0]; } else if (I.r === 0) { xr = [0, 0]; xn = x; } else { xr = OR.mul(OR.dot(x, I.rd), I.rd); xn = OR.sub(x, xr); }
+  }
+  const pin = MB.plane("#or-cv-four-in", Object.assign({}, opt, {
+    points: pts,
+    draw(P, api) {
+      const C = P.P; api.points[0].color = C.text; decompose();
+      if (I.r === 1) {
+        P.line(-6 * I.rd[0], -6 * I.rd[1], 6 * I.rd[0], 6 * I.rd[1], { color: C.accent, width: 3, alpha: 0.85 });
+        P.line(-6 * I.nd[0], -6 * I.nd[1], 6 * I.nd[0], 6 * I.nd[1], { color: C.accent2, width: 3, alpha: 0.85 });
+        P.text("C(Aᵀ)", 3.3 * I.rd[0], 3.3 * I.rd[1], { color: C.accent, bold: true, dx: 6, dy: -10 });
+        P.text("N(A)", 3.3 * I.nd[0], 3.3 * I.nd[1], { color: C.accent2, bold: true, dx: 6, dy: -10 });
+        P.arrow(0, 0, xr[0], xr[1], { color: C.accent, width: 3 });
+        P.arrow(0, 0, xn[0], xn[1], { color: C.accent2, width: 3 });
+        P.line(xr[0], xr[1], pts[0].x, pts[0].y, { color: C.dim, width: 1.2, dash: [4, 4] });
+        P.line(xn[0], xn[1], pts[0].x, pts[0].y, { color: C.dim, width: 1.2, dash: [4, 4] });
+      } else {
+        P.text(I.r === 2 ? "행공간 = ℝ² 전체, 영공간 = {0}" : "영공간 = ℝ² 전체, 행공간 = {0}", P.x0 + 0.25, P.y0 + 0.4, { color: I.r === 2 ? C.accent : C.accent2, bold: true, size: 12 });
+      }
+      P.arrow(0, 0, pts[0].x, pts[0].y, { color: C.text, width: 2.5 });
+    },
+    onDrag() { pout.redraw(); readout(); },
+  }));
+  const pout = MB.plane("#or-cv-four-out", Object.assign({}, opt, {
+    draw(P) {
+      const C = P.P; decompose();
+      const ax = OR.mv(A, [pts[0].x, pts[0].y]), axr = OR.mv(A, xr);
+      if (I.r === 1) {
+        P.line(-6 * I.cd[0], -6 * I.cd[1], 6 * I.cd[0], 6 * I.cd[1], { color: C.accent, width: 3, alpha: 0.85 });
+        P.line(-6 * I.ld[0], -6 * I.ld[1], 6 * I.ld[0], 6 * I.ld[1], { color: C.accent2, width: 3, alpha: 0.85 });
+        P.text("C(A)", 3.3 * I.cd[0], 3.3 * I.cd[1], { color: C.accent, bold: true, dx: 6, dy: -10 });
+        P.text("N(Aᵀ)", 3.3 * I.ld[0], 3.3 * I.ld[1], { color: C.accent2, bold: true, dx: 6, dy: -10 });
+      } else {
+        P.text(I.r === 2 ? "열공간 = ℝ² 전체, 좌영공간 = {0}" : "열공간 = {0}", P.x0 + 0.25, P.y0 + 0.4, { color: I.r === 2 ? C.accent : C.accent2, bold: true, size: 12 });
+      }
+      P.arrow(0, 0, ax[0], ax[1], { color: C.text, width: 3, label: "Ax" });
+      P.dot(axr[0], axr[1], { r: 9, color: C.accent, alpha: 0.35 });
+      P.dot(0, 0, { r: 4, color: C.accent2, label: "Axₙ = 0", labelColor: C.accent2 });
+    },
+  }));
+  function readout() {
+    decompose();
+    const ax = OR.mv(A, [pts[0].x, pts[0].y]), axr = OR.mv(A, xr);
+    MB.stat("or-f-rank", `${I.r} <small>(행공간 ${I.r} + 영공간 ${2 - I.r} = 2)</small>`);
+    MB.stat("or-f-split", `${OR.tup(xr)} + ${OR.tup(xn)}`);
+    MB.stat("or-f-ax", `${OR.tup(ax)} = ${OR.tup(axr)}`);
+    MB.stat("or-f-dot", OR.num(OR.dot(xr, xn), 3));
+  }
+  function setA(M) { A = M.map((r) => r.slice()); inp.forEach((el, k) => { el.value = String(A[k >> 1][k & 1]); }); I = info(); pin.redraw(); pout.redraw(); readout(); }
+  inp.forEach((el, k) => el.addEventListener("input", () => {
+    const v = parseFloat(String(el.value).replace("−", "-"));
+    if (!isFinite(v)) return;
+    A[k >> 1][k & 1] = v; I = info(); pin.redraw(); pout.redraw(); readout();
+  }));
+  document.getElementById("or-f-pre").addEventListener("change", (e) => setA(PRE[e.target.value]));
+  readout();
+})();
+
+/* ================================================================ 3. 직선으로의 사영 */
+(function () {
+  const INIT = [[3, 1], [1.5, 3], [4.2, 1.4]];
+  const pts = INIT.map(([x, y], i) => ({ x, y, snap: 0.1, label: ["a", "b", "q"][i] }));
+  const showQ = MB.check("or-pl-q", () => { pts[2].hidden = !showQ(); pl.redraw(); });
+  const showPP = MB.check("or-pl-pp", () => pl.redraw());
+  const showPerp = MB.check("or-pl-perp", () => pl.redraw());
+  const onLine = (q) => { const a = [pts[0].x, pts[0].y], aa = OR.dot(a, a) || 1, t = (q.x * a[0] + q.y * a[1]) / aa; q.x = t * a[0]; q.y = t * a[1]; };
+  pts[2].constrain = onLine;
+  const msg = document.getElementById("or-pl-msg");
+  const pl = MB.plane("#or-cv-pl", {
+    x: [-5, 5], aspect: 0.75, maxHeight: 480, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P, ps = api.points;
+      ps[0].color = C.accent; ps[1].color = C.text; ps[2].color = C.warn;
+      if (OR.len([ps[0].x, ps[0].y]) < 0.15) { ps[0].x = 0.5; }
+      onLine(ps[2]);
+      const a = [ps[0].x, ps[0].y], b = [ps[1].x, ps[1].y], q = [ps[2].x, ps[2].y];
+      const aa = OR.dot(a, a), xh = OR.dot(a, b) / aa, p = OR.mul(xh, a), e = OR.sub(b, p), u = OR.unit(a);
+      P.line(-8 * u[0], -8 * u[1], 8 * u[0], 8 * u[1], { color: C.dim, width: 1.2, dash: [6, 5] });
+      if (showPerp()) { P.line(8 * u[1], -8 * u[0], -8 * u[1], 8 * u[0], { color: C.bad, width: 1, dash: [3, 5], alpha: 0.6 }); P.arrow(0, 0, e[0], e[1], { color: C.bad, width: 2.5, label: "(I−P)b", alpha: 0.75 }); }
+      if (showQ()) P.line(q[0], q[1], b[0], b[1], { color: C.warn, width: 1.8, dash: [3, 4] });
+      P.arrow(0, 0, a[0], a[1], { color: C.accent, width: 3.5 });
+      P.arrow(0, 0, b[0], b[1], { color: C.text, width: 2.5 });
+      P.arrow(0, 0, p[0], p[1], { color: C.accent2, width: 4, label: "p" });
+      if (showPP()) P.dot(p[0], p[1], { r: 11, color: C.accent2, alpha: 0.3, label: "P(Pb) = Pb", labelColor: C.accent2 });
+      P.line(p[0], p[1], b[0], b[1], { color: C.bad, width: 2.2, dash: [6, 4] });
+      if (OR.len(e) > 0.2) {
+        const k = 0.22, ue = OR.unit(e), sg = Math.sign(xh) || 1, A1 = OR.sub(p, OR.mul(k * sg, u)), A2 = OR.add(A1, OR.mul(k, ue)), A3 = OR.add(p, OR.mul(k, ue));
+        P.poly([A1, A2, A3], { color: C.dim, width: 1.2, close: false });
+      }
+      P.text("e", (p[0] + b[0]) / 2, (p[1] + b[1]) / 2, { color: C.bad, bold: true, dx: 8 });
+      const dq = OR.len(OR.sub(b, q)), de = OR.len(e);
+      MB.stat("or-pl-x", `${OR.num(OR.dot(a, b))} / ${OR.num(aa)} = ${OR.num(xh, 3)}`);
+      MB.stat("or-pl-d", `${OR.num(de, 3)} / ${OR.num(dq, 3)}`);
+      MB.stat("or-pl-dot", OR.num(OR.dot(e, a), 4));
+      MB.stat("or-pl-P", OR.mat([[a[0] * a[0] / aa, a[0] * a[1] / aa], [a[1] * a[0] / aa, a[1] * a[1] / aa]], 3));
+      if (!showQ()) { msg.className = "or-msg"; msg.textContent = `p = ${OR.tup(p)}, e = ${OR.tup(e)} — e는 a와 수직입니다.`; }
+      else if (dq - de < 0.02) { msg.className = "or-msg ok"; msg.textContent = `q가 수선의 발 p에 왔습니다. ‖b − q‖ = ‖e‖ = ${OR.num(de, 3)}가 최소입니다.`; }
+      else { msg.className = "or-msg"; msg.textContent = `‖b − q‖² = ${OR.num(dq * dq, 3)} = ‖e‖² ${OR.num(de * de, 3)} + ‖p − q‖² ${OR.num(dq * dq - de * de, 3)}`; }
+    },
+  });
+  document.getElementById("or-pl-snap").addEventListener("click", () => { const a = [pts[0].x, pts[0].y], b = [pts[1].x, pts[1].y], xh = OR.dot(a, b) / OR.dot(a, a); pts[2].x = xh * a[0]; pts[2].y = xh * a[1]; pl.redraw(); });
+  document.getElementById("or-pl-reset").addEventListener("click", () => { INIT.forEach(([x, y], i) => { pts[i].x = x; pts[i].y = y; }); pl.redraw(); });
+})();
+
+/* ================================================================ 4. ℝ³의 b를 평면으로 사영 */
+(function () {
+  const PRE = { ex: [[1, 1, 1], [0, 1, 2]], xy: [[1, 0, 0], [0, 1, 0]], tilt: [[1, 0, 1], [0, 1, 1]], near: [[1, 1, 1], [1, 1.1, 0.9]] };
+  let cols = PRE.ex, b = [6, 0, 0], yaw = -35;
+  const msg = document.getElementById("or-pp-msg");
+  const cv = MB.canvas("#or-cv-pp", (ctx, w, h) => {
+    const P = MB.palette();
+    const A = OR.T(cols), At = cols, M = OR.mm(At, A), xh = OR.solve(M, OR.mv(At, b));
+    const p = OR.mv(A, xh), e = OR.sub(b, p);
+    const R = Math.max(4, OR.len(b), OR.len(p)) * 0.62 + 1.2;
+    const ctr = OR.mul(0.5, b);
+    const pr = OR.view(w, h, (yaw * Math.PI) / 180, 0.38, Math.min(w, h) / (2.2 * R), ctr);
+    OR.axes3(ctx, (q) => pr(q), R * 0.9, P);
+    // 평면 기저(정규직교)와 조각: 원점과 p를 포함하도록
+    const u1 = OR.unit(cols[0]), u2 = OR.unit(OR.sub(cols[1], OR.mul(OR.dot(cols[1], u1), u1)));
+    const mid = OR.mul(0.5, p), L = OR.len(p) / 2 + 2.2, c1 = OR.dot(mid, u1), c2 = OR.dot(mid, u2);
+    const corner = (s, t) => pr(OR.add(OR.mul(c1 + s * L, u1), OR.mul(c2 + t * L, u2)));
+    OR.poly(ctx, [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], P.accent, 0.16, P.accent);
+    for (let k = -4; k <= 4; k++) { OR.seg(ctx, corner(k / 4, -1), corner(k / 4, 1), P.accent, 1, null, 0.22); OR.seg(ctx, corner(-1, k / 4), corner(1, k / 4), P.accent, 1, null, 0.22); }
+    const O = pr([0, 0, 0]);
+    OR.arrow(ctx, O, pr(cols[0]), P.accent, 2.5); OR.label(ctx, "a₁", pr(cols[0]), P.accent);
+    OR.arrow(ctx, O, pr(cols[1]), P.accent, 2.5); OR.label(ctx, "a₂", pr(cols[1]), P.accent, 6, 10);
+    OR.arrow(ctx, O, pr(p), P.accent2, 3.5); OR.label(ctx, "p", pr(p), P.accent2, 6, 12);
+    OR.arrow(ctx, O, pr(b), P.text, 2.8); OR.label(ctx, "b", pr(b), P.text);
+    OR.seg(ctx, pr(p), pr(b), P.bad, 2.4, [6, 4]); OR.label(ctx, "e", pr(OR.mul(0.5, OR.add(p, b))), P.bad);
+    if (OR.len(e) > 0.3) OR.right3(ctx, pr, p, OR.unit(OR.mul(-1, p.every((v) => Math.abs(v) < 1e-9) ? u1 : p)), OR.unit(e), 0.35, P.dim);
+    OR.label(ctx, "C(A)", corner(1, -1), P.accent, 4, 12);
+    // 출력
+    const Mi = OR.solve(M, [1, 0]) && [OR.solve(M, [1, 0]), OR.solve(M, [0, 1])];
+    const Minv = OR.T(Mi);
+    const Pm = OR.mm(OR.mm(A, Minv), At), P2 = OR.mm(Pm, Pm);
+    const idem = Math.max(...P2.flat().map((v, i) => Math.abs(v - Pm.flat()[i])));
+    MB.stat("or-pp-x", OR.tup(xh, 3));
+    MB.stat("or-pp-pe", `${OR.tup(p)} / ${OR.tup(e)}`);
+    MB.stat("or-pp-dot", `${OR.num(OR.dot(e, cols[0]), 4)}, ${OR.num(OR.dot(e, cols[1]), 4)}`);
+    MB.stat("or-pp-P", OR.mat(Pm, 2));
+    const det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+    if (OR.len(e) < 1e-6) { msg.className = "or-msg ok"; msg.textContent = "b가 평면 위에 있습니다. 사영은 b 자신이고 e = 0입니다."; }
+    else { msg.className = "or-msg"; msg.innerHTML = `‖e‖² = ${OR.num(OR.dot(e, e), 3)} · det(AᵀA) = ${OR.num(det, 4)} · 최대 |P² − P| = ${idem.toExponential(1)}`; }
+  }, { aspect: 0.78, minHeight: 280, maxHeight: 480 });
+  ["b1", "b2", "b3"].forEach((k, i) => MB.range("or-pp-" + k, (v) => OR.num(v, 1), (v) => { b[i] = v; cv.redraw(); }));
+  const yawR = MB.range("or-pp-yaw", (v) => Math.round(v) + "°", (v) => { yaw = v; cv.redraw(); });
+  document.getElementById("or-pp-pre").addEventListener("change", (e) => { cols = PRE[e.target.value]; cv.redraw(); });
+  const loop = MB.loop(document.getElementById("sim-or-projplane"), (dt) => { yaw += dt * 25; if (yaw > 180) yaw -= 360; yawR.set(Math.round(yaw), false); cv.redraw(); });
+  loop.stop();
+  const btn = document.getElementById("or-pp-spin");
+  btn.addEventListener("click", () => { const on = loop.toggle(); btn.textContent = on ? "■ 멈추기" : "▶ 천천히 돌리기"; });
+})();
+
+/* ================================================================ 5. 최소제곱 직선 */
+(function () {
+  const INIT = [[1, 1.9], [2.2, 2.0], [3.4, 3.3], [4.6, 3.4], [5.8, 4.6], [7.0, 4.9], [8.6, 6.3]];
+  const pts = INIT.map(([x, y]) => ({ x, y, snap: 0.1 }));
+  let w7 = 1;
+  const sq = MB.check("or-lf-sq", () => pl.redraw());
+  const ctrOn = MB.check("or-lf-c", () => pl.redraw());
+  const msg = document.getElementById("or-lf-msg");
+  const fit = () => {
+    let S0 = 0, S1 = 0, S2 = 0, Sy = 0, Sty = 0;
+    pts.forEach((p, i) => { const w = i === 6 ? w7 : 1; S0 += w; S1 += w * p.x; S2 += w * p.x * p.x; Sy += w * p.y; Sty += w * p.x * p.y; });
+    const det = S0 * S2 - S1 * S1;
+    if (Math.abs(det) < 1e-12) return null;
+    return { C: (S2 * Sy - S1 * Sty) / det, D: (S0 * Sty - S1 * Sy) / det, M: [[S0, S1], [S1, S2]], v: [Sy, Sty] };
+  };
+  const pl = MB.plane("#or-cv-lf", {
+    x: [-0.5, 10.5], cy: 4.5, aspect: 0.8, maxHeight: 520, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P, ps = api.points;
+      ps.forEach((p, i) => { p.color = C.text; p.r = i === 6 ? 5 + 2.2 * Math.sqrt(w7) : 7; if (i === 6) p.color = C.warn; });
+      const f = fit();
+      if (!f) { msg.className = "or-msg bad"; msg.textContent = "모든 점의 t가 같으면 기울기를 정할 수 없습니다(열이 종속)."; return; }
+      let sse = 0, se = 0;
+      ps.forEach((p, i) => {
+        const yh = f.C + f.D * p.x, e = p.y - yh, w = i === 6 ? w7 : 1;
+        sse += w * e * e; se += e;
+        if (sq()) { const s = Math.abs(e); P.poly([[p.x, yh], [p.x + s, yh], [p.x + s, p.y], [p.x, p.y]], { fill: e > 0 ? C.accent2 : C.bad, alpha: 0.15, stroke: false }); }
+        P.line(p.x, yh, p.x, p.y, { color: e > 0 ? C.accent2 : C.bad, width: 3 });
+      });
+      P.line(P.x0, f.C + f.D * P.x0, P.x1, f.C + f.D * P.x1, { color: C.accent, width: 2.8 });
+      if (ctrOn()) {
+        const n = ps.length, tb = ps.reduce((s, p) => s + p.x, 0) / n, yb = ps.reduce((s, p) => s + p.y, 0) / n;
+        P.dot(tb, yb, { r: 6, color: C.ok, label: "(t̄, ȳ)", labelColor: C.ok });
+      }
+      P.text("t (기준 온도)", P.x1 - 0.2, P.y0 + 0.35, { color: C.faint, align: "right", size: 11 });
+      MB.stat("or-lf-line", `${OR.num(f.C, 3)} + ${OR.num(f.D, 3)}·t`);
+      MB.stat("or-lf-sse", OR.num(sse, 3));
+      MB.stat("or-lf-ata", OR.mat(f.M, 2));
+      MB.stat("or-lf-atb", OR.mat(f.v.map((v) => [v]), 2));
+      msg.className = "or-msg";
+      msg.textContent = w7 === 1 ? `잔차의 합 Σeᵢ = ${OR.num(se, 4)} (1로 된 열이 e와 수직이라 언제나 0)` : `가중치가 다르면 Σeᵢ = ${OR.num(se, 3)}는 0이 아니고, 대신 Σwᵢeᵢ = 0입니다.`;
+    },
+  });
+  MB.range("or-lf-w", (v) => OR.num(v, 1), (v) => { w7 = v; pl.redraw(); });
+  document.getElementById("or-lf-out").addEventListener("click", () => { pts[3].y = 8.6; pl.redraw(); });
+  document.getElementById("or-lf-reset").addEventListener("click", () => { INIT.forEach(([x, y], i) => { pts[i].x = x; pts[i].y = y; }); pl.redraw(); });
+})();
+
+/* ================================================================ 6. 다항식 적합과 과적합 */
+(function () {
+  const f = (t) => 0.9 * Math.sin(2.6 * t) + 0.25 * t;
+  const NT = 12, NV = 60, DMAX = 11;
+  let d = 3, sig = 0.15, seed = 7, train = [], test = [], zT = [], zV = [];
+  const tTrain = Array.from({ length: NT }, (_, i) => -1 + (2 * (i + 0.5)) / NT);
+  const tTest = Array.from({ length: NV }, (_, i) => -1 + (2 * (i + 0.5)) / NV);
+  function draws() {
+    const r = MB.rng(seed), gauss = () => { let u = 0, v = 0; while (u === 0) u = r(); v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    zT = tTrain.map(gauss); zV = tTest.map(gauss);
+  }
+  function data() { train = tTrain.map((t, i) => [t, f(t) + sig * zT[i]]); test = tTest.map((t, i) => [t, f(t) + sig * zV[i]]); }
+  function fitDeg(k) {
+    const A = train.map(([t]) => Array.from({ length: k + 1 }, (_, j) => Math.pow(t, j)));
+    const At = OR.T(A), M = OR.mm(At, A), c = OR.solve(M, OR.mv(At, train.map((p) => p[1])));
+    return { c, M };
+  }
+  const evalP = (c, t) => c.reduce((s, cj, j) => s + cj * Math.pow(t, j), 0);
+  const rms = (c, set) => Math.sqrt(set.reduce((s, [t, y]) => s + (evalP(c, t) - y) ** 2, 0) / set.length);
+  const showTest = MB.check("or-pf-test", () => redraw());
+  let cache = null;
+  function compute() {
+    cache = Array.from({ length: DMAX + 1 }, (_, k) => { const r = fitDeg(k); return { k, c: r.c, M: r.M, tr: r.c ? rms(r.c, train) : NaN, te: r.c ? rms(r.c, test) : NaN }; });
+  }
+  const cvFit = MB.canvas("#or-cv-pf", (ctx) => {
+    if (!cache) return;
+    const C = MB.palette(), cur = cache[d];
+    const pts = train.map(([x, y]) => ({ x, y, r: 4.5, color: C.text }));
+    const series = [{ data: Array.from({ length: 201 }, (_, i) => { const t = -1 + i / 100; return [t, f(t)]; }), color: C.dim, width: 1.5, dash: [5, 4] }];
+    if (cur.c) series.push({ data: Array.from({ length: 401 }, (_, i) => { const t = -1 + i / 200; return [t, MB.clamp(evalP(cur.c, t), -9, 9)]; }), color: C.accent, width: 2.6 });
+    const ch = MB.chart(ctx, null, { x: [-1, 1], y: [-2.2, 2.2], xLabel: "t", series, points: pts });
+    if (showTest()) { ctx.save(); ctx.strokeStyle = C.accent2; ctx.lineWidth = 1.3; test.forEach(([x, y]) => { if (Math.abs(y) > 2.2) return; ctx.beginPath(); ctx.arc(ch.X(x), ch.Y(y), 3.2, 0, Math.PI * 2); ctx.stroke(); }); ctx.restore(); }
+  }, { aspect: 0.72, minHeight: 230, maxHeight: 380 });
+  const cvErr = MB.canvas("#or-cv-pf-err", (ctx) => {
+    if (!cache) return;
+    const C = MB.palette(), clampE = (v) => Math.max(1e-3, Math.min(30, v));
+    MB.chart(ctx, null, {
+      x: [0, DMAX], y: [1e-3, 30], logY: true, xLabel: "차수 d", xTicks: [0, 2, 4, 6, 8, 10],
+      series: [
+        { data: cache.map((r) => [r.k, clampE(r.tr)]), color: C.accent, width: 2.4 },
+        { data: cache.map((r) => [r.k, clampE(r.te)]), color: C.accent2, width: 2.4, dash: [6, 4] },
+      ],
+      vlines: [{ x: d, color: C.warn, dash: [3, 3], label: "d = " + d }],
+      hlines: sig > 0 ? [{ y: sig, color: C.faint, label: "잡음 σ" }] : [],
+      points: [{ x: d, y: clampE(cache[d].tr), color: C.accent, r: 5 }, { x: d, y: clampE(cache[d].te), color: C.accent2, r: 5 }],
+    });
+  }, { aspect: 0.72, minHeight: 230, maxHeight: 380 });
+  function redraw() {
+    compute(); cvFit.redraw(); cvErr.redraw();
+    const cur = cache[d];
+    const best = cache.reduce((b, r) => (r.te < b.te ? r : b), cache[0]);
+    let cond = NaN;
+    try { const ev = MB.mat.eigSym(cur.M).values.map(Math.abs); cond = Math.max(...ev) / Math.max(1e-300, Math.min(...ev)); } catch (e) {}
+    MB.stat("or-pf-tr", cur.c ? OR.num(cur.tr, 4) : "—");
+    MB.stat("or-pf-te", cur.c ? OR.num(cur.te, 4) : "—");
+    MB.stat("or-pf-cond", isFinite(cond) ? cond.toExponential(1).replace("e+", "×10^").replace(/\^(\d+)/, (m, k) => `<sup>${k}</sup>`) : "—");
+    MB.stat("or-pf-verdict", d === best.k ? '<span class="badge ok">시험 오차 최소</span>' : d < best.k ? '<span class="badge warn">과소적합</span>' : cur.te > best.te * 1.5 ? '<span class="badge bad">과적합</span>' : '<span class="badge warn">최적보다 높음</span>');
+  }
+  MB.range("or-pf-d", (v) => String(v), (v) => { d = v; redraw(); });
+  MB.range("or-pf-s", (v) => v.toFixed(2), (v) => { sig = v; data(); redraw(); });
+  document.getElementById("or-pf-new").addEventListener("click", () => { seed = (seed * 48271 + 11) % 2147483647; draws(); data(); redraw(); });
+  draws(); data(); redraw();
+})();
+
+/* ================================================================ 7. 2차원 GPS */
+(function () {
+  const SATS = [[-8, 5.5], [7.5, 6], [-6.5, -5], [8.5, -4], [0.5, 7.8]];
+  const TRUE = [1.6, 0.8];
+  const pts = SATS.map(([x, y], i) => ({ x, y, snap: 0.1, label: "S" + (i + 1) })).concat([{ x: TRUE[0], y: TRUE[1], snap: 0.1, label: "진짜" }]);
+  let bias = 2, sig = 0.15, nUse = 5, seed = 3, nz = [], z = [-4, -3, 0], trail = [], k = 0, running = 0;
+  const msg = document.getElementById("or-g-msg");
+  function draws() { const r = MB.rng(seed); nz = SATS.map(() => { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }); }
+  const truth = () => [pts[5].x, pts[5].y];
+  const rho = () => pts.slice(0, nUse).map((s, i) => Math.hypot(s.x - truth()[0], s.y - truth()[1]) + bias + sig * nz[i]);
+  const model = (zz) => pts.slice(0, nUse).map((s) => Math.hypot(s.x - zz[0], s.y - zz[1]) + zz[2]);
+  function step() {
+    const r = OR.sub(rho(), model(z));
+    const J = pts.slice(0, nUse).map((s) => { const d = Math.hypot(z[0] - s.x, z[1] - s.y) || 1e-9; return [(z[0] - s.x) / d, (z[1] - s.y) / d, 1]; });
+    const Jt = OR.T(J), dz = OR.solve(OR.mm(Jt, J), OR.mv(Jt, r));
+    if (!dz) { msg.className = "or-msg bad"; msg.textContent = "JᵀJ가 특이합니다. 위성 배치를 바꿔 보세요."; return false; }
+    trail.push([z[0], z[1]]); z = OR.add(z, dz); k++;
+    return OR.len(dz) > 1e-6;
+  }
+  const pl = MB.plane("#or-cv-gps", {
+    x: [-10, 10], aspect: 0.75, maxHeight: 520, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C = P.P, ps = api.points;
+      ps.forEach((p, i) => { p.color = i < 5 ? (i < nUse ? C.accent2 : C.faint) : C.ok; p.r = i < 5 ? 7 : 7; });
+      const rr = rho();
+      ps.slice(0, nUse).forEach((s, i) => {
+        const rad = Math.max(0, rr[i] - z[2]);
+        P.circle(s.x, s.y, rad, { color: C.accent2, width: 1.2, dash: [5, 4], alpha: 0.6 });
+        P.line(s.x, s.y, z[0], z[1], { color: C.faint, width: 1, alpha: 0.5 });
+      });
+      if (trail.length) P.poly(trail.concat([[z[0], z[1]]]), { color: C.warn, width: 1.6, close: false, dash: [3, 3] });
+      trail.forEach(([x, y]) => P.dot(x, y, { r: 3, color: C.warn, alpha: 0.6 }));
+      P.dot(z[0], z[1], { r: 7, color: C.warn, stroke: C.bg, label: "추정", labelColor: C.warn });
+      const res = OR.len(OR.sub(rr, model(z))), err = Math.hypot(z[0] - truth()[0], z[1] - truth()[1]);
+      MB.stat("or-g-k", String(k));
+      MB.stat("or-g-z", `${OR.tup([z[0], z[1]])}, ${OR.num(z[2], 2)}`);
+      MB.stat("or-g-r", OR.num(res, 4));
+      MB.stat("or-g-err", OR.num(err, 3));
+    },
+    onDrag() { pl.redraw(); },
+  });
+  function reset() { z = [-4, -3, 0]; trail = []; k = 0; msg.className = "or-msg"; msg.textContent = "'한 단계'를 눌러 선형화–최소제곱 한 번을 실행하세요."; pl.redraw(); }
+  document.getElementById("or-g-step").addEventListener("click", () => {
+    const moving = step(); pl.redraw();
+    if (msg.classList.contains("bad")) return;
+    msg.className = moving ? "or-msg" : "or-msg ok";
+    msg.textContent = moving ? `${k}번째 단계: 현재 위치에서 거리 식을 직선으로 근사하고 JᵀJΔ = Jᵀr을 풀어 옮겼습니다.` : `수렴했습니다(Δ ≈ 0). 시계 오차 추정 b̂ = ${OR.num(z[2], 3)}, 진짜 b = ${OR.num(bias, 2)}.`;
+  });
+  document.getElementById("or-g-run").addEventListener("click", () => {
+    clearInterval(running); let n = 0;
+    running = setInterval(() => { const mv = step(); pl.redraw(); n++; if (!mv || n >= 12) { clearInterval(running); msg.className = "or-msg ok"; msg.textContent = `${k}단계 후 수렴. 위치 오차 ${OR.num(Math.hypot(z[0] - truth()[0], z[1] - truth()[1]), 3)}, b̂ = ${OR.num(z[2], 3)} (진짜 ${OR.num(bias, 2)}).`; } }, 280);
+  });
+  document.getElementById("or-g-reset").addEventListener("click", () => { clearInterval(running); reset(); });
+  document.getElementById("or-g-noise").addEventListener("click", () => { seed = (seed * 16807 + 5) % 2147483647; draws(); reset(); });
+  MB.range("or-g-b", (v) => v.toFixed(1), (v) => { bias = v; reset(); });
+  MB.range("or-g-s", (v) => v.toFixed(2), (v) => { sig = v; reset(); });
+  MB.seg("or-g-n", (v) => { nUse = Number(v); reset(); });
+  draws(); reset();
+})();
+</script>
+</body>
+</html>

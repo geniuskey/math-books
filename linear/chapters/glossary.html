@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>용어집 &amp; 종합 퀴즈 · LinearBook</title>
+<meta name="description" content="LinearBook 전체를 한 장에 정리한다. 어떤 행렬 분해를 언제 쓰는지 고르는 분해 지도, 가역 행렬 정리의 동치 조건 한눈에 보기, 선형대수 용어 검색, 열여섯 장 전 범위 종합 퀴즈.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .gl-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 16px; }
+  .gl-filter button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  .gl-filter button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .gl-count { font-size: 13px; color: var(--text-faint); margin-bottom: 10px; }
+  .score { position: sticky; top: calc(var(--nav-h) + 8px); z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: var(--bg-elev); border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 16px; font-family: var(--mono); font-size: 14px; }
+  .score .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .score .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s; }
+  .quiz-q .ch { font-size: 12px; font-weight: 400; color: var(--text-faint); margin-left: 6px; }
+  .gl-pick { padding: 14px 18px; display: grid; gap: 12px; background: var(--canvas-bg); }
+  .gl-pick .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .gl-pick .row > b { font-size: 13px; color: var(--text-dim); min-width: 88px; }
+  .gl-out { padding: 14px 18px 16px; display: grid; gap: 10px; }
+  .gl-rec { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elev); }
+  .gl-rec.best { border-color: var(--accent); background: var(--accent-soft); }
+  .gl-rec .nm { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--accent); }
+  .gl-rec .nm small { display: block; font-family: var(--font); font-weight: 400; font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .gl-rec p { margin: 0; font-size: 14.5px; color: var(--text-dim); }
+  .gl-rec p b { color: var(--text); }
+  .gl-rec a { font-size: 13px; }
+  @media (max-width: 560px) { .gl-rec { grid-template-columns: 1fr; gap: 4px; } }
+  .gl-eq { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .gl-eq div { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elev); font-size: 14.5px; }
+  .gl-eq div small { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--accent); margin-bottom: 4px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="glossary">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 17 · 부록</div>
+    <h1 data-no-glossary>용어집 &amp; 종합 퀴즈</h1>
+    <p class="lead">열여섯 장을 지나오며 많은 이름을 만났습니다. 피벗, 영공간, 사영, 고유벡터, 특이값. 그런데 공학 현장에서 실제로 묻는 질문은 대개 하나입니다. <b>"이 행렬로 이 일을 하려면 무엇을 꺼내야 하나?"</b> 이 장은 그 질문에 답하는 <b>분해 지도</b>로 시작해, 책 전체를 꿰는 <b>가역 행렬 정리</b>를 한 장에 모으고, 용어를 검색한 뒤, 전 범위 종합 퀴즈로 마무리합니다.</p>
+    <ul class="objectives">
+      <li>풀려는 문제와 행렬의 성질에 따라 LU·콜레스키·QR·고유값 분해·SVD 가운데 알맞은 것을 고른다.</li>
+      <li>정사각 행렬이 가역이라는 것과 동치인 조건들을 장별로 연결해 말할 수 있다.</li>
+      <li>선형대수 용어를 검색하고 그 용어가 나온 장으로 돌아간다.</li>
+      <li>책 전체를 종합 퀴즈로 점검하고 약한 장을 찾는다.</li>
+    </ul>
+  </header>
+
+  <section id="factorizations">
+    <h2>분해 지도: 무엇을 꺼낼까</h2>
+    <p>선형대수의 계산은 거의 언제나 <b>행렬을 다루기 쉬운 조각의 곱으로 나누는 일</b>에서 시작합니다. 삼각 행렬은 대입으로 바로 풀리고, 직교 행렬은 전치가 곧 역행렬이고, 대각 행렬은 거듭제곱이 쉽습니다. 어떤 조각으로 나눌지는 행렬의 성질과 하려는 일이 정합니다.</p>
+
+    <div class="sim" id="sim-gl-chooser">
+      <div class="sim-head"><span class="sim-tag">GUIDE</span><h3>어떤 분해를 쓸까?</h3></div>
+      <div class="gl-pick">
+        <div class="row"><b>하려는 일</b><div class="seg" id="gl-goal"><button data-value="solve" class="on">Ax = b 풀기</button><button data-value="lsq">최소제곱</button><button data-value="eig">고유값·동역학</button><button data-value="compress">압축·잡음 제거</button></div></div>
+        <div class="row"><b>행렬 모양</b><div class="seg" id="gl-shape"><button data-value="square" class="on">정사각 n×n</button><button data-value="tall">세로로 긴 m×n (m &gt; n)</button></div></div>
+        <div class="row"><b>성질</b><label class="check"><input type="checkbox" id="gl-sym"> 대칭 (Aᵀ = A)</label><label class="check"><input type="checkbox" id="gl-pd"> 양의 정부호</label><label class="check"><input type="checkbox" id="gl-sparse"> 크고 희소함</label><label class="check"><input type="checkbox" id="gl-ill"> 조건수가 큼</label></div>
+      </div>
+      <div class="gl-out" id="gl-out"></div>
+      <div class="sim-note">해볼 것: ① 'Ax = b 풀기'에서 대칭과 양의 정부호를 차례로 켜 보세요. LU가 LDLᵀ, 콜레스키로 바뀌며 비용이 절반이 됩니다. ② '최소제곱'에서 조건수가 큼을 켜면 정규 방정식 대신 QR, 더 나빠지면 SVD를 권합니다. ③ 크고 희소함을 켜면 직접법 대신 반복법이 앞에 옵니다. 안내는 교과서 수준의 일반 원칙이며, 실제 선택은 행렬 구조와 라이브러리에 따라 달라집니다.</div>
+    </div>
+
+    <div class="table-wrap"><table>
+      <thead><tr><th>분해</th><th>모양</th><th>조각</th><th>대표 쓰임</th><th class="num">비용(밀집)</th><th>장</th></tr></thead>
+      <tbody>
+        <tr><td>LU (PA = LU)</td><td>정사각</td><td>치환 · 하삼각 · 상삼각</td><td>일반 연립방정식, 여러 우변</td><td class="num">\(\tfrac23 n^3\)</td><td><a href="lu.html">04</a></td></tr>
+        <tr><td>콜레스키 \(LL^\mathsf T\)</td><td>대칭 양의 정부호</td><td>하삼각 · 그 전치</td><td>강성 행렬, 공분산, 정규 방정식</td><td class="num">\(\tfrac13 n^3\)</td><td><a href="symmetric.html">13</a></td></tr>
+        <tr><td>QR</td><td>m×n</td><td>직교 · 상삼각</td><td>최소제곱, 정규직교 기저, QR 알고리즘</td><td class="num">\(2mn^2 - \tfrac23 n^3\)</td><td><a href="qr.html">09</a></td></tr>
+        <tr><td>고유값 분해 \(X\Lambda X^{-1}\)</td><td>정사각(대각화 가능)</td><td>고유벡터 · 고유값 대각</td><td>거듭제곱, 차분·미분 방정식, 안정성</td><td class="num">반복법, \(\sim n^3\)</td><td><a href="eigen.html">11</a></td></tr>
+        <tr><td>스펙트럼 분해 \(Q\Lambda Q^\mathsf T\)</td><td>대칭</td><td>직교 · 실수 대각</td><td>이차 형식, 주축, 진동 모드, PCA</td><td class="num">반복법, \(\sim n^3\)</td><td><a href="symmetric.html">13</a></td></tr>
+        <tr><td>SVD \(U\Sigma V^\mathsf T\)</td><td>모든 m×n</td><td>직교 · 특이값 대각 · 직교</td><td>저랭크 근사, 유사역행렬, 조건수, 계수 판정</td><td class="num">\(\sim mn^2\)</td><td><a href="svd.html">14</a></td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><strong>한 줄 요약</strong> 풀기는 LU(대칭 양의 정부호면 콜레스키), 최소제곱은 QR, 시간에 따른 변화는 고유값, 데이터와 근사는 SVD. 행렬이 크고 희소하면 분해보다 반복법(켤레 기울기법 등)을 먼저 생각합니다(<a href="numerical.html">16장</a>).</div>
+  </section>
+
+  <section id="big-theorem">
+    <h2>가역 행렬 정리: 책 전체를 꿰는 한 문장</h2>
+    <p>정사각 행렬 \(A\) (n×n)에 대해 아래 문장은 <b>모두 같은 말</b>입니다. 하나가 참이면 전부 참이고, 하나가 거짓이면 전부 거짓입니다. 각 문장은 이 책의 서로 다른 장에서 서로 다른 그림으로 나왔습니다.</p>
+    <div class="gl-eq">
+      <div><small>04장 · 역행렬</small>\(A^{-1}\)이 있어 \(AA^{-1} = A^{-1}A = I\)이다.</div>
+      <div><small>03장 · 소거</small>소거(필요하면 행 교환)에서 피벗이 n개 나온다.</div>
+      <div><small>03·04장 · 연립방정식</small>모든 \(\mathbf b\)에 대해 \(A\mathbf x = \mathbf b\)의 해가 정확히 하나다.</div>
+      <div><small>05장 · 영공간</small>\(N(A) = \{\mathbf 0\}\): \(A\mathbf x = \mathbf 0\)의 해는 \(\mathbf x = \mathbf 0\)뿐이다.</div>
+      <div><small>01·06장 · 독립과 기저</small>A의 열들이 선형 독립이고, \(\mathbb R^n\)의 기저를 이룬다.</div>
+      <div><small>06장 · 계수</small>\(\operatorname{rank} A = n\), 즉 \(C(A) = \mathbb R^n\)이다.</div>
+      <div><small>10장 · 행렬식</small>\(\det A \ne 0\): 부피를 0으로 누르지 않는다.</div>
+      <div><small>11장 · 고유값</small>0은 A의 고유값이 아니다.</div>
+      <div><small>13장 · 대칭 행렬</small>\(A^\mathsf TA\)가 양의 정부호다.</div>
+      <div><small>14장 · 특이값</small>가장 작은 특이값 \(\sigma_n > 0\)이다.</div>
+    </div>
+    <div class="callout warn"><strong>수학의 "참"과 컴퓨터의 "참"</strong> 이 정리는 정확한 산술에서의 이야기입니다. 부동소수점에서는 \(\det A\)가 \(10^{-20}\)이어도 잘 조건 지어진 행렬일 수 있고(모든 성분을 0.01배 하면 20×20 행렬의 행렬식은 \(10^{-40}\)배가 됩니다), 행렬식이 1이어도 거의 특이할 수 있습니다. 실제로 "거의 특이한가"를 재는 잣대는 행렬식이 아니라 조건수 \(\kappa = \sigma_1/\sigma_n\)입니다(<a href="svd.html">14장</a>, <a href="numerical.html">16장</a>).</div>
+  </section>
+
+  <section id="glossary-terms">
+    <h2>용어집</h2>
+    <input class="gl-search" id="gl-q" type="search" placeholder="용어 검색 (예: 피벗, 영공간, eigenvalue, SVD)" aria-label="용어 검색">
+    <div class="gl-filter" id="gl-f"></div>
+    <div class="gl-count" id="gl-n"></div>
+    <div class="gl-list" id="gl-list"></div>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>종합 퀴즈</h2>
+    <p>열여섯 장 전 범위에서 한두 문제씩 골랐습니다. 틀린 문제는 괄호 안의 장으로 돌아가 시뮬레이터를 다시 만져 보세요.</p>
+    <div class="score"><span id="sc-t">0 / 0</span><span class="bar"><i id="sc-b"></i></span><button class="btn" id="sc-r">다시 풀기</button></div>
+    <div class="quiz" id="final"></div>
+  </section>
+</main>
+<script src="../js/glossary-data.js"></script>
+<script>
+/* ------------------------------------------------ 분해 고르기 */
+(function () {
+  const out = document.getElementById("gl-out");
+  let goal = "solve", shape = "square";
+  const sym = MB.check("gl-sym", render), pd = MB.check("gl-pd", render), sparse = MB.check("gl-sparse", render), ill = MB.check("gl-ill", render);
+  const R = {
+    lu: ["PA = LU", "부분 피벗팅 LU", "일반 정사각 행렬의 표준. 한 번 분해(약 <b>⅔n³</b>)하고 새 b마다 삼각 대입 두 번(<b>2n²</b>)으로 풉니다. 역행렬은 구하지 않습니다.", "lu.html", "04장"],
+    ldl: ["LDLᵀ", "대칭 행렬", "대칭이면 U = DLᵀ라서 절반만 저장·계산합니다(<b>⅓n³</b>). 양의 정부호가 아니면 대칭 피벗팅이 필요합니다.", "lu.html", "04장"],
+    chol: ["LLᵀ (콜레스키)", "대칭 양의 정부호", "피벗팅 없이도 안정하고 비용은 LU의 절반(<b>⅓n³</b>). 분해가 실패하면 양의 정부호가 아니라는 판정이 됩니다.", "symmetric.html", "13장"],
+    cg: ["켤레 기울기법", "크고 희소한 대칭 양의 정부호", "행렬–벡터 곱만 쓰므로 0을 저장하지 않습니다. 반복 횟수는 대략 √κ에 비례하고, 전처리로 κ를 줄입니다.", "numerical.html", "16장"],
+    gmres: ["반복법 (GMRES 등) / 희소 LU", "크고 희소한 일반 행렬", "직접법은 채움(fill-in)이 메모리를 잡아먹습니다. 순서 바꾸기를 한 희소 LU나 크릴로프 반복법을 씁니다.", "numerical.html", "16장"],
+    normal: ["정규 방정식 AᵀAx̂ = Aᵀb", "잘 조건 지어진 최소제곱", "가장 싸지만 AᵀA의 조건수가 <b>κ²</b>가 됩니다. 열이 거의 종속이면 자릿수를 두 배로 잃습니다.", "orthogonality.html", "08장"],
+    qr: ["QR → Rx̂ = Qᵀb", "최소제곱의 표준", "κ를 제곱하지 않습니다. 하우스홀더 QR이 표준이며, 비용은 정규 방정식의 약 두 배입니다.", "qr.html", "09장"],
+    svdls: ["SVD → x̂ = A⁺b", "거의 계수 부족한 최소제곱", "가장 비싸지만 가장 안전합니다. 작은 특이값을 잘라 내면(절단 SVD) 잡음 증폭을 막는 정칙화가 됩니다.", "svd.html", "14장"],
+    eig: ["고유값 분해 XΛX⁻¹", "거듭제곱·동역학", "Aᵏ와 e^{At}를 고유값으로 읽습니다. |λ| 또는 Re λ가 안정성을 정하고, 실제 계산은 QR 알고리즘입니다.", "eigen.html", "11장"],
+    spec: ["스펙트럼 분해 QΛQᵀ", "대칭 행렬의 고유값", "실수 고유값과 직교 고유벡터가 보장되어 계산이 안정적입니다. 이차 형식의 주축, 진동 모드, PCA.", "symmetric.html", "13장"],
+    power: ["거듭제곱법·란초시", "큰 행렬의 고유값 몇 개", "전부 구하지 않고 가장 큰(또는 작은) 고유값 몇 개만 반복법으로 구합니다. 페이지랭크가 대표적입니다.", "numerical.html", "16장"],
+    svd: ["SVD UΣVᵀ", "저랭크 근사", "에커트–영 정리: 큰 특이값 k개만 남긴 것이 rank-k 최선 근사. 이미지 압축, 잡음 제거, 추천.", "svd.html", "14장"],
+    pca: ["PCA (평균 뺀 데이터의 SVD)", "데이터 차원 축소", "공분산 행렬의 고유벡터 = 데이터 행렬의 오른쪽 특이벡터. 설명 분산으로 차원 k를 고릅니다.", "pca.html", "15장"],
+    tsvd: ["랜덤화·절단 SVD", "아주 큰 데이터 행렬", "필요한 특이값 몇 개만 반복법이나 무작위 사영으로 구합니다.", "numerical.html", "16장"],
+  };
+  function pick() {
+    const S = sym(), P = pd() && sym(), B = sparse(), K = ill();
+    if (goal === "solve") {
+      if (shape === "tall") return ["qr", "normal", "svdls"];
+      if (B) return P ? ["cg", "chol"] : ["gmres", "lu"];
+      return P ? ["chol", "ldl", "lu"] : S ? ["ldl", "lu"] : ["lu"];
+    }
+    if (goal === "lsq") return K ? ["svdls", "qr", "normal"] : ["qr", "normal", "svdls"];
+    if (goal === "eig") return B ? ["power", S ? "spec" : "eig"] : S ? ["spec", "eig"] : ["eig", "power"];
+    return B ? ["tsvd", "svd", "pca"] : ["svd", "pca"];
+  }
+  function render() {
+    const note = pd() && !sym() ? '<p class="sim-msg bad" style="margin:0">양의 정부호는 이 책에서 대칭 행렬에 대해 정의했습니다(13장). 대칭도 켜 보세요.</p>' : "";
+    const tallNote = shape === "tall" && goal === "solve" ? '<p class="sim-msg" style="margin:0">세로로 긴 행렬의 Ax = b는 보통 해가 없습니다. 가장 가까운 답, 즉 최소제곱을 구합니다.</p>' : "";
+    out.innerHTML = note + tallNote + pick().map((k, i) => { const [nm, sub, desc, href, ch] = R[k];
+      return `<div class="gl-rec${i === 0 ? " best" : ""}"><div class="nm">${nm}<small>${i === 0 ? "추천 · " : "대안 · "}${sub}</small></div><div><p>${desc}</p><a href="${href}">${ch} →</a></div></div>`; }).join("");
+  }
+  MB.seg("gl-goal", (v) => { goal = v; render(); });
+  MB.seg("gl-shape", (v) => { shape = v; render(); });
+  render();
+})();
+
+/* ------------------------------------------------ 용어집 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  const T = window.BOOK_GLOSSARY.terms.map((t) => [t.ko, t.en, t.def, t.chapters[0], t.abbr]);
+  const list = document.getElementById("gl-list"), qEl = document.getElementById("gl-q"), fEl = document.getElementById("gl-f"), nEl = document.getElementById("gl-n");
+  const parts = [...new Set(MB.CHAPTERS.filter((c) => T.some((t) => t[3] === c.slug)).map((c) => c.part))];
+  let filt = "all";
+  fEl.innerHTML = `<button data-p="all" class="on">전체</button>` + parts.map((p) => `<button data-p="${p}">${p}</button>`).join("");
+  fEl.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { filt = b.dataset.p; fEl.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); render(); }));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function render() {
+    const q = qEl.value.trim().toLowerCase();
+    const rows = T.filter((t) => chs[t[3]] && (filt === "all" || chs[t[3]].part === filt) && (!q || [t[0], t[1], t[2], t[4]].join(" ").toLowerCase().includes(q)))
+      .sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    nEl.textContent = `${rows.length}개 / 전체 ${T.length}개`;
+    list.innerHTML = rows.map((t) => `<div class="gl-item"><h4>${esc(t[0])}<span class="en">${esc(t[1])}${t[4] ? " · " + esc(t[4]) : ""}</span></h4><p>${esc(t[2])}</p><a class="ch" href="${t[3]}.html">${chs[t[3]].num} · ${chs[t[3]].title} →</a></div>`).join("") || `<p style="color:var(--text-dim)">찾는 용어가 없습니다. 다른 표현(영어 등)으로 검색해 보세요.</p>`;
+  }
+  qEl.addEventListener("input", render);
+  render();
+})();
+
+/* ------------------------------------------------ 종합 퀴즈 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  // [질문, [보기...], 정답 인덱스, 해설, 장]
+  const Q = [
+    ["ℝ²에서 벡터 세 개는 언제나?", ["선형 독립이다", "선형 종속이다", "직교한다", "평면 전체를 생성하지 못한다"], 1, "ℝ²의 독립인 벡터는 많아야 두 개입니다. 세 번째 벡터는 앞의 두 벡터(또는 그 생성)의 선형 결합으로 쓸 수 있습니다.", "vectors"],
+    ["코사인 유사도가 문서 검색에 쓰이는 이유는?", ["벡터 길이(문서 길이)를 무시하고 방향(단어 구성 비율)만 비교하기 때문", "계산이 가장 빨라서", "음수가 나오지 않아서", "단어 순서를 반영해서"], 0, "같은 내용을 두 번 붙인 문서는 길이가 두 배지만 방향은 같습니다. 각도만 보는 코사인 유사도는 이 둘을 같다고 봅니다.", "vectors"],
+    ["행렬 곱 AB에서 벡터에 먼저 작용하는 변환은?", ["A", "B", "둘이 동시에", "순서는 상관없다"], 1, "(AB)x = A(Bx)이므로 B가 먼저, A가 나중입니다. 일반적으로 AB ≠ BA라서 순서가 결과를 바꿉니다.", "matrices"],
+    ["2D 그래픽스에서 평행이동을 행렬 곱으로 쓰기 위해 쓰는 방법은?", ["행렬을 전치한다", "점 (x, y)를 (x, y, 1)로 쓰는 동차 좌표", "복소수로 바꾼다", "행렬식을 1로 맞춘다"], 1, "평행이동은 원점을 옮기므로 2×2 선형 변환이 아닙니다. 한 차원 올린 3×3 행렬의 마지막 열에 이동량을 넣으면 곱 하나로 이어 붙일 수 있습니다.", "matrices"],
+    ["가우스 소거에서 부분 피벗팅을 하는 주된 이유는?", ["연산 횟수를 줄이려고", "아주 작은 피벗으로 나눌 때 반올림 오차가 크게 증폭되는 것을 막으려고", "행렬을 대칭으로 만들려고", "해를 정수로 만들려고"], 1, "가장 큰 원소를 피벗으로 고르면 승수가 |ℓ| ≤ 1로 묶여 오차가 커지지 않습니다. 연산량은 거의 그대로입니다.", "elimination"],
+    ["n×n 밀집 행렬의 가우스 소거 비용은 n을 두 배로 하면 대략 몇 배가 되나?", ["2배", "4배", "8배", "16배"], 2, "소거는 약 ⅔n³ flop입니다. n이 2배면 2³ = 8배. 반면 후진 대입은 n²이라 4배입니다.", "elimination"],
+    ["같은 A로 우변 b를 1,000개 풀어야 한다. 가장 좋은 방법은?", ["매번 처음부터 소거", "A⁻¹을 구해 1,000번 곱하기", "LU 분해를 한 번 하고 b마다 전진·후진 대입", "크라메르 공식"], 2, "분해는 한 번(⅔n³), 각 b는 2n²입니다. A⁻¹ 방식은 비용이 더 들고 정확도도 떨어집니다.", "lu"],
+    ["Ax = b의 완전한 해가 x = x_p + x_n 꼴인 이유는?", ["A가 대칭이라서", "특수해 하나에 영공간의 원소를 더해도 Ax는 그대로 b이기 때문", "피벗이 n개라서", "열이 독립이라서"], 1, "A(x_p + x_n) = Ax_p + Ax_n = b + 0 = b. 해집합은 영공간을 x_p만큼 옮긴 평행한 평면입니다.", "subspaces"],
+    ["3×5 행렬 A의 계수가 2일 때 영공간 N(A)의 차원은?", ["1", "2", "3", "5"], 2, "계수–퇴화차수 정리: dim N(A) = n − r = 5 − 2 = 3. 자유 변수가 3개입니다.", "rank"],
+    ["닮은 행렬 B = P⁻¹AP가 A와 반드시 공유하는 것은?", ["모든 성분", "고유값(따라서 대각합과 행렬식)", "고유벡터", "열공간"], 1, "B는 같은 선형 변환을 다른 기저로 본 것입니다. 고유값, 대각합, 행렬식, 계수는 기저와 무관합니다. 고유벡터의 좌표는 P만큼 바뀝니다.", "change-of-basis"],
+    ["최소제곱 해 x̂에서 잔차 b − Ax̂가 만족하는 것은?", ["0이다", "A의 열공간과 직교한다", "b와 평행하다", "길이가 1이다"], 1, "가장 가까운 점은 수선의 발입니다. 잔차가 모든 열과 직교한다는 조건 Aᵀ(b − Ax̂) = 0이 곧 정규 방정식입니다.", "orthogonality"],
+    ["정규 방정식 대신 QR로 최소제곱을 푸는 이유는?", ["항상 더 빨라서", "AᵀA는 조건수를 제곱하지만 QR은 그러지 않아서", "QR은 정확한 해를 줘서", "정규 방정식은 해가 없어서"], 1, "κ(AᵀA) = κ(A)²입니다. 열이 거의 종속이면 정규 방정식은 자릿수를 두 배로 잃고, QR은 직교 변환만 써서 κ를 보존합니다.", "qr"],
+    ["3×3 행렬의 행렬식이 −2이다. 옳은 것은?", ["부피가 2배가 되고 방향(손잡이)이 뒤집힌다", "부피가 ½이 된다", "역행렬이 없다", "모든 길이가 2배가 된다"], 0, "|det|는 부피 배율, 부호는 방향입니다. det ≠ 0이므로 가역이며 det A⁻¹ = −½.", "determinants"],
+    ["행렬 [[0, −1], [1, 0]]의 고유값은?", ["1, −1", "0, 0", "i, −i", "1, 1"], 2, "90° 회전은 어떤 실수 방향도 그대로 두지 않습니다. 특성 다항식 λ² + 1 = 0의 근은 ±i, 복소 고유값은 회전의 표지입니다.", "eigen"],
+    ["이산 시스템 u_{k+1} = Au_k가 어떤 초기값에서도 0으로 가는 조건은?", ["모든 고유값의 실수부가 음수", "모든 고유값의 절댓값이 1보다 작음", "det A = 0", "A가 대칭"], 1, "u_k = Σ cᵢλᵢᵏxᵢ이므로 모든 |λᵢ| < 1이어야 합니다. 연속 시스템 du/dt = Au에서는 Re λ < 0이 같은 역할입니다.", "dynamics"],
+    ["대칭 행렬 S가 양의 정부호인지 판정하는 방법이 아닌 것은?", ["모든 고유값이 양수", "모든 피벗이 양수", "모든 선행 주소행렬식이 양수", "모든 성분이 양수"], 3, "[[1, 2], [2, 1]]은 성분이 모두 양수지만 고유값 3, −1로 양의 정부호가 아닙니다. 나머지 셋은 서로 동치인 판정법입니다.", "symmetric"],
+    ["이미지 행렬을 rank-k로 근사할 때 SVD가 최선인 이유는?", ["계산이 가장 쉬워서", "에커트–영 정리: 큰 특이값 k개를 남긴 근사가 같은 계수 중 오차가 가장 작다", "모든 특이값이 같아서", "이미지는 항상 대칭이라서"], 1, "rank-k 행렬 중 ‖A − A_k‖가 최소인 것은 σ₁u₁v₁ᵀ + … + σₖuₖvₖᵀ입니다. 오차는 버린 특이값이 정합니다.", "svd"],
+    ["PCA에서 첫 번째 주성분 방향은?", ["평균 벡터의 방향", "공분산 행렬의 가장 큰 고유값의 고유벡터", "가장 작은 분산의 방향", "첫 번째 좌표축"], 1, "자료를 사영했을 때 분산 uᵀCu를 최대로 하는 단위 벡터는 C의 최대 고유벡터입니다(레일리 몫). 평균 뺀 자료의 첫 오른쪽 특이벡터와 같습니다.", "pca"],
+    ["PCA 전에 표준화(변수마다 표준편차로 나누기)가 필요한 경우는?", ["변수들의 단위와 크기가 서로 크게 다를 때", "자료가 이미 평균 0일 때", "변수가 두 개뿐일 때", "항상 필요 없다"], 0, "mm와 m가 섞이면 큰 숫자를 가진 변수가 분산을 독차지합니다. 표준화하면 상관 행렬의 PCA가 됩니다.", "pca"],
+    ["조건수가 10⁸인 연립방정식을 double(유효숫자 약 16자리)로 풀면 해는 대략 몇 자리까지 믿을 수 있나?", ["16자리", "약 8자리", "1자리", "0자리"], 1, "상대 오차 ≲ κ·ε ≈ 10⁸ × 10⁻¹⁶ = 10⁻⁸. 경험칙으로 log₁₀κ 자리를 잃습니다.", "numerical"],
+    ["켤레 기울기법을 쓸 수 있는 행렬은?", ["모든 정사각 행렬", "대칭 양의 정부호 행렬", "상삼각 행렬만", "희소하지 않은 행렬만"], 1, "CG는 xᵀAx/2 − bᵀx를 최소화하는 방법이라 A가 대칭 양의 정부호여야 합니다. 일반 행렬에는 GMRES 같은 다른 크릴로프 방법을 씁니다.", "numerical"],
+  ];
+  const box = document.getElementById("final");
+  let score = 0, done = 0;
+  const upd = () => { MB.stat("sc-t", `${score} / ${done} · 전체 ${Q.length}`); document.getElementById("sc-b").style.width = (done / Q.length) * 100 + "%"; };
+  function build() {
+    score = 0; done = 0;
+    box.innerHTML = Q.map(([q, opts, a, exp, ch], i) =>
+      `<div class="quiz-q" data-i="${i}"><p>${i + 1}. ${q}<a class="ch" href="${ch}.html">(${chs[ch].num}장)</a></p><div class="opts">${opts.map((o, k) => `<button class="opt"${k === a ? " data-correct" : ""}>${o}</button>`).join("")}</div><div class="quiz-exp">${exp}</div></div>`).join("");
+    box.querySelectorAll(".quiz-q").forEach((qq) => {
+      const opts = [...qq.querySelectorAll("button.opt")];
+      opts.forEach((b) => b.addEventListener("click", () => {
+        if (qq.classList.contains("done")) return;
+        opts.forEach((o) => { o.disabled = true; if (o.hasAttribute("data-correct")) o.classList.add("right"); });
+        if (!b.hasAttribute("data-correct")) b.classList.add("wrong"); else score++;
+        qq.classList.add("done"); done++; upd();
+      }));
+    });
+    upd();
+  }
+  document.getElementById("sc-r").addEventListener("click", build);
+  build();
+})();
+</script>
+</body>
+</html>

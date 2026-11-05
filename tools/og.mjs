@@ -84,7 +84,7 @@ const linearPage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><
     <div class="eyebrow">INTERACTIVE LINEAR ALGEBRA</div>
     <h1>숫자의 표가 아니라<br><span class="soft">공간을 움직이는</span><br><span class="warm">기계, 행렬</span></h1>
     <p class="lead">소거와 LU, 부분공간, 최소제곱,<br>고유값과 SVD를 직접 끌며 익히는 선형대수.</p>
-    <div class="stats"><span><b>5</b>부</span><span><b>16</b>개 장</span><span><b>${linear.chapters}</b>장 공개</span></div>
+    <div class="stats"><span><b>5</b>부</span><span><b>16</b>개 장</span><span><b>${Math.floor(linear.simulators / 10) * 10}+</b>시뮬레이터</span></div>
   </div>
   <div class="url">math.euiyun.com/linear/</div>
   <div class="art">${grid}</div>
@@ -102,4 +102,4 @@ for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png']]) {
   await page.screenshot({ path: join(root, out) });
 }
 await browser.close();
-console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.chapters} chapters`);
+console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.simulators} simulators`);

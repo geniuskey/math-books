@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>PCA와 데이터 · LinearBook</title>
+<meta name="description" content="센서 수십 개의 측정값을 점수 몇 개로 요약하는 주성분 분석(PCA). 데이터 행렬과 중심화, 공분산 행렬, 레일리 몫과 분산 최대화, 재구성 오차 최소화, SVD와의 관계, 설명 분산과 k 고르기, 표준화, 화이트닝, 고유 패턴, 한계와 공정 모니터링까지 점구름을 직접 돌리며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .pc-out { display: inline-grid; gap: 0 10px; padding: 1px 7px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 4px; font-family: var(--mono); font-size: 13px; text-align: right; vertical-align: middle; line-height: 1.4; }
+  .pc-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; }
+  .pc-msg.ok { color: var(--ok); font-weight: 600; }
+  .pc-msg.bad { color: var(--bad); font-weight: 600; }
+  .pc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .pc-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .pc-legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+  .pc-tbl td, .pc-tbl th { font-family: var(--mono); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="linear"></script>
+</head>
+<body data-chapter="pca">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 15</div>
+    <h1 data-no-glossary>PCA와 데이터</h1>
+    <p class="lead">식각 장비 한 대에는 압력, 온도, 가스 유량, RF 전력, 반사 전력 같은 센서가 수십 개 붙어 있고, 웨이퍼 한 장마다 이 모든 값이 기록됩니다. 숫자는 넘쳐나지만 사람이 한눈에 볼 수 있는 축은 두세 개뿐입니다. 다행히 센서들은 제각각 움직이지 않습니다. 몇 개의 숨은 원인이 여러 센서를 <b>함께</b> 흔들기 때문입니다. <b>주성분 분석</b><span class="en">(PCA)</span>은 그 "함께 흔들리는 방향"을 찾아 데이터를 몇 개의 점수로 요약하는 방법이고, 그 정체는 놀랍게도 지금까지 배운 것 그대로입니다. 공분산 행렬이라는 <b>대칭 행렬의 고유벡터</b>, 그리고 데이터 행렬의 <b>특이값 분해</b>입니다. 이 장에서는 점구름 위에서 축을 직접 돌려 보며 "분산이 가장 큰 방향"과 "재구성 오차가 가장 작은 방향"이 같은 방향임을 확인하고, 센서 10개를 점수 2개로 줄이는 데까지 갑니다.</p>
+    <ul class="objectives">
+      <li>데이터를 \(n \times d\) 행렬로 쓰고, 평균을 빼는 중심화가 왜 PCA의 첫 단계인지 설명한다.</li>
+      <li>표본 공분산 행렬 \(C = \frac{1}{n-1}X_c^{\mathsf T}X_c\)가 대칭이고 양의 준정부호임을 증명하고, \(\mathbf{u}^{\mathsf T}C\mathbf{u}\)를 "u 방향으로 사영한 분산"으로 읽는다.</li>
+      <li>레일리 몫의 최댓값이 가장 큰 고유값임을 보이고, 주성분 = \(C\)의 고유벡터 = \(X_c\)의 오른쪽 특이벡터임을 유도한다.</li>
+      <li>분산 최대화와 재구성 오차 최소화가 같은 문제라는 피타고라스 항등식을 쓰고, 설명 분산 비율과 스크리 그림으로 남길 성분 수 \(k\)를 고른다.</li>
+      <li>단위가 다른 변수에서 공분산 PCA와 상관 PCA의 차이를 계산하고, 화이트닝 변환 \(\Lambda^{-1/2}V^{\mathsf T}\)으로 공분산을 단위 행렬로 만든다.</li>
+      <li>PCA가 놓치는 구조(곡선, 이상값, 분산이 작은 중요한 방향)를 알고, 공정 모니터링·센서 압축·추천 시스템에서의 쓰임을 안다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>수십 개 센서를 한 화면에서 보는 공정 모니터링</b></div>
+      <div class="o-body"><p>장비 센서가 40개라면, 센서마다 관리도를 하나씩 그려 40개의 화면을 지켜봐야 합니다. 더 큰 문제는 개별 센서가 모두 정상 범위 안에 있어도 <b>조합</b>이 이상할 수 있다는 점입니다. 압력이 조금 높고 유량이 조금 낮은 것은 각각은 흔하지만, 둘이 동시에 일어나는 일은 평소에 없던 일일 수 있습니다. 센서 쌍만 해도 780개, 셋씩 묶으면 9,880개라서 조합을 하나하나 감시할 수는 없습니다.</p>
+        <p>해법은 센서들이 "함께 움직이는 방향"을 데이터에서 찾아 좌표축을 바꾸는 것입니다. 1901년 칼 피어슨<span class="en">(Karl Pearson)</span>은 점들에 "가장 가깝게 맞는 직선과 평면"을 구하는 문제로, 1933년 해럴드 호텔링<span class="en">(Harold Hotelling)</span>은 "분산을 가장 많이 담는 성분"을 구하는 문제로 같은 답에 도달했습니다. 그 답이 공분산 행렬의 고유벡터, 곧 주성분입니다. 오늘날 반도체 공정의 다변량 이상 감지에서 PCA 점수와 호텔링 \(T^2\) 통계량은 표준 도구로 쓰입니다.</p>
+        <div class="o-chain"><span>센서 40개의 관리도</span><i>→</i><span>조합 이상은 못 봄</span><i>→</i><span class="tool">공분산의 고유벡터 = 새 좌표축</span><i>→</i><span>점수 몇 개 + T² 하나</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="data-matrix">
+    <h2>데이터 행렬과 중심화</h2>
+    <div class="problem"><strong>웨이퍼 300장, 센서 10개: 이것은 어떤 행렬인가</strong>
+      <p>웨이퍼 한 장을 처리할 때마다 센서 10개의 평균값을 한 줄로 기록한다고 합시다. 300장이면 300줄 × 10칸의 표가 됩니다. 이 표에서 "웨이퍼들이 주로 어느 방향으로 흩어져 있나"를 묻고 싶은데, 그 전에 먼저 정할 것이 있습니다. 표의 숫자를 원점에서 잰 위치로 볼 것인가, 평균에서 벗어난 정도로 볼 것인가?</p></div>
+    <p>표 하나를 행렬로 읽는 약속부터 정합니다. 이 장에서는 통계와 머신러닝의 관례대로 <b>행이 표본, 열이 변수</b>입니다. 표본 하나는 \(\mathbb{R}^d\)의 벡터이고, 데이터 전체는 \(\mathbb{R}^d\)에 찍힌 \(n\)개의 점, 곧 <b>점구름</b>입니다.</p>
+    <div class="callout deep"><strong>정의 15.1 (데이터 행렬, 평균 벡터, 중심화)</strong> 표본 \(\mathbf{x}_1, \dots, \mathbf{x}_n \in \mathbb{R}^d\)을 행으로 쌓은 \(n \times d\) 행렬 \(X\)를 <span class="term">데이터 행렬</span><span class="en">(data matrix)</span>이라 한다. 평균 벡터는 \(\boldsymbol\mu = \frac1n\sum_i \mathbf{x}_i\)이고, 각 행에서 \(\boldsymbol\mu^{\mathsf T}\)를 뺀
+      <div class="formula">$$X_c = X - \mathbf{1}\boldsymbol\mu^{\mathsf T}, \qquad \mathbf{1} = (1, \dots, 1)^{\mathsf T} \in \mathbb{R}^n$$</div>
+      를 <span class="term">중심화</span><span class="en">(centering)</span>된 데이터 행렬이라 한다. \(X_c\)의 각 열의 합은 0이다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="데이터 행렬과 중심화">
+        <defs><marker id="pc-ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <text x="20" y="24" class="t" style="font-weight:700">X (n × d): 행 = 웨이퍼, 열 = 센서</text>
+        <g transform="translate(20,40)">
+          <rect width="230" height="190" rx="8" class="f-surface"/>
+          <g class="t-mono" style="font-size:12px">
+            <text x="12" y="20" class="t-dim">센서 →</text>
+            <text x="70" y="20">압력</text><text x="120" y="20">온도</text><text x="170" y="20">RF</text>
+            <text x="12" y="48">#1</text><text x="70" y="48">10.2</text><text x="120" y="48">61.0</text><text x="170" y="48">402</text>
+            <text x="12" y="74">#2</text><text x="70" y="74">9.8</text><text x="120" y="74">59.6</text><text x="170" y="74">395</text>
+            <text x="12" y="100">#3</text><text x="70" y="100">10.5</text><text x="120" y="100">61.9</text><text x="170" y="100">408</text>
+            <text x="12" y="126">⋮</text><text x="70" y="126">⋮</text><text x="120" y="126">⋮</text><text x="170" y="126">⋮</text>
+            <text x="12" y="166" class="t-acc">μ</text><text x="70" y="166" class="t-acc">10.0</text><text x="120" y="166" class="t-acc">60.4</text><text x="170" y="166" class="t-acc">401</text>
+          </g>
+          <line x1="8" y1="148" x2="222" y2="148" class="s-line"/>
+        </g>
+        <line x1="262" y1="135" x2="300" y2="135" class="s-acc" marker-end="url(#pc-ah1)"/>
+        <text x="281" y="125" text-anchor="middle" class="t-dim">− μᵀ</text>
+        <g transform="translate(305,40)">
+          <rect width="190" height="190" rx="8" class="f-acc-soft"/>
+          <g class="t-mono" style="font-size:12px">
+            <text x="12" y="20" class="t-dim">X_c</text>
+            <text x="12" y="48">0.2</text><text x="70" y="48">0.6</text><text x="128" y="48">1</text>
+            <text x="12" y="74">−0.2</text><text x="70" y="74">−0.8</text><text x="128" y="74">−6</text>
+            <text x="12" y="100">0.5</text><text x="70" y="100">1.5</text><text x="128" y="100">7</text>
+            <text x="12" y="126">⋮</text><text x="70" y="126">⋮</text><text x="128" y="126">⋮</text>
+            <text x="12" y="166" class="t-acc">0</text><text x="70" y="166" class="t-acc">0</text><text x="128" y="166" class="t-acc">0</text>
+          </g>
+          <line x1="8" y1="148" x2="182" y2="148" class="s-line"/>
+        </g>
+        <g transform="translate(530,40)">
+          <rect width="210" height="190" rx="8" class="f-surface"/>
+          <line x1="20" y1="170" x2="200" y2="170" class="s-axis"/><line x1="20" y1="170" x2="20" y2="10" class="s-axis"/>
+          <g style="fill:var(--text-dim)"><circle cx="150" cy="52" r="3.5"/><circle cx="160" cy="44" r="3.5"/><circle cx="138" cy="62" r="3.5"/><circle cx="170" cy="34" r="3.5"/><circle cx="146" cy="40" r="3.5"/><circle cx="162" cy="58" r="3.5"/><circle cx="132" cy="50" r="3.5"/></g>
+          <circle cx="151" cy="48" r="5" style="fill:none;stroke:var(--accent);stroke-width:2"/>
+          <line x1="20" y1="170" x2="151" y2="48" class="s-acc" style="stroke-dasharray:5 4"/>
+          <text x="30" y="160" class="t-dim">원점</text><text x="102" y="112" class="t-acc">평균이 멀리 있다</text>
+          <text x="105" y="22" class="t-dim">점구름</text>
+        </g>
+        <text x="20" y="258" class="t-dim">중심화 = 원점을 점구름의 무게중심으로 옮기기. 그 뒤의 모든 방향은 "평균에서 벗어나는 방향"이다.</text>
+      </svg>
+      <figcaption><b>그림 15-1.</b> 데이터 행렬은 행마다 표본 하나, 열마다 변수 하나다. 각 열에서 그 열의 평균을 빼면(중심화) 점구름의 무게중심이 원점에 온다. 중심화하지 않으면 "가장 긴 방향"을 물었을 때 원점에서 평균까지의 방향(그림의 점선)이 답으로 나와 버린다. 그것은 데이터의 흩어짐이 아니라 데이터의 위치다.</figcaption>
+    </figure>
+    <p>중심화가 왜 필요한지는 그림이 말해 줍니다. 원점을 지나는 직선 가운데 점들에 가장 가까운 것을 찾으면, 점구름이 원점에서 멀리 있을 때 답은 거의 "원점에서 평균을 가리키는 직선"입니다. 웨이퍼들의 평균 온도가 60 °C라는 사실은 흩어짐과 아무 관계가 없습니다. 그래서 PCA는 언제나 <b>평균을 뺀 데이터</b>에서 출발합니다. 다음 절의 시뮬레이터에서 "평균을 빼지 않기"를 켜 보면 이 실수가 어떤 축을 만드는지 직접 볼 수 있습니다.</p>
+    <div class="callout tip"><strong>열 하나 = 변수 하나 = 벡터 하나</strong> 중심화한 열 \(\mathbf{a}_j\)는 \(\mathbb{R}^n\)의 벡터입니다. 1장의 말로 하면 두 변수의 공분산은 이 두 벡터의 내적을 \(n-1\)로 나눈 값이고, 상관 계수는 두 벡터 사이 각의 코사인입니다(<a href="vectors.html#cosine">1장 코사인 유사도</a>). 다음 절의 공분산 행렬은 이 내적들을 한 표에 모은 것입니다.</div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="covariance">
+    <h2>공분산 행렬: 모든 방향의 분산을 담은 표</h2>
+    <div class="problem"><strong>45° 방향의 분산은 어떻게 구하나</strong>
+      <p>압력 축으로 본 분산, 온도 축으로 본 분산은 열마다 계산하면 됩니다. 그런데 "압력과 온도를 반씩 섞은 방향"의 분산은? 방향은 무한히 많습니다. 방향마다 데이터 전체를 다시 훑어야 할까요?</p></div>
+    <div class="callout deep"><strong>정의 15.2 (표본 공분산 행렬)</strong> 중심화된 \(X_c\)에 대해
+      <div class="formula">$$C = \frac{1}{n-1}X_c^{\mathsf T}X_c, \qquad C_{jk} = \frac{1}{n-1}\sum_{i=1}^n (x_{ij} - \mu_j)(x_{ik} - \mu_k)$$
+        <div class="where">\(C\)는 \(d \times d\) 행렬. 대각 원소 \(C_{jj}\)는 변수 \(j\)의 분산, 비대각 원소 \(C_{jk}\)는 변수 \(j, k\)의 공분산이다. \(n-1\)로 나누는 이유(불편 추정)는 <a href="../../probability/chapters/estimation.html">확률과 통계의 점추정</a> 장을 보라.</div></div></div>
+    <p>이 표 하나가 문제의 답을 모두 갖고 있습니다. 단위 벡터 \(\mathbf{u}\) 방향으로 점들을 사영하면 \(i\)번째 점의 그림자 좌표는 \(t_i = \mathbf{u}\cdot(\mathbf{x}_i - \boldsymbol\mu)\), 묶어서 쓰면 \(\mathbf{t} = X_c\mathbf{u}\)입니다. 그 분산은</p>
+    <div class="callout deep"><strong>정리 15.1 (사영 분산)</strong> 단위 벡터 \(\mathbf{u}\)에 대해 사영 좌표 \(t_i = \mathbf{u}\cdot(\mathbf{x}_i - \boldsymbol\mu)\)의 표본 분산은
+      <div class="formula">$$\operatorname{Var}(t) = \frac{1}{n-1}\lVert X_c\mathbf{u}\rVert^2 = \frac{1}{n-1}\mathbf{u}^{\mathsf T}X_c^{\mathsf T}X_c\mathbf{u} = \mathbf{u}^{\mathsf T}C\,\mathbf{u}$$</div>
+      <p><b>증명.</b> \(X_c\)의 열 합이 0이므로 \(\sum_i t_i = \mathbf{1}^{\mathsf T}X_c\mathbf{u} = 0\), 즉 \(t\)의 평균은 0이다. 따라서 분산은 \(\frac{1}{n-1}\sum t_i^2 = \frac{1}{n-1}\mathbf{t}^{\mathsf T}\mathbf{t}\)이고 \(\mathbf{t} = X_c\mathbf{u}\)를 대입하면 된다. ∎</p></div>
+    <p>방향마다 데이터를 다시 훑을 필요가 없습니다. \(d \times d\) 표 \(C\)를 한 번 만들어 두면, 어떤 방향의 분산도 \(\mathbf{u}^{\mathsf T}C\mathbf{u}\)라는 곱셈 몇 번으로 나옵니다. 예를 들어 \(\mathbf{u} = (1, 1)/\sqrt2\)이면 \(\mathbf{u}^{\mathsf T}C\mathbf{u} = \tfrac12(C_{11} + 2C_{12} + C_{22})\)입니다. 두 변수가 양의 상관(\(C_{12} > 0\))이면 대각선 방향의 분산이 두 축의 평균보다 크다는 것이 식에서 바로 보입니다.</p>
+    <div class="callout deep"><strong>정리 15.2 (공분산 행렬의 성질)</strong> \(C\)는 대칭이고 <span class="term">양의 준정부호</span><span class="en">(positive semidefinite)</span>다. 즉 모든 \(\mathbf{u}\)에 대해 \(\mathbf{u}^{\mathsf T}C\mathbf{u} \ge 0\). 따라서 \(C\)의 고유값은 모두 0 이상의 실수이고, 서로 수직인 단위 고유벡터로 이루어진 정규직교 기저가 있다.
+      <p><b>증명.</b> \(C^{\mathsf T} = \frac{1}{n-1}(X_c^{\mathsf T}X_c)^{\mathsf T} = \frac{1}{n-1}X_c^{\mathsf T}X_c = C\). 또 \(\mathbf{u}^{\mathsf T}C\mathbf{u} = \frac{1}{n-1}\lVert X_c\mathbf{u}\rVert^2 \ge 0\). 고유값과 고유벡터에 관한 결론은 대칭 행렬의 스펙트럼 정리(<a href="symmetric.html">13장 대칭 행렬과 양의 정부호</a>)에서 나온다. \(C\mathbf{v} = \lambda\mathbf{v}\), \(\lVert\mathbf{v}\rVert = 1\)이면 \(\lambda = \mathbf{v}^{\mathsf T}C\mathbf{v} \ge 0\)이다. ∎</p></div>
+    <div class="callout"><strong>예제 15.1 (작은 데이터의 공분산)</strong> 이미 중심화된 네 점 \((3, 1), (1, 3), (-1, -3), (-3, -1)\)을 보자.
+      <ol>
+        <li>\(X_c^{\mathsf T}X_c\)의 (1,1) 칸은 첫 열의 제곱합 \(9 + 1 + 1 + 9 = 20\), (2,2) 칸도 \(20\), (1,2) 칸은 \(3\cdot1 + 1\cdot3 + (-1)(-3) + (-3)(-1) = 12\).</li>
+        <li>\(n - 1 = 3\)으로 나누면 \(C = \begin{bmatrix}20/3 & 4\\ 4 & 20/3\end{bmatrix}\approx\begin{bmatrix}6.67 & 4\\ 4 & 6.67\end{bmatrix}\).</li>
+        <li>방향별 분산: \(x\)축 \(6.67\), 대각선 \((1,1)/\sqrt2\) 방향 \(\tfrac12(6.67 + 8 + 6.67) = 10.67\), 반대 대각선 \((1,-1)/\sqrt2\) 방향 \(\tfrac12(6.67 - 8 + 6.67) = 2.67\).</li>
+      </ol>
+      점들은 대각선을 따라 길게 늘어서 있고, 그 방향의 분산이 축 방향보다 큽니다. 다음 절에서 이 두 대각선이 정확히 \(C\)의 고유벡터라는 것을 봅니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="principal-components">
+    <h2>주성분: 분산이 가장 큰 방향</h2>
+    <div class="problem"><strong>축 하나만 남긴다면 어느 방향인가</strong>
+      <p>점구름을 직선 하나 위로 눌러 요약해야 한다면, 그림자들이 가장 넓게 퍼지는(정보를 가장 많이 남기는) 방향을 고르고 싶습니다. 그 방향은 \(\mathbf{u}^{\mathsf T}C\mathbf{u}\)를 최대로 만드는 단위 벡터입니다. 무한히 많은 방향 가운데 어떻게 찾을까요?</p></div>
+    <p>분모로 길이를 나눈 \(R(\mathbf{u}) = \dfrac{\mathbf{u}^{\mathsf T}C\mathbf{u}}{\mathbf{u}^{\mathsf T}\mathbf{u}}\)를 <span class="term">레일리 몫</span><span class="en">(Rayleigh quotient)</span>이라 합니다. 방향만 보고 길이는 신경 쓰지 않는 "방향별 분산"입니다. 이것을 최대로 만드는 방향은 고유벡터라는 것이 이 장의 핵심 정리입니다.</p>
+    <div class="callout deep"><strong>정리 15.3 (레일리 몫의 최대·최소)</strong> 대칭 행렬 \(C\)의 고유값을 \(\lambda_1 \ge \lambda_2 \ge \cdots \ge \lambda_d\), 대응하는 정규직교 고유벡터를 \(\mathbf{v}_1, \dots, \mathbf{v}_d\)라 하자. 모든 \(\mathbf{u} \ne \mathbf{0}\)에 대해
+      <div class="formula">$$\lambda_d \le R(\mathbf{u}) = \frac{\mathbf{u}^{\mathsf T}C\mathbf{u}}{\mathbf{u}^{\mathsf T}\mathbf{u}} \le \lambda_1$$</div>
+      이고, 최댓값은 \(\mathbf{u} = \mathbf{v}_1\)에서, 최솟값은 \(\mathbf{u} = \mathbf{v}_d\)에서 얻는다. 더 나아가 \(\mathbf{v}_1, \dots, \mathbf{v}_{j-1}\)에 모두 수직인 \(\mathbf{u}\) 가운데 \(R\)의 최댓값은 \(\lambda_j\)이고 \(\mathbf{v}_j\)에서 얻는다.
+      <p><b>증명.</b> 단위 벡터 \(\mathbf{u}\)를 고유벡터 기저로 \(\mathbf{u} = \sum_i c_i\mathbf{v}_i\), \(\sum c_i^2 = 1\)로 쓰면 \(C\mathbf{u} = \sum_i \lambda_i c_i\mathbf{v}_i\)이고 정규직교성에 의해
+        \(\mathbf{u}^{\mathsf T}C\mathbf{u} = \sum_i \lambda_i c_i^2\)이다. 이것은 고유값들의 가중 평균(가중치 \(c_i^2\), 합 1)이므로 \(\lambda_d\)와 \(\lambda_1\) 사이에 있고, 가중치를 모두 \(\lambda_1\)에 몰아 준 \(c_1 = 1\)일 때 최대다. \(\mathbf{v}_1, \dots, \mathbf{v}_{j-1}\)에 수직이라는 조건은 \(c_1 = \cdots = c_{j-1} = 0\)이라는 뜻이므로 같은 논리로 최댓값은 \(\lambda_j\)다. ∎</p></div>
+    <div class="callout deep"><strong>정의 15.3 (주성분)</strong> 공분산 행렬 \(C\)의 단위 고유벡터 \(\mathbf{v}_1, \mathbf{v}_2, \dots\)(고유값 내림차순)를 <span class="term">주성분</span><span class="en">(principal components)</span> 방향 또는 <span class="term">적재 벡터</span><span class="en">(loading vector)</span>라 하고, 표본 \(\mathbf{x}_i\)의 \(j\)번째 <span class="term">주성분 점수</span><span class="en">(score)</span>를 \(t_{ij} = \mathbf{v}_j\cdot(\mathbf{x}_i - \boldsymbol\mu)\)로 정한다. 점수 \(t_{\cdot j}\)의 분산은 \(\lambda_j\)이고, 서로 다른 주성분의 점수는 상관이 0이다.</div>
+    <p>마지막 문장도 한 줄로 확인됩니다. 점수 열 \(X_c\mathbf{v}_j\)와 \(X_c\mathbf{v}_k\)의 공분산은 \(\frac{1}{n-1}\mathbf{v}_j^{\mathsf T}X_c^{\mathsf T}X_c\mathbf{v}_k = \mathbf{v}_j^{\mathsf T}C\mathbf{v}_k = \lambda_k\,\mathbf{v}_j\cdot\mathbf{v}_k\)이고, 이는 \(j \ne k\)이면 0입니다. 즉 주성분 좌표계로 옮기면 <b>공분산 행렬이 대각 행렬</b> \(\Lambda = \operatorname{diag}(\lambda_1, \dots, \lambda_d)\)이 됩니다. 서로 얽혀 있던 변수들을 얽히지 않은 새 변수들로 바꾼 것입니다.</p>
+
+    <div class="sim" id="sim-pc-axis">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>축을 돌려 분산이 가장 큰 방향 찾기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-axis"></canvas><span class="tag-tl">보라 점 u를 끌어 축을 돌려 보세요</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>구름 기울기 <output id="pc-a-tilt-out"></output></span><input type="range" id="pc-a-tilt" min="-90" max="90" step="1" value="30"></label>
+          <label class="ctrl"><span>긴 축 ÷ 짧은 축 <output id="pc-a-ratio-out"></output></span><input type="range" id="pc-a-ratio" min="1" max="6" step="0.1" value="3"></label>
+          <label class="check"><input type="checkbox" id="pc-a-resid" checked> 잔차(수직 거리) 보기</label>
+          <label class="check"><input type="checkbox" id="pc-a-ell" checked> 공분산 타원과 주축 보기</label>
+          <label class="check"><input type="checkbox" id="pc-a-raw"> 평균을 빼지 않기(원점 기준)</label>
+          <div class="btn-row"><button class="btn primary" id="pc-a-fit">PC1에 맞추기</button><button class="btn" id="pc-a-new">새 표본</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">사영 분산 uᵀCu</span><span class="v" id="pc-a-var">—</span></div>
+        <div class="stat"><span class="k">잔차 제곱 평균</span><span class="v" id="pc-a-res">—</span></div>
+        <div class="stat"><span class="k">합 (총분산)</span><span class="v" id="pc-a-tot">—</span></div>
+        <div class="stat"><span class="k">PC1과의 각</span><span class="v" id="pc-a-ang">—</span></div>
+      </div>
+      <div class="pc-legend"><span><i style="background:var(--accent)"></i>후보 축 u</span><span><i style="background:var(--ok)"></i>PC1, PC2 (점선)</span><span><i style="background:var(--warn)"></i>그림자(사영)</span><span><i style="background:var(--bad)"></i>잔차</span></div>
+      <div class="pc-msg" id="pc-a-msg">—</div>
+      <div class="sim-note">해볼 것: ① u를 천천히 돌리며 사영 분산이 가장 커지는 곳을 찾으세요. 그곳이 초록 점선(PC1)과 겹치고, 그때 잔차 제곱 평균은 가장 작습니다. 두 값의 합은 어디서나 같습니다(다음 절의 피타고라스 항등식). ② 긴 축 ÷ 짧은 축을 1로 내리면 점구름이 둥글어져 어느 방향이나 분산이 비슷해지고, PC1은 표본마다 제멋대로 바뀝니다. ③ '평균을 빼지 않기'를 켜면 축이 원점을 지나야 하므로, 최적의 축이 점구름의 긴 방향이 아니라 평균 쪽을 향합니다. 모델: 2차원 정규 분포에서 시드 고정 난수로 뽑은 점 160개. 분산은 n − 1로 나눈 표본 분산입니다.</div>
+    </div>
+
+    <div class="callout"><strong>예제 15.2 (예제 15.1의 주성분)</strong> \(C = \begin{bmatrix}20/3 & 4\\ 4 & 20/3\end{bmatrix}\)의 고유값은 \(\det(C - \lambda I) = (20/3 - \lambda)^2 - 16 = 0\)에서 \(\lambda = 20/3 \pm 4\), 즉 \(\lambda_1 = 32/3 \approx 10.67\), \(\lambda_2 = 8/3 \approx 2.67\)이다.
+      <ol>
+        <li>\(\lambda_1\)의 고유벡터: \((C - \lambda_1 I)\mathbf{v} = \begin{bmatrix}-4 & 4\\ 4 & -4\end{bmatrix}\mathbf{v} = \mathbf{0}\)에서 \(\mathbf{v}_1 = (1, 1)/\sqrt2\). 같은 방법으로 \(\mathbf{v}_2 = (1, -1)/\sqrt2\). 예제 15.1에서 계산한 대각선 방향의 분산 10.67과 2.67이 바로 두 고유값이다.</li>
+        <li>PC1 점수: \(t_{i1} = (x_i + y_i)/\sqrt2\) → \(2\sqrt2, 2\sqrt2, -2\sqrt2, -2\sqrt2\). 분산은 \(4\cdot 8/3 = 32/3 = \lambda_1\). ✓</li>
+        <li>PC2 점수: \((x_i - y_i)/\sqrt2\) → \(\sqrt2, -\sqrt2, \sqrt2, -\sqrt2\). 분산은 \(4\cdot 2/3 = 8/3 = \lambda_2\). ✓ PC1 점수와 PC2 점수의 곱의 합은 \(4 - 4 - 4 + 4 = 0\)이므로 상관이 0이다. ✓</li>
+        <li>PC1이 담는 분산의 비율은 \(\lambda_1/(\lambda_1 + \lambda_2) = 32/40 = 80\%\).</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="two-views">
+    <h2>두 가지 관점: 분산 최대화 = 재구성 오차 최소화</h2>
+    <div class="problem"><strong>피어슨과 호텔링은 왜 같은 답을 얻었나</strong>
+      <p>피어슨은 "점들까지의 수직 거리 제곱합이 가장 작은 직선"을 찾았고, 호텔링은 "그림자의 분산이 가장 큰 방향"을 찾았습니다. 하나는 오차를 줄이고 하나는 정보를 늘리는, 서로 다른 목표처럼 보입니다. 그런데 둘의 답이 같습니다. 시뮬레이터에서 본 "합은 언제나 같다"가 그 이유입니다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="사영과 잔차의 피타고라스 관계">
+        <rect x="10" y="10" width="440" height="270" rx="10" class="f-surface"/>
+        <line x1="40" y1="250" x2="420" y2="50" class="s-acc" style="stroke-width:2.5"/>
+        <text x="380" y="46" class="t-acc">직선 span{u}</text>
+        <circle cx="230" cy="150" r="4" style="fill:var(--text)"/><text x="196" y="170" class="t-dim">평균(원점)</text>
+        <circle cx="300" cy="60" r="6" style="fill:var(--text)"/>
+        <text x="306" y="50" class="t">xᵢ − μ</text>
+        <line x1="230" y1="150" x2="300" y2="60" style="stroke:var(--text-dim);stroke-width:2"/>
+        <circle cx="331" cy="97" r="5" style="fill:var(--warn)"/>
+        <line x1="300" y1="60" x2="331" y2="97" style="stroke:var(--bad);stroke-width:2.5"/>
+        <line x1="230" y1="150" x2="331" y2="97" style="stroke:var(--warn);stroke-width:4"/>
+        <path d="M321 102 L326 111 L335 106" style="fill:none;stroke:var(--text-dim);stroke-width:1.2"/>
+        <text x="268" y="138" class="t" style="fill:var(--warn);font-weight:700">tᵢ = u·(xᵢ − μ)</text>
+        <text x="324" y="76" class="t" style="fill:var(--bad);font-weight:700">rᵢ</text>
+        <text x="30" y="40" class="t" style="font-weight:700">점 하나의 피타고라스</text>
+        <text x="30" y="268" class="t-mono">‖xᵢ − μ‖² = tᵢ² + ‖rᵢ‖²</text>
+        <g transform="translate(470,10)">
+          <rect width="280" height="270" rx="10" class="f-surface"/>
+          <text x="16" y="30" class="t" style="font-weight:700">모든 점을 더하면</text>
+          <rect x="20" y="52" width="240" height="34" rx="6" class="f-elev"/>
+          <text x="140" y="74" text-anchor="middle" class="t-mono">총분산 tr C (고정)</text>
+          <text x="140" y="108" text-anchor="middle" class="t">=</text>
+          <rect x="20" y="118" width="170" height="34" rx="6" style="fill:var(--warn);opacity:.3"/>
+          <rect x="190" y="118" width="70" height="34" rx="6" style="fill:var(--bad);opacity:.3"/>
+          <text x="105" y="140" text-anchor="middle" class="t-mono">uᵀCu</text>
+          <text x="225" y="140" text-anchor="middle" class="t-mono">오차</text>
+          <text x="16" y="184" class="t-dim">막대 전체 길이가 정해져 있으니</text>
+          <text x="16" y="204" class="t-dim">주황(사영 분산)을 늘리는 것과</text>
+          <text x="16" y="224" class="t-dim">빨강(재구성 오차)을 줄이는 것은</text>
+          <text x="16" y="244" class="t" style="font-weight:700">같은 일이다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-2.</b> 중심화한 점 \(\mathbf{x}_i - \boldsymbol\mu\)를 직선에 사영하면 그림자 길이 \(t_i\)와 수직 잔차 \(\mathbf{r}_i\)가 직각을 이룬다. 점마다 피타고라스 정리가 성립하고, 모든 점에서 더하면 "총분산 = 사영 분산 + 재구성 오차"가 된다. 왼쪽 항이 축과 무관하므로 오른쪽 두 항은 한쪽이 늘면 다른 쪽이 준다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 15.4 (분산–오차 분해)</strong> 단위 벡터 \(\mathbf{u}\)에 대해 재구성 \(\hat{\mathbf{x}}_i = \boldsymbol\mu + t_i\mathbf{u}\)의 평균 제곱 오차는
+      <div class="formula">$$\frac{1}{n-1}\sum_{i=1}^n \lVert\mathbf{x}_i - \hat{\mathbf{x}}_i\rVert^2 = \operatorname{tr}C - \mathbf{u}^{\mathsf T}C\mathbf{u}$$</div>
+      따라서 재구성 오차를 최소로 하는 방향과 사영 분산을 최대로 하는 방향은 같고, 그것은 \(\mathbf{v}_1\)이다. 최소 오차는 \(\lambda_2 + \cdots + \lambda_d\)이다.
+      <p><b>증명.</b> \(\mathbf{r}_i = (\mathbf{x}_i - \boldsymbol\mu) - t_i\mathbf{u}\)는 \(\mathbf{u}\)에 수직이다(\(\mathbf{u}\cdot\mathbf{r}_i = t_i - t_i = 0\)). 피타고라스 정리로 \(\lVert\mathbf{x}_i - \boldsymbol\mu\rVert^2 = t_i^2 + \lVert\mathbf{r}_i\rVert^2\). 모든 \(i\)에 대해 더하고 \(n-1\)로 나누면 왼쪽은 \(\frac{1}{n-1}\sum_{i,j}(x_{ij} - \mu_j)^2 = \sum_j C_{jj} = \operatorname{tr}C\), 오른쪽 첫 항은 정리 15.1에 의해 \(\mathbf{u}^{\mathsf T}C\mathbf{u}\)다. 대각합은 고유값의 합이므로 최소 오차는 \(\sum_j\lambda_j - \lambda_1\)이다. ∎</p></div>
+    <p>같은 논리가 직선 대신 \(k\)차원 부분공간에도 그대로 적용됩니다. 정규직교 열 \(\mathbf{u}_1, \dots, \mathbf{u}_k\)로 이루어진 \(U_k\)에 사영하면 사영 분산은 \(\operatorname{tr}(U_k^{\mathsf T}CU_k)\)이고, 이것은 \(U_k = [\mathbf{v}_1 \cdots \mathbf{v}_k]\)일 때 최대 \(\lambda_1 + \cdots + \lambda_k\)입니다(정리 15.3을 차례로 적용하는 것과 같은 결론으로, 키 판 정리<span class="en">(Ky Fan)</span>라 부릅니다). 남는 오차는 \(\lambda_{k+1} + \cdots + \lambda_d\)입니다.</p>
+
+    <h3>SVD로 보는 PCA</h3>
+    <p>공분산 행렬을 거치지 않고 데이터 행렬에서 바로 주성분을 얻을 수도 있습니다. 중심화된 데이터 행렬의 특이값 분해(<a href="svd.html">14장 특이값 분해</a>) \(X_c = U\Sigma V^{\mathsf T}\)를 쓰면 됩니다.</p>
+    <div class="callout deep"><strong>정리 15.5 (PCA와 SVD)</strong> \(X_c = U\Sigma V^{\mathsf T}\)(특이값 \(\sigma_1 \ge \sigma_2 \ge \cdots \ge 0\))이면
+      <div class="formula">$$C = \frac{1}{n-1}X_c^{\mathsf T}X_c = V\,\frac{\Sigma^{\mathsf T}\Sigma}{n-1}\,V^{\mathsf T}, \qquad \lambda_j = \frac{\sigma_j^2}{n-1}, \qquad T = X_cV = U\Sigma$$
+        <div class="where">주성분 방향은 \(X_c\)의 <b>오른쪽 특이벡터</b>(\(V\)의 열)이고, 점수 행렬 \(T\)의 \(j\)열은 \(\sigma_j\mathbf{u}_j\)다.</div></div>
+      <p><b>증명.</b> \(X_c^{\mathsf T}X_c = V\Sigma^{\mathsf T}U^{\mathsf T}U\Sigma V^{\mathsf T} = V(\Sigma^{\mathsf T}\Sigma)V^{\mathsf T}\)이고 \(U^{\mathsf T}U = I\)를 썼다. \(V\)는 직교 행렬, \(\Sigma^{\mathsf T}\Sigma = \operatorname{diag}(\sigma_j^2)\)은 대각이므로 이것은 \(X_c^{\mathsf T}X_c\)의 고유분해다. 즉 \(V\)의 열이 고유벡터, \(\sigma_j^2\)이 고유값이다. \(n-1\)로 나누면 \(C\)의 고유분해가 된다. 점수는 \(X_cV = U\Sigma V^{\mathsf T}V = U\Sigma\). ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="PCA와 SVD의 블록 그림">
+        <g transform="translate(20,30)">
+          <rect width="90" height="150" rx="4" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+          <text x="45" y="80" text-anchor="middle" class="t" style="font-weight:700">X_c</text><text x="45" y="170" text-anchor="middle" class="t-dim">n × d</text>
+          <text x="120" y="80" class="t">=</text>
+          <rect x="140" width="90" height="150" rx="4" class="f-surface" style="stroke:var(--text-dim)"/>
+          <text x="185" y="80" text-anchor="middle" class="t" style="font-weight:700">U</text><text x="185" y="170" text-anchor="middle" class="t-dim">n × d</text>
+          <rect x="245" y="0" width="90" height="90" rx="4" class="f-surface" style="stroke:var(--text-dim)"/>
+          <line x1="250" y1="5" x2="330" y2="85" style="stroke:var(--warn);stroke-width:5"/>
+          <text x="290" y="110" text-anchor="middle" class="t-dim">Σ (σ₁ ≥ σ₂ ≥ …)</text>
+          <rect x="350" y="0" width="90" height="90" rx="4" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+          <text x="395" y="50" text-anchor="middle" class="t" style="font-weight:700">Vᵀ</text><text x="395" y="110" text-anchor="middle" class="t-dim">d × d, 행 = 주성분</text>
+        </g>
+        <g transform="translate(500,30)">
+          <text x="0" y="20" class="t" style="font-weight:700">읽는 법</text>
+          <text x="0" y="50" class="t-dim">Vᵀ의 행 j = 주성분 vⱼ (적재)</text>
+          <text x="0" y="76" class="t-dim">σⱼ²/(n−1) = λⱼ (PCⱼ의 분산)</text>
+          <text x="0" y="102" class="t-dim">UΣ = X_cV = 점수 행렬 T</text>
+          <text x="0" y="128" class="t-dim">앞의 k개만 남기면</text>
+          <text x="0" y="150" class="t-mono">X_c ≈ U_k Σ_k V_kᵀ</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-3.</b> 중심화한 데이터 행렬의 SVD는 PCA의 모든 결과를 한 번에 준다. \(V\)의 열이 주성분 방향, 특이값의 제곱을 \(n-1\)로 나눈 값이 주성분의 분산, \(U\Sigma\)가 점수다. 앞의 \(k\)개 성분만 남긴 \(U_k\Sigma_kV_k^{\mathsf T}\)는 에커트–영 정리에 의해 계수 \(k\)인 행렬 가운데 \(X_c\)에 가장 가깝고, 이것이 정리 15.4의 \(k\)차원 판이다.</figcaption>
+    </figure>
+    <div class="callout warn"><strong>실제 계산은 SVD로</strong> 수학적으로는 \(C\)의 고유분해와 \(X_c\)의 SVD가 같은 답을 주지만, 컴퓨터에서는 다릅니다. \(X_c^{\mathsf T}X_c\)를 만드는 순간 조건수가 제곱이 되어(\(\kappa(X_c^{\mathsf T}X_c) = \kappa(X_c)^2\)) 작은 고유값의 유효 숫자가 사라집니다. 그래서 대부분의 수치 라이브러리는 PCA를 중심화한 데이터의 SVD로 계산합니다. 조건수와 반올림 오차는 <a href="numerical.html">16장 수치 선형대수</a>에서 다룹니다.</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="explained-variance">
+    <h2>설명 분산과 성분 수 k 고르기</h2>
+    <div class="problem"><strong>센서 10개 가운데 진짜 독립적인 움직임은 몇 개인가</strong>
+      <p>센서 10개가 기록되지만, 실제로 공정을 흔드는 원인은 챔버 압력의 흔들림, 전극 온도, RF 정합 상태처럼 몇 개뿐일 수 있습니다. 데이터만 보고 "숨은 원인의 수"를 짐작할 수 있을까요? 그리고 점수를 몇 개 남겨야 충분할까요?</p></div>
+    <div class="callout deep"><strong>정의 15.4 (설명 분산 비율)</strong> \(j\)번째 주성분의 <span class="term">설명 분산 비율</span><span class="en">(explained variance ratio)</span>은 \(\lambda_j/\sum_i\lambda_i = \lambda_j/\operatorname{tr}C\)이고, 앞의 \(k\)개의 누적 비율은 \(\sum_{j\le k}\lambda_j/\operatorname{tr}C\)이다. 고유값을 크기순으로 막대로 그린 것을 <span class="term">스크리 그림</span><span class="en">(scree plot)</span>이라 한다.</div>
+    <p>숨은 원인 \(r\)개가 센서들을 선형으로 섞고 그 위에 서로 독립인 측정 잡음이 얹힌다고 해 봅시다. 원인이 만드는 공분산은 계수 \(r\)인 행렬이라 고유값 \(r\)개만 크고, 잡음은 모든 방향에 고르게 작은 분산을 보탭니다. 그래서 스크리 그림은 큰 막대 \(r\)개 뒤에 낮고 평평한 막대들이 이어지는 모양이 되고, 꺾이는 곳(팔꿈치)이 \(r\)을 알려 줍니다. 실무에서 자주 쓰는 기준은 다음과 같습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>기준</th><th>방법</th><th>주의할 점</th></tr></thead>
+      <tbody>
+        <tr><td>누적 비율</td><td>누적 설명 분산이 90%(또는 95%)를 넘는 최소 \(k\)</td><td>잡음이 크면 잡음까지 담으려고 \(k\)가 커진다</td></tr>
+        <tr><td>팔꿈치</td><td>스크리 그림이 평평해지기 직전까지</td><td>꺾임이 뚜렷하지 않으면 사람마다 다르게 읽는다</td></tr>
+        <tr><td>카이저 기준</td><td>상관 행렬 PCA에서 \(\lambda_j > 1\)인 성분만(변수 하나보다 많이 설명하는 것)</td><td>표준화한 데이터에서만 뜻이 있다</td></tr>
+        <tr><td>교차 검증</td><td>남겨 둔 데이터의 재구성 오차가 가장 작은 \(k\)</td><td>계산은 많지만 가장 근거가 분명하다</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="sim" id="sim-pc-scree">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>센서 10개의 스크리 그림</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-scree"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>숨은 원인의 수 r <output id="pc-s-r-out"></output></span><input type="range" id="pc-s-r" min="1" max="4" step="1" value="2"></label>
+          <label class="ctrl"><span>측정 잡음 크기 σ <output id="pc-s-noise-out"></output></span><input type="range" id="pc-s-noise" min="0.05" max="2" step="0.05" value="0.4"></label>
+          <label class="ctrl"><span>누적 기준 <output id="pc-s-th-out"></output></span><input type="range" id="pc-s-th" min="50" max="99" step="1" value="90"></label>
+          <label class="ctrl"><span>표본 수 n <output id="pc-s-n-out"></output></span><input type="range" id="pc-s-n" min="20" max="600" step="10" value="300"></label>
+          <div class="btn-row"><button class="btn" id="pc-s-new">새 표본</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">λ₁ … λ₄</span><span class="v" id="pc-s-lam">—</span></div>
+        <div class="stat"><span class="k">기준을 넘는 최소 k</span><span class="v" id="pc-s-k">—</span></div>
+        <div class="stat"><span class="k">팔꿈치(최대 비율 낙차)</span><span class="v" id="pc-s-elbow">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 잡음 σ를 작게 하면 막대 r개 뒤가 거의 0으로 떨어져 꺾임이 뚜렷합니다. ② 잡음을 키우면 평평한 바닥이 올라와 누적 90% 기준의 k가 r보다 커집니다. 잡음까지 "설명"하려 들기 때문입니다. ③ 표본 수 n을 20으로 줄이면 잡음 고유값들이 고르지 않고 비스듬하게 퍼집니다. 표본이 적으면 공분산 추정 자체가 흔들립니다. 모델: 센서값 = (숨은 원인 r개, 표준 편차 3, 2, 1.4, 1)의 고정된 선형 결합 + 센서마다 독립인 정규 잡음 σ. 적재 행렬은 시드 고정 난수입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="reduction">
+    <h2>차원 축소: 센서 10개를 점수 2개로</h2>
+    <div class="problem"><strong>10차원 점구름을 어떻게 눈으로 보나</strong>
+      <p>장비가 세 가지 운전 상태(정상, 챔버 세정 직후, 부품 교체 직전)를 오간다고 합시다. 센서 두 개를 골라 산점도를 그리면 세 상태가 겹쳐 보일 수 있습니다. 상태의 차이가 10개 센서에 조금씩 나뉘어 실려 있기 때문입니다. 10차원 점구름에서 상태가 가장 잘 갈라져 보이는 평면을 찾을 수 있을까요?</p></div>
+    <p>앞의 \(k\)개 주성분 점수만 남기는 것이 PCA 차원 축소입니다. 표본 하나를 \(d\)개의 숫자 대신 \(k\)개의 숫자 \((t_1, \dots, t_k)\)로 기록하고, 필요하면 \(\hat{\mathbf{x}} = \boldsymbol\mu + \sum_{j\le k}t_j\mathbf{v}_j\)로 되살립니다. 저장할 것은 평균 \(\boldsymbol\mu\)와 적재 \(V_k\)(한 번만), 그리고 표본마다 점수 \(k\)개입니다. 정리 15.4에 의해 이것이 \(k\)차원 선형 요약 가운데 평균 제곱 오차가 가장 작은 방법입니다.</p>
+
+    <div class="sim" id="sim-pc-scores">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>원래 센서 두 개 vs 주성분 점수 두 개</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-scores"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>보기</span><div class="seg" id="pc-c-view"><button data-value="raw">센서 1 vs 센서 2</button><button data-value="pc" class="on">PC1 vs PC2</button></div></div>
+          <label class="ctrl"><span>운전 상태의 차이 <output id="pc-c-sep-out"></output></span><input type="range" id="pc-c-sep" min="0" max="3" step="0.1" value="1.6"></label>
+          <label class="ctrl"><span>측정 잡음 σ <output id="pc-c-noise-out"></output></span><input type="range" id="pc-c-noise" min="0.05" max="1.5" step="0.05" value="0.35"></label>
+          <label class="check"><input type="checkbox" id="pc-c-load"> 적재 화살표(바이플롯) 보기</label>
+          <div class="btn-row"><button class="btn" id="pc-c-new">새 표본</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">PC1+PC2 설명 분산</span><span class="v" id="pc-c-ev">—</span></div>
+        <div class="stat"><span class="k">저장할 숫자 (300장)</span><span class="v" id="pc-c-store">—</span></div>
+        <div class="stat"><span class="k">재구성 상대 오차</span><span class="v" id="pc-c-err">—</span></div>
+      </div>
+      <div class="pc-legend"><span><i class="dot" style="background:var(--accent)"></i>정상</span><span><i class="dot" style="background:var(--warn)"></i>세정 직후</span><span><i class="dot" style="background:var(--bad)"></i>교체 직전</span></div>
+      <div class="sim-note">해볼 것: ① '센서 1 vs 센서 2'와 'PC1 vs PC2'를 번갈아 보세요. 같은 300개 점인데 주성분 평면에서는 세 상태가 훨씬 잘 갈라집니다. ② 바이플롯을 켜면 센서마다 화살표가 나타납니다. 같은 쪽을 가리키는 센서들은 함께 움직이고, 화살표가 긴 센서가 그 평면을 주로 만듭니다. ③ 상태 차이를 0으로 하면 세 무리가 한 덩어리가 됩니다. PCA는 라벨(색)을 전혀 보지 않고 분산만 봅니다. 상태 차이가 분산의 큰 몫을 차지할 때만 주성분 평면에서 갈라집니다. 모델: 10개 센서 = 숨은 원인 2개의 고정 선형 결합 + 상태별 평균 이동 + 독립 잡음. 저장 숫자는 점수 300×2 + 적재 10×2 + 평균 10.</div>
+    </div>
+
+    <h3>고유 패턴: 이미지 한 장도 벡터다</h3>
+    <p>12×12 흑백 이미지는 숫자 144개, 즉 \(\mathbb{R}^{144}\)의 벡터입니다. 이미지 수십 장에 PCA를 하면 주성분 \(\mathbf{v}_j\)도 144개의 숫자라서 그 자체를 이미지로 그려 볼 수 있습니다. 1991년 터크와 펜틀랜드<span class="en">(Turk &amp; Pentland)</span>는 얼굴 사진에 이 방법을 써서 주성분 이미지를 "고유얼굴"<span class="en">(eigenfaces)</span>이라 불렀습니다. 아래 시뮬레이터는 얼굴 대신, 몇 가지 기본 무늬를 무작위로 섞고 잡음을 더한 합성 이미지 60장을 씁니다. PCA는 무늬가 무엇인지 듣지 않고도 데이터만으로 그 무늬들이 펼치는 공간을 찾아냅니다.</p>
+    <div class="sim" id="sim-pc-faces">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>고유 패턴으로 이미지 다시 쌓기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-faces"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>사용할 성분 수 k <output id="pc-f-k-out"></output></span><input type="range" id="pc-f-k" min="0" max="12" step="1" value="3"></label>
+          <label class="ctrl"><span>이미지 잡음 <output id="pc-f-noise-out"></output></span><input type="range" id="pc-f-noise" min="0" max="0.3" step="0.01" value="0.08"></label>
+          <div class="btn-row"><button class="btn primary" id="pc-f-next">다른 이미지</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">누적 설명 분산</span><span class="v" id="pc-f-ev">—</span></div>
+        <div class="stat"><span class="k">재구성 상대 오차</span><span class="v" id="pc-f-err">—</span></div>
+        <div class="stat"><span class="k">저장 숫자 / 이미지</span><span class="v" id="pc-f-store">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k = 0이면 평균 이미지만 남습니다. k를 하나씩 올리면 원본에 빠르게 가까워지다가, 기본 무늬 수(4개)를 넘어서면 오차가 거의 줄지 않습니다. 그 뒤의 성분은 잡음입니다. ② 잡음을 0으로 하면 고유 패턴 5번부터는 거의 0이 됩니다(무늬가 펼치는 공간이 4차원). ③ 고유 패턴은 원래 무늬와 똑같지 않고 그 무늬들의 직교하는 조합입니다. PCA가 찾는 것은 '부분공간'이지 개별 원인이 아닙니다. 모델: 12×12 합성 이미지 60장 = 기본 무늬 4개(가로 띠, 세로 띠, 원, 대각 경사)의 무작위 결합 + 픽셀마다 독립 잡음. 색: 고유 패턴은 0을 흰색으로 한 파랑–빨강, 이미지는 흑백.</div>
+    </div>
+
+    <div class="callout deep"><strong>심화: 호텔링 T²와 잔차 Q</strong> 공정 모니터링에서는 정상 데이터로 \(\boldsymbol\mu\), \(V_k\), \(\lambda_1, \dots, \lambda_k\)를 만든 뒤, 새 웨이퍼 \(\mathbf{x}\)마다 두 숫자를 계산합니다.
+      <div class="formula">$$T^2 = \sum_{j=1}^{k}\frac{t_j^2}{\lambda_j}, \qquad Q = \Big\lVert \mathbf{x} - \boldsymbol\mu - \sum_{j=1}^{k}t_j\mathbf{v}_j\Big\rVert^2$$
+        <div class="where">\(T^2\)는 주성분 평면 안에서 평소보다 얼마나 멀리 갔는지(각 성분을 자기 분산으로 나눔), \(Q\)(SPE)는 평면 밖으로, 즉 평소에 없던 방향으로 얼마나 벗어났는지를 잰다.</div></div>
+      센서 40개의 관리도 대신 \(T^2\)와 \(Q\) 관리도 두 개만 보면 되고, 경보가 울리면 어느 센서가 그 값에 크게 기여했는지(기여도 그림) 거꾸로 따라갑니다. 관리 한계를 정하는 법은 <a href="../../probability/chapters/spc.html">확률과 통계의 통계적 공정 관리</a> 장을 참고하세요.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="standardization">
+    <h2>단위가 PCA를 바꾼다: 표준화</h2>
+    <div class="problem"><strong>압력을 kPa 대신 Pa로 적었더니 주성분이 바뀌었다</strong>
+      <p>온도(°C)와 압력을 함께 분석합니다. 압력을 kPa로 적으면 두 변수의 분산이 비슷하지만, Pa로 적으면 압력의 분산이 \(1000^2 = 10^6\)배가 됩니다. 물리는 그대로인데 PCA의 PC1은 압력 축에 거의 붙어 버립니다. 무엇이 잘못일까요?</p></div>
+    <p>잘못된 것은 없습니다. PCA는 숫자의 분산을 최대화할 뿐이고, 숫자의 크기는 단위에 따라 달라집니다. 변수 \(j\)를 \(s\)배로 다시 쓰면 \(C\)의 \(j\)행과 \(j\)열이 \(s\)배(대각은 \(s^2\)배)가 되어 고유벡터가 바뀝니다. 변수들의 단위가 서로 다르거나 비교할 근거가 없으면, 각 열을 표준 편차로 나눈 뒤 PCA를 합니다.</p>
+    <div class="callout deep"><strong>정의 15.5 (표준화와 상관 행렬 PCA)</strong> \(D = \operatorname{diag}(C_{11}, \dots, C_{dd})\)라 할 때 표준화된 데이터 \(Z = X_cD^{-1/2}\)(각 열을 그 표준 편차로 나눔)의 공분산은
+      <div class="formula">$$R = D^{-1/2}\,C\,D^{-1/2}, \qquad R_{jk} = \frac{C_{jk}}{\sqrt{C_{jj}C_{kk}}}$$</div>
+      로 <span class="term">상관 행렬</span><span class="en">(correlation matrix)</span>이다. \(R\)의 고유분해를 상관 PCA라 하며, \(R\)의 대각은 모두 1이고 \(\operatorname{tr}R = d\)다. 상관 PCA는 각 변수의 단위(척도) 변경에 영향을 받지 않는다.</div>
+    <div class="sim" id="sim-pc-units">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>압력의 단위를 바꾸면 PC1이 어디로 가나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-units"></canvas><span class="tag-tl">축은 각 변수의 표준 편차 단위로 그렸습니다</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>압력 단위</span><div class="seg" id="pc-u-unit"><button data-value="1">kPa</button><button data-value="0.001">MPa</button><button data-value="1000" class="on">Pa</button></div></div>
+          <label class="ctrl"><span>온도–압력 상관 ρ <output id="pc-u-rho-out"></output></span><input type="range" id="pc-u-rho" min="-0.95" max="0.95" step="0.05" value="0.6"></label>
+          <label class="check"><input type="checkbox" id="pc-u-std"> 표준화(상관 행렬 PCA)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">C (온도, 압력)</span><span class="v" id="pc-u-c">—</span></div>
+        <div class="stat"><span class="k">PC1 적재 (온도, 압력)</span><span class="v" id="pc-u-v">—</span></div>
+        <div class="stat"><span class="k">PC1 설명 비율</span><span class="v" id="pc-u-ev">—</span></div>
+      </div>
+      <div class="pc-msg" id="pc-u-msg">—</div>
+      <div class="sim-note">해볼 것: ① 단위를 Pa로 두고 표준화를 끄면 PC1의 적재가 (0.00, 1.00)에 가깝습니다. "압력만 보는" 축이고, 설명 비율 100%는 숫자 크기 때문에 생긴 착시입니다. ② 표준화를 켜면 단위를 kPa·MPa·Pa로 바꿔도 PC1이 꼼짝하지 않습니다. ③ 표준화한 상태에서 ρ를 0에 가깝게 하면 두 고유값이 모두 1 근처가 되어 PC1이 뚜렷한 방향을 잃습니다. 상관이 없으면 요약할 '공통 움직임'도 없습니다. 모델: 온도 표준 편차 2 °C, 압력 표준 편차 1.5 kPa인 2차원 정규 분포, 표본 200개.</div>
+    </div>
+    <div class="callout"><strong>예제 15.3 (같은 데이터, 두 단위)</strong> 온도 표준 편차 2 °C, 압력 표준 편차 1.5 kPa, 상관 0.6이면 kPa 단위의 공분산은 \(C = \begin{bmatrix}4 & 1.8\\ 1.8 & 2.25\end{bmatrix}\)이다. 고유값은 \(\lambda = \frac{6.25 \pm \sqrt{1.75^2 + 4\cdot1.8^2}}{2} = \frac{6.25 \pm 4.00}{2}\), 즉 5.13과 1.12로 PC1이 82%를 설명한다. Pa 단위로 바꾸면 \(C = \begin{bmatrix}4 & 1800\\ 1800 & 2250000\end{bmatrix}\)이 되어 PC1은 거의 \((0.0008, 1.0000)\), 설명 비율은 99.99% 이상이다. 상관 행렬 \(R = \begin{bmatrix}1 & 0.6\\ 0.6 & 1\end{bmatrix}\)은 두 단위에서 같고, 고유값 1.6과 0.4, PC1 = \((1, 1)/\sqrt2\)로 80%를 설명한다.</div>
+    <div class="callout tip"><strong>언제 표준화하나</strong> 변수들의 단위가 다르면 거의 언제나 표준화합니다. 반대로 모든 변수가 같은 단위이고 그 크기 자체에 뜻이 있으면(예: 같은 이미지의 픽셀 밝기, 같은 센서를 여러 위치에서 잰 값) 표준화하지 않는 편이 낫습니다. 표준화하면 거의 변하지 않는 픽셀의 잡음까지 큰 변수와 똑같은 무게를 얻기 때문입니다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="whitening">
+    <h2>화이트닝: 공분산을 단위 행렬로</h2>
+    <div class="problem"><strong>상관된 잡음을 서로 독립처럼 보이게 만들 수 있나</strong>
+      <p>여러 센서의 잡음이 서로 상관되어 있으면, 거리를 잴 때 "흔한 방향으로의 차이"와 "드문 방향으로의 차이"를 똑같이 취급하는 것이 잘못입니다. 데이터를 변환해서 모든 방향의 분산을 1로, 공분산을 0으로 만들면 그다음부터는 평범한 유클리드 거리가 공정해집니다.</p></div>
+    <div class="callout deep"><strong>정리 15.6 (화이트닝)</strong> \(C = V\Lambda V^{\mathsf T}\)이고 모든 \(\lambda_j > 0\)이면
+      <div class="formula">$$\mathbf{z} = \Lambda^{-1/2}V^{\mathsf T}(\mathbf{x} - \boldsymbol\mu) \quad\Longrightarrow\quad \operatorname{Cov}(\mathbf{z}) = I$$
+        <div class="where">PCA 회전 \(V^{\mathsf T}\) 뒤에 각 성분을 \(\sqrt{\lambda_j}\)로 나누는 것. 한 번 더 \(V\)로 되돌려 돌린 \(W_{\text{ZCA}} = V\Lambda^{-1/2}V^{\mathsf T} = C^{-1/2}\)은 원래 축과 가장 가까운 화이트닝(ZCA)이다.</div></div>
+      <p><b>증명.</b> \(\mathbf{z} = W(\mathbf{x} - \boldsymbol\mu)\)의 공분산은 \(WCW^{\mathsf T}\)다. \(W = \Lambda^{-1/2}V^{\mathsf T}\)를 넣으면 \(\Lambda^{-1/2}V^{\mathsf T}V\Lambda V^{\mathsf T}V\Lambda^{-1/2} = \Lambda^{-1/2}\Lambda\Lambda^{-1/2} = I\). ZCA는 여기에 직교 행렬 \(V\)를 왼쪽에 곱했을 뿐이므로 \(V I V^{\mathsf T} = I\). ∎</p></div>
+    <p>화이트닝한 공간에서의 거리 \(\lVert\mathbf{z}\rVert^2 = (\mathbf{x} - \boldsymbol\mu)^{\mathsf T}C^{-1}(\mathbf{x} - \boldsymbol\mu)\)를 <span class="term">마할라노비스 거리</span><span class="en">(Mahalanobis distance)</span>의 제곱이라 합니다. 앞 절의 \(T^2\)는 \(k\)개 성분만 남긴 마할라노비스 거리입니다. 점구름의 타원을 원으로 펴 주는 이 변환은 신호 처리의 잡음 백색화, 머신러닝의 입력 전처리, 독립 성분 분석(ICA)의 첫 단계로 쓰입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 200" role="img" aria-label="화이트닝의 세 단계">
+        <defs><marker id="pc-ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <g transform="translate(20,20)"><rect width="160" height="150" rx="8" class="f-surface"/>
+          <ellipse cx="80" cy="75" rx="62" ry="22" transform="rotate(-30 80 75)" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="80" y1="75" x2="134" y2="44" style="stroke:var(--ok);stroke-width:2.5"/><line x1="80" y1="75" x2="91" y2="94" style="stroke:var(--ok);stroke-width:2.5"/>
+          <text x="80" y="140" text-anchor="middle" class="t-dim">x − μ (공분산 C)</text></g>
+        <line x1="188" y1="95" x2="228" y2="95" class="s-acc" marker-end="url(#pc-ah2)"/><text x="208" y="85" text-anchor="middle" class="t-mono">Vᵀ</text>
+        <g transform="translate(235,20)"><rect width="160" height="150" rx="8" class="f-surface"/>
+          <ellipse cx="80" cy="75" rx="62" ry="22" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="80" y1="75" x2="142" y2="75" style="stroke:var(--ok);stroke-width:2.5"/><line x1="80" y1="75" x2="80" y2="97" style="stroke:var(--ok);stroke-width:2.5"/>
+          <text x="80" y="140" text-anchor="middle" class="t-dim">주성분 점수 (공분산 Λ)</text></g>
+        <line x1="403" y1="95" x2="443" y2="95" class="s-acc" marker-end="url(#pc-ah2)"/><text x="423" y="85" text-anchor="middle" class="t-mono">Λ^−½</text>
+        <g transform="translate(450,20)"><rect width="160" height="150" rx="8" class="f-surface"/>
+          <circle cx="80" cy="75" r="38" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+          <line x1="80" y1="75" x2="118" y2="75" style="stroke:var(--ok);stroke-width:2.5"/><line x1="80" y1="75" x2="80" y2="37" style="stroke:var(--ok);stroke-width:2.5"/>
+          <text x="80" y="140" text-anchor="middle" class="t-dim">화이트닝 (공분산 I)</text></g>
+        <text x="625" y="70" class="t-dim">한 번 더 V로</text><text x="625" y="90" class="t-dim">돌리면 ZCA</text><text x="625" y="110" class="t-mono">C^−½(x − μ)</text>
+      </svg>
+      <figcaption><b>그림 15-4.</b> 화이트닝은 두 단계다. 주성분 방향이 좌표축과 겹치도록 돌리고(\(V^{\mathsf T}\)), 각 축을 그 표준 편차 \(\sqrt{\lambda_j}\)로 나눈다(\(\Lambda^{-1/2}\)). 기울어진 타원이 단위 원이 된다. 원은 어떻게 돌려도 원이므로 화이트닝 변환은 회전 하나만큼 자유가 있고, 원래 축에 가장 가까운 선택이 ZCA다.</figcaption>
+    </figure>
+    <div class="sim" id="sim-pc-whiten">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>타원을 원으로: 화이트닝 한 단계씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-whiten"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>단계</span><div class="seg" id="pc-w-step"><button data-value="0" class="on">원 데이터</button><button data-value="1">중심화</button><button data-value="2">회전 Vᵀ</button><button data-value="3">크기 Λ^−½</button><button data-value="4">ZCA</button></div></div>
+          <label class="ctrl"><span>상관 ρ <output id="pc-w-rho-out"></output></span><input type="range" id="pc-w-rho" min="-0.95" max="0.95" step="0.05" value="0.8"></label>
+          <div class="btn-row"><button class="btn primary" id="pc-w-play">▶ 처음부터 끝까지</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지금 점들의 공분산</span><span class="v" id="pc-w-cov">—</span></div>
+        <div class="stat"><span class="k">노란 두 점의 유클리드 거리</span><span class="v" id="pc-w-d">—</span></div>
+      </div>
+      <div class="pc-msg" id="pc-w-msg">—</div>
+      <div class="sim-note">해볼 것: ① 단계를 차례로 눌러 공분산 표가 어떻게 바뀌는지 보세요. 회전 뒤에는 비대각이 0, 크기 맞춤 뒤에는 단위 행렬이 됩니다. ② 노란 점 두 개는 원래 공간에서 평균으로부터 비슷한 거리에 있지만, 하나는 흔한 방향, 하나는 드문 방향에 있습니다. 화이트닝 뒤의 거리(마할라노비스 거리)는 드문 쪽이 훨씬 멉니다. ③ ρ를 ±0.95로 하면 짧은 축이 아주 짧아 Λ^−½가 그 방향을 크게 늘립니다. 작은 고유값의 잡음도 함께 커지므로, 실무에서는 λ에 작은 값 ε을 더해 나눕니다. 모델: 2차원 정규 분포 표본 150개, 평균 (2, 1).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="limits">
+    <h2>PCA가 놓치는 것</h2>
+    <div class="problem"><strong>분산이 크면 중요한가</strong>
+      <p>PCA는 단 하나의 기준, 분산으로 방향을 고릅니다. 그런데 데이터의 중요한 구조가 분산이 작은 방향에 있거나, 곧은 축으로 표현할 수 없는 곡선이거나, 점 하나의 이상값이 분산을 독차지한다면 어떻게 될까요?</p></div>
+    <p>세 가지 대표적인 함정이 있습니다.</p>
+    <ul>
+      <li><b>비선형 구조.</b> 점들이 곡선(반달, 나선) 위에 있으면 본질적으로 1차원이어도 직선 하나로는 담기지 않습니다. PCA는 그 곡선을 감싸는 타원의 축을 줄 뿐이고, 곡선을 따라가는 좌표를 주지 않습니다. 커널 PCA, 오토인코더, 다양체 학습이 이 문제를 다룹니다.</li>
+      <li><b>이상값.</b> 분산은 거리의 <b>제곱</b>을 평균하므로 멀리 떨어진 점 하나가 PC1을 자기 쪽으로 끌어당깁니다. 이상값을 먼저 찾아 빼거나, 제곱 대신 덜 민감한 기준을 쓰는 강건 PCA를 씁니다.</li>
+      <li><b>분산 ≠ 구별력.</b> 두 무리를 가르는 방향이 무리 안쪽의 흩어짐보다 분산이 작으면 PC1은 무리를 가르지 않습니다. 라벨을 알면 무리 사이 차이를 무리 안 흩어짐으로 나눈 비를 최대화하는 선형 판별 분석(LDA)이 맞는 도구입니다.</li>
+    </ul>
+    <div class="sim" id="sim-pc-limits">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>PCA가 속는 세 가지 데이터</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pc-cv-limits"></canvas><span class="tag-tl" id="pc-l-tag">빨간 이상값을 끌어 보세요</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>데이터</span><div class="seg" id="pc-l-kind"><button data-value="outlier" class="on">이상값</button><button data-value="arc">곡선</button><button data-value="groups">두 무리</button></div></div>
+          <label class="check"><input type="checkbox" id="pc-l-proj"> PC1 위로 눌러 재구성한 점 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">PC1 설명 비율</span><span class="v" id="pc-l-ev">—</span></div>
+        <div class="stat"><span class="k">PC1 방향</span><span class="v" id="pc-l-dir">—</span></div>
+        <div class="stat"><span class="k">비교</span><span class="v" id="pc-l-cmp">—</span></div>
+      </div>
+      <div class="pc-legend"><span><i style="background:var(--accent)"></i>PC1 (전체 데이터)</span><span><i style="background:var(--ok)"></i>비교 축</span></div>
+      <div class="pc-msg" id="pc-l-msg">—</div>
+      <div class="sim-note">해볼 것: ① '이상값'에서 빨간 점을 구름에서 멀리 끌고 가면 PC1(보라)이 그 점 쪽으로 돌아갑니다. 초록은 이상값을 뺀 PC1입니다. 점 하나가 150개를 이깁니다. ② '곡선'에서 재구성 점을 켜면 반달이 직선 하나로 납작해지면서 양 끝과 가운데가 같은 자리로 겹칩니다. ③ '두 무리'에서 PC1은 무리를 가르지 않는 방향입니다. 초록은 두 무리의 평균 차를 무리 안 공분산으로 보정한 판별 방향(LDA)입니다. 모델: 시드 고정 2차원 합성 데이터.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"공분산의 고유벡터로 좌표를 바꾸고, 분산이 작은 축을 버린다"는 생각은 측정이 많은 거의 모든 분야에 있습니다.</p>
+    <div class="uses">
+      <a href="../../probability/chapters/spc.html"><small>확률과 통계</small>다변량 공정 관리<br><span>정상 데이터의 PCA로 T²·Q 관리도를 만들어 센서 수십 개를 두 화면으로 감시한다.</span></a>
+      <a href="https://semi.euiyun.com/yield/"><small>YIELDBOOK</small>웨이퍼 맵 패턴<br><span>다이별 측정값 지도를 벡터로 보고 주성분으로 가장자리·중심·줄무늬 같은 공통 패턴을 뽑는다.</span></a>
+      <a href="svd.html"><small>LINEARBOOK 14장</small>특이값 분해<br><span>PCA는 중심화한 데이터 행렬의 SVD. 저랭크 근사와 에커트–영 정리가 차원 축소의 근거다.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>회귀와 다중공선성<br><span>서로 강하게 상관된 설명 변수를 주성분 점수로 바꿔 회귀하면(주성분 회귀) 계수가 안정된다.</span></a>
+      <a href="https://semi.euiyun.com/sensor/"><small>SENSORBOOK</small>색과 스펙트럼 압축<br><span>수십 파장의 반사 스펙트럼도 주성분 몇 개로 거의 다 표현된다. 다분광 측정의 데이터 압축.</span></a>
+      <a href="../../foundations/chapters/linalg.html"><small>MATHBOOK</small>추천 시스템과 저랭크<br><span>사용자 × 상품 평점 표를 계수가 낮은 행렬 두 개의 곱으로 근사한다. 2006–2009년 넷플릭스 프라이즈 경연에서 널리 알려진 행렬 분해 방법이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>데이터 행렬은 <b>행 = 표본, 열 = 변수</b>. PCA는 언제나 평균을 뺀 \(X_c\)에서 시작한다. 중심화하지 않으면 흩어짐 대신 위치를 보게 된다.</li>
+      <li>공분산 행렬 \(C = \frac{1}{n-1}X_c^{\mathsf T}X_c\)는 대칭·양의 준정부호이고, 어떤 단위 방향 \(\mathbf{u}\)의 분산도 \(\mathbf{u}^{\mathsf T}C\mathbf{u}\)로 나온다.</li>
+      <li><b>주성분 = \(C\)의 고유벡터</b>. 레일리 몫 \(\mathbf{u}^{\mathsf T}C\mathbf{u}/\mathbf{u}^{\mathsf T}\mathbf{u}\)의 최댓값은 \(\lambda_1\)이고 \(\mathbf{v}_1\)에서 얻는다. 주성분 좌표에서 공분산은 대각 행렬 \(\Lambda\)다.</li>
+      <li><b>총분산 = 사영 분산 + 재구성 오차</b>(피타고라스). 그래서 분산 최대화(호텔링)와 오차 최소화(피어슨)는 같은 문제이고, \(k\)개 성분의 최소 오차는 \(\lambda_{k+1} + \cdots + \lambda_d\)다.</li>
+      <li>\(X_c = U\Sigma V^{\mathsf T}\)이면 주성분은 \(V\)의 열, \(\lambda_j = \sigma_j^2/(n-1)\), 점수는 \(U\Sigma\). 실제 계산은 조건수를 제곱하지 않는 SVD로 한다.</li>
+      <li>설명 분산 비율과 스크리 그림으로 \(k\)를 고른다. 잡음이 크면 누적 비율 기준은 \(k\)를 부풀린다.</li>
+      <li>단위가 다른 변수는 <b>표준화</b>(상관 행렬 PCA)한다. 화이트닝 \(\Lambda^{-1/2}V^{\mathsf T}(\mathbf{x} - \boldsymbol\mu)\)은 공분산을 \(I\)로 만들고, 그 공간의 거리가 마할라노비스 거리다.</li>
+      <li>PCA는 선형이고 분산만 본다. 곡선 구조, 이상값, "분산은 작지만 중요한 방향"을 놓칠 수 있다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. PCA 전에 각 열의 평균을 빼는 가장 중요한 이유는?</p><div class="opts">
+        <button class="opt">계산이 빨라지기 때문에</button>
+        <button class="opt" data-correct>원점을 지나는 축이 데이터의 위치가 아니라 흩어짐을 설명하게 하려고</button>
+        <button class="opt">모든 변수의 분산을 1로 만들려고</button>
+        <button class="opt">공분산 행렬을 대칭으로 만들려고</button>
+      </div><div class="quiz-exp">중심화하지 않으면 "점들에 가장 가까운 원점 통과 직선"이 원점에서 평균을 향하는 방향이 되어 흩어짐과 무관한 축이 나온다. 분산을 1로 만드는 것은 표준화이고, \(X^{\mathsf T}X\)는 중심화와 상관없이 언제나 대칭이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(C = \begin{bmatrix}5 & 0\\ 0 & 2\end{bmatrix}\)일 때 단위 벡터 \(\mathbf{u} = (0.6, 0.8)\) 방향의 사영 분산은?</p><div class="opts">
+        <button class="opt">3.5</button>
+        <button class="opt" data-correct>3.08</button>
+        <button class="opt">5</button>
+        <button class="opt">4.4</button>
+      </div><div class="quiz-exp">\(\mathbf{u}^{\mathsf T}C\mathbf{u} = 5(0.6)^2 + 2(0.8)^2 = 1.8 + 1.28 = 3.08\). 고유값들의 가중 평균(가중치 0.36, 0.64)이므로 2와 5 사이에 있다. 최댓값 5는 \(\mathbf{u} = (1, 0)\)에서 나온다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 3차원 데이터의 공분산 고유값이 6, 3, 1이다. 2차원 평면으로 요약할 때 최소 평균 제곱 재구성 오차(n − 1로 나눈 값)와 설명 분산 비율은?</p><div class="opts">
+        <button class="opt">오차 4, 비율 60%</button>
+        <button class="opt">오차 1, 비율 60%</button>
+        <button class="opt" data-correct>오차 1, 비율 90%</button>
+        <button class="opt">오차 3, 비율 90%</button>
+      </div><div class="quiz-exp">정리 15.4의 \(k\)차원 판: 남는 오차는 버린 고유값의 합 1, 설명 비율은 \((6 + 3)/10 = 90\%\). 사영 분산 9와 오차 1의 합은 총분산 10이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 중심화한 \(X_c\)(\(n = 101\))의 가장 큰 특이값이 \(\sigma_1 = 20\)이다. PC1 점수의 분산은?</p><div class="opts">
+        <button class="opt">20</button>
+        <button class="opt">0.2</button>
+        <button class="opt" data-correct>4</button>
+        <button class="opt">400</button>
+      </div><div class="quiz-exp">\(\lambda_1 = \sigma_1^2/(n-1) = 400/100 = 4\). 400은 \(X_c^{\mathsf T}X_c\)의 고유값이고, 공분산은 그것을 \(n-1\)로 나눈 것이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 온도(°C)와 압력(Pa)을 그대로 넣고 공분산 PCA를 했더니 PC1이 99.99%를 설명했다. 가장 알맞은 해석은?</p><div class="opts">
+        <button class="opt">두 변수가 거의 완벽하게 상관되어 있다</button>
+        <button class="opt">온도 변수는 쓸모가 없다</button>
+        <button class="opt" data-correct>압력의 숫자 크기(단위) 때문에 PC1이 압력 축에 붙은 것이니 표준화해서 다시 봐야 한다</button>
+        <button class="opt">데이터를 중심화하지 않았다</button>
+      </div><div class="quiz-exp">Pa 단위의 압력은 분산이 매우 커서 공분산 행렬을 지배한다. 이 높은 설명 비율은 단위가 만든 착시다. 상관 행렬 PCA(표준화)는 단위 변경에 영향을 받지 않는다(정의 15.5).</div></div>
+
+      <div class="quiz-q"><p>Q6. 화이트닝 \(\mathbf{z} = \Lambda^{-1/2}V^{\mathsf T}(\mathbf{x} - \boldsymbol\mu)\) 뒤의 공분산은? 그리고 \(\lVert\mathbf{z}\rVert^2\)는?</p><div class="opts">
+        <button class="opt">\(\Lambda\); 유클리드 거리의 제곱</button>
+        <button class="opt" data-correct>\(I\); \((\mathbf{x} - \boldsymbol\mu)^{\mathsf T}C^{-1}(\mathbf{x} - \boldsymbol\mu)\), 마할라노비스 거리의 제곱</button>
+        <button class="opt">\(C^{-1}\); 마할라노비스 거리의 제곱</button>
+        <button class="opt">\(I\); 유클리드 거리의 제곱</button>
+      </div><div class="quiz-exp">공분산은 \(\Lambda^{-1/2}V^{\mathsf T}CV\Lambda^{-1/2} = I\). 또 \(\mathbf{z}^{\mathsf T}\mathbf{z} = (\mathbf{x} - \boldsymbol\mu)^{\mathsf T}V\Lambda^{-1}V^{\mathsf T}(\mathbf{x} - \boldsymbol\mu)\)이고 \(V\Lambda^{-1}V^{\mathsf T} = C^{-1}\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 다음 중 PCA의 PC1이 엉뚱한 방향을 가리키기 쉬운 경우가 <b>아닌</b> 것은?</p><div class="opts">
+        <button class="opt">구름에서 멀리 떨어진 이상값이 하나 있다</button>
+        <button class="opt">두 무리를 가르는 방향의 분산이 무리 안 흩어짐보다 작다</button>
+        <button class="opt" data-correct>변수들이 같은 단위이고 서로 강하게 선형 상관되어 있다</button>
+        <button class="opt">점들이 반달 모양의 곡선 위에 있다</button>
+      </div><div class="quiz-exp">같은 단위의 강한 선형 상관은 PCA가 가장 잘 요약하는 경우다(PC1 하나가 대부분을 설명). 나머지는 이상값(제곱 평균에 민감), 분산 ≠ 구별력, 비선형 구조라는 PCA의 대표적 한계다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 이미지 12×12 = 144픽셀 60장에서 성분 4개로 압축한다. 평균과 적재까지 포함해 저장할 숫자는 모두 몇 개인가?</p><div class="opts">
+        <button class="opt">60 × 4 = 240</button>
+        <button class="opt">144 × 4 = 576</button>
+        <button class="opt" data-correct>60 × 4 + 144 × 4 + 144 = 960</button>
+        <button class="opt">60 × 144 = 8,640</button>
+      </div><div class="quiz-exp">점수 \(60 \times 4\), 적재(고유 패턴) \(144 \times 4\), 평균 이미지 \(144\)를 더하면 960개로 원본 8,640개의 약 11%다. 이미지 수가 많아질수록 적재와 평균의 몫은 작아지고 압축률은 \(k/d\)에 가까워진다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 공통 도우미 (이 장 전용) */
+const PC = {
+  fix(v, d = 2) { const r = Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v; return r.toFixed(d).replace("-", "−"); },
+  gauss(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); },
+  mean(X) { const d = X[0].length, m = new Array(d).fill(0); X.forEach((x) => x.forEach((v, j) => (m[j] += v))); return m.map((v) => v / X.length); },
+  /** 표본 공분산(n − 1). c를 주면 그 점을 중심으로(평균을 빼지 않는 경우용) */
+  cov(X, c) {
+    const n = X.length, d = X[0].length; c = c || PC.mean(X);
+    const C = Array.from({ length: d }, () => new Array(d).fill(0));
+    X.forEach((x) => { for (let i = 0; i < d; i++) { const a = x[i] - c[i]; for (let j = i; j < d; j++) C[i][j] += a * (x[j] - c[j]); } });
+    for (let i = 0; i < d; i++) for (let j = i; j < d; j++) { C[i][j] /= n - 1; C[j][i] = C[i][j]; }
+    return C;
+  },
+  /** 대칭 고유분해(내림차순). 고유벡터 부호는 성분 합이 양수가 되도록 */
+  eig(C) {
+    const e = MB.mat.eigSym(C);
+    e.vectors = e.vectors.map((v) => { const s = v.reduce((a, b) => a + b, 0); return s < 0 ? v.map((x) => -x) : v; });
+    e.values = e.values.map((x) => Math.max(0, x));
+    return e;
+  },
+  dot: (a, b) => a.reduce((s, x, i) => s + x * b[i], 0),
+  mat(M, d = 2) { return `<span class="pc-out" style="grid-template-columns:repeat(${M[0].length},auto)">${M.flat().map((v) => `<span>${PC.fix(v, d)}</span>`).join("")}</span>`; },
+  /** 2차원 정규 구름: 주축 표준 편차 s1, s2, 기울기 th, 평균 m */
+  cloud(seed, n, s1, s2, th, m = [0, 0]) {
+    const r = MB.rng(seed), c = Math.cos(th), s = Math.sin(th), out = [];
+    for (let i = 0; i < n; i++) { const a = s1 * PC.gauss(r), b = s2 * PC.gauss(r); out.push([m[0] + c * a - s * b, m[1] + s * a + c * b]); }
+    return out;
+  },
+  /** 상관 ρ인 2차원 구름 (표준 편차 sx, sy) */
+  corr(seed, n, sx, sy, rho, m = [0, 0]) {
+    const r = MB.rng(seed), out = [], k = Math.sqrt(Math.max(0, 1 - rho * rho));
+    for (let i = 0; i < n; i++) { const a = PC.gauss(r), b = PC.gauss(r); out.push([m[0] + sx * a, m[1] + sy * (rho * a + k * b)]); }
+    return out;
+  },
+  ellipse(P, mu, e, k, o) {
+    const [l1, l2] = e.values, [v1, v2] = e.vectors;
+    P.param((t) => [mu[0] + k * (Math.sqrt(l1) * Math.cos(t) * v1[0] + Math.sqrt(l2) * Math.sin(t) * v2[0]), mu[1] + k * (Math.sqrt(l1) * Math.cos(t) * v1[1] + Math.sqrt(l2) * Math.sin(t) * v2[1])], 0, 2 * Math.PI, o);
+  },
+  dots(P, pts, color, r = 3, alpha = 0.75) {
+    const ctx = P.ctx; ctx.save(); ctx.fillStyle = color; ctx.globalAlpha = alpha;
+    pts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), r, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+  },
+  /** 센서 데이터: 숨은 원인 r개(표준 편차 FS) + 상태별 평균 이동 + 잡음 */
+  FS: [3, 2, 1.4, 1],
+  loadings(d = 10, kmax = 4) {
+    const r = MB.rng(41), W = [];
+    for (let i = 0; i < d; i++) { const row = []; for (let j = 0; j < kmax; j++) row.push(PC.gauss(r) * 0.5); W.push(row); }
+    // 열을 정규화해서 원인마다 같은 무게
+    for (let j = 0; j < kmax; j++) { let s = 0; for (let i = 0; i < d; i++) s += W[i][j] ** 2; s = Math.sqrt(s); for (let i = 0; i < d; i++) W[i][j] /= s; }
+    return W;
+  },
+  sensors(seed, n, rr, noise, sep = 0) {
+    const W = PC.loadings(), d = W.length, r = MB.rng(seed), X = [], lab = [];
+    const shift = [[0, 0, 0, 0], [sep * 1.6, sep * 0.9, 0, 0], [-sep * 0.4, sep * 2.0, 0, 0]];
+    for (let i = 0; i < n; i++) {
+      const g = sep > 0 ? i % 3 : 0, f = PC.FS.map((s, j) => (j < rr ? s * PC.gauss(r) * (sep > 0 ? 0.55 : 1) + shift[g][j] : 0));
+      const x = []; for (let a = 0; a < d; a++) { let v = 0; for (let j = 0; j < 4; j++) v += W[a][j] * f[j]; x.push(v + noise * PC.gauss(r)); }
+      X.push(x); lab.push(g);
+    }
+    return { X, lab };
+  },
+};
+
+/* ================================================================ 1. 축을 돌려 분산이 가장 큰 방향 찾기 */
+(function () {
+  let seed = 5, X = [];
+  const gen = () => { const th = (tilt() * Math.PI) / 180, s2 = 0.75, s1 = s2 * ratio(); X = PC.cloud(seed, 160, s1, s2, th, [1.6, 1.1]); };
+  const tilt = MB.range("pc-a-tilt", (v) => v + "°", () => { gen(); pl.redraw(); });
+  const ratio = MB.range("pc-a-ratio", (v) => "×" + v.toFixed(1), () => { gen(); pl.redraw(); });
+  const resid = MB.check("pc-a-resid", () => pl.redraw());
+  const ell = MB.check("pc-a-ell", () => pl.redraw());
+  const raw = MB.check("pc-a-raw", () => pl.redraw());
+  const msg = document.getElementById("pc-a-msg");
+  gen();
+  let best = null;
+  const pts = [{ x: 2.2, y: -1.2, label: "u", snap: 0, constrain(p) { const n = Math.hypot(p.x, p.y) || 1; p.x = (2.6 * p.x) / n; p.y = (2.6 * p.y) / n; } }];
+  pts[0].constrain(pts[0]);
+  const pl = MB.plane("#pc-cv-axis", {
+    x: [-5, 5], aspect: 0.8, maxHeight: 520, minHeight: 300, points: pts,
+    draw(P, api) {
+      const C0 = P.P, p = api.points[0]; p.color = C0.accent;
+      const mu = raw() ? [0, 0] : PC.mean(X), C = PC.cov(X, mu), e = PC.eig(C);
+      best = e.vectors[0];
+      const n = Math.hypot(p.x, p.y) || 1, u = [p.x / n, p.y / n];
+      // 점 u는 방향만 정한다. 축은 평균(또는 원점)을 지난다.
+      if (ell()) {
+        PC.ellipse(P, mu, e, 2, { color: C0.ok, width: 1.5, alpha: 0.8 });
+        e.vectors.forEach((v) => P.line(mu[0] - 9 * v[0], mu[1] - 9 * v[1], mu[0] + 9 * v[0], mu[1] + 9 * v[1], { color: C0.ok, width: 1.5, dash: [6, 5], alpha: 0.8 }));
+      }
+      P.line(mu[0] - 12 * u[0], mu[1] - 12 * u[1], mu[0] + 12 * u[0], mu[1] + 12 * u[1], { color: C0.accent, width: 2.5 });
+      let sv = 0, sr = 0, st = 0;
+      const ctx = P.ctx;
+      X.forEach(([x, y]) => {
+        const a = x - mu[0], b = y - mu[1], t = a * u[0] + b * u[1], fx = mu[0] + t * u[0], fy = mu[1] + t * u[1];
+        sv += t * t; sr += (a - t * u[0]) ** 2 + (b - t * u[1]) ** 2; st += a * a + b * b;
+        if (resid()) { ctx.save(); ctx.strokeStyle = C0.bad; ctx.globalAlpha = 0.35; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(P.X(x), P.Y(y)); ctx.lineTo(P.X(fx), P.Y(fy)); ctx.stroke(); ctx.restore(); }
+      });
+      PC.dots(P, X, C0.text, 2.6, 0.6);
+      PC.dots(P, X.map(([x, y]) => { const t = (x - mu[0]) * u[0] + (y - mu[1]) * u[1]; return [mu[0] + t * u[0], mu[1] + t * u[1]]; }), C0.warn, 2.2, 0.8);
+      P.dot(mu[0], mu[1], { r: 5, color: C0.accent2, label: raw() ? "원점" : "μ" });
+      P.circle && P.circle(0, 0, 2.6, { color: C0.accent, width: 1, dash: [2, 4], alpha: 0.5 });
+      const k = X.length - 1, ang = (Math.acos(Math.min(1, Math.abs(u[0] * best[0] + u[1] * best[1]))) * 180) / Math.PI;
+      MB.stat("pc-a-var", PC.fix(sv / k));
+      MB.stat("pc-a-res", PC.fix(sr / k));
+      MB.stat("pc-a-tot", PC.fix(st / k));
+      MB.stat("pc-a-ang", ang.toFixed(1) + "°");
+      msg.className = "pc-msg" + (ang < 2 ? " ok" : "");
+      msg.textContent = raw()
+        ? `평균을 빼지 않았으므로 축은 원점을 지납니다. 최적 축은 점구름의 긴 방향이 아니라 평균(${PC.fix(PC.mean(X)[0], 1)}, ${PC.fix(PC.mean(X)[1], 1)}) 쪽으로 기웁니다. λ₁ = ${PC.fix(e.values[0])}, λ₂ = ${PC.fix(e.values[1])}`
+        : ang < 2 ? `PC1에 맞췄습니다. 사영 분산이 최대 λ₁ = ${PC.fix(e.values[0])}, 남은 오차는 λ₂ = ${PC.fix(e.values[1])}입니다. PC1이 ${(100 * e.values[0] / (e.values[0] + e.values[1])).toFixed(1)}%를 설명합니다.`
+        : `λ₁ = ${PC.fix(e.values[0])}, λ₂ = ${PC.fix(e.values[1])}. 지금 축의 사영 분산은 그 사이 어딘가에 있습니다.`;
+    },
+  });
+  document.getElementById("pc-a-fit").addEventListener("click", () => { pts[0].x = 2.6 * best[0]; pts[0].y = 2.6 * best[1]; pl.redraw(); });
+  document.getElementById("pc-a-new").addEventListener("click", () => { seed++; gen(); pl.redraw(); });
+})();
+
+/* ================================================================ 2. 스크리 그림 */
+(function () {
+  let seed = 11;
+  const rr = MB.range("pc-s-r", (v) => v + "개", () => cv.redraw());
+  const noise = MB.range("pc-s-noise", (v) => v.toFixed(2), () => cv.redraw());
+  const th = MB.range("pc-s-th", (v) => v + "%", () => cv.redraw());
+  const nn = MB.range("pc-s-n", (v) => v + "개", () => cv.redraw());
+  const cv = MB.canvas("#pc-cv-scree", (ctx, w, h) => {
+    const P = MB.palette(), { X } = PC.sensors(seed, nn(), rr(), noise()), e = PC.eig(PC.cov(X)), lam = e.values, tot = lam.reduce((a, b) => a + b, 0);
+    const ratio = lam.map((l) => l / tot), cum = []; ratio.reduce((s, x, i) => (cum[i] = s + x), 0);
+    const ch = MB.chart(ctx, { x: 52, y: 16, w: w - 52 - 52, h: h - 16 - 46 }, {
+      x: [0.4, 10.6], y: [0, 1], xTicks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], yTicks: [0, 0.25, 0.5, 0.75, 1], yFmt: (v) => Math.round(v * 100) + "%",
+      xLabel: "주성분 번호 j", yLabel: "설명 분산 비율",
+      series: [{ data: cum.map((c, i) => [i + 1, c]), color: P.accent2, width: 2.2 }],
+      hlines: [],
+    });
+    const k = cum.findIndex((c) => c >= th() / 100) + 1;
+    ctx.save();
+    ratio.forEach((r, i) => {
+      const x0 = ch.X(i + 1 - 0.32), x1 = ch.X(i + 1 + 0.32);
+      ctx.fillStyle = i < k ? P.accent : P.faint; ctx.globalAlpha = i < k ? 0.85 : 0.6;
+      ctx.fillRect(x0, ch.Y(r), x1 - x0, ch.Y(0) - ch.Y(r));
+    });
+    ctx.globalAlpha = 1; ctx.setLineDash([5, 4]); ctx.strokeStyle = P.warn; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(ch.X(0.4), ch.Y(th() / 100)); ctx.lineTo(ch.X(10.6), ch.Y(th() / 100)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = P.accent2; cum.forEach((c, i) => { ctx.beginPath(); ctx.arc(ch.X(i + 1), ch.Y(c), 3.2, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = P.warn; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+    ctx.fillText(`누적 ${th()}%`, ch.X(10.6), ch.Y(th() / 100) - 3);
+    ctx.fillStyle = P.accent2; ctx.textAlign = "left"; ctx.fillText("누적", ch.X(1) + 6, ch.Y(cum[0]) - 4);
+    ctx.restore();
+    // 팔꿈치: 연속 비율의 비가 가장 큰 곳 (λj/λj+1)
+    let el = 1, bestR = 0;
+    for (let i = 0; i < 6; i++) { const q = lam[i] / Math.max(lam[i + 1], 1e-9); if (q > bestR) { bestR = q; el = i + 1; } }
+    MB.stat("pc-s-lam", lam.slice(0, 4).map((l) => PC.fix(l)).join(", "));
+    MB.stat("pc-s-k", `k = ${k} <span style="color:var(--text-dim);font-size:12px">(숨은 원인 ${rr()}개)</span>`);
+    MB.stat("pc-s-elbow", `k = ${el} <span style="color:var(--text-dim);font-size:12px">(λ${el}/λ${el + 1} = ${bestR > 999 ? "≫100" : bestR.toFixed(1)})</span>`);
+  }, { aspect: 0.62, minHeight: 260, maxHeight: 440 });
+  document.getElementById("pc-s-new").addEventListener("click", () => { seed++; cv.redraw(); });
+})();
+
+/* ================================================================ 3. 센서 두 개 vs 주성분 점수 두 개 */
+(function () {
+  let seed = 21;
+  const view = MB.seg("pc-c-view", () => cv.redraw());
+  const sep = MB.range("pc-c-sep", (v) => v.toFixed(1), () => cv.redraw());
+  const noise = MB.range("pc-c-noise", (v) => v.toFixed(2), () => cv.redraw());
+  const load = MB.check("pc-c-load", () => cv.redraw());
+  const cv = MB.canvas("#pc-cv-scores", (ctx, w, h) => {
+    const P = MB.palette(), { X, lab } = PC.sensors(seed, 300, 2, noise(), sep()), mu = PC.mean(X), C = PC.cov(X, mu), e = PC.eig(C);
+    const tot = e.values.reduce((a, b) => a + b, 0), v1 = e.vectors[0], v2 = e.vectors[1];
+    const T = X.map((x) => { const c = x.map((v, j) => v - mu[j]); return [PC.dot(c, v1), PC.dot(c, v2)]; });
+    const pc = view() === "pc", Y = pc ? T : X.map((x) => [x[0] - mu[0], x[1] - mu[1]]);
+    let lim = 0; Y.forEach(([a, b]) => (lim = Math.max(lim, Math.abs(a), Math.abs(b)))); lim = lim * 1.1 || 1;
+    const box = { x: 46, y: 12, w: w - 58, h: h - 52 }, ax = (lim * box.w) / box.h;
+    const ch = MB.chart(ctx, box, { x: [-ax, ax], y: [-lim, lim], xLabel: pc ? "PC1 점수" : "센서 1 (중심화)", yLabel: pc ? "PC2 점수" : "센서 2 (중심화)" });
+    const cols = [P.accent, P.warn, P.bad];
+    ctx.save();
+    Y.forEach(([a, b], i) => { ctx.fillStyle = cols[lab[i]]; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(ch.X(a), ch.Y(b), 3, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+    if (load() && pc) {
+      let m = 0; for (let a = 0; a < 10; a++) m = Math.max(m, Math.hypot(v1[a], v2[a]));
+      const s = (0.8 * lim) / (m || 1);
+      ctx.save(); ctx.strokeStyle = P.text; ctx.fillStyle = P.text; ctx.lineWidth = 1.5; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono");
+      for (let a = 0; a < 10; a++) {
+        const x = ch.X(s * v1[a]), y = ch.Y(s * v2[a]);
+        ctx.beginPath(); ctx.moveTo(ch.X(0), ch.Y(0)); ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.fillText("s" + (a + 1), x + 4, y - 4);
+      }
+      ctx.restore();
+    }
+    // 재구성 오차(2성분)
+    let err = 0, all = 0;
+    X.forEach((x, i) => { const c = x.map((v, j) => v - mu[j]); const [t1, t2] = T[i]; c.forEach((v, j) => { const r = v - t1 * v1[j] - t2 * v2[j]; err += r * r; all += v * v; }); });
+    MB.stat("pc-c-ev", ((100 * (e.values[0] + e.values[1])) / tot).toFixed(1) + "%");
+    MB.stat("pc-c-store", `${300 * 2 + 10 * 2 + 10} <span style="color:var(--text-dim);font-size:12px">/ 원본 ${300 * 10}</span>`);
+    MB.stat("pc-c-err", (100 * Math.sqrt(err / all)).toFixed(1) + "%");
+  }, { aspect: 0.78, minHeight: 280, maxHeight: 480 });
+  document.getElementById("pc-c-new").addEventListener("click", () => { seed++; cv.redraw(); });
+})();
+
+/* ================================================================ 4. 고유 패턴 */
+(function () {
+  const N = 12, D = N * N, M = 60;
+  const base = [
+    (x, y) => Math.exp(-((y - 3.5) ** 2) / 3),                                   // 가로 띠
+    (x, y) => Math.exp(-((x - 8) ** 2) / 2.5),                                   // 세로 띠
+    (x, y) => Math.exp(-((Math.hypot(x - 5.5, y - 7) - 3) ** 2) / 1.2),          // 원
+    (x, y) => (x + y) / (2 * (N - 1)) - 0.5,                                     // 대각 경사
+  ];
+  let data = null, which = 0;
+  const k = MB.range("pc-f-k", (v) => v + "개", () => cv.redraw());
+  const noise = MB.range("pc-f-noise", (v) => v.toFixed(2), () => { build(); cv.redraw(); });
+  function build() {
+    const r = MB.rng(77), X = [];
+    for (let i = 0; i < M; i++) {
+      const c = [0.6 * PC.gauss(r), 0.5 * PC.gauss(r), 0.45 * PC.gauss(r), 0.4 * PC.gauss(r)];
+      const img = new Array(D);
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let v = 0.5; base.forEach((f, j) => (v += 0.35 * c[j] * f(x, y))); img[y * N + x] = v + noise() * PC.gauss(r); }
+      X.push(img);
+    }
+    const mu = PC.mean(X), Xc = X.map((x) => x.map((v, j) => v - mu[j]));
+    // 그램 행렬 G = Xc Xcᵀ (M×M)의 고유분해로 주성분을 얻는다 (D > M일 때의 요령)
+    const G = Xc.map((a) => Xc.map((b) => PC.dot(a, b)));
+    const e = MB.mat.eigSym(G), comps = [], vals = [];
+    for (let j = 0; j < 12; j++) {
+      const s2 = Math.max(e.values[j], 0), s = Math.sqrt(s2), u = e.vectors[j], v = new Array(D).fill(0);
+      if (s > 1e-9) { for (let i = 0; i < M; i++) for (let p = 0; p < D; p++) v[p] += u[i] * Xc[i][p]; for (let p = 0; p < D; p++) v[p] /= s; }
+      comps.push(v); vals.push(s2 / (M - 1));
+    }
+    let tot = 0; Xc.forEach((x) => x.forEach((v) => (tot += v * v))); tot /= M - 1;
+    data = { X, Xc, mu, comps, vals, tot };
+  }
+  build();
+  const cv = MB.canvas("#pc-cv-faces", (ctx, w, h) => {
+    const P = MB.palette(), font = getComputedStyle(document.body).getPropertyValue("--font");
+    const { X, Xc, mu, comps, vals, tot } = data, kk = k();
+    const gap = 8, top = 20, cell = Math.min((w - gap * 6) / 5, (h - top * 2 - gap * 3) / 2.15);
+    ctx.font = "12px " + font; ctx.fillStyle = P.dim; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    const div = (vec) => { let m = 0; vec.forEach((v) => (m = Math.max(m, Math.abs(v)))); return vec.map((v) => 0.5 + 0.5 * v / (m || 1)); };
+    const x0 = (w - (5 * cell + 4 * gap)) / 2;
+    // 위 줄: 평균 + 고유 패턴 1~4
+    [mu, comps[0], comps[1], comps[2], comps[3]].forEach((v, i) => {
+      const dx = x0 + i * (cell + gap);
+      MB.drawGray(ctx, i ? div(v) : v, N, N, dx, top, cell, cell, i ? { map: (t) => MB.colormap(t, "diverge") } : {});
+      ctx.fillStyle = P.dim; ctx.fillText(i ? `PC${i} (${((100 * vals[i - 1]) / tot).toFixed(0)}%)` : "평균", dx + cell / 2, top - 3);
+    });
+    // 아래 줄: 원본, 재구성, 차이
+    const c = Xc[which], rec = mu.slice();
+    for (let j = 0; j < kk; j++) { const t = PC.dot(c, comps[j]); for (let p = 0; p < N * N; p++) rec[p] += t * comps[j][p]; }
+    const diff = X[which].map((v, p) => v - rec[p]);
+    const y2 = top * 2 + cell + gap * 2, bx = (w - (3 * cell + 2 * gap * 3)) / 2;
+    [[X[which], "원본"], [rec, `재구성 (k = ${kk})`], [diff.map((v) => 0.5 + v), "남은 차이"]].forEach(([img, lbl], i) => {
+      const dx = bx + i * (cell + gap * 3);
+      MB.drawGray(ctx, img, N, N, dx, y2, cell, cell);
+      ctx.fillStyle = P.dim; ctx.fillText(lbl, dx + cell / 2, y2 - 3);
+    });
+    let e2 = 0, a2 = 0; X[which].forEach((v, p) => { e2 += diff[p] ** 2; a2 += c[p] ** 2; });
+    const cum = vals.slice(0, kk).reduce((a, b) => a + b, 0) / tot;
+    MB.stat("pc-f-ev", (100 * cum).toFixed(1) + "%");
+    MB.stat("pc-f-err", a2 > 0 ? (100 * Math.sqrt(e2 / a2)).toFixed(1) + "%" : "—");
+    MB.stat("pc-f-store", `${kk} <span style="color:var(--text-dim);font-size:12px">/ 원본 ${N * N}</span>`);
+  }, { aspect: 0.72, minHeight: 300, maxHeight: 520 });
+  document.getElementById("pc-f-next").addEventListener("click", () => { which = (which + 7) % M; cv.redraw(); });
+})();
+
+/* ================================================================ 5. 단위와 표준화 */
+(function () {
+  const unit = MB.seg("pc-u-unit", () => cv.redraw());
+  const rho = MB.range("pc-u-rho", (v) => v.toFixed(2), () => cv.redraw());
+  const std = MB.check("pc-u-std", () => cv.redraw());
+  const msg = document.getElementById("pc-u-msg");
+  const cv = MB.canvas("#pc-cv-units", (ctx, w, h) => {
+    const P = MB.palette(), s = Number(unit()), base = PC.corr(9, 200, 2, 1.5, rho(), [60, 101]);
+    const X = base.map(([t, p]) => [t, p * s]);
+    const C = PC.cov(X), sd = [Math.sqrt(C[0][0]), Math.sqrt(C[1][1])];
+    const M = std() ? [[1, C[0][1] / (sd[0] * sd[1])], [C[0][1] / (sd[0] * sd[1]), 1]] : C;
+    const e = PC.eig(M), v = e.vectors[0];
+    // 그림은 표준화 좌표 z = (x − μ)/sd로 그린다. 원래 단위의 방향 v는 z 공간에서 (v1/sd1, v2/sd2) 방향이 된다.
+    const mu = PC.mean(X), Z = X.map(([a, b]) => [(a - mu[0]) / sd[0], (b - mu[1]) / sd[1]]);
+    let dz = std() ? v.slice() : [v[0] / sd[0], v[1] / sd[1]]; const nz = Math.hypot(dz[0], dz[1]) || 1; dz = [dz[0] / nz, dz[1] / nz];
+    const box = { x: 46, y: 12, w: w - 58, h: h - 52 }, lim = 3.5, ax = (lim * box.w) / box.h;
+    const ch = MB.chart(ctx, box, { x: [-ax, ax], y: [-lim, lim], xLabel: "온도 (표준 편차 단위)", yLabel: "압력 (표준 편차 단위)" });
+    ctx.save(); ctx.fillStyle = P.text; ctx.globalAlpha = 0.55;
+    Z.forEach(([a, b]) => { ctx.beginPath(); ctx.arc(ch.X(a), ch.Y(b), 2.6, 0, Math.PI * 2); ctx.fill(); });
+    ctx.globalAlpha = 1; ctx.strokeStyle = P.accent; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ch.X(-9 * dz[0]), ch.Y(-9 * dz[1])); ctx.lineTo(ch.X(9 * dz[0]), ch.Y(9 * dz[1])); ctx.stroke();
+    ctx.fillStyle = P.accent; ctx.font = "bold 13px " + getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.fillText("PC1", ch.X(2.6 * dz[0]) + 6, ch.Y(2.6 * dz[1]) - 6);
+    ctx.restore();
+    const name = { "1": "kPa", "0.001": "MPa", "1000": "Pa" }[unit()];
+    MB.stat("pc-u-c", PC.mat(M, std() ? 2 : (s >= 1000 ? 0 : 3)));
+    MB.stat("pc-u-v", `(${PC.fix(v[0], 4)}, ${PC.fix(v[1], 4)})`);
+    MB.stat("pc-u-ev", ((100 * e.values[0]) / (e.values[0] + e.values[1])).toFixed(2) + "%");
+    const dom = Math.abs(v[1]) > 0.98 ? "압력" : Math.abs(v[0]) > 0.98 ? "온도" : null;
+    msg.className = "pc-msg" + (dom && !std() ? " bad" : std() ? " ok" : "");
+    msg.textContent = std() ? `상관 행렬 PCA: 단위(${name})와 무관하게 PC1 = (${PC.fix(v[0], 2)}, ${PC.fix(v[1], 2)}). 고유값 ${PC.fix(e.values[0])}, ${PC.fix(e.values[1])}의 합은 변수 수 2입니다.`
+      : dom ? `공분산 PCA, 압력 단위 ${name}: PC1이 사실상 ${dom} 축입니다. 숫자 크기가 큰 변수가 분산을 독차지했습니다.`
+      : `공분산 PCA, 압력 단위 ${name}: 두 변수의 분산이 비슷해 PC1이 두 변수를 함께 씁니다.`;
+  }, { aspect: 0.72, minHeight: 260, maxHeight: 460 });
+})();
+
+/* ================================================================ 6. 화이트닝 */
+(function () {
+  const rho = MB.range("pc-w-rho", (v) => v.toFixed(2), () => { build(); show(cur, true); });
+  const msg = document.getElementById("pc-w-msg");
+  let stages = [], cur = 0, from = null, to = null, tt = 1, view = [];
+  const TXT = [
+    "원 데이터: 평균 (2, 1) 근처에 기울어진 타원 모양으로 흩어져 있습니다.",
+    "중심화: 평균을 빼서 무게중심을 원점으로 옮겼습니다. 공분산은 그대로입니다.",
+    "회전 Vᵀ: 주성분 방향이 좌표축과 겹치도록 돌렸습니다. 공분산이 대각 행렬 Λ가 됩니다.",
+    "크기 Λ^−½: 각 축을 표준 편차로 나눠 공분산이 단위 행렬이 되었습니다. 타원이 원이 됩니다.",
+    "ZCA: 다시 V로 돌려 원래 축 방향을 되찾았습니다. 공분산은 여전히 I입니다(원은 돌려도 원).",
+  ];
+  function build() {
+    const X = PC.corr(31, 150, 1.6, 1.0, rho(), [2, 1]);
+    // 비교용 두 점: 흔한 방향과 드문 방향, 원래 거리 비슷하게
+    const mu0 = PC.mean(X), e0 = PC.eig(PC.cov(X, mu0)), v1 = e0.vectors[0], v2 = e0.vectors[1];
+    const A = [mu0[0] + 2.0 * v1[0], mu0[1] + 2.0 * v1[1]], B = [mu0[0] + 2.0 * v2[0], mu0[1] + 2.0 * v2[1]];
+    const pts = X.concat([A, B]);
+    const mu = PC.mean(X), e = PC.eig(PC.cov(X, mu)), V = e.vectors, L = e.values.map((l) => Math.sqrt(Math.max(l, 1e-9)));
+    const c = pts.map(([x, y]) => [x - mu[0], y - mu[1]]);
+    const r = c.map((p) => [PC.dot(V[0], p), PC.dot(V[1], p)]);
+    const s = r.map(([a, b]) => [a / L[0], b / L[1]]);
+    const z = s.map(([a, b]) => [V[0][0] * a + V[1][0] * b, V[0][1] * a + V[1][1] * b]);
+    stages = [pts, c, r, s, z];
+  }
+  build();
+  const pl = MB.plane("#pc-cv-whiten", {
+    x: [-5, 5], aspect: 0.78, maxHeight: 500, minHeight: 280,
+    draw(P) {
+      const C0 = P.P;
+      if (!view.length) view = stages[0];
+      const n = view.length - 2, data = view.slice(0, n);
+      PC.dots(P, data, C0.accent, 2.6, 0.6);
+      const Cv = PC.cov(data);
+      const mu = PC.mean(data), e = PC.eig(Cv);
+      PC.ellipse(P, mu, e, 2, { color: C0.ok, width: 1.6 });
+      const [A, B] = [view[n], view[n + 1]];
+      P.dot(A[0], A[1], { r: 6, color: C0.warn, label: "흔한 쪽" }); P.dot(B[0], B[1], { r: 6, color: C0.warn, label: "드문 쪽" });
+      P.dot(mu[0], mu[1], { r: 4, color: C0.text });
+      const dA = Math.hypot(A[0] - mu[0], A[1] - mu[1]), dB = Math.hypot(B[0] - mu[0], B[1] - mu[1]);
+      MB.stat("pc-w-cov", PC.mat(Cv, 2));
+      MB.stat("pc-w-d", `흔한 쪽 ${PC.fix(dA)}, 드문 쪽 ${PC.fix(dB)}`);
+    },
+  });
+  function show(k, instant) {
+    from = view.length ? view : stages[0]; to = stages[k]; cur = k; tt = instant ? 1 : 0;
+    if (instant) { view = to; pl.redraw(); }
+    msg.textContent = TXT[k];
+    if (!instant) loop.start();
+  }
+  const loop = MB.loop(document.getElementById("sim-pc-whiten"), (dt) => {
+    if (tt >= 1) return;
+    tt = Math.min(1, tt + dt * 1.6); const u = MB.smooth(0, 1, tt);
+    view = from.map((p, i) => [p[0] + (to[i][0] - p[0]) * u, p[1] + (to[i][1] - p[1]) * u]);
+    pl.redraw();
+  });
+  const step = MB.seg("pc-w-step", (v) => show(Number(v)));
+  let timer = null;
+  document.getElementById("pc-w-play").addEventListener("click", () => {
+    clearTimeout(timer); step.set("0", false); show(0, true);
+    let k = 0; const next = () => { k++; if (k > 4) return; step.set(String(k), false); show(k); timer = setTimeout(next, 1400); };
+    timer = setTimeout(next, 700);
+  });
+  show(0, true);
+})();
+
+/* ================================================================ 7. PCA가 속는 데이터 */
+(function () {
+  const kind = MB.seg("pc-l-kind", () => { pts[0].hidden = kind() !== "outlier"; document.getElementById("pc-l-tag").textContent = kind() === "outlier" ? "빨간 이상값을 끌어 보세요" : kind() === "arc" ? "반달 모양: 본질은 1차원 곡선" : "두 무리: 색은 PCA가 모르는 라벨"; pl.redraw(); });
+  const proj = MB.check("pc-l-proj", () => pl.redraw());
+  const msg = document.getElementById("pc-l-msg");
+  const cloud = PC.cloud(51, 150, 1.4, 0.45, 0.35, [0, 0]);
+  const arc = (() => { const r = MB.rng(52), out = []; for (let i = 0; i < 150; i++) { const t = Math.PI * r(); out.push([3 * Math.cos(t) + 0.15 * PC.gauss(r), 3 * Math.sin(t) - 1.5 + 0.15 * PC.gauss(r)]); } return out; })();
+  const g1 = PC.cloud(53, 80, 2.2, 0.35, 0, [0, 0.7]), g2 = PC.cloud(54, 80, 2.2, 0.35, 0, [0, -0.7]);
+  const pts = [{ x: -3.5, y: 3.2, color: null, label: "이상값", snap: 0 }];
+  const fit = (D) => { const mu = PC.mean(D), e = PC.eig(PC.cov(D, mu)); return { mu, e }; };
+  const ang = (v) => { let a = (Math.atan2(v[1], v[0]) * 180) / Math.PI; if (a > 90) a -= 180; if (a <= -90) a += 180; return a.toFixed(0) + "°"; };
+  const pl = MB.plane("#pc-cv-limits", {
+    x: [-5, 5], aspect: 0.8, maxHeight: 500, minHeight: 280, points: pts,
+    draw(P, api) {
+      const C0 = P.P, p = api.points[0]; p.color = C0.bad;
+      const k = kind();
+      let D, cmp = null, cmpText = "—";
+      if (k === "outlier") { D = cloud.concat([[p.x, p.y]]); cmp = fit(cloud); }
+      else if (k === "arc") D = arc;
+      else D = g1.concat(g2);
+      const F = fit(D), v = F.e.vectors[0], mu = F.mu;
+      if (k === "groups") {
+        PC.dots(P, g1, C0.accent2, 2.6, 0.7); PC.dots(P, g2, C0.warn, 2.6, 0.7);
+        // LDA: Sw⁻¹(m1 − m2)
+        const m1 = PC.mean(g1), m2 = PC.mean(g2), S1 = PC.cov(g1, m1), S2 = PC.cov(g2, m2);
+        const S = [[S1[0][0] + S2[0][0], S1[0][1] + S2[0][1]], [S1[1][0] + S2[1][0], S1[1][1] + S2[1][1]]];
+        const det = S[0][0] * S[1][1] - S[0][1] * S[1][0], d = [m1[0] - m2[0], m1[1] - m2[1]];
+        let w = [(S[1][1] * d[0] - S[0][1] * d[1]) / det, (-S[1][0] * d[0] + S[0][0] * d[1]) / det]; const nw = Math.hypot(w[0], w[1]); w = [w[0] / nw, w[1] / nw];
+        cmp = { mu, e: { vectors: [w] } };
+        const sepBy = (u) => { const a = g1.map((q) => PC.dot(q, u)), b = g2.map((q) => PC.dot(q, u)); const ma = a.reduce((s, x) => s + x, 0) / a.length, mb = b.reduce((s, x) => s + x, 0) / b.length; const va = a.reduce((s, x) => s + (x - ma) ** 2, 0) / (a.length - 1), vb = b.reduce((s, x) => s + (x - mb) ** 2, 0) / (b.length - 1); return Math.abs(ma - mb) / Math.sqrt((va + vb) / 2); };
+        cmpText = `분리도 PC1 ${sepBy(v).toFixed(2)} · LDA ${sepBy(w).toFixed(2)}`;
+      } else PC.dots(P, k === "outlier" ? cloud : D, C0.text, 2.6, 0.55);
+      if (cmp) { const u = cmp.e.vectors[0]; P.line(cmp.mu[0] - 12 * u[0], cmp.mu[1] - 12 * u[1], cmp.mu[0] + 12 * u[0], cmp.mu[1] + 12 * u[1], { color: C0.ok, width: 2, dash: [7, 5] }); }
+      P.line(mu[0] - 12 * v[0], mu[1] - 12 * v[1], mu[0] + 12 * v[0], mu[1] + 12 * v[1], { color: C0.accent, width: 2.6 });
+      if (proj()) PC.dots(P, D.map((q) => { const t = (q[0] - mu[0]) * v[0] + (q[1] - mu[1]) * v[1]; return [mu[0] + t * v[0], mu[1] + t * v[1]]; }), C0.warn, 2.4, 0.85);
+      const ev = (100 * F.e.values[0]) / (F.e.values[0] + F.e.values[1]);
+      MB.stat("pc-l-ev", ev.toFixed(1) + "%");
+      MB.stat("pc-l-dir", ang(v));
+      if (k === "outlier") cmpText = `이상값 없이 ${ang(cmp.e.vectors[0])}`;
+      if (k === "arc") cmpText = "직선으로는 곡선을 못 따라감";
+      MB.stat("pc-l-cmp", cmpText);
+      msg.className = "pc-msg";
+      msg.textContent = k === "outlier" ? `점 151개 중 하나가 PC1을 ${ang(cmp.e.vectors[0])}에서 ${ang(v)}로 돌렸습니다. 분산은 거리의 제곱을 평균하므로 먼 점 하나의 무게가 큽니다.`
+        : k === "arc" ? `PC1이 ${ev.toFixed(0)}%를 설명하지만, 재구성 점을 켜 보면 반달의 양 끝과 꼭대기가 같은 직선 위로 겹칩니다. 곡선 구조는 선형 축으로 표현되지 않습니다.`
+        : `PC1은 무리 안의 긴 방향(가로)을 고릅니다. 무리를 가르는 방향은 분산이 작아서 PC2로 밀렸습니다. 라벨을 쓰는 LDA(초록)는 세로 방향을 찾습니다.`;
+    },
+  });
+})();
+</script>
+</body>
+</html>
