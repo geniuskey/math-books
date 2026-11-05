@@ -137,7 +137,7 @@ window.MATH_BOOKS = [
     "status": "planned",
     "color": "#2b8a3e",
     "colorDark": "#8ce99a",
-    "motif": "brackets",
+    "motif": "numerical",
     "topics": [
       "오차",
       "근 찾기",
