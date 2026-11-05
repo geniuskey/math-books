@@ -770,6 +770,18 @@ const PD = {
       }
     };
     S.mesh = (f, mo = {}) => S.pmesh((u, v) => [u, v, f(u, v)], mo.xr || o.xr, mo.yr || o.yr, mo.n || 30, mo.n || 30, mo);
+    /** 두 곡면 z = f, z = g를 같은 격자로 그린다. 두 면이 엇갈리는 칸은 잘게 쪼개 칠하는 순서가 어긋나지 않게 한다. */
+    S.mesh2 = (f, g, n, mf = {}, mg = {}) => {
+      const [x0, x1] = o.xr, [y0, y1] = o.yr, depth = mf.depth != null ? mf.depth : 3;
+      const cell = (xa, xb, ya, yb, lv) => {
+        const cs = [[xa, ya], [xb, ya], [xb, yb], [xa, yb]], dz = cs.map(([x, y]) => f(x, y) - g(x, y));
+        const cross = dz.some((v) => v > 0) && dz.some((v) => v < 0);
+        if (cross && lv < depth) { const xm = (xa + xb) / 2, ym = (ya + yb) / 2; cell(xa, xm, ya, ym, lv + 1); cell(xm, xb, ya, ym, lv + 1); cell(xa, xm, ym, yb, lv + 1); cell(xm, xb, ym, yb, lv + 1); return; }
+        S.pmesh((u, v) => [u, v, f(u, v)], [xa, xb], [ya, yb], 1, 1, lv ? Object.assign({}, mf, { edge: false }) : mf);
+        S.pmesh((u, v) => [u, v, g(u, v)], [xa, xb], [ya, yb], 1, 1, mg);
+      };
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) cell(x0 + (x1 - x0) * i / n, x0 + (x1 - x0) * (i + 1) / n, y0 + (y1 - y0) * j / n, y0 + (y1 - y0) * (j + 1) / n, 0);
+    };
     S.flush = () => {
       quads.sort((A, B) => B.d - A.d);
       ctx.save(); ctx.lineJoin = "round";
@@ -1069,8 +1081,7 @@ const PD = {
     let zr = [Math.min(s1[0], s2[0]), Math.max(s1[1], s2[1])]; const pad = (zr[1] - zr[0]) * 0.08 || 0.01; zr = [zr[0] - pad, zr[1] + pad];
     const S = PD.scene(ctx, w, h, { xr, yr, zr, view });
     S.box();
-    S.mesh(f, { n: 26 });
-    S.mesh(T.L, { n: 13, fill: C.accent, alpha: 0.38, edge: false });
+    S.mesh2(f, T.L, 24, { clip: false }, { fill: C.accent, alpha: 0.38, edge: false });
     S.flush();
     S.dot3([a, b, T.z0], { color: C.accent, r: 5.5 });
     S.labels();

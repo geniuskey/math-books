@@ -635,14 +635,18 @@ const AP3 = {
   ring(faces, s0, s1, r, R, axis, phi, col, M) {
     const P = (s, rho, th) => (axis === "x" ? [s, rho * Math.cos(th), rho * Math.sin(th)] : [rho * Math.cos(th), s, rho * Math.sin(th)]);
     const m = Math.max(3, Math.round(M * phi / (2 * Math.PI)));
+    // 바깥쪽 법선 n(뒷면 제거용): 반지름 방향 dir, 접선 tan, 회전축 ax
+    const dir = (th) => (axis === "x" ? [0, Math.cos(th), Math.sin(th)] : [Math.cos(th), 0, Math.sin(th)]);
+    const tan = (th) => (axis === "x" ? [0, -Math.sin(th), Math.cos(th)] : [-Math.sin(th), 0, Math.cos(th)]);
+    const ax = axis === "x" ? [1, 0, 0] : [0, 1, 0], neg = (v) => v.map((c) => -c);
     for (let j = 0; j < m; j++) {
-      const t0 = phi * j / m, t1 = phi * (j + 1) / m;
-      faces.push({ p: [P(s0, R, t0), P(s1, R, t0), P(s1, R, t1), P(s0, R, t1)], col });
-      if (r > 1e-9) faces.push({ p: [P(s0, r, t0), P(s1, r, t0), P(s1, r, t1), P(s0, r, t1)], col, inner: true });
-      faces.push({ p: [P(s0, r, t0), P(s0, R, t0), P(s0, R, t1), P(s0, r, t1)], col });
-      faces.push({ p: [P(s1, r, t0), P(s1, R, t0), P(s1, R, t1), P(s1, r, t1)], col });
+      const t0 = phi * j / m, t1 = phi * (j + 1) / m, d = dir((t0 + t1) / 2);
+      faces.push({ p: [P(s0, R, t0), P(s1, R, t0), P(s1, R, t1), P(s0, R, t1)], col, n: d });
+      if (r > 1e-9) faces.push({ p: [P(s0, r, t0), P(s1, r, t0), P(s1, r, t1), P(s0, r, t1)], col, inner: true, n: neg(d) });
+      faces.push({ p: [P(s0, r, t0), P(s0, R, t0), P(s0, R, t1), P(s0, r, t1)], col, n: neg(ax) });
+      faces.push({ p: [P(s1, r, t0), P(s1, R, t0), P(s1, R, t1), P(s1, r, t1)], col, n: ax });
     }
-    if (phi < 2 * Math.PI - 1e-6) [0, phi].forEach((th) => faces.push({ p: [P(s0, r, th), P(s1, r, th), P(s1, R, th), P(s0, R, th)], col, cut: true }));
+    if (phi < 2 * Math.PI - 1e-6) [[0, neg(tan(0))], [phi, tan(phi)]].forEach(([th, n]) => faces.push({ p: [P(s0, r, th), P(s1, r, th), P(s1, R, th), P(s0, R, th)], col, cut: true, n }));
   },
   /** view = {yaw, pitch, c:[x,y,z] 중심, s: 1단위 px} */
   render(ctx, w, h, faces, view, extra) {
@@ -653,7 +657,9 @@ const AP3 = {
       return [x1, y * cp - z1 * sp, y * sp + z1 * cp];
     };
     const L = [-0.35, 0.6, 0.72], Ln = Math.hypot(...L);
-    const out = faces.map((f) => {
+    // 바깥쪽 법선이 보는 사람(+z) 반대쪽을 향하는 면은 가려지므로 빼고 칠한다(뒷면 제거). 깊이 정렬만 할 때 생기던 겹침 오류가 줄어든다.
+    const nz = (n) => { const x1 = n[0] * cy + n[2] * sy, z1 = -n[0] * sy + n[2] * cy; return n[1] * sp + z1 * cp; };
+    const out = faces.filter((f) => !f.n || nz(f.n) > -1e-9).map((f) => {
       const v = f.p.map(tf);
       const ax = v[1][0] - v[0][0], ay = v[1][1] - v[0][1], az = v[1][2] - v[0][2];
       const bx = v[3][0] - v[0][0], by = v[3][1] - v[0][1], bz = v[3][2] - v[0][2];
