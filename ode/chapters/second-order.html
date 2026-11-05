@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>2계 선형 방정식 · ODEBook</title>
+<meta name="description" content="초기 조건 두 개가 정하는 2계 방정식. 선형성과 중첩 원리, 기본해 집합과 론스키안, 아벨 정리, 상수계수 방정식의 특성 방정식과 세 경우(실근·중근·복소근), 근 경로, 계수 내리기, 코시–오일러 방정식, 고계 선형 방정식.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .so-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .so-two > div { position: relative; min-width: 0; }
+  .so-two > div + div { border-top: 1px solid var(--border); }
+  .so-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .so-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .so-msg b { color: var(--text); }
+  .so-msg.ok { color: var(--ok); font-weight: 600; }
+  .so-msg.bad { color: var(--bad); font-weight: 600; }
+  .so-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .so-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .so-form { font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="second-order">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 06</div>
+    <h1 data-no-glossary>2계 선형 방정식</h1>
+    <p class="lead">뉴턴의 제2법칙 \(F = ma\)에서 가속도는 위치의 <b>2계</b> 도함수입니다. 그래서 용수철, 진자, 서스펜션, RLC 회로, 건물의 흔들림처럼 관성이 있는 모든 계는 2계 방정식으로 쓰입니다. 1~5장의 1계 방정식은 "지금 위치가 다음 순간을 정한다"였지만, 2계에서는 <b>위치와 속도 두 가지</b>가 함께 미래를 정합니다. 이 장은 그중 가장 중요한 부류인 <span class="term">2계 선형 방정식</span>의 해가 어떤 구조를 가지는지(두 해의 일차결합), 두 해가 정말 다른지 판정하는 법(론스키안), 그리고 계수가 상수일 때 해를 <b>대수 방정식 하나</b>로 찾는 법(특성 방정식)을 다룹니다. 7·8장의 진동과 공진은 모두 이 장의 결과를 물리로 읽는 일입니다.</p>
+    <ul class="objectives">
+      <li>2계 방정식에 초기 조건이 두 개 필요한 이유를 설명하고, 선형 방정식의 존재·유일성 정리를 쓴다.</li>
+      <li>선형 연산자 \(L[y] = y'' + py' + qy\)의 선형성에서 중첩 원리를 유도하고, 비선형 방정식에서는 깨지는 것을 확인한다.</li>
+      <li>론스키안으로 기본해 집합을 판정하고, 아벨 정리로 론스키안이 0이 아닌 상태가 유지됨을 보인다.</li>
+      <li>상수계수 동차 방정식을 특성 방정식으로 풀고, 서로 다른 실근·중근·복소근의 세 경우를 근의 위치와 해의 모양으로 연결한다.</li>
+      <li>한 해를 알 때 계수 내리기로 두 번째 해를 구하고, 코시–오일러 방정식을 \(t^m\) 시도와 로그 치환으로 푼다.</li>
+      <li>같은 방법을 3계 이상의 상수계수 선형 방정식으로 확장한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>흔들림이 멈추는 자동차 서스펜션</b></div>
+      <div class="o-body"><p>과속 방지턱을 넘은 차체는 몇 번 출렁이다 멈춥니다. 서스펜션 설계자는 이 출렁임이 <b>몇 번, 얼마나 빨리</b> 사라질지를 부품을 만들기 전에 알아야 합니다. 차체의 위치 \(x\)는 \(mx'' + cx' + kx = 0\)을 따르고, 이 장의 방법은 이 질문을 \(mr^2 + cr + k = 0\)이라는 <b>이차방정식의 근이 어디 있느냐</b>로 바꿉니다. 근이 복소수면 출렁이고, 실수면 출렁이지 않고 가라앉습니다. 근의 실수부가 사라지는 빠르기, 허수부가 출렁이는 진동수입니다.</p>
+        <p>상수계수 선형 방정식을 지수 함수 \(e^{rt}\)를 대입해 대수 방정식으로 바꾸는 방법은 18세기 오일러<span class="en">(Leonhard Euler)</span>가 체계화했습니다. 같은 생각이 전기 회로의 과도 응답, 제어기의 극점 배치, 구조물의 고유 진동 해석에 그대로 쓰입니다.</p>
+        <div class="o-chain"><span>F = ma</span><i>→</i><span>my″ + cy′ + ky = 0</span><i>→</i><span class="tool">mr² + cr + k = 0의 근</span><i>→</i><span>출렁임의 빠르기와 진동수</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="ivp">
+    <h2>2계 방정식과 초기 조건 두 개</h2>
+    <div class="problem"><strong>같은 위치에서 놓았는데 다르게 움직인다</strong>
+      <p>용수철에 매단 추를 평형점에서 0.5 m 아래로 당겨 <b>가만히</b> 놓을 때와, 같은 자리에서 <b>아래로 툭 쳐서</b> 놓을 때는 운동이 다릅니다. 처음 위치만으로는 미래가 정해지지 않습니다. 몇 가지를 알려 줘야 할까요?</p></div>
+    <p>질량 \(m\)인 추에 용수철 힘 \(-ky\)(훅의 법칙)와 속도에 비례하는 저항 \(-cy'\), 그리고 외력 \(F(t)\)가 작용하면 뉴턴의 제2법칙으로 \(my'' = -cy' - ky + F(t)\)입니다. 이를 정리한 꼴이 이 장의 주인공입니다.</p>
+    <div class="callout deep"><strong>정의 6.1 (2계 선형 방정식)</strong> 구간 \(I\)에서
+      <div class="formula">$$y'' + p(t)\,y' + q(t)\,y = g(t)$$</div>
+      꼴의 방정식을 (표준형) 2계 선형 미분방정식이라 한다. \(g \equiv 0\)이면 <span class="term">동차</span><span class="en">(homogeneous)</span>, 아니면 비동차라 한다. \(y\)와 그 도함수가 모두 1차로만, 계수(\(t\)의 함수)와 곱해져서 나타나는 것이 "선형"의 뜻이다. \(a(t)y'' + b(t)y' + c(t)y = f(t)\)는 \(a(t) \ne 0\)인 곳에서 \(a\)로 나누어 표준형으로 만든다.</div>
+    <p>1계 방정식 \(y' = f(t, y)\)는 한 점 \((t_0, y_0)\)를 주면 방향장을 따라 해곡선이 하나로 정해졌습니다(<a href="autonomous.html">4장</a>). 2계 방정식은 5장에서 본 것처럼 상태 \((y, y')\)의 1계 연립과 같으므로, 처음 <b>상태</b>, 곧 위치와 속도를 모두 주어야 합니다.</p>
+    <div class="callout deep"><strong>정리 6.2 (선형 방정식의 존재·유일성)</strong> \(p, q, g\)가 열린 구간 \(I\)에서 연속이고 \(t_0 \in I\)이면, 임의의 \(y_0, y_1\)에 대해 초기값 문제
+      <div class="formula">$$y'' + p(t)y' + q(t)y = g(t),\qquad y(t_0) = y_0,\quad y'(t_0) = y_1$$</div>
+      의 해가 <b>구간 \(I\) 전체에서</b> 존재하고 유일하다.
+      <p style="margin:8px 0 0">1계 연립으로 바꾸면 피카르–린델뢰프 정리(4장)가 해의 존재와 유일성을 준다. 비선형 방정식과 달리 해가 \(I\) 안에서 폭발하지 않는다는 점(정의 구간이 계수의 연속 구간 전체)이 선형 방정식의 특권이다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="같은 처음 위치에서 처음 속도가 다르면 다른 해가 나온다">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="60" y1="150" x2="720" y2="150" class="s-axis"/><line x1="80" y1="30" x2="80" y2="270" class="s-axis"/>
+        <path d="M80 90 C130 90 170 150 210 190 C250 230 290 230 330 190 C370 150 400 120 440 115 C480 112 520 140 560 160 C600 178 640 175 700 160" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+        <path d="M80 90 C110 60 150 50 190 80 C230 115 260 190 300 215 C340 238 380 200 420 160 C460 125 500 110 540 125 C590 145 640 168 700 165" fill="none" style="stroke:var(--accent-2);stroke-width:2.6"/>
+        <path d="M80 90 C120 120 150 190 190 225 C230 255 270 230 310 180 C350 130 390 105 430 112 C470 120 520 158 560 168 C610 178 650 160 700 152" fill="none" style="stroke:var(--warn);stroke-width:2.6"/>
+        <circle cx="80" cy="90" r="6" style="fill:var(--text)"/>
+        <line x1="80" y1="90" x2="140" y2="90" style="stroke:var(--accent);stroke-width:2;stroke-dasharray:4 3"/>
+        <line x1="80" y1="90" x2="128" y2="54" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:4 3"/>
+        <line x1="80" y1="90" x2="124" y2="132" style="stroke:var(--warn);stroke-width:2;stroke-dasharray:4 3"/>
+        <text x="94" y="80" class="t-mono">(0, y₀)</text>
+        <text x="150" y="88" class="t" style="fill:var(--accent)">y′(0) = 0</text>
+        <text x="134" y="48" class="t" style="fill:var(--accent-2)">y′(0) > 0</text>
+        <text x="130" y="146" class="t" style="fill:var(--warn)">y′(0) &lt; 0</text>
+        <text x="712" y="140" class="t-mono" text-anchor="end">t</text>
+        <text x="450" y="262" class="t-dim">위치가 같아도 처음 속도(기울기)가 다르면 다른 해</text>
+      </svg>
+      <figcaption><b>그림 6-1.</b> 1계 방정식에서는 한 점을 지나는 해곡선이 하나뿐이지만, 2계 방정식에서는 한 점을 지나는 해가 기울기마다 하나씩 무수히 많다. 점과 기울기, 곧 \(y(t_0)\)와 \(y'(t_0)\)를 함께 정해야 해가 하나로 정해진다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 \(t = 0\)의 점(위치)과 기울기 손잡이(속도)를 따로 끌어 보세요. '해 족 보기'로 같은 위치·다른 속도, 또는 같은 속도·다른 위치의 해들을 함께 그리면 조건 하나로는 해가 정해지지 않는다는 것이 보입니다.</p>
+
+    <div class="sim" id="sim-so-initial">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>초기 조건 두 개: 점과 기울기를 끌어 해 정하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="so-in-cv"></canvas><span class="tag-tl">큰 점 = y(0), 작은 점 = 기울기 y′(0)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="so-in-pre">
+            <option value="osc">y″ + 4y = 0 (단진동)</option>
+            <option value="damp" selected>y″ + 0.5y′ + 4y = 0 (감쇠 진동)</option>
+            <option value="exp">y″ − y = 0</option>
+          </select></label>
+          <div class="ctrl"><span>해 족 보기</span><div class="seg" id="so-in-fam"><button data-value="none">없음</button><button data-value="slope" class="on">같은 y(0)</button><button data-value="pos">같은 y′(0)</button></div></div>
+          <div class="btn-row"><button class="btn" id="so-in-rest">가만히 놓기 (y′ = 0)</button><button class="btn" id="so-in-kick">평형점에서 치기 (y = 0)</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">y(0)</span><span class="v" id="so-in-y0">—</span></div>
+        <div class="stat"><span class="k">y′(0)</span><span class="v" id="so-in-v0">—</span></div>
+        <div class="stat"><span class="k">해</span><span class="v so-form" id="so-in-form">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '같은 y(0)'에서 기울기 손잡이를 위아래로 끌면 굵은 해가 회색 족 사이를 옮겨 다닙니다. 점 하나를 지나는 해가 무수히 많습니다. ② '가만히 놓기'와 '평형점에서 치기'는 기본해 두 개(cos형, sin형)에 해당합니다. ③ y″ − y = 0에서는 y′(0) = −y(0)일 때만 해가 0으로 가라앉습니다. 그 외에는 모두 터집니다. 모델: 닫힌 꼴 해(4절의 특성 방정식).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="superposition">
+    <h2>선형성과 중첩 원리</h2>
+    <div class="problem"><strong>두 해를 더해도 해일까</strong>
+      <p>현악기 줄을 두 가지 방식으로 튕긴 진동을 각각 녹음했습니다. 두 방식으로 동시에 튕기면 소리는 두 녹음을 더한 것과 같을까요? 선형 방정식이면 "예", 비선형이면 "아니요"입니다.</p></div>
+    <p>좌변을 함수에 함수를 대응시키는 기계로 보면 편합니다. \(L[y] = y'' + p(t)y' + q(t)y\)라 쓰면 동차 방정식은 \(L[y] = 0\), 비동차는 \(L[y] = g\)입니다. 미분이 선형이므로(\((c_1y_1 + c_2y_2)' = c_1y_1' + c_2y_2'\))</p>
+    <div class="formula">$$L[c_1y_1 + c_2y_2] = c_1L[y_1] + c_2L[y_2].$$
+      <div class="where">\(L\)이 <span class="term">선형 연산자</span><span class="en">(linear operator)</span>라는 뜻이다. \(p, q\)가 \(t\)의 함수여도 상관없다. \(y^2\), \(\sin y\), \(yy'\) 같은 항이 있으면 이 등식이 깨진다.</div></div>
+    <div class="callout deep"><strong>정리 6.3 (중첩 원리)</strong> \(y_1, y_2\)가 동차 방정식 \(L[y] = 0\)의 해이면 임의의 상수 \(c_1, c_2\)에 대해 \(c_1y_1 + c_2y_2\)도 해다. 따라서 동차 방정식의 해 전체는 함수들의 <b>벡터 공간</b>을 이룬다(<a href="../../linear/chapters/subspaces.html">LinearBook: 부분공간</a>).</div>
+    <div class="callout"><strong>예제 6.1 (중첩 확인)</strong> \(y_1 = \cos 2t\), \(y_2 = \sin 2t\)가 \(y'' + 4y = 0\)의 해임을 보이고, \(y = 3\cos 2t - \sin 2t\)도 해인지 확인하라.
+      <ol>
+        <li>\(y_1'' = -4\cos 2t\)이므로 \(y_1'' + 4y_1 = 0\). 같은 방법으로 \(y_2'' = -4\sin 2t\), \(y_2'' + 4y_2 = 0\).</li>
+        <li>\(y'' = -12\cos 2t + 4\sin 2t = -4(3\cos 2t - \sin 2t) = -4y\). 해다. 정리 6.3이 계산 없이 보장하는 결과다.</li>
+        <li>반례: \(y'' = -y^3\)(비선형)에서 \(y\)가 해라도 \(2y\)는 \((2y)'' = 2y'' = -2y^3 \ne -(2y)^3 = -8y^3\)이라 해가 아니다. 진폭을 두 배로 하면 진동의 빠르기까지 바뀐다.</li>
+      </ol></div>
+    <p>중첩 원리의 실용적 뜻은 이렇습니다. 처음 상태 \((1, 0)\)에서 출발한 해 \(y_1\)과 \((0, 1)\)에서 출발한 해 \(y_2\)를 한 번씩만 구해 두면, 아무 처음 상태 \((a, b)\)의 해는 \(ay_1 + by_2\)입니다. 이 결합도 해이고 처음 상태가 \((a, b)\)이므로, 정리 6.2의 유일성에 의해 <b>바로 그 해</b>입니다. 아래 시뮬레이터에서 선형 방정식의 결합(주황)이 처음 상태 \((c_1, c_2)\)로 직접 푼 해(검은 가는 선)와 완전히 겹치고, 비선형 방정식에서는 갈라지는 것을 보세요.</p>
+
+    <div class="sim" id="sim-so-superpose">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>중첩 슬라이더: c₁y₁ + c₂y₂는 정말 해인가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="so-sp-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방정식</span><div class="seg" id="so-sp-eq"><button data-value="lin" class="on">y″ + y = 0</button><button data-value="damp">y″ + 0.3y′ + 2y = 0</button><button data-value="non">y″ + y + y³ = 0</button></div></div>
+          <label class="ctrl"><span>c₁ <output id="so-sp-c1-out"></output></span><input type="range" id="so-sp-c1" min="-2" max="2" step="0.05" value="1.2"></label>
+          <label class="ctrl"><span>c₂ <output id="so-sp-c2-out"></output></span><input type="range" id="so-sp-c2" min="-2" max="2" step="0.05" value="0.8"></label>
+          <label class="check"><input type="checkbox" id="so-sp-parts" checked> c₁y₁, c₂y₂ 따로 보기</label>
+        </div>
+      </div>
+      <div class="so-legend"><span><i style="background:var(--accent-2)"></i>c₁y₁ (처음 상태 (1, 0)의 해 × c₁)</span><span><i style="background:var(--warn)"></i>c₂y₂ (처음 상태 (0, 1)의 해 × c₂)</span><span><i style="background:var(--accent)"></i>합 c₁y₁ + c₂y₂</span><span><i style="background:var(--text)"></i>처음 상태 (c₁, c₂)로 직접 푼 해</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">max |합 − 직접 푼 해|</span><span class="v" id="so-sp-diff">—</span></div>
+        <div class="stat"><span class="k">합의 잔차 max |L[y]|</span><span class="v" id="so-sp-res">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="so-sp-v">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 선형 방정식에서 c₁, c₂를 아무렇게나 바꿔도 주황 합과 검은 선이 한 몸입니다. 잔차는 반올림 수준(10⁻¹⁰ 이하)입니다. ② 'y″ + y + y³ = 0'에서 c₁ = c₂ = 0.1처럼 작게 하면 거의 겹치고(작은 진폭에서는 y³이 무시됨), 크게 할수록 직접 푼 해가 더 빨리 진동하며 벗어납니다. ③ 비선형에서는 c₁ = 2, c₂ = 0만으로도 갈라집니다. 2배 한 해가 해가 아닙니다. 모델: 세 해 모두 RK4(h = 0.01), t ∈ [0, 12].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="wronskian">
+    <h2>기본해 집합과 론스키안, 아벨 정리</h2>
+    <p>중첩 원리는 해 두 개로 많은 해를 만들게 해 주지만, 두 해가 "본질적으로 다를" 때만 모든 해를 만들 수 있습니다. \(y_1 = e^{-t}\)와 \(y_2 = 3e^{-t}\)를 결합하면 \(Ce^{-t}\)밖에 나오지 않습니다.</p>
+    <div class="callout deep"><strong>정의 6.4 (선형 독립, 기본해 집합, 론스키안)</strong> 두 함수가 구간 \(I\)에서 \(c_1y_1 + c_2y_2 \equiv 0\)이 \(c_1 = c_2 = 0\)일 때만 성립하면 <span class="term">선형 독립</span><span class="en">(linearly independent)</span>이라 한다(둘 중 하나가 다른 것의 상수배가 아니라는 뜻). \(L[y] = 0\)의 선형 독립인 두 해의 쌍을 <span class="term">기본해 집합</span><span class="en">(fundamental set of solutions)</span>이라 한다. 두 함수의 <span class="term">론스키안</span><span class="en">(Wronskian)</span>은
+      <div class="formula">$$W(y_1, y_2)(t) = \det\begin{bmatrix} y_1 & y_2\\ y_1' & y_2'\end{bmatrix} = y_1y_2' - y_1'y_2.$$</div></div>
+    <p>론스키안이 왜 나오는지는 초기 조건을 맞추는 계산에서 보입니다. 일반해 \(y = c_1y_1 + c_2y_2\)가 \(y(t_0) = y_0\), \(y'(t_0) = y_1^0\)을 만족하려면</p>
+    <div class="formula">$$\begin{bmatrix} y_1(t_0) & y_2(t_0)\\ y_1'(t_0) & y_2'(t_0)\end{bmatrix}\begin{bmatrix}c_1\\ c_2\end{bmatrix} = \begin{bmatrix}y_0\\ y_1^0\end{bmatrix}$$
+      <div class="where">이 연립 일차방정식이 <b>모든</b> 오른쪽 벡터에 대해 풀릴 필요충분조건은 계수 행렬의 행렬식, 곧 \(W(t_0)\)가 0이 아닌 것이다(<a href="../../linear/chapters/determinants.html">LinearBook: 행렬식</a>).</div></div>
+    <p>기하적으로 \(W(t)\)는 두 해의 상태 벡터 \((y_1, y_1')\)과 \((y_2, y_2')\)이 위상 평면에서 만드는 <b>평행사변형의 부호 있는 넓이</b>입니다. 넓이가 0이 아니면 두 상태 벡터가 평면을 펼치므로 아무 처음 상태든 그 결합으로 쓸 수 있습니다.</p>
+    <div class="callout deep"><strong>정리 6.5 (일반해)</strong> \(y_1, y_2\)가 \(I\)에서 \(L[y] = 0\)의 해이고 어떤 \(t_0 \in I\)에서 \(W(y_1, y_2)(t_0) \ne 0\)이면, 이 방정식의 <b>모든</b> 해는 \(y = c_1y_1 + c_2y_2\) 꼴이다. 이것을 <span class="term">일반해</span><span class="en">(general solution)</span>라 한다. 따라서 해 공간은 정확히 2차원이다.
+      <p style="margin:8px 0 0"><b>증명.</b> 아무 해 \(\phi\)를 잡고 \(c_1, c_2\)를 \(c_1y_1 + c_2y_2\)가 \(t_0\)에서 \(\phi\)와 같은 값·같은 도함수를 갖도록 고른다(\(W(t_0) \ne 0\)이라 가능). 두 해가 같은 초기 조건을 가지므로 정리 6.2의 유일성으로 \(\phi \equiv c_1y_1 + c_2y_2\). ∎</p></div>
+    <p>그런데 \(W\)가 한 점에서 0이 아니면 다른 점에서는 어떨까요? 해의 론스키안은 스스로 간단한 1계 방정식을 따릅니다. \(W' = y_1y_2'' - y_1''y_2\)에 \(y_i'' = -py_i' - qy_i\)를 넣으면 \(q\) 항은 지워지고 \(W' = -p(y_1y_2' - y_1'y_2) = -pW\)가 남습니다.</p>
+    <div class="callout deep"><strong>정리 6.6 (아벨 정리)</strong> \(y_1, y_2\)가 \(I\)에서 \(y'' + p(t)y' + q(t)y = 0\)의 해이면
+      <div class="formula">$$W(t) = W(t_0)\,\exp\!\left(-\int_{t_0}^{t} p(s)\,ds\right).$$</div>
+      따라서 해의 론스키안은 \(I\)에서 <b>항상 0이거나 한 번도 0이 아니다</b>. 한 점에서만 확인하면 충분하다.</div>
+    <div class="callout"><strong>예제 6.2 (론스키안과 아벨 정리)</strong> \(t > 0\)에서 \(t^2y'' + 2ty' - 2y = 0\)의 두 해 \(y_1 = t\), \(y_2 = t^{-2}\)에 대해 \(W\)를 계산하고 아벨 정리와 비교하라.
+      <ol>
+        <li>확인: \(y_2'' = 6t^{-4}\)이므로 \(t^2\cdot 6t^{-4} + 2t\cdot(-2t^{-3}) - 2t^{-2} = (6 - 4 - 2)t^{-2} = 0\). \(y_1 = t\)는 \(0 + 2t - 2t = 0\).</li>
+        <li>\(W = t\cdot(-2t^{-3}) - 1\cdot t^{-2} = -3t^{-2}\). \(t > 0\)에서 한 번도 0이 아니므로 기본해 집합이다.</li>
+        <li>표준형으로 나누면 \(p(t) = 2/t\). 아벨 정리: \(W(t) = W(1)\exp(-\int_1^t 2/s\,ds) = -3\,e^{-2\ln t} = -3t^{-2}\). 일치한다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>주의: 해가 아닌 함수의 론스키안</strong> 정리 6.6은 <b>같은 방정식의 해</b>에만 성립합니다. \(y_1 = t^2\), \(y_2 = t|t|\)는 \((-1, 1)\)에서 선형 독립이지만(\(t \gt 0\)에서는 같고 \(t \lt 0\)에서는 부호가 반대) 론스키안이 모든 점에서 0입니다. 연속 계수를 가진 2계 선형 방정식 하나가 이 둘을 모두 해로 가질 수는 없다는 뜻입니다.</div>
+
+    <div class="sim" id="sim-so-wronskian">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>론스키안 판정: 상태 벡터의 넓이와 아벨 정리</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view so-two">
+          <div><canvas id="so-wr-f"></canvas><span class="so-cap">y₁(t), y₂(t)와 시각 t₀</span></div>
+          <div class="split">
+            <div><canvas id="so-wr-w"></canvas><span class="cap">W(t) (실선)와 아벨 예측 (점선)</span></div>
+            <div><canvas id="so-wr-v"></canvas><span class="cap">t₀의 상태 벡터 (y, y′)</span></div>
+          </div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 쌍</span><select id="so-wr-pre">
+            <option value="exp">eᵗ, e²ᵗ (y″ − 3y′ + 2y = 0)</option>
+            <option value="trig">cos 2t, sin 2t (y″ + 4y = 0)</option>
+            <option value="damp">e⁻ᵗcos 2t, e⁻ᵗsin 2t (y″ + 2y′ + 5y = 0)</option>
+            <option value="dep">e⁻ᵗ, 3e⁻ᵗ (같은 해의 상수배)</option>
+            <option value="ce">t, t⁻² (t²y″ + 2ty′ − 2y = 0)</option>
+            <option value="abs">t², t|t| (해가 아닌 함수)</option>
+          </select></label>
+          <label class="ctrl"><span>t₀ <output id="so-wr-t-out"></output></span><input type="range" id="so-wr-t" min="0" max="1" step="0.005" value="0.4"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">[y₁ y₂; y₁′ y₂′] at t₀</span><span class="v so-form" id="so-wr-m">—</span></div>
+        <div class="stat"><span class="k">W(t₀)</span><span class="v" id="so-wr-W">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="so-wr-v-out">—</span></div>
+      </div>
+      <div class="so-msg" id="so-wr-msg"></div>
+      <div class="sim-note">해볼 것: ① t₀를 움직이면 오른쪽 아래 평행사변형의 넓이가 W(t₀)를 따라 변하지만, 해의 쌍에서는 부호가 한 번도 바뀌지 않습니다. ② 'e⁻ᵗ, 3e⁻ᵗ'에서는 두 상태 벡터가 늘 한 직선 위에 있어 넓이가 0입니다. ③ 't², t|t|'는 W ≡ 0인데 그래프는 분명히 다릅니다. 해가 아니라서 아벨 정리가 적용되지 않습니다. 모델: 도함수는 공식으로 계산, 아벨 예측은 W(t₀)·exp(−∫p).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="characteristic">
+    <h2>상수계수 동차 방정식: 특성 방정식</h2>
+    <div class="problem"><strong>미분해도 모양이 그대로인 함수</strong>
+      <p>\(ay'' + by' + cy = 0\)은 \(y\)와 \(y'\), \(y''\)의 상수배 합이 0이라는 뜻입니다. 그러려면 \(y\)와 그 도함수들이 서로 상수배 관계여야 합니다. 미분해도 상수배만 되는 함수는? 지수 함수 \(e^{rt}\)입니다.</p></div>
+    <p>\(y = e^{rt}\)를 넣으면 \(y' = re^{rt}\), \(y'' = r^2e^{rt}\)이므로 \((ar^2 + br + c)e^{rt} = 0\). \(e^{rt}\)는 0이 아니므로 다음 대수 방정식만 풀면 됩니다.</p>
+    <div class="callout deep"><strong>정의 6.7 (특성 방정식)</strong> \(ay'' + by' + cy = 0\)(\(a \ne 0\))에 대해
+      <div class="formula">$$ar^2 + br + c = 0$$</div>
+      을 <span class="term">특성 방정식</span><span class="en">(characteristic equation)</span>, 그 근을 <span class="term">특성근</span><span class="en">(characteristic roots)</span>이라 한다. 미분 연산 \(d/dt\)를 문자 \(r\)로 바꿔 쓴 것과 같다. 판별식 \(D = b^2 - 4ac\)의 부호가 세 경우를 가른다.</div>
+    <div class="callout deep"><strong>정리 6.8 (상수계수 2계 동차 방정식의 일반해)</strong>
+      <div class="table-wrap"><table>
+        <thead><tr><th>판별식</th><th>특성근</th><th>일반해</th><th>모양</th></tr></thead>
+        <tbody>
+          <tr><td>\(D > 0\)</td><td>서로 다른 실근 \(r_1 \ne r_2\)</td><td>\(c_1e^{r_1t} + c_2e^{r_2t}\)</td><td>지수 두 개의 합, 진동 없음</td></tr>
+          <tr><td>\(D = 0\)</td><td>중근 \(r = -b/2a\)</td><td>\((c_1 + c_2t)\,e^{rt}\)</td><td>진동 없음, 한 번까지 0을 지남</td></tr>
+          <tr><td>\(D \lt 0\)</td><td>복소근 \(\alpha \pm i\beta\)</td><td>\(e^{\alpha t}(c_1\cos\beta t + c_2\sin\beta t)\)</td><td>진동, 포락선 \(e^{\alpha t}\)</td></tr>
+        </tbody></table></div>
+      세 경우 모두 두 해의 론스키안이 0이 아니어서(각각 \((r_2 - r_1)e^{(r_1+r_2)t}\), \(e^{2rt}\), \(\beta e^{2\alpha t}\)) 기본해 집합을 이룬다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="특성근의 위치와 해의 모양">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="40" y1="150" x2="330" y2="150" class="s-axis"/><line x1="240" y1="30" x2="240" y2="270" class="s-axis"/>
+        <text x="322" y="140" class="t-mono" text-anchor="end">Re r</text><text x="248" y="42" class="t-mono">Im r</text>
+        <circle cx="110" cy="150" r="6" style="fill:var(--accent-2)"/><circle cx="190" cy="150" r="6" style="fill:var(--accent-2)"/>
+        <circle cx="160" cy="150" r="9" fill="none" style="stroke:var(--warn);stroke-width:2.4"/>
+        <circle cx="170" cy="80" r="6" style="fill:var(--accent)"/><circle cx="170" cy="220" r="6" style="fill:var(--accent)"/>
+        <line x1="170" y1="80" x2="170" y2="220" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:3 3"/>
+        <text x="150" y="70" class="t-mono t-acc">α + iβ</text><text x="150" y="240" class="t-mono t-acc">α − iβ</text>
+        <text x="100" y="176" class="t-mono" style="fill:var(--accent-2)">r₂</text><text x="186" y="176" class="t-mono" style="fill:var(--accent-2)">r₁</text>
+        <text x="160" y="132" class="t-mono" style="fill:var(--warn)" text-anchor="middle">중근</text>
+        <text x="60" y="270" class="t-dim">왼쪽 반평면 = 감쇠</text>
+        <g transform="translate(370,30)">
+          <rect x="0" y="0" width="360" height="72" rx="8" class="f-elev"/>
+          <path d="M10 18 C60 50 120 60 340 62" fill="none" style="stroke:var(--accent-2);stroke-width:2.4"/>
+          <text x="200" y="28" class="t" style="fill:var(--accent-2)">서로 다른 실근: 두 지수의 합</text>
+          <rect x="0" y="86" width="360" height="72" rx="8" class="f-elev"/>
+          <path d="M10 106 C50 110 80 150 140 148 C200 146 260 144 340 144" fill="none" style="stroke:var(--warn);stroke-width:2.4"/>
+          <text x="200" y="116" class="t" style="fill:var(--warn)">중근: (c₁ + c₂t)e^(rt)</text>
+          <rect x="0" y="172" width="360" height="72" rx="8" class="f-elev"/>
+          <path d="M10 184 C30 184 40 232 60 232 C80 232 90 196 110 196 C130 196 140 222 160 222 C180 222 190 204 210 204 C230 204 240 216 260 216 C280 216 290 208 340 210" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+          <text x="200" y="190" class="t t-acc">복소근: e^(αt)·(진동수 β)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 6-2.</b> 특성근의 위치가 해의 모양을 정한다. 실수부 \(\operatorname{Re} r\)는 성장(+)·감쇠(−)의 빠르기, 허수부 \(\beta\)는 각진동수다. 근이 모두 왼쪽 반평면에 있으면 모든 해가 0으로 간다. 이 그림이 10장의 극점 지도와 11장의 위상 평면 분류로 이어진다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 6.3 (서로 다른 실근)</strong> \(y'' + y' - 6y = 0\), \(y(0) = 1\), \(y'(0) = 0\)을 풀어라.
+      <ol>
+        <li>특성 방정식 \(r^2 + r - 6 = (r - 2)(r + 3) = 0\), 근 \(r = 2, -3\). 일반해 \(y = c_1e^{2t} + c_2e^{-3t}\).</li>
+        <li>초기 조건: \(c_1 + c_2 = 1\), \(2c_1 - 3c_2 = 0\). 풀면 \(c_1 = 3/5\), \(c_2 = 2/5\).</li>
+        <li>\(y = \frac35e^{2t} + \frac25e^{-3t}\). 검산: \(y(1) = 0.6e^2 + 0.4e^{-3} = 4.4533\)이고 RK4로 푼 값과 소수 여섯째 자리까지 같다.</li>
+        <li>해석: 근 하나가 양수이므로 처음 상태가 무엇이든(특별히 \(c_1 = 0\)인 경우 빼고) 해는 \(e^{2t}\)로 커진다. 음의 근 \(-3\)의 성분은 금방 사라진다.</li>
+      </ol></div>
+    <p>복소근의 경우는 오일러 공식 \(e^{i\theta} = \cos\theta + i\sin\theta\)(<a href="../../foundations/chapters/complex.html">MathBook: 복소수</a>)로 이해합니다. \(r = \alpha + i\beta\)이면 \(e^{rt} = e^{\alpha t}(\cos\beta t + i\sin\beta t)\)는 복소수 값의 해입니다. \(L\)의 계수가 실수이므로 \(L[u + iv] = L[u] + iL[v] = 0\)에서 실수부 \(u = e^{\alpha t}\cos\beta t\)와 허수부 \(v = e^{\alpha t}\sin\beta t\)가 따로따로 실수 해가 됩니다. 켤레근 \(\alpha - i\beta\)는 같은 두 함수를 주므로 새 정보가 없습니다.</p>
+    <p>아래 시뮬레이터에서 특성근을 복소평면 위에서 직접 끌어 보세요. 근 하나를 실수축에서 떼어 내면 짝(켤레)이 따라오고, 실수축에 놓으면 두 근이 따로 움직입니다. 오른쪽에 그 근을 가진 방정식과 해가 그려집니다.</p>
+
+    <div class="sim" id="sim-so-roots">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>특성근을 끌면 해 모양이 바뀐다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="so-rt-pl"></canvas><span class="cap">복소평면의 특성근 r₁, r₂</span></div>
+          <div><canvas id="so-rt-ch"></canvas><span class="cap">해 y(t)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>초기 조건</span><div class="seg" id="so-rt-ic"><button data-value="a" class="on">y(0) = 1, y′(0) = 0</button><button data-value="b">y(0) = 0, y′(0) = 1</button></div></div>
+          <label class="check"><input type="checkbox" id="so-rt-env" checked> 포락선 ±e^(αt) (복소근)</label>
+          <div class="btn-row"><button class="btn" id="so-rt-p1">실근 −1, −3</button><button class="btn" id="so-rt-p2">중근 −1</button><button class="btn" id="so-rt-p3">−0.4 ± 2i</button><button class="btn" id="so-rt-p4">±2i</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">방정식</span><span class="v so-form" id="so-rt-eq">—</span></div>
+        <div class="stat"><span class="k">특성근</span><span class="v so-form" id="so-rt-r">—</span></div>
+        <div class="stat"><span class="k">해</span><span class="v so-form" id="so-rt-sol">—</span></div>
+        <div class="stat"><span class="k">모양</span><span class="v" id="so-rt-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 복소근을 허수축 쪽으로 끌면(α → 0) 감쇠가 약해지고, 허수축을 넘으면 진폭이 커집니다. ② 위아래로 끌면(β) 진동이 빨라집니다. 주기는 2π/β입니다. ③ 복소근을 실수축까지 내리면 중근이 되고, 거기서 두 근을 좌우로 벌리면 서로 다른 실근이 됩니다. 이때 해는 진동을 멈춥니다. 모델: 방정식 y″ − (r₁ + r₂)y′ + r₁r₂y = 0의 닫힌 꼴 해.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="repeated">
+    <h2>중근: 왜 \(te^{rt}\)인가</h2>
+    <p>\(D = 0\)이면 특성근이 \(r = -b/2a\) 하나뿐이라 \(e^{rt}\)라는 해 하나만 얻습니다. 두 번째 해는 어디서 올까요? 두 가지 방법으로 찾을 수 있습니다.</p>
+    <p><b>① 극한으로.</b> 서로 다른 두 근 \(r_1 = r - \varepsilon/2\), \(r_2 = r + \varepsilon/2\)를 가진 방정식에서는 \(\dfrac{e^{r_2t} - e^{r_1t}}{r_2 - r_1}\)도 (중첩 원리로) 해입니다. \(\varepsilon \to 0\)이면 이것은 \(e^{rt}\)를 \(r\)에 대해 미분한 것, 곧 \(\dfrac{\partial}{\partial r}e^{rt} = te^{rt}\)로 갑니다. 두 근이 합쳐지는 순간, 두 지수의 차분이 \(t\)를 곱한 지수가 됩니다.</p>
+    <p><b>② 직접 대입으로.</b> \(y = v(t)e^{rt}\)라 두면 \(y' = (v' + rv)e^{rt}\), \(y'' = (v'' + 2rv' + r^2v)e^{rt}\). \(ay'' + by' + cy\)에 넣고 정리하면</p>
+    <div class="formula">$$\bigl[a v'' + (2ar + b)v' + (ar^2 + br + c)v\bigr]e^{rt} = 0.$$
+      <div class="where">중근이면 \(ar^2 + br + c = 0\)이고 \(2ar + b = 0\)(꼭짓점)이므로 \(av'' = 0\), 곧 \(v = c_1 + c_2t\). 두 번째 해 \(te^{rt}\)가 나온다. 이것이 7절 계수 내리기의 특수한 경우다.</div></div>
+    <div class="callout"><strong>예제 6.4 (중근)</strong> \(y'' + 4y' + 4y = 0\), \(y(0) = 1\), \(y'(0) = 0\)을 풀어라.
+      <ol>
+        <li>\(r^2 + 4r + 4 = (r + 2)^2 = 0\), 중근 \(r = -2\). 일반해 \(y = (c_1 + c_2t)e^{-2t}\).</li>
+        <li>\(y(0) = c_1 = 1\). \(y' = (c_2 - 2c_1 - 2c_2t)e^{-2t}\)이므로 \(y'(0) = c_2 - 2 = 0\), \(c_2 = 2\).</li>
+        <li>\(y = (1 + 2t)e^{-2t}\). \(y(2) = 5e^{-4} = 0.0916\)이고 RK4 결과와 일치한다. 진동하지 않고 한 번도 0을 지나지 않은 채 가라앉는다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-so-double">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 근이 합쳐질 때: 차분 몫이 te<sup>rt</sup>로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="so-db-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>중심 r <output id="so-db-r-out"></output></span><input type="range" id="so-db-r" min="-2" max="0.4" step="0.05" value="-0.8"></label>
+          <label class="ctrl"><span>근의 간격 ε = r₂ − r₁ <output id="so-db-e-out"></output></span><input type="range" id="so-db-e"></label>
+        </div>
+      </div>
+      <div class="so-legend"><span><i style="background:var(--accent-2)"></i>e<sup>r₁t</sup>, e<sup>r₂t</sup></span><span><i style="background:var(--accent)"></i>(e<sup>r₂t</sup> − e<sup>r₁t</sup>)/ε</span><span><i style="background:var(--text)"></i>te<sup>rt</sup> (점선)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">r₁, r₂</span><span class="v" id="so-db-rr">—</span></div>
+        <div class="stat"><span class="k">max |차분 몫 − te<sup>rt</sup>| (0 ≤ t ≤ 6)</span><span class="v" id="so-db-d">—</span></div>
+        <div class="stat"><span class="k">위 값 / ε²</span><span class="v" id="so-db-q">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ε를 1에서 0.001로 줄이면 주황 곡선이 점선 te<sup>rt</sup>에 붙습니다. 두 청록 곡선은 하나로 겹칩니다. ② 차이를 ε²로 나눈 값이 거의 일정합니다. 차이가 ε²에 비례한다는 뜻입니다(차분 몫의 테일러 전개에서 ε 항이 대칭이라 지워짐). ③ r을 음수로 두면 te<sup>rt</sup>는 t = −1/r에서 최대가 된 뒤 가라앉습니다. 모델: 닫힌 꼴 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="complex-roots">
+    <h2>복소근과 근 경로</h2>
+    <div class="callout"><strong>예제 6.5 (복소근)</strong> \(y'' + 2y' + 5y = 0\), \(y(0) = 1\), \(y'(0) = 0\)을 풀어라.
+      <ol>
+        <li>\(r = \frac{-2 \pm\sqrt{4 - 20}}{2} = -1 \pm 2i\). 따라서 \(\alpha = -1\), \(\beta = 2\), 일반해 \(y = e^{-t}(c_1\cos 2t + c_2\sin 2t)\).</li>
+        <li>\(y(0) = c_1 = 1\). \(y' = e^{-t}\bigl((-c_1 + 2c_2)\cos 2t + (-c_2 - 2c_1)\sin 2t\bigr)\)이므로 \(y'(0) = -1 + 2c_2 = 0\), \(c_2 = 1/2\).</li>
+        <li>\(y = e^{-t}(\cos 2t + \tfrac12\sin 2t)\). 주기 \(2\pi/2 = \pi\)로 진동하며 포락선 \(e^{-t}\)를 따라 줄어든다. \(y(2) = -0.1397\), RK4와 일치.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 6.6 (진폭과 위상)</strong> \(y'' + 9y = 0\), \(y(0) = 1\), \(y'(0) = 6\)의 해를 \(R\cos(3t - \phi)\) 꼴로 써라.
+      <ol>
+        <li>\(r = \pm 3i\), 일반해 \(c_1\cos 3t + c_2\sin 3t\). 초기 조건에서 \(c_1 = 1\), \(3c_2 = 6\), \(c_2 = 2\).</li>
+        <li>\(R\cos(3t - \phi) = R\cos\phi\cos 3t + R\sin\phi\sin 3t\)와 비교하면 \(R\cos\phi = 1\), \(R\sin\phi = 2\). 따라서 \(R = \sqrt5 \approx 2.236\), \(\phi = \arctan 2 \approx 1.107\) rad.</li>
+        <li>\(y = \sqrt5\cos(3t - 1.107)\). 진폭 \(\sqrt5\)는 처음 위치 1보다 크다. 처음 속도가 있어서 더 멀리까지 간다. 7장의 진폭·위상 표현이다.</li>
+      </ol></div>
+    <p>용수철 \(y'' + by' + cy = 0\)에서 강성 \(c\)를 고정하고 감쇠 \(b\)를 0부터 키우면 근이 어떻게 움직일까요? \(b \lt 2\sqrt c\)이면 근은 \(-\frac b2 \pm i\sqrt{c - b^2/4}\)이고 \(|r|^2 = \frac{b^2}{4} + c - \frac{b^2}{4} = c\)이므로 <b>반지름 \(\sqrt c\)인 원 위</b>를 왼쪽으로 돕니다. \(b = 2\sqrt c\)에서 두 근이 실수축 \(-\sqrt c\)에서 만나고(중근), 그보다 크면 하나는 0 쪽으로, 하나는 \(-\infty\) 쪽으로 갈라집니다. 이 궤적을 <span class="term">근 경로</span><span class="en">(root locus)</span>라 합니다.</p>
+    <p>해가 0으로 가는 빠르기는 <b>가장 오른쪽 근</b>의 실수부가 정합니다. 원 위에서는 \(b\)를 키울수록 실수부 \(-b/2\)가 더 음수가 되어 빨라지지만, 갈라진 뒤에는 오른쪽 근 \(\frac{-b + \sqrt{b^2 - 4c}}{2}\)가 0 쪽으로 다가가 오히려 느려집니다. 그래서 <b>감쇠를 너무 세게 해도 늦게 선다</b>. 지수 감쇠율 \(|\text{Re}\,r|\)이 가장 큰 것은 두 근이 만나는 \(b = 2\sqrt c\), 7장의 임계 감쇠입니다. 다만 "허용 오차 안에 들어오는 시간"으로 재면 살짝 넘쳤다 돌아오는 부족 감쇠가 더 빠를 수 있다는 것을 <a href="oscillations.html">7장</a>에서 확인합니다.</p>
+
+    <div class="sim" id="sim-so-locus">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>근 경로: 감쇠 b를 키우면 근이 원을 돌아 실수축에서 갈라진다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="so-lc-pl"></canvas><span class="cap">y″ + by′ + cy = 0의 근</span></div>
+          <div><canvas id="so-lc-ch"></canvas><span class="cap">y(t), y(0) = 1, y′(0) = 0</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>감쇠 b <output id="so-lc-b-out"></output></span><input type="range" id="so-lc-b" min="0" max="8" step="0.05" value="1"></label>
+          <label class="ctrl"><span>강성 c <output id="so-lc-c-out"></output></span><input type="range" id="so-lc-c" min="0.5" max="9" step="0.25" value="4"></label>
+          <label class="check"><input type="checkbox" id="so-lc-crit" checked> 임계값 b = 2√c의 해 같이 보기</label>
+          <div class="btn-row"><button class="btn primary" id="so-lc-play">▶ b 쓸기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">판별식 b² − 4c</span><span class="v" id="so-lc-D">—</span></div>
+        <div class="stat"><span class="k">근</span><span class="v so-form" id="so-lc-r">—</span></div>
+        <div class="stat"><span class="k">감쇠율 −max Re r</span><span class="v" id="so-lc-rate">—</span></div>
+        <div class="stat"><span class="k">경우</span><span class="v" id="so-lc-kind">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶로 b를 0 → 8로 쓸면 근이 원을 따라 내려와 −√c에서 만나고, 실수축 위에서 좌우로 갈라집니다. ② 감쇠율이 b = 2√c에서 가장 큰 것을 확인하세요(c = 4면 b = 4에서 2). b = 8이면 감쇠율이 0.54로 오히려 작습니다. ③ c를 키우면 원이 커져 진동이 빨라집니다. 모델: 닫힌 꼴 해, 근 경로는 b ∈ [0, 8].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="reduction">
+    <h2>계수 내리기: 한 해에서 두 번째 해로</h2>
+    <div class="problem"><strong>계수가 변하면 특성 방정식이 없다</strong>
+      <p>\(t^2y'' + 2ty' - 2y = 0\)처럼 계수가 \(t\)에 의존하면 \(e^{rt}\)를 넣어도 \(t\)가 지워지지 않습니다. 일반적인 방법은 없지만, 운 좋게(또는 추측으로) 해 하나 \(y_1\)을 알면 두 번째 해는 항상 구할 수 있습니다.</p></div>
+    <p>중근에서 했던 것처럼 \(y = v(t)\,y_1(t)\)로 두고 \(y'' + py' + qy = 0\)에 넣습니다. \(y' = v'y_1 + vy_1'\), \(y'' = v''y_1 + 2v'y_1' + vy_1''\)이므로</p>
+    <div class="formula">$$v''y_1 + v'(2y_1' + py_1) + v\underbrace{(y_1'' + py_1' + qy_1)}_{=\,0} = 0.$$
+      <div class="where">\(v\) 자체는 사라지고 \(w = v'\)에 대한 <b>1계</b> 방정식 \(y_1w' + (2y_1' + py_1)w = 0\)이 남는다. 2계가 1계로 "내려간다". 3장의 변수분리(적분 인자)로 풀린다.</div></div>
+    <div class="callout deep"><strong>정리 6.9 (계수 내리기)</strong> \(y_1\)이 \(I\)에서 0이 아닌 \(y'' + p(t)y' + q(t)y = 0\)의 해이면
+      <div class="formula">$$y_2(t) = y_1(t)\int\frac{e^{-\int p(t)\,dt}}{y_1(t)^2}\,dt$$</div>
+      도 해이고, \(W(y_1, y_2) = e^{-\int p\,dt} \ne 0\)이라 \(y_1, y_2\)는 기본해 집합이다.
+      <p style="margin:8px 0 0"><b>유도.</b> \(w' / w = -2y_1'/y_1 - p\)를 적분하면 \(w = y_1^{-2}e^{-\int p}\), \(v = \int w\). 론스키안은 \(W = y_1(vy_1)' - y_1'(vy_1) = y_1^2v' = e^{-\int p}\). 아벨 정리와 같은 꼴이다. ∎</p></div>
+    <div class="callout"><strong>예제 6.7 (계수 내리기)</strong> \(y_1 = t\)가 \(t^2y'' + 2ty' - 2y = 0\)(\(t > 0\))의 해임을 이용해 두 번째 해를 구하라.
+      <ol>
+        <li>표준형: \(y'' + \frac2t y' - \frac{2}{t^2}y = 0\), \(p = 2/t\). \(e^{-\int p} = e^{-2\ln t} = t^{-2}\).</li>
+        <li>\(v' = \dfrac{t^{-2}}{t^2} = t^{-4}\), \(v = -\frac13t^{-3}\) (상수는 \(y_1\)의 배수를 더할 뿐이라 버린다).</li>
+        <li>\(y_2 = vy_1 = -\frac13t^{-2}\). 상수배를 버리면 \(y_2 = t^{-2}\). 예제 6.2에서 확인한 해다. 일반해 \(y = c_1t + c_2t^{-2}\).</li>
+      </ol></div>
+    <p>중근의 \(te^{rt}\)도 이 공식으로 나옵니다. \(y'' + by' + cy = 0\)(\(a = 1\))에서 \(y_1 = e^{rt}\), \(r = -b/2\)이면 \(e^{-\int b} = e^{-bt} = e^{2rt}\)이므로 \(v' = e^{2rt}/e^{2rt} = 1\), \(v = t\)입니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="cauchy-euler">
+    <h2>코시–오일러 방정식</h2>
+    <div class="problem"><strong>원판 위의 온도, 축대칭 응력</strong>
+      <p>원형 판의 정상 상태 온도나 두꺼운 원통의 응력을 극좌표로 쓰면 반지름 \(r\)에 대해 \(r^2R'' + rR' - n^2R = 0\) 같은 방정식이 나옵니다. 계수가 변수의 거듭제곱과 <b>차수가 맞게</b> 곱해져 있습니다. 이런 방정식은 특성 방정식과 거의 같은 방법으로 풀립니다.</p></div>
+    <div class="callout deep"><strong>정의 6.10 (코시–오일러 방정식)</strong> \(t > 0\)에서
+      <div class="formula">$$at^2y'' + bty' + cy = 0\qquad(a, b, c\ \text{상수})$$</div>
+      꼴을 <span class="term">코시–오일러 방정식</span><span class="en">(Cauchy–Euler equation)</span> 또는 등차원 방정식이라 한다. \(t\)의 크기를 몇 배로 바꿔도(\(t \to kt\)) 방정식 모양이 그대로다.</div>
+    <p>\(t\)를 곱할 때마다 미분이 한 번씩 붙어 있으므로 \(t^m\)이 알맞은 시도입니다. \(y = t^m\)이면 \(ty' = mt^m\), \(t^2y'' = m(m - 1)t^m\)이므로</p>
+    <div class="formula">$$am(m - 1) + bm + c = 0 \quad\Longleftrightarrow\quad am^2 + (b - a)m + c = 0.$$
+      <div class="where">이 방정식을 <span class="term">지표 방정식</span><span class="en">(indicial equation)</span>이라 부른다(14장 프로베니우스 방법의 이름). \(b\)가 아니라 \(b - a\)가 1차 계수라는 점에 주의.</div></div>
+    <p>더 깊은 이유는 치환 \(t = e^s\)(\(s = \ln t\))입니다. 연쇄 법칙으로 \(t\frac{dy}{dt} = \frac{dy}{ds}\), \(t^2\frac{d^2y}{dt^2} = \frac{d^2y}{ds^2} - \frac{dy}{ds}\)이므로 방정식은 <b>상수계수</b> 방정식 \(a\ddot Y + (b - a)\dot Y + cY = 0\)이 됩니다(점은 \(s\)에 대한 미분). 그래서 4절의 세 경우가 \(e^{ms} = t^m\)으로 그대로 옮겨 옵니다.</p>
+    <div class="callout deep"><strong>정리 6.11 (코시–오일러 방정식의 일반해)</strong> 지표 방정식의 근에 따라 \(t > 0\)에서
+      <ul style="margin:6px 0 0">
+        <li>서로 다른 실근 \(m_1, m_2\): \(y = c_1t^{m_1} + c_2t^{m_2}\)</li>
+        <li>중근 \(m\): \(y = (c_1 + c_2\ln t)\,t^m\)</li>
+        <li>복소근 \(\alpha \pm i\beta\): \(y = t^\alpha\bigl(c_1\cos(\beta\ln t) + c_2\sin(\beta\ln t)\bigr)\)</li>
+      </ul></div>
+    <div class="callout"><strong>예제 6.8 (코시–오일러, 세 경우)</strong>
+      <ol>
+        <li>\(t^2y'' - 2y = 0\): \(m(m - 1) - 2 = (m - 2)(m + 1) = 0\), \(y = c_1t^2 + c_2t^{-1}\). \(y(1) = 1\), \(y'(1) = 0\)이면 \(c_1 + c_2 = 1\), \(2c_1 - c_2 = 0\)에서 \(y = \frac13t^2 + \frac23t^{-1}\), \(y(3) = 3 + \frac29 = 3.2222\)(RK4와 일치).</li>
+        <li>\(t^2y'' - 3ty' + 4y = 0\): \(m^2 - 4m + 4 = (m - 2)^2\), 중근 2. \(y = (c_1 + c_2\ln t)t^2\).</li>
+        <li>\(t^2y'' + ty' + 4y = 0\): \(m^2 + 4 = 0\), \(m = \pm 2i\). \(y = c_1\cos(2\ln t) + c_2\sin(2\ln t)\). \(t \to 0^+\)으로 갈수록 무한히 빨리 진동한다(\(\ln t \to -\infty\)).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-so-euler-eq">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>코시–오일러 방정식: 로그 눈금에서는 상수계수다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="so-ce-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>b (t²y″ + bty′ + cy = 0) <output id="so-ce-b-out"></output></span><input type="range" id="so-ce-b" min="-4" max="4" step="0.25" value="1"></label>
+          <label class="ctrl"><span>c <output id="so-ce-c-out"></output></span><input type="range" id="so-ce-c" min="-4" max="9" step="0.25" value="4"></label>
+          <div class="ctrl"><span>가로축</span><div class="seg" id="so-ce-ax"><button data-value="lin" class="on">t (보통 눈금)</button><button data-value="log">ln t (로그 눈금)</button></div></div>
+          <label class="check"><input type="checkbox" id="so-ce-basis" checked> 기본해 두 개 같이</label>
+        </div>
+      </div>
+      <div class="so-legend"><span><i style="background:var(--accent)"></i>y(1) = 1, y′(1) = 0인 해</span><span><i style="background:var(--accent-2)"></i>기본해 y₁</span><span><i style="background:var(--warn)"></i>기본해 y₂</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지표 방정식</span><span class="v so-form" id="so-ce-ind">—</span></div>
+        <div class="stat"><span class="k">근 m</span><span class="v so-form" id="so-ce-m">—</span></div>
+        <div class="stat"><span class="k">기본해</span><span class="v so-form" id="so-ce-bs">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 기본값(b = 1, c = 4)은 cos(2 ln t)입니다. 보통 눈금에서는 0 근처에서 점점 빽빽하게 진동하지만, 로그 눈금으로 바꾸면 고른 코사인이 됩니다. ② b = −3, c = 4로 두면 중근 m = 2, t² ln t가 나타납니다. ③ b = 0, c = −2는 t²과 t⁻¹입니다. 로그 눈금에서 두 지수 함수처럼 보입니다. 모델: s = ln t로 바꾼 상수계수 방정식의 닫힌 꼴 해, t ∈ [0.05, 8].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="higher-order">
+    <h2>고계 선형 방정식 맛보기</h2>
+    <p>지금까지의 이야기는 \(n\)계로 그대로 확장됩니다. \(y^{(n)} + p_{n-1}(t)y^{(n-1)} + \cdots + p_0(t)y = 0\)의 초기값 문제에는 \(y, y', \dots, y^{(n-1)}\)의 처음 값 \(n\)개가 필요하고, 해 공간은 \(n\)차원이며, \(n\)개의 해가 기본해 집합인지는 \(n \times n\) 론스키안 \(\det[y_j^{(i)}]\)으로 판정합니다.</p>
+    <div class="callout deep"><strong>정리 6.12 (상수계수 n계 동차 방정식)</strong> \(a_ny^{(n)} + \cdots + a_1y' + a_0y = 0\)의 특성 다항식 \(a_nr^n + \cdots + a_1r + a_0\)의 근 \(r\)이 중복도 \(k\)를 가지면 \(e^{rt}, te^{rt}, \dots, t^{k-1}e^{rt}\)가 해이고, 복소근 \(\alpha \pm i\beta\)(중복도 \(k\))는 \(t^je^{\alpha t}\cos\beta t\), \(t^je^{\alpha t}\sin\beta t\)(\(j = 0, \dots, k - 1\))를 준다. 이렇게 얻은 \(n\)개의 함수가 기본해 집합이다.</div>
+    <div class="callout"><strong>예제 6.9 (3계 방정식)</strong> \(y''' - 6y'' + 11y' - 6y = 0\), \(y(0) = 0\), \(y'(0) = 0\), \(y''(0) = 2\)를 풀어라.
+      <ol>
+        <li>특성 다항식 \(r^3 - 6r^2 + 11r - 6 = (r - 1)(r - 2)(r - 3)\). 일반해 \(y = c_1e^t + c_2e^{2t} + c_3e^{3t}\).</li>
+        <li>초기 조건: \(c_1 + c_2 + c_3 = 0\), \(c_1 + 2c_2 + 3c_3 = 0\), \(c_1 + 4c_2 + 9c_3 = 2\). 풀면 \(c_1 = 1\), \(c_2 = -2\), \(c_3 = 1\).</li>
+        <li>\(y = e^t - 2e^{2t} + e^{3t} = e^t(e^t - 1)^2\). \(y(1) = 8.0257\)(RK4와 일치). 계수 행렬이 반데르몽드 행렬이라 근이 서로 다르면 항상 풀린다.</li>
+      </ol></div>
+    <p>공학에서 가장 흔한 고계 방정식은 보의 처짐 \(EI\,y'''' = w(x)\)(4계)입니다. 동차 부분 \(y'''' = 0\)은 특성근 0이 4중근이라 해가 \(1, x, x^2, x^3\)이고, 양 끝의 지지 조건 네 개(처짐·기울기·모멘트·전단력)가 이 넷의 계수를 정합니다. 또 \(y'''' - k^4y = 0\)(진동하는 보)은 근이 \(\pm k, \pm ik\)라 해가 \(e^{kx}, e^{-kx}, \cos kx, \sin kx\)의 결합입니다. 고계 방정식은 결국 1계 연립(<a href="systems.html">11장</a>)으로 바꾸어 행렬의 고유값 문제로 보는 것이 가장 깔끔합니다. 특성 다항식이 바로 그 행렬의 특성 다항식입니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>특성근을 읽는 능력은 진동·회로·제어의 공통 언어입니다. "극점이 왼쪽 반평면에 있는가", "허수부가 얼마인가"라는 질문은 이 장의 이차방정식에서 시작합니다.</p>
+    <div class="uses">
+      <a href="oscillations.html"><small>7장 · 자유 진동</small>용수철·진자·RLC<br><span>my″ + cy′ + ky = 0의 세 경우가 과감쇠·임계 감쇠·부족 감쇠다. 감쇠비 ζ는 판별식의 다른 이름.</span></a>
+      <a href="forced.html"><small>8장 · 강제 진동과 공진</small>비동차 방정식<br><span>일반해 = 동차해 + 특수해. 중첩 원리가 미정계수법과 매개변수 변환법의 바탕이다.</span></a>
+      <a href="laplace.html"><small>9장 · 라플라스 변환</small>특성 다항식 = 분모<br><span>라플라스 변환하면 특성 방정식이 전달 함수의 분모로 다시 나타난다.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>고유값과 위상 평면<br><span>2계 방정식은 2×2 연립이고, 특성근은 행렬의 고유값이다. 그림 6-2가 대각합–행렬식 지도가 된다.</span></a>
+      <a href="series-solutions.html"><small>14장 · 급수해와 특수 함수</small>변수 계수 방정식<br><span>코시–오일러의 지표 방정식이 프로베니우스 방법으로 확장된다. 베셀·르장드르 방정식.</span></a>
+      <a href="../../linear/chapters/eigen.html"><small>LINEARBOOK</small>고유값과 고유벡터<br><span>e<sup>rt</sup> 시도는 "미분 연산자의 고유함수 찾기"다. 해 공간이 2차원 벡터 공간이라는 관점.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>2계 방정식의 상태는 위치와 속도의 쌍이라 초기 조건이 두 개 필요하다. \(p, q, g\)가 \(I\)에서 연속이면 선형 초기값 문제의 해는 \(I\) 전체에서 존재하고 유일하다.</li>
+      <li>\(L[y] = y'' + py' + qy\)는 선형 연산자다. 동차 방정식의 해들의 일차결합도 해(중첩 원리)이고, 해 공간은 2차원 벡터 공간이다. 비선형 방정식에서는 중첩이 깨진다.</li>
+      <li>론스키안 \(W = y_1y_2' - y_1'y_2\)는 상태 벡터 두 개가 만드는 넓이다. 한 점에서 \(W \ne 0\)이면 기본해 집합이고 모든 해가 \(c_1y_1 + c_2y_2\)다. 아벨 정리 \(W = W(t_0)e^{-\int p}\) 때문에 해의 론스키안은 늘 0이거나 한 번도 0이 아니다.</li>
+      <li>상수계수 \(ay'' + by' + cy = 0\)은 \(e^{rt}\)를 넣어 특성 방정식 \(ar^2 + br + c = 0\)으로 푼다. 실근 \(r_1 \ne r_2\): \(c_1e^{r_1t} + c_2e^{r_2t}\), 중근: \((c_1 + c_2t)e^{rt}\), 복소근 \(\alpha \pm i\beta\): \(e^{\alpha t}(c_1\cos\beta t + c_2\sin\beta t)\).</li>
+      <li>근의 실수부는 성장·감쇠, 허수부는 진동수다. 모든 근이 왼쪽 반평면에 있으면 모든 해가 0으로 간다. 감쇠 b를 키우면 근은 반지름 √c인 원을 돌아 \(b = 2\sqrt c\)에서 만난 뒤 갈라지고, 지수 감쇠율이 가장 큰 것은 그 만나는 점이다(허용 띠 안 정착 시간은 7장에서 따로 본다).</li>
+      <li>중근의 \(te^{rt}\)는 두 근이 합쳐지는 극한(\(\partial_r e^{rt}\))이자 계수 내리기의 결과다. 해 하나 \(y_1\)을 알면 \(y_2 = y_1\int e^{-\int p}/y_1^2\,dt\).</li>
+      <li>코시–오일러 방정식 \(at^2y'' + bty' + cy = 0\)은 \(t^m\)을 넣어 지표 방정식 \(am^2 + (b - a)m + c = 0\)으로 풀며, \(s = \ln t\)로 바꾸면 상수계수 방정식이다. 중근은 \(t^m\ln t\), 복소근은 \(t^\alpha\cos(\beta\ln t)\)를 준다.</li>
+      <li>n계 상수계수 방정식은 특성 다항식의 근으로 풀고, 중복도 k인 근은 \(t^je^{rt}\)(\(j \lt k\))를 준다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(y'' - 4y = 0\)의 일반해는?</p><div class="opts">
+        <button class="opt">\(c_1\cos 2t + c_2\sin 2t\)</button>
+        <button class="opt" data-correct>\(c_1e^{2t} + c_2e^{-2t}\)</button>
+        <button class="opt">\((c_1 + c_2t)e^{2t}\)</button>
+        <button class="opt">\(c_1e^{4t} + c_2\)</button>
+      </div><div class="quiz-exp">특성 방정식 \(r^2 - 4 = 0\), \(r = \pm 2\)(서로 다른 실근). \(c_1\cos 2t + c_2\sin 2t\)는 \(y'' + 4y = 0\)의 해다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(y'' + 6y' + 9y = 0\), \(y(0) = 2\), \(y'(0) = -5\)의 해는?</p><div class="opts">
+        <button class="opt">\(2e^{-3t} - 5te^{-3t}\)</button>
+        <button class="opt" data-correct>\((2 + t)e^{-3t}\)</button>
+        <button class="opt">\(2e^{-3t} + e^{3t}\)</button>
+        <button class="opt">\((2 - 5t)e^{-3t}\)</button>
+      </div><div class="quiz-exp">\((r + 3)^2 = 0\), 중근 −3. \(y = (c_1 + c_2t)e^{-3t}\), \(y(0) = c_1 = 2\), \(y'(0) = c_2 - 3c_1 = c_2 - 6 = -5\)이므로 \(c_2 = 1\). \(y'(0)\)이 곧 \(c_2\)는 아니라는 점에 주의.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(y'' + 4y' + 13y = 0\)의 해는 어떤 모양인가?</p><div class="opts">
+        <button class="opt">진동 없이 \(e^{-2t}\)로 감쇠</button>
+        <button class="opt">주기 \(2\pi/13\)으로 진동하며 감쇠</button>
+        <button class="opt" data-correct>주기 \(2\pi/3\)으로 진동하며 포락선 \(e^{-2t}\)로 감쇠</button>
+        <button class="opt">진폭이 커지는 진동</button>
+      </div><div class="quiz-exp">\(r = \frac{-4 \pm\sqrt{16 - 52}}{2} = -2 \pm 3i\). \(\alpha = -2\)는 포락선 \(e^{-2t}\), \(\beta = 3\)은 각진동수라 주기 \(2\pi/3\).</div></div>
+
+      <div class="quiz-q"><p>Q4. \(W(e^t, te^t)\)는?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">\(te^{2t}\)</button>
+        <button class="opt" data-correct>\(e^{2t}\)</button>
+        <button class="opt">\((1 + t)e^{2t}\)</button>
+      </div><div class="quiz-exp">\(e^t\cdot(e^t + te^t) - e^t\cdot te^t = e^{2t}\). 한 번도 0이 아니므로 \(y'' - 2y' + y = 0\)의 기본해 집합이다. 아벨 정리로도 \(p = -2\)에서 \(W = Ce^{2t}\).</div></div>
+
+      <div class="quiz-q"><p>Q5. \(t > 0\)에서 \(y'' + \frac1t y' + q(t)y = 0\)의 두 해의 론스키안이 \(W(1) = 3\)이다. \(W(3)\)은?</p><div class="opts">
+        <button class="opt" data-correct>1</button>
+        <button class="opt">3</button>
+        <button class="opt">9</button>
+        <button class="opt">q를 알아야 한다</button>
+      </div><div class="quiz-exp">아벨 정리: \(W(t) = W(1)\exp(-\int_1^t ds/s) = 3/t\). \(W(3) = 1\). \(q\)는 공식에 나타나지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(t^2y'' + ty' - 9y = 0\)(\(t > 0\))의 일반해는?</p><div class="opts">
+        <button class="opt">\(c_1e^{3t} + c_2e^{-3t}\)</button>
+        <button class="opt" data-correct>\(c_1t^3 + c_2t^{-3}\)</button>
+        <button class="opt">\(c_1\cos(3\ln t) + c_2\sin(3\ln t)\)</button>
+        <button class="opt">\((c_1 + c_2\ln t)t^3\)</button>
+      </div><div class="quiz-exp">지표 방정식 \(m(m - 1) + m - 9 = m^2 - 9 = 0\), \(m = \pm 3\). 코시–오일러 방정식의 해는 지수가 아니라 거듭제곱이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 연속 계수 \(p, q\)를 가진 \(y'' + py' + qy = 0\)의 두 해에 대해 \((-1, 1)\)에서 론스키안이 될 수 <b>없는</b> 것은?</p><div class="opts">
+        <button class="opt">\(W(t) = 0\)</button>
+        <button class="opt">\(W(t) = e^{t^2}\)</button>
+        <button class="opt" data-correct>\(W(t) = t\)</button>
+        <button class="opt">\(W(t) = -5\)</button>
+      </div><div class="quiz-exp">아벨 정리에 따라 해의 론스키안은 \(W(t_0)e^{-\int p}\) 꼴이라 구간에서 항상 0이거나 한 번도 0이 아니다. \(W = t\)는 \(t = 0\)에서만 0이라 불가능하다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(y_1\), \(y_2\)가 모두 \(y'' + y = \sin t\)의 해일 때 옳은 것은?</p><div class="opts">
+        <button class="opt">\(y_1 + y_2\)도 \(y'' + y = \sin t\)의 해다</button>
+        <button class="opt" data-correct>\(y_1 - y_2\)는 \(y'' + y = 0\)의 해다</button>
+        <button class="opt">\(2y_1\)도 \(y'' + y = \sin t\)의 해다</button>
+        <button class="opt">\(y_1 y_2\)는 \(y'' + y = 0\)의 해다</button>
+      </div><div class="quiz-exp">\(L[y_1 - y_2] = \sin t - \sin t = 0\). 반면 \(L[y_1 + y_2] = 2\sin t\)라 비동차 방정식의 해는 더해서 같은 방정식의 해가 되지 않는다. 이것이 8장의 "일반해 = 동차해 + 특수해 하나"의 근거다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const SO = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  /** 계수 c를 '+ 2.00' 꼴로 */
+  term(c, s, first) {
+    if (Math.abs(c) < 5e-4) return "";
+    const sg = c < 0 ? "−" : first ? "" : "+";
+    const v = Math.abs(c), body = Math.abs(v - 1) < 5e-4 && s ? "" : SO.num(v, 2).replace(/\.?0+$/, "");
+    return (first ? (c < 0 ? "−" : "") : " " + sg + " ") + body + s;
+  },
+  /** y'' + b y' + c y = 0, y(0) = y0, y'(0) = v0 의 닫힌 꼴 해 */
+  solve(b, c, y0, v0) {
+    const D = b * b - 4 * c, tol = 1e-6;
+    if (D > tol) {
+      const s = Math.sqrt(D), r1 = (-b + s) / 2, r2 = (-b - s) / 2, c1 = (v0 - r2 * y0) / (r1 - r2), c2 = y0 - c1;
+      return { kind: "real", r1, r2, c1, c2, f: (t) => c1 * Math.exp(r1 * t) + c2 * Math.exp(r2 * t), d: (t) => c1 * r1 * Math.exp(r1 * t) + c2 * r2 * Math.exp(r2 * t) };
+    }
+    if (D < -tol) {
+      const al = -b / 2, be = Math.sqrt(-D) / 2, A = y0, B = (v0 - al * y0) / be;
+      return { kind: "complex", al, be, A, B, f: (t) => Math.exp(al * t) * (A * Math.cos(be * t) + B * Math.sin(be * t)), d: (t) => Math.exp(al * t) * ((al * A + be * B) * Math.cos(be * t) + (al * B - be * A) * Math.sin(be * t)) };
+    }
+    const r = -b / 2, A = y0, B = v0 - r * y0;
+    return { kind: "double", r, A, B, f: (t) => (A + B * t) * Math.exp(r * t), d: (t) => (B + r * (A + B * t)) * Math.exp(r * t) };
+  },
+  ex(r, v = "t") { const s = SO.num(r, 2).replace(/\.?0+$/, ""); return s === "0" ? "" : s === "1" ? `e<sup>${v}</sup>` : s === "−1" ? `e<sup>−${v}</sup>` : `e<sup>${s}${v}</sup>`; },
+  /** 해를 HTML 식으로 */
+  form(S) {
+    if (S.kind === "real") { const a = SO.term(S.c1, SO.ex(S.r1) || "", true), b = SO.term(S.c2, SO.ex(S.r2) || "", !a); return (a + b) || "0"; }
+    if (S.kind === "double") { const e = SO.ex(S.r); const inner = (SO.term(S.A, "", true) + SO.term(S.B, "t", Math.abs(S.A) < 5e-4)) || "0"; return e ? `(${inner})${e}` : inner; }
+    const w = SO.num(S.be, 2).replace(/\.?0+$/, ""), e = SO.ex(S.al);
+    const inner = (SO.term(S.A, ` cos ${w}t`, true) + SO.term(S.B, ` sin ${w}t`, Math.abs(S.A) < 5e-4)) || "0";
+    return e ? `${e}(${inner.trim()})` : inner.trim();
+  },
+  /** 2계 연립 RK4: F(t, y, v) → y''. 반환 {t[], y[], v[]} */
+  rk(F, y0, v0, h, N) {
+    const T = [0], Y = [y0], V = [v0]; let y = y0, v = v0, t = 0;
+    for (let n = 0; n < N; n++) {
+      const a1 = F(t, y, v), b1 = v;
+      const a2 = F(t + h / 2, y + (h / 2) * b1, v + (h / 2) * a1), b2 = v + (h / 2) * a1;
+      const a3 = F(t + h / 2, y + (h / 2) * b2, v + (h / 2) * a2), b3 = v + (h / 2) * a2;
+      const a4 = F(t + h, y + h * b3, v + h * a3), b4 = v + h * a3;
+      y += (h / 6) * (b1 + 2 * b2 + 2 * b3 + b4); v += (h / 6) * (a1 + 2 * a2 + 2 * a3 + a4); t += h;
+      T.push(t); Y.push(y); V.push(v);
+    }
+    return { t: T, y: Y, v: V };
+  },
+};
+
+/* ================================================================ 1. 초기 조건 두 개 */
+(function () {
+  const PRE = { osc: [0, 4], damp: [0.5, 4], exp: [0, -1] };
+  const DX = 0.7;
+  let co = PRE.damp, fam = "slope", y0 = 1, v0 = 0;
+  const p0 = { x: 0, y: y0, lock: "x", r: 9, constrain(p) { p.y = MB.clamp(p.y, -2.2, 2.2); } };
+  const ph = { x: DX, y: y0 + DX * v0, lock: "x", r: 7, constrain(p) { p.y = MB.clamp(p.y, p0.y - 3 * DX, p0.y + 3 * DX); } };
+  const pl = MB.plane("#so-in-cv", {
+    x: [-0.4, 8.2], y: [-2.6, 2.6], aspect: 0.55, minHeight: 250, points: [p0, ph],
+    onDrag(p, i) { if (i === 0) { y0 = p0.y; ph.y = y0 + DX * v0; } else { v0 = (ph.y - p0.y) / DX; } stats(); },
+    draw(P) {
+      const C = P.P;
+      if (fam !== "none") {
+        for (let k = -4; k <= 4; k++) {
+          if (k === 0) continue;
+          const S = fam === "slope" ? SO.solve(co[0], co[1], y0, v0 + k * 0.6) : SO.solve(co[0], co[1], y0 + k * 0.35, v0);
+          P.curve(S.f, { color: C.dim, width: 1.2, alpha: 0.45, from: 0, to: 8.2 });
+        }
+      }
+      const S = SO.solve(co[0], co[1], y0, v0);
+      P.line(-0.4, y0 - 0.4 * v0, DX * 1.6, y0 + DX * 1.6 * v0, { color: C.warn, width: 1.8, dash: [5, 4] });
+      P.curve(S.f, { color: C.accent, width: 3, from: 0, to: 8.2 });
+      p0.color = C.text; ph.color = C.warn;
+    },
+  });
+  function stats() {
+    const S = SO.solve(co[0], co[1], y0, v0);
+    MB.stat("so-in-y0", SO.num(y0, 2)); MB.stat("so-in-v0", SO.num(v0, 2));
+    MB.stat("so-in-form", "y = " + SO.form(S));
+  }
+  stats();
+  const setIC = (a, b) => { y0 = a; v0 = b; p0.y = a; ph.y = a + DX * b; pl.redraw(); stats(); };
+  MB.seg("so-in-fam", (v) => { fam = v; pl.redraw(); });
+  document.getElementById("so-in-pre").addEventListener("change", (e) => { co = PRE[e.target.value]; pl.redraw(); stats(); });
+  document.getElementById("so-in-rest").addEventListener("click", () => setIC(y0 === 0 ? 1 : y0, 0));
+  document.getElementById("so-in-kick").addEventListener("click", () => setIC(0, v0 === 0 ? 1.5 : v0));
+})();
+
+/* ================================================================ 2. 중첩 */
+(function () {
+  const EQ = {
+    lin: (t, y, v) => -y,
+    damp: (t, y, v) => -0.3 * v - 2 * y,
+    non: (t, y, v) => -y - y * y * y,
+  };
+  const h = 0.01, N = 1200;
+  let eq = "lin", parts = true, c1 = 1.2, c2 = 0.8;
+  const cv = MB.canvas("#so-sp-cv", (ctx, w, hh) => {
+    const C = MB.palette(), F = EQ[eq];
+    const s1 = SO.rk(F, 1, 0, h, N), s2 = SO.rk(F, 0, 1, h, N), sd = SO.rk(F, c1, c2, h, N);
+    const comb = [], d1 = [], d2 = [], dir = []; let md = 0, mr = 0;
+    for (let i = 0; i <= N; i += 2) {
+      const t = s1.t[i], Y = c1 * s1.y[i] + c2 * s2.y[i], V = c1 * s1.v[i] + c2 * s2.v[i];
+      const A = c1 * F(t, s1.y[i], s1.v[i]) + c2 * F(t, s2.y[i], s2.v[i]);
+      mr = Math.max(mr, Math.abs(A - F(t, Y, V))); md = Math.max(md, Math.abs(Y - sd.y[i]));
+      comb.push([t, Y]); d1.push([t, c1 * s1.y[i]]); d2.push([t, c2 * s2.y[i]]); dir.push([t, sd.y[i]]);
+    }
+    const series = [];
+    if (parts) { series.push({ data: d1, color: C.accent2, width: 1.6, dash: [5, 4] }); series.push({ data: d2, color: C.warn, width: 1.6, dash: [2, 3] }); }
+    series.push({ data: comb, color: C.accent, width: 4.5 });
+    series.push({ data: dir, color: C.text, width: 1.6 });
+    MB.chart(ctx, { x: 46, y: 14, w: w - 46 - 16, h: hh - 14 - 44 }, { x: [0, 12], y: [-3, 3], xLabel: "t", series });
+    MB.stat("so-sp-diff", SO.sci(md, 2)); MB.stat("so-sp-res", SO.sci(mr, 2));
+    MB.stat("so-sp-v", md < 1e-6 ? "<span style='color:var(--ok)'>합 = 해 (중첩 성립)</span>" : "<span style='color:var(--bad)'>합 ≠ 해 (중첩 깨짐)</span>");
+  }, { aspect: 0.52, minHeight: 250, maxHeight: 420 });
+  MB.seg("so-sp-eq", (v) => { eq = v; cv.redraw(); });
+  MB.range("so-sp-c1", (v) => v.toFixed(2).replace("-", "−"), (v) => { c1 = v; cv.redraw(); });
+  MB.range("so-sp-c2", (v) => v.toFixed(2).replace("-", "−"), (v) => { c2 = v; cv.redraw(); });
+  MB.check("so-sp-parts", (v) => { parts = v; cv.redraw(); });
+})();
+
+/* ================================================================ 3. 론스키안 */
+(function () {
+  const ex = Math.exp, co = Math.cos, si = Math.sin;
+  const PRE = {
+    exp: { r: [-1.2, 1.2], y: [-1, 8], f: [(t) => ex(t), (t) => ex(2 * t)], d: [(t) => ex(t), (t) => 2 * ex(2 * t)], P: (a, b) => -3 * (b - a) },
+    trig: { r: [0, 6], y: [-1.6, 1.6], f: [(t) => co(2 * t), (t) => si(2 * t)], d: [(t) => -2 * si(2 * t), (t) => 2 * co(2 * t)], P: () => 0 },
+    damp: { r: [0, 4], y: [-1.1, 1.1], f: [(t) => ex(-t) * co(2 * t), (t) => ex(-t) * si(2 * t)], d: [(t) => ex(-t) * (-co(2 * t) - 2 * si(2 * t)), (t) => ex(-t) * (-si(2 * t) + 2 * co(2 * t))], P: (a, b) => 2 * (b - a) },
+    dep: { r: [0, 3], y: [-0.4, 3.3], f: [(t) => ex(-t), (t) => 3 * ex(-t)], d: [(t) => -ex(-t), (t) => -3 * ex(-t)], P: (a, b) => (b - a) },
+    ce: { r: [0.45, 3], y: [-0.5, 5], f: [(t) => t, (t) => 1 / (t * t)], d: [() => 1, (t) => -2 / (t * t * t)], P: (a, b) => 2 * Math.log(b / a) },
+    abs: { r: [-1, 1], y: [-1.2, 1.2], f: [(t) => t * t, (t) => t * Math.abs(t)], d: [(t) => 2 * t, (t) => 2 * Math.abs(t)], P: null },
+  };
+  let pre = PRE.exp, u = 0.4, plW = null, plV = null;
+  const msg = document.getElementById("so-wr-msg");
+  const t0 = () => pre.r[0] + u * (pre.r[1] - pre.r[0]);
+  const W = (t) => pre.f[0](t) * pre.d[1](t) - pre.d[0](t) * pre.f[1](t);
+  const plF = MB.plane("#so-wr-f", {
+    x: [pre.r[0] - 0.05, pre.r[1] + 0.05], y: pre.y, aspect: 0.4, minHeight: 190, maxHeight: 300, gridStep: 1,
+    draw(P) {
+      const C = P.P, t = t0();
+      P.curve(pre.f[0], { color: C.accent2, width: 2.6, from: pre.r[0], to: pre.r[1] });
+      P.curve(pre.f[1], { color: C.warn, width: 2.6, from: pre.r[0], to: pre.r[1] });
+      P.line(t, P.y0, t, P.y1, { color: C.dim, width: 1.2, dash: [4, 4] });
+      P.dot(t, pre.f[0](t), { r: 5, color: C.accent2 }); P.dot(t, pre.f[1](t), { r: 5, color: C.warn });
+      P.text("y₁", pre.r[1], pre.f[0](pre.r[1]), { color: C.accent2, dx: -22, dy: -10, bold: true });
+      P.text("y₂", pre.r[1], pre.f[1](pre.r[1]), { color: C.warn, dx: -22, dy: 12, bold: true });
+      if (plW) plW.redraw(); if (plV) plV.redraw();
+    },
+  });
+  plW = MB.canvas("#so-wr-w", (ctx, w, h) => {
+    const C = MB.palette(), a = pre.r[0], b = pre.r[1], t = t0(), Wt = W(t), dat = [], ab = [];
+    for (let i = 0; i <= 200; i++) { const s = a + ((b - a) * i) / 200; dat.push([s, W(s)]); if (pre.P) ab.push([s, Wt * Math.exp(-pre.P(t, s))]); }
+    const vals = dat.map((p) => p[1]); let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); if (hi - lo < 1) { hi += 0.5; lo -= 0.5; } const pad = (hi - lo) * 0.12;
+    MB.chart(ctx, { x: 48, y: 26, w: w - 48 - 12, h: h - 26 - 30 }, {
+      x: [a, b], y: [lo - pad, hi + pad], series: [{ data: dat, color: C.accent, width: 2.6 }].concat(pre.P ? [{ data: ab, color: C.text, width: 1.6, dash: [5, 4] }] : []),
+      hlines: [{ y: 0, color: C.axis, dash: [] }], vlines: [{ x: t, color: C.dim }], points: [{ x: t, y: Wt, color: C.accent, r: 4.5 }],
+    });
+  }, { aspect: 0.62, minHeight: 170, maxHeight: 240 });
+  plV = MB.plane("#so-wr-v", {
+    x: [-3, 3], y: null, aspect: 0.62, minHeight: 170, maxHeight: 240, gridStep: 1, axisLabels: false,
+    draw(P) {
+      const C = P.P, t = t0();
+      let a = [pre.f[0](t), pre.d[0](t)], b = [pre.f[1](t), pre.d[1](t)];
+      const m = Math.max(Math.hypot(a[0] + b[0], a[1] + b[1]), Math.hypot(...a), Math.hypot(...b), 1e-9), s = Math.min(1, 1.5 / m); a = a.map((v) => v * s); b = b.map((v) => v * s);
+      P.poly([[0, 0], a, [a[0] + b[0], a[1] + b[1]], b], { color: C.accent, width: 1, fill: MB.isDark() ? "rgba(255,140,60,0.22)" : "rgba(232,89,12,0.16)" });
+      P.arrow(0, 0, a[0], a[1], { color: C.accent2, width: 2.6 }); P.arrow(0, 0, b[0], b[1], { color: C.warn, width: 2.6 });
+      if (s < 1) P.text("×" + SO.num(s, 3), P.x1, P.y0, { color: C.dim, dx: -6, dy: -10, size: 11, align: "right" });
+    },
+  });
+  const update = () => {
+    plF.redraw();
+    const t = t0(), Wt = W(t), f = (v) => SO.num(v, 2);
+    MB.stat("so-wr-m", `[${f(pre.f[0](t))}  ${f(pre.f[1](t))}; ${f(pre.d[0](t))}  ${f(pre.d[1](t))}]`);
+    MB.stat("so-wr-W", SO.num(Wt, 4));
+    const zero = Math.abs(Wt) < 1e-9;
+    MB.stat("so-wr-v-out", zero ? "<span style='color:var(--bad)'>W = 0</span>" : "<span style='color:var(--ok)'>W ≠ 0: 기본해 집합</span>");
+    if (pre === PRE.abs) { msg.className = "so-msg bad"; msg.innerHTML = "t²과 t|t|는 선형 독립인데 W ≡ 0입니다. 둘을 함께 해로 갖는 연속 계수 2계 선형 방정식이 없기 때문에 아벨 정리와 모순되지 않습니다. (t = 0에서 표준형 계수가 정의되지 않는 t²y″ − 2ty′ + 2y = 0을 생각해 보세요.)"; }
+    else if (pre === PRE.dep) { msg.className = "so-msg bad"; msg.innerHTML = "y₂ = 3y₁이라 두 상태 벡터가 늘 한 직선 위에 있습니다. W ≡ 0, 기본해 집합이 아닙니다. 결합으로는 Ce<sup>−t</sup>밖에 만들 수 없습니다."; }
+    else { msg.className = "so-msg"; msg.innerHTML = `아벨 정리: W(t) = W(t₀)·exp(−∫<sub>t₀</sub><sup>t</sup> p ds). 점선이 실선과 겹치면 정리가 맞는 것입니다. 부호가 바뀌지 않는 것을 확인하세요.`; }
+  };
+  update();
+  MB.range("so-wr-t", () => SO.num(t0(), 2), MB.throttle(() => { u = Number(document.getElementById("so-wr-t").value); document.getElementById("so-wr-t-out").textContent = SO.num(t0(), 2); update(); }));
+  document.getElementById("so-wr-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; plF.view({ x: [pre.r[0] - 0.05, pre.r[1] + 0.05], y: pre.y }); document.getElementById("so-wr-t-out").textContent = SO.num(t0(), 2); update(); });
+})();
+
+/* ================================================================ 4. 특성근 끌기 */
+(function () {
+  const SNAP = 0.12;
+  let ic = [1, 0], env = true, ch = null;
+  const r1 = { x: -0.4, y: 2, r: 8 }, r2 = { x: -0.4, y: -2, r: 8 };
+  const isC = () => Math.abs(r1.y) > 1e-9;
+  const fix = (p, q) => {
+    if (Math.abs(p.y) > SNAP) { q.x = p.x; q.y = -p.y; }
+    else { const wasC = Math.abs(q.y) > 1e-9; p.y = 0; if (wasC) { q.y = 0; q.x = p.x; } else if (Math.abs(p.x - q.x) < 0.06) p.x = q.x; }
+  };
+  const pl = MB.plane("#so-rt-pl", {
+    x: [-4.2, 2.2], y: null, aspect: 0.9, minHeight: 240, maxHeight: 380, points: [r1, r2],
+    onDrag(p, i) { fix(p, i ? r1 : r2); upd(); },
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      ctx.save(); ctx.fillStyle = C.ok; ctx.globalAlpha = 0.07; ctx.fillRect(0, 0, P.X(0), P.h); ctx.fillStyle = C.bad; ctx.fillRect(P.X(0), 0, P.w - P.X(0), P.h); ctx.restore();
+      P.text("감쇠", -4, P.y0, { color: C.ok, dy: -12, size: 12, bold: true }); P.text("성장", 0.3, P.y0, { color: C.bad, dy: -12, size: 12, bold: true });
+      if (isC()) P.line(r1.x, r1.y, r2.x, r2.y, { color: C.accent, width: 1, dash: [3, 3] });
+      const dbl = !isC() && Math.abs(r1.x - r2.x) < 1e-9;
+      r1.color = isC() ? C.accent : dbl ? C.warn : C.accent2; r2.color = r1.color;
+      if (dbl) P.circle(r1.x, 0, 13 / P.unit, { color: C.warn, width: 2 });
+      if (ch) ch.redraw();
+    },
+  });
+  const coeffs = () => { const b = isC() ? -2 * r1.x : -(r1.x + r2.x), c = isC() ? r1.x * r1.x + r1.y * r1.y : r1.x * r2.x; return [b, c]; };
+  ch = MB.canvas("#so-rt-ch", (ctx, w, h) => {
+    const C = MB.palette(), [b, c] = coeffs(), S = SO.solve(b, c, ic[0], ic[1]), dat = [], series = [];
+    for (let i = 0; i <= 400; i++) { const t = (10 * i) / 400; dat.push([t, S.f(t)]); }
+    if (env && S.kind === "complex") {
+      const amp = Math.hypot(S.A, S.B), e1 = [], e2 = [];
+      for (let i = 0; i <= 100; i++) { const t = (10 * i) / 100, v = amp * Math.exp(S.al * t); e1.push([t, v]); e2.push([t, -v]); }
+      series.push({ data: e1, color: C.dim, width: 1.2, dash: [4, 4] }, { data: e2, color: C.dim, width: 1.2, dash: [4, 4] });
+    }
+    series.push({ data: dat, color: S.kind === "complex" ? C.accent : S.kind === "double" ? C.warn : C.accent2, width: 2.8 });
+    MB.chart(ctx, { x: 44, y: 26, w: w - 44 - 12, h: h - 26 - 40 }, { x: [0, 10], y: [-2.2, 2.2], xLabel: "t", series, hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 380 });
+  function upd() {
+    const [b, c] = coeffs(), S = SO.solve(b, c, ic[0], ic[1]);
+    const n = (v) => SO.num(v, 2).replace(/\.?0+$/, "");
+    MB.stat("so-rt-eq", "y″" + SO.term(b, "y′", false) + SO.term(c, "y", false) + " = 0");
+    MB.stat("so-rt-r", S.kind === "complex" ? `${n(S.al)} ± ${n(S.be)}i` : S.kind === "double" ? `${n(S.r)} (중근)` : `${n(S.r1)}, ${n(S.r2)}`);
+    MB.stat("so-rt-sol", "y = " + SO.form(S));
+    const re = S.kind === "complex" ? S.al : S.kind === "double" ? S.r : Math.max(S.r1, S.r2);
+    const kind = S.kind === "complex" ? (Math.abs(S.al) < 0.005 ? "감쇠 없는 진동 (주기 " + n(2 * Math.PI / S.be) + ")" : S.al < 0 ? "감쇠 진동 (주기 " + n(2 * Math.PI / S.be) + ")" : "커지는 진동") : S.kind === "double" ? (re < 0 ? "중근: 진동 없이 감쇠" : "중근: 진동 없이 성장") : (re < -0.005 ? "진동 없이 감쇠 (두 지수)" : Math.abs(re) <= 0.005 ? "한 근이 0: 상수로 수렴" : "진동 없이 성장");
+    MB.stat("so-rt-kind", kind);
+  }
+  const set = (a, b, c, d) => { r1.x = a; r1.y = b; r2.x = c; r2.y = d; pl.redraw(); upd(); };
+  upd();
+  MB.seg("so-rt-ic", (v) => { ic = v === "a" ? [1, 0] : [0, 1]; ch.redraw(); upd(); });
+  MB.check("so-rt-env", (v) => { env = v; ch.redraw(); });
+  document.getElementById("so-rt-p1").addEventListener("click", () => set(-1, 0, -3, 0));
+  document.getElementById("so-rt-p2").addEventListener("click", () => set(-1, 0, -1, 0));
+  document.getElementById("so-rt-p3").addEventListener("click", () => set(-0.4, 2, -0.4, -2));
+  document.getElementById("so-rt-p4").addEventListener("click", () => set(0, 2, 0, -2));
+})();
+
+/* ================================================================ 5. 중근의 극한 */
+(function () {
+  const ES = [1, 0.5, 0.2, 0.1, 0.05, 0.01, 0.001];
+  let r = -0.8, eps = 0.5;
+  const T = 6;
+  const cv = MB.canvas("#so-db-cv", (ctx, w, h) => {
+    const C = MB.palette(), r1 = r - eps / 2, r2 = r + eps / 2, a = [], b = [], q = [], te = [];
+    let md = 0, hi = 0;
+    for (let i = 0; i <= 300; i++) {
+      const t = (T * i) / 300, e1 = Math.exp(r1 * t), e2 = Math.exp(r2 * t), qq = (e2 - e1) / eps, tt = t * Math.exp(r * t);
+      a.push([t, e1]); b.push([t, e2]); q.push([t, qq]); te.push([t, tt]); md = Math.max(md, Math.abs(qq - tt)); hi = Math.max(hi, qq, tt, Math.min(e1, 3), Math.min(e2, 3));
+    }
+    hi = Math.min(Math.max(hi * 1.12, 1.2), 40);
+    MB.chart(ctx, { x: 50, y: 14, w: w - 50 - 16, h: h - 14 - 44 }, {
+      x: [0, T], y: [-0.1 * hi, hi], xLabel: "t",
+      series: [{ data: a, color: C.accent2, width: 1.6, dash: [5, 4] }, { data: b, color: C.accent2, width: 1.6 }, { data: q, color: C.accent, width: 4 }, { data: te, color: C.text, width: 1.8, dash: [6, 4] }],
+      hlines: [{ y: 0, color: C.axis, dash: [] }],
+    });
+    MB.stat("so-db-rr", SO.num(r1, 4) + ", " + SO.num(r2, 4));
+    MB.stat("so-db-d", SO.sci(md, 2));
+    MB.stat("so-db-q", SO.num(md / (eps * eps), 3));
+  }, { aspect: 0.5, minHeight: 240, maxHeight: 400 });
+  MB.range("so-db-r", (v) => v.toFixed(2).replace("-", "−"), (v) => { r = v; cv.redraw(); });
+  MB.steps("so-db-e", ES, (v) => String(v), 0.5, (v) => { eps = v; cv.redraw(); });
+})();
+
+/* ================================================================ 6. 근 경로 */
+(function () {
+  let b = 1, c = 4, crit = true, playing = false, ch = null;
+  const roots = (bb) => { const D = bb * bb - 4 * c; return D < 0 ? [[-bb / 2, Math.sqrt(-D) / 2], [-bb / 2, -Math.sqrt(-D) / 2]] : [[(-bb + Math.sqrt(D)) / 2, 0], [(-bb - Math.sqrt(D)) / 2, 0]]; };
+  const pl = MB.plane("#so-lc-pl", {
+    x: [-6.5, 1], y: null, aspect: 0.9, minHeight: 240, maxHeight: 380,
+    draw(P) {
+      const C = P.P, s = Math.sqrt(c);
+      P.param((u) => [s * Math.cos(u), s * Math.sin(u)], Math.PI / 2, 1.5 * Math.PI, { color: C.faint, width: 1.2, dash: [3, 4], n: 120 });
+      const up = [], dn = [], rr = [], rl = [];
+      for (let i = 0; i <= 320; i++) { const bb = (8 * i) / 320, R = roots(bb); if (R[0][1] !== 0) { up.push(R[0]); dn.push(R[1]); } else { rr.push(R[0]); rl.push(R[1]); } }
+      [up, dn, rr, rl].forEach((L) => L.length && P.poly(L, { color: C.dim, width: 2.2, close: false, alpha: 0.55 }));
+      P.dot(-s, 0, { r: 4, color: C.warn }); P.text("b = 2√c", -s, 0, { color: C.warn, dy: 16, align: "center", size: 11 });
+      const R = roots(b), col = R[0][1] !== 0 ? C.accent : Math.abs(b - 2 * s) < 0.03 ? C.warn : C.accent2;
+      R.forEach(([x, y]) => P.dot(Math.max(x, P.x0 + 0.1), y, { r: 7, color: col, stroke: C.bg }));
+      if (R[1][0] < P.x0) P.text("← " + SO.num(R[1][0], 2), P.x0, 0, { color: col, dx: 4, dy: -14, size: 11 });
+      if (ch) ch.redraw();
+    },
+  });
+  ch = MB.canvas("#so-lc-ch", (ctx, w, h) => {
+    const C = MB.palette(), S = SO.solve(b, c, 1, 0), K = SO.solve(2 * Math.sqrt(c), c, 1, 0), d = [], k = [];
+    for (let i = 0; i <= 400; i++) { const t = (8 * i) / 400; d.push([t, S.f(t)]); k.push([t, K.f(t)]); }
+    const series = []; if (crit) series.push({ data: k, color: C.warn, width: 1.8, dash: [6, 4] });
+    series.push({ data: d, color: S.kind === "complex" ? C.accent : C.accent2, width: 2.8 });
+    MB.chart(ctx, { x: 44, y: 26, w: w - 44 - 12, h: h - 26 - 40 }, { x: [0, 8], y: [-1.1, 1.1], xLabel: "t", series, hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 380 });
+  const upd = () => {
+    pl.redraw();
+    const R = roots(b), D = b * b - 4 * c, n = (v) => SO.num(v, 2);
+    MB.stat("so-lc-D", SO.num(D, 2));
+    MB.stat("so-lc-r", R[0][1] !== 0 ? `${n(R[0][0])} ± ${n(R[0][1])}i` : Math.abs(D) < 1e-9 ? `${n(R[0][0])} (중근)` : `${n(R[0][0])}, ${n(R[1][0])}`);
+    MB.stat("so-lc-rate", SO.num(-R[0][0], 3));
+    MB.stat("so-lc-kind", b === 0 ? "감쇠 없음: 순수 진동" : D < -1e-9 ? "복소근: 감쇠 진동" : Math.abs(D) <= 1e-9 ? "중근: 감쇠율 최대(임계 감쇠)" : "실근: 진동 없이 느리게");
+  };
+  upd();
+  const gb = MB.range("so-lc-b", (v) => v.toFixed(2), (v) => { b = v; upd(); });
+  MB.range("so-lc-c", (v) => v.toFixed(2), (v) => { c = v; upd(); });
+  MB.check("so-lc-crit", (v) => { crit = v; ch.redraw(); });
+  const btn = MB.playButton("so-lc-play", () => { if (b >= 7.99) gb.set(0, false), (b = 0); playing = true; loop.start(); }, () => { playing = false; }, ["▶ b 쓸기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-so-locus"), (dt) => {
+    if (!playing) return;
+    b = Math.min(8, b + dt * 1.2); gb.set(Math.round(b * 100) / 100, false); upd();
+    if (b >= 8) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 7. 코시–오일러 */
+(function () {
+  let b = 1, c = 4, ax = "lin", basis = true;
+  const n = (v) => SO.num(v, 2).replace(/\.?0+$/, "");
+  const cv = MB.canvas("#so-ce-cv", (ctx, w, h) => {
+    const C = MB.palette(), S = SO.solve(b - 1, c, 1, 0), B1 = SO.solve(b - 1, c, 1, 0), B2 = SO.solve(b - 1, c, 0, 1);
+    const lg = ax === "log", t0 = 0.05, t1 = 8, d = [], e1 = [], e2 = [];
+    for (let i = 0; i <= 800; i++) {
+      const t = lg ? t0 * Math.pow(t1 / t0, i / 800) : t0 + ((t1 - t0) * i) / 800, s = Math.log(t);
+      d.push([t, S.f(s)]);
+      let y1, y2;
+      if (S.kind === "real") { y1 = Math.exp(S.r1 * s); y2 = Math.exp(S.r2 * s); }
+      else if (S.kind === "double") { y1 = Math.exp(S.r * s); y2 = s * Math.exp(S.r * s); }
+      else { y1 = Math.exp(S.al * s) * Math.cos(S.be * s); y2 = Math.exp(S.al * s) * Math.sin(S.be * s); }
+      e1.push([t, y1]); e2.push([t, y2]);
+    }
+    const series = [];
+    if (basis) series.push({ data: e1, color: C.accent2, width: 1.6, dash: [5, 4] }, { data: e2, color: C.warn, width: 1.6, dash: [2, 3] });
+    series.push({ data: d, color: C.accent, width: 2.8 });
+    MB.chart(ctx, { x: 46, y: 14, w: w - 46 - 16, h: h - 14 - 44 }, {
+      x: [t0, t1], y: [-3, 3], logX: lg, xLabel: lg ? "t (로그 눈금: 가로 위치 = ln t)" : "t",
+      xTicks: lg ? [0.05, 0.1, 0.2, 0.5, 1, 2, 5] : undefined, series, hlines: [{ y: 0, color: C.axis, dash: [] }], vlines: [{ x: 1, color: C.faint, label: "t = 1" }],
+    });
+    MB.stat("so-ce-ind", "m²" + SO.term(b - 1, "m", false) + SO.term(c, "", false) + " = 0");
+    if (S.kind === "real") { MB.stat("so-ce-m", n(S.r1) + ", " + n(S.r2)); MB.stat("so-ce-bs", `t<sup>${n(S.r1)}</sup>, t<sup>${n(S.r2)}</sup>`); }
+    else if (S.kind === "double") { MB.stat("so-ce-m", n(S.r) + " (중근)"); MB.stat("so-ce-bs", `t<sup>${n(S.r)}</sup>, t<sup>${n(S.r)}</sup> ln t`); }
+    else { MB.stat("so-ce-m", n(S.al) + " ± " + n(S.be) + "i"); MB.stat("so-ce-bs", `${S.al === 0 || Math.abs(S.al) < 5e-4 ? "" : "t<sup>" + n(S.al) + "</sup>"}cos(${n(S.be)} ln t), ${Math.abs(S.al) < 5e-4 ? "" : "t<sup>" + n(S.al) + "</sup>"}sin(${n(S.be)} ln t)`); }
+  }, { aspect: 0.5, minHeight: 250, maxHeight: 400 });
+  MB.range("so-ce-b", (v) => v.toFixed(2).replace("-", "−"), (v) => { b = v; cv.redraw(); });
+  MB.range("so-ce-c", (v) => v.toFixed(2).replace("-", "−"), (v) => { c = v; cv.redraw(); });
+  MB.seg("so-ce-ax", (v) => { ax = v; cv.redraw(); });
+  MB.check("so-ce-basis", (v) => { basis = v; cv.redraw(); });
+})();
+</script>
+</body>
+</html>

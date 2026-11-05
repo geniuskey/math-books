@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>용어집 &amp; 종합 퀴즈 · ODEBook</title>
+<meta name="description" content="ODEBook 전체를 한 장에 정리한다. 방정식 꼴로 풀이법 고르기, 특성근과 해 모양 한눈표, 라플라스 변환표, 끌어서 보는 대각합–행렬식 평형점 지도, 미분방정식 용어 검색, 열여섯 장 전 범위 종합 퀴즈.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .gl-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 16px; align-items: center; }
+  .gl-filter button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  .gl-filter button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .gl-filter select { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 3px 10px; max-width: 100%; }
+  .gl-count { font-size: 13px; color: var(--text-faint); margin-bottom: 10px; }
+  .score { position: sticky; top: calc(var(--nav-h) + 8px); z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: var(--bg-elev); border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 16px; font-family: var(--mono); font-size: 14px; }
+  .score .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .score .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s; }
+  .quiz-q .ch { font-size: 12px; font-weight: 400; color: var(--text-faint); margin-left: 6px; }
+  .gl-weak { font-size: 14px; color: var(--text-dim); margin: 0 0 14px; }
+  .gl-weak a { margin-right: 8px; white-space: nowrap; }
+  .gl-pick { padding: 14px 18px; display: grid; gap: 12px; background: var(--canvas-bg); }
+  .gl-pick .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .gl-pick .row[hidden] { display: none; }
+  .gl-pick .row > b { font-size: 13px; color: var(--text-dim); min-width: 96px; }
+  .gl-out { padding: 14px 18px 16px; display: grid; gap: 10px; }
+  .gl-rec { display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elev); }
+  .gl-rec.best { border-color: var(--accent); background: var(--accent-soft); }
+  .gl-rec .nm { font-weight: 700; font-size: 15px; color: var(--accent); }
+  .gl-rec .nm small { display: block; font-weight: 400; font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .gl-rec p { margin: 0 0 4px; font-size: 14.5px; color: var(--text-dim); }
+  .gl-rec p b { color: var(--text); }
+  .gl-rec .lk { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 13px; }
+  @media (max-width: 560px) { .gl-rec { grid-template-columns: 1fr; gap: 4px; } }
+  .gl-roots { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); margin: 18px 0; }
+  .gl-root { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elev); min-width: 0; }
+  .gl-root h4 { margin: 8px 0 4px; font-size: 14.5px; }
+  .gl-root .eq { font-size: 14px; margin: 2px 0 6px; overflow-x: auto; }
+  .gl-root p { margin: 0 0 4px; font-size: 13.5px; color: var(--text-dim); }
+  .gl-root a { font-size: 12.5px; margin-right: 10px; }
+  .gl-root.stable { border-left: 3px solid var(--ok); }
+  .gl-root.edge { border-left: 3px solid var(--warn); }
+  .gl-root.unstable { border-left: 3px solid var(--bad); }
+  .gl-spark { display: block; width: 100%; max-width: 260px; height: auto; }
+  .gl-spark .bx { fill: var(--canvas-bg); stroke: var(--border); }
+  .gl-spark .ax { stroke: var(--axis); stroke-width: 1; }
+  .gl-spark .z { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 3 3; }
+  .gl-spark .cv { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+  .gl-spark .rt { fill: var(--accent-2); }
+  .gl-spark .rt2 { fill: none; stroke: var(--accent-2); stroke-width: 1.5; }
+  .gl-spark text { fill: var(--text-faint); font: 9px var(--mono); }
+  .gl-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--text-dim); margin: -6px 0 10px; }
+  .gl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .gl-two { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .gl-two > .table-wrap { margin: 0; }
+  .gl-td { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--canvas-bg); }
+  @media (min-width: 700px) { .gl-td { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .gl-td > div + div { border-left: 1px solid var(--border); } }
+  @media (max-width: 699px) { .gl-td > div + div { border-top: 1px solid var(--border); } }
+  .gl-td > div, .gl-tdt { position: relative; min-width: 0; }
+  .gl-tdt { border-top: 1px solid var(--border); background: var(--canvas-bg); }
+  .gl-td canvas, .gl-tdt canvas { display: block; width: 100%; }
+  #sim-gl-chooser .stat .v { font-family: var(--font); font-size: 15px; font-weight: 600; line-height: 1.5; }
+  .gl-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 78%, transparent); padding: 1px 6px; border-radius: 5px; max-width: calc(100% - 20px); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="glossary">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 17 · 부록</div>
+    <h1 data-no-glossary>용어집 &amp; 종합 퀴즈</h1>
+    <p class="lead">열여섯 장 동안 방향장, 적분 인자, 특성근, 공진, 전달 함수, 안장과 나선, 분기, 고유함수 같은 많은 이름을 만났습니다. 처음 보는 방정식 앞에서 실제로 필요한 질문은 대개 둘입니다. <b>"이 꼴은 어떤 방법으로 풀지?"</b>와 <b>"풀지 않고도 해가 어떤 모양일지 알 수 있을까?"</b> 이 장은 풀이법 고르기 도우미로 시작해, 특성근과 해 모양의 대응, 라플라스 변환표, 평형점 분류 지도를 한곳에 모으고, 용어를 검색한 뒤, 전 범위 종합 퀴즈로 마무리합니다.</p>
+    <ul class="objectives">
+      <li>방정식의 계수·선형성·계수의 종류·입력·자율성을 보고 알맞은 풀이법과 해당 절을 찾는다.</li>
+      <li>특성근(극점, 고유값)의 위치만 보고 해가 감쇠·진동·발산하는지 말한다.</li>
+      <li>라플라스 변환쌍과 성질을 표에서 찾아 초기값 문제를 대수 문제로 바꾼다.</li>
+      <li>대각합과 행렬식으로 2차원 평형점을 분류하고, 비선형 시스템의 선형화가 어디까지 믿을 만한지 판단한다.</li>
+      <li>미분방정식 용어를 검색하고, 종합 퀴즈로 약한 장을 찾아 돌아간다.</li>
+    </ul>
+  </header>
+
+  <section id="chooser">
+    <h2>풀이법 고르기 도우미</h2>
+    <p>미분방정식은 "풀이법이 정해진 꼴"과 "그림과 수치로 봐야 하는 꼴"로 크게 나뉩니다. 먼저 물어볼 것은 늘 같습니다. <b>몇 계인가, 선형인가, 계수가 상수인가, 우변(입력)이 무엇인가, t가 식에 직접 나오는가.</b> 아래에서 방정식의 특징을 고르면 먼저 써 볼 방법(강조된 칸)과 대안, 그리고 그 방법을 다룬 절로 가는 링크가 나옵니다.</p>
+    <div class="sim" id="sim-gl-chooser">
+      <div class="sim-head"><span class="sim-tag">GUIDE</span><h3>이 방정식, 어떻게 풀까?</h3></div>
+      <div class="gl-pick">
+        <div class="row" data-row="kind"><b>무엇을 푸나</b><div class="seg" id="gl-k-kind"><button data-value="one" class="on">ODE 하나</button><button data-value="sys">연립 ODE</button><button data-value="pde">편미분방정식</button></div></div>
+        <div class="row" data-row="order"><b>계수(階數)</b><div class="seg" id="gl-k-order"><button data-value="1">1계</button><button data-value="2" class="on">2계 이상</button></div></div>
+        <div class="row" data-row="lin"><b>선형성</b><div class="seg" id="gl-k-lin"><button data-value="lin" class="on">선형</button><button data-value="non">비선형</button></div></div>
+        <div class="row" data-row="coef"><b>계수</b><div class="seg" id="gl-k-coef"><button data-value="const" class="on">상수 계수</button><button data-value="var">변수 계수</button></div></div>
+        <div class="row" data-row="vform"><b>변수 계수 꼴</b><div class="seg" id="gl-k-vform"><button data-value="euler" class="on">t²y″ + aty′ + by</button><button data-value="known">해 하나를 안다</button><button data-value="analytic">계수가 매끄러움(보통점)</button><button data-value="singular">정칙 특이점 둘레</button></div></div>
+        <div class="row" data-row="force"><b>우변(입력)</b><div class="seg" id="gl-k-force"><button data-value="zero">0 (동차)</button><button data-value="nice" class="on">다항식·eᵃᵗ·사인</button><button data-value="switch">계단·충격·구간별</button><button data-value="gen">일반 g(t)</button></div></div>
+        <div class="row" data-row="form"><b>1계 비선형 꼴</b><div class="seg" id="gl-k-form"><button data-value="sep" class="on">g(t)h(y)로 분리</button><button data-value="exact">M dx + N dy, M<sub>y</sub> = N<sub>x</sub></button><button data-value="bern">y′ + py = qyⁿ</button><button data-value="homog">F(y/x)</button><button data-value="other">어느 것도 아님</button></div></div>
+        <div class="row" data-row="auto"><b>t가 식에?</b><div class="seg" id="gl-k-auto"><button data-value="auto" class="on">없음 (자율)</button><button data-value="nonauto">있음 (비자율)</button></div></div>
+        <div class="row" data-row="cond"><b>조건</b><div class="seg" id="gl-k-cond"><button data-value="ivp" class="on">초기값 (한 점)</button><button data-value="bvp">경계값 (두 끝)</button></div></div>
+        <div class="row" data-row="ptype"><b>PDE 종류</b><div class="seg" id="gl-k-ptype"><button data-value="heat" class="on">열 u<sub>t</sub> = αu<sub>xx</sub></button><button data-value="wave">파동 u<sub>tt</sub> = c²u<sub>xx</sub></button><button data-value="lap">라플라스 u<sub>xx</sub> + u<sub>yy</sub> = 0</button></div></div>
+      </div>
+      <div class="gl-out" id="gl-out"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">예시 방정식</span><span class="v" id="gl-ex">—</span></div>
+        <div class="stat"><span class="k">해의 모양 미리 보기</span><span class="v" id="gl-shape">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '2계 이상 · 선형 · 상수 계수'에서 우변을 바꿔 보세요. 동차해는 언제나 특성 방정식으로 구하고, 바뀌는 것은 <b>특수해</b>를 구하는 방법뿐입니다. ② '1계 · 비선형 · 어느 것도 아님'에서 자율/비자율을 바꾸면 위상선과 방향장 중 무엇을 그릴지가 달라집니다. ③ '연립 ODE · 비선형'은 손으로 풀기보다 평형점을 찾고 선형화해 그림을 맞히는 문제입니다. 안내는 교과서 수준의 일반 원칙이며, 같은 방정식에 여러 방법이 통할 때가 많습니다. 어느 방법이든 답은 대입하거나 RK4로 수치 해와 겹쳐 보면 검산됩니다.</div>
+    </div>
+    <div class="callout tip"><strong>막히면 세 가지로 돌아간다</strong> 손으로 풀리지 않는 방정식이 훨씬 많습니다. 그때도 할 수 있는 일은 남아 있습니다. ① <b>그림</b>: 방향장(<a href="modeling.html#direction-field">1장</a>), 위상선(<a href="autonomous.html#phase-line">4장</a>), 위상 평면(<a href="nonlinear.html#linearization">12장</a>). ② <b>존재와 유일성</b>: \(f\)와 \(\partial f/\partial y\)가 연속이면 해가 하나 있다(<a href="autonomous.html#existence">4장</a>). ③ <b>수치</b>: RK4로 풀고 걸음 폭을 반으로 줄여 답이 그대로인지 본다(<a href="numerical.html#rk4">5장</a>). 강성 방정식이면 음적 방법(<a href="numerical.html#stiff">5장</a>)을 쓴다.</div>
+  </section>
+
+  <section id="roots">
+    <h2>특성근 ↔ 해 모양 한눈표</h2>
+    <p>상수계수 선형 방정식 \(ay'' + by' + cy = 0\)에 \(y = e^{rt}\)를 넣으면 특성 방정식 \(ar^2 + br + c = 0\)이 나오고, 해의 모양은 <b>근 \(r\)이 복소평면 어디에 있는가</b>로 전부 정해집니다. 실수부는 커지거나 줄어드는 빠르기, 허수부는 진동의 각진동수입니다. 같은 그림이 세 번 나옵니다. 2계 방정식의 특성근(<a href="second-order.html#characteristic">6장</a>), 전달 함수의 극점(<a href="transfer.html#poles">10장</a>), 연립 방정식 \(\mathbf x' = A\mathbf x\)의 고유값(<a href="systems.html#eigen-method">11장</a>)입니다.</p>
+    <div class="gl-legend"><span>각 칸 왼쪽: 근의 위치(가로 Re, 세로 Im)</span><span>오른쪽: \(y(t)\), \(0 \le t \le 8\)</span><span><i style="background:var(--ok)"></i>0으로 감쇠</span><span><i style="background:var(--warn)"></i>경계(유계, 감쇠 안 함)</span><span><i style="background:var(--bad)"></i>발산</span></div>
+    <div class="gl-roots" id="gl-roots">
+      <div class="gl-root stable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="-1,0;-3,0" data-y="od" role="img" aria-label="음의 실근 두 개와 진동 없이 감쇠하는 해"></svg>
+        <h4>서로 다른 음의 실근 \(r_2 \lt r_1 \lt 0\)</h4>
+        <div class="eq">\(y = c_1e^{r_1t} + c_2e^{r_2t}\)</div>
+        <p>진동 없이 0으로. <b>과감쇠</b>. 꼬리는 0에 가까운 느린 근 \(r_1\)이 정한다.</p>
+        <a href="second-order.html#characteristic">6장 특성 방정식</a><a href="oscillations.html#damping-regimes">7장 감쇠 세 영역</a>
+      </div>
+      <div class="gl-root stable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="-1,0;-1,0" data-y="cr" role="img" aria-label="음의 중근과 임계 감쇠 해"></svg>
+        <h4>음의 중근 \(r_1 = r_2 = r \lt 0\)</h4>
+        <div class="eq">\(y = (c_1 + c_2t)e^{rt}\)</div>
+        <p>진동 없이 가장 빨리 돌아오는 <b>임계 감쇠</b>. 두 번째 해에 \(t\)가 곱해진다.</p>
+        <a href="second-order.html#repeated">6장 중근</a><a href="oscillations.html#design">7장 감쇠 설계</a>
+      </div>
+      <div class="gl-root stable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="-0.3,3;-0.3,-3" data-y="ud" role="img" aria-label="왼쪽 반평면의 켤레 복소근과 감쇠 진동"></svg>
+        <h4>복소근 \(\alpha \pm i\beta\), \(\alpha \lt 0\)</h4>
+        <div class="eq">\(y = e^{\alpha t}(c_1\cos\beta t + c_2\sin\beta t)\)</div>
+        <p>포락선 \(e^{\alpha t}\) 안에서 줄어드는 진동. <b>부족 감쇠</b>. 감쇠비 \(\zeta = -\alpha/\sqrt{\alpha^2 + \beta^2}\).</p>
+        <a href="second-order.html#complex-roots">6장 복소근</a><a href="oscillations.html#damping-ratio">7장 감쇠비</a>
+      </div>
+      <div class="gl-root edge">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0,3;0,-3" data-y="sh" role="img" aria-label="허수축 위의 근과 진폭이 일정한 진동"></svg>
+        <h4>순허수 \(\pm i\beta\)</h4>
+        <div class="eq">\(y = c_1\cos\beta t + c_2\sin\beta t\)</div>
+        <p>진폭이 일정한 <b>단진동</b>. 위상 평면에서는 닫힌 궤도(중심). 같은 진동수로 밀면 공진한다.</p>
+        <a href="oscillations.html#harmonic">7장 단진동</a><a href="forced.html#resonance">8장 공진</a>
+      </div>
+      <div class="gl-root unstable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0.15,3;0.15,-3" data-y="gr" role="img" aria-label="오른쪽 반평면의 복소근과 커지는 진동"></svg>
+        <h4>복소근 \(\alpha \pm i\beta\), \(\alpha \gt 0\)</h4>
+        <div class="eq">\(y = e^{\alpha t}(c_1\cos\beta t + c_2\sin\beta t)\)</div>
+        <p>진폭이 지수적으로 <b>커지는 진동</b>(음의 감쇠). 비선형계에서는 한계 순환으로 포화되기도 한다.</p>
+        <a href="nonlinear.html#van-der-pol">12장 반 데어 폴</a><a href="chaos.html#hopf">13장 호프 분기</a>
+      </div>
+      <div class="gl-root unstable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0.6,0;-1.5,0" data-y="sd" role="img" aria-label="부호가 다른 실근과 결국 커지는 해"></svg>
+        <h4>부호가 다른 실근 \(r_2 \lt 0 \lt r_1\)</h4>
+        <div class="eq">\(y = c_1e^{r_1t} + c_2e^{r_2t}\)</div>
+        <p>\(c_1 \ne 0\)이면 결국 커진다. 위상 평면의 <b>안장</b>. \(c_1 = 0\)인 한 직선만 원점으로 들어간다.</p>
+        <a href="systems.html#real-distinct">11장 마디와 안장</a><a href="nonlinear.html#pendulum">12장 거꾸로 선 진자</a>
+      </div>
+      <div class="gl-root unstable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0.3,0;0.9,0" data-y="un" role="img" aria-label="양의 실근 두 개와 발산하는 해"></svg>
+        <h4>양의 실근 \(0 \lt r_1 \lt r_2\)(중근 포함)</h4>
+        <div class="eq">\(y = c_1e^{r_1t} + c_2e^{r_2t}\)</div>
+        <p>진동 없이 발산. <b>불안정 마디</b>. 빠른 근 \(r_2\)가 곧 전체를 지배한다.</p>
+        <a href="systems.html#real-distinct">11장 마디와 안장</a>
+      </div>
+      <div class="gl-root edge">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0,0;-2,0" data-y="z1" role="img" aria-label="근 0과 음의 근, 상수로 수렴하는 해"></svg>
+        <h4>근 0과 음의 근 \(r \lt 0\)</h4>
+        <div class="eq">\(y = c_1 + c_2e^{rt}\)</div>
+        <p>0이 아닌 <b>상수로 수렴</b>. 예: 마찰만 있고 복원력이 없는 \(y'' + cy' = 0\)(미끄러지다 멈추는 블록).</p>
+        <a href="second-order.html#characteristic">6장 특성 방정식</a>
+      </div>
+      <div class="gl-root unstable">
+        <svg class="gl-spark" viewBox="0 0 200 60" data-r="0,0;0,0" data-y="z2" role="img" aria-label="근 0의 중근과 직선으로 자라는 해"></svg>
+        <h4>근 0의 중근</h4>
+        <div class="eq">\(y = c_1 + c_2t\)</div>
+        <p>힘이 없는 등속 운동 \(y'' = 0\). 지수적이지는 않지만 <b>유계가 아니다</b>(\(c_2 \ne 0\)).</p>
+        <a href="second-order.html#repeated">6장 중근</a>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>근의 꼴</th><th>상수계수 \(ay'' + by' + cy = 0\)</th><th>코시–오일러 \(ax^2y'' + bxy' + cy = 0\), \(x \gt 0\)</th></tr></thead>
+      <tbody>
+        <tr><td>특성(지표) 방정식</td><td>\(ar^2 + br + c = 0\)</td><td>\(ar(r-1) + br + c = 0\)</td></tr>
+        <tr><td>서로 다른 실근</td><td>\(e^{r_1t},\ e^{r_2t}\)</td><td>\(x^{r_1},\ x^{r_2}\)</td></tr>
+        <tr><td>중근 \(r\)</td><td>\(e^{rt},\ te^{rt}\)</td><td>\(x^{r},\ x^{r}\ln x\)</td></tr>
+        <tr><td>복소근 \(\alpha \pm i\beta\)</td><td>\(e^{\alpha t}\cos\beta t,\ e^{\alpha t}\sin\beta t\)</td><td>\(x^{\alpha}\cos(\beta\ln x),\ x^{\alpha}\sin(\beta\ln x)\)</td></tr>
+        <tr><td>\(m\)중근(고계)</td><td>\(e^{rt}, te^{rt}, \dots, t^{m-1}e^{rt}\)</td><td>\(x^r, x^r\ln x, \dots, x^r(\ln x)^{m-1}\)</td></tr>
+      </tbody>
+    </table></div>
+    <p>코시–오일러 방정식은 \(x = e^{u}\)로 바꾸면 상수계수 방정식이 되므로 두 열은 같은 표입니다(<a href="second-order.html#cauchy-euler">6장</a>). 고계 방정식도 근 하나하나가 기본해 하나씩을 주고, 중복도만큼 \(t\)의 거듭제곱이 붙습니다(<a href="second-order.html#higher-order">6장</a>).</p>
+
+    <h3 id="trial">미정계수법의 시험 함수</h3>
+    <p>우변 \(g(t)\)가 다항식·지수·사인과 그 곱이면 특수해는 같은 꼴입니다. 계수는 대입해서 정합니다. 단 하나의 함정은 <b>시험 함수가 이미 동차해일 때</b>입니다. 그때는 \(t\)를 곱합니다(<a href="forced.html#undetermined">8장</a>).</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>우변 \(g(t)\)</th><th>시험 함수 \(y_p\)</th><th>\(t^s\)를 곱할 때</th></tr></thead>
+      <tbody>
+        <tr><td>\(n\)차 다항식 \(P_n(t)\)</td><td>\(A_nt^n + \dots + A_1t + A_0\)</td><td>\(r = 0\)이 \(s\)중 특성근</td></tr>
+        <tr><td>\(e^{at}\)</td><td>\(Ae^{at}\)</td><td>\(a\)가 \(s\)중 특성근</td></tr>
+        <tr><td>\(\cos\omega t\) 또는 \(\sin\omega t\)</td><td>\(A\cos\omega t + B\sin\omega t\) (둘 다 넣는다)</td><td>\(\pm i\omega\)가 특성근(비감쇠 공진)</td></tr>
+        <tr><td>\(P_n(t)e^{at}\)</td><td>\((A_nt^n + \dots + A_0)e^{at}\)</td><td>\(a\)가 \(s\)중 특성근</td></tr>
+        <tr><td>\(e^{at}\cos\omega t\), \(e^{at}\sin\omega t\)</td><td>\(e^{at}(A\cos\omega t + B\sin\omega t)\)</td><td>\(a \pm i\omega\)가 특성근</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><strong>예: \(y'' + 4y = \cos 2t\)</strong> 특성근이 \(\pm 2i\)라서 \(A\cos 2t + B\sin 2t\)는 동차해입니다. \(y_p = t(A\cos 2t + B\sin 2t)\)를 넣으면 \(-4A\sin 2t + 4B\cos 2t = \cos 2t\)이므로 \(A = 0\), \(B = 1/4\), 즉 \(y_p = \tfrac14 t\sin 2t\)입니다. 진폭이 \(t\)에 비례해 자라는 공진입니다. 우변이 이 표에 없는 꼴(\(\tan t\), \(1/t\) 등)이면 매개변수 변환법(<a href="forced.html#variation">8장</a>)이나 합성곱(<a href="transfer.html#convolution">10장</a>)을 씁니다.</div>
+  </section>
+
+  <section id="laplace-table">
+    <h2>라플라스 변환표</h2>
+    <p>라플라스 변환 \(F(s) = \mathcal{L}\{f\}(s) = \int_0^\infty e^{-st}f(t)\,dt\)는 미분을 \(s\)의 곱셈으로 바꿔, 초기값 문제를 <b>변환 → 대수로 \(Y(s)\) 풀기 → 부분 분수 → 표를 거꾸로 읽기</b>의 세 단계로 만듭니다(<a href="laplace.html#ivp">9장</a>). 외울 것은 왼쪽의 변환쌍 몇 개와 오른쪽의 성질뿐입니다. 나머지는 성질로 만들어집니다.</p>
+    <div class="gl-two">
+      <div class="table-wrap"><table>
+        <thead><tr><th>\(f(t)\), \(t \ge 0\)</th><th>\(F(s)\)</th></tr></thead>
+        <tbody>
+          <tr><td>\(1\)</td><td>\(\dfrac{1}{s}\quad (s \gt 0)\)</td></tr>
+          <tr><td>\(t^n\ (n = 0, 1, 2, \dots)\)</td><td>\(\dfrac{n!}{s^{n+1}}\)</td></tr>
+          <tr><td>\(e^{at}\)</td><td>\(\dfrac{1}{s-a}\quad (s \gt a)\)</td></tr>
+          <tr><td>\(t^ne^{at}\)</td><td>\(\dfrac{n!}{(s-a)^{n+1}}\)</td></tr>
+          <tr><td>\(\sin\omega t\)</td><td>\(\dfrac{\omega}{s^2+\omega^2}\)</td></tr>
+          <tr><td>\(\cos\omega t\)</td><td>\(\dfrac{s}{s^2+\omega^2}\)</td></tr>
+          <tr><td>\(e^{at}\sin\omega t\)</td><td>\(\dfrac{\omega}{(s-a)^2+\omega^2}\)</td></tr>
+          <tr><td>\(e^{at}\cos\omega t\)</td><td>\(\dfrac{s-a}{(s-a)^2+\omega^2}\)</td></tr>
+          <tr><td>\(\sinh at\), \(\cosh at\)</td><td>\(\dfrac{a}{s^2-a^2}\), \(\dfrac{s}{s^2-a^2}\quad (s \gt |a|)\)</td></tr>
+          <tr><td>\(t\sin\omega t\)</td><td>\(\dfrac{2\omega s}{(s^2+\omega^2)^2}\)</td></tr>
+          <tr><td>\(t\cos\omega t\)</td><td>\(\dfrac{s^2-\omega^2}{(s^2+\omega^2)^2}\)</td></tr>
+          <tr><td>\(\dfrac{\sin\omega t - \omega t\cos\omega t}{2\omega^3}\)</td><td>\(\dfrac{1}{(s^2+\omega^2)^2}\)</td></tr>
+          <tr><td>\(u(t-a)\ (a \ge 0)\)</td><td>\(\dfrac{e^{-as}}{s}\)</td></tr>
+          <tr><td>\(\delta(t-a)\ (a \ge 0)\)</td><td>\(e^{-as}\)</td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>성질</th><th>\(t\) 영역 → \(s\) 영역</th></tr></thead>
+        <tbody>
+          <tr><td>선형성</td><td>\(af + bg \;\to\; aF + bG\)</td></tr>
+          <tr><td>1계 도함수</td><td>\(f' \;\to\; sF(s) - f(0)\)</td></tr>
+          <tr><td>2계 도함수</td><td>\(f'' \;\to\; s^2F(s) - sf(0) - f'(0)\)</td></tr>
+          <tr><td>적분</td><td>\(\displaystyle\int_0^t f(\tau)\,d\tau \;\to\; \frac{F(s)}{s}\)</td></tr>
+          <tr><td>s-이동</td><td>\(e^{at}f(t) \;\to\; F(s-a)\)</td></tr>
+          <tr><td>t-이동</td><td>\(f(t-a)u(t-a) \;\to\; e^{-as}F(s)\)</td></tr>
+          <tr><td>\(t\) 곱하기</td><td>\(tf(t) \;\to\; -F'(s)\)</td></tr>
+          <tr><td>합성곱</td><td>\(\displaystyle\int_0^t f(\tau)g(t-\tau)\,d\tau \;\to\; F(s)G(s)\)</td></tr>
+          <tr><td>초기값 정리</td><td>\(f(0^+) = \displaystyle\lim_{s\to\infty} sF(s)\)</td></tr>
+          <tr><td>최종값 정리</td><td>\(\displaystyle\lim_{t\to\infty} f(t) = \lim_{s\to 0} sF(s)\) (조건 아래)</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <p>표의 출처: 기본 쌍의 유도는 <a href="laplace.html#table">9장 변환표</a>, 도함수는 <a href="laplace.html#derivatives">9장 미분의 변환</a>, 두 이동 정리는 <a href="laplace.html#shifting">9장 이동</a>, 계단과 델타는 <a href="transfer.html#step">10장 계단</a>·<a href="transfer.html#delta">10장 델타</a>, 합성곱은 <a href="transfer.html#convolution">10장 합성곱</a>.</p>
+    <div class="callout warn"><strong>최종값 정리의 조건</strong> \(\lim_{s\to 0} sF(s)\)는 \(sF(s)\)의 극점이 <b>모두 왼쪽 반평면</b>(\(\operatorname{Re}s \lt 0\))에 있을 때만 \(f(\infty)\)와 같습니다. \(F(s) = \dfrac{1}{s(s^2+4)}\)에 기계적으로 쓰면 \(1/4\)이 나오지만, 실제 해 \(f = (1 - \cos 2t)/4\)는 0과 \(1/2\) 사이를 영원히 진동합니다(<a href="laplace.html#limit-theorems">9장</a>). 극점 위치로 응답 모양을 읽는 법은 위 <a href="#roots">특성근 표</a>와 같습니다. 전달 함수 \(H(s)\)의 극점이 곧 특성근입니다(<a href="transfer.html#transfer-function">10장</a>).</div>
+  </section>
+
+  <section id="trace-det">
+    <h2>평형점 분류 지도: 대각합–행렬식 평면</h2>
+    <p>2×2 선형 연립 \(\mathbf x' = A\mathbf x\)의 고유값은 특성 방정식 \(\lambda^2 - \tau\lambda + \Delta = 0\)의 근입니다(\(\tau = \operatorname{tr}A\), \(\Delta = \det A\)). 그러니 원점의 종류는 두 숫자 \(\tau, \Delta\)로 정해지고, 평면 위의 지도 하나에 모두 담깁니다(<a href="systems.html#trace-det">11장</a>). 2계 방정식 \(y'' + cy' + ky = 0\)은 \(\mathbf x = (y, y')\)로 쓰면 \(\tau = -c\), \(\Delta = k\)이므로, 7장의 감쇠 세 영역도 이 지도의 왼쪽 절반에 그대로 들어 있습니다.</p>
+    <div class="formula">$$\lambda_{1,2} = \frac{\tau \pm \sqrt{\tau^2 - 4\Delta}}{2},\qquad \lambda_1 + \lambda_2 = \tau,\qquad \lambda_1\lambda_2 = \Delta.$$</div>
+    <div class="sim" id="sim-gl-trdet">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점을 끌어 평형점 분류하기</h3></div>
+      <div class="gl-td">
+        <div><canvas id="gl-td-map"></canvas><span class="gl-cap">지도: 점 (τ, Δ)를 끌어 보세요</span></div>
+        <div><canvas id="gl-td-ph"></canvas><span class="gl-cap">위상 초상 (y, y′)</span></div>
+      </div>
+      <div class="gl-tdt"><canvas id="gl-td-t"></canvas><span class="gl-cap">y(t), y(0) = 1, y′(0) = 0</span></div>
+      <div class="sim-controls">
+        <div class="ctrl"><span>바로 가기</span><div class="seg" id="gl-td-pre"><button data-value="saddle">안장</button><button data-value="snode">안정 마디</button><button data-value="dnode">퇴화 마디</button><button data-value="sspiral" class="on">안정 나선</button><button data-value="center">중심</button><button data-value="uspiral">불안정 나선</button><button data-value="unode">불안정 마디</button></div></div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">τ, Δ</span><span class="v" id="gl-td-td">—</span></div>
+        <div class="stat"><span class="k">τ² − 4Δ</span><span class="v" id="gl-td-disc">—</span></div>
+        <div class="stat"><span class="k">고유값 λ</span><span class="v" id="gl-td-l">—</span></div>
+        <div class="stat"><span class="k">종류</span><span class="v" id="gl-td-type">—</span></div>
+        <div class="stat"><span class="k">같은 2계 방정식</span><span class="v" id="gl-td-eq">—</span></div>
+        <div class="stat"><span class="k">진동으로 읽으면</span><span class="v" id="gl-td-z">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '안정 나선'에서 점을 오른쪽으로 끌어 세로축(τ = 0)을 넘겨 보세요. 감겨 들던 궤적이 닫힌 타원(중심)을 지나 풀려 나갑니다. 감쇠 계수 c = −τ가 0을 지나 음수가 되는 것과 같습니다. ② 점을 포물선 Δ = τ²/4 위로 가져가면 고유값이 겹치며 나선과 마디의 경계, 즉 임계 감쇠가 됩니다. ③ 가로축 아래로 내리면 어떤 τ에서든 안장입니다. 고유벡터 직선(점선) 하나만 원점으로 들어갑니다. 모델: 점 (τ, Δ)에 대해 동반 행렬 A = [[0, 1], [−Δ, τ]], 즉 y″ − τy′ + Δy = 0. 궤적은 원 위 12개 점에서 앞뒤로 RK4. 세로축·포물선·가로축 가까이 놓으면 그 경계로 붙습니다. 같은 (τ, Δ)라도 A = λI 같은 행렬은 별 마디가 되므로, 지도는 고유값을 정하지 행렬 전체를 정하지는 않습니다.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>(τ, Δ) 위치</th><th>고유값</th><th>평형점</th><th>2계 진동으로 읽으면</th></tr></thead>
+      <tbody>
+        <tr><td>\(\Delta \lt 0\)</td><td>부호가 다른 실수</td><td>안장(불안정)</td><td>복원력이 반대(\(k \lt 0\)), 거꾸로 선 진자</td></tr>
+        <tr><td>\(\tau \lt 0,\ 0 \lt 4\Delta \lt \tau^2\)</td><td>음의 실수 둘</td><td>안정 마디</td><td>과감쇠 \(\zeta \gt 1\)</td></tr>
+        <tr><td>\(\tau \lt 0,\ 4\Delta = \tau^2\)</td><td>음의 중근</td><td>안정 퇴화 마디</td><td>임계 감쇠 \(\zeta = 1\)</td></tr>
+        <tr><td>\(\tau \lt 0,\ 4\Delta \gt \tau^2\)</td><td>\(\alpha \pm i\beta,\ \alpha \lt 0\)</td><td>안정 나선</td><td>부족 감쇠 \(0 \lt \zeta \lt 1\)</td></tr>
+        <tr><td>\(\tau = 0,\ \Delta \gt 0\)</td><td>\(\pm i\beta\)</td><td>중심(안정, 점근 안정 아님)</td><td>비감쇠 \(\zeta = 0\)</td></tr>
+        <tr><td>\(\tau \gt 0,\ \Delta \gt 0\)</td><td>실수부가 양</td><td>불안정 나선·마디</td><td>음의 감쇠 \(\zeta \lt 0\)</td></tr>
+        <tr><td>\(\Delta = 0\)</td><td>고유값 0 포함</td><td>평형점이 직선을 이룸</td><td>복원력 없음 \(k = 0\)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout deep"><strong>비선형 시스템에서 이 지도를 쓰는 법</strong> 비선형 시스템 \(\mathbf x' = \mathbf f(\mathbf x)\)는 평형점 \(\mathbf x^*\)에서 야코비 행렬 \(J = D\mathbf f(\mathbf x^*)\)의 \((\tau, \Delta)\)를 이 지도에 찍습니다. 점이 <b>넓은 영역(안장·마디·나선)</b>에 있으면 평형점이 쌍곡이라 하트만–그로브만 정리에 따라 비선형계도 같은 종류입니다. 점이 <b>경계</b>, 특히 중심(\(\tau = 0\))에 있으면 선형화로는 판정할 수 없고, 보존량이나 리아푸노프 함수로 따로 확인해야 합니다(<a href="nonlinear.html#linearization">12장 선형화</a>, <a href="nonlinear.html#lyapunov">12장 리아푸노프</a>). 매개변수를 바꿀 때 점이 세로축을 가로지르는 순간이 호프 분기(<a href="chaos.html#hopf">13장</a>)입니다. 1차원 자율 방정식 \(y' = f(y)\)에서는 지도 대신 \(f'(y^*)\)의 부호 하나로 충분합니다(<a href="autonomous.html#stability">4장</a>).</div>
+  </section>
+
+  <section id="glossary-terms">
+    <h2>용어집</h2>
+    <input class="gl-search" id="gl-q" type="search" placeholder="용어 검색 (예: 공진, 론스키안, Laplace, eigenvalue)" aria-label="용어 검색">
+    <div class="gl-filter" id="gl-f"></div>
+    <div class="gl-count" id="gl-n"></div>
+    <div class="gl-list" id="gl-list"></div>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>종합 퀴즈</h2>
+    <p>열여섯 장 전 범위에서 두 문제씩 골랐습니다. 대부분 손으로 몇 줄 계산하면 풀리고, 몇 문제는 "이 결론을 믿어도 되는가"를 묻습니다. 틀린 문제는 괄호 안의 장으로 돌아가 시뮬레이터를 다시 만져 보세요.</p>
+    <div class="score"><span id="sc-t">0 / 0</span><span class="bar"><i id="sc-b"></i></span><button class="btn" id="sc-r">다시 풀기</button></div>
+    <p class="gl-weak" id="gl-weak"></p>
+    <div class="quiz" id="final"></div>
+  </section>
+</main>
+<script src="../js/glossary-data.js"></script>
+<script>
+/* ------------------------------------------------ 1. 풀이법 고르기 도우미 */
+(function () {
+  const ch = {}; MB.CHAPTERS.forEach((c) => (ch[c.slug] = c));
+  const L = (slug, id, label) => (slug ? `<a href="${slug}.html#${id}">${+ch[slug].num}장 · ${label} →</a>` : `<a href="#${id}">이 장 · ${label} →</a>`);
+  const C = (nm, sub, desc, links) => ({ nm, sub, desc, links });
+  const keys = ["kind", "order", "lin", "coef", "vform", "force", "form", "auto", "cond", "ptype"];
+  const S = {};
+  const get = {};
+  keys.forEach((k) => (get[k] = MB.seg("gl-k-" + k, () => render())));
+  const rows = {}; document.querySelectorAll("#sim-gl-chooser .row").forEach((r) => (rows[r.dataset.row] = r));
+
+  function recommend(s) {
+    const R = []; let ex = "", shape = "";
+    if (s.kind === "pde") {
+      if (s.ptype === "heat") {
+        ex = "u<sub>t</sub> = α u<sub>xx</sub>, u(0, t) = u(L, t) = 0";
+        shape = "모드 sin(nπx/L)마다 e<sup>−α(nπ/L)²t</sup>로 감쇠, 높은 모드가 먼저 사라짐";
+        R.push(C("변수분리 + 사인 급수", "u = X(x)T(t)", "u = X(x)T(t)를 넣으면 공간은 고유값 문제 X″ + λX = 0, 시간은 1계 방정식이 됩니다. 초기 온도를 <b>푸리에 사인 급수</b>로 전개해 모드별로 감쇠시킵니다.", [L("pde", "separation", "변수분리법"), L("boundary", "fourier-series", "푸리에 급수")]));
+        R.push(C("경계 조건 확인", "디리클레·노이만", "끝 온도가 0이 아니면 정상 상태를 먼저 빼서 동차 경계로 만들고, 단열 끝(노이만)이면 코사인 급수를 씁니다.", [L("pde", "boundary-conditions", "경계 조건"), L("pde", "mode-decay", "모드별 감쇠")]));
+        R.push(C("유한 차분(FTCS)", "수치", "명시적 방법은 r = αΔt/Δx² ≤ 1/2일 때만 안정합니다.", [L("pde", "finite-difference", "유한 차분법")]));
+      } else if (s.ptype === "wave") {
+        ex = "u<sub>tt</sub> = c² u<sub>xx</sub>, 양끝 고정";
+        shape = "배음 sin(nπx/L)·cos(nπct/L)의 합, 감쇠 없이 영원히 진동";
+        R.push(C("달랑베르 해", "u = F(x − ct) + G(x + ct)", "초기 모양이 반으로 나뉘어 양쪽으로 속력 c로 달립니다. 고정 끝에서는 뒤집혀 반사됩니다.", [L("pde", "dalembert", "달랑베르 해")]));
+        R.push(C("변수분리 + 배음", "정상파", "양끝 고정 줄의 고유 진동수는 nc/(2L)로 기본음의 정수배입니다. 원형 막이면 공간 부분이 베셀 방정식이 됩니다.", [L("pde", "wave-equation", "파동 방정식"), L("series-solutions", "drum", "원형 북")]));
+        R.push(C("유한 차분", "수치", "CFL 조건 cΔt/Δx ≤ 1을 지켜야 수치 해가 터지지 않습니다.", [L("pde", "finite-difference", "유한 차분법")]));
+      } else {
+        ex = "u<sub>xx</sub> + u<sub>yy</sub> = 0, 직사각형 판, 한 변만 뜨거움";
+        shape = "시간이 없는 정상 상태. 내부에 극값 없음(최대·최소는 경계에서)";
+        R.push(C("변수분리", "sin(nπx/a)·sinh(nπy/a)", "뜨거운 변 하나씩 나눠 풀고 더합니다(중첩). 경계 온도를 푸리에 급수로 전개해 계수를 정합니다.", [L("pde", "laplace-equation", "라플라스 방정식"), L("boundary", "eigenfunction-expansion", "고유함수 전개")]));
+        R.push(C("반복 완화", "수치", "각 격자점을 이웃 네 점의 평균으로 바꾸기를 반복하면 정상 상태로 수렴합니다.", [L("pde", "laplace-equation", "판 정상 상태 온도")]));
+      }
+      return { R, ex, shape };
+    }
+    if (s.kind === "sys") {
+      if (s.lin === "lin" && s.coef === "const") {
+        ex = s.force === "zero" ? "x′ = Ax, A = [[−1, −2], [2, −1]]" : "x′ = Ax + g(t)";
+        shape = "고유값 λ마다 e<sup>λt</sup>: 실수부가 모두 음수면 원점으로";
+        if (s.force === "zero") {
+          R.push(C("고유값 방법", "x = Σ cᵢ e<sup>λᵢt</sup> vᵢ", "Av = λv를 풀어 고유값·고유벡터로 해를 짓습니다. 복소 고유값은 실수부·허수부를 나눠 실해 두 개를 얻습니다.", [L("systems", "eigen-method", "고유값 방법"), L("systems", "complex", "나선과 중심")]));
+          R.push(C("대각합–행렬식으로 먼저 그림", "풀기 전에", "τ = tr A, Δ = det A만으로 안장·마디·나선·중심이 정해집니다.", [L("", "trace-det", "평형점 지도"), L("systems", "trace-det", "대각합–행렬식")]));
+          R.push(C("행렬 지수", "x = e<sup>At</sup>x₀", "고유벡터가 모자라는 중복 고유값도 한 공식으로 처리합니다.", [L("systems", "matrix-exponential", "행렬 지수"), L("systems", "repeated", "중복 고유값")]));
+        } else if (s.force === "switch") {
+          R.push(C("라플라스 변환", "연립 → 연립 1차식", "각 성분을 변환하면 (sI − A)X = x₀ + G(s)라는 선형 대수 문제가 됩니다. 계단·충격 입력에 특히 편합니다.", [L("laplace", "systems", "연립 방정식에 적용"), L("transfer", "step", "단위 계단")]));
+          R.push(C("상수 변화 공식", "e<sup>At</sup> 합성곱", "x = e<sup>At</sup>x₀ + ∫₀ᵗ e<sup>A(t−s)</sup>g(s) ds.", [L("systems", "nonhomogeneous", "비동차 연립")]));
+        } else {
+          R.push(C("상수 변화 공식", "x = e<sup>At</sup>x₀ + ∫ e<sup>A(t−s)</sup>g(s) ds", "동차해(고유값 방법)를 먼저 구하고, 입력의 메아리를 적분으로 더합니다. 입력이 다항식·지수·사인이면 같은 꼴의 벡터 시험 함수도 통합니다.", [L("systems", "nonhomogeneous", "비동차 연립"), L("systems", "eigen-method", "고유값 방법")]));
+          R.push(C("라플라스 변환", "초기값이 주어지면", "(sI − A)X = x₀ + G(s)를 풀고 성분별로 역변환합니다.", [L("laplace", "systems", "연립 방정식에 적용")]));
+          R.push(C("정규 모드", "결합 진동자", "대칭 결합계는 고유벡터 좌표로 바꾸면 서로 독립인 진동자 몇 개가 됩니다.", [L("systems", "normal-modes", "정규 모드"), L("systems", "tanks", "두 탱크")]));
+        }
+      } else if (s.lin === "lin") {
+        ex = "x′ = A(t)x";
+        shape = "고유값만으로는 판정할 수 없음(A(t)가 계속 바뀜)";
+        R.push(C("수치 적분", "RK4", "계수가 t에 따라 바뀌면 고유값 방법도 e<sup>At</sup> 공식도 일반적으로 성립하지 않습니다. RK4로 풀고 걸음 폭을 반으로 줄여 확인합니다.", [L("numerical", "systems", "연립에 적용하기"), L("numerical", "adaptive", "적응 간격")]));
+        R.push(C("고계 방정식이었다면", "되돌리기", "y″ + p(t)y′ + q(t)y = 0을 연립으로 쓴 것이라면 2계 방정식의 방법(급수해, 계수 내리기)이 더 쉽습니다.", [L("systems", "first-order", "고계 ↔ 1계 연립"), L("series-solutions", "power-series", "거듭제곱 급수 해")]));
+      } else if (s.auto === "auto") {
+        ex = "x′ = x(3 − x − 2y), y′ = y(2 − x − y)";
+        shape = "평형점, 그 둘레의 선형화 그림, 그리고 한계 순환이 전체 지도를 만듦";
+        R.push(C("평형점 + 야코비안", "선형화", "f(x*) = 0을 풀어 평형점을 찾고, 각 점에서 야코비 행렬의 (τ, Δ)로 종류를 판정합니다. 쌍곡 평형점이면 그 판정을 믿을 수 있습니다.", [L("nonlinear", "linearization", "야코비안 선형화"), L("", "trace-det", "평형점 지도")]));
+        R.push(C("보존량·리아푸노프 함수", "중심일 때", "선형화가 중심이면 판정이 안 됩니다. 에너지 같은 보존량이나 리아푸노프 함수로 확인합니다.", [L("nonlinear", "lyapunov", "리아푸노프 함수"), L("nonlinear", "lotka-volterra", "로트카–볼테라")]));
+        R.push(C("한계 순환·분기", "전체 그림", "가두는 영역 안에 평형점이 불안정하면 푸앵카레–벤딕슨 정리로 닫힌 궤도가 있습니다. 매개변수를 바꾸면 분기가 일어납니다.", [L("nonlinear", "limit-cycles", "한계 순환"), L("chaos", "bifurcation", "분기")]));
+      } else {
+        ex = "x″ + δx′ − x + x³ = γ cos ωt";
+        shape = "주기 응답부터 혼돈까지. 3차원 이상(또는 강제)이면 혼돈 가능";
+        R.push(C("수치 적분 + 푸앵카레 단면", "강제 주기마다 찍기", "t를 상태 변수로 넣으면 3차원 자율계가 됩니다. 강제 주기마다 상태를 찍은 점들이 몇 개로 모이면 주기 응답, 흩어진 구조면 혼돈입니다.", [L("chaos", "poincare", "푸앵카레 단면"), L("chaos", "duffing", "더핑 방정식")]));
+        R.push(C("초기값 민감성", "예측 한계", "두 궤적의 거리가 e<sup>λt</sup>로 벌어지면 예측 가능 시간은 로그로만 늘어납니다.", [L("chaos", "lyapunov", "리아푸노프 지수"), L("numerical", "rk4", "RK4")]));
+      }
+      return { R, ex, shape };
+    }
+    /* 단일 ODE */
+    if (s.order === "1") {
+      if (s.lin === "lin") {
+        const cst = s.coef === "const";
+        ex = !cst ? "ty′ + 2y = t², t > 0" : s.force === "zero" ? "y′ = −ky" : s.force === "nice" ? "y′ + 2y = cos t" : s.force === "switch" ? "RC 회로: τy′ + y = V·u(t − 1)" : "y′ + 2y = g(t)";
+        shape = cst ? "e<sup>−t/τ</sup>로 사라지는 과도 응답 + 입력을 따라가는 정상 응답" : "y = (1/μ)(∫μg dt + C), 해의 정의 구간은 p, g가 연속인 구간";
+        if (cst && s.force === "zero") R.push(C("변수분리(지수 함수)", "y = y₀e<sup>−kt</sup>", "상수계수 동차 1계는 곧바로 지수 함수입니다. 반감기 ln 2/k, 시상수 1/k.", [L("separable", "growth-decay", "지수 성장과 붕괴"), L("separable", "separation", "분리하고 적분하기")]));
+        R.push(C("적분 인자", "μ = e<sup>∫p dt</sup>", "표준형 y′ + p(t)y = g(t)로 쓰고 μ를 곱하면 왼쪽이 (μy)′가 됩니다. 적분하면 <b>동차해 + 특수해</b>가 한꺼번에 나옵니다.", [L("linear-first", "integrating-factor", "적분 인자"), L("linear-first", "structure", "해의 구조")]));
+        if (cst && s.force === "nice") R.push(C("정상 상태 바로 구하기", "사인 입력", "사인 입력이면 정상 응답도 같은 진동수의 사인이고, 진폭이 줄고 위상이 늦습니다. 과도 응답은 시상수 τ로 사라집니다.", [L("linear-first", "sinusoidal", "과도 응답과 정상 상태"), L("linear-first", "rc-circuit", "RC 회로와 시상수")]));
+        if (s.force === "switch") R.push(C("라플라스 변환", "스위치 입력", "켜고 끄는 입력은 u(t − a)로 쓰고 t-이동 정리를 쓰면 구간을 나누지 않고 한 번에 풉니다.", [L("transfer", "step", "단위 계단"), L("transfer", "piecewise", "구간별 입력")]));
+        R.push(C("모델 세우기", "들어온 양 − 나간 양", "혼합 탱크·회로·냉각은 모두 이 꼴입니다.", [L("linear-first", "mixing", "혼합 탱크"), L("linear-first", "method-map", "1계 방법 지도")]));
+      } else {
+        const F = {
+          sep: () => { ex = "y′ = t y²"; R.push(C("변수분리", "∫dy/h(y) = ∫g(t)dt", "y가 있는 것은 왼쪽, t가 있는 것은 오른쪽으로 모아 적분합니다. <b>h(y) = 0인 상수 해</b>를 나눗셈으로 잃지 않도록 따로 적어 둡니다.", [L("separable", "separation", "분리하고 적분하기"), L("separable", "implicit", "음함수 해와 정의 구간")])); },
+          exact: () => { ex = "(2xy + 3)dx + (x² + 4y)dy = 0"; R.push(C("완전 방정식", "ψ(x, y) = C", "M<sub>y</sub> = N<sub>x</sub>이면 ψ<sub>x</sub> = M, ψ<sub>y</sub> = N인 퍼텐셜 ψ가 있고, 해곡선은 ψ의 등고선입니다.", [L("linear-first", "exact", "완전 방정식")])); R.push(C("완전하지 않다면", "적분 인자 μ(x) 또는 μ(y)", "(M<sub>y</sub> − N<sub>x</sub>)/N이 x만의 함수면 μ(x)를 곱해 완전하게 만듭니다.", [L("linear-first", "exact-factor", "적분 인자로 완전하게")])); },
+          bern: () => { ex = "y′ + y = t y³"; R.push(C("베르누이 치환", "v = y<sup>1−n</sup>", "v = y<sup>1−n</sup>로 바꾸면 v에 대한 1계 <b>선형</b> 방정식이 되어 적분 인자로 풀립니다. n &gt; 0이면 y = 0도 해입니다.", [L("linear-first", "bernoulli", "베르누이 방정식"), L("linear-first", "integrating-factor", "적분 인자")])); },
+          homog: () => { ex = "y′ = (x² + y²)/(xy)"; R.push(C("동차형 치환", "v = y/x", "y = vx, y′ = v + xv′를 넣으면 v에 대한 변수분리형이 됩니다.", [L("separable", "homogeneous", "동차형 방정식")])); },
+          other: () => {
+            if (s.auto === "auto") { ex = "y′ = y(1 − y) − h"; R.push(C("위상선", "f(y)의 부호", "y′ = f(y)이면 f(y) = 0인 평형점을 찾고, f′(y*) &lt; 0이면 안정입니다. 풀지 않아도 모든 해의 운명이 보입니다.", [L("autonomous", "phase-line", "위상선"), L("autonomous", "stability", "평형점의 안정성")])); R.push(C("매개변수가 있으면", "분기", "매개변수를 바꾸며 평형점이 생기고 사라지는 곳을 찾습니다.", [L("autonomous", "harvest", "수확과 안장–마디 분기"), L("chaos", "bifurcation", "분기")])); }
+            else { ex = "y′ = t − y²"; R.push(C("방향장 + 수치 해", "그림과 RK4", "방향장으로 해의 흐름을 먼저 보고, RK4로 원하는 해를 계산합니다.", [L("modeling", "direction-field", "방향장"), L("numerical", "rk4", "룽게–쿠타 4차")])); }
+          },
+        };
+        F[s.form]();
+        if (s.form === "sep" && s.auto === "auto") R.push(C("자율이라면 위상선도", "y′ = f(y)", "자율 1계 방정식은 언제나 변수분리형이지만, 적분이 어려우면 위상선으로 정성적 그림을 먼저 봅니다.", [L("autonomous", "phase-line", "위상선")]));
+        R.push(C("존재·유일성 확인", "피카르–린델뢰프", "f와 ∂f/∂y가 연속이면 해가 하나 있습니다. √y처럼 립시츠가 아니면 해가 여럿, y′ = y²처럼 빨리 자라면 유한 시간에 폭발할 수 있습니다.", [L("autonomous", "existence", "존재·유일성"), L("autonomous", "blowup", "유한 시간 폭발")]));
+        shape = s.auto === "auto" ? "평형점 사이를 단조롭게 오감(1차원 자율계는 진동하지 않음)" : "해곡선끼리 교차하지 않음(유일성이 성립하는 곳에서)";
+      }
+      return { R, ex, shape };
+    }
+    /* 2계 이상 */
+    if (s.lin === "non") {
+      ex = s.auto === "auto" ? "θ″ + (g/L) sin θ = 0" : "x″ + δx′ + x³ = γ cos ωt";
+      shape = s.auto === "auto" ? "위상 평면의 평형점·분리선·닫힌 궤도로 정해짐" : "강제 주기와 맞물린 응답 또는 혼돈";
+      R.push(C("1계 연립으로 바꾸기", "x₁ = y, x₂ = y′", "위상 평면 (y, y′)에서 평형점을 찾고 선형화합니다.", [L("systems", "first-order", "고계를 1계 연립으로"), L("nonlinear", "linearization", "야코비안 선형화")]));
+      if (s.auto === "auto") {
+        R.push(C("에너지·보존량", "감쇠가 없으면", "y″ = −V′(y) 꼴이면 E = ½y′² + V(y)가 보존되어 궤도가 E의 등고선입니다.", [L("nonlinear", "pendulum", "진자의 위상 평면"), L("nonlinear", "lyapunov", "리아푸노프 함수")]));
+        R.push(C("한계 순환", "자려 진동", "작은 진폭에서 음의 감쇠, 큰 진폭에서 양의 감쇠면 고립된 닫힌 궤도로 끌려갑니다.", [L("nonlinear", "van-der-pol", "반 데어 폴 진동자")]));
+      } else R.push(C("수치 + 푸앵카레 단면", "강제 비선형", "RK4로 적분하고 강제 주기마다 상태를 찍어 주기 응답과 혼돈을 구별합니다.", [L("chaos", "duffing", "더핑 방정식"), L("chaos", "poincare", "푸앵카레 단면")]));
+      R.push(C("수치 해법", "RK4", "에너지가 보존돼야 하는 궤도 계산은 심플렉틱 방법이 오래 버팁니다.", [L("numerical", "systems", "고계에 적용하기"), L("numerical", "symplectic", "심플렉틱 오일러")]));
+      return { R, ex, shape };
+    }
+    if (s.cond === "bvp") R.push(C("경계값·고유값 문제", "y(0), y(L)이 주어짐", "초기값 문제와 달리 해가 없거나 무수히 많을 수 있습니다. 동차 문제가 0이 아닌 해를 갖는 λ가 고유값이고, 강제 문제는 <b>고유함수 전개</b>로 풉니다.", [L("boundary", "ivp-vs-bvp", "초기값 대 경계값"), L("boundary", "eigenvalue-problem", "고유값 문제"), L("boundary", "eigenfunction-expansion", "고유함수 전개")]));
+    if (s.coef === "const") {
+      ex = s.force === "zero" ? "y″ + 2y′ + 10y = 0" : s.force === "nice" ? "y″ + 4y = cos 2t" : s.force === "switch" ? "y″ + 4y = δ(t − π)" : "y″ + y = tan t";
+      shape = { zero: "근 −1 ± 3i: 포락선 e<sup>−t</sup> 안에서 각진동수 3으로 감쇠 진동", nice: "y = 동차해 + ¼ t sin 2t: 진폭이 t에 비례해 자라는 공진", switch: "정지해 있다가 t = π부터 ½ sin 2(t − π)로 진동", gen: "y = c₁cos t + c₂sin t − cos t · ln|sec t + tan t|" }[s.force];
+      const charCard = C("특성 방정식", "y = e<sup>rt</sup>", "ar² + br + c = 0의 근으로 동차해를 씁니다. 실근·중근·복소근의 세 경우가 있습니다." + (s.force === "zero" ? "" : " 입력이 있어도 <b>동차해는 언제나 이것</b>이고, 위 방법으로 구한 특수해를 더합니다."), [L("second-order", "characteristic", "특성 방정식"), L("", "roots", "특성근 표")]);
+      if (s.force === "zero") R.push(charCard);
+      if (s.force === "zero") R.push(C("진동으로 읽기", "질량–용수철", "my″ + cy′ + ky = 0으로 보면 판별식 c² − 4mk의 부호가 과감쇠·임계·부족 감쇠를 가릅니다.", [L("oscillations", "damping-regimes", "감쇠 세 영역"), L("second-order", "higher-order", "고계 선형")]));
+      if (s.force === "nice") {
+        R.push(C("미정계수법", "같은 꼴의 시험 함수", "입력과 같은 꼴의 시험 함수를 넣고 계수를 맞춥니다. 시험 함수가 동차해와 겹치면 <b>t를 곱합니다</b>(공진).", [L("forced", "undetermined", "미정계수법"), L("", "trial", "시험 함수 표")]));
+        R.push(C("사인 입력이면", "정상 응답 공식", "진폭 F₀/√((k − mω²)² + (cω)²)과 위상 지연을 바로 씁니다. 감쇠가 있으면 과도 응답은 사라집니다.", [L("forced", "steady-state", "정상 응답"), L("forced", "frequency-response", "주파수 응답")]));
+      }
+      if (s.force === "switch") {
+        R.push(C("라플라스 변환", "계단·충격·구간별", "입력을 u(t − a), δ(t − a)로 쓰고 변환하면 구간을 나누지 않고 한 번에 풀립니다. 초기 조건도 자동으로 들어갑니다.", [L("laplace", "ivp", "IVP 풀이 흐름도"), L("transfer", "delta", "디랙 델타"), L("transfer", "piecewise", "구간별 입력")]));
+        R.push(C("전달 함수로 보기", "H(s) = 1/(as² + bs + c)", "충격 응답 h(t)를 알면 어떤 입력이든 y = h * g입니다.", [L("transfer", "impulse-response", "충격 응답"), L("transfer", "transfer-function", "전달 함수")]));
+      }
+      if (s.force === "gen") {
+        R.push(C("매개변수 변환법", "y<sub>p</sub> = u₁y₁ + u₂y₂", "동차해 y₁, y₂와 론스키안 W로 u₁′ = −y₂g/W, u₂′ = y₁g/W를 적분합니다. 어떤 연속 입력에도 통합니다.", [L("forced", "variation", "매개변수 변환법"), L("second-order", "wronskian", "론스키안")]));
+        R.push(C("합성곱", "y = ∫₀ᵗ h(t − τ)g(τ) dτ", "초기 조건이 0이면 충격 응답과 입력의 합성곱이 곧 해입니다.", [L("transfer", "convolution", "합성곱 정리")]));
+      }
+      if (s.force !== "zero") R.splice(s.cond === "bvp" ? 2 : 1, 0, charCard);
+      if (s.cond === "ivp" && s.force !== "switch") R.push(C("라플라스 변환", "초기값이 주어지면", "변환 → 대수 → 부분 분수의 세 단계로 동차해와 특수해를 한꺼번에 얻습니다.", [L("laplace", "ivp", "IVP 풀이 흐름도"), L("", "laplace-table", "변환표")]));
+    } else {
+      const V = {
+        euler: ["t²y″ + 3ty′ + y = 0", C("코시–오일러", "y = t<sup>r</sup>", "y = t<sup>r</sup>를 넣으면 r(r − 1) + ar + b = 0. t = e<sup>u</sup>로 바꾸면 상수계수가 되므로 근의 세 경우가 그대로 옮겨 옵니다.", [L("second-order", "cauchy-euler", "코시–오일러"), L("", "roots", "근 표의 오른쪽 열")])],
+        known: ["t²y″ − ty′ + y = 0, y₁ = t", C("계수 내리기", "y₂ = v(t)y₁", "y = v y₁을 넣으면 v′에 대한 1계 방정식이 됩니다. 아벨 정리로 y₂ = y₁∫e<sup>−∫p</sup>/y₁² dt.", [L("second-order", "reduction", "계수 내리기"), L("second-order", "wronskian", "아벨 정리")])],
+        analytic: ["y″ − xy = 0 (에어리)", C("거듭제곱 급수", "y = Σ aₙxⁿ", "급수를 넣고 같은 차수끼리 모아 점화식을 얻습니다. 수렴 반지름은 가장 가까운 (복소) 특이점까지의 거리 이상입니다.", [L("series-solutions", "power-series", "거듭제곱 급수 해"), L("series-solutions", "radius", "수렴 반지름"), L("series-solutions", "legendre", "르장드르")])],
+        singular: ["x²y″ + xy′ + (x² − ν²)y = 0 (베셀)", C("프로베니우스 방법", "y = x<sup>r</sup>Σ aₙxⁿ", "정칙 특이점에서는 지표 방정식으로 r을 정하고 급수를 붙입니다. 두 근의 차가 정수면 두 번째 해에 ln x가 낄 수 있습니다.", [L("series-solutions", "regular-singular", "지표 방정식"), L("series-solutions", "frobenius", "프로베니우스"), L("series-solutions", "bessel", "베셀 함수")])],
+      }[s.vform];
+      ex = V[0]; R.push(V[1]);
+      shape = s.vform === "euler" ? "t<sup>r</sup>의 거듭제곱 꼴(지수 대신)" : s.vform === "known" ? "y₁과 독립인 두 번째 해 y₂" : "특수 함수: 에어리·르장드르·베셀 등";
+      if (s.force !== "zero") R.push(C("매개변수 변환법", "입력이 있으면", "동차해 두 개를 구한 뒤 론스키안으로 특수해를 얻습니다. 표준형 y″ + p y′ + q y = g로 나눈 g를 쓰는 데 주의.", [L("forced", "variation", "매개변수 변환법")]));
+      R.push(C("수치 해법", "닫힌 꼴이 없으면", "1계 연립으로 바꿔 RK4로 풉니다.", [L("numerical", "systems", "고계에 적용하기")]));
+    }
+    if (s.cond === "bvp") { ex = "y″ + λy = 0, y(0) = y(L) = 0"; shape = "λ = (nπ/L)²일 때만 0이 아닌 해 sin(nπx/L), 그 밖의 λ에서는 y ≡ 0"; }
+    return { R, ex, shape };
+  }
+
+  const out = document.getElementById("gl-out");
+  function render() {
+    keys.forEach((k) => (S[k] = get[k]()));
+    const one = S.kind === "one", sys = S.kind === "sys", pde = S.kind === "pde";
+    const vis = {
+      kind: true, order: one, lin: one || sys,
+      coef: (one || sys) && S.lin === "lin",
+      vform: one && S.order === "2" && S.lin === "lin" && S.coef === "var",
+      force: (one || sys) && S.lin === "lin",
+      form: one && S.order === "1" && S.lin === "non",
+      auto: (one || sys) && S.lin === "non",
+      cond: one && S.order === "2" && S.lin === "lin",
+      ptype: pde,
+    };
+    keys.forEach((k) => (rows[k].hidden = !vis[k]));
+    const { R, ex, shape } = recommend(S);
+    out.innerHTML = R.map((r, i) => `<div class="gl-rec${i ? "" : " best"}"><div class="nm">${r.nm}<small>${i ? "대안 · " : "먼저 · "}${r.sub}</small></div><div><p>${r.desc}</p><div class="lk">${r.links.join("")}</div></div></div>`).join("");
+    MB.stat("gl-ex", ex); MB.stat("gl-shape", shape);
+  }
+  render();
+})();
+
+/* ------------------------------------------------ 2. 특성근 ↔ 해 모양 미니 그림 */
+(function () {
+  const E = Math.exp, cos = Math.cos, sin = Math.sin;
+  const Y = {
+    od: (t) => 1.5 * E(-t) - 0.5 * E(-3 * t),
+    cr: (t) => (1 + t) * E(-t),
+    ud: (t) => E(-0.3 * t) * (cos(3 * t) + 0.1 * sin(3 * t)),
+    sh: (t) => cos(3 * t),
+    gr: (t) => E(0.15 * t) * (cos(3 * t) - 0.05 * sin(3 * t)),
+    sd: (t) => (1.5 * E(0.6 * t) + 0.6 * E(-1.5 * t)) / 2.1,
+    un: (t) => 1.5 * E(0.3 * t) - 0.5 * E(0.9 * t),
+    z1: (t) => 0.4 + 0.6 * E(-2 * t),
+    z2: (t) => 0.2 + 0.1 * t,
+  };
+  document.querySelectorAll("#gl-roots svg.gl-spark").forEach((svg) => {
+    const roots = svg.dataset.r.split(";").map((p) => p.split(",").map(Number)), f = Y[svg.dataset.y];
+    // 근 위치: 정사각형 2..58, Re ∈ [−3.5, 1.5], Im ∈ [−3.5, 3.5]
+    const sx = (re) => 2 + ((re + 3.5) / 5) * 56, sy = (im) => 58 - ((im + 3.5) / 7) * 56;
+    let g = `<rect class="bx" x="2" y="2" width="56" height="56" rx="4"/><line class="ax" x1="2" y1="${sy(0)}" x2="58" y2="${sy(0)}"/><line class="ax" x1="${sx(0)}" y1="2" x2="${sx(0)}" y2="58"/><text x="55" y="${sy(0) + 10}" text-anchor="end">Re</text><text x="${sx(0) + 3}" y="10">Im</text>`;
+    const dbl = roots.length === 2 && roots[0][0] === roots[1][0] && roots[0][1] === roots[1][1];
+    roots.forEach(([re, im]) => (g += `<circle class="rt" cx="${sx(re).toFixed(1)}" cy="${sy(im).toFixed(1)}" r="3.4"/>`));
+    if (dbl) g += `<circle class="rt2" cx="${sx(roots[0][0]).toFixed(1)}" cy="${sy(roots[0][1]).toFixed(1)}" r="6"/>`;
+    // y(t): 상자 66..198 × 4..56
+    const N = 160, T = 8, ys = []; for (let i = 0; i <= N; i++) ys.push(f((T * i) / N));
+    const m = Math.max(...ys.map(Math.abs)) || 1;
+    const px = (i) => 66 + (132 * i) / N, py = (v) => 30 - (v / m) * 24;
+    g += `<rect class="bx" x="64" y="2" width="134" height="56" rx="4"/><line class="z" x1="66" y1="30" x2="196" y2="30"/>`;
+    g += `<path class="cv" d="${ys.map((v, i) => (i ? "L" : "M") + px(i).toFixed(1) + " " + py(v).toFixed(1)).join("")}"/>`;
+    g += `<text x="194" y="54" text-anchor="end">t</text>`;
+    svg.innerHTML = g;
+  });
+})();
+
+/* ------------------------------------------------ 3. 대각합–행렬식 지도 */
+(function () {
+  const PRE = { saddle: [0.5, -2], snode: [-3, 2], dnode: [-2, 1], sspiral: [-1, 5], center: [0, 4], uspiral: [1, 5], unode: [3, 2] };
+  let tau = -1, det = 5;
+  const pt = { x: tau, y: det, r: 8 };
+  const num = (v, d = 2) => { const s = (+v.toFixed(d)).toString(); return v < -1e-9 && s !== "0" ? "−" + s.slice(1) : s; };
+  const fld = (y) => [y[1], -det * y[0] + tau * y[1]];
+  function info() {
+    const disc = tau * tau - 4 * det, e = 1e-9;
+    let type, stab, lam;
+    if (disc >= -e) { const r = Math.sqrt(Math.max(0, disc)); lam = Math.abs(disc) < e ? `${num(tau / 2)} (중근)` : `${num((tau + r) / 2)}, ${num((tau - r) / 2)}`; }
+    else { const b = Math.sqrt(-disc) / 2; lam = Math.abs(tau) < e ? `± ${num(b)}i` : `${num(tau / 2)} ± ${num(b)}i`; }
+    if (Math.abs(det) < e) { type = "비고립 평형점(고유값 0)"; stab = "edge"; }
+    else if (det < 0) { type = "안장"; stab = "bad"; }
+    else if (Math.abs(tau) < e) { type = "중심"; stab = "edge"; }
+    else if (Math.abs(disc) < e) { type = (tau < 0 ? "안정" : "불안정") + " 퇴화 마디"; stab = tau < 0 ? "ok" : "bad"; }
+    else if (disc > 0) { type = (tau < 0 ? "안정" : "불안정") + " 마디"; stab = tau < 0 ? "ok" : "bad"; }
+    else { type = (tau < 0 ? "안정" : "불안정") + " 나선"; stab = tau < 0 ? "ok" : "bad"; }
+    return { disc, type, stab, lam };
+  }
+  function eqText() {
+    const c = -tau, k = det, term = (v, s) => (Math.abs(v) < 1e-9 ? "" : ` ${v < 0 ? "−" : "+"} ${Math.abs(Math.abs(v) - 1) < 1e-9 ? "" : num(Math.abs(v))}${s}`);
+    return `y″${term(c, "y′")}${term(k, "y")} = 0`;
+  }
+  function zText() {
+    if (det < -1e-9) return "k &lt; 0: 복원력이 밀어냄";
+    if (det < 1e-9) return "k = 0: 복원력 없음";
+    const z = -tau / (2 * Math.sqrt(det));
+    const tag = Math.abs(z) < 1e-9 ? "비감쇠" : z < 0 ? "음의 감쇠(커짐)" : Math.abs(z - 1) < 1e-6 ? "임계 감쇠" : z > 1 ? "과감쇠" : "부족 감쇠";
+    return `ζ = ${num(z)} · ${tag}`;
+  }
+  function traj(y0, dir, lim) {
+    const h = 0.02 * dir, out = [y0.slice()]; let y = y0.slice();
+    for (let i = 0; i < 700; i++) {
+      const k1 = fld(y), k2 = fld([y[0] + (h / 2) * k1[0], y[1] + (h / 2) * k1[1]]), k3 = fld([y[0] + (h / 2) * k2[0], y[1] + (h / 2) * k2[1]]), k4 = fld([y[0] + h * k3[0], y[1] + h * k3[1]]);
+      y = [y[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+      out.push(y);
+      if (Math.abs(y[0]) > lim || Math.abs(y[1]) > lim || Math.hypot(y[0], y[1]) < 0.01) break;
+    }
+    return out;
+  }
+  const colOf = (C, s) => (s === "ok" ? C.ok : s === "bad" ? C.bad : C.warn);
+  const map = MB.plane("#gl-td-map", {
+    x: [-5.5, 5.5], y: [-3.5, 6.5], aspect: 0.8, minHeight: 240, maxHeight: 400, points: [pt],
+    draw(P) {
+      const C = P.P, ctx = P.ctx, inf = info();
+      ctx.save(); ctx.globalAlpha = 0.13; ctx.fillStyle = C.accent2; ctx.fillRect(0, P.Y(0), P.w, P.h - P.Y(0)); ctx.restore();
+      const r = 2 * Math.sqrt(P.y1), cup = [];
+      for (let i = 0; i <= 80; i++) { const x = -r + (2 * r * i) / 80; cup.push([x, (x * x) / 4]); }
+      P.poly(cup, { fill: C.accent, alpha: 0.12, stroke: false });
+      P.curve((x) => (x * x) / 4, { color: C.accent, width: 2.2 });
+      P.line(0, 0, 0, P.y1, { color: C.ok, width: 2.2 });
+      const sz = P.w < 340 ? 11 : 12;
+      const lab = (s, x, y, col) => P.text(s, x, y, { color: col || C.dim, size: sz, bold: true, align: "center" });
+      lab("안정 나선", -2.3, 4.9); lab("불안정 나선", 2.3, 4.9);
+      lab("안정 마디", -4.1, 1.5); lab("불안정 마디", 4.1, 1.5);
+      lab("안장 (Δ < 0)", 0, -2.4, C.accent2); lab("중심", 0.75, 4.2, C.ok);
+      P.text("Δ = τ²/4", 4.4, 5.25, { color: C.accent, size: 11, align: "center" });
+      P.text("τ", P.x1, 0, { color: C.dim, size: 12, dx: -10, dy: -9 }); P.text("Δ", 0, P.y1, { color: C.dim, size: 12, dx: 6, dy: 10 });
+      pt.color = colOf(C, inf.stab);
+    },
+    onDrag(p) {
+      let t = Math.round(p.x * 20) / 20, d = Math.round(p.y * 20) / 20;
+      if (Math.abs(t) < 0.12) t = 0;
+      if (Math.abs(d) < 0.1) d = 0;
+      if (d > 0 && Math.abs(d - (t * t) / 4) < 0.12) d = (t * t) / 4;
+      p.x = tau = t; p.y = det = d;
+      document.querySelectorAll("#gl-td-pre button").forEach((b) => b.classList.remove("on"));
+      sync(false);
+    },
+  });
+  const SEEDS = []; for (let k = 0; k < 12; k++) { const a = (2 * Math.PI * k) / 12 + 0.13; SEEDS.push([2.4 * Math.cos(a), 2.4 * Math.sin(a)]); }
+  const ph = MB.plane("#gl-td-ph", {
+    x: [-3, 3], aspect: 0.8, minHeight: 240, maxHeight: 400,
+    draw(P) {
+      const C = P.P, ctx = P.ctx, inf = info(), lim = 8;
+      // 방향장
+      const step = 26;
+      ctx.save(); ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.globalAlpha = 0.55;
+      for (let px = step / 2; px < P.w; px += step) for (let py = step / 2; py < P.h; py += step) {
+        const v = fld([P.ix(px), P.iy(py)]), L = Math.hypot(v[0], -v[1]); if (L < 1e-9) continue;
+        const ux = v[0] / L, uy = -v[1] / L, s = 8;
+        ctx.beginPath(); ctx.moveTo(px - ux * s / 2, py - uy * s / 2); ctx.lineTo(px + ux * s / 2, py + uy * s / 2); ctx.stroke();
+      }
+      ctx.restore();
+      // 실수 고유벡터 직선 (1, λ)
+      if (inf.disc >= -1e-9) {
+        const r = Math.sqrt(Math.max(0, inf.disc));
+        [(tau + r) / 2, (tau - r) / 2].forEach((l, i) => { const n = Math.hypot(1, l), L = 20; P.line(-L / n, (-L * l) / n, L / n, (L * l) / n, { color: i ? C.accent2 : C.accent, width: 1.6, dash: [6, 5], alpha: 0.8 }); });
+      }
+      const col = colOf(C, inf.stab);
+      SEEDS.forEach((s) => {
+        const fw = traj(s, 1, lim), bw = traj(s, -1, lim).reverse(), all = bw.concat(fw.slice(1));
+        P.poly(all, { close: false, color: col, width: 1.6, alpha: 0.85 });
+        const j = Math.min(fw.length - 1, 25);
+        if (j > 2) { const a = fw[j - 2], b = fw[j]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 0.004 && Math.abs(b[0]) < P.x1 && Math.abs(b[1]) < P.y1) P.arrow(a[0], a[1], b[0], b[1], { color: col, width: 1.6, head: 8 }); }
+      });
+      if (Math.abs(det) < 1e-9) P.line(-10, 0, 10, 0, { color: C.text, width: 2.4 });
+      P.dot(0, 0, { r: 4, color: C.text });
+    },
+  });
+  const tp = MB.canvas("#gl-td-t", (ctx) => {
+    const C = MB.palette(), data = MB.rk4((t, y) => fld(y), [1, 0], 0, 0.02, 500).map(([t, y]) => [t, MB.clamp(y[0], -50, 50)]);
+    const env = info().disc < 0 && Math.abs(det) > 1e-9 ? Math.sqrt(1 + (tau / 2) ** 2 / (det - tau * tau / 4)) : 0;
+    const series = [{ data, color: colOf(C, info().stab), width: 2.2 }];
+    if (env) { const a = tau / 2; series.push({ data: data.map(([t]) => [t, env * Math.exp(a * t)]), color: C.faint, width: 1.2, dash: [4, 4] }, { data: data.map(([t]) => [t, -env * Math.exp(a * t)]), color: C.faint, width: 1.2, dash: [4, 4] }); }
+    MB.chart(ctx, null, { x: [0, 10], y: [-2, 2], xLabel: "t", yLabel: "y", series, hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.3, minHeight: 170, maxHeight: 230 });
+  function sync(redrawMap = true) {
+    const inf = info();
+    MB.stat("gl-td-td", `${num(tau)}, ${num(det)}`); MB.stat("gl-td-disc", num(inf.disc));
+    MB.stat("gl-td-l", inf.lam); MB.stat("gl-td-type", inf.type); MB.stat("gl-td-eq", eqText()); MB.stat("gl-td-z", zText());
+    ph.redraw(); tp.redraw(); if (redrawMap) map.redraw();
+  }
+  MB.seg("gl-td-pre", (v) => { [tau, det] = PRE[v]; pt.x = tau; pt.y = det; sync(); });
+  sync();
+})();
+
+/* ------------------------------------------------ 4. 용어집 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  const T = window.BOOK_GLOSSARY.terms.map((t) => [t.ko, t.en, t.def, t.chapters[0], t.abbr, t.chapters]);
+  const list = document.getElementById("gl-list"), qEl = document.getElementById("gl-q"), fEl = document.getElementById("gl-f"), nEl = document.getElementById("gl-n");
+  const parts = [...new Set(MB.CHAPTERS.filter((c) => T.some((t) => t[3] === c.slug)).map((c) => c.part))];
+  const used = MB.CHAPTERS.filter((c) => T.some((t) => t[5].includes(c.slug)));
+  let filt = "all", chf = "all";
+  fEl.innerHTML = `<button data-p="all" class="on">전체</button>` + parts.map((p) => `<button data-p="${p}">${p}</button>`).join("") +
+    `<select id="gl-ch" aria-label="장으로 거르기"><option value="all">모든 장</option>${used.map((c) => `<option value="${c.slug}">${c.num} ${c.title}</option>`).join("")}</select>`;
+  const sel = document.getElementById("gl-ch"), btns = [...fEl.querySelectorAll("button")];
+  btns.forEach((b) => b.addEventListener("click", () => { filt = b.dataset.p; chf = "all"; sel.value = "all"; btns.forEach((x) => x.classList.toggle("on", x === b)); render(); }));
+  sel.addEventListener("change", () => { chf = sel.value; filt = "all"; btns.forEach((x) => x.classList.toggle("on", x.dataset.p === "all")); render(); });
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function render() {
+    const q = qEl.value.trim().toLowerCase();
+    const rows = T.filter((t) => chs[t[3]] && (filt === "all" || chs[t[3]].part === filt) && (chf === "all" || t[5].includes(chf)) && (!q || [t[0], t[1], t[2], t[4]].join(" ").toLowerCase().includes(q)))
+      .sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    nEl.textContent = `${rows.length}개 / 전체 ${T.length}개`;
+    list.innerHTML = rows.map((t) => `<div class="gl-item"><h4>${esc(t[0])}<span class="en">${esc(t[1])}${t[4] ? " · " + esc(t[4]) : ""}</span></h4><p>${esc(t[2])}</p><a class="ch" href="${t[3]}.html">${chs[t[3]].num} · ${chs[t[3]].title} →</a></div>`).join("") || `<p style="color:var(--text-dim)">찾는 용어가 없습니다. 다른 표현(영어 등)으로 검색해 보세요.</p>`;
+  }
+  qEl.addEventListener("input", render);
+  render();
+})();
+
+/* ------------------------------------------------ 5. 종합 퀴즈 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  // [질문, [보기...], 정답 인덱스, 해설, 장]
+  const Q = [
+    ["다음 중 선형 미분방정식은?", ["y′ = y² + t", "y″ + sin y = 0", "t²y″ + eᵗy′ − y = cos t", "yy′ = 1"], 2, "선형성은 y와 그 도함수에 대해서만 따진다. 계수 t², eᵗ와 우변 cos t는 t만의 함수라 상관없다.", "modeling"],
+    ["y′ = 2y, y(0) = 1에 오일러 방법을 h = 0.25로 두 걸음 쓰면 y(0.5)의 근삿값은?", ["1.5", "2.25", "2.5", "e ≈ 2.718"], 1, "걸음마다 y ← y + 0.25·2y = 1.5y이므로 두 걸음이면 1.5² = 2.25. 참값 e보다 작다.", "modeling"],
+    ["반감기가 10일인 물질이 처음의 1/8로 줄어드는 데 걸리는 시간은?", ["80일", "40일", "30일", "12.5일"], 2, "1/8 = (1/2)³이므로 반감기 세 번, 30일이다.", "separable"],
+    ["y′ = y², y(0) = 2인 초기값 문제의 최대 정의 구간은?", ["(−∞, ∞)", "(−∞, 1/2)", "(1/2, ∞)", "(−1/2, 1/2)"], 1, "해는 y = 2/(1 − 2t)이고 t = 1/2에서 터진다. 초기점 t = 0을 포함하는 조각은 (−∞, 1/2)이다.", "separable"],
+    ["y′ + 4y = 8, y(0) = 0의 해가 최종값의 약 95%에 이르는 시각은?", ["0.25", "0.5", "0.75", "3"], 2, "y = 2(1 − e^(−4t)), 시상수 τ = 1/4. 95%는 약 3τ이므로 t ≈ 0.75 (1 − e^(−3) ≈ 0.950).", "linear-first"],
+    ["(2xy + 3)dx + (x² + 4y)dy = 0에 대한 설명으로 옳은 것은?", ["완전하지 않다", "완전하고 해는 x²y + 3x + 2y² = C", "완전하고 해는 x²y + 2y² = C", "베르누이 방정식이다"], 1, "M_y = 2x = N_x이므로 완전하다. ψ = ∫M dx = x²y + 3x + h(y), ψ_y = x² + h′ = x² + 4y에서 h = 2y².", "linear-first"],
+    ["y′ = √y, y(0) = 0의 해에 대해 옳은 것은?", ["y ≡ 0 하나뿐이다", "y = t²/4 하나뿐이다", "해가 무수히 많다", "해가 없다"], 2, "y = 0에서 √y가 립시츠가 아니므로 유일성이 깨진다. 임의의 c ≥ 0에 대해 c까지 0이다가 (t − c)²/4로 떠나는 함수가 모두 해다.", "autonomous"],
+    ["r = 0.5, K = 1000인 어장에서 일정량 h를 수확한다. h = 80일 때 안정 평형점은?", ["200", "500", "800", "1000"], 2, "y* = 500(1 ± √(1 − 4h/(rK))) = 500(1 ± 0.6). 800은 안정, 200은 불안정 문턱이다. h_c = rK/4 = 125를 넘으면 평형점이 사라진다.", "autonomous"],
+    ["오일러 방법으로 h = 0.1일 때 오차가 0.04였다. h = 0.025로 줄이면 오차는 대략?", ["0.0025", "0.01", "0.02", "0.00016"], 1, "오일러 방법은 1차라 전역 오차가 h에 비례한다. h가 1/4이 되면 오차도 약 1/4인 0.01이 된다.", "numerical"],
+    ["y′ = −100y를 명시적 오일러로 풀 때 수치 해가 터지지 않는 가장 큰 걸음 폭은?", ["0.001", "0.01", "0.02", "제한 없음"], 2, "안정 조건 |1 + hλ| ≤ 1에서 λ = −100이면 h ≤ 2/100 = 0.02이다. 음적 오일러를 쓰면 이런 제한이 없다.", "numerical"],
+    ["y″ + 2y′ + 10y = 0의 해는 어떤 모양인가?", ["진동 없이 감쇠", "포락선 e^(−t)를 따라 감쇠하며 각진동수 3으로 진동", "각진동수 10으로 진동하며 감쇠", "진폭이 커지는 진동"], 1, "특성근은 r = −1 ± 3i이다. 실수부 −1이 포락선 e^(−t)를, 허수부 3이 각진동수를 준다.", "second-order"],
+    ["y″ + p(t)y′ + q(t)y = 0의 두 해의 론스키안에 대해 옳은 것은?", ["어떤 점에서는 0이고 다른 점에서는 0이 아닐 수 있다", "q(t)에 따라 부호가 바뀐다", "구간에서 항상 0이거나 한 번도 0이 아니다", "항상 1이다"], 2, "아벨 정리에 따라 W(t) = W(t₀)exp(−∫p)이므로 지수 인자는 0이 될 수 없다. 한 점에서만 확인하면 기본해 집합인지 알 수 있다.", "second-order"],
+    ["m = 1 kg, k = 9 N/m인 질량–용수철에 감쇠 계수 c = 4 N·s/m인 감쇠기를 달았다. 응답은?", ["부족 감쇠: 줄어들며 진동한다", "임계 감쇠", "과감쇠: 진동 없이 느리게 돌아온다", "진폭이 일정한 단진동"], 0, "임계 감쇠 계수 c_cr = 2√(mk) = 6이고 c = 4 &lt; 6이므로 부족 감쇠(ζ ≈ 0.67)다.", "oscillations"],
+    ["자유 진동 기록에서 연속한 두 봉우리의 높이 비가 2였다. 감쇠비 ζ는 대략?", ["0.69", "0.5", "0.11", "0.01"], 2, "로그 감소율 δ = ln 2 ≈ 0.693, ζ = δ/√(4π² + δ²) ≈ 0.11. 0.69는 δ 자체다.", "oscillations"],
+    ["y″ + 4y = cos 2t의 특수해로 알맞은 시험 함수는?", ["A cos 2t", "A cos 2t + B sin 2t", "t(A cos 2t + B sin 2t)", "At² cos 2t"], 2, "±2i가 특성근이라 cos 2t, sin 2t는 동차해다. t를 곱해야 하며, 답은 (1/4) t sin 2t로 진폭이 t에 비례하는 공진이다.", "forced"],
+    ["기계 받침대가 바닥으로 전해지는 힘을 줄이려면(전달률 T &lt; 1) 운전 진동수 ω와 받침대 고유 진동수 ω₀ 사이에 어떤 관계가 필요한가?", ["ω = ω₀", "ω &lt; ω₀", "ω &gt; √2·ω₀", "감쇠비를 1 이상으로 하면 항상 된다"], 2, "T(r) &lt; 1은 r = ω/ω₀ &gt; √2일 때만 성립하고 감쇠와 무관하다. 이 영역에서는 감쇠가 클수록 오히려 T가 커진다.", "forced"],
+    ["y″ + 3y′ + 2y = 6, y(0) = 1, y′(0) = 0을 라플라스 변환으로 풀면 Y(s)의 극점은?", ["−1, −2뿐", "0, −1, −2", "1, 2", "0, 1, 2"], 1, "변환하면 (s² + 3s + 2)Y = s + 3 + 6/s이므로 Y = (s² + 3s + 6)/(s(s+1)(s+2)). 특성근 −1, −2에 입력 6/s의 극점 0이 더해진다. 해는 3 − 4e^(−t) + 2e^(−2t).", "laplace"],
+    ["Y(s) = 1/(s(s² + 4))에 최종값 정리를 적용해 1/4을 얻었다. 옳은 판단은?", ["y(t)는 1/4로 수렴한다", "y(t)는 0으로 수렴한다", "sY의 극점 ±2i가 허수축 위에 있어 정리를 쓸 수 없고, y = (1 − cos 2t)/4는 수렴하지 않는다", "y(t)는 무한대로 발산한다"], 2, "최종값 정리는 sY(s)의 극점이 모두 왼쪽 반평면에 있을 때만 쓸 수 있다. 여기서는 극점이 허수축 위에 있어 y가 0과 1/2 사이를 영원히 진동한다.", "laplace"],
+    ["정지한 질량–용수철계 2x″ + 8x = 6δ(t)의 응답 x(t)는?", ["3 sin 2t", "(3/2) sin 2t", "6 sin 2t", "3 cos 2t"], 1, "(2s² + 8)X = 6이므로 X = 3/(s² + 4) = (3/2)·2/(s² + 4). 충격량 6이 질량 2에 속도 3을 주고, ω = 2이므로 진폭은 3/2이다.", "transfer"],
+    ["2차 시스템의 계단 응답 오버슈트를 결정하는 것은?", ["고유 진동수 ωₙ만", "감쇠비 ζ만 (극점의 각도)", "극점의 실수부만", "입력 계단의 크기"], 1, "오버슈트 Mp = e^(−πζ/√(1−ζ²))는 ζ만의 함수다. s 평면에서 ζ = cos θ이므로 같은 각도의 직선 위 극점은 같은 오버슈트를 준다. ωₙ은 시간 축의 크기만 바꾼다.", "transfer"],
+    ["대각합 τ = −2, 행렬식 Δ = 5인 2×2 연립 x′ = Ax의 원점은?", ["안정 마디", "안정 나선", "중심", "안장"], 1, "τ² − 4Δ = 4 − 20 &lt; 0이라 고유값이 −1 ± 2i. 실수부가 음수이므로 감겨 드는 안정 나선이다.", "systems"],
+    ["결합 진자(ω₀ = 1, 결합 κ = 0.5)의 두 정규 모드 진동수는?", ["1과 1.5", "0.5와 1", "1과 √2", "√1.5 하나"], 2, "같은 방향 모드는 용수철이 늘지 않아 ω₀ = 1, 반대 방향 모드는 √(ω₀² + 2κ) = √2.", "systems"],
+    ["평형점에서 야코비 행렬의 고유값이 ±2i이다. 비선형 시스템에서 이 평형점은?", ["반드시 중심", "반드시 안정 나선", "선형화만으로는 판정할 수 없다", "반드시 안장"], 2, "실수부가 0인 비쌍곡 평형점이라 하트만–그로브만 정리를 쓸 수 없다. 비선형 항에 따라 안정 나선, 불안정 나선, 중심 어느 것도 될 수 있다.", "nonlinear"],
+    ["SIR 모델에서 R₀ = 4일 때 집단 면역 문턱은?", ["25%", "50%", "75%", "98%"], 2, "감수성자 비율이 1/R₀ = 0.25 이하이면 감염자가 늘 수 없으므로 면역 비율 1 − 1/4 = 75%가 필요하다.", "nonlinear"],
+    ["x′ = h + x − x³에서 상태가 아래 가지(x &lt; 0)에 있을 때 h를 천천히 올리면 위 가지로 도약하는 h의 값은?", ["0", "2/(3√3) ≈ 0.385", "1/√3 ≈ 0.577", "1"], 1, "평형 곡선 h = x³ − x는 x = −1/√3에서 접히고 그때 h = 2/(3√3) ≈ 0.385이다. 이 접힘점(안장–마디 분기)에서 아래 가지가 사라져 상태가 x = 2/√3으로 뛴다. 되돌아올 때는 h = −0.385에서 뛰어 이력 고리가 생긴다.", "chaos"],
+    ["리아푸노프 지수가 0.9인 혼돈계에서 처음 관측 오차를 1000배 줄이면 예측 가능 시간은 어떻게 되는가?", ["1000배 늘어난다", "약 30배 늘어난다", "약 7.7(= ln 1000 / 0.9)만큼 더해질 뿐이다", "변하지 않는다"], 2, "예측 가능 시간은 대략 (1/λ)ln(허용 오차/처음 오차)이므로 오차를 k배 줄이면 ln k / λ만큼 더해진다. ln 1000 / 0.9 ≈ 7.7. 혼돈계에서 정밀도는 로그로만 보상받는다.", "chaos"],
+    ["(1 + x²)y″ + 2xy′ = 0의 x = 0 둘레 급수해(해는 arctan x)의 수렴 반지름은?", ["무한대(실수축에 특이점이 없으므로)", "1", "√2", "π/2"], 1, "복소 특이점 x = ±i까지의 거리가 1이므로 반지름은 1이다. 실수축에 막힘이 없어도 복소평면의 특이점이 수렴 원을 제한한다.", "series-solutions"],
+    ["가장자리가 고정된 이상적인 원형 막의 기본 진동수가 200 Hz이다. 모드 (1, 1)의 진동수는 대략?", ["400 Hz", "319 Hz", "459 Hz", "600 Hz"], 1, "고유 진동수는 J_n의 영점 j_nm에 비례한다. j₁₁/j₀₁ = 3.8317/2.4048 ≈ 1.593이므로 약 319 Hz. 비가 정수가 아니어서 북은 또렷한 음높이를 내기 어렵다.", "series-solutions"],
+    ["y″ + y = 0, y(0) = 0, y(π) = 1인 경계값 문제의 해는?", ["y = sin x 하나", "y = c·sin x (무수히 많음)", "해가 없다", "y = cos x"], 2, "y(0) = 0에서 y = c·sin x이고 sin π = 0이므로 y(π) = 1을 맞출 수 없다. 동차 문제가 0이 아닌 해를 가질 때 비동차 경계값 문제는 해가 없거나 무수히 많다.", "boundary"],
+    ["사각파의 푸리에 부분합에서 항 수를 늘리면 점프 근처의 넘침은 어떻게 되는가?", ["높이가 0으로 줄어든다", "폭은 좁아지지만 높이는 점프의 약 9%로 남는다", "폭과 높이가 모두 커진다", "항 수와 무관하게 아무 넘침도 없다"], 1, "기브스 현상: 항을 늘리면 첫 극대의 위치(x = π/(N+1), N은 가장 높은 홀수 배음)는 점프로 다가가지만, 높이는 (2/π)Si(π) ≈ 1.179, 즉 점프 2의 약 8.95%를 넘친 채로 남는다.", "boundary"],
+    ["양끝이 0 °C인 막대에서 처음 온도의 3번 모드는 1번 모드보다 몇 배 빨리 감쇠하는가?", ["3배", "6배", "9배", "27배"], 2, "n번째 모드의 감쇠율은 α(nπ/L)²로 n²에 비례하므로 3번 모드는 9배 빨리 사라진다.", "pde"],
+    ["열 방정식을 명시적 FTCS로 풀 때 안정성 조건은? (r = αΔt/Δx²)", ["r ≤ 1", "r ≤ 1/2", "r ≤ 2", "항상 안정하다"], 1, "증폭 인자 G = 1 − 4r sin²(θ/2)의 최솟값 1 − 4r가 −1 이상이어야 하므로 r ≤ 1/2. 넘으면 점마다 부호가 바뀌는 톱니 모드가 자란다.", "pde"],
+  ];
+  const box = document.getElementById("final"), weak = document.getElementById("gl-weak");
+  let score = 0, done = 0, miss = {};
+  const upd = () => {
+    MB.stat("sc-t", `${score} / ${done} · 전체 ${Q.length}`); document.getElementById("sc-b").style.width = (done / Q.length) * 100 + "%";
+    const ks = Object.keys(miss).sort((a, b) => chs[a].num.localeCompare(chs[b].num));
+    weak.innerHTML = !done ? "" : ks.length ? `다시 볼 장: ${ks.map((k) => `<a href="${k}.html">${chs[k].num} ${chs[k].title}${miss[k] > 1 ? ` (${miss[k]})` : ""}</a>`).join("")}` : "지금까지 모두 맞혔습니다.";
+  };
+  function build() {
+    score = 0; done = 0; miss = {};
+    box.innerHTML = Q.map(([q, opts, a, exp, ch], i) =>
+      `<div class="quiz-q" data-i="${i}"><p>${i + 1}. ${q}<a class="ch" href="${ch}.html">(${chs[ch].num}장)</a></p><div class="opts">${opts.map((o, k) => `<button class="opt"${k === a ? " data-correct" : ""}>${o}</button>`).join("")}</div><div class="quiz-exp">${exp}</div></div>`).join("");
+    box.querySelectorAll(".quiz-q").forEach((qq) => {
+      const opts = [...qq.querySelectorAll("button.opt")], ch = Q[+qq.dataset.i][4];
+      opts.forEach((b) => b.addEventListener("click", () => {
+        if (qq.classList.contains("done")) return;
+        opts.forEach((o) => { o.disabled = true; if (o.hasAttribute("data-correct")) o.classList.add("right"); });
+        if (!b.hasAttribute("data-correct")) { b.classList.add("wrong"); miss[ch] = (miss[ch] || 0) + 1; } else score++;
+        qq.classList.add("done"); done++; upd();
+      }));
+    });
+    upd();
+  }
+  document.getElementById("sc-r").addEventListener("click", build);
+  build();
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// Render the 1200×630 share images: og.png (shelf home), linear/og.png (LinearBook) and calculus/og.png (CalculusBook).
+// Render the 1200×630 share images: og.png (shelf home), linear/og.png (LinearBook), calculus/og.png (CalculusBook) and ode/og.png (ODEBook).
 // Usage: node tools/og.mjs   (rerun after books, chapters or simulators change). Needs Playwright.
 // Covers use the same shelf.css and covers.js as the home page; stats are counted like shared/js/shelf.js.
 import { chromium } from 'playwright';
@@ -50,7 +50,7 @@ const shelf = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style
     <div class="brand">${read('favicon.svg')}<span>MathBooks</span></div>
     <div class="eyebrow">INTERACTIVE MATH TEXTBOOKS</div>
     <h1>정의를 외우기 전에,<br><span class="soft">직접 끌고 바꿔 보며</span><br><span class="warm">배우는 수학</span></h1>
-    <p class="lead">공학 수학 입문, 선형대수, 미적분, 확률과 통계에서<br>미분방정식·수치해석까지 한 서가에서.</p>
+    <p class="lead">공학 수학 입문, 선형대수, 미적분, 미분방정식,<br>확률과 통계에서 수치해석까지 한 서가에서.</p>
     <div class="stats"><span><b>${live.length}</b>권 공개</span><span><b>${chapters}</b>개 장</span><span><b>${simulators.toLocaleString('ko-KR')}+</b>시뮬레이터</span></div>
   </div>
   <div class="url">math.euiyun.com</div>
@@ -124,9 +124,48 @@ const calculusPage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"
   <div class="art">${calc}</div>
 </body></html>`;
 
+// ODEBook: a direction field with solution curves spiralling into a stable focus (damped oscillator x′ = y, y′ = −x − 0.35y).
+const odeArt = (() => {
+  const cx = 300, cy = 300, k = 62, f = (x, y) => [y, -x - 0.35 * y];
+  let s = '';
+  for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) {
+    const x = i * 0.95, y = j * 0.95, [dx, dy] = f(x, y), n = Math.hypot(dx, dy) || 1, L = 15;
+    const px = cx + x * k, py = cy - y * k, ux = dx / n * L, uy = -dy / n * L;
+    s += `<line x1="${(px - ux).toFixed(1)}" y1="${(py - uy).toFixed(1)}" x2="${(px + ux).toFixed(1)}" y2="${(py + uy).toFixed(1)}" stroke="#ffffff38" stroke-width="2.4" stroke-linecap="round"/>`;
+  }
+  const orbit = (x0, y0, color, w) => {
+    let x = x0, y = y0, d = `M${(cx + x * k).toFixed(1)} ${(cy - y * k).toFixed(1)}`; const h = 0.02;
+    for (let n = 0; n < 1400; n++) {
+      const a = f(x, y), b = f(x + h / 2 * a[0], y + h / 2 * a[1]), c = f(x + h / 2 * b[0], y + h / 2 * b[1]), e = f(x + h * c[0], y + h * c[1]);
+      x += h / 6 * (a[0] + 2 * b[0] + 2 * c[0] + e[0]); y += h / 6 * (a[1] + 2 * b[1] + 2 * c[1] + e[1]);
+      if (n % 2) d += `L${(cx + x * k).toFixed(1)} ${(cy - y * k).toFixed(1)}`;
+    }
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${cx + x0 * k}" cy="${cy - y0 * k}" r="9" fill="${color}" stroke="#0f1228" stroke-width="3"/>`;
+  };
+  s += orbit(-3.6, 2.4, '#ffa94d', 4) + orbit(3.4, -1.2, '#66d9e8', 3.2) + orbit(0.6, 3.9, '#ffffffb0', 2.4);
+  s += `<circle cx="${cx}" cy="${cy}" r="7" fill="#fff"/>`;
+  s += `<text x="44" y="556" fill="#ffa94d" font-family="monospace" font-size="30" font-weight="700">x″ + 0.35x′ + x = 0</text>`;
+  return `<svg viewBox="0 0 600 600" width="600" height="600"><defs><clipPath id="c"><rect x="20" y="20" width="560" height="560" rx="28"/></clipPath></defs><rect x="20" y="20" width="560" height="560" rx="28" fill="#0f1228" stroke="#2a2f55"/><g clip-path="url(#c)">${s}</g></svg>`;
+})();
+const ode = books.find((b) => b.id === 'odebook');
+const odePage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>${read('shelf.css')}</style><style>${base}
+  .art { position:absolute; right:40px; top:15px; }
+  .eyebrow, .url, h1 .warm { color:#ffa94d; } h1 .soft { color:#99e9f2; }
+</style></head><body>
+  <div class="left">
+    <div class="brand">${read('ode/favicon.svg')}<span>ODEBook</span></div>
+    <div class="eyebrow">INTERACTIVE DIFFERENTIAL EQUATIONS</div>
+    <h1>변화의 법칙에서<br><span class="soft">미래를</span><br><span class="warm">계산한다</span></h1>
+    <p class="lead">방향장과 진동, 라플라스 변환, 위상 평면과<br>혼돈을 직접 시뮬레이션하며 익히는 미분방정식.</p>
+    <div class="stats"><span><b>5</b>부</span><span><b>16</b>개 장</span><span><b>${Math.floor(ode.simulators / 10) * 10}+</b>시뮬레이터</span></div>
+  </div>
+  <div class="url">math.euiyun.com/ode/</div>
+  <div class="art">${odeArt}</div>
+</body></html>`;
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [calculusPage, 'calculus/og.png']]) {
+for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [calculusPage, 'calculus/og.png'], [odePage, 'ode/og.png']]) {
   await page.setContent(html, { waitUntil: 'networkidle' });
   await page.addScriptTag({ content: read('shared/js/covers.js') });
   await page.evaluate(async () => {
@@ -136,4 +175,4 @@ for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [ca
   await page.screenshot({ path: join(root, out) });
 }
 await browser.close();
-console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.simulators} simulators; calculus/og.png: ${calculus.simulators} simulators`);
+console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.simulators} simulators; calculus/og.png: ${calculus.simulators} simulators; ode/og.png: ${ode.simulators} simulators`);

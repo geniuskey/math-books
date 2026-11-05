@@ -21,6 +21,14 @@ LOCAL_BOOKS = [{
     'status': 'published', 'level': '공대 1학년', 'stage': 'core', 'slug': 'calculus', 'legacyUrl': None,
     'color': '#c2255c', 'colorDark': '#f783ac', 'motif': 'calculus',
     'topics': ['극한·연속', '미분·최적화', '적분·기본 정리', '급수·테일러', '편미분·그래디언트', '중적분·벡터 미적분'],
+}, {
+    'id': 'odebook', 'code': 'ODE', 'title': 'ODEBook', 'subtitle': '미분방정식 교과서',
+    'headline': '변화의 법칙에서 미래를 계산한다',
+    'description': '방향장과 1계 방정식, 위상선과 수치 해법, 2계 선형 방정식과 진동·공진, 라플라스 변환과 전달 함수, 연립 방정식과 위상 평면, 비선형 안정성과 혼돈, 급수해와 푸리에 급수, 편미분방정식 입문까지 — 회로·기계·열을 직접 시뮬레이션하며 익히는 미분방정식 교과서.',
+    'url': 'https://math.euiyun.com/ode/', 'repo': 'https://github.com/geniuskey/math-books', 'field': 'math',
+    'status': 'published', 'level': '공대 2학년', 'stage': 'core', 'slug': 'ode', 'legacyUrl': None,
+    'color': '#e8590c', 'colorDark': '#ffa94d', 'motif': 'ode',
+    'topics': ['방향장·1계 방정식', '수치 해법', '진동·공진', '라플라스·전달 함수', '위상 평면·안정성', '혼돈·편미분방정식'],
 }]
 books = books + LOCAL_BOOKS
 catalog = []

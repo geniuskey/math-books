@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>비선형 시스템과 안정성 · ODEBook</title>
+<meta name="description" content="손으로 풀 수 없는 비선형 시스템을 평형점과 안정성으로 읽는다. 야코비안 선형화와 하트만–그로브만 정리, 진자의 분리선, 포식자–피식자와 경쟁 모델, 리아푸노프 함수, 한계 순환과 반 데어 폴 진동자, SIR 전염병 모델.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .nl-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .nl-two > div { position: relative; min-width: 0; }
+  .nl-two > div + div { border-top: 1px solid var(--border); }
+  .nl-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 78%, transparent); padding: 1px 6px; border-radius: 5px; max-width: calc(100% - 20px); }
+  .nl-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .nl-msg b { color: var(--text); }
+  .nl-msg.ok { color: var(--ok); font-weight: 600; }
+  .nl-msg.bad { color: var(--bad); font-weight: 600; }
+  .nl-tbl td, .nl-tbl th { vertical-align: top; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="nonlinear">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 12</div>
+    <h1 data-no-glossary>비선형 시스템과 안정성</h1>
+    <p class="lead">진자의 \(\sin\theta\), 포식자와 피식자가 만나는 횟수 \(xy\), 감염자와 감수성자가 마주치는 \(SI\). 실제 세계의 법칙은 대부분 비선형이고, 그 해는 대부분 식으로 쓸 수 없습니다. 그래도 포기할 필요는 없습니다. 이 장의 전략은 해를 구하는 대신 <b>해의 운명</b>을 묻는 것입니다. 먼저 아무것도 변하지 않는 평형점을 찾고, 그 근처를 확대하면 11장의 선형 연립이 보입니다. 그 선형 그림이 언제 믿을 만한지(하트만–그로브만 정리), 믿을 수 없을 때는 에너지 같은 양으로 어떻게 판정하는지(리아푸노프 함수), 그리고 선형 시스템에서는 결코 볼 수 없는 현상, 스스로 진폭을 정하는 진동(한계 순환)까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>평형점을 찾고 야코비 행렬로 선형화해 11장의 분류(마디·안장·나선)를 적용하며, 쌍곡 평형점에서만 이 판정이 유효함을 안다.</li>
+      <li>진자의 위상 평면에서 에너지 등위선, 분리선, 진동과 회전을 구분하고, 진폭에 따라 주기가 길어짐을 설명한다.</li>
+      <li>로트카–볼테라 모델의 보존량과 주기 평균을 유도하고 볼테라 원리를 해석한다. 경쟁 모델의 공존·배제를 널클라인으로 판정한다.</li>
+      <li>리아푸노프 함수로 선형화가 실패하는 평형점의 안정성을 판정한다.</li>
+      <li>한계 순환을 정의하고 푸앵카레–벤딕슨 정리와 벤딕슨 판정법을 쓰며, 반 데어 폴 진동자의 이완 진동을 이해한다.</li>
+      <li>SIR 모델에서 기초 감염 재생산수 \(R_0\), 정점 조건, 최종 감염 규모, 집단 면역 문턱을 계산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>백신 접종 목표와 감염병 대응 계획</b></div>
+      <div class="o-body"><p>1927년 커맥과 맥켄드릭은 인구를 감수성자 S, 감염자 I, 회복자 R로 나누고, 감염이 S와 I의 만남에 비례한다는 비선형 미분방정식을 세웠습니다. 이 식은 손으로 풀 수 없지만 중요한 사실 하나를 정확히 알려 줍니다. 감염자가 늘어나는 것은 감수성자의 비율이 \(1/R_0\)보다 클 때뿐이라는 <b>문턱</b>입니다. 그래서 인구의 \(1 - 1/R_0\) 이상이 면역을 가지면 감염이 들어와도 퍼지지 못합니다.</p>
+        <p>집단 면역 목표, 유행 정점의 시기와 높이 예측, "곡선 평탄화"가 의료 체계에 주는 효과 같은 논의가 모두 이 모델과 그 확장에서 출발합니다. 이 장의 도구인 평형점·선형화·보존량이 이 계산을 가능하게 합니다.</p>
+        <div class="o-chain"><span>만남에 비례하는 감염 βSI</span><i>→</i><span>풀 수 없는 비선형 연립</span><i>→</i><span class="tool">평형점의 안정성과 보존량</span><i>→</i><span>문턱 1 − 1/R₀</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="linearization">
+    <h2>평형점과 야코비안 선형화</h2>
+    <div class="problem"><strong>쇠막대와 자석 두 개</strong>
+      <p>탄성 있는 쇠막대 끝을 양옆의 자석 두 개 사이에 두면 막대는 가운데에 서 있지 못하고 어느 한쪽 자석에 붙으려 합니다. 이런 이중 우물 계의 간단한 모델이 \(x'' = x - x^3 - 0.5x'\)(감쇠 있는 더핑 방정식)입니다. \(x^3\) 때문에 해를 식으로 쓸 수 없습니다. 그래도 "막대가 어디에 멈추는가, 가운데는 왜 불안정한가"는 답할 수 있을까요?</p></div>
+    <p>자율 시스템 \(\mathbf x' = \mathbf f(\mathbf x)\)에서 \(\mathbf f(\mathbf x^*) = \mathbf 0\)인 점 \(\mathbf x^*\)를 <span class="term">평형점</span><span class="en">(equilibrium point)</span>이라 합니다(4장의 1차원 평형점의 평면판). 평형점 근처에서 \(\mathbf x = \mathbf x^* + \mathbf u\)로 두고 테일러 전개(<a href="../../calculus/chapters/partial.html">CalculusBook 편미분 장</a>의 선형 근사)를 쓰면 \(\mathbf f(\mathbf x^* + \mathbf u) = \mathbf f(\mathbf x^*) + J\mathbf u + O(|\mathbf u|^2) = J\mathbf u + O(|\mathbf u|^2)\)이므로</p>
+    <div class="formula">$$\mathbf u' \approx J\mathbf u,\qquad J = \frac{\partial(f, g)}{\partial(x, y)}\bigg|_{\mathbf x^*} = \begin{bmatrix} f_x & f_y\\ g_x & g_y\end{bmatrix}_{\mathbf x^*}.$$
+      <div class="where">\(\mathbf f = (f, g)\)의 <span class="term">야코비 행렬</span><span class="en">(Jacobian matrix)</span>을 평형점에서 계산한 상수 행렬 \(J\)로 근사한 것을 <span class="term">선형화</span><span class="en">(linearization)</span>라 한다. 평형점을 아주 크게 확대하면 곡선 흐름이 펴져서 선형 흐름 \(J\mathbf u\)처럼 보인다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="평형점 근처를 확대하면 휘어진 궤적이 선형 시스템의 곧은 안장 모양으로 보인다">
+        <defs><marker id="nl-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g transform="translate(40,30)">
+          <path d="M 10 30 C 90 80, 130 110, 150 130 C 170 150, 190 200, 200 210" fill="none" class="s-line" style="stroke-width:1.6;opacity:.6"/>
+          <path d="M 20 210 C 70 160, 120 140, 150 130 C 190 115, 250 60, 290 30" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+          <path d="M 30 70 C 100 110, 110 160, 60 200" fill="none" class="s-line" style="stroke-width:1.4;opacity:.45"/>
+          <path d="M 270 210 C 200 170, 200 110, 280 70" fill="none" class="s-line" style="stroke-width:1.4;opacity:.45"/>
+          <circle cx="150" cy="130" r="5" style="fill:var(--text)"/>
+          <circle cx="150" cy="130" r="38" fill="none" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:5 4"/>
+          <text x="150" y="232" text-anchor="middle" class="t-dim">비선형 흐름 (평형점 x*)</text>
+        </g>
+        <line x1="232" y1="140" x2="420" y2="140" style="stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:4 4"/>
+        <text x="326" y="128" text-anchor="middle" class="t" style="fill:var(--accent-2)">확대</text>
+        <g transform="translate(430,30)">
+          <circle cx="140" cy="110" r="100" class="f-elev" style="stroke:var(--accent-2);stroke-width:2"/>
+          <line x1="60" y1="190" x2="220" y2="30" style="stroke:var(--accent);stroke-width:2.2"/>
+          <line x1="60" y1="30" x2="220" y2="190" class="s-line" style="stroke-width:1.6"/>
+          <path d="M 70 70 Q 140 110 80 160" fill="none" class="s-line" style="stroke-width:1.3;opacity:.5"/>
+          <path d="M 210 70 Q 140 110 200 160" fill="none" class="s-line" style="stroke-width:1.3;opacity:.5"/>
+          <circle cx="140" cy="110" r="5" style="fill:var(--text)"/>
+          <text x="140" y="232" text-anchor="middle" class="t-dim">확대한 모습 ≈ u′ = Ju (안장)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 12-1.</b> 평형점 주변을 확대할수록 휘어진 궤적이 곧게 펴지고, 흐름은 야코비 행렬로 만든 선형 시스템 \(\mathbf u' = J\mathbf u\)와 구별되지 않는다. 비선형 항은 \(|\mathbf u|^2\) 크기라서 \(|\mathbf u|\)보다 빨리 작아지기 때문이다.</figcaption>
+    </figure>
+    <p>이 근사가 얼마나 믿을 만한지가 문제입니다. 11장에서 본 것처럼 중심과 퇴화 마디는 행렬을 조금만 흔들어도 종류가 바뀝니다. 무시한 비선형 항이 바로 그런 작은 흔들림이므로, 선형 그림이 경계에 있으면 믿을 수 없습니다.</p>
+    <div class="callout deep"><strong>정의 12.1 (쌍곡 평형점)</strong> 평형점 \(\mathbf x^*\)에서 야코비 행렬 \(J\)의 모든 고유값의 실수부가 0이 아니면 \(\mathbf x^*\)를 <span class="term">쌍곡 평형점</span><span class="en">(hyperbolic equilibrium)</span>이라 한다. 2×2에서는 \(\det J \ne 0\)이고 "\(\operatorname{tr}J = 0,\ \det J \gt 0\)"(중심)이 아닌 경우다.</div>
+    <div class="callout deep"><strong>정리 12.1 (<span class="term">하트만–그로브만 정리</span><span class="en">(Hartman–Grobman theorem)</span>)</strong> \(\mathbf f\)가 \(C^1\)이고 \(\mathbf x^*\)가 쌍곡 평형점이면, \(\mathbf x^*\)의 어떤 근방에서 비선형 시스템의 궤적들과 선형화 \(\mathbf u' = J\mathbf u\)의 궤적들을 시간 방향을 지키며 일대일로 연속 대응시키는 변환(위상 동형 사상)이 있다. 즉 평형점 근처의 위상 초상은 선형화와 <b>같은 모양</b>이다(안장은 안장, 마디는 마디처럼 들어가거나 나가고, 나선은 나선).</div>
+    <div class="callout deep"><strong>정리 12.2 (선형화에 의한 안정성 판정)</strong> \(J\)의 모든 고유값의 실수부가 음수이면 \(\mathbf x^*\)는 점근 안정이고, 실수부가 양수인 고유값이 하나라도 있으면 불안정이다. 2×2에서는 \(\operatorname{tr}J \lt 0\)이고 \(\det J \gt 0\)이면 점근 안정, \(\det J \lt 0\)(안장)이거나 \(\operatorname{tr}J \gt 0\)이면 불안정이다.</div>
+    <div class="callout warn"><strong>선형화가 중심이면 아무것도 모른다</strong> \(x' = -y + a\,x(x^2 + y^2)\), \(y' = x + a\,y(x^2 + y^2)\)는 \(a\)가 무엇이든 원점의 야코비 행렬이 \(\begin{bmatrix}0 & -1\\ 1 & 0\end{bmatrix}\)(중심)입니다. 그런데 극좌표로 바꾸면 \(r' = a r^3\), \(\theta' = 1\)이라 \(a \lt 0\)이면 감겨 드는 안정 나선, \(a \gt 0\)이면 풀려 나가는 불안정 나선, \(a = 0\)일 때만 진짜 중심입니다. 비쌍곡 평형점은 5절의 리아푸노프 함수 같은 다른 도구가 필요합니다.</div>
+    <div class="callout"><strong>예제 12.1 (이중 우물)</strong> \(x' = y\), \(y' = x - x^3 - 0.5y\)의 평형점을 분류하라.
+      <ol>
+        <li>평형점: \(y = 0\)이고 \(x - x^3 = 0\), 즉 \((0, 0)\), \((1, 0)\), \((-1, 0)\).</li>
+        <li>\(J = \begin{bmatrix}0 & 1\\ 1 - 3x^2 & -0.5\end{bmatrix}\).</li>
+        <li>\((0, 0)\): \(J = \begin{bmatrix}0 & 1\\ 1 & -0.5\end{bmatrix}\), \(\det J = -1 \lt 0\) → 안장(\(\lambda \approx 0.781,\ -1.281\)). 쌍곡이므로 비선형에서도 안장입니다. 가운데에 선 막대는 불안정합니다.</li>
+        <li>\((\pm 1, 0)\): \(J = \begin{bmatrix}0 & 1\\ -2 & -0.5\end{bmatrix}\), \(\tau = -0.5\), \(\Delta = 2\), \(\tau^2 - 4\Delta \lt 0\) → 안정 나선(\(\lambda = -0.25 \pm 1.392i\)). 막대는 한쪽 자석 앞에서 흔들리다 멈춥니다. 어느 쪽에 멈출지는 안장의 안정 방향이 만드는 경계(분리선)가 정합니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-nl-linearize">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>선형화 확대경: 평형점 근처를 키워 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-ln-full"></canvas><span class="nl-cap">전체 위상 초상 · 평형점을 눌러 고르기</span></div>
+          <div><canvas id="nl-cv-ln-zoom"></canvas><span class="nl-cap">확대: 실선 = 비선형, 점선 = 선형화 u′ = Ju</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>시스템</span><select id="nl-ln-sys">
+            <option value="duffing">이중 우물 (예제 12.1)</option>
+            <option value="compete">경쟁 (예제 12.4)</option>
+            <option value="pend">감쇠 진자</option>
+            <option value="fake">가짜 중심 (r′ = −r³)</option>
+          </select></label>
+          <label class="ctrl"><span>평형점</span><select id="nl-ln-eq"></select></label>
+          <label class="ctrl"><span>확대 배율 <output id="nl-ln-z-out"></output></span><input type="range" id="nl-ln-z"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">평형점</span><span class="v" id="nl-ln-p">—</span></div>
+        <div class="stat"><span class="k">야코비 행렬 J</span><span class="v" id="nl-ln-j">—</span></div>
+        <div class="stat"><span class="k">고유값</span><span class="v" id="nl-ln-l">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="nl-ln-t">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 이중 우물의 안장 (0, 0)에서 배율을 1 → 32로 올리면 휘어진 실선이 점선과 겹쳐 갑니다. 하트만–그로브만 정리의 그림입니다. ② 경쟁 모델의 (1, 1)도 안장입니다. 이 안장의 안정 방향이 두 종의 운명을 가릅니다. ③ '가짜 중심'에서는 아무리 확대해도 점선(닫힌 원)과 실선(아주 천천히 감겨 드는 나선)이 일치하지 않습니다. 비쌍곡 평형점입니다. 모델: 확대 창에서 같은 출발점 8개로 두 흐름을 RK4로 적분합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="pendulum">
+    <h2>진자: 위상 평면, 분리선, 회전 운동</h2>
+    <div class="problem"><strong>크게 흔들면 시계가 늦어진다</strong>
+      <p>7장에서는 \(\sin\theta \approx \theta\)로 근사해 진자의 주기가 진폭과 무관하게 \(2\pi\sqrt{L/g}\)라고 했습니다. 정말로 90°까지 들어 올렸다 놓아도 같을까요? 그리고 아주 세게 밀어서 꼭대기를 넘어 빙빙 도는 운동은 어떻게 설명할까요?</p></div>
+    <p>진자의 운동 방정식 \(\theta'' + \omega_0^2\sin\theta = 0\)(\(\omega_0^2 = g/L\))을 \(\omega = \theta'\)로 연립으로 쓰면 \(\theta' = \omega\), \(\omega' = -\omega_0^2\sin\theta\)입니다. 평형점은 \((k\pi, 0)\)입니다.</p>
+    <ul>
+      <li>\(\theta = 0, \pm 2\pi, \dots\)(아래로 매달림): \(J = \begin{bmatrix}0 & 1\\ -\omega_0^2 & 0\end{bmatrix}\), \(\lambda = \pm i\omega_0\). 선형화는 중심이고 비쌍곡이라 정리 12.1을 쓸 수 없습니다. 하지만 아래의 에너지 보존이 진짜 중심임을 보장합니다.</li>
+      <li>\(\theta = \pm\pi, \dots\)(거꾸로 섬): \(J = \begin{bmatrix}0 & 1\\ \omega_0^2 & 0\end{bmatrix}\), \(\lambda = \pm\omega_0\). 안장. 쌍곡이므로 비선형에서도 안장입니다.</li>
+    </ul>
+    <div class="callout deep"><strong>정리 12.3 (보존계의 궤적은 등위선)</strong> 진자의 에너지 \(E(\theta, \omega) = \tfrac12\omega^2 - \omega_0^2\cos\theta\)는 해를 따라 일정하다. 증명: \(\tfrac{d}{dt}E = \omega\omega' + \omega_0^2\sin\theta\,\theta' = \omega(-\omega_0^2\sin\theta) + \omega_0^2\sin\theta\,\omega = 0\). 따라서 궤적은 \(E\)의 등위선 위에 놓인다. 이처럼 해를 따라 변하지 않는 함수를 <span class="term">보존량</span><span class="en">(conserved quantity, first integral)</span>이라 한다.</div>
+    <p>등위선은 세 종류입니다. \(-\omega_0^2 \lt E \lt \omega_0^2\)이면 아래 평형점을 감싸는 닫힌 곡선, 즉 좌우로 흔들리는 <b>진동</b><span class="en">(libration)</span>입니다. \(E \gt \omega_0^2\)이면 \(\omega\)가 0이 되지 않아 한 방향으로 계속 도는 <b>회전</b><span class="en">(rotation)</span>입니다. 그 경계 \(E = \omega_0^2\)이 안장점들을 잇는 곡선</p>
+    <div class="formula">$$\omega = \pm 2\omega_0\cos\frac{\theta}{2}$$
+      <div class="where">이고, 이것을 <span class="term">분리선</span><span class="en">(separatrix)</span>이라 한다. 분리선 위의 진자는 꼭대기에 무한히 오랜 시간이 걸려 다가갈 뿐 도달하지 못한다. 맨 아래에서 출발하면 \(\omega(0) \gt 2\omega_0\)일 때만 회전한다.</div></div>
+    <div class="callout deep"><strong>정리 12.4 (진폭에 따른 주기)</strong> 진폭 \(\theta_{\max}\)으로 흔들리는 진자의 주기는
+      <div class="formula">$$T = \frac{4}{\omega_0}K\!\left(\sin\tfrac{\theta_{\max}}{2}\right) = \frac{2\pi/\omega_0}{\operatorname{agm}\bigl(1, \cos\tfrac{\theta_{\max}}{2}\bigr)}.$$</div>
+      여기서 \(K(k) = \int_0^{\pi/2}\frac{d\phi}{\sqrt{1 - k^2\sin^2\phi}}\)는 제1종 완전 타원 적분이고, \(\operatorname{agm}\)은 산술–기하 평균(두 수의 산술 평균과 기하 평균을 반복해 얻는 공통 극한)이다. 에너지 보존 \(\tfrac12\theta'^2 = \omega_0^2(\cos\theta - \cos\theta_{\max})\)에서 \(dt = d\theta/\theta'\)를 적분하고 \(\sin\tfrac\theta2 = k\sin\phi\)로 치환하면 나온다.</div>
+    <div class="table-wrap"><table class="nl-tbl">
+      <thead><tr><th>진폭 θ<sub>max</sub></th><th>10°</th><th>30°</th><th>60°</th><th>90°</th><th>120°</th><th>150°</th><th>170°</th></tr></thead>
+      <tbody><tr><td>T / T<sub>0</sub></td><td>1.0019</td><td>1.0174</td><td>1.0732</td><td>1.1803</td><td>1.3729</td><td>1.7622</td><td>2.4394</td></tr></tbody></table></div>
+    <p>표의 값은 정리 12.4로 계산했고, 90°의 1.1803은 RK4로 적분해 잰 주기와 넷째 자리까지 같습니다. 10°에서도 0.19% 길어지는데, 하루로 치면 약 2.7분입니다. 진자 시계가 진폭을 작게 일정하게 유지하려 애쓰는 이유입니다. 진폭이 180°로 가면 주기는 무한대로 갑니다. 회전 운동의 주기(한 바퀴 시간)도 같은 방법으로 구해지는데, \(\omega_0 = 1\)이고 맨 아래에서 \(\omega(0) = 2.2\)로 밀면 한 바퀴에 약 4.222초가 걸립니다(RK4 일치).</p>
+    <p>마찰 \(-c\theta'\)를 더하면 에너지가 줄어 \(E' = -c\omega^2 \le 0\)이고, 아래 평형점은 중심에서 안정 나선으로 바뀝니다. 위 평형점은 여전히 안장입니다. 이제 위상 평면은 "몇 바퀴 돈 뒤 어느 골짜기(\(2k\pi\))에 멈추는가"로 나뉘고, 그 경계가 안장으로 들어가는 궤적들입니다.</p>
+
+    <div class="sim" id="sim-nl-pendulum">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>진자의 위상 평면</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-pd-ph"></canvas><span class="nl-cap">(θ, ω) 평면 · 눌러서 출발 상태 정하기</span></div>
+          <div><canvas id="nl-cv-pd-sc"></canvas></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>출발 상태</span><div class="seg" id="nl-pd-pre"><button data-value="small" class="on">20°</button><button data-value="big">90°</button><button data-value="sep">179°</button><button data-value="rot">회전</button></div></div>
+          <label class="ctrl"><span>감쇠 c <output id="nl-pd-c-out"></output></span><input type="range" id="nl-pd-c" min="0" max="0.5" step="0.01" value="0"></label>
+          <label class="check"><input type="checkbox" id="nl-pd-lin"> 선형 근사 sin θ ≈ θ도 함께</label>
+          <div class="btn-row"><button class="btn primary" id="nl-pd-play">▶ 재생</button><button class="btn" id="nl-pd-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">에너지 E</span><span class="v" id="nl-pd-E">—</span></div>
+        <div class="stat"><span class="k">운동</span><span class="v" id="nl-pd-k">—</span></div>
+        <div class="stat"><span class="k">주기 T / T₀</span><span class="v" id="nl-pd-T">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 20°와 90°를 번갈아 재생하며 아래 그래프에서 주기를 비교하세요. 90°는 18% 깁니다. '선형 근사'를 켜면 점선 진자는 진폭과 무관하게 같은 주기로 흔들려 점점 어긋납니다. ② 179°는 분리선 바로 안쪽입니다. 꼭대기 근처에서 오래 머뭅니다. ③ 감쇠를 0.1쯤 주고 '회전'으로 출발하면 몇 바퀴 돈 뒤 분리선을 넘어 들어와 2π 골짜기에서 나선을 그리며 멈춥니다. 모델: ω₀ = 1, θ″ + cθ′ + sin θ = 0을 RK4로 적분합니다. 청록 곡선이 분리선 ω = ±2cos(θ/2).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="lotka-volterra">
+    <h2>로트카–볼테라 포식자–피식자 모델</h2>
+    <div class="problem"><strong>고기잡이를 줄였더니 상어가 늘었다</strong>
+      <p>제1차 세계대전 동안 아드리아해의 어업이 크게 줄었습니다. 이탈리아의 생물학자 단코나는 그 기간 어시장에 들어온 물고기 가운데 상어·가오리 같은 포식 어종의 비율이 늘었다는 자료를 장인인 수학자 볼테라에게 보였습니다. 어업이 줄면 모든 물고기가 늘어야 할 텐데, 왜 포식자의 몫이 커졌을까요?</p></div>
+    <p>피식자 \(x\)는 포식자가 없으면 지수적으로 늘고, 포식자 \(y\)는 먹이가 없으면 지수적으로 줍니다. 둘이 만나는 횟수는 \(xy\)에 비례하고, 만남은 피식자를 줄이고 포식자를 늘립니다.</p>
+    <div class="formula">$$x' = ax - bxy,\qquad y' = -cy + dxy\qquad (a, b, c, d \gt 0).$$
+      <div class="where">1920년대에 로트카와 볼테라가 각각 독립적으로 세운 <span class="term">로트카–볼테라 방정식</span><span class="en">(Lotka–Volterra equations)</span>이다.</div></div>
+    <p>평형점은 \((0, 0)\)과 \((c/d,\ a/b)\)입니다. \((0, 0)\)에서 \(J = \mathrm{diag}(a, -c)\)라 안장이고, 내부 평형점에서는 \(J = \begin{bmatrix}0 & -bc/d\\ ad/b & 0\end{bmatrix}\), \(\lambda = \pm i\sqrt{ac}\)로 중심입니다. 비쌍곡이라 선형화만으로는 나선인지 닫힌 궤도인지 알 수 없습니다. 이번에도 보존량이 답을 줍니다.</p>
+    <div class="callout deep"><strong>정리 12.5 (로트카–볼테라의 보존량)</strong> 양의 사분면에서
+      <div class="formula">$$V(x, y) = dx - c\ln x + by - a\ln y$$</div>
+      는 해를 따라 일정하다. \(V\)는 내부 평형점에서 엄격한 최솟값을 가지므로 그 둘레의 궤적은 모두 닫힌 곡선이고, 개체 수는 주기적으로 오르내린다.
+      <p style="margin:6px 0 0"><b>증명.</b> \(\tfrac{dV}{dt} = \bigl(d - \tfrac cx\bigr)x' + \bigl(b - \tfrac ay\bigr)y' = (dx - c)(a - by) + (by - a)(dx - c) = 0\). 최솟값: \(V_x = d - c/x = 0\), \(V_y = b - a/y = 0\)에서 평형점, 헤세 행렬 \(\mathrm{diag}(c/x^2, a/y^2)\)는 양의 정부호. ∎</p></div>
+    <div class="callout deep"><strong>정리 12.6 (한 주기 평균은 평형점)</strong> 주기 \(T\)인 궤도에서 \(\bar x = \tfrac1T\int_0^T x\,dt = c/d\), \(\bar y = a/b\).
+      <p style="margin:6px 0 0"><b>증명.</b> \((\ln x)' = x'/x = a - by\)를 한 주기 적분하면 좌변은 \(\ln x(T) - \ln x(0) = 0\)이므로 \(0 = aT - b\int_0^T y\,dt\). \(\bar x\)도 같다. ∎</p></div>
+    <p>이제 단코나의 수수께끼를 풀 수 있습니다. 어업이 두 종을 같은 비율 \(h\)로 잡아들이면 \(a \to a - h\), \(c \to c + h\)가 되어 평균이 \(\bar x = (c + h)/d\)로 <b>늘고</b> \(\bar y = (a - h)/b\)로 <b>준다</b>. 거꾸로 어업이 줄면(\(h\)가 작아지면) 포식자의 평균은 늘고 피식자의 평균은 줄어듭니다. 이것을 <b>볼테라 원리</b>라 합니다.</p>
+    <div class="callout"><strong>예제 12.2 (주기와 평균)</strong> \(x' = 2x - xy\), \(y' = -3y + xy\).
+      <ol>
+        <li>평형점 \((3, 2)\). \(J = \begin{bmatrix}0 & -3\\ 2 & 0\end{bmatrix}\), \(\lambda = \pm i\sqrt6\). 평형점 가까운 작은 궤도의 주기는 \(2\pi/\sqrt6 \approx 2.565\).</li>
+        <li>\((5, 2)\)에서 출발한 궤도는 \(V = 5 - 3\ln 5 + 2 - 2\ln 2 \approx 0.785\)인 등위선입니다. RK4로 재면 주기는 약 2.65로, 작은 궤도보다 깁니다. 진자처럼 진폭이 클수록 느려집니다.</li>
+        <li>같은 적분에서 한 주기 평균은 \((3.000, 2.000)\)으로 정리 12.6과 일치합니다. 양쪽에 \(h = 0.5\)의 수확을 더하면 평균이 \((3.5, 1.5)\)로 옮겨 갑니다.</li>
+      </ol></div>
+    <p>로트카–볼테라 모델은 닫힌 궤도가 무수히 많아 초기값마다 진폭이 다르고, 피식자에게 수용력(로지스틱 항)을 조금만 넣어도 중심이 안정 나선으로 바뀝니다. 즉 구조적으로 불안정한 모델입니다. 실제 생태계의 꾸준한 주기는 6절의 한계 순환으로 설명하는 편이 자연스럽습니다.</p>
+
+    <div class="sim" id="sim-nl-lv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>포식자–피식자 궤도와 볼테라 원리</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-lv-ph"></canvas><span class="nl-cap">(x 피식자, y 포식자) · 눌러서 출발점 바꾸기</span></div>
+          <div><canvas id="nl-cv-lv-t"></canvas><span class="nl-cap">x(t) 주황, y(t) 청록, 점선 = 한 주기 평균</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피식자 성장률 a <output id="nl-lv-a-out"></output></span><input type="range" id="nl-lv-a" min="0.5" max="3" step="0.1" value="2"></label>
+          <label class="ctrl"><span>포식자 사망률 c <output id="nl-lv-c-out"></output></span><input type="range" id="nl-lv-c" min="0.5" max="4" step="0.1" value="3"></label>
+          <label class="ctrl"><span>어업 수확률 h <output id="nl-lv-h-out"></output></span><input type="range" id="nl-lv-h" min="0" max="1.5" step="0.05" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="nl-lv-play">▶ 재생</button><button class="btn" id="nl-lv-reset">예제 12.2로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">평형점 ((c+h)/d, (a−h)/b)</span><span class="v" id="nl-lv-eq">—</span></div>
+        <div class="stat"><span class="k">한 주기 평균 (x̄, ȳ)</span><span class="v" id="nl-lv-avg">—</span></div>
+        <div class="stat"><span class="k">주기</span><span class="v" id="nl-lv-T">—</span></div>
+        <div class="stat"><span class="k">보존량 V</span><span class="v" id="nl-lv-V">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 평형점 근처를 누르면 거의 타원인 작은 궤도, 멀리 누르면 피식자 폭증 → 포식자 폭증 → 둘 다 급감을 되풀이하는 찌그러진 궤도가 나옵니다. 어느 쪽이든 평균은 평형점입니다. ② 수확률 h를 올리면 평형점(십자)이 오른쪽 아래로 움직입니다. 피식자 평균은 늘고 포식자 평균은 줍니다. ③ 아래 그래프에서 포식자의 정점이 피식자의 정점보다 늘 조금 늦게 옵니다. 모델: b = d = 1로 고정, RK4(Δt = 0.005). 옅은 등고선은 V의 등위선입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="competition">
+    <h2>경쟁 모델: 공존과 배제</h2>
+    <div class="problem"><strong>같은 먹이를 두고 다투는 두 종</strong>
+      <p>짚신벌레 두 종을 같은 배양액에 기르면 한 종이 사라지기도 하고, 둘 다 살아남기도 합니다. 어떤 조건이 공존을 허락하고 어떤 조건이 한쪽의 멸종을 부를까요?</p></div>
+    <p>각 종이 로지스틱 성장(2장)을 하면서 상대 종에게 자원을 빼앗긴다고 하고, 수용력을 1로 맞추도록 변수를 다시 잡으면(무차원화)</p>
+    <div class="formula">$$x' = x(1 - x - \alpha y),\qquad y' = \rho\,y(1 - y - \beta x).$$
+      <div class="where">\(\alpha\)는 \(y\) 한 마리가 \(x\)의 자원을 얼마나 빼앗는가, \(\beta\)는 그 반대. \(\alpha \lt 1\)이면 종 내부 경쟁이 종 사이 경쟁보다 세다. \(\rho \gt 0\)은 두 종의 성장 속도 비.</div></div>
+    <p>위상 평면을 읽는 가장 빠른 도구는 <span class="term">널클라인</span><span class="en">(nullcline)</span>입니다. \(x' = 0\)인 곡선 위에서는 흐름이 세로로만, \(y' = 0\)인 곡선 위에서는 가로로만 움직이고, 두 종류의 널클라인이 만나는 곳이 평형점입니다. 여기서 \(x\)-널클라인은 \(x = 0\)과 직선 \(x + \alpha y = 1\), \(y\)-널클라인은 \(y = 0\)과 직선 \(\beta x + y = 1\)입니다.</p>
+    <div class="callout deep"><strong>정리 12.7 (두 종 경쟁의 네 가지 결말)</strong> 평형점은 \((0, 0)\)(불안정 마디), \((1, 0)\), \((0, 1)\), 그리고 \(\alpha\beta \ne 1\)일 때 내부점 \(\Bigl(\dfrac{1 - \alpha}{1 - \alpha\beta},\ \dfrac{1 - \beta}{1 - \alpha\beta}\Bigr)\)이다(양수일 때만 의미가 있다).
+      <ol style="margin:6px 0 0">
+        <li>\(\alpha \lt 1,\ \beta \lt 1\): 내부점이 안정 마디 → <b>공존</b>. 모든 양의 초기값이 내부점으로 간다.</li>
+        <li>\(\alpha \gt 1,\ \beta \gt 1\): 내부점이 안장, \((1, 0)\)과 \((0, 1)\)이 모두 안정 → <b>쌍안정</b>. 안장의 안정 방향 곡선(분리선)이 어느 종이 이길지 가른다.</li>
+        <li>\(\alpha \lt 1 \lt \beta\): 내부점이 없고 \((1, 0)\)만 안정 → \(x\)의 승리.</li>
+        <li>\(\beta \lt 1 \lt \alpha\): \((0, 1)\)만 안정 → \(y\)의 승리.</li>
+      </ol>
+      경우 3·4·2처럼 생태적 지위가 너무 겹치면 공존할 수 없다는 관찰을 <span class="term">경쟁 배제 원리</span><span class="en">(competitive exclusion principle)</span>라 부른다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="경쟁 모델의 네 경우: 널클라인 두 직선의 상대 위치에 따라 공존, 쌍안정, x 승리, y 승리">
+        <rect x="10" y="10" width="740" height="210" rx="10" class="f-surface"/>
+        <g class="t-dim" style="font-size:12px">
+          <g transform="translate(30,30)">
+            <line x1="0" y1="140" x2="150" y2="140" class="s-axis"/><line x1="0" y1="140" x2="0" y2="0" class="s-axis"/>
+            <line x1="120" y1="140" x2="0" y2="10" style="stroke:var(--accent);stroke-width:2.2"/>
+            <line x1="0" y1="50" x2="150" y2="140" style="stroke:var(--accent-2);stroke-width:2.2"/>
+            <circle cx="74" cy="94" r="6" style="fill:var(--ok)"/>
+            <text x="75" y="166" text-anchor="middle" class="t" style="font-weight:700">α &lt; 1, β &lt; 1: 공존</text>
+          </g>
+          <g transform="translate(215,30)">
+            <line x1="0" y1="140" x2="150" y2="140" class="s-axis"/><line x1="0" y1="140" x2="0" y2="0" class="s-axis"/>
+            <line x1="150" y1="140" x2="0" y2="60" style="stroke:var(--accent);stroke-width:2.2"/>
+            <line x1="0" y1="10" x2="100" y2="140" style="stroke:var(--accent-2);stroke-width:2.2"/>
+            <circle cx="52" cy="88" r="6" style="fill:var(--warn)"/>
+            <circle cx="150" cy="140" r="6" style="fill:var(--ok)"/><circle cx="0" cy="10" r="6" style="fill:var(--ok)"/>
+            <path d="M 4 136 Q 40 100 52 88 T 130 6" fill="none" class="s-line" style="stroke-dasharray:4 3"/>
+            <text x="75" y="166" text-anchor="middle" class="t" style="font-weight:700">α &gt; 1, β &gt; 1: 쌍안정</text>
+          </g>
+          <g transform="translate(400,30)">
+            <line x1="0" y1="140" x2="150" y2="140" class="s-axis"/><line x1="0" y1="140" x2="0" y2="0" class="s-axis"/>
+            <line x1="130" y1="140" x2="0" y2="20" style="stroke:var(--accent);stroke-width:2.2"/>
+            <line x1="0" y1="80" x2="70" y2="140" style="stroke:var(--accent-2);stroke-width:2.2"/>
+            <circle cx="130" cy="140" r="6" style="fill:var(--ok)"/>
+            <text x="75" y="166" text-anchor="middle" class="t" style="font-weight:700">α &lt; 1 &lt; β: x 승리</text>
+          </g>
+          <g transform="translate(585,30)">
+            <line x1="0" y1="140" x2="150" y2="140" class="s-axis"/><line x1="0" y1="140" x2="0" y2="0" class="s-axis"/>
+            <line x1="70" y1="140" x2="0" y2="80" style="stroke:var(--accent);stroke-width:2.2"/>
+            <line x1="0" y1="20" x2="130" y2="140" style="stroke:var(--accent-2);stroke-width:2.2"/>
+            <circle cx="0" cy="20" r="6" style="fill:var(--ok)"/>
+            <text x="75" y="166" text-anchor="middle" class="t" style="font-weight:700">β &lt; 1 &lt; α: y 승리</text>
+          </g>
+        </g>
+        <text x="380" y="208" text-anchor="middle" class="t-dim">주황 = x-널클라인 x + αy = 1, 청록 = y-널클라인 βx + y = 1, 초록 = 안정 평형점, 노랑 = 안장, 점선 = 분리선</text>
+      </svg>
+      <figcaption><b>그림 12-2.</b> 경쟁 모델의 네 경우. 가로축이 \(x\), 세로축이 \(y\)다. 두 널클라인 직선이 교차하는 방식이 결말을 정한다. 각 종이 자기 축에서 만드는 절편(수용력 1)이 상대 널클라인의 절편보다 바깥에 있으면 그 종이 침입을 막아 낸다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 12.3 (쌍안정)</strong> \(x' = x(3 - x - 2y)\), \(y' = y(2 - x - y)\)를 분석하라.
+      <ol>
+        <li>평형점: \((0, 0)\), \((3, 0)\), \((0, 2)\), 그리고 \(x + 2y = 3\), \(x + y = 2\)의 교점 \((1, 1)\).</li>
+        <li>\(J = \begin{bmatrix}3 - 2x - 2y & -2x\\ -y & 2 - x - 2y\end{bmatrix}\). \((3, 0)\): \(\begin{bmatrix}-3 & -6\\ 0 & -1\end{bmatrix}\) 안정 마디. \((0, 2)\): \(\begin{bmatrix}-1 & 0\\ -2 & -2\end{bmatrix}\) 안정 마디.</li>
+        <li>\((1, 1)\): \(J = \begin{bmatrix}-1 & -2\\ -1 & -1\end{bmatrix}\), \(\det J = 1 - 2 = -1 \lt 0\) → 안장(\(\lambda = -1 \pm \sqrt2\)).</li>
+        <li>결말은 초기값에 달렸습니다. \((1.2, 1)\)에서 출발하면 \((3, 0)\)으로, \((1, 1.2)\)에서 출발하면 \((0, 2)\)로 갑니다(RK4). 안장으로 들어가는 분리선이 두 끌림 영역의 경계입니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 12.4 (공존)</strong> \(\alpha = \beta = 0.5\), \(\rho = 1\)이면 내부점은 \((2/3,\ 2/3)\)이고 \(J = \begin{bmatrix}-2/3 & -1/3\\ -1/3 & -2/3\end{bmatrix}\), \(\lambda = -1/3,\ -1\)인 안정 마디입니다. 어떤 양의 초기값에서 출발해도 두 종이 각각 수용력의 2/3로 수렴합니다.</div>
+
+    <div class="sim" id="sim-nl-compete">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>경쟁 모델: 널클라인과 운명</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nl-cv-cp"></canvas><span class="tag-tl">눌러서 출발점 더하기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>y가 x에 주는 경쟁 α <output id="nl-cp-a-out"></output></span><input type="range" id="nl-cp-a" min="0" max="2" step="0.05" value="0.5"></label>
+          <label class="ctrl"><span>x가 y에 주는 경쟁 β <output id="nl-cp-b-out"></output></span><input type="range" id="nl-cp-b" min="0" max="2" step="0.05" value="0.5"></label>
+          <label class="ctrl"><span>성장 속도 비 ρ <output id="nl-cp-r-out"></output></span><input type="range" id="nl-cp-r" min="0.3" max="3" step="0.1" value="1"></label>
+          <div class="btn-row"><button class="btn" id="nl-cp-co">공존</button><button class="btn" id="nl-cp-bi">쌍안정</button><button class="btn" id="nl-cp-x">x 승리</button><button class="btn" id="nl-cp-clear">출발점 지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">내부 평형점</span><span class="v" id="nl-cp-eq">—</span></div>
+        <div class="stat"><span class="k">내부점의 종류</span><span class="v" id="nl-cp-ty">—</span></div>
+        <div class="stat"><span class="k">고유값</span><span class="v" id="nl-cp-l">—</span></div>
+      </div>
+      <div class="nl-msg" id="nl-cp-msg"></div>
+      <div class="sim-note">해볼 것: ① α, β를 둘 다 1보다 작게 두면 모든 궤적이 두 널클라인의 교점으로 갑니다. ② 둘 다 1.5로 올리면 교점이 안장(노랑)이 되고 분리선(점선)이 나타납니다. 분리선 양쪽에 출발점을 놓아 결말이 갈리는 것을 보세요. ③ 쌍안정에서 ρ를 바꾸면 평형점은 그대로인데 분리선이 기울어 끌림 영역의 크기가 달라집니다. 빨리 자라는 종이 유리해집니다. 모델: 무차원 로지스틱 경쟁, 초록 = 안정, 빨강 = 불안정, 노랑 = 안장.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="lyapunov">
+    <h2>리아푸노프 함수: 에너지로 안정성 판정하기</h2>
+    <div class="problem"><strong>선형화가 "모른다"고 할 때</strong>
+      <p>\(x' = -y - x^3\), \(y' = x - y^3\)의 원점은 야코비 행렬이 \(\begin{bmatrix}0 & -1\\ 1 & 0\end{bmatrix}\)이라 선형화가 중심입니다. 정리 12.1을 쓸 수 없죠. 그렇다고 해를 구할 수도 없습니다. 원점은 안정할까요?</p></div>
+    <p>감쇠 진자에서는 에너지가 줄어들기만 하니 결국 바닥에 멈춘다고 판단했습니다. 이 논리를 일반화한 것이 1890년대 러시아의 리아푸노프가 박사 논문에서 내놓은 방법입니다. "에너지"는 물리적 에너지가 아니어도 됩니다. 평형점에서 가장 낮고 해를 따라 줄어드는 그릇 모양의 함수면 충분합니다.</p>
+    <div class="callout deep"><strong>정의 12.2 (안정성)</strong> 평형점 \(\mathbf x^*\)가 <b>안정</b>(리아푸노프 안정)하다는 것은 모든 \(\varepsilon \gt 0\)에 대해 \(\delta \gt 0\)이 있어서 \(|\mathbf x(0) - \mathbf x^*| \lt \delta\)이면 모든 \(t \ge 0\)에서 \(|\mathbf x(t) - \mathbf x^*| \lt \varepsilon\)인 것이다(가까이 출발하면 계속 가까이 머문다). 안정하고 더불어 가까이 출발한 해가 \(\mathbf x(t) \to \mathbf x^*\)이면 <span class="term">점근 안정</span><span class="en">(asymptotically stable)</span>이다. 중심은 안정하지만 점근 안정이 아니다.</div>
+    <div class="callout deep"><strong>정리 12.8 (<span class="term">리아푸노프 함수</span><span class="en">(Lyapunov function)</span>의 방법)</strong> \(\mathbf x^*\)의 근방 \(U\)에서 \(C^1\)인 함수 \(V\)가 \(V(\mathbf x^*) = 0\)이고 \(\mathbf x \ne \mathbf x^*\)에서 \(V(\mathbf x) \gt 0\)(양의 정부호)이라 하자. 해를 따른 변화율 \(\dot V = \nabla V\cdot\mathbf f\)에 대해
+      <ol style="margin:6px 0 0">
+        <li>\(U\)에서 \(\dot V \le 0\)이면 \(\mathbf x^*\)는 안정하다.</li>
+        <li>\(\mathbf x \ne \mathbf x^*\)에서 \(\dot V \lt 0\)이면 점근 안정하다.</li>
+        <li>\(\mathbf x \ne \mathbf x^*\)에서 \(\dot V \gt 0\)이면 불안정하다.</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> \(V\)의 작은 등위선 \(V = c\)는 \(\mathbf x^*\)를 감싸는 닫힌 곡선이다. \(\dot V \le 0\)이면 해는 \(V \le c\)인 그릇 안에서 바깥으로 나갈 수 없다(벽을 넘으려면 \(V\)가 커져야 한다). \(\dot V \lt 0\)이면 \(V(\mathbf x(t))\)가 줄어드는 양의 함수라 극한이 있고, 그 극한이 0이 아니면 \(\dot V\)가 음수로 떨어져 있는 영역에 계속 머물러 \(V\)가 \(-\infty\)로 가야 하므로 모순. ∎</p></div>
+    <div class="callout"><strong>예제 12.5 (선형화가 중심인데 점근 안정)</strong> \(x' = -y - x^3\), \(y' = x - y^3\), \(V = x^2 + y^2\).
+      <ol>
+        <li>\(\dot V = 2x(-y - x^3) + 2y(x - y^3) = -2(x^4 + y^4)\). 원점이 아니면 음수입니다.</li>
+        <li>정리 12.8(2)로 원점은 점근 안정입니다. 선형 항은 회전만 만들고, 비선형 항 \(-x^3, -y^3\)이 천천히 안쪽으로 끌어당깁니다.</li>
+        <li>다만 아주 느립니다. \((1, 0)\)에서 출발하면 \(r = \sqrt{x^2 + y^2}\)는 \(t = 10\)에서 0.249, \(t = 50\)에서 0.115(RK4)로, \(e^{-t}\)가 아니라 대략 \(1/\sqrt{t}\)처럼 줄어듭니다. 선형 감쇠가 없는 평형점의 전형적인 모습입니다.</li>
+        <li>부호를 바꾼 \(x' = -y + x^3\), \(y' = x + y^3\)는 \(\dot V = 2(x^4 + y^4) \gt 0\)이라 불안정합니다. \(r = 0.5\)에서 출발하면 약 2.7초 만에 무한대로 발산합니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 12.6 (감쇠 진자와 라살 원리)</strong> \(\theta' = \omega\), \(\omega' = -\sin\theta - c\omega\), \(V = \tfrac12\omega^2 + (1 - \cos\theta)\)(바닥에서 0인 에너지). \(\dot V = \omega(-\sin\theta - c\omega) + \sin\theta\,\omega = -c\omega^2 \le 0\). \(\omega = 0\)인 직선 위에서 \(\dot V = 0\)이라 정리 12.8(1)로는 "안정"까지만 나옵니다. 그런데 \(\omega = 0\)인 직선 위에 계속 머무는 해는(\(\theta \ne 0\)이면 \(\omega' = -\sin\theta \ne 0\)이라 곧 벗어나므로) 평형점뿐입니다. 이런 논리로 점근 안정까지 결론 내리는 것이 라살의 불변 원리입니다.</div>
+    <p>리아푸노프 함수를 찾는 일반적인 공식은 없습니다. 역학계에서는 에너지, 화학에서는 자유 에너지, 생태 모델에서는 정리 12.5의 \(V\) 같은 양이 출발점이 되고, 선형 시스템에서는 \(V = \mathbf x^{\mathsf T}P\mathbf x\) 꼴(리아푸노프 방정식)을 체계적으로 찾을 수 있습니다. 제어 공학에서 "이 제어기가 안정함을 증명하라"는 말은 대개 리아푸노프 함수를 보이라는 뜻입니다.</p>
+
+    <div class="sim" id="sim-nl-lyapunov">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>리아푸노프 함수: 등위선을 가로지르는 궤적</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-ly-ph"></canvas><span class="nl-cap">V의 등위선 위의 궤적 · 점을 끌어 보세요</span></div>
+          <div><canvas id="nl-cv-ly-t"></canvas><span class="nl-cap">V(x(t)) (주황)와 r(t) (청록)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>시스템과 V</span><select id="nl-ly-sys">
+            <option value="cubic">x′ = −y − x³, y′ = x − y³ · V = x² + y²</option>
+            <option value="pend">감쇠 진자 · V = ½ω² + 1 − cos θ</option>
+            <option value="unst">x′ = −y + x³, y′ = x + y³ · V = x² + y²</option>
+            <option value="lin">선형 감쇠 x′ = −y − 0.2x, y′ = x − 0.2y</option>
+          </select></label>
+          <label class="ctrl"><span>시간 범위 <output id="nl-ly-T-out"></output></span><input type="range" id="nl-ly-T" min="5" max="60" step="1" value="30"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">V(x₀)</span><span class="v" id="nl-ly-v0">—</span></div>
+        <div class="stat"><span class="k">dV/dt at x₀</span><span class="v" id="nl-ly-dv">—</span></div>
+        <div class="stat"><span class="k">마지막 V</span><span class="v" id="nl-ly-v1">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="nl-ly-ty">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 첫 시스템에서 궤적이 등위선(원)을 늘 안쪽으로만 가로지르는 것을 보세요. V(t)는 단조 감소하지만 매우 천천히 줄어듭니다. 마지막 '선형 감쇠'와 비교하면 차이가 분명합니다(지수적 감소). ② 감쇠 진자에서는 V(t) 그래프에 평평한 계단이 생깁니다. ω = 0을 지날 때 V̇ = 0이기 때문입니다(라살 원리). ③ 세 번째 시스템에서는 궤적이 등위선을 바깥으로 가로질러 유한 시간에 화면 밖으로 튀어 나갑니다. 모델: RK4, Δt = 0.01.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="limit-cycles">
+    <h2>한계 순환과 푸앵카레–벤딕슨 정리</h2>
+    <div class="problem"><strong>스스로 진폭을 정하는 진동</strong>
+      <p>심장 박동, 괘종시계의 탈진기, 바이올린 활에 끌린 현, 전자 발진기. 이 진동들은 어떻게 시작하든 같은 진폭과 주기로 자리 잡습니다. 선형 시스템의 중심은 초기값마다 진폭이 다르고, 조금만 흔들어도 나선으로 바뀝니다. 견고한 주기 운동을 설명하려면 무엇이 필요할까요?</p></div>
+    <div class="callout deep"><strong>정의 12.3 (<span class="term">한계 순환</span><span class="en">(limit cycle)</span>)</strong> 닫힌 궤도 \(\Gamma\) 가운데, 그 근처에 다른 닫힌 궤도가 없는(고립된) 것을 한계 순환이라 한다. 양쪽 이웃 궤적이 모두 \(t \to \infty\)에서 \(\Gamma\)로 감겨 들면 안정 한계 순환, 멀어지면 불안정 한계 순환이다.</div>
+    <div class="callout"><strong>예제 12.7 (극좌표로 보는 한계 순환)</strong> \(x' = x - y - x(x^2 + y^2)\), \(y' = x + y - y(x^2 + y^2)\).
+      <ol>
+        <li>극좌표로 바꾸면(\(rr' = xx' + yy'\), \(r^2\theta' = xy' - yx'\)) \(r' = r(1 - r^2)\), \(\theta' = 1\). 반지름과 각이 분리되었습니다.</li>
+        <li>\(r' \gt 0\) (\(0 \lt r \lt 1\)), \(r' \lt 0\) (\(r \gt 1\)). 4장의 위상선으로 보면 \(r = 1\)이 안정 평형점이고, 평면에서는 단위원이 안정 한계 순환입니다. 원점은 불안정 나선입니다.</li>
+        <li>\(r' = r(1 - r^2)\)는 베르누이 방정식(3장)이라 풀립니다: \(r(t) = \bigl(1 + (r_0^{-2} - 1)e^{-2t}\bigr)^{-1/2}\). \(r_0 = 0.2\)이면 \(r(3) \approx 0.9715\)(RK4 일치).</li>
+      </ol></div>
+    <p>극좌표로 분리되는 행운은 드뭅니다. 일반적인 평면 시스템에서 한계 순환이 있음을 보장하는 것이 다음 정리입니다.</p>
+    <div class="callout deep"><strong>정리 12.9 (<span class="term">푸앵카레–벤딕슨 정리</span><span class="en">(Poincaré–Bendixson theorem)</span>)</strong> 평면 시스템 \(\mathbf x' = \mathbf f(\mathbf x)\)(\(\mathbf f\)는 \(C^1\))에서, 평형점을 포함하지 않는 닫히고 유계인 영역 \(R\) 안에 어떤 궤적이 \(t \ge 0\) 동안 계속 머물면, 그 궤적은 닫힌 궤도이거나 \(R\) 안의 닫힌 궤도로 감겨 든다.
+      <p style="margin:6px 0 0"><b>쓰는 법.</b> 경계에서 흐름이 모두 안으로 향하는 고리 모양 영역(<b>갇힌 영역</b>, trapping region)을 찾고, 그 안에 평형점이 없음을 보이면 한계 순환이 있다. 평면에서는 궤적이 서로 교차할 수 없어서 이렇게 갇힌 궤적이 할 수 있는 일이 "점에 다가가기"와 "고리에 다가가기"뿐이다. 그래서 2차원 자율 시스템에는 혼돈이 없고, 13장의 로렌즈 끌개에는 3차원이 필요하다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="고리 모양 갇힌 영역: 안쪽 원과 바깥 원에서 흐름이 모두 고리 안으로 향하고, 안에 한계 순환이 있다">
+        <defs><marker id="nl-pb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g transform="translate(230,135)">
+          <circle r="110" class="f-acc-soft" style="stroke:var(--text-dim);stroke-width:1.5"/>
+          <circle r="40" class="f-surface" style="stroke:var(--text-dim);stroke-width:1.5"/>
+          <circle r="74" fill="none" style="stroke:var(--accent);stroke-width:3"/>
+          <circle r="4" style="fill:var(--text)"/>
+          <g style="stroke:var(--accent-2);stroke-width:2.2">
+            <line x1="0" y1="-128" x2="0" y2="-98" marker-end="url(#nl-pb)"/><line x1="128" y1="0" x2="98" y2="0" marker-end="url(#nl-pb)"/>
+            <line x1="0" y1="128" x2="0" y2="98" marker-end="url(#nl-pb)"/><line x1="-128" y1="0" x2="-98" y2="0" marker-end="url(#nl-pb)"/>
+            <line x1="0" y1="-22" x2="0" y2="-52" marker-end="url(#nl-pb)"/><line x1="22" y1="0" x2="52" y2="0" marker-end="url(#nl-pb)"/>
+            <line x1="0" y1="22" x2="0" y2="52" marker-end="url(#nl-pb)"/><line x1="-22" y1="0" x2="-52" y2="0" marker-end="url(#nl-pb)"/>
+          </g>
+        </g>
+        <g transform="translate(410,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">갇힌 영역 R: 0.5 ≤ r ≤ 1.5</text>
+          <text x="0" y="30" class="t-mono">r = 0.5에서 r′ = 0.375 &gt; 0  (밖으로)</text>
+          <text x="0" y="56" class="t-mono">r = 1.5에서 r′ = −1.875 &lt; 0 (안으로)</text>
+          <text x="0" y="90" class="t-dim">R 안에 평형점이 없다</text>
+          <text x="0" y="114" class="t-dim">→ R 안에 닫힌 궤도가 있다</text>
+          <text x="0" y="150" class="t" style="fill:var(--accent);font-weight:700">주황 원 = 한계 순환 r = 1</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 12-3.</b> 예제 12.7의 갇힌 영역. 고리의 안쪽 경계에서는 흐름이 바깥으로, 바깥 경계에서는 안으로 향해서 일단 들어온 궤적은 빠져나가지 못한다. 고리 안에는 평형점이 없으므로 푸앵카레–벤딕슨 정리로 한계 순환이 있다.</figcaption>
+    </figure>
+    <p>반대로 닫힌 궤도가 <b>없음</b>을 보이는 간단한 도구도 있습니다. 그린 정리(<a href="../../calculus/chapters/vector-calculus.html#green">CalculusBook 벡터 미적분 장</a>)에서 나옵니다.</p>
+    <div class="callout deep"><strong>정리 12.10 (벤딕슨 판정법)</strong> 단순 연결 영역 \(D\)에서 \(\nabla\cdot\mathbf f = f_x + g_y\)가 항상 양수이거나 항상 음수이면(부호가 바뀌지 않고 어떤 열린 집합에서도 0이 아니면), \(D\) 안에 닫힌 궤도는 없다.
+      <p style="margin:6px 0 0"><b>증명.</b> 닫힌 궤도 \(C\)가 영역 \(\Omega\)를 둘러싼다면 \(C\) 위에서 \(\mathbf f\)는 접선 방향이라 \(\oint_C (f\,dy - g\,dx) = \oint_C (f y' - g x')\,dt = 0\). 그린 정리로 이 값은 \(\iint_\Omega (f_x + g_y)\,dA\)인데, 부호가 일정하면 0이 될 수 없다. ∎</p>
+      예: 감쇠 진동자 \(x' = y\), \(y' = -kx - cy\)는 발산이 \(-c \lt 0\)이라 주기 궤도가 없다. 감쇠 진자도 마찬가지다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="van-der-pol">
+    <h2>반 데어 폴 진동자</h2>
+    <div class="problem"><strong>진공관 회로가 스스로 진동한다</strong>
+      <p>1920년대 네덜란드의 반 데어 폴은 진공관 발진 회로를 연구했습니다. 이 회로는 진폭이 작을 때는 에너지를 공급받아 진동이 커지고(음의 저항), 진폭이 크면 에너지를 잃습니다(양의 저항). 그 결과 진동은 일정한 크기에 자리 잡습니다. 이 성질을 담은 가장 간단한 방정식은 무엇일까요?</p></div>
+    <div class="formula">$$x'' - \mu(1 - x^2)x' + x = 0\qquad (\mu \gt 0).$$
+      <div class="where"><span class="term">반 데어 폴 진동자</span><span class="en">(van der Pol oscillator)</span>. 감쇠 계수가 \(-\mu(1 - x^2)\)이라 \(|x| \lt 1\)에서는 음(에너지 공급), \(|x| \gt 1\)에서는 양(에너지 소모)이다.</div></div>
+    <p>\(y = x'\)로 연립을 만들면 평형점은 원점 하나이고 \(J = \begin{bmatrix}0 & 1\\ -1 & \mu\end{bmatrix}\), \(\tau = \mu \gt 0\), \(\Delta = 1\)이므로 불안정합니다(\(\mu \lt 2\)이면 나선, \(\mu \gt 2\)이면 마디). 원점에서 멀어지는 궤적이 무한히 커질 수는 없고(큰 진폭에서 에너지를 잃으므로), 갈 곳은 한계 순환뿐입니다. 리에나르 정리라는 결과가 이 방정식에 <b>유일한 안정 한계 순환</b>이 있음을 보장합니다.</p>
+    <div class="callout deep"><strong>정리 12.11 (반 데어 폴 한계 순환의 성질)</strong> 모든 \(\mu \gt 0\)에서 원점이 아닌 모든 궤적은 하나의 한계 순환으로 감겨 든다. 수치적으로 그 진폭(최대 \(|x|\))은 \(\mu\)에 거의 무관하게 약 2이고(\(\mu = 0.1\)에서 2.000, \(\mu = 1\)에서 2.009, \(\mu = 5\)에서 2.02), 주기는
+      <ul style="margin:6px 0 0">
+        <li>\(\mu \to 0\): \(T \to 2\pi\)(거의 사인파, 진폭 2). \(\mu = 1\)에서 \(T \approx 6.663\).</li>
+        <li>\(\mu\)가 크면: 천천히 기어가다 갑자기 뛰는 <span class="term">이완 진동</span><span class="en">(relaxation oscillation)</span>이 되고 \(T \approx (3 - 2\ln 2)\mu \approx 1.614\mu\)가 주된 항이다(\(\mu = 10\)에서 실제 주기는 19.08로, 보정 항만큼 더 길다).</li>
+      </ul></div>
+    <p>큰 \(\mu\)의 이완 진동은 두 시간 척도에서 나옵니다. 위상 평면의 일부 구간에서는 \(x\)가 천천히 변하며 에너지를 쌓다가, 문턱(\(|x| = 1\) 근처)을 넘으면 빠르게 반대편으로 뛰어넘습니다. 물방울이 차올라 한 번에 떨어지는 수도꼭지, 충전과 방전을 되풀이하는 네온 램프 발진기가 같은 꼴입니다. 신경 세포의 발화를 설명하는 피츠휴–나구모 모델도 반 데어 폴 방정식을 고친 것입니다.</p>
+
+    <div class="sim" id="sim-nl-vdp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>반 데어 폴: 어디서 출발해도 같은 고리로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-vp-ph"></canvas><span class="nl-cap">눌러서 출발점 더하기 · 주황 = 한계 순환</span></div>
+          <div><canvas id="nl-cv-vp-t"></canvas><span class="nl-cap">첫 출발점의 x(t)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>시스템</span><div class="seg" id="nl-vp-sys"><button data-value="vdp" class="on">반 데어 폴</button><button data-value="rad">r′ = r(1 − r²)</button></div></div>
+          <label class="ctrl"><span>μ <output id="nl-vp-m-out"></output></span><input type="range" id="nl-vp-m" min="0.1" max="8" step="0.1" value="1"></label>
+          <label class="check"><input type="checkbox" id="nl-vp-trap" checked> 갇힌 영역 보기 (r′ 모델)</label>
+          <div class="btn-row"><button class="btn" id="nl-vp-clear">출발점 초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">주기 T (수치)</span><span class="v" id="nl-vp-T">—</span></div>
+        <div class="stat"><span class="k">진폭 max|x|</span><span class="v" id="nl-vp-A">—</span></div>
+        <div class="stat"><span class="k">(3 − 2ln2)μ</span><span class="v" id="nl-vp-as">—</span></div>
+        <div class="stat"><span class="k">원점의 종류</span><span class="v" id="nl-vp-o">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① μ = 1에서 고리 안(원점 근처)과 밖(멀리)을 눌러 보세요. 모두 같은 주황 고리로 모입니다. 선형 중심과 달리 진폭이 초기값을 잊습니다. ② μ를 0.1로 내리면 고리는 반지름 2인 원에 가까워지고 x(t)는 사인파가 됩니다. ③ μ를 8로 올리면 x(t)가 천천히 내려가다 뚝 떨어지는 톱니 모양(이완 진동)이 되고, 주기가 (3 − 2ln 2)μ에 다가갑니다. ④ r′ 모델에서 갇힌 영역의 경계 화살표를 확인하세요. 모델: RK4(Δt = 0.01). 주기와 진폭은 과도 구간을 버린 뒤 x의 상향 영점 간격으로 잽니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="sir">
+    <h2>SIR 전염병 모델</h2>
+    <div class="problem"><strong>유행은 언제 정점을 찍고, 몇 명이 걸릴까</strong>
+      <p>새 감염병이 들어왔습니다. 감염자 한 명이 감염 기간 동안 평균 2.5명을 감염시키고, 감염 기간은 약 10일입니다. 유행의 정점은 언제이고, 그때 감염자는 인구의 몇 %일까요? 끝날 때까지 몇 %가 걸리고, 백신은 몇 %가 맞아야 할까요?</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 160" role="img" aria-label="SIR 구획: S에서 I로 βSI, I에서 R로 γI">
+        <defs><marker id="nl-sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="140" rx="10" class="f-surface"/>
+        <rect x="80" y="45" width="140" height="70" rx="10" class="f-acc2-soft" style="stroke:var(--accent-2)"/>
+        <rect x="310" y="45" width="140" height="70" rx="10" class="f-acc-soft" style="stroke:var(--accent)"/>
+        <rect x="540" y="45" width="140" height="70" rx="10" class="f-elev" style="stroke:var(--text-dim)"/>
+        <text x="150" y="76" text-anchor="middle" class="t" style="font-weight:700">S 감수성자</text><text x="150" y="98" text-anchor="middle" class="t-dim">s(t)</text>
+        <text x="380" y="76" text-anchor="middle" class="t" style="font-weight:700">I 감염자</text><text x="380" y="98" text-anchor="middle" class="t-dim">i(t)</text>
+        <text x="610" y="76" text-anchor="middle" class="t" style="font-weight:700">R 회복·면역</text><text x="610" y="98" text-anchor="middle" class="t-dim">r(t)</text>
+        <line x1="224" y1="80" x2="304" y2="80" class="s-line" style="stroke-width:2.4" marker-end="url(#nl-sa)"/>
+        <line x1="454" y1="80" x2="534" y2="80" class="s-line" style="stroke-width:2.4" marker-end="url(#nl-sa)"/>
+        <text x="264" y="66" text-anchor="middle" class="t-mono">βsi</text>
+        <text x="494" y="66" text-anchor="middle" class="t-mono">γi</text>
+      </svg>
+      <figcaption><b>그림 12-4.</b> SIR 구획 모델. 감염은 감수성자와 감염자가 만나는 빈도 \(si\)에 비례하고(비율 \(\beta\)), 감염자는 평균 \(1/\gamma\)일 뒤 회복해 면역을 얻는다. \(s, i, r\)은 전체 인구에 대한 비율이라 \(s + i + r = 1\).</figcaption>
+    </figure>
+    <div class="formula">$$s' = -\beta s i,\qquad i' = \beta s i - \gamma i,\qquad r' = \gamma i,\qquad R_0 = \frac{\beta}{\gamma}.$$
+      <div class="where">커맥–맥켄드릭의 <span class="term">SIR 모형</span><span class="en">(SIR model)</span>. \(R_0\)는 모두가 감수성자인 집단에서 감염자 한 명이 회복 전까지 감염시키는 평균 인원으로, <span class="term">기초 감염 재생산수</span><span class="en">(basic reproduction number)</span>라 한다.</div></div>
+    <p>\(r\)은 \(s, i\)가 정해지면 따라오므로 \((s, i)\) 평면만 보면 됩니다. \(i = 0\)인 축 위의 점은 모두 평형점(감염자 없음)입니다. 평형점 \((s_0, 0)\)에서 선형화하면 \(i\) 방향의 고유값이 \(\beta s_0 - \gamma\)이므로, <b>\(R_0 s_0 \gt 1\)이면 감염자 없는 상태가 불안정</b>해서 감염자 몇 명이 큰 유행을 일으킵니다. 이것이 유행의 문턱입니다.</p>
+    <div class="callout deep"><strong>정리 12.12 (SIR의 정점과 최종 규모)</strong> \(s(0) = s_0\), \(i(0) = i_0\)라 하자.
+      <ol style="margin:6px 0 0">
+        <li>\(i' = i(\beta s - \gamma)\)이므로 \(i\)는 \(s \gt 1/R_0\)인 동안만 증가한다. \(s_0 \gt 1/R_0\)이면 \(i\)는 \(s = 1/R_0\)인 순간 정점을 찍는다.</li>
+        <li>\(\dfrac{di}{ds} = -1 + \dfrac{1}{R_0 s}\)이므로 \(i + s - \dfrac{1}{R_0}\ln s\)가 보존량이다. \(s_0 \approx 1\), \(i_0 \approx 0\)이면 정점의 감염자 비율은 \(i_{\max} = 1 - \dfrac{1}{R_0} - \dfrac{\ln R_0}{R_0}\).</li>
+        <li>\(t \to \infty\)에서 \(i \to 0\)이고 최종 감염 비율 \(r_\infty\)는 \(r_\infty = 1 - e^{-R_0 r_\infty}\)의 양의 근이다(\(s_0 \approx 1\)일 때).</li>
+        <li>면역 비율이 \(1 - 1/R_0\) 이상이면(\(s_0 \le 1/R_0\)) 유행이 시작되지 않는다. 이 값이 <span class="term">집단 면역 문턱</span><span class="en">(herd immunity threshold)</span>이다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 12.8 (R₀ = 2.5)</strong> \(\gamma = 0.1\)/일(감염 기간 10일), \(\beta = 0.25\)/일, \(i_0 = 0.1\%\).
+      <ol>
+        <li>정점 조건 \(s = 1/2.5 = 0.4\). 정점 높이 \(i_{\max} = 1 - 0.4 - 0.4\ln 2.5 \approx 0.234\): 인구의 약 23%가 동시에 감염.</li>
+        <li>RK4로 적분하면 정점은 약 49일째, 그때 \(s = 0.400\), \(i = 0.234\)로 공식과 맞습니다.</li>
+        <li>최종 규모: \(r_\infty = 1 - e^{-2.5 r_\infty}\)를 반복법으로 풀면 \(r_\infty \approx 0.893\). 집단 면역 문턱 \(1 - 1/2.5 = 60\%\)를 훨씬 넘어서까지 감염이 이어집니다. 정점을 지난 뒤에도 남은 감염자들이 계속 감염시키기 때문입니다(과잉 감염).</li>
+        <li>40%가 미리 백신을 맞으면(\(s_0 = 0.6\)) 정점은 3.9%, 최종 감염은 인구의 35%로 줄고, 60% 이상이면 유행이 일어나지 않습니다.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="nl-tbl">
+      <thead><tr><th>R₀</th><th>1.5</th><th>2</th><th>2.5</th><th>3</th><th>4</th></tr></thead>
+      <tbody>
+        <tr><td>집단 면역 문턱 1 − 1/R₀</td><td>33%</td><td>50%</td><td>60%</td><td>67%</td><td>75%</td></tr>
+        <tr><td>정점 감염 i<sub>max</sub></td><td>6.3%</td><td>15.3%</td><td>23.4%</td><td>30.0%</td><td>40.3%</td></tr>
+        <tr><td>최종 감염 r<sub>∞</sub></td><td>58.3%</td><td>79.7%</td><td>89.3%</td><td>94.0%</td><td>98.0%</td></tr>
+      </tbody></table></div>
+
+    <div class="sim" id="sim-nl-sir">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>SIR: 정점의 시기와 높이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nl-two">
+          <div><canvas id="nl-cv-sir-t"></canvas><span class="nl-cap">s 청록, i 주황, r 회색 (일)</span></div>
+          <div><canvas id="nl-cv-sir-ph"></canvas><span class="nl-cap">(s, i) 평면 · 점선 s = 1/R₀에서 정점</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>기초 재생산수 R₀ <output id="nl-sr-R-out"></output></span><input type="range" id="nl-sr-R" min="0.5" max="5" step="0.1" value="2.5"></label>
+          <label class="ctrl"><span>감염 기간 1/γ (일) <output id="nl-sr-D-out"></output></span><input type="range" id="nl-sr-D" min="3" max="20" step="1" value="10"></label>
+          <label class="ctrl"><span>백신 접종률 p <output id="nl-sr-p-out"></output></span><input type="range" id="nl-sr-p" min="0" max="0.9" step="0.05" value="0"></label>
+          <label class="ctrl"><span>처음 감염자 i₀ <output id="nl-sr-i-out"></output></span><input type="range" id="nl-sr-i" min="-4" max="-1" step="0.1" value="-3"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">정점 i<sub>max</sub> (일)</span><span class="v" id="nl-sr-pk">—</span></div>
+        <div class="stat"><span class="k">최종 감염</span><span class="v" id="nl-sr-fin">—</span></div>
+        <div class="stat"><span class="k">유효 재생산수 R₀s₀</span><span class="v" id="nl-sr-Re">—</span></div>
+        <div class="stat"><span class="k">집단 면역 문턱</span><span class="v" id="nl-sr-hit">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 기본값에서 정점이 약 49일, 23%인지 확인하세요. 위상 평면에서 궤적의 꼭대기가 정확히 점선 s = 0.4 위에 있습니다. ② 감염 기간만 늘리면(R₀ 고정) 정점의 높이와 최종 규모는 그대로이고 시간만 늘어납니다. 높이는 R₀만으로 정해지기 때문입니다. ③ 접종률을 문턱 1 − 1/R₀ 이상으로 올리면 R₀s₀ ≤ 1이 되어 곡선이 오르지 않습니다. 모델: 인구가 고르게 섞이고 출생·사망·재감염이 없다고 가정, RK4(Δt = 0.1일), 365일. 위상 평면의 옅은 곡선은 보존량 i + s − ln(s)/R₀의 등위선입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"풀지 않고 운명을 읽는다"는 이 장의 방법은 비선형 모델이 나오는 거의 모든 분야의 첫 단계입니다.</p>
+    <div class="callout"><strong>전력망의 과도 안정도</strong> 발전기 한 대를 전력망에 붙인 가장 단순한 모델(동요 방정식)은 \(M\delta'' + D\delta' = P_m - P_{\max}\sin\delta\)로, 감쇠 있는 진자에 일정한 토크를 건 것과 같은 꼴입니다. 고장으로 잠시 전력 전달이 끊기면 발전기 회전자가 가속되고, 고장을 제때 제거하면 상태가 안정 평형점의 끌림 영역 안에 남아 되돌아오지만, 늦으면 안장의 분리선을 넘어 동기를 잃습니다. 계통 운영자가 계산하는 "임계 고장 제거 시간"이 바로 이 분리선까지의 시간입니다.</div>
+    <div class="uses">
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>위상 초상의 분류<br><span>선형화한 야코비 행렬의 대각합·행렬식으로 평형점을 바로 판정한다.</span></a>
+      <a href="chaos.html"><small>13장 · 분기와 혼돈</small>호프 분기와 로렌즈 끌개<br><span>매개변수가 변하면 평형점이 한계 순환을 낳고, 3차원에서는 혼돈이 나타난다.</span></a>
+      <a href="autonomous.html"><small>4장 · 자율 방정식</small>위상선과 1차원 안정성<br><span>f′(x*)의 부호 판정이 2차원에서 야코비 고유값 판정이 된다.</span></a>
+      <a href="oscillations.html"><small>7장 · 자유 진동</small>진자의 작은 진동<br><span>sin θ ≈ θ 근사가 바로 아래 평형점에서의 선형화다.</span></a>
+      <a href="../../calculus/chapters/vector-calculus.html"><small>CALCULUSBOOK</small>벡터장과 그린 정리<br><span>흐름선 r′ = F(r), 발산, 벤딕슨 판정법의 증명 도구.</span></a>
+      <a href="../../linear/chapters/dynamics.html"><small>LINEARBOOK</small>행렬로 보는 동역학<br><span>선형화한 시스템의 고유값과 안정성.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>평형점 \(\mathbf f(\mathbf x^*) = \mathbf 0\) 근처는 \(\mathbf u' = J\mathbf u\)(야코비 행렬)로 근사된다. 쌍곡 평형점(고유값 실수부 ≠ 0)이면 하트만–그로브만 정리로 위상 초상이 선형화와 같은 모양이고, 안정성도 고유값으로 판정된다.</li>
+      <li>선형화가 중심이나 고유값 0이면 판정할 수 없다. \(r' = ar^3\)처럼 비선형 항이 결과를 정한다.</li>
+      <li>진자: 에너지 \(E = \tfrac12\omega^2 - \omega_0^2\cos\theta\)가 보존되어 궤적은 등위선이다. 분리선 \(\omega = \pm 2\omega_0\cos(\theta/2)\)가 진동과 회전을 가르고, 주기는 \(T = (2\pi/\omega_0)/\operatorname{agm}(1, \cos\tfrac{\theta_{\max}}2)\)로 진폭과 함께 길어진다.</li>
+      <li>로트카–볼테라: \(V = dx - c\ln x + by - a\ln y\)가 보존되어 궤도가 닫히고, 한 주기 평균은 평형점 \((c/d, a/b)\). 양쪽을 수확하면 피식자 평균은 늘고 포식자 평균은 준다(볼테라 원리).</li>
+      <li>경쟁 모델: 널클라인의 배치로 공존(\(\alpha, \beta \lt 1\)), 쌍안정(\(\alpha, \beta \gt 1\), 분리선), 한쪽 승리가 결정된다.</li>
+      <li>리아푸노프 함수 \(V \gt 0\), \(\dot V \le 0\)이면 안정, \(\dot V \lt 0\)이면 점근 안정. 선형화가 실패하는 평형점도 판정할 수 있다.</li>
+      <li>한계 순환은 고립된 닫힌 궤도로, 진폭이 초기값과 무관한 진동이다. 푸앵카레–벤딕슨: 평형점 없는 갇힌 영역은 닫힌 궤도를 품는다. 벤딕슨: 발산의 부호가 일정하면 닫힌 궤도가 없다. 반 데어 폴 진동자는 진폭 약 2인 유일한 안정 한계 순환을 가지며, \(\mu\)가 크면 주기 \(\approx 1.614\mu\)인 이완 진동이 된다.</li>
+      <li>SIR: \(i\)는 \(s \gt 1/R_0\)일 때만 늘고 \(s = 1/R_0\)에서 정점. \(i_{\max} = 1 - (1 + \ln R_0)/R_0\), \(r_\infty = 1 - e^{-R_0 r_\infty}\), 집단 면역 문턱 \(1 - 1/R_0\).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(x' = y\), \(y' = x - x^3 - 0.5y\)의 평형점 \((0, 0)\)은?</p><div class="opts">
+        <button class="opt">안정 나선</button>
+        <button class="opt" data-correct>안장</button>
+        <button class="opt">중심</button>
+        <button class="opt">불안정 마디</button>
+      </div><div class="quiz-exp">\(J = \begin{bmatrix}0 & 1\\ 1 & -0.5\end{bmatrix}\), \(\det J = -1 \lt 0\). 쌍곡 평형점이므로 하트만–그로브만 정리에 의해 비선형 시스템에서도 안장이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 평형점에서 야코비 행렬의 고유값이 다음과 같을 때, 선형화만으로 비선형 시스템의 안정성을 <b>판정할 수 없는</b> 경우는?</p><div class="opts">
+        <button class="opt">\(-1 \pm 3i\)</button>
+        <button class="opt">\(2,\ -5\)</button>
+        <button class="opt" data-correct>\(\pm 2i\)</button>
+        <button class="opt">\(-0.1,\ -4\)</button>
+      </div><div class="quiz-exp">실수부가 0인 고유값(중심)은 비쌍곡이다. 비선형 항에 따라 안정 나선, 불안정 나선, 중심 어느 것도 될 수 있다(\(r' = ar^3\) 예).</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\omega_0 = 1\)인 감쇠 없는 진자가 맨 아래(\(\theta = 0\))에서 각속도 \(\omega(0)\)로 출발한다. 꼭대기를 넘어 회전하려면?</p><div class="opts">
+        <button class="opt">\(\omega(0) \gt 1\)</button>
+        <button class="opt">\(\omega(0) \gt \pi\)</button>
+        <button class="opt">\(\omega(0) \gt \sqrt2\)</button>
+        <button class="opt" data-correct>\(\omega(0) \gt 2\)</button>
+      </div><div class="quiz-exp">꼭대기에 닿으려면 \(E = \tfrac12\omega(0)^2 - 1\)이 분리선 에너지 \(\omega_0^2 = 1\)보다 커야 한다. \(\tfrac12\omega(0)^2 \gt 2\), 즉 \(\omega(0) \gt 2\omega_0\). 분리선 식 \(\omega = 2\cos(\theta/2)\)에 \(\theta = 0\)을 넣어도 같다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(x' = 2x - xy\), \(y' = -3y + xy\)의 닫힌 궤도 한 바퀴 동안 피식자 \(x\)의 시간 평균은?</p><div class="opts">
+        <button class="opt">2</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">궤도의 크기에 따라 다르다</button>
+        <button class="opt">\(\sqrt6\)</button>
+      </div><div class="quiz-exp">\((\ln y)' = -3 + x\)를 한 주기 적분하면 \(0 = -3T + \int x\,dt\), 따라서 \(\bar x = 3\). 궤도 크기와 무관하게 평형점의 \(x\) 좌표다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 경쟁 모델 \(x' = x(1 - x - \alpha y)\), \(y' = y(1 - y - \beta x)\)에서 \(\alpha = 1.5\), \(\beta = 0.5\)이면?</p><div class="opts">
+        <button class="opt">두 종이 공존한다</button>
+        <button class="opt">초기값에 따라 승자가 갈린다</button>
+        <button class="opt">\(x\)가 이긴다</button>
+        <button class="opt" data-correct>\(y\)가 이긴다</button>
+      </div><div class="quiz-exp">\(\beta \lt 1 \lt \alpha\): \(y\)는 \(x\)에게 큰 피해를 주고(α 큼), \(x\)가 \(y\)에게 주는 피해는 작다. 내부 평형점이 양의 사분면에 없고 \((0, 1)\)만 안정하다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(V = x^2 + y^2\)에 대해 해를 따라 \(\dot V = -2(x^4 + y^4)\)이다. 원점은?</p><div class="opts">
+        <button class="opt">불안정</button>
+        <button class="opt">안정하지만 점근 안정은 아니다</button>
+        <button class="opt" data-correct>점근 안정</button>
+        <button class="opt">선형화를 보기 전에는 알 수 없다</button>
+      </div><div class="quiz-exp">\(V\)는 양의 정부호이고 원점 밖에서 \(\dot V \lt 0\)이므로 정리 12.8(2)로 점근 안정. 이 시스템(예제 12.5)은 선형화가 중심이라 선형화로는 판정할 수 없는 경우다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(x' = y\), \(y' = -x - 2y + x^2\)에 닫힌 궤도가 없다는 것을 가장 빨리 보이는 방법은?</p><div class="opts">
+        <button class="opt" data-correct>발산 \(f_x + g_y = -2\)의 부호가 일정하므로 벤딕슨 판정법</button>
+        <button class="opt">푸앵카레–벤딕슨 정리</button>
+        <button class="opt">하트만–그로브만 정리</button>
+        <button class="opt">에너지가 보존되므로</button>
+      </div><div class="quiz-exp">발산이 평면 전체에서 \(-2 \lt 0\)이면 그린 정리로 어떤 닫힌 궤도도 있을 수 없다(정리 12.10). 푸앵카레–벤딕슨은 닫힌 궤도가 <b>있음</b>을 보이는 도구다.</div></div>
+
+      <div class="quiz-q"><p>Q8. SIR 모델에서 \(R_0 = 4\)일 때 유행을 막는 데 필요한 최소 면역 비율(집단 면역 문턱)은?</p><div class="opts">
+        <button class="opt">25%</button>
+        <button class="opt">50%</button>
+        <button class="opt" data-correct>75%</button>
+        <button class="opt">98%</button>
+      </div><div class="quiz-exp">\(s_0 \le 1/R_0 = 0.25\)이면 \(i' = i(\beta s - \gamma) \le 0\)이라 감염자가 늘 수 없다. 면역 비율 \(1 - 1/4 = 75\%\). 98%는 면역이 없을 때의 최종 감염 규모다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const NL = {
+  num(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  vec(v, d = 2) { return "(" + NL.num(v[0], d) + ", " + NL.num(v[1], d) + ")"; },
+  matStr(M, d = 2) { return "[[" + NL.num(M[0][0], d) + ", " + NL.num(M[0][1], d) + "], [" + NL.num(M[1][0], d) + ", " + NL.num(M[1][1], d) + "]]"; },
+  step(f, t, y, h) {
+    const k1 = f(t, y), k2 = f(t + h / 2, [y[0] + (h / 2) * k1[0], y[1] + (h / 2) * k1[1]]);
+    const k3 = f(t + h / 2, [y[0] + (h / 2) * k2[0], y[1] + (h / 2) * k2[1]]), k4 = f(t + h, [y[0] + h * k3[0], y[1] + h * k3[1]]);
+    return [y[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+  },
+  /** 궤적. inside(p)가 false가 되면 멈춘다 */
+  traj(f, p0, T, n, inside) {
+    const h = T / n, out = [p0.slice()]; let y = p0.slice();
+    for (let i = 0; i < n; i++) {
+      y = NL.step(f, i * h, y, h);
+      if (!isFinite(y[0]) || !isFinite(y[1]) || (inside && !inside(y))) break;
+      out.push(y);
+    }
+    return out;
+  },
+  boxOf(P, m = 0.6) { const wx = (P.x1 - P.x0) * m, wy = (P.y1 - P.y0) * m; return (p) => p[0] > P.x0 - wx && p[0] < P.x1 + wx && p[1] > P.y0 - wy && p[1] < P.y1 + wy; },
+  field(P, f, o = {}) {
+    const ctx = P.ctx, C = P.P, st = o.step || 26, L = st * 0.34, hd = 3.6;
+    ctx.save(); ctx.strokeStyle = C.faint; ctx.fillStyle = C.faint; ctx.globalAlpha = o.alpha || 0.6; ctx.lineWidth = 1;
+    for (let py = st / 2; py < P.h; py += st) for (let px = st / 2; px < P.w; px += st) {
+      const d = f(0, [P.ix(px), P.iy(py)]), dx = d[0] * P.unit, dy = -d[1] * (P.h / (P.y1 - P.y0)), m = Math.hypot(dx, dy);
+      if (!(m > 1e-12)) continue;
+      const ux = dx / m, uy = dy / m, tx = px + ux * L, ty = py + uy * L;
+      ctx.beginPath(); ctx.moveTo(px - ux * L, py - uy * L); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx - ux * hd - uy * hd * 0.6, ty - uy * hd + ux * hd * 0.6); ctx.lineTo(tx - ux * hd + uy * hd * 0.6, ty - uy * hd - ux * hd * 0.6); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  },
+  heads(P, pts, color, every = 120, alpha = 1) {
+    const ctx = P.ctx; let acc = every * 0.55;
+    ctx.save(); ctx.fillStyle = color; ctx.globalAlpha = alpha;
+    for (let i = 1; i < pts.length; i++) {
+      const ax = P.X(pts[i - 1][0]), ay = P.Y(pts[i - 1][1]), bx = P.X(pts[i][0]), by = P.Y(pts[i][1]);
+      const L = Math.hypot(bx - ax, by - ay);
+      if (!(L > 0) || L > 200 || bx < 0 || bx > P.w || by < 0 || by > P.h) continue;
+      acc += L;
+      if (acc >= every) {
+        acc = 0; const ux = (bx - ax) / L, uy = (by - ay) / L, s = 5.5;
+        ctx.beginPath(); ctx.moveTo(bx + ux * s, by + uy * s); ctx.lineTo(bx - ux * s - uy * s * 0.7, by - uy * s + ux * s * 0.7); ctx.lineTo(bx - ux * s + uy * s * 0.7, by - uy * s - ux * s * 0.7); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  },
+  path(P, pts, o = {}) {
+    if (pts.length < 2) return;
+    P.poly(pts, { close: false, color: o.color, width: o.width || 1.8, alpha: o.alpha != null ? o.alpha : 1, dash: o.dash });
+    if (o.heads !== false) NL.heads(P, pts, o.color, o.every || 120, o.alpha != null ? o.alpha : 1);
+  },
+  /** 큰 점프(감기)에서 끊어 그리는 선 */
+  broken(P, pts, o = {}) {
+    const ctx = P.ctx; ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 2; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.setLineDash(o.dash || []);
+    ctx.beginPath(); let prev = null;
+    pts.forEach((p) => { if (!prev || Math.abs(p[0] - prev[0]) > (o.jump || 3)) ctx.moveTo(P.X(p[0]), P.Y(p[1])); else ctx.lineTo(P.X(p[0]), P.Y(p[1])); prev = p; });
+    ctx.stroke(); ctx.restore();
+  },
+  /** 등위선(마칭 스퀘어) */
+  contour(P, F, levels, o = {}) {
+    const ctx = P.ctx, cs = o.cell || 7, nx = Math.ceil(P.w / cs) + 1, ny = Math.ceil(P.h / cs) + 1, G = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) G[j * nx + i] = F(P.ix(i * cs), P.iy(j * cs));
+    ctx.save(); ctx.strokeStyle = o.color || P.P.faint; ctx.lineWidth = o.width || 1; ctx.globalAlpha = o.alpha != null ? o.alpha : 0.7; ctx.beginPath();
+    levels.forEach((lv) => {
+      for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+        const a = G[j * nx + i] - lv, b = G[j * nx + i + 1] - lv, c = G[(j + 1) * nx + i + 1] - lv, d = G[(j + 1) * nx + i] - lv;
+        if (!(isFinite(a) && isFinite(b) && isFinite(c) && isFinite(d))) continue;
+        const q = [];
+        if (a < 0 !== b < 0) q.push([i + a / (a - b), j]);
+        if (b < 0 !== c < 0) q.push([i + 1, j + b / (b - c)]);
+        if (c < 0 !== d < 0) q.push([i + 1 - c / (c - d), j + 1]);
+        if (d < 0 !== a < 0) q.push([i, j + 1 - d / (d - a)]);
+        if (q.length >= 2) { ctx.moveTo(q[0][0] * cs, q[0][1] * cs); ctx.lineTo(q[1][0] * cs, q[1][1] * cs); }
+        if (q.length === 4) { ctx.moveTo(q[2][0] * cs, q[2][1] * cs); ctx.lineTo(q[3][0] * cs, q[3][1] * cs); }
+      }
+    });
+    ctx.stroke(); ctx.restore();
+  },
+  classify(A) {
+    const tau = A[0][0] + A[1][1], det = A[0][0] * A[1][1] - A[0][1] * A[1][0], disc = tau * tau - 4 * det, e = 1e-7;
+    if (Math.abs(det) < e) return "고유값 0 (비쌍곡)";
+    if (det < 0) return "안장";
+    if (Math.abs(tau) < e) return "중심 (비쌍곡)";
+    const st = tau < 0 ? "안정" : "불안정";
+    if (Math.abs(disc) < 1e-6) return st + " 퇴화 마디";
+    return st + (disc > 0 ? " 마디" : " 나선");
+  },
+  kindColor(A, C) {
+    const tau = A[0][0] + A[1][1], det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+    if (det < -1e-9) return C.warn;
+    if (Math.abs(tau) < 1e-7 && det > 0) return C.dim;
+    return tau < 0 ? C.ok : C.bad;
+  },
+  eigText(A, d = 2) {
+    const e = MB.mat.eig2(A);
+    if (e.complex) return NL.num(e.complex[0], d) + " ± " + NL.num(e.complex[1], d) + "i";
+    return NL.num(e.values[0], d) + ", " + NL.num(e.values[1], d);
+  },
+  box(w, h) { return { x: 50, y: 30, w: w - 50 - 14, h: h - 30 - 44 }; },
+  agm(a, b) { for (let i = 0; i < 40; i++) { const m = (a + b) / 2; b = Math.sqrt(a * b); a = m; } return a; },
+};
+
+/* ================================================================ 1. 선형화 확대경 */
+(function () {
+  const SYS = {
+    duffing: { f: (t, p) => [p[1], p[0] - p[0] ** 3 - 0.5 * p[1]], J: (x, y) => [[0, 1], [1 - 3 * x * x, -0.5]], eq: [[0, 0], [1, 0], [-1, 0]], x: [-2.2, 2.2], cy: 0 },
+    compete: { f: (t, p) => [p[0] * (3 - p[0] - 2 * p[1]), p[1] * (2 - p[0] - p[1])], J: (x, y) => [[3 - 2 * x - 2 * y, -2 * x], [-y, 2 - x - 2 * y]], eq: [[1, 1], [3, 0], [0, 2], [0, 0]], x: [-0.5, 3.7], cy: 1.1 },
+    pend: { f: (t, p) => [p[1], -Math.sin(p[0]) - 0.3 * p[1]], J: (x, y) => [[0, 1], [-Math.cos(x), -0.3]], eq: [[0, 0], [Math.PI, 0], [-Math.PI, 0]], x: [-4.6, 4.6], cy: 0 },
+    fake: { f: (t, p) => { const r2 = p[0] * p[0] + p[1] * p[1]; return [-p[1] - p[0] * r2, p[0] - p[1] * r2]; }, J: () => [[0, -1], [1, 0]], eq: [[0, 0]], x: [-2, 2], cy: 0 },
+  };
+  const ZS = [1, 2, 4, 8, 16, 32, 64];
+  let sys = SYS.duffing, k = 0, zoom = 4, zp = null;
+  const sel = document.getElementById("nl-ln-eq");
+  const optF = { x: sys.x.slice(), cy: sys.cy, aspect: 0.5, minHeight: 210, onPointer(x, y, ev) {
+      if (ev !== "down") return; let best = 0, bd = Infinity;
+      sys.eq.forEach((e, i) => { const d = Math.hypot(e[0] - x, e[1] - y); if (d < bd) { bd = d; best = i; } });
+      k = best; sel.value = String(k); all();
+    },
+    draw(P) {
+      const C = P.P, f = sys.f, inside = NL.boxOf(P, 0.3);
+      NL.field(P, f, { step: 24 });
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 4; j++) {
+        const s = [P.x0 + ((i + 0.5) / 7) * (P.x1 - P.x0), P.y0 + ((j + 0.5) / 4) * (P.y1 - P.y0)];
+        NL.path(P, NL.traj(f, s, 8, 400, inside), { color: C.dim, width: 1.3, alpha: 0.65, every: 160 });
+      }
+      sys.eq.forEach((e, i) => P.dot(e[0], e[1], { r: i === k ? 7 : 5.5, color: NL.kindColor(sys.J(e[0], e[1]), C), stroke: C.bg }));
+      const e = sys.eq[k], hw = (P.x1 - P.x0) / 2 / zoom, hh = hw * 0.62;
+      P.poly([[e[0] - hw, e[1] - hh], [e[0] + hw, e[1] - hh], [e[0] + hw, e[1] + hh], [e[0] - hw, e[1] + hh]], { color: C.accent2, width: 2, dash: [5, 3] });
+    } };
+  const full = MB.plane("#nl-cv-ln-full", optF);
+  const optZ = { x: [-1, 1], cy: 0, aspect: 0.62, minHeight: 220, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, e = sys.eq[k], J = sys.J(e[0], e[1]), hw = (P.x1 - P.x0) / 2, inside = NL.boxOf(P, 0.4);
+      const fL = (t, p) => [J[0][0] * (p[0] - e[0]) + J[0][1] * (p[1] - e[1]), J[1][0] * (p[0] - e[0]) + J[1][1] * (p[1] - e[1])];
+      NL.field(P, sys.f, { step: 30, alpha: 0.45 });
+      P.line(P.x0, e[1], P.x1, e[1], { color: C.grid, width: 1 }); P.line(e[0], P.y0, e[0], P.y1, { color: C.grid, width: 1 });
+      for (let i = 0; i < 8; i++) {
+        const a = (2 * Math.PI * i) / 8 + 0.3, s = [e[0] + 0.75 * hw * Math.cos(a), e[1] + 0.48 * hw * Math.sin(a)];
+        [1, -1].forEach((sg) => {
+          NL.path(P, NL.traj(sys.f, s, 6 * sg, 300, inside), { color: C.accent, width: 2.2, alpha: sg > 0 ? 1 : 0.45, every: 150 });
+          NL.path(P, NL.traj(fL, s, 6 * sg, 300, inside), { color: C.accent2, width: 1.8, dash: [6, 4], alpha: sg > 0 ? 1 : 0.45, heads: false });
+        });
+      }
+      P.dot(e[0], e[1], { r: 5, color: C.text });
+      P.text("폭 " + NL.num(2 * hw, 3), P.x1, P.y0, { color: C.dim, size: 11, align: "right", dx: -8, dy: -10 });
+    } };
+  zp = MB.plane("#nl-cv-ln-zoom", optZ);
+  function all() {
+    const e = sys.eq[k], J = sys.J(e[0], e[1]), W = (sys.x[1] - sys.x[0]) / 2 / zoom;
+    optZ.cy = e[1]; zp.view({ x: [e[0] - W, e[0] + W] });
+    full.redraw();
+    MB.stat("nl-ln-p", NL.vec(e, 3)); MB.stat("nl-ln-j", NL.matStr(J, 2)); MB.stat("nl-ln-l", NL.eigText(J, 3));
+    const ty = NL.classify(J), hyp = !/비쌍곡/.test(ty);
+    MB.stat("nl-ln-t", ty + (hyp ? " · 쌍곡 → 비선형도 같음" : " · 선형화로 판정 불가"));
+  }
+  function fillSel() { sel.innerHTML = sys.eq.map((e, i) => `<option value="${i}">${NL.vec(e, 2)} · ${NL.classify(sys.J(e[0], e[1])).replace(" (비쌍곡)", "")}</option>`).join(""); sel.value = String(k); }
+  document.getElementById("nl-ln-sys").addEventListener("change", (ev) => { sys = SYS[ev.target.value]; k = 0; optF.cy = sys.cy; full.view({ x: sys.x }); fillSel(); all(); });
+  sel.addEventListener("change", () => { k = Number(sel.value); all(); });
+  MB.steps("nl-ln-z", ZS, (v) => v + "×", 4, (v) => { zoom = v; all(); });
+  fillSel(); all();
+})();
+
+/* ================================================================ 2. 진자 */
+(function () {
+  const PRE = { small: [(20 * Math.PI) / 180, 0], big: [Math.PI / 2, 0], sep: [(179 * Math.PI) / 180, 0], rot: [0, 2.2] };
+  let c = 0, lin = false, s = PRE.small.slice(), sl = s.slice(), t = 0, playing = false, trail = [], hist = [], sc = null;
+  const wrap3 = (th) => { let x = th; while (x >= 3 * Math.PI) x -= 2 * Math.PI; while (x < -3 * Math.PI) x += 2 * Math.PI; return x; };
+  const wrapPi = (th) => { let x = th; while (x > Math.PI) x -= 2 * Math.PI; while (x <= -Math.PI) x += 2 * Math.PI; return x; };
+  const fN = (tt, p) => [p[1], -Math.sin(p[0]) - c * p[1]], fL = (tt, p) => [p[1], -p[0] - c * p[1]];
+  const E = (p) => 0.5 * p[1] * p[1] - Math.cos(p[0]);
+  const ph = MB.plane("#nl-cv-pd-ph", {
+    x: [-9.6, 9.6], y: [-3.3, 3.3], aspect: 0.42, minHeight: 210, gridStep: Math.PI,  axisLabels: false,
+    onPointer(x, y, ev) { if (ev !== "down") return; s = [x, y]; sl = [x, y]; reset(false); },
+    draw(P) {
+      const C = P.P;
+      NL.contour(P, (x, y) => 0.5 * y * y - Math.cos(x), [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 1.5, 2.2, 3, 4], { alpha: 0.55 });
+      [1, -1].forEach((sg) => P.curve((x) => sg * 2 * Math.abs(Math.cos(x / 2)), { color: C.accent2, width: 2 }));
+      [-2, -1, 0, 1, 2].forEach((m) => P.text(m === 0 ? "0" : (m === 1 ? "" : m === -1 ? "−" : m < 0 ? "−" + -m : m) + "π", m * Math.PI, P.y0, { color: C.faint, size: 10, align: "center", dy: -8 }));
+      for (let m = -3; m <= 3; m++) P.dot(m * Math.PI, 0, { r: 4, color: m % 2 ? C.warn : C.ok });
+      if (lin) NL.broken(P, trail.map((q) => [wrap3(q[2]), q[3]]), { color: C.dim, width: 1.6, dash: [5, 4] });
+      NL.broken(P, trail.map((q) => [wrap3(q[0]), q[1]]), { color: C.accent, width: 2.4 });
+      P.dot(wrap3(s[0]), s[1], { r: 6, color: C.accent, stroke: C.bg });
+    },
+  });
+  sc = MB.canvas("#nl-cv-pd-sc", (ctx, w, h) => {
+    const C = MB.palette(), pw = Math.min(170, w * 0.3), cx = pw / 2, top = 18, L = Math.min(h * 0.4, pw * 0.42);
+    const bob = (th, col, dash) => {
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash(dash || []);
+      ctx.beginPath(); ctx.moveTo(cx, top + L); ctx.lineTo(cx + L * Math.sin(th), top + L + L * Math.cos(th)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx + L * Math.sin(th), top + L + L * Math.cos(th), 9, 0, Math.PI * 2); ctx.fill();
+    };
+    ctx.strokeStyle = C.faint; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(cx, top + L, L, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    if (lin) bob(sl[0], C.dim, [4, 3]);
+    bob(s[0], C.accent);
+    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(cx, top + L, 3.5, 0, Math.PI * 2); ctx.fill();
+    const span = 30, a = Math.max(0, t - span);
+    const d1 = [], d2 = []; let prev = null;
+    hist.forEach((q) => { if (q[0] < a) return; const y = wrapPi(q[1]); d1.push([q[0], prev != null && Math.abs(y - prev) > 3 ? NaN : y]); prev = y; d2.push([q[0], wrapPi(q[2])]); });
+    const series = [{ data: d1, color: C.accent, width: 2 }];
+    if (lin) series.push({ data: d2, color: C.dim, width: 1.5, dash: [5, 4] });
+    MB.chart(ctx, { x: pw + 44, y: 16, w: w - pw - 44 - 12, h: h - 16 - 40 }, { x: [a, a + span], y: [-3.3, 3.3], yTicks: [-3, -1.5, 0, 1.5, 3], series, xLabel: "t", hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.32, minHeight: 170, maxHeight: 220 });
+  function info() {
+    const e = E(s);
+    MB.stat("nl-pd-E", NL.num(e, 3));
+    let kind = e < 1 - 0.005 ? "진동 (libration)" : e > 1 + 0.005 ? "회전 (rotation)" : "분리선 근처";
+    if (c > 0) kind += " · 감쇠로 E 감소 중";
+    MB.stat("nl-pd-k", kind);
+    if (c > 0) { MB.stat("nl-pd-T", "— (감쇠)"); return; }
+    if (e < 1 - 1e-6 && e > -1) { const thm = Math.acos(-e); MB.stat("nl-pd-T", NL.num(1 / NL.agm(1, Math.cos(thm / 2)), 4)); }
+    else if (e > 1 + 1e-6) { const kk = Math.sqrt(2 / (e + 1)); MB.stat("nl-pd-T", "한 바퀴 " + NL.num((Math.PI * kk) / NL.agm(1, Math.sqrt(1 - kk * kk)) / (2 * Math.PI), 4)); }
+    else MB.stat("nl-pd-T", "∞");
+  }
+  function reset(stopPlay) { t = 0; trail = [[s[0], s[1], sl[0], sl[1]]]; hist = [[0, s[0], sl[0]]]; info(); ph.redraw(); sc.redraw(); }
+  MB.seg("nl-pd-pre", (v) => { s = PRE[v].slice(); sl = s.slice(); reset(); });
+  MB.range("nl-pd-c", (v) => NL.num(v, 2), (v) => { c = v; info(); });
+  MB.check("nl-pd-lin", (v) => { lin = v; sl = trail.length ? [trail[0][2], trail[0][3]] : s.slice(); reset(); });
+  document.getElementById("nl-pd-reset").addEventListener("click", () => { const q = trail[0]; s = [q[0], q[1]]; sl = [q[0], q[1]]; reset(); });
+  MB.playButton("nl-pd-play", () => { playing = true; loop.start(); }, () => { playing = false; });
+  const loop = MB.loop(document.getElementById("sim-nl-pendulum"), (dt) => {
+    if (!playing) return;
+    const n = 6, h = (dt * 2) / n;
+    for (let i = 0; i < n; i++) { s = NL.step(fN, t, s, h); sl = NL.step(fL, t, sl, h); t += h; }
+    trail.push([s[0], s[1], sl[0], sl[1]]); hist.push([t, s[0], sl[0]]);
+    if (trail.length > 3000) trail.shift();
+    if (hist.length > 3000) hist.shift();
+    info(); ph.redraw(); sc.redraw();
+  });
+  reset();
+})();
+
+/* ================================================================ 3. 로트카–볼테라 */
+(function () {
+  let a = 2, c = 3, h = 0, x0 = [5, 2], orbit = null, idx = 0, playing = false, tch = null;
+  function solve() {
+    const A = a - h, Cc = c + h, f = (t, p) => [A * p[0] - p[0] * p[1], -Cc * p[1] + p[0] * p[1]];
+    const dt = 0.005, pts = [[0, x0.slice()]]; let y = x0.slice(), cross = [];
+    for (let i = 1; i <= 8000; i++) {
+      const yn = NL.step(f, 0, y, dt);
+      if (y[1] < A && yn[1] >= A && yn[0] > Cc) cross.push(i);
+      y = yn; pts.push([i * dt, y.slice()]);
+      if (!isFinite(y[0]) || y[0] > 1e4) break;
+    }
+    let T = NaN, ax = NaN, ay = NaN;
+    if (cross.length >= 2) { const [i0, i1] = cross; T = (i1 - i0) * dt; let sx = 0, sy = 0; for (let i = i0; i < i1; i++) { sx += pts[i][1][0]; sy += pts[i][1][1]; } ax = sx / (i1 - i0); ay = sy / (i1 - i0); }
+    orbit = { pts, T, ax, ay, A, Cc };
+    const V = (p) => p[0] - Cc * Math.log(p[0]) + p[1] - A * Math.log(p[1]);
+    MB.stat("nl-lv-eq", A > 0 ? NL.vec([Cc, A], 2) : "포식자 멸종 (a ≤ h)");
+    MB.stat("nl-lv-avg", isFinite(ax) ? NL.vec([ax, ay], 3) : "—");
+    MB.stat("nl-lv-T", isFinite(T) ? NL.num(T, 3) + " (작은 궤도 " + NL.num((2 * Math.PI) / Math.sqrt(A * Cc), 3) + ")" : "—");
+    MB.stat("nl-lv-V", A > 0 ? NL.num(V(x0), 3) : "—");
+  }
+  solve();
+  const ph = MB.plane("#nl-cv-lv-ph", {
+    x: [0, 10], y: [0, 7], aspect: 0.52, minHeight: 220,
+    onPointer(x, y, ev) { if (ev !== "down" || x <= 0.05 || y <= 0.05) return; x0 = [x, y]; idx = 0; solve(); ph.redraw(); tch.redraw(); },
+    draw(P) {
+      const C = P.P, A = orbit.A, Cc = orbit.Cc;
+      if (A > 0) {
+        const V = (x, y) => (x > 0 && y > 0 ? x - Cc * Math.log(x) + y - A * Math.log(y) : NaN), V0 = Cc - Cc * Math.log(Cc) + A - A * Math.log(A);
+        NL.contour(P, V, [0.1, 0.3, 0.6, 1, 1.5, 2.2, 3, 4].map((d) => V0 + d), { alpha: 0.5 });
+        NL.field(P, (t, p) => [A * p[0] - p[0] * p[1], -Cc * p[1] + p[0] * p[1]], { step: 30, alpha: 0.4 });
+        P.line(Cc - 0.3, A, Cc + 0.3, A, { color: C.text, width: 2 }); P.line(Cc, A - 0.3, Cc, A + 0.3, { color: C.text, width: 2 });
+        if (isFinite(orbit.ax)) P.dot(orbit.ax, orbit.ay, { r: 3.5, color: C.ok });
+      }
+      const pts = orbit.pts.map((q) => q[1]);
+      NL.path(P, pts.slice(0, isFinite(orbit.T) ? Math.min(pts.length, Math.round(orbit.T / 0.005) + 2) : pts.length), { color: C.accent, width: 2.4, every: 140 });
+      const cur = pts[Math.min(idx, pts.length - 1)];
+      P.dot(cur[0], cur[1], { r: 6, color: C.accent2, stroke: C.bg });
+      P.dot(x0[0], x0[1], { r: 3.5, color: C.text });
+      P.text("피식자 x →", P.x1, P.y0, { color: C.dim, size: 11, align: "right", dx: -6, dy: -10 });
+    },
+  });
+  tch = MB.canvas("#nl-cv-lv-t", (ctx, w, hh) => {
+    const C = MB.palette(), T = 12, pts = orbit.pts.filter((q) => q[0] <= T);
+    const ym = Math.max(7, ...pts.map((q) => Math.max(q[1][0], q[1][1]))) * 1.05;
+    const hl = isFinite(orbit.ax) ? [{ y: orbit.ax, color: C.accent }, { y: orbit.ay, color: C.accent2 }] : [];
+    const tn = orbit.pts[Math.min(idx, orbit.pts.length - 1)][0];
+    MB.chart(ctx, NL.box(w, hh), { x: [0, T], y: [0, Math.min(ym, 40)], xLabel: "t", series: [{ data: pts.map((q) => [q[0], q[1][0]]), color: C.accent, width: 2.2 }, { data: pts.map((q) => [q[0], q[1][1]]), color: C.accent2, width: 2.2 }], hlines: hl, vlines: tn <= T ? [{ x: tn, color: C.text, dash: [3, 3] }] : [] });
+  }, { aspect: 0.34, minHeight: 170, maxHeight: 230 });
+  const all = () => { solve(); ph.redraw(); tch.redraw(); };
+  solve(); ph.redraw(); tch.redraw();
+  const ga = MB.range("nl-lv-a", (v) => NL.num(v, 1), (v) => { a = v; all(); });
+  const gc = MB.range("nl-lv-c", (v) => NL.num(v, 1), (v) => { c = v; all(); });
+  const gh = MB.range("nl-lv-h", (v) => NL.num(v, 2), (v) => { h = v; all(); });
+  document.getElementById("nl-lv-reset").addEventListener("click", () => { a = 2; c = 3; h = 0; x0 = [5, 2]; ga.set(2, false); gc.set(3, false); gh.set(0, false); idx = 0; all(); });
+  MB.playButton("nl-lv-play", () => { playing = true; loop.start(); }, () => { playing = false; });
+  const loop = MB.loop(document.getElementById("sim-nl-lv"), (dt) => {
+    if (!playing) return;
+    const n = isFinite(orbit.T) ? Math.round(orbit.T / 0.005) : orbit.pts.length - 1;
+    idx = (idx + Math.max(1, Math.round(dt * 160))) % Math.max(1, n);
+    ph.redraw(); tch.redraw();
+  });
+})();
+
+/* ================================================================ 4. 경쟁 모델 */
+(function () {
+  let al = 0.5, be = 0.5, rho = 1, seeds = [];
+  const DEF = [[0.1, 0.05], [0.05, 0.3], [1.6, 1.3], [0.3, 1.4], [1.7, 0.3], [0.6, 0.08], [0.08, 0.9], [1.2, 0.9], [0.9, 1.3], [1.5, 0.7]];
+  seeds = DEF.map((p) => p.slice());
+  const msg = document.getElementById("nl-cp-msg");
+  const f = (t, p) => [p[0] * (1 - p[0] - al * p[1]), rho * p[1] * (1 - p[1] - be * p[0])];
+  const J = (x, y) => [[1 - 2 * x - al * y, -al * x], [-rho * be * y, rho * (1 - 2 * y - be * x)]];
+  const pl = MB.plane("#nl-cv-cp", {
+    x: [-0.12, 1.9], y: [-0.12, 1.5], aspect: 0.66, minHeight: 250, gridStep: 0.5,
+    onPointer(x, y, ev) { if (ev !== "down" || x < 0 || y < 0) return; seeds.push([x, y]); if (seeds.length > 20) seeds.shift(); pl.redraw(); },
+    draw(P) {
+      const C = P.P, inside = NL.boxOf(P, 0.5);
+      NL.field(P, f, { step: 26, alpha: 0.5 });
+      P.line(1 + al * 1, -1, 1 - al * 3, 3, { color: C.accent, width: 2.4 });
+      P.line(-1, 1 + be, 3, 1 - 3 * be, { color: C.accent2, width: 2.4 });
+      P.text("x′ = 0", (1 - al * 1.2), 1.2, { color: C.accent, size: 12, bold: true, dx: 6 });
+      P.text("y′ = 0", 1.6, 1 - 1.6 * be, { color: C.accent2, size: 12, bold: true, dy: -10 });
+      seeds.forEach((s) => { NL.path(P, NL.traj(f, s, 40, 800, inside), { color: C.dim, width: 1.5, every: 150 }); P.dot(s[0], s[1], { r: 3, color: C.text }); });
+      const eqs = [[0, 0], [1, 0], [0, 1]], d = 1 - al * be;
+      let inner = null;
+      if (Math.abs(d) > 1e-6) { const xi = (1 - al) / d, yi = (1 - be) / d; if (xi > 1e-6 && yi > 1e-6) { inner = [xi, yi]; eqs.push(inner); } }
+      if (inner) {
+        const Ji = J(inner[0], inner[1]), e = MB.mat.eig2(Ji);
+        if (e.values && e.values[0] * e.values[1] < 0) {
+          const v = e.values[0] < 0 ? e.vectors[0] : e.vectors[1], fb = (t, p) => f(t, p).map((q) => -q);
+          [1, -1].forEach((sg) => NL.path(P, NL.traj(fb, [inner[0] + sg * 1e-3 * v[0], inner[1] + sg * 1e-3 * v[1]], 30, 900, (p) => inside(p) && p[0] > -0.01 && p[1] > -0.01), { color: C.text, width: 2, dash: [6, 4], heads: false }));
+        }
+      }
+      eqs.forEach((q) => P.dot(q[0], q[1], { r: 6.5, color: NL.kindColor(J(q[0], q[1]), C), stroke: C.bg }));
+      // 판정
+      if (inner) { const Ji = J(inner[0], inner[1]); MB.stat("nl-cp-eq", NL.vec(inner, 3)); MB.stat("nl-cp-ty", NL.classify(Ji)); MB.stat("nl-cp-l", NL.eigText(Ji, 3)); }
+      else { MB.stat("nl-cp-eq", "양의 사분면에 없음"); MB.stat("nl-cp-ty", "—"); MB.stat("nl-cp-l", "—"); }
+      let txt, cls = "nl-msg";
+      if (al < 1 && be < 1) { txt = "<b>공존</b>: α, β &lt; 1. 종 내부 경쟁이 더 세서 두 종이 내부 평형점에서 함께 산다."; cls += " ok"; }
+      else if (al > 1 && be > 1) { txt = "<b>쌍안정</b>: α, β &gt; 1. 내부점이 안장이고 점선(분리선)의 어느 쪽에서 출발했는가가 승자를 정한다."; }
+      else if (al < 1 && be > 1) { txt = "<b>x의 승리</b>: α &lt; 1 &lt; β. 모든 궤적이 (1, 0)으로 간다."; }
+      else if (be < 1 && al > 1) { txt = "<b>y의 승리</b>: β &lt; 1 &lt; α. 모든 궤적이 (0, 1)로 간다."; }
+      else { txt = "경계 경우(α 또는 β = 1): 평형점이 합쳐지는 비쌍곡 상황."; }
+      msg.className = cls; msg.innerHTML = txt;
+    },
+  });
+  const ga = MB.range("nl-cp-a", (v) => NL.num(v, 2), (v) => { al = v; pl.redraw(); });
+  const gb = MB.range("nl-cp-b", (v) => NL.num(v, 2), (v) => { be = v; pl.redraw(); });
+  MB.range("nl-cp-r", (v) => NL.num(v, 1), (v) => { rho = v; pl.redraw(); });
+  const set = (a, b) => { al = a; be = b; ga.set(a, false); gb.set(b, false); seeds = DEF.map((p) => p.slice()); pl.redraw(); };
+  document.getElementById("nl-cp-co").addEventListener("click", () => set(0.5, 0.5));
+  document.getElementById("nl-cp-bi").addEventListener("click", () => set(1.5, 1.5));
+  document.getElementById("nl-cp-x").addEventListener("click", () => set(0.5, 1.5));
+  document.getElementById("nl-cp-clear").addEventListener("click", () => { seeds = []; pl.redraw(); });
+})();
+
+/* ================================================================ 5. 리아푸노프 함수 */
+(function () {
+  const SYS = {
+    cubic: { f: (t, p) => [-p[1] - p[0] ** 3, p[0] - p[1] ** 3], V: (x, y) => x * x + y * y, x: [-1.7, 1.7], x0: [1.2, 0], lv: [0.04, 0.16, 0.36, 0.64, 1, 1.44, 1.96, 2.56] },
+    pend: { f: (t, p) => [p[1], -Math.sin(p[0]) - 0.3 * p[1]], V: (x, y) => 0.5 * y * y + 1 - Math.cos(x), x: [-4.2, 4.2], x0: [2.6, 0], lv: [0.1, 0.3, 0.6, 1, 1.4, 1.8, 2, 2.4, 3] },
+    unst: { f: (t, p) => [-p[1] + p[0] ** 3, p[0] + p[1] ** 3], V: (x, y) => x * x + y * y, x: [-1.7, 1.7], x0: [0.5, 0], lv: [0.04, 0.16, 0.36, 0.64, 1, 1.44, 1.96, 2.56] },
+    lin: { f: (t, p) => [-p[1] - 0.2 * p[0], p[0] - 0.2 * p[1]], V: (x, y) => x * x + y * y, x: [-1.7, 1.7], x0: [1.2, 0], lv: [0.04, 0.16, 0.36, 0.64, 1, 1.44, 1.96, 2.56] },
+  };
+  let sys = SYS.cubic, T = 30, sol = [], ch = null;
+  const pt = { x: 1.2, y: 0, r: 8, label: "x₀" };
+  const Vdot = (p) => { const h = 1e-5, g = sys.f(0, p), Vx = (sys.V(p[0] + h, p[1]) - sys.V(p[0] - h, p[1])) / (2 * h), Vy = (sys.V(p[0], p[1] + h) - sys.V(p[0], p[1] - h)) / (2 * h); return Vx * g[0] + Vy * g[1]; };
+  function solve() {
+    sol = [[0, [pt.x, pt.y]]]; let y = [pt.x, pt.y]; const dt = 0.01;
+    for (let i = 1; i <= T / dt; i++) { y = NL.step(sys.f, 0, y, dt); if (!isFinite(y[0]) || Math.hypot(y[0], y[1]) > 50) break; sol.push([i * dt, y]); }
+    const v0 = sys.V(pt.x, pt.y), last = sol[sol.length - 1];
+    MB.stat("nl-ly-v0", NL.num(v0, 3)); const dv = Vdot([pt.x, pt.y]); MB.stat("nl-ly-dv", NL.num(dv, 4) + (dv < -1e-9 ? " (감소)" : dv > 1e-9 ? " (증가)" : " (0)"));
+    MB.stat("nl-ly-v1", last[0] < T - 0.02 ? "t = " + NL.num(last[0], 2) + "에 발산" : NL.num(sys.V(last[1][0], last[1][1]), 4));
+    MB.stat("nl-ly-ty", sys === SYS.unst ? "V̇ > 0 → 불안정" : sys === SYS.pend ? "V̇ = −0.3ω² ≤ 0 → 안정 (라살 → 점근 안정)" : sys === SYS.cubic ? "V̇ = −2(x⁴ + y⁴) < 0 → 점근 안정" : "V̇ = −0.4V < 0 → 점근 안정 (지수적)");
+  }
+  const opt = { x: sys.x.slice(), aspect: 0.55, minHeight: 230, points: [pt],
+    onDrag() { solve(); },
+    draw(P) {
+      const C = P.P; pt.color = C.text;
+      solve();
+      NL.contour(P, sys.V, sys.lv, { color: C.accent2, alpha: 0.55, width: 1.2 });
+      NL.field(P, sys.f, { step: 28, alpha: 0.4 });
+      NL.path(P, sol.map((q) => q[1]), { color: C.accent, width: 2.4, every: 130 });
+      P.dot(0, 0, { r: 4, color: C.text });
+      if (ch) ch.redraw();
+    } };
+  const pl = MB.plane("#nl-cv-ly-ph", opt);
+  ch = MB.canvas("#nl-cv-ly-t", (ctx, w, h) => {
+    const C = MB.palette(), v = sol.map((q) => [q[0], sys.V(q[1][0], q[1][1])]), r = sol.map((q) => [q[0], Math.hypot(q[1][0], q[1][1])]);
+    const top = Math.min(4, Math.max(0.5, v[0][1], r[0][1]) * 1.15);
+    MB.chart(ctx, NL.box(w, h), { x: [0, T], y: [0, top], xLabel: "t", series: [{ data: v, color: C.accent, width: 2.4 }, { data: r, color: C.accent2, width: 1.8 }] });
+  }, { aspect: 0.34, minHeight: 170, maxHeight: 230 });
+  pl.redraw();
+  document.getElementById("nl-ly-sys").addEventListener("change", (e) => { sys = SYS[e.target.value]; pt.x = sys.x0[0]; pt.y = sys.x0[1]; pl.view({ x: sys.x }); });
+  MB.range("nl-ly-T", (v) => v + "", (v) => { T = v; pl.redraw(); });
+})();
+
+/* ================================================================ 6. 반 데어 폴 */
+(function () {
+  let mode = "vdp", mu = 1, trap = true, seeds = [[0.1, 0], [3, 2.4]], cyc = null, ch = null;
+  const f = (t, p) => (mode === "vdp" ? [p[1], mu * (1 - p[0] * p[0]) * p[1] - p[0]] : (() => { const r2 = p[0] * p[0] + p[1] * p[1]; return [p[0] - p[1] - p[0] * r2, p[0] + p[1] - p[1] * r2]; })());
+  function cycle() {
+    const dt = 0.01; let y = [0.5, 0];
+    const Ttr = mode === "vdp" ? 30 + 12 * mu : 20;
+    for (let i = 0; i < Ttr / dt; i++) y = NL.step(f, 0, y, dt);
+    const pts = [y.slice()], ups = []; let t = 0;
+    for (let i = 0; i < (mode === "vdp" ? 3 * (7 + 2 * mu) : 20) / dt; i++) {
+      const yn = NL.step(f, 0, y, dt); t += dt;
+      if (y[0] < 0 && yn[0] >= 0) ups.push(t - dt + (dt * -y[0]) / (yn[0] - y[0]));
+      y = yn; pts.push(y.slice());
+      if (ups.length >= 3) break;
+    }
+    const T = ups.length >= 3 ? ups[2] - ups[1] : NaN;
+    const A = Math.max(...pts.map((p) => Math.abs(p[0]))), Y = Math.max(...pts.map((p) => Math.abs(p[1])));
+    cyc = { pts, T, A, Y };
+  }
+  const opt = { x: [-3.4, 3.4], y: [-3.4, 3.4], aspect: 0.55, minHeight: 230,
+    onPointer(x, y, ev) { if (ev !== "down") return; seeds.push([x, y]); if (seeds.length > 6) seeds.splice(1, 1); pl.redraw(); ch.redraw(); },
+    draw(P) {
+      const C = P.P, inside = NL.boxOf(P, 1.5);
+      NL.field(P, f, { step: 26, alpha: 0.45 });
+      if (mode === "rad" && trap) {
+        const ctx = P.ctx; ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = C.accent2; ctx.beginPath();
+        ctx.ellipse(P.X(0), P.Y(0), 1.5 * P.unit, 1.5 * (P.h / (P.y1 - P.y0)), 0, 0, Math.PI * 2); ctx.ellipse(P.X(0), P.Y(0), 0.5 * P.unit, 0.5 * (P.h / (P.y1 - P.y0)), 0, 0, Math.PI * 2, true); ctx.fill("evenodd"); ctx.restore();
+        for (let k = 0; k < 12; k++) { const a = (2 * Math.PI * k) / 12; [[0.5, 0.375], [1.5, -1.875]].forEach(([r, rp]) => { const c = Math.cos(a), s = Math.sin(a), L = 0.22 * Math.sign(rp); P.arrow(r * c, r * s, (r + L) * c, (r + L) * s, { color: C.accent2, width: 1.8, head: 7 }); }); }
+      }
+      NL.path(P, cyc.pts, { color: C.accent, width: 3.2, heads: false, alpha: 0.9 });
+      seeds.forEach((s, i) => { NL.path(P, NL.traj(f, s, mode === "vdp" ? 20 + 4 * mu : 12, 2000, inside), { color: i === 0 ? C.accent2 : C.dim, width: i === 0 ? 2 : 1.5, every: 160 }); P.dot(s[0], s[1], { r: 4, color: i === 0 ? C.accent2 : C.text }); });
+      P.dot(0, 0, { r: 4, color: C.bad });
+    } };
+  cycle();
+  const pl = MB.plane("#nl-cv-vp-ph", opt);
+  ch = MB.canvas("#nl-cv-vp-t", (ctx, w, h) => {
+    const C = MB.palette(), TT = mode === "vdp" ? Math.max(40, 4 * (cyc.T || 7)) : 30, sol = MB.rk4(f, seeds[0], 0, 0.02, Math.round(TT / 0.02));
+    const ym = mode === "vdp" ? 2.6 : 1.6;
+    MB.chart(ctx, NL.box(w, h), { x: [0, TT], y: [-ym, ym], xLabel: "t", series: [{ data: sol.map(([t, y]) => [t, MB.clamp(y[0], -10, 10)]), color: C.accent2, width: 2 }], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.32, minHeight: 170, maxHeight: 220 });
+  function all() {
+    cycle();
+    if (mode === "vdp") { const Ym = Math.max(3, cyc.Y * 1.2); opt.y = [-Ym, Ym]; pl.view({ x: [-3.4, 3.4], y: [-Ym, Ym] }); }
+    else pl.view({ x: [-2.2, 2.2], y: [-1.9, 1.9] });
+    MB.stat("nl-vp-T", NL.num(cyc.T, 3)); MB.stat("nl-vp-A", NL.num(cyc.A, 3));
+    MB.stat("nl-vp-as", mode === "vdp" ? NL.num((3 - 2 * Math.log(2)) * mu, 3) : "— (T = 2π)");
+    MB.stat("nl-vp-o", mode === "vdp" ? NL.classify([[0, 1], [-1, mu]]) : NL.classify([[1, -1], [1, 1]]));
+    ch.redraw();
+  }
+  MB.seg("nl-vp-sys", (v) => { mode = v; seeds = v === "vdp" ? [[0.1, 0], [3, 2.4]] : [[0.1, 0], [1.9, 1.6]]; all(); });
+  MB.range("nl-vp-m", (v) => NL.num(v, 1), (v) => { mu = v; if (mode === "vdp") all(); });
+  MB.check("nl-vp-trap", (v) => { trap = v; pl.redraw(); });
+  document.getElementById("nl-vp-clear").addEventListener("click", () => { seeds = mode === "vdp" ? [[0.1, 0], [3, 2.4]] : [[0.1, 0], [1.9, 1.6]]; pl.redraw(); ch.redraw(); });
+  all();
+})();
+
+/* ================================================================ 7. SIR */
+(function () {
+  let R0 = 2.5, D = 10, p = 0, li0 = -3, sol = [], ph = null;
+  function solve() {
+    const g = 1 / D, b = R0 * g, i0 = Math.pow(10, li0), s0 = (1 - p) * (1 - i0);
+    const f = (t, y) => [-b * y[0] * y[1], b * y[0] * y[1] - g * y[1], g * y[1]];
+    sol = MB.rk4(f, [s0, i0, 0], 0, 0.1, 3650);
+    let bi = 0; sol.forEach((q, k) => { if (q[1][1] > sol[bi][1][1]) bi = k; });
+    const last = sol[sol.length - 1][1];
+    MB.stat("nl-sr-pk", bi === 0 ? "증가 없음 (" + NL.num(i0 * 100, 2) + "%)" : NL.num(sol[bi][1][1] * 100, 1) + "% (" + Math.round(sol[bi][0]) + "일)");
+    MB.stat("nl-sr-fin", NL.num((last[2] + last[1]) * 100, 1) + "%" + (last[1] > 1e-4 ? " (진행 중)" : ""));
+    MB.stat("nl-sr-Re", NL.num(R0 * s0, 2) + (R0 * s0 > 1 ? " > 1 유행" : " ≤ 1 소멸"));
+    MB.stat("nl-sr-hit", R0 > 1 ? NL.num((1 - 1 / R0) * 100, 0) + "%" : "0% (R₀ ≤ 1)");
+    return { bi, i0, s0 };
+  }
+  const tc = MB.canvas("#nl-cv-sir-t", (ctx, w, h) => {
+    const C = MB.palette(), pick = (k) => sol.filter((_, j) => j % 5 === 0).map((q) => [q[0], q[1][k]]);
+    MB.chart(ctx, NL.box(w, h), { x: [0, 365], y: [0, 1], xLabel: "t (일)", series: [{ data: pick(0), color: C.accent2, width: 2.2 }, { data: pick(1), color: C.accent, width: 2.6 }, { data: pick(2), color: C.dim, width: 2 }] });
+  }, { aspect: 0.4, minHeight: 190, maxHeight: 260 });
+  ph = MB.canvas("#nl-cv-sir-ph", (ctx, w, h) => {
+    const C = MB.palette(), im = Math.max(...sol.map((q) => q[1][1])), top = Math.max(0.05, im * 1.25);
+    const bg = [];
+    if (R0 > 1) for (let k = 1; k <= 8; k++) {
+      const s0 = 1 / R0 + ((1 - 1 / R0) * k) / 8, Cst = s0 - Math.log(s0) / R0, d = [];
+      for (let j = 1; j <= 200; j++) { const s = j / 200, i = Cst - s + Math.log(s) / R0; d.push([s, i >= 0 ? i : NaN]); }
+      bg.push({ data: d, color: C.faint, width: 1 });
+    }
+    const sl = sol.filter((_, j) => j % 3 === 0).map((q) => [q[1][0], q[1][1]]);
+    MB.chart(ctx, NL.box(w, h), { x: [0, 1], y: [0, top], xLabel: "s", series: bg.concat([{ data: sl, color: C.accent, width: 2.6 }]), vlines: R0 > 1 ? [{ x: 1 / R0, color: C.text, label: "s = 1/R₀" }] : [] });
+  }, { aspect: 0.4, minHeight: 190, maxHeight: 260 });
+  const all = () => { solve(); tc.redraw(); ph.redraw(); };
+  solve(); tc.redraw(); ph.redraw();
+  MB.range("nl-sr-R", (v) => NL.num(v, 1), (v) => { R0 = v; all(); });
+  MB.range("nl-sr-D", (v) => v + "일", (v) => { D = v; all(); });
+  MB.range("nl-sr-p", (v) => Math.round(v * 100) + "%", (v) => { p = v; all(); });
+  MB.range("nl-sr-i", (v) => { const x = Math.pow(10, v) * 100; return (x < 0.1 ? x.toFixed(3) : x.toFixed(2)) + "%"; }, (v) => { li0 = v; all(); });
+})();
+</script>
+</body>
+</html>

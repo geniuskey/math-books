@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>편미분방정식 입문 · ODEBook</title>
+<meta name="description" content="푸리에 법칙에서 열 방정식을, 장력에서 파동 방정식을 세우고 변수분리법과 고유함수 전개로 푼다. 디리클레·노이만 경계 조건, 줄의 배음과 달랑베르 해, 라플라스 방정식과 정상 상태, 유한 차분법의 안정성 조건 r ≤ 1/2와 CFL, 반도체 확산까지.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .pe-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .pe-msg b { color: var(--text); }
+  .pe-msg.ok { color: var(--ok); font-weight: 600; }
+  .pe-msg.bad { color: var(--bad); font-weight: 600; }
+  .pe-tbl td { font-size: 13.5px; }
+  .pe-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
+  .pe-map a { display: block; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-elev); color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.5; }
+  .pe-map a small { display: block; color: var(--accent); font: 600 11.5px var(--mono); margin-bottom: 4px; }
+  .pe-map a span { color: var(--text-dim); font-size: 13px; }
+  .pe-map a:hover { border-color: var(--accent); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="pde">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 16</div>
+    <h1 data-no-glossary>편미분방정식 입문</h1>
+    <p class="lead">막대의 온도는 시간에만 달려 있지 않고 위치에도 달려 있습니다. 줄의 변위도, 판의 퍼텐셜도 마찬가지입니다. 미지 함수가 변수 둘 이상에 달려 있고 그 편도함수 사이의 관계로 법칙이 쓰이면 <span class="term">편미분방정식</span>입니다. 이 장은 공학의 세 기본 편미분방정식인 <b>열 방정식, 파동 방정식, 라플라스 방정식</b>을 물리 법칙에서 세우고, 15장의 고유함수 전개로 풉니다. 열쇠는 <b>변수분리</b>입니다. 해를 공간 모양 × 시간 변화로 쪼개면 공간 부분은 15장의 고유값 문제가, 시간 부분은 1장부터 다뤄 온 상미분방정식이 됩니다. 마지막으로 컴퓨터가 이 방정식들을 격자 위에서 푸는 방법과, 시간 간격을 잘못 고르면 해가 터지는 이유를 봅니다.</p>
+    <ul class="objectives">
+      <li>푸리에의 열전도 법칙과 에너지 보존에서 열 방정식 \(u_t = \alpha u_{xx}\)를, 장력의 균형에서 파동 방정식 \(u_{tt} = c^2u_{xx}\)를 유도한다.</li>
+      <li>변수분리법으로 편미분방정식을 고유값 문제와 상미분방정식으로 나누고, 초기 조건을 푸리에 급수로 맞춘다.</li>
+      <li>디리클레·노이만·비동차 경계 조건에서 열 방정식을 풀고, 높은 모드일수록 빨리 사라지는 이유를 설명한다.</li>
+      <li>줄의 정규 모드와 배음, 튕기는 위치와 배음 구성의 관계, 달랑베르 해와 끝에서의 반사를 이해한다.</li>
+      <li>라플라스 방정식을 사각 판에서 풀고, 평균값 성질과 최대 원리로 정상 상태를 해석한다.</li>
+      <li>명시적 유한 차분법을 구성하고 안정성 조건 \(r \le 1/2\)과 CFL 조건 \(c\Delta t/\Delta x \le 1\)을 폰 노이만 분석으로 유도한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>반도체 칩의 p–n 접합</b></div>
+      <div class="o-body"><p>트랜지스터를 만들려면 실리콘 웨이퍼 표면에서 불순물(도펀트) 원자를 정해진 깊이까지 넣어야 합니다. 고온의 확산로에서 도펀트는 농도가 높은 곳에서 낮은 곳으로 퍼져 들어가는데, 이 퍼짐을 지배하는 것이 열 방정식과 같은 꼴의 <b>확산 방정식</b>입니다. 접합 깊이를 마이크로미터 이하로 맞추려면 몇 분, 몇 도에서 확산시켜야 하는지를 이 방정식의 해 \(\operatorname{erfc}\)와 가우스 분포가 알려 줍니다.</p>
+        <p>이 방정식이 처음 정식화된 것은 열에 대해서였습니다. 푸리에<span class="en">(Joseph Fourier)</span>는 1822년 『열의 해석적 이론』에서 열 흐름이 온도 기울기에 비례한다는 법칙으로 열 방정식을 세우고, 해를 사인 급수로 전개해 풀었습니다. 같은 방법이 줄의 진동, 정전기 퍼텐셜, 확산에 그대로 쓰입니다.</p>
+        <div class="o-chain"><span>국소 법칙 (플럭스 ∝ 기울기)</span><i>→</i><span>편미분방정식</span><i>→</i><span class="tool">변수분리 + 고유함수 전개</span><i>→</i><span>모드마다 따로 푸는 상미분방정식</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="heat-equation">
+    <h2>열 방정식: 푸리에 법칙에서</h2>
+    <div class="problem"><strong>한쪽 끝을 불에 댄 쇠막대</strong>
+      <p>쇠막대 한쪽을 불에 대면 손잡이 쪽이 서서히 뜨거워집니다. 막대의 온도 \(u(x, t)\)는 위치 \(x\)와 시간 \(t\) 두 변수의 함수입니다. 3장의 뉴턴 냉각 법칙은 물체 전체를 온도 하나로 보았기 때문에 이 "퍼짐"을 설명하지 못합니다. 위치마다 다른 온도가 어떻게 시간에 따라 변할까요?</p></div>
+    <p>모델링의 순서(<a href="modeling.html">1장</a>)를 따릅니다. 옆면이 단열된 가는 막대(단면적 \(A\), 밀도 \(\rho\), 비열 \(c_p\), 열전도도 \(k\))를 생각합니다.</p>
+    <ol>
+      <li><b>구성 법칙 (푸리에 법칙)</b>: 단위 면적당 열 흐름(열 플럭스)은 온도 기울기에 비례하고, 뜨거운 쪽에서 찬 쪽으로 흐른다. \(q = -k\,u_x\).</li>
+      <li><b>보존 법칙</b>: 짧은 구간 \([x, x + \Delta x]\)에 쌓이는 열에너지의 변화율 = 왼쪽으로 들어오는 열 − 오른쪽으로 나가는 열. \(\rho c_pA\Delta x\,u_t = A\bigl(q(x) - q(x + \Delta x)\bigr)\).</li>
+      <li>\(\Delta x\)로 나누고 \(\Delta x \to 0\): \(\rho c_p u_t = -q_x = k\,u_{xx}\).</li>
+    </ol>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 240" role="img" aria-label="막대의 짧은 구간에 들어오고 나가는 열 플럭스">
+        <rect x="10" y="10" width="740" height="220" rx="10" class="f-surface"/>
+        <rect x="60" y="90" width="640" height="56" rx="6" class="f-elev" style="stroke:var(--border)"/>
+        <rect x="300" y="90" width="160" height="56" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.6"/>
+        <line x1="210" y1="118" x2="292" y2="118" style="stroke:var(--accent-2);stroke-width:3"/>
+        <path d="M300 118 l-12 -7 v14 z" style="fill:var(--accent-2)"/>
+        <line x1="460" y1="118" x2="542" y2="118" style="stroke:var(--accent-2);stroke-width:3"/>
+        <path d="M550 118 l-12 -7 v14 z" style="fill:var(--accent-2)"/>
+        <text x="250" y="80" text-anchor="middle" class="t-mono">q(x)</text>
+        <text x="505" y="80" text-anchor="middle" class="t-mono">q(x + Δx)</text>
+        <text x="380" y="123" text-anchor="middle" class="t-acc">ρc<tspan baseline-shift="sub" font-size="10">p</tspan>AΔx · u<tspan baseline-shift="sub" font-size="10">t</tspan></text>
+        <text x="300" y="168" text-anchor="middle" class="t-mono">x</text><text x="460" y="168" text-anchor="middle" class="t-mono">x + Δx</text>
+        <text x="380" y="205" text-anchor="middle" class="t-dim">쌓이는 열 = 들어온 열 − 나간 열,  q = −k u<tspan baseline-shift="sub" font-size="10">x</tspan> (푸리에 법칙)</text>
+        <text x="80" y="60" class="t-dim">뜨거운 쪽</text><text x="680" y="60" text-anchor="end" class="t-dim">찬 쪽</text>
+      </svg>
+      <figcaption><b>그림 16-1.</b> 막대의 짧은 구간에 대한 에너지 수지. 플럭스가 위치에 따라 줄어들면(q<sub>x</sub> &lt; 0) 그 구간에 열이 쌓여 온도가 오른다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 16.1 (1차원 열 방정식)</strong>
+      <div class="formula">$$u_t = \alpha\,u_{xx},\qquad \alpha = \frac{k}{\rho c_p}$$</div>
+      을 <span class="term">열 방정식</span><span class="en">(heat equation)</span>이라 하고, \(\alpha\)(m²/s)를 <span class="term">열확산율</span><span class="en">(thermal diffusivity)</span>이라 한다. 구리의 열확산율은 약 \(1.1\times10^{-4}\) m²/s다. 같은 꼴의 방정식이 물질의 확산(픽의 법칙, \(\alpha\) 대신 확산 계수 \(D\))에도 성립한다.</div>
+    <p>방정식은 한 문장으로 읽힙니다. <b>온도 그래프가 아래로 볼록한 곳(\(u_{xx} > 0\), 주변보다 찬 골짜기)은 데워지고, 위로 볼록한 곳(봉우리)은 식는다.</b> 그래서 열 방정식은 모든 굴곡을 평평하게 펴는 방향으로 움직이고, 뾰족한 굴곡일수록 \(|u_{xx}|\)가 커서 빨리 펴집니다. 이 관찰이 다음 절의 "높은 모드일수록 빨리 사라진다"는 결론의 예고입니다.</p>
+    <p>상미분방정식에서 초기값 하나가 해를 정했듯이, 열 방정식에는 <b>초기 조건</b> \(u(x, 0) = f(x)\)와 양 끝의 <b>경계 조건</b>이 함께 필요합니다. 이 묶음을 <span class="term">초기–경계값 문제</span>라 합니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="separation">
+    <h2>변수분리법과 고유함수 전개</h2>
+    <div class="problem"><strong>양 끝을 얼음물에 담근 막대</strong>
+      <p>길이 \(L\)인 막대의 처음 온도 분포가 \(f(x)\)이고, 양 끝을 0 °C로 유지합니다. \(u_t = \alpha u_{xx}\), \(u(0, t) = u(L, t) = 0\), \(u(x, 0) = f(x)\). 변수가 둘인 함수를 어떻게 찾을까요?</p></div>
+    <p>모양이 변하지 않고 크기만 변하는 해부터 찾습니다. \(u(x, t) = X(x)\,T(t)\)라 두면 \(XT' = \alpha X''T\)이고, 양변을 \(\alpha XT\)로 나누면</p>
+    <div class="formula">$$\frac{T'(t)}{\alpha\,T(t)} = \frac{X''(x)}{X(x)} = -\lambda.$$
+      <div class="where">왼쪽은 \(t\)만의 함수, 오른쪽은 \(x\)만의 함수다. 둘이 모든 \(x, t\)에서 같으려면 둘 다 같은 상수여야 한다. 그 상수를 \(-\lambda\)로 둔다. 이것이 <span class="term">변수분리법</span><span class="en">(separation of variables)</span>의 핵심 한 줄이다.</div></div>
+    <p>편미분방정식 하나가 상미분방정식 둘로 갈라졌습니다.</p>
+    <ul>
+      <li>공간: \(X'' + \lambda X = 0\), \(X(0) = X(L) = 0\). 경계 조건이 \(u\)에서 \(X\)로 그대로 넘어온다. 이것은 15장의 고유값 문제(정리 15.4)이고, \(\lambda_n = (n\pi/L)^2\), \(X_n = \sin(n\pi x/L)\).</li>
+      <li>시간: \(T' = -\alpha\lambda_nT\). 2장의 지수 붕괴이고 \(T_n = e^{-\alpha\lambda_nt}\).</li>
+    </ul>
+    <p>곱 \(u_n = e^{-\alpha(n\pi/L)^2t}\sin(n\pi x/L)\)는 방정식과 경계 조건을 모두 만족합니다. 방정식과 경계 조건이 선형 동차이므로 이들의 일차결합도 해입니다(중첩 원리, <a href="second-order.html">6장</a>). 남은 것은 초기 조건뿐이고, 그것은 15장의 사인 급수가 맞춰 줍니다.</p>
+    <div class="callout deep"><strong>정리 16.2 (양끝 0 °C 막대의 해)</strong> \(f\)가 \([0, L]\)에서 구간별로 매끄러우면
+      <div class="formula">$$u(x, t) = \sum_{n=1}^\infty b_n\,e^{-\alpha(n\pi/L)^2t}\,\sin\frac{n\pi x}{L},\qquad b_n = \frac2L\int_0^L f(x)\sin\frac{n\pi x}{L}\,dx$$</div>
+      는 \(t > 0\)에서 열 방정식과 경계 조건을 만족하고 \(t \to 0^+\)일 때 \(f\)로 간다. \(t > 0\)이면 급수가 아주 빨리 수렴해 \(u\)는 \(x\)에 대해 무한히 매끄럽다.</div>
+    <p>마지막 문장이 열 방정식의 성격입니다. 처음 분포가 불연속이어도(뜨거운 조각과 찬 조각을 맞붙여도) 아주 짧은 시간 뒤에는 매끄러워집니다. 계수에 \(e^{-\alpha n^2\pi^2t/L^2}\)이 곱해져 높은 \(n\)이 순식간에 사라지기 때문입니다.</p>
+    <div class="callout"><strong>예제 16.1 (두 모드로 된 처음 온도)</strong> \(L = 1\) m, \(\alpha = 1.0\times10^{-4}\) m²/s(구리에 가까운 값)인 막대의 처음 온도가 \(f(x) = 100\sin\pi x + 50\sin3\pi x\) (°C)이고 양 끝이 0 °C다. \(t = 600\) s(10분)에 가운데 온도는?
+      <ol>
+        <li>\(f\)가 이미 사인 급수이므로 \(b_1 = 100\), \(b_3 = 50\), 나머지 0.</li>
+        <li>각 모드의 시상수 \(\tau_n = L^2/(\alpha n^2\pi^2)\): \(\tau_1 = 1/(10^{-4}\pi^2) \approx 1013\) s, \(\tau_3 = \tau_1/9 \approx 113\) s.</li>
+        <li>\(u(\tfrac12, 600) = 100e^{-600/1013}\sin\tfrac\pi2 + 50e^{-600/113}\sin\tfrac{3\pi}{2} \approx 100(0.553) - 50(0.0049) \approx 55.1\) °C.</li>
+        <li>10분 뒤 3번 모드는 처음의 0.5%만 남았다. 처음 모양이 무엇이었든 시간이 지나면 \(\sin\pi x\) 모양 하나로 수렴한다. (유한 차분으로 계산해도 55.07 °C.)</li>
+      </ol></div>
+    <div class="callout"><strong>예제 16.2 (고르게 뜨거운 막대)</strong> 처음 온도가 어디나 \(100\) °C이고 양 끝을 0 °C로 낮추었다.
+      <ol>
+        <li>15장 예제 15.5에서 \(1 = \frac4\pi\sum_{n\,\text{홀수}}\frac1n\sin\frac{n\pi x}{L}\)이므로 \(b_n = \frac{400}{n\pi}\) (홀수 \(n\)).</li>
+        <li>\(u(x, t) = \frac{400}{\pi}\sum_{n\,\text{홀수}}\frac1n e^{-\alpha n^2\pi^2t/L^2}\sin\frac{n\pi x}{L}\).</li>
+        <li>가운데가 50 °C까지 식는 시각: 무차원 시간 \(\tau = \alpha t/L^2\)으로 쓰면 첫 항만으로 \(\frac{400}{\pi}e^{-\pi^2\tau} = 50\), \(\tau \approx 0.0947\). 모든 항을 쓴 값도 0.0947이다. 위 막대라면 \(t \approx 947\) s.</li>
+        <li>\(\tau\)로 쓰면 결과가 막대 길이와 재료에 상관없다. 길이를 절반으로 줄이면 같은 식힘에 걸리는 시간은 1/4이다(\(t \propto L^2\)).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pe-heat">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>막대 온도의 시공간 지도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-heat-map"></canvas><span class="cap">u(x, τ): 가로 x, 아래로 시간 τ</span></div>
+          <div><canvas id="pe-cv-heat-prof"></canvas><span class="cap">지금 τ의 온도 분포</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>처음 온도 f(x)</span><select id="pe-ht-pre">
+            <option value="pulse">가운데만 뜨거움</option>
+            <option value="uni">어디나 100 °C</option>
+            <option value="modes">100 sin πx + 50 sin 3πx</option>
+            <option value="step">왼쪽 절반만 100 °C</option>
+          </select></label>
+          <div class="ctrl"><span>경계 조건</span><div class="seg" id="pe-ht-bc"><button data-value="D" class="on">양끝 0 °C</button><button data-value="N">양끝 단열</button><button data-value="T">왼쪽 100 · 오른쪽 0</button></div></div>
+          <label class="ctrl"><span>무차원 시간 τ = αt/L² <output id="pe-ht-t-out"></output></span><input type="range" id="pe-ht-t" min="0" max="0.25" step="0.001" value="0.02"></label>
+          <div class="btn-row"><button class="btn primary" id="pe-ht-play">▶ 시간 흐르기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">τ (구리 1 m 막대라면)</span><span class="v" id="pe-ht-o-t">—</span></div>
+        <div class="stat"><span class="k">평균 온도</span><span class="v" id="pe-ht-o-mean">—</span></div>
+        <div class="stat"><span class="k">최고 온도</span><span class="v" id="pe-ht-o-max">—</span></div>
+        <div class="stat"><span class="k">정상 상태까지</span><span class="v" id="pe-ht-o-ss">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '가운데만 뜨거움'에서 처음 몇 순간 뾰족한 모서리가 순식간에 둥글어지는 것을 보세요. 높은 모드가 먼저 죽습니다. ② 양끝 단열로 바꾸면 열이 빠져나가지 못해 평균 온도가 그대로 유지되고, 결국 평균값 20 °C의 평평한 상태가 됩니다. ③ '왼쪽 100 · 오른쪽 0'에서는 처음 분포가 무엇이든 직선 100(1 − x)으로 갑니다. 모델: 고유함수 급수 100항의 정확한 해. 시간 표시는 α = 1.0×10⁻⁴ m²/s, L = 1 m로 환산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="mode-decay">
+    <h2>모드별 감쇠: 높은 모드가 먼저 죽는다</h2>
+    <p>정리 16.2의 각 항은 서로 간섭하지 않고 자기 속도로 감쇠합니다. \(n\)번째 모드의 감쇠율은 \(\alpha n^2\pi^2/L^2\), 즉 <b>\(n^2\)에 비례</b>합니다. 3번 모드는 1번 모드보다 9배, 10번 모드는 100배 빨리 사라집니다. 로그 축에서 각 계수 \(\ln|b_n(t)|\)는 기울기 \(-n^2\pi^2\)인 직선입니다.</p>
+    <p>이 사실에서 공학적으로 중요한 결론 세 가지가 나옵니다.</p>
+    <ol>
+      <li><b>긴 시간에는 첫 모드만 남는다.</b> \(t \gg \tau_2\)이면 \(u \approx b_1e^{-t/\tau_1}\sin(\pi x/L)\). 식는 물체의 온도는 결국 하나의 지수 함수로 떨어지고, 그 시상수가 \(\tau_1 = L^2/(\alpha\pi^2)\)이다. 3장의 뉴턴 냉각이 "충분히 오래 지난 뒤"의 근사로 정당화된다.</li>
+      <li><b>크기는 \(L^2\)으로 늘어난다.</b> 두께가 두 배인 벽은 열이 퍼지는 데 네 배 걸린다. 칠면조를 굽는 시간, 강철 담금질 시간이 크기의 제곱에 비례하는 이유다.</li>
+      <li><b>거꾸로 가는 열 방정식은 풀 수 없다.</b> 시간을 뒤로 돌리면 \(e^{+n^2\pi^2\tau}\)가 곱해져 측정 오차의 높은 모드가 폭발한다. 흐려진 온도 분포에서 처음 분포를 복원하는 문제는 <b>불량 조건</b>이다.</li>
+    </ol>
+
+    <div class="sim" id="sim-pe-modes">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>모드 계수의 경주: e<sup>−n²π²τ</sup></h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-mode-bar"></canvas><span class="cap">|b<sub>n</sub>(τ)| (로그 축)</span></div>
+          <div><canvas id="pe-cv-mode-line"></canvas><span class="cap">ln|b<sub>n</sub>| 대 τ: 기울기 −n²π²</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>처음 온도</span><select id="pe-md-pre">
+            <option value="uni">어디나 100 °C</option>
+            <option value="pulse">가운데만 뜨거움</option>
+            <option value="step">왼쪽 절반만 100 °C</option>
+          </select></label>
+          <label class="ctrl"><span>τ <output id="pe-md-t-out"></output></span><input type="range" id="pe-md-t" min="0" max="0.2" step="0.0005" value="0.005"></label>
+          <div class="btn-row"><button class="btn primary" id="pe-md-play">▶ 시간 흐르기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">|b₁(τ)|</span><span class="v" id="pe-md-o-b1">—</span></div>
+        <div class="stat"><span class="k">둘째 모드 / 첫 모드</span><span class="v" id="pe-md-o-r">—</span></div>
+        <div class="stat"><span class="k">첫 모드의 에너지 비율</span><span class="v" id="pe-md-o-e">—</span></div>
+        <div class="stat"><span class="k">1% 넘는 모드 수</span><span class="v" id="pe-md-o-n">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① τ = 0에서 막대들이 1/n로 천천히 줄어 있다가, τ = 0.01만 되어도 높은 모드가 절벽처럼 떨어집니다. ② 오른쪽 그래프에서 n = 1의 직선은 거의 수평이고 n = 9는 81배 가파릅니다. ③ '가운데만 뜨거움'은 좌우 대칭이라 짝수 모드가 0입니다. '왼쪽 절반'은 짝수 모드도 들어 있습니다. 모델: 양끝 0 °C, b<sub>n</sub>(τ) = b<sub>n</sub>(0)e<sup>−n²π²τ</sup>.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="boundary-conditions">
+    <h2>경계 조건: 디리클레, 노이만, 그리고 정상 상태</h2>
+    <div class="problem"><strong>단열재로 감싼 끝, 다른 온도로 유지한 끝</strong>
+      <p>실제 막대의 끝은 늘 얼음물에 담겨 있지 않습니다. 한쪽은 보온재로 감싸여 열이 드나들지 못하고, 다른 쪽은 엔진 블록에 붙어 90 °C를 유지할 수도 있습니다. 경계 조건이 바뀌면 해는 어떻게 바뀔까요?</p></div>
+    <div class="table-wrap"><table class="pe-tbl">
+      <thead><tr><th>경계 조건</th><th>물리적 뜻</th><th>공간 고유함수</th><th>긴 시간 뒤</th></tr></thead>
+      <tbody>
+        <tr><td>디리클레 u = 0</td><td>끝을 정해진 온도로 유지</td><td>sin(nπx/L), n ≥ 1</td><td>u → 0</td></tr>
+        <tr><td>노이만 u<sub>x</sub> = 0</td><td>단열: 열 플럭스 0</td><td>cos(nπx/L), n ≥ 0</td><td>u → 처음 평균값</td></tr>
+        <tr><td>비동차 디리클레 u(0) = T₁, u(L) = T₂</td><td>양 끝을 다른 온도로</td><td>정상 해 + sin 급수</td><td>u → 직선</td></tr>
+        <tr><td>로뱅 u<sub>x</sub> = −h(u − T<sub>∞</sub>)</td><td>표면에서 대류 냉각</td><td>sin(kₙx), tan 방정식의 근</td><td>u → T<sub>∞</sub></td></tr>
+      </tbody></table></div>
+    <p><b>노이만 조건</b>에서는 \(n = 0\) 모드(상수, \(\lambda_0 = 0\))가 감쇠하지 않습니다. 그 계수가 \(a_0/2 = \frac1L\int_0^L f\,dx\), 즉 처음 평균 온도입니다. 열이 빠져나갈 곳이 없으니 총 열량이 보존되고, 결국 그 열량이 고르게 퍼진 상태가 됩니다. 실제로 \(\frac{d}{dt}\int_0^L u\,dx = \alpha\int_0^L u_{xx}\,dx = \alpha[u_x]_0^L = 0\)입니다.</p>
+    <p><b>비동차 경계 조건</b>은 변수분리를 바로 쓸 수 없습니다(0이 아닌 경계값은 \(X(0)T(t) = T_1\)을 모든 \(t\)에서 만족시킬 수 없음). 대신 해를 두 부분으로 나눕니다. 시간에 따라 변하지 않는 <span class="term">정상 상태</span> \(u_s(x)\)는 \(u_s'' = 0\)이므로 직선 \(u_s = T_1 + (T_2 - T_1)x/L\)이고, 나머지 \(v = u - u_s\)는 동차 경계 조건을 만족하므로 정리 16.2로 풀립니다.</p>
+    <div class="formula">$$u(x, t) = \underbrace{T_1 + (T_2 - T_1)\frac xL}_{\text{정상 상태}} + \underbrace{\sum_{n=1}^\infty b_n e^{-\alpha(n\pi/L)^2t}\sin\frac{n\pi x}{L}}_{\text{과도 상태}},\qquad b_n = \frac2L\int_0^L\bigl(f - u_s\bigr)\sin\frac{n\pi x}{L}\,dx.$$
+      <div class="where">3장의 "과도 응답 + 정상 상태" 구조가 공간으로 넓어진 것이다. 과도 부분은 첫 모드의 시상수 \(\tau_1\)로 사라진다.</div></div>
+    <div class="callout"><strong>예제 16.3 (한쪽은 끓는 물, 한쪽은 얼음물)</strong> 처음에 어디나 0 °C인 막대(\(L = 1\))의 왼쪽 끝을 100 °C, 오른쪽 끝을 0 °C로 유지한다.
+      <ol>
+        <li>정상 상태: \(u_s = 100(1 - x)\).</li>
+        <li>과도 부분의 처음 값: \(f - u_s = -100(1 - x)\). 사인 계수는 \(b_n = -200\int_0^1(1 - x)\sin n\pi x\,dx = -\frac{200}{n\pi}\).</li>
+        <li>\(u = 100(1 - x) - \frac{200}{\pi}\sum_{n\ge1}\frac1n e^{-n^2\pi^2\alpha t}\sin n\pi x\). 위 시뮬레이터에서 경계 조건 '왼쪽 100 · 오른쪽 0'을 고르면 어떤 처음 분포든 이 직선으로 다가가는 것을 볼 수 있다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="wave-equation">
+    <h2>파동 방정식: 줄의 진동과 배음</h2>
+    <div class="problem"><strong>기타 줄의 음높이</strong>
+      <p>기타 줄을 튕기면 한 가지 높이의 음이 납니다. 줄을 더 세게 감으면(장력↑) 음이 올라가고, 프렛을 눌러 줄을 짧게 하면 역시 올라가며, 굵은 줄(선밀도↑)은 낮은 음을 냅니다. 그리고 같은 음이라도 브리지 가까이 튕기면 날카롭고, 가운데를 튕기면 부드럽습니다. 이 모든 것을 한 방정식이 설명할 수 있을까요?</p></div>
+    <p>장력 \(T\), 선밀도 \(\rho\)(kg/m)인 줄의 작은 옆변위 \(u(x, t)\)를 봅니다. 짧은 조각 \([x, x + \Delta x]\)의 양 끝을 장력이 줄 방향으로 당기고, 그 세로 성분은 기울기가 작을 때 \(T\sin\theta \approx Tu_x\)입니다. 뉴턴 2법칙을 세로 방향으로 쓰면</p>
+    <div class="formula">$$\rho\,\Delta x\,u_{tt} = T\,u_x(x + \Delta x, t) - T\,u_x(x, t)\quad\Longrightarrow\quad u_{tt} = c^2u_{xx},\qquad c = \sqrt{T/\rho}.$$
+      <div class="where">이것이 <span class="term">파동 방정식</span><span class="en">(wave equation)</span>이다. \(c\)는 줄을 따라 파동이 달리는 속도(m/s)다. 열 방정식과 달리 시간에 대해 2계이므로 초기 변위 \(u(x, 0) = f(x)\)와 초기 속도 \(u_t(x, 0) = g(x)\) 두 개가 필요하다.</div></div>
+    <p>양 끝을 고정한 줄(\(u(0, t) = u(L, t) = 0\))에 변수분리를 쓰면 공간은 같은 고유값 문제 \(X_n = \sin(n\pi x/L)\)이고, 시간은 \(T'' + c^2\lambda_nT = 0\), 7장의 단진동입니다. 열에서는 모드가 <b>감쇠</b>했지만 파동에서는 각자의 진동수로 <b>진동</b>합니다.</p>
+    <div class="callout deep"><strong>정리 16.3 (고정된 줄의 해와 정규 모드)</strong>
+      <div class="formula">$$u(x, t) = \sum_{n=1}^\infty\Bigl(A_n\cos\omega_nt + B_n\sin\omega_nt\Bigr)\sin\frac{n\pi x}{L},\qquad \omega_n = \frac{n\pi c}{L},$$
+      $$A_n = \frac2L\int_0^L f(x)\sin\frac{n\pi x}{L}\,dx,\qquad B_n = \frac{2}{\omega_nL}\int_0^L g(x)\sin\frac{n\pi x}{L}\,dx.$$</div>
+      각 항을 <span class="term">정규 모드</span><span class="en">(normal mode)</span>라 한다. \(n\)번째 모드의 진동수는 \(f_n = \omega_n/2\pi = nc/(2L) = \frac{n}{2L}\sqrt{T/\rho}\)로, 기본 진동수 \(f_1\)의 정수배다.</div>
+    <p>정수배 진동수 \(f_1, 2f_1, 3f_1, \ldots\)를 <span class="term">배음</span><span class="en">(harmonics)</span>이라 합니다. 진동수가 정확히 정수배라서 줄의 소리는 주기 \(1/f_1\)의 주기 신호이고, 우리 귀는 이것을 높이가 분명한 음으로 듣습니다. 원형 북(14장의 베셀 함수)은 모드 진동수가 정수배가 아니라서 음높이가 덜 분명합니다. 공식 \(f_1 = \frac{1}{2L}\sqrt{T/\rho}\)는 문제 상자의 세 관찰(장력↑, 길이↓, 굵기↓이면 음↑)을 그대로 담고 있습니다.</p>
+    <div class="callout"><strong>예제 16.4 (튕긴 줄의 배음 구성)</strong> 길이 \(L\)인 줄의 위치 \(x = p\)를 높이 \(h\)로 당겼다가 놓는다(\(g = 0\)). 처음 모양은 \((0, 0)\), \((p, h)\), \((L, 0)\)을 잇는 삼각형이다.
+      <ol>
+        <li>\(B_n = 0\). \(A_n = \frac2L\int_0^L f\sin\frac{n\pi x}{L}\,dx\)를 두 구간으로 나누어 부분 적분하면 \(A_n = \dfrac{2hL^2}{\pi^2n^2p(L - p)}\sin\dfrac{n\pi p}{L}\).</li>
+        <li>계수는 \(1/n^2\)로 줄어든다(삼각형은 연속이지만 꺾여 있다, 15장 표).</li>
+        <li>\(\sin(n\pi p/L) = 0\)인 배음은 <b>빠진다</b>. 가운데(\(p = L/2\))를 튕기면 짝수 배음이 모두 없고 \(A_3/A_1 = -1/9\). \(p = L/5\)이면 5, 10, 15번째 배음이 없다.</li>
+        <li>끝 가까이(\(p\) 작게) 튕기면 \(\sin(n\pi p/L) \approx n\pi p/L\)이 \(n\)과 함께 커져서 높은 배음이 상대적으로 많아진다. 소리가 날카로워진다.</li>
+      </ol></div>
+    <p>숫자로 감을 잡아 봅시다. 줄 길이 0.65 m에서 110 Hz(라 음)를 내려면 \(c = 2Lf_1 = 143\) m/s가 필요하고, 선밀도가 5 g/m인 줄이라면 장력은 \(T = \rho c^2 \approx 102\) N입니다.</p>
+
+    <div class="sim" id="sim-pe-pluck">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>줄 뜯기: 튕기는 위치가 배음을 정한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-pl-str"></canvas><span class="cap">줄 u(x, t) (느린 동작)</span></div>
+          <div><canvas id="pe-cv-pl-bar"></canvas><span class="cap">배음 진폭 |A<sub>n</sub>| / |A₁|</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>튕기는 위치 p/L <output id="pe-pl-p-out"></output></span><input type="range" id="pe-pl-p" min="0.05" max="0.5" step="0.01" value="0.2"></label>
+          <label class="check"><input type="checkbox" id="pe-pl-modes"> 처음 세 모드 따로 보이기</label>
+          <div class="btn-row"><button class="btn primary" id="pe-pl-play">■ 멈춤</button><button class="btn" id="pe-pl-snd">♪ 소리 듣기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">기본 진동수 f₁</span><span class="v" id="pe-pl-o-f">—</span></div>
+        <div class="stat"><span class="k">A₂ / A₁</span><span class="v" id="pe-pl-o-r2">—</span></div>
+        <div class="stat"><span class="k">A₃ / A₁</span><span class="v" id="pe-pl-o-r3">—</span></div>
+        <div class="stat"><span class="k">빠진 배음</span><span class="v" id="pe-pl-o-miss">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① p/L = 0.5에서 짝수 배음이 모두 사라지고 줄 모양이 좌우 대칭으로 접혔다 펴집니다. ② p/L = 0.2에서는 5, 10번째 배음이 없습니다. 소리를 들어 0.5와 비교해 보세요. ③ p를 0.05까지 줄이면 높은 배음 막대들이 자라 소리가 날카로워집니다. 모델: 양끝 고정(L = 0.65 m, c = 143 m/s라면 f₁ = 110 Hz), 감쇠 없는 파동 방정식의 40항 급수(애니메이션은 1주기 = 2초로 늦춤). 소리는 f₁ = 220 Hz로 합성하고 높은 배음일수록 빨리 줄도록 감쇠를 넣었습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="dalembert">
+    <h2>달랑베르 해: 두 방향으로 달리는 파</h2>
+    <div class="problem"><strong>긴 줄의 한 곳을 꼬집으면</strong>
+      <p>아주 긴 빨랫줄의 한가운데를 살짝 들었다 놓으면 볼록한 모양이 두 개로 갈라져 양쪽으로 달려갑니다. 사인 급수로도 이것을 설명할 수 있지만, 더 직접적인 그림이 있습니다.</p></div>
+    <p>변수를 \(\xi = x - ct\), \(\eta = x + ct\)로 바꾸면 연쇄 법칙(<a href="../../calculus/chapters/chain-rule.html">CalculusBook 연쇄 법칙</a>)으로 \(u_{tt} - c^2u_{xx} = -4c^2u_{\xi\eta}\)입니다. 그래서 파동 방정식은 \(u_{\xi\eta} = 0\)이 되고, 이것을 \(\eta\)로 적분한 뒤 \(\xi\)로 적분하면 일반해가 나옵니다.</p>
+    <div class="callout deep"><strong>정리 16.4 (달랑베르 공식)</strong> 무한히 긴 줄에서 \(u_{tt} = c^2u_{xx}\), \(u(x, 0) = f(x)\), \(u_t(x, 0) = g(x)\)의 해는
+      <div class="formula">$$u(x, t) = \frac{f(x - ct) + f(x + ct)}{2} + \frac1{2c}\int_{x - ct}^{x + ct} g(s)\,ds.$$</div>
+      일반해는 \(u = F(x - ct) + G(x + ct)\), 즉 오른쪽으로 속도 \(c\)로 달리는 모양과 왼쪽으로 달리는 모양의 합이다.</div>
+    <p>공식에서 두 가지를 읽을 수 있습니다. 첫째, 정지 상태에서 놓은(\(g = 0\)) 처음 모양은 <b>높이가 절반인 두 개</b>로 갈라져 반대 방향으로 달립니다. 둘째, 점 \((x, t)\)의 값은 처음 시각의 구간 \([x - ct, x + ct]\)에만 달려 있습니다. 이 구간을 <span class="term">의존 영역</span><span class="en">(domain of dependence)</span>이라 하고, 그 경계 \(x \pm ct = \) 상수인 직선을 <span class="term">특성선</span><span class="en">(characteristics)</span>이라 합니다. 신호는 \(c\)보다 빨리 퍼지지 않습니다. 열 방정식과의 결정적인 차이로, 열 방정식에서는 한 점을 데우면 \(t > 0\)인 순간 모든 곳의 온도가 (아주 조금이라도) 오릅니다.</p>
+    <p><b>끝에서의 반사.</b> \(x = 0\)이 고정된 반무한 줄은 처음 모양을 원점에 대해 <b>홀 확장</b>한 무한 줄과 같습니다. 홀함수의 달랑베르 해는 늘 \(u(0, t) = 0\)이기 때문입니다. 그래서 고정 끝에 닿은 파는 <b>뒤집혀서</b> 돌아옵니다. 자유 끝(\(u_x = 0\))은 짝 확장이므로 뒤집히지 않고 돌아옵니다. 15장의 짝·홀 확장이 여기서 물리적 반사가 됩니다.</p>
+
+    <div class="sim" id="sim-pe-dalembert">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 파의 행진과 끝에서의 반사</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-da-u"></canvas><span class="cap">u(x, t) = 오른쪽 파 + 왼쪽 파</span></div>
+          <div><canvas id="pe-cv-da-xt"></canvas><span class="cap">x–t 평면: 특성선을 따라 달린다</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>끝 조건</span><div class="seg" id="pe-da-bc"><button data-value="open" class="on">무한 줄</button><button data-value="fix">고정 끝</button><button data-value="free">자유 끝</button></div></div>
+          <div class="ctrl"><span>처음 속도</span><div class="seg" id="pe-da-v"><button data-value="0" class="on">정지</button><button data-value="1">오른쪽</button><button data-value="-1">왼쪽</button></div></div>
+          <label class="ctrl"><span>처음 위치 x₀ <output id="pe-da-x-out"></output></span><input type="range" id="pe-da-x" min="1" max="9" step="0.1" value="3"></label>
+          <label class="ctrl"><span>시간 t <output id="pe-da-t-out"></output></span><input type="range" id="pe-da-t" min="0" max="20" step="0.01" value="1.5"></label>
+          <div class="btn-row"><button class="btn primary" id="pe-da-play">▶ 재생</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">오른쪽 파 중심</span><span class="v" id="pe-da-o-r">—</span></div>
+        <div class="stat"><span class="k">왼쪽 파 중심</span><span class="v" id="pe-da-o-l">—</span></div>
+        <div class="stat"><span class="k">max u</span><span class="v" id="pe-da-o-mx">—</span></div>
+        <div class="stat"><span class="k">min u</span><span class="v" id="pe-da-o-mn">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '정지'에서 높이 1의 혹이 높이 0.5짜리 둘로 갈라집니다. ② '고정 끝'에서 x = 0에 닿은 파가 뒤집혀(min u = −0.5) 돌아오고, '자유 끝'에서는 바로 선 채 돌아옵니다. 끝에서 순간적으로 높이가 1이 되는 것도 보세요. ③ 오른쪽 x–t 그림에서 혹은 기울기 ±1(c = 1)인 특성선을 따라 갑니다. 모델: 줄 [0, 10], c = 1, 가우스 혹 e<sup>−((x−x₀)/0.5)²</sup>. '오른쪽'은 g = −c·f′로 오른쪽 파만 만드는 처음 속도입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="laplace-equation">
+    <h2>라플라스 방정식: 정상 상태 온도</h2>
+    <div class="problem"><strong>네 변의 온도가 다른 금속판</strong>
+      <p>정사각형 금속판의 윗변은 100 °C 증기관에, 나머지 세 변은 0 °C 냉각수관에 붙어 있습니다. 오래 기다리면 판 안의 온도가 더는 변하지 않는 상태에 이릅니다. 판 한가운데의 온도는 몇 도일까요?</p></div>
+    <p>2차원 열 방정식은 \(u_t = \alpha(u_{xx} + u_{yy})\)입니다. 정상 상태에서는 \(u_t = 0\)이므로</p>
+    <div class="formula">$$\nabla^2u = u_{xx} + u_{yy} = 0.$$
+      <div class="where">이것이 <span class="term">라플라스 방정식</span><span class="en">(Laplace equation)</span>이고, 해를 <b>조화 함수</b>라 한다. 전하가 없는 공간의 정전기 퍼텐셜, 비압축·비회전 유체의 속도 퍼텐셜, 막의 정적 처짐도 같은 방정식을 따른다(<a href="../../calculus/chapters/vector-calculus.html">CalculusBook 벡터 미적분</a>의 발산과 기울기).</div></div>
+    <p>사각 판 \(0 \le x, y \le L\)에서 윗변만 \(u(x, L) = f(x)\)이고 다른 세 변이 0이라 합시다. \(u = X(x)Y(y)\)로 두면 \(X''/X = -Y''/Y = -\lambda\). 옆 두 변의 조건이 \(X\)의 고유값 문제를 만들어 \(X_n = \sin(n\pi x/L)\)이고, \(Y'' = \lambda_nY\), \(Y(0) = 0\)에서 \(Y_n = \sinh(n\pi y/L)\)입니다. 이번에는 진동도 감쇠도 아닌 <b>쌍곡 사인</b>이 나옵니다.</p>
+    <div class="formula">$$u(x, y) = \sum_{n=1}^\infty b_n\frac{\sinh(n\pi y/L)}{\sinh n\pi}\sin\frac{n\pi x}{L},\qquad b_n = \frac2L\int_0^L f(x)\sin\frac{n\pi x}{L}\,dx.$$
+      <div class="where">네 변이 모두 0이 아니면 한 변씩 풀어 더한다(중첩).</div></div>
+    <div class="callout deep"><strong>정리 16.5 (평균값 성질과 최대 원리)</strong> 조화 함수 \(u\)의 한 점에서의 값은 그 점을 중심으로 하는 (영역 안의) 모든 원 위의 평균값과 같다. 따라서 \(u\)의 최댓값과 최솟값은 영역의 <b>경계</b>에서만 나타난다. 특히 경계값이 같은 두 해는 같다(유일성).</div>
+    <p>최대 원리는 직관과 맞습니다. 열원이 없는 판의 내부가 가장자리보다 뜨거울 수는 없습니다. 평균값 성질은 수치 해법도 알려 줍니다. 격자에서 "각 점 = 상하좌우 네 이웃의 평균"을 되풀이해 고치면 해로 수렴합니다. 이것이 <b>야코비 반복</b>이고, 고친 값을 즉시 쓰면 <b>가우스–자이델</b>, 고칠 양을 \(\omega\)배 과장하면 <b>SOR</b>(축차 과완화)입니다.</p>
+    <div class="callout"><strong>예제 16.5 (판 한가운데의 온도)</strong> 위 문제 상자에서 \(f = 100\).
+      <ol>
+        <li>\(b_n = 400/(n\pi)\) (홀수 \(n\)). 가운데 \((L/2, L/2)\)에서 \(u = \sum\frac{400}{n\pi}\frac{\sinh(n\pi/2)}{\sinh n\pi}\sin\frac{n\pi}{2}\). 첫 항이 25.37, 모든 항을 더하면 정확히 25.00 °C.</li>
+        <li>급수 없이 얻는 방법: 판을 90°씩 돌리면 "윗변 100"이 "오른쪽 변 100" 등 네 문제가 되고, 넷을 더하면 네 변 모두 100인 문제(해는 어디나 100)가 된다. 대칭으로 네 문제의 가운데 값이 같으므로 각각 100/4 = 25.</li>
+        <li>일반적으로 정사각형 판의 가운데 온도는 <b>네 변 온도의 평균</b>이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pe-laplace">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>판의 정상 상태 온도: 이웃 평균을 되풀이하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-lp-map"></canvas><span class="cap">u(x, y) 온도 지도와 등온선</span></div>
+          <div><canvas id="pe-cv-lp-res"></canvas><span class="cap">한 번 고칠 때 최대 변화 (로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>윗변 <output id="pe-lp-T-out"></output></span><input type="range" id="pe-lp-T" min="0" max="100" step="1" value="100"></label>
+          <label class="ctrl"><span>아랫변 <output id="pe-lp-B-out"></output></span><input type="range" id="pe-lp-B" min="0" max="100" step="1" value="0"></label>
+          <label class="ctrl"><span>왼쪽 변 <output id="pe-lp-L-out"></output></span><input type="range" id="pe-lp-L" min="0" max="100" step="1" value="0"></label>
+          <label class="ctrl"><span>오른쪽 변 <output id="pe-lp-R-out"></output></span><input type="range" id="pe-lp-R" min="0" max="100" step="1" value="0"></label>
+          <div class="ctrl"><span>반복 방법</span><div class="seg" id="pe-lp-m"><button data-value="jac">야코비</button><button data-value="gs">가우스–자이델</button><button data-value="sor" class="on">SOR</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="pe-lp-run">▶ 반복</button><button class="btn" id="pe-lp-reset">내부 0으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수</span><span class="v" id="pe-lp-o-k">—</span></div>
+        <div class="stat"><span class="k">가운데 온도</span><span class="v" id="pe-lp-o-c">—</span></div>
+        <div class="stat"><span class="k">네 변 평균 (정답)</span><span class="v" id="pe-lp-o-ex">—</span></div>
+        <div class="stat"><span class="k">최대 변화</span><span class="v" id="pe-lp-o-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① SOR로 반복하면 수십 번 만에 가운데가 25 °C에 닿습니다. 야코비로 바꾸고 '내부 0으로'를 눌러 다시 하면 같은 정확도에 훨씬 많은 반복이 필요합니다. ② 변 온도를 바꾸면 가운데 온도가 늘 네 변의 평균으로 갑니다. ③ 판 안 어디에도 경계의 최댓값보다 뜨거운 곳이 생기지 않습니다(최대 원리). 모델: 33×33 격자의 5점 차분, SOR의 ω = 2/(1 + sin(π/32)) ≈ 1.82. 모서리 점은 쓰이지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="finite-difference">
+    <h2>유한 차분법과 안정성 조건</h2>
+    <div class="problem"><strong>급수로 풀 수 없는 막대</strong>
+      <p>열전도도가 온도에 따라 변하거나, 막대 모양이 불규칙하거나, 열원이 시간에 따라 바뀌면 변수분리가 통하지 않습니다. 컴퓨터는 막대를 격자로 자르고 시간을 한 걸음씩 나아가며 풉니다. 그런데 시간 걸음을 조금만 크게 잡아도 결과가 톱니 모양으로 폭발합니다. 왜 그럴까요?</p></div>
+    <p>격자 \(x_i = i\Delta x\), \(t^k = k\Delta t\)에서 \(u_i^k \approx u(x_i, t^k)\)라 하고, 시간 미분은 앞차분, 공간 2계 미분은 중심 차분으로 바꿉니다(<a href="numerical.html">5장</a>의 오일러 방법을 각 격자점에 쓴 것).</p>
+    <div class="formula">$$\frac{u_i^{k+1} - u_i^k}{\Delta t} = \alpha\,\frac{u_{i+1}^k - 2u_i^k + u_{i-1}^k}{\Delta x^2}\quad\Longrightarrow\quad u_i^{k+1} = u_i^k + r\bigl(u_{i+1}^k - 2u_i^k + u_{i-1}^k\bigr),\qquad r = \frac{\alpha\,\Delta t}{\Delta x^2}.$$
+      <div class="where">다음 시각의 값을 지금 값 세 개로 바로 계산하므로 <b>명시적</b> 방법이라 하고, 흔히 FTCS(시간 전진, 공간 중심)라 부른다. \(r\)은 격자 푸리에 수다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="FTCS 계산 틀: 세 점에서 다음 시각 한 점">
+        <rect x="10" y="10" width="740" height="210" rx="10" class="f-surface"/>
+        <g style="stroke:var(--grid)"><line x1="80" y1="160" x2="420" y2="160"/><line x1="80" y1="70" x2="420" y2="70"/>
+          <line x1="130" y1="40" x2="130" y2="190"/><line x1="250" y1="40" x2="250" y2="190"/><line x1="370" y1="40" x2="370" y2="190"/></g>
+        <line x1="130" y1="160" x2="250" y2="70" style="stroke:var(--accent);stroke-width:2"/><line x1="250" y1="160" x2="250" y2="70" style="stroke:var(--accent);stroke-width:2"/><line x1="370" y1="160" x2="250" y2="70" style="stroke:var(--accent);stroke-width:2"/>
+        <circle cx="130" cy="160" r="8" style="fill:var(--accent-2)"/><circle cx="250" cy="160" r="8" style="fill:var(--accent-2)"/><circle cx="370" cy="160" r="8" style="fill:var(--accent-2)"/>
+        <circle cx="250" cy="70" r="9" style="fill:var(--accent)"/>
+        <text x="130" y="190" text-anchor="middle" class="t-mono">r</text><text x="250" y="190" text-anchor="middle" class="t-mono">1 − 2r</text><text x="370" y="190" text-anchor="middle" class="t-mono">r</text>
+        <text x="262" y="55" class="t-mono">u<tspan baseline-shift="sub" font-size="10">i</tspan><tspan baseline-shift="super" font-size="10">k+1</tspan></text>
+        <text x="60" y="164" text-anchor="end" class="t-dim">k</text><text x="60" y="74" text-anchor="end" class="t-dim">k + 1</text>
+        <g transform="translate(450,40)">
+          <text x="0" y="14" class="t" style="font-weight:700">가중치 세 개의 평균</text>
+          <text x="0" y="44" class="t-dim">u<tspan baseline-shift="super" font-size="10">k+1</tspan> = r·왼쪽 + (1 − 2r)·가운데 + r·오른쪽</text>
+          <text x="0" y="74" class="t-dim">r ≤ 1/2이면 가중치가 모두 0 이상</text>
+          <text x="0" y="98" class="t-dim">→ 새 값은 이웃 값들 사이에 있다</text>
+          <text x="0" y="128" class="t-acc">r > 1/2이면 가운데 가중치가 음수</text>
+          <text x="0" y="152" class="t-dim">→ 톱니 모양이 매 걸음 부호를 바꾸며 자란다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-2.</b> FTCS 계산 틀. 다음 시각의 한 점은 지금 시각 세 점의 가중 평균이다. 가중치의 합은 늘 1이고, r ≤ 1/2일 때만 모든 가중치가 음이 아니다.</figcaption>
+    </figure>
+    <p>그림의 논증을 정확하게 만드는 것이 <b>폰 노이만 안정성 분석</b>입니다. 격자 위의 푸리에 모드 \(u_i^k = G^k e^{\mathrm i\theta i}\)를 넣으면 모드마다 한 걸음에 곱해지는 <b>증폭 인자</b> \(G\)가 나옵니다.</p>
+    <div class="formula">$$G(\theta) = 1 + r\bigl(e^{\mathrm i\theta} - 2 + e^{-\mathrm i\theta}\bigr) = 1 - 4r\sin^2\frac\theta2,\qquad 0 \le \theta \le \pi.$$</div>
+    <div class="callout deep"><strong>정리 16.6 (FTCS의 안정성 조건)</strong> 열 방정식의 명시적 방법이 모든 모드에서 \(|G| \le 1\)일 필요충분조건은
+      <div class="formula">$$r = \frac{\alpha\,\Delta t}{\Delta x^2} \le \frac12.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(G\)는 \(\theta\)에 대해 감소하고 가장 작은 값은 가장 높은 격자 모드 \(\theta = \pi\)(점마다 부호가 바뀌는 톱니)에서 \(G(\pi) = 1 - 4r\)이다. \(G \le 1\)은 늘 성립하고, \(G(\pi) \ge -1 \iff r \le 1/2\). ∎</p></div>
+    <p>이 조건은 꽤 가혹합니다. 정확도를 위해 \(\Delta x\)를 절반으로 줄이면 \(\Delta t\)는 1/4로 줄여야 하고, 전체 계산량은 8배가 됩니다. 그래서 실무에서는 다음 시각 값들을 연립 방정식으로 함께 푸는 <b>음적 방법</b>(뒤 오일러, 크랭크–니콜슨)을 자주 씁니다. 이들은 어떤 \(r\)에서도 안정합니다. 5장의 강성 방정식에서 본 이야기가 편미분방정식에서 그대로 되풀이됩니다. 높은 공간 모드의 감쇠율 \(\alpha n^2\pi^2/L^2\)이 매우 커서 시스템이 강성하기 때문입니다.</p>
+
+    <div class="sim" id="sim-pe-ftcs">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>FTCS: r을 1/2 위로 올리면</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-ft-u"></canvas><span class="cap">수치 해(점)와 정확한 해(점선)</span></div>
+          <div><canvas id="pe-cv-ft-g"></canvas><span class="cap">증폭 인자 G(θ) = 1 − 4r sin²(θ/2)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>r = αΔt/Δx² <output id="pe-ft-r-out"></output></span><input type="range" id="pe-ft-r" min="0.1" max="0.7" step="0.01" value="0.45"></label>
+          <label class="ctrl"><span>처음 온도</span><select id="pe-ft-pre">
+            <option value="pulse">가운데 펄스</option>
+            <option value="sin">sin πx (+ 반올림 오차)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="pe-ft-run">▶ 걸음 진행</button><button class="btn" id="pe-ft-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 수 k</span><span class="v" id="pe-ft-o-k">—</span></div>
+        <div class="stat"><span class="k">τ = k·r·Δx²</span><span class="v" id="pe-ft-o-t">—</span></div>
+        <div class="stat"><span class="k">G(π) = 1 − 4r</span><span class="v" id="pe-ft-o-g">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="pe-ft-o-e">—</span></div>
+      </div>
+      <div class="pe-msg" id="pe-ft-msg"></div>
+      <div class="sim-note">해볼 것: ① r = 0.45에서 ▶를 누르면 수치 해가 정확한 해를 잘 따라갑니다. ② r = 0.55로 올리고 처음부터 다시 하면 수십 걸음 만에 점마다 부호가 바뀌는 톱니가 자라 해를 덮습니다. |G(π)| = 1.2배씩 자라는 것입니다. ③ 'sin πx'에서는 처음에 톱니 성분이 반올림 오차(10⁻¹⁶)뿐이라 r = 0.6에서도 한참 괜찮아 보이다가 갑자기 터집니다. 모델: [0, 1]을 Δx = 1/40으로 나눈 FTCS, 양끝 0. 정확한 해는 200항 사인 급수.</div>
+    </div>
+
+    <p>파동 방정식도 같은 방식으로 차분화합니다. 시간 2계 미분도 중심 차분으로 바꾸면 \(u_i^{k+1} = 2u_i^k - u_i^{k-1} + C^2(u_{i+1}^k - 2u_i^k + u_{i-1}^k)\)이고, \(C = c\Delta t/\Delta x\)를 <span class="term">쿠랑 수</span><span class="en">(Courant number)</span>라 합니다.</p>
+    <div class="callout deep"><strong>정리 16.7 (CFL 조건)</strong> 파동 방정식의 위 명시적 방법이 안정할 필요충분조건은
+      <div class="formula">$$C = \frac{c\,\Delta t}{\Delta x} \le 1.$$</div>
+      폰 노이만 분석에서 \(G^2 - 2(1 - 2C^2\sin^2\frac\theta2)G + 1 = 0\)의 두 근이 단위원 위에 있을 조건이 \(C^2\sin^2\frac\theta2 \le 1\)이고, 모든 \(\theta\)에 대해서는 \(C \le 1\)이다. 쿠랑, 프리드리히스, 레위<span class="en">(Courant–Friedrichs–Lewy)</span>의 이름을 따 CFL 조건이라 한다.</div>
+    <p>CFL 조건에는 아름다운 해석이 있습니다. 수치 방법에서 한 점의 값은 한 걸음에 이웃 한 칸까지만 정보를 받으므로, 수치적 의존 영역은 기울기 \(\Delta x/\Delta t\)의 원뿔입니다. 진짜 해의 의존 영역은 기울기 \(c\)의 원뿔(특성선)입니다. <b>수치 원뿔이 진짜 원뿔을 품지 못하면</b>(\(c\Delta t > \Delta x\)), 수치 방법은 해를 정하는 정보의 일부를 아예 보지 못하고, 어떤 격자를 써도 맞는 답에 수렴할 수 없습니다. 흥미롭게도 \(C = 1\)이면 이 차분법은 격자점에서 정확한 해를 줍니다.</p>
+
+    <div class="sim" id="sim-pe-cfl">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>CFL: 수치 원뿔이 특성선을 품어야 한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="pe-cv-cfl-u"></canvas><span class="cap">수치 해(주황)와 달랑베르 해(점선)</span></div>
+          <div><canvas id="pe-cv-cfl-cone"></canvas><span class="cap">5걸음의 의존 영역: 수치(칠한 원뿔) 대 진짜(빨강 선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>쿠랑 수 C = cΔt/Δx <output id="pe-cf-C-out"></output></span><input type="range" id="pe-cf-C" min="0.5" max="1.1" step="0.01" value="0.9"></label>
+          <div class="btn-row"><button class="btn primary" id="pe-cf-run">▶ 진행</button><button class="btn" id="pe-cf-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 수</span><span class="v" id="pe-cf-o-k">—</span></div>
+        <div class="stat"><span class="k">시각 t</span><span class="v" id="pe-cf-o-t">—</span></div>
+        <div class="stat"><span class="k">max |u|</span><span class="v" id="pe-cf-o-mx">—</span></div>
+        <div class="stat"><span class="k">상태</span><span class="v" id="pe-cf-o-st">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① C = 1.00이면 수치 해가 점선과 정확히 겹칩니다. ② C = 0.7이면 안정하지만 혹 뒤로 잔물결이 끌려옵니다(수치 분산). ③ C = 1.05로 올리면 몇십 걸음 뒤 톱니가 폭발합니다. 오른쪽 그림에서 빨강 특성선이 칠한 수치 원뿔 밖으로 나가는 순간입니다. 모델: [0, 1], Δx = 1/100, c = 1, 양끝 고정, 가우스 혹을 정지 상태에서 놓음.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="applications">
+    <h2>응용: 반도체 확산, 악기 줄, 정전기 퍼텐셜</h2>
+    <div class="problem"><strong>접합 깊이 0.5 μm 맞추기</strong>
+      <p>n형 실리콘(배경 농도 \(C_B\)) 표면에서 붕소를 확산시켜 p형 층을 만듭니다. 붕소 농도가 배경 농도와 같아지는 깊이가 p–n 접합 깊이 \(x_j\)입니다. 확산 시간과 온도(즉 \(\sqrt{Dt}\))를 어떻게 잡아야 원하는 깊이가 될까요?</p></div>
+    <p>도펀트 농도 \(C(x, t)\)는 확산 방정식 \(C_t = DC_{xx}\)를 따릅니다. 웨이퍼 두께는 확산 길이보다 훨씬 크므로 반무한 영역 \(x \ge 0\)으로 봅니다. 공정은 두 단계가 대표적입니다.</p>
+    <ul>
+      <li><b>선확산</b>(표면 농도 일정, \(C(0, t) = C_s\)): \(C = C_s\operatorname{erfc}\bigl(x/(2\sqrt{Dt})\bigr)\). 여기서 \(\operatorname{erfc} = 1 - \operatorname{erf}\)는 여오차 함수다. 들어간 총량은 \(Q = 2C_s\sqrt{Dt/\pi}\)로 시간의 제곱근에 비례해 는다.</li>
+      <li><b>주입 후 확산</b>(총량 \(Q\) 고정, 표면에서 드나듦 없음): \(C = \dfrac{Q}{\sqrt{\pi Dt}}\exp\bigl(-x^2/(4Dt)\bigr)\). 가우스 분포가 넓어지며 표면 농도가 \(1/\sqrt t\)로 준다.</li>
+    </ul>
+    <p>두 해 모두 \(x\)와 \(t\)가 \(x/\sqrt{Dt}\)로만 묶여 나타납니다. 열 방정식의 기본 척도 "퍼지는 거리 ∝ \(\sqrt{\text{시간}}\)"입니다. 앞 절의 \(t \propto L^2\)과 같은 말입니다.</p>
+    <div class="callout"><strong>예제 16.6 (접합 깊이)</strong> \(C_s = 10^{20}\) cm⁻³, \(C_B = 10^{16}\) cm⁻³, \(\sqrt{Dt} = 0.1\) μm인 선확산의 접합 깊이는?
+      <ol>
+        <li>\(C_s\operatorname{erfc}(x_j/(2\sqrt{Dt})) = C_B\)에서 \(\operatorname{erfc}(z) = 10^{-4}\), 수치로 \(z \approx 2.751\).</li>
+        <li>\(x_j = 2\sqrt{Dt}\,z \approx 2(0.1)(2.751) \approx 0.55\) μm.</li>
+        <li>깊이를 두 배로 하려면 \(\sqrt{Dt}\)를 두 배, 즉 같은 온도에서 시간을 4배로 늘려야 한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pe-dopant">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>도펀트 확산과 p–n 접합 깊이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pe-cv-dop"></canvas><span class="tag-tl">C(x) (cm⁻³, 로그 축) · 점선: 배경 농도 C<sub>B</sub></span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>공정</span><div class="seg" id="pe-dp-m"><button data-value="erfc" class="on">표면 농도 일정 (erfc)</button><button data-value="gauss">총량 일정 (가우스)</button></div></div>
+          <label class="ctrl"><span>확산 길이 √(Dt) <output id="pe-dp-s-out"></output></span><input type="range" id="pe-dp-s" min="0.02" max="0.5" step="0.005" value="0.1"></label>
+          <label class="ctrl"><span>배경 농도 (log₁₀) <output id="pe-dp-b-out"></output></span><input type="range" id="pe-dp-b" min="14" max="18" step="0.1" value="16"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">표면 농도 C<sub>s</sub></span><span class="v" id="pe-dp-o-cs">—</span></div>
+        <div class="stat"><span class="k">총량 Q</span><span class="v" id="pe-dp-o-q">—</span></div>
+        <div class="stat"><span class="k">접합 깊이 x<sub>j</sub></span><span class="v" id="pe-dp-o-xj">—</span></div>
+        <div class="stat"><span class="k">x<sub>j</sub> / √(Dt)</span><span class="v" id="pe-dp-o-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① erfc에서 √(Dt) = 0.1 μm, C<sub>B</sub> = 10¹⁶이면 x<sub>j</sub> ≈ 0.55 μm(예제 16.6). √(Dt)를 두 배로 하면 x<sub>j</sub>도 정확히 두 배입니다. ② 가우스로 바꾸면 √(Dt)가 커질수록 표면 농도가 떨어지며 분포가 넓어집니다. 총량 Q는 그대로입니다. ③ 배경 농도를 높이면 접합이 얕아집니다. 모델: 표면 농도 C<sub>s</sub> = 10²⁰ cm⁻³(erfc), 총량 Q = 10¹⁵ cm⁻²(가우스), 확산 계수는 농도와 무관하다고 가정.</div>
+    </div>
+    <div class="callout"><strong>악기 줄과 정전기 퍼텐셜</strong> 피아노의 낮은 줄은 길이만으로 낮은 음을 내기 어려워 구리선을 감아 선밀도 \(\rho\)를 키웁니다. \(f_1 = \frac{1}{2L}\sqrt{T/\rho}\)에서 \(\rho\)를 키우면 줄을 지나치게 길게 하지 않아도 음이 내려갑니다. 정전기에서는 전하가 없는 영역의 퍼텐셜 \(V\)가 라플라스 방정식 \(\nabla^2V = 0\)을 따르므로, 축전기 전극 사이의 퍼텐셜과 전기장 \(\mathbf E = -\nabla V\)를 위 판 온도 시뮬레이터와 똑같은 반복 완화로 계산할 수 있습니다. 최대 원리는 "전하가 없는 공간에 퍼텐셜의 꼭대기나 골짜기가 생길 수 없다"는 뜻이 됩니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>열·파동·라플라스 방정식은 각각 <b>포물형·쌍곡형·타원형</b> 편미분방정식의 원형입니다. 확산은 퍼지고 매끄러워지며(포물형), 파동은 유한한 속도로 모양을 실어 나르고(쌍곡형), 정상 상태는 경계값 전체가 안쪽을 한꺼번에 정합니다(타원형). 유한 요소법·유한 체적법 같은 산업용 해석 도구는 모두 이 세 원형의 성질을 지키도록 설계됩니다.</p>
+    <div class="uses">
+      <a href="boundary.html"><small>15장 · 경계값 문제</small>고유값 문제와 푸리에 급수<br><span>변수분리의 공간 부분과 초기 조건 전개.</span></a>
+      <a href="series-solutions.html"><small>14장 · 급수해</small>베셀 함수와 원형 북<br><span>원판에서 변수분리하면 반지름 방향이 베셀 방정식이 된다.</span></a>
+      <a href="numerical.html"><small>5장 · 수치 해법</small>오일러 방법과 강성<br><span>FTCS는 격자점마다 쓴 오일러 방법이고, r ≤ 1/2은 그 안정성 영역이다.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>u′ = Au와 고유값<br><span>공간을 격자로 자르면 열 방정식은 거대한 연립 선형 방정식이 된다.</span></a>
+      <a href="../../calculus/chapters/vector-calculus.html"><small>CALCULUSBOOK</small>발산 정리와 라플라시안<br><span>보존 법칙 + 플럭스 법칙 = 확산 방정식의 3차원판.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 변환<br><span>무한 영역의 열 방정식은 푸리에 변환으로 가우스 핵의 합성곱이 된다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>열 방정식 u<sub>t</sub> = αu<sub>xx</sub>는 푸리에 법칙 q = −ku<sub>x</sub>와 에너지 보존에서 나온다. α = k/(ρc<sub>p</sub>). 온도의 봉우리는 식고 골짜기는 데워진다.</li>
+      <li>변수분리 u = X(x)T(t)는 PDE를 공간 고유값 문제와 시간 ODE로 나눈다. 해는 Σbₙe<sup>−α(nπ/L)²t</sup>sin(nπx/L)이고 bₙ은 처음 온도의 사인 계수다.</li>
+      <li>n번째 모드의 감쇠율은 n²에 비례한다. 긴 시간에는 첫 모드만 남고(시상수 L²/(απ²)), 퍼짐 시간은 L²에 비례하며, 시간을 거꾸로 푸는 문제는 불량 조건이다.</li>
+      <li>디리클레는 사인, 노이만은 코사인(평균 보존), 비동차 경계 조건은 정상 상태(직선) + 과도 상태로 푼다.</li>
+      <li>파동 방정식 u<sub>tt</sub> = c²u<sub>xx</sub>, c = √(T/ρ). 고정된 줄의 모드 진동수는 fₙ = nc/(2L)로 정수배 배음이다. 튕기는 위치 p에서 sin(nπp/L) = 0인 배음이 빠진다.</li>
+      <li>달랑베르 해 u = ½[f(x − ct) + f(x + ct)] + (1/2c)∫g. 신호는 특성선을 따라 속도 c로 간다. 고정 끝은 홀 확장(뒤집힌 반사), 자유 끝은 짝 확장이다.</li>
+      <li>라플라스 방정식 ∇²u = 0은 정상 상태다. 조화 함수는 평균값 성질과 최대 원리를 가지고, 정사각형 판의 가운데 값은 네 변 온도의 평균이다. 반복 완화(야코비·가우스–자이델·SOR)가 평균값 성질의 이산판이다.</li>
+      <li>명시적 FTCS는 r = αΔt/Δx² ≤ 1/2일 때만 안정하다(G(π) = 1 − 4r). 파동의 명시적 방법은 CFL 조건 cΔt/Δx ≤ 1이 필요하다. 수치 의존 영역이 진짜 의존 영역을 품어야 한다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 양끝이 0 °C인 막대(\(L = 1\))의 처음 온도가 \(f(x) = 20\sin 2\pi x\)다. \(u(x, t)\)는?</p><div class="opts">
+        <button class="opt">\(20e^{-2\pi\alpha t}\sin2\pi x\)</button>
+        <button class="opt" data-correct>\(20e^{-4\pi^2\alpha t}\sin2\pi x\)</button>
+        <button class="opt">\(20\cos(2\pi\sqrt\alpha\,t)\sin2\pi x\)</button>
+        <button class="opt">\(20e^{-\pi^2\alpha t}\sin2\pi x\)</button>
+      </div><div class="quiz-exp">처음 온도가 이미 2번 고유함수이므로 그 모드 하나만 \(e^{-\alpha\lambda_2t}\), \(\lambda_2 = (2\pi)^2 = 4\pi^2\)로 감쇠한다. 코사인 진동은 파동 방정식의 시간 부분이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 같은 재료의 막대 길이를 3배로 늘렸다. 처음 모양이 같을 때 같은 비율만큼 식는 데 걸리는 시간은?</p><div class="opts">
+        <button class="opt">3배</button>
+        <button class="opt">√3배</button>
+        <button class="opt" data-correct>9배</button>
+        <button class="opt">27배</button>
+      </div><div class="quiz-exp">해는 무차원 시간 \(\tau = \alpha t/L^2\)로만 쓰인다. 같은 \(\tau\)에 이르려면 \(t \propto L^2\)이므로 9배. 퍼지는 거리가 \(\sqrt{\alpha t}\)에 비례하는 것과 같은 말이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 양끝을 단열한 막대의 처음 온도가 왼쪽 절반 80 °C, 오른쪽 절반 20 °C다. 아주 오래 뒤의 온도는?</p><div class="opts">
+        <button class="opt">어디나 0 °C</button>
+        <button class="opt" data-correct>어디나 50 °C</button>
+        <button class="opt">80 °C에서 20 °C로 가는 직선</button>
+        <button class="opt">어디나 80 °C</button>
+      </div><div class="quiz-exp">노이만 조건에서는 \(\lambda_0 = 0\)인 상수 모드가 감쇠하지 않고, 그 값은 처음 평균 \(\frac1L\int f = 50\)이다. 열이 빠져나갈 곳이 없어 총 열량이 보존된다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 줄의 장력을 4배로 하면 기본 진동수는?</p><div class="opts">
+        <button class="opt">4배</button>
+        <button class="opt" data-correct>2배 (한 옥타브 위)</button>
+        <button class="opt">1/2배</button>
+        <button class="opt">16배</button>
+      </div><div class="quiz-exp">\(f_1 = \frac{1}{2L}\sqrt{T/\rho}\)이므로 \(\sqrt4 = 2\)배. 진동수가 두 배면 한 옥타브 위다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 양끝 고정 줄의 \(x = L/3\) 지점을 당겼다 놓았다. 소리에 들어 있지 않은 배음은?</p><div class="opts">
+        <button class="opt">짝수 배음 전부</button>
+        <button class="opt" data-correct>3, 6, 9, … 번째 배음</button>
+        <button class="opt">기본음</button>
+        <button class="opt">모든 배음이 들어 있다</button>
+      </div><div class="quiz-exp">\(A_n \propto \sin(n\pi/3)/n^2\)이고 \(n\)이 3의 배수이면 0이다. 그 모드들은 튕긴 점이 마디라서 처음 모양에서 그 모드 성분이 생기지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 무한 줄을 정지 상태에서 높이 2인 혹 모양으로 놓았다. 충분히 오랜 뒤의 모습은?</p><div class="opts">
+        <button class="opt">높이 2인 혹이 제자리에서 진동한다</button>
+        <button class="opt" data-correct>높이 1인 혹 두 개가 반대 방향으로 속도 c로 멀어진다</button>
+        <button class="opt">높이 2인 혹 하나가 오른쪽으로 간다</button>
+        <button class="opt">혹이 퍼지며 납작해진다</button>
+      </div><div class="quiz-exp">\(g = 0\)이면 \(u = \frac12[f(x - ct) + f(x + ct)]\). 모양은 그대로, 높이는 절반으로 갈라져 양쪽으로 간다. 퍼지며 납작해지는 것은 열 방정식의 행동이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 정사각형 판의 네 변을 각각 0, 40, 60, 100 °C로 유지한다. 정상 상태에서 판 한가운데 온도는?</p><div class="opts">
+        <button class="opt">0 °C</button>
+        <button class="opt" data-correct>50 °C</button>
+        <button class="opt">100 °C</button>
+        <button class="opt">경계값만으로는 정할 수 없다</button>
+      </div><div class="quiz-exp">중첩과 90° 회전 대칭으로 가운데 값은 네 변 온도의 평균이다: \((0 + 40 + 60 + 100)/4 = 50\). 라플라스 방정식의 해는 경계값만으로 유일하게 정해진다(최대 원리).</div></div>
+
+      <div class="quiz-q"><p>Q8. 열 방정식을 FTCS로 풀고 있다. \(\Delta x = 0.01\), \(\alpha = 1\)일 때 안정한 가장 큰 시간 간격은?</p><div class="opts">
+        <button class="opt">\(\Delta t = 0.01\)</button>
+        <button class="opt">\(\Delta t = 0.005\)</button>
+        <button class="opt" data-correct>\(\Delta t = 5\times10^{-5}\)</button>
+        <button class="opt">\(\Delta t = 10^{-4}\)</button>
+      </div><div class="quiz-exp">\(r = \alpha\Delta t/\Delta x^2 \le 1/2\)이므로 \(\Delta t \le \Delta x^2/2 = 10^{-4}/2 = 5\times10^{-5}\). \(10^{-4}\)이면 \(r = 1\), \(G(\pi) = -3\)으로 톱니가 걸음마다 3배씩 자란다.</div></div>
+    </div>
+  </section>
+
+  <!-- =============================================================== epilogue -->
+  <section id="epilogue">
+    <h2>맺으며: 지금 상태가 다음 순간을 정한다</h2>
+    <p>이 책은 한 문장에서 출발했습니다. <b>미분방정식은 지금 상태가 다음 순간을 정하는 규칙이고, 해는 그 규칙을 따라 그린 곡선이다.</b> 1장의 방향장에서 그 규칙은 평면 위의 작은 기울기 화살표였고, 이 장의 열 방정식에서는 막대의 모든 점이 이웃과 비교해 "봉우리는 내려가고 골짜기는 올라가라"고 말하는 규칙이었습니다. 규칙의 무대가 점 하나에서 곡선 전체로 넓어졌을 뿐, 생각의 틀은 같습니다.</p>
+    <p>그 사이에 우리는 두 주인공을 만났습니다. 선형 방정식에서는 <b>지수 함수 \(e^{\lambda t}\)와 고유값</b>이 모든 것을 정했습니다. 2장의 붕괴율, 6–8장의 특성근과 공진, 9–10장 전달 함수의 극점, 11장 행렬의 고유값, 그리고 15–16장의 공간 고유값 \((n\pi/L)^2\)까지, 해를 "따로 움직이는 모드"로 쪼개고 각 모드의 \(\lambda\)를 읽는 같은 기술이었습니다. 비선형 방정식에서는 <b>평형점과 안정성</b>이 주인공이었습니다. 4장의 위상선, 12장의 선형화와 리아푸노프 함수, 13장의 분기와 혼돈은 식을 풀 수 없을 때도 해의 운명을 그림으로 읽는 방법이었습니다. 그리고 5장과 이 장의 수치 해법은 손이 닿지 않는 곳까지 해를 따라가되, 걸음이 규칙의 시간 척도를 존중해야 한다는 것을 가르쳐 주었습니다.</p>
+    <div class="pe-map">
+      <a href="modeling.html"><small>01–05</small>1계 방정식<br><span>방향장, 분리, 적분 인자, 위상선, 수치 해법</span></a>
+      <a href="second-order.html"><small>06–08</small>2계 선형 방정식<br><span>특성근, 진동, 공진</span></a>
+      <a href="laplace.html"><small>09–10</small>라플라스 변환<br><span>미분을 곱셈으로, 전달 함수와 극점</span></a>
+      <a href="systems.html"><small>11–13</small>연립·비선형 동역학<br><span>위상 평면, 안정성, 혼돈</span></a>
+      <a href="series-solutions.html"><small>14–16</small>급수해와 편미분방정식<br><span>특수 함수, 고유함수 전개, 열과 파동</span></a>
+      <a href="glossary.html"><small>17</small>용어집 &amp; 종합 퀴즈<br><span>전 범위를 장마다 두 문항으로 점검</span></a>
+    </div>
+    <p>여기서 길은 여러 갈래로 이어집니다. 2차원·3차원의 편미분방정식과 유한 요소법, 제어 이론의 상태 공간 설계, 확률 미분방정식, 유체의 나비에–스토크스 방정식, 양자역학의 슈뢰딩거 방정식 모두 이 책의 세 가지 질문을 다시 묻습니다. <b>규칙은 무엇인가, 그림은 어떻게 생겼는가, 어떤 모드로 쪼갤 수 있는가.</b> 새로운 방정식을 만나면 먼저 그 규칙이 지금 상태에서 다음 순간을 어떻게 정하는지 물어보세요. 해는 그 규칙을 따라 그린 곡선입니다.</p>
+  </section>
+</main>
+<script>
+const PE = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) { if (!isFinite(v) || v <= 0) return "—"; const e = Math.floor(Math.log10(v)), m = v / Math.pow(10, e); const sup = String(e).split("").map((c) => (c === "-" ? "⁻" : "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c])).join(""); return m.toFixed(d) + "×10" + sup; },
+  box(w, h, o = {}) { return { x: o.left || 52, y: o.top || 30, w: w - (o.left || 52) - (o.right || 16), h: h - (o.top || 30) - (o.bottom || 40) }; },
+  path(ctx, ch, pts, o = {}) {
+    ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 2; ctx.setLineDash(o.dash || []); ctx.globalAlpha = o.alpha != null ? o.alpha : 1;
+    ctx.beginPath(); let st = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y)) { st = false; return; } const px = ch.X(x), py = ch.Y(y); st ? ctx.lineTo(px, py) : ctx.moveTo(px, py); st = true; });
+    ctx.stroke(); ctx.restore();
+  },
+  clip(ctx, ch) { ctx.save(); ctx.beginPath(); ctx.rect(ch.box.x, ch.box.y, ch.box.w, ch.box.h); ctx.clip(); },
+  msg(id, cls, html) { const el = document.getElementById(id); el.className = "pe-msg" + (cls ? " " + cls : ""); el.innerHTML = html; },
+  font(px = 12, mono = false) { return px + "px " + getComputedStyle(document.body).getPropertyValue(mono ? "--mono" : "--font"); },
+  /** 온도(0..100) → 색 */
+  heat(v) { return MB.colormap(MB.clamp(v / 100, 0, 1), "diverge"); },
+  /** [0,1]에서 f의 사인 계수 b_1..b_N (중점 공식) */
+  sineCoef(f, N, M = 2000) { const b = [0]; const fs = []; for (let i = 0; i < M; i++) fs.push(f((i + 0.5) / M)); for (let n = 1; n <= N; n++) { let s = 0; for (let i = 0; i < M; i++) s += fs[i] * Math.sin((n * Math.PI * (i + 0.5)) / M); b.push((2 * s) / M); } return b; },
+  cosCoef(f, N, M = 2000) { const a = []; const fs = []; for (let i = 0; i < M; i++) fs.push(f((i + 0.5) / M)); for (let n = 0; n <= N; n++) { let s = 0; for (let i = 0; i < M; i++) s += fs[i] * Math.cos((n * Math.PI * (i + 0.5)) / M); a.push((2 * s) / M); } return a; },
+};
+const PE_INIT = {
+  pulse: (x) => (Math.abs(x - 0.5) < 0.1 ? 100 : 0),
+  uni: () => 100,
+  modes: (x) => 100 * Math.sin(Math.PI * x) + 50 * Math.sin(3 * Math.PI * x),
+  step: (x) => (x < 0.5 ? 100 : 0),
+};
+
+/* ================================================================ 1. 막대 온도 지도 */
+(function () {
+  const NM = 100, NX = 120, NT = 90, TMAX = 0.25;
+  let key = "pulse", bc = "D", tau = 0.02, coef = null, grid = null, cvP = null, playing = false;
+  const f = (x) => PE_INIT[key](x);
+  const us = (x) => (bc === "T" ? 100 * (1 - x) : 0);
+  function build() {
+    if (bc === "N") coef = PE.cosCoef(f, NM); else coef = PE.sineCoef((x) => f(x) - us(x), NM);
+    grid = new Float64Array(NX * NT);
+    for (let j = 0; j < NT; j++) { const t = (TMAX * j) / (NT - 1); for (let i = 0; i < NX; i++) { const x = (i + 0.5) / NX; grid[j * NX + i] = j === 0 ? f(x) : U(x, t); } }
+  }
+  function U(x, t) {
+    if (t <= 0) return f(x);
+    let s = 0;
+    if (bc === "N") { s = coef[0] / 2; for (let n = 1; n <= NM; n++) { const e = Math.exp(-n * n * Math.PI * Math.PI * t); if (e < 1e-12) break; s += coef[n] * e * Math.cos(n * Math.PI * x); } return s; }
+    for (let n = 1; n <= NM; n++) { const e = Math.exp(-n * n * Math.PI * Math.PI * t); if (e < 1e-12) break; s += coef[n] * e * Math.sin(n * Math.PI * x); }
+    return us(x) + s;
+  }
+  build();
+  const cvM = MB.canvas("#pe-cv-heat-map", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 40, left: 46, bottom: 36 });
+    MB.drawGray(ctx, grid, NX, NT, box.x, box.y, box.w, box.h, { map: PE.heat, smooth: true });
+    ctx.strokeStyle = C.border; ctx.strokeRect(box.x, box.y, box.w, box.h);
+    const ty = box.y + (tau / TMAX) * box.h;
+    ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(box.x, ty); ctx.lineTo(box.x + box.w, ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.dim; ctx.font = PE.font(11, true); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    [0, 0.5, 1].forEach((v) => ctx.fillText(String(v), box.x + v * box.w, box.y + box.h + 5));
+    ctx.fillText("x", box.x + box.w / 2, box.y + box.h + 18);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    [0, 0.1, 0.2].forEach((v) => ctx.fillText(String(v), box.x - 5, box.y + (v / TMAX) * box.h));
+    ctx.save(); ctx.translate(12, box.y + box.h / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.fillText("τ ↓", 0, 0); ctx.restore();
+  }, { aspect: 0.75, minHeight: 240, maxHeight: 340 });
+  cvP = MB.canvas("#pe-cv-heat-prof", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 }), cur = [], ini = [], ss = [];
+    for (let i = 0; i <= 300; i++) { const x = i / 300; cur.push([x, U(x, tau)]); ini.push([x, f(Math.min(x, 1 - 1e-9))]); }
+    const mean = bc === "N" ? coef[0] / 2 : null;
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [-15, 125], xLabel: "x", yLabel: "u (°C)", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    PE.clip(ctx, ch);
+    PE.path(ctx, ch, ini, { color: C.dim, width: 1.4, dash: [4, 4] });
+    if (bc === "T") PE.path(ctx, ch, [[0, 100], [1, 0]], { color: C.ok, width: 1.6, dash: [2, 4] });
+    if (bc === "N") PE.path(ctx, ch, [[0, mean], [1, mean]], { color: C.ok, width: 1.6, dash: [2, 4] });
+    if (bc === "D") PE.path(ctx, ch, [[0, 0], [1, 0]], { color: C.ok, width: 1.6, dash: [2, 4] });
+    PE.path(ctx, ch, cur, { color: C.accent, width: 3 });
+    ctx.restore();
+  }, { aspect: 0.75, minHeight: 240, maxHeight: 340 });
+  function draw() {
+    cvM.redraw(); cvP.redraw();
+    let s = 0, mx = -1e9; for (let i = 0; i < 400; i++) { const v = U((i + 0.5) / 400, tau); s += v; mx = Math.max(mx, v); }
+    const sec = tau * 1e4;
+    MB.stat("pe-ht-o-t", PE.num(tau, 3) + " (" + (sec < 120 ? sec.toFixed(0) + " s" : (sec / 60).toFixed(1) + " min") + ")");
+    MB.stat("pe-ht-o-mean", PE.num(s / 400, 1) + " °C"); MB.stat("pe-ht-o-max", PE.num(mx, 1) + " °C");
+    const t1 = bc === "N" ? 1 / (Math.PI * Math.PI) : 1 / (Math.PI * Math.PI);
+    MB.stat("pe-ht-o-ss", "τ₁ ≈ " + PE.num(t1, 3) + " (" + ((t1 * 1e4) / 60).toFixed(0) + " min)");
+  }
+  const tR = MB.range("pe-ht-t", (v) => PE.num(v, 3), (v) => { tau = v; draw(); });
+  MB.seg("pe-ht-bc", (v) => { bc = v; build(); draw(); });
+  document.getElementById("pe-ht-pre").addEventListener("change", (e) => { key = e.target.value; build(); draw(); });
+  const btn = MB.playButton("pe-ht-play", () => { if (tau >= TMAX - 1e-6) tau = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 시간 흐르기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-pe-heat"), (dt) => {
+    if (!playing) return;
+    tau = Math.min(TMAX, tau + dt * (0.004 + tau * 0.35)); tR.set(tau, false); draw();
+    if (tau >= TMAX) { playing = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 2. 모드 감쇠 */
+(function () {
+  const NB = 15, TMAX = 0.2;
+  let key = "uni", tau = 0.005, b0 = null, cvL = null, playing = false;
+  const build = () => { b0 = PE.sineCoef(PE_INIT[key], NB, 4000); for (let n = 1; n <= NB; n++) if (Math.abs(b0[n]) < 1e-6) b0[n] = 0; };
+  build();
+  const bt = (n, t) => b0[n] * Math.exp(-n * n * Math.PI * Math.PI * t);
+  const nz = () => { const o = []; for (let n = 1; n <= NB && o.length < 5; n++) if (b0[n] !== 0) o.push(n); return o; };
+  const cvB = MB.canvas("#pe-cv-mode-bar", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 });
+    const ch = MB.chart(ctx, box, { x: [0, NB + 1], y: [1e-6, 1e3], logY: true, xLabel: "모드 n", xTicks: [1, 3, 5, 7, 9, 11, 13, 15], series: [] });
+    PE.clip(ctx, ch);
+    for (let n = 1; n <= NB; n++) {
+      if (!b0[n]) continue; const bw = Math.max(5, (box.w / (NB + 2)) * 0.6), x = ch.X(n);
+      const v0 = Math.abs(b0[n]), v = Math.abs(bt(n, tau));
+      ctx.fillStyle = C.faint; ctx.globalAlpha = 0.45; ctx.fillRect(x - bw / 2, ch.Y(v0), bw, ch.Y(1e-6) - ch.Y(v0)); ctx.globalAlpha = 1;
+      if (v > 1e-6) { ctx.fillStyle = n === 1 ? C.accent : C.accent2; ctx.fillRect(x - bw / 2, ch.Y(v), bw, ch.Y(1e-6) - ch.Y(v)); }
+    }
+    ctx.restore();
+  }, { aspect: 0.72, minHeight: 230, maxHeight: 330 });
+  cvL = MB.canvas("#pe-cv-mode-line", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 }), ser = [];
+    nz().forEach((n, i) => { const d = []; for (let k = 0; k <= 200; k++) { const t = (TMAX * k) / 200; d.push([t, Math.abs(bt(n, t))]); } ser.push({ data: d, color: i === 0 ? C.accent : MB.palette().series[(i + 1) % MB.palette().series.length], width: 2.2 }); });
+    const ch = MB.chart(ctx, box, { x: [0, TMAX], y: [1e-6, 1e3], logY: true, xLabel: "τ", series: ser, vlines: [{ x: tau, color: C.text, dash: [4, 4] }] });
+    ctx.font = PE.font(11, true); ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    nz().forEach((n, i) => { const yv = Math.pow(10, 1.5 - 1.6 * i); const tl = Math.min(TMAX * 0.85, Math.log(Math.abs(b0[n]) / yv) / (n * n * Math.PI * Math.PI)); const y = Math.abs(bt(n, tl)); ctx.fillStyle = ser[i].color; ctx.fillText("n=" + n, ch.X(tl) + 5, ch.Y(y) - 2); });
+  }, { aspect: 0.72, minHeight: 230, maxHeight: 330 });
+  function draw() {
+    cvB.redraw(); cvL.redraw();
+    const z = nz(); let e = 0, e1 = 0, cnt = 0; const b1 = Math.abs(bt(1, tau)) || Math.abs(bt(z[0], tau));
+    for (let n = 1; n <= NB; n++) { const v = bt(n, tau); e += v * v; if (n === z[0]) e1 = v * v; if (Math.abs(v) > 0.01 * b1) cnt++; }
+    MB.stat("pe-md-o-b1", PE.num(Math.abs(bt(1, tau)), 2)); MB.stat("pe-md-o-r", z.length > 1 ? MB.fmt(Math.abs(bt(z[1], tau) / bt(z[0], tau)), 3) + " (n=" + z[1] + ")" : "—");
+    MB.stat("pe-md-o-e", PE.num((100 * e1) / e, 2) + " %"); MB.stat("pe-md-o-n", cnt + "개");
+  }
+  const tR = MB.range("pe-md-t", (v) => PE.num(v, 4), (v) => { tau = v; draw(); });
+  document.getElementById("pe-md-pre").addEventListener("change", (e) => { key = e.target.value; build(); draw(); });
+  const btn = MB.playButton("pe-md-play", () => { if (tau >= TMAX - 1e-6) tau = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 시간 흐르기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-pe-modes"), (dt) => {
+    if (!playing) return; tau = Math.min(TMAX, tau + dt * (0.002 + tau * 0.3)); tR.set(tau, false); draw();
+    if (tau >= TMAX) { playing = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 3. 줄 뜯기 */
+(function () {
+  const NM = 40;
+  let p = 0.2, A = [], t = 0, running = true, modes = false, cvB = null;
+  const build = () => { A = [0]; for (let n = 1; n <= NM; n++) A.push((2 / (Math.PI * Math.PI * n * n * p * (1 - p))) * Math.sin(n * Math.PI * p)); };
+  build();
+  const u = (x, tt) => { let s = 0; for (let n = 1; n <= NM; n++) s += A[n] * Math.cos(n * Math.PI * tt) * Math.sin(n * Math.PI * x); return s; };
+  const cvS = MB.canvas("#pe-cv-pl-str", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 30, bottom: 20, left: 20, right: 20 });
+    const X = (x) => box.x + x * box.w, Y = (v) => box.y + box.h / 2 - v * box.h * 0.42;
+    ctx.strokeStyle = C.faint; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(0)); ctx.stroke(); ctx.setLineDash([]);
+    // 처음 모양
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(p), Y(1)); ctx.lineTo(X(1), Y(0)); ctx.stroke(); ctx.setLineDash([]);
+    if (modes) [1, 2, 3].forEach((n, i) => { ctx.strokeStyle = C.series[(i + 1) % C.series.length]; ctx.globalAlpha = 0.8; ctx.lineWidth = 1.4; ctx.beginPath(); for (let k = 0; k <= 200; k++) { const x = k / 200, v = A[n] * Math.cos(n * Math.PI * t) * Math.sin(n * Math.PI * x); k ? ctx.lineTo(X(x), Y(v)) : ctx.moveTo(X(x), Y(v)); } ctx.stroke(); ctx.globalAlpha = 1; });
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 3; ctx.beginPath();
+    for (let k = 0; k <= 300; k++) { const x = k / 300, v = u(x, t); k ? ctx.lineTo(X(x), Y(v)) : ctx.moveTo(X(x), Y(v)); }
+    ctx.stroke();
+    ctx.fillStyle = C.text; [0, 1].forEach((x) => { ctx.beginPath(); ctx.arc(X(x), Y(0), 5, 0, 7); ctx.fill(); });
+    ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.moveTo(X(p), Y(1) - 4); ctx.lineTo(X(p) - 6, Y(1) - 14); ctx.lineTo(X(p) + 6, Y(1) - 14); ctx.closePath(); ctx.fill();
+  }, { aspect: 0.6, minHeight: 210, maxHeight: 300 });
+  cvB = MB.canvas("#pe-cv-pl-bar", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 });
+    const ch = MB.chart(ctx, box, { x: [0, 13], y: [0, 1.08], xLabel: "배음 n", xTicks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], series: [] });
+    for (let n = 1; n <= 12; n++) {
+      const v = Math.abs(A[n] / A[1]), x = ch.X(n), bw = Math.max(6, (box.w / 14) * 0.6);
+      if (v < 1e-9) { ctx.strokeStyle = C.bad; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 4, ch.Y(0) - 10); ctx.lineTo(x + 4, ch.Y(0) - 2); ctx.moveTo(x + 4, ch.Y(0) - 10); ctx.lineTo(x - 4, ch.Y(0) - 2); ctx.stroke(); continue; }
+      ctx.fillStyle = n === 1 ? C.accent : C.accent2; ctx.fillRect(x - bw / 2, ch.Y(Math.min(v, 1.08)), bw, ch.Y(0) - ch.Y(Math.min(v, 1.08)));
+    }
+  }, { aspect: 0.6, minHeight: 210, maxHeight: 300 });
+  function info() {
+    MB.stat("pe-pl-o-f", "110 Hz");
+    MB.stat("pe-pl-o-r2", PE.num(A[2] / A[1], 3)); MB.stat("pe-pl-o-r3", PE.num(A[3] / A[1], 3));
+    const miss = []; for (let n = 2; n <= 20; n++) if (Math.abs(A[n] / A[1]) < 1e-6) miss.push(n);
+    MB.stat("pe-pl-o-miss", miss.length ? miss.slice(0, 5).join(", ") + (miss.length > 5 ? ", …" : "") : "없음");
+  }
+  MB.range("pe-pl-p", (v) => v.toFixed(2), (v) => { p = v; build(); t = 0; cvS.redraw(); cvB.redraw(); info(); });
+  MB.check("pe-pl-modes", (v) => { modes = v; cvS.redraw(); });
+  const btn = MB.playButton("pe-pl-play", () => { running = false; }, () => { running = true; loop.start(); }, ["■ 멈춤", "▶ 재생"]);
+  const loop = MB.loop(document.getElementById("sim-pe-pluck"), (dt) => { if (!running) return; t += dt; cvS.redraw(); });
+  document.getElementById("pe-pl-snd").addEventListener("click", () => {
+    const ac = MB.ctx(); if (!ac) return;
+    const sr = ac.sampleRate || 44100, T = 1.8, n = Math.floor(sr * T), buf = new Float32Array(n), f1 = 220;
+    let mx = 0;
+    for (let i = 0; i < n; i++) { const tt = i / sr; let s = 0; for (let k = 1; k <= 30; k++) { if (k * f1 > sr / 2.2) break; s += A[k] * Math.exp(-(1.2 + 0.35 * k) * tt) * Math.sin(2 * Math.PI * k * f1 * tt); } buf[i] = s; mx = Math.max(mx, Math.abs(s)); }
+    for (let i = 0; i < n; i++) buf[i] = (buf[i] / mx) * Math.min(1, i / (sr * 0.004));
+    MB.playBuffer(buf, sr, { gain: 0.18 });
+  });
+  info();
+})();
+
+/* ================================================================ 4. 달랑베르 */
+(function () {
+  const LL = 10;
+  let bc = "open", vdir = 0, x0 = 3, t = 1.5, playing = false, xt = null, cvX = null;
+  const bump = (x) => Math.exp(-(((x - x0) / 0.5) ** 2));
+  const F = (x) => {
+    if (bc === "open") return bump(x);
+    const m = MB.mod(x, 2 * LL); // [0, 2L)
+    if (m <= LL) return bump(m);
+    const r = 2 * LL - m; return bc === "fix" ? -bump(r) : bump(r);
+  };
+  const R = (x, tt) => 0.5 * (1 + vdir) * F(x - tt), Lw = (x, tt) => 0.5 * (1 - vdir) * F(x + tt);
+  const NX = 200, NT = 120, TMX = 20;
+  function build() { xt = new Float64Array(NX * NT); for (let j = 0; j < NT; j++) { const tt = (TMX * j) / (NT - 1); for (let i = 0; i < NX; i++) { const x = (LL * (i + 0.5)) / NX; xt[j * NX + i] = R(x, tt) + Lw(x, tt); } } }
+  build();
+  const cvU = MB.canvas("#pe-cv-da-u", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 }), r = [], l = [], s = [];
+    for (let i = 0; i <= 500; i++) { const x = (LL * i) / 500; r.push([x, R(x, t)]); l.push([x, Lw(x, t)]); s.push([x, R(x, t) + Lw(x, t)]); }
+    const ch = MB.chart(ctx, box, { x: [0, LL], y: [-1.15, 1.15], xLabel: "x", yLabel: "u", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    PE.clip(ctx, ch);
+    PE.path(ctx, ch, r, { color: C.accent2, width: 1.6, dash: [5, 4] }); PE.path(ctx, ch, l, { color: C.series[2 % C.series.length], width: 1.6, dash: [5, 4] });
+    PE.path(ctx, ch, s, { color: C.accent, width: 3 });
+    ctx.restore();
+    if (bc !== "open") { ctx.fillStyle = C.text; [0, LL].forEach((x) => { if (bc === "fix") { ctx.fillRect(ch.X(x) - (x ? 0 : 6), box.y, 6, box.h); } else { ctx.strokeStyle = C.text; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(ch.X(x), box.y); ctx.lineTo(ch.X(x), box.y + box.h); ctx.stroke(); ctx.setLineDash([]); } }); }
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 330 });
+  cvX = MB.canvas("#pe-cv-da-xt", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 40, left: 40, bottom: 36 });
+    MB.drawGray(ctx, xt, NX, NT, box.x, box.y, box.w, box.h, { map: (v) => MB.colormap(0.5 + 0.5 * MB.clamp(v, -1, 1), "diverge"), smooth: true });
+    ctx.strokeStyle = C.border; ctx.strokeRect(box.x, box.y, box.w, box.h);
+    const ty = box.y + (t / TMX) * box.h; ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(box.x, ty); ctx.lineTo(box.x + box.w, ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.dim; ctx.font = PE.font(11, true); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    [0, 5, 10].forEach((v) => ctx.fillText(String(v), box.x + (v / LL) * box.w, box.y + box.h + 5)); ctx.fillText("x", box.x + box.w / 2, box.y + box.h + 18);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; [0, 10, 20].forEach((v) => ctx.fillText(String(v), box.x - 5, box.y + (v / TMX) * box.h));
+    ctx.save(); ctx.translate(12, box.y + box.h / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.fillText("t ↓", 0, 0); ctx.restore();
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 330 });
+  const fold = (x) => { if (bc === "open") return x; const m = MB.mod(x, 2 * LL); return m <= LL ? m : 2 * LL - m; };
+  function draw() {
+    cvU.redraw(); cvX.redraw();
+    let mx = -9, mn = 9; for (let i = 0; i <= 1000; i++) { const x = (LL * i) / 1000, v = R(x, t) + Lw(x, t); mx = Math.max(mx, v); mn = Math.min(mn, v); }
+    const rc = x0 + t, lc = x0 - t;
+    MB.stat("pe-da-o-r", vdir === -1 ? "없음" : bc === "open" ? (rc <= LL ? PE.num(rc, 2) : "밖으로") : PE.num(fold(rc), 2));
+    MB.stat("pe-da-o-l", vdir === 1 ? "없음" : bc === "open" ? (lc >= 0 ? PE.num(lc, 2) : "밖으로") : PE.num(fold(lc), 2));
+    MB.stat("pe-da-o-mx", PE.num(mx, 3)); MB.stat("pe-da-o-mn", PE.num(mn, 3));
+  }
+  const tR = MB.range("pe-da-t", (v) => PE.num(v, 2), (v) => { t = v; draw(); });
+  MB.range("pe-da-x", (v) => v.toFixed(1), (v) => { x0 = v; build(); draw(); });
+  MB.seg("pe-da-bc", (v) => { bc = v; build(); draw(); });
+  MB.seg("pe-da-v", (v) => { vdir = Number(v); build(); draw(); });
+  const btn = MB.playButton("pe-da-play", () => { if (t >= TMX - 0.01) t = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 재생", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-pe-dalembert"), (dt) => {
+    if (!playing) return; t = Math.min(TMX, t + dt * 1.6); tR.set(t, false); draw();
+    if (t >= TMX) { playing = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 5. 라플라스 반복 */
+(function () {
+  const n = 33, OM = 2 / (1 + Math.sin(Math.PI / (n - 1)));
+  let u = new Float64Array(n * n), method = "sor", iters = 0, hist = [], running = false, cvR = null;
+  const E = { T: 100, B: 0, L: 0, R: 0 };
+  const setEdges = () => { for (let i = 0; i < n; i++) { u[i] = E.T; u[(n - 1) * n + i] = E.B; u[i * n] = E.L; u[i * n + n - 1] = E.R; } u[0] = (E.T + E.L) / 2; u[n - 1] = (E.T + E.R) / 2; u[(n - 1) * n] = (E.B + E.L) / 2; u[n * n - 1] = (E.B + E.R) / 2; };
+  const reset = () => { u = new Float64Array(n * n); setEdges(); iters = 0; hist = []; };
+  reset();
+  function sweep() {
+    let mx = 0;
+    if (method === "jac") {
+      const v = u.slice();
+      for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) { const k = j * n + i, nv = 0.25 * (u[k - 1] + u[k + 1] + u[k - n] + u[k + n]); mx = Math.max(mx, Math.abs(nv - u[k])); v[k] = nv; }
+      u = v;
+    } else {
+      const w = method === "sor" ? OM : 1;
+      for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) { const k = j * n + i, gs = 0.25 * (u[k - 1] + u[k + 1] + u[k - n] + u[k + n]), d = w * (gs - u[k]); mx = Math.max(mx, Math.abs(d)); u[k] += d; }
+    }
+    iters++; hist.push([iters, Math.max(mx, 1e-12)]); return mx;
+  }
+  const cvM = MB.canvas("#pe-cv-lp-map", (ctx, w, h) => {
+    const C = MB.palette(), S = Math.min(w - 24, h - 40), ox = (w - S) / 2, oy = 30;
+    MB.drawGray(ctx, u, n, n, ox, oy, S, S, { map: PE.heat, smooth: true });
+    // 등온선 (10 °C 간격, 간단한 행진 사각형)
+    ctx.strokeStyle = C.text; ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
+    const cs = S / (n - 1), P = (i, j) => [ox + i * cs, oy + j * cs];
+    for (let lev = 10; lev < 100; lev += 10) {
+      ctx.beginPath();
+      for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
+        const a = u[j * n + i], b = u[j * n + i + 1], c = u[(j + 1) * n + i + 1], d = u[(j + 1) * n + i];
+        const pts = []; const ed = (v1, v2, p1, p2) => { if ((v1 - lev) * (v2 - lev) < 0) { const s = (lev - v1) / (v2 - v1); pts.push([p1[0] + s * (p2[0] - p1[0]), p1[1] + s * (p2[1] - p1[1])]); } };
+        ed(a, b, P(i, j), P(i + 1, j)); ed(b, c, P(i + 1, j), P(i + 1, j + 1)); ed(c, d, P(i + 1, j + 1), P(i, j + 1)); ed(d, a, P(i, j + 1), P(i, j));
+        if (pts.length >= 2) { ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); }
+        if (pts.length === 4) { ctx.moveTo(pts[2][0], pts[2][1]); ctx.lineTo(pts[3][0], pts[3][1]); }
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.strokeStyle = C.border; ctx.strokeRect(ox, oy, S, S);
+    const c = (n - 1) / 2; ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(ox + c * cs, oy + c * cs, 4, 0, 7); ctx.fill();
+  }, { aspect: 0.95, minHeight: 250, maxHeight: 360 });
+  cvR = MB.canvas("#pe-cv-lp-res", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 });
+    const X1 = Math.max(50, iters + 5);
+    MB.chart(ctx, box, { x: [0, X1], y: [1e-6, 100], logY: true, xLabel: "반복 횟수", series: [{ data: hist, color: C.accent, width: 2.2 }], hlines: [{ y: 1e-3, color: C.ok, label: "10⁻³" }] });
+  }, { aspect: 0.95, minHeight: 250, maxHeight: 360 });
+  function draw() {
+    cvM.redraw(); cvR.redraw();
+    const c = (n - 1) / 2; MB.stat("pe-lp-o-k", String(iters)); MB.stat("pe-lp-o-c", PE.num(u[c * n + c], 2) + " °C");
+    MB.stat("pe-lp-o-ex", PE.num((E.T + E.B + E.L + E.R) / 4, 2) + " °C"); MB.stat("pe-lp-o-r", hist.length ? MB.fmt(hist[hist.length - 1][1], 2) : "—");
+  }
+  ["T", "B", "L", "R"].forEach((k) => MB.range("pe-lp-" + k, (v) => v + " °C", (v) => { E[k] = v; setEdges(); draw(); }));
+  MB.seg("pe-lp-m", (v) => { method = v; reset(); draw(); });
+  document.getElementById("pe-lp-reset").addEventListener("click", () => { reset(); draw(); });
+  const btn = MB.playButton("pe-lp-run", () => { running = true; loop.start(); }, () => { running = false; }, ["▶ 반복", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-pe-laplace"), () => {
+    if (!running) return; let mx = 0; const k = method === "jac" ? 6 : 2;
+    for (let i = 0; i < k; i++) mx = sweep();
+    draw(); if (mx < 1e-6 || iters > 3000) { running = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 6. FTCS 안정성 */
+(function () {
+  const M = 40, dx = 1 / M;
+  let r = 0.45, key = "pulse", u = [], k = 0, running = false, bex = null, cvG = null;
+  const f0 = (x) => (key === "pulse" ? (Math.abs(x - 0.5) < 0.1 + 1e-9 ? 1 : 0) : Math.sin(Math.PI * x));
+  function reset() { u = []; for (let i = 0; i <= M; i++) u.push(i === 0 || i === M ? 0 : f0(i * dx)); k = 0; bex = PE.sineCoef(f0, 200, 4000); if (key === "sin") { bex = [0, 1]; for (let n = 2; n <= 200; n++) bex.push(0); } }
+  reset();
+  const exact = (x, t) => { let s = 0; for (let n = 1; n < bex.length; n++) { const e = Math.exp(-n * n * Math.PI * Math.PI * t); if (e < 1e-14) break; s += bex[n] * e * Math.sin(n * Math.PI * x); } return s; };
+  const step = () => { const v = u.slice(); for (let i = 1; i < M; i++) v[i] = u[i] + r * (u[i + 1] - 2 * u[i] + u[i - 1]); u = v; k++; };
+  const cvU = MB.canvas("#pe-cv-ft-u", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 }), t = k * r * dx * dx, ex = [];
+    for (let i = 0; i <= 300; i++) { const x = i / 300; ex.push([x, k === 0 ? f0(x) : exact(x, t)]); }
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [-0.6, 1.25], xLabel: "x", yLabel: "u", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    PE.clip(ctx, ch);
+    PE.path(ctx, ch, ex, { color: C.text, width: 1.6, dash: [5, 4] });
+    PE.path(ctx, ch, u.map((v, i) => [i * dx, MB.clamp(v, -5, 5)]), { color: C.accent, width: 2 });
+    ctx.fillStyle = C.accent; u.forEach((v, i) => { ctx.beginPath(); ctx.arc(ch.X(i * dx), ch.Y(MB.clamp(v, -5, 5)), 3, 0, 7); ctx.fill(); });
+    ctx.restore();
+  }, { aspect: 0.66, minHeight: 230, maxHeight: 330 });
+  cvG = MB.canvas("#pe-cv-ft-g", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 28 }), d = [];
+    for (let i = 0; i <= 200; i++) { const th = (Math.PI * i) / 200; d.push([th, 1 - 4 * r * Math.sin(th / 2) ** 2]); }
+    const ch = MB.chart(ctx, box, { x: [0, Math.PI], y: [-2, 1.3], xLabel: "격자 모드 θ (π = 톱니)", xTicks: [0, Math.PI / 2, Math.PI], xFmt: (v) => (v < 0.1 ? "0" : v < 2 ? "π/2" : "π"), series: [{ data: d, color: 1 - 4 * r < -1 ? C.bad : C.accent, width: 2.6 }], hlines: [{ y: 1, color: C.ok, dash: [3, 3] }, { y: -1, color: C.ok, dash: [3, 3], label: "|G| = 1" }, { y: 0, color: C.axis, dash: [] }], points: [{ x: Math.PI, y: 1 - 4 * r, color: 1 - 4 * r < -1 ? C.bad : C.accent2, r: 5.5 }] });
+    ctx.globalAlpha = 0.12; ctx.fillStyle = C.ok; ctx.fillRect(box.x, ch.Y(1), box.w, ch.Y(-1) - ch.Y(1)); ctx.globalAlpha = 1;
+  }, { aspect: 0.66, minHeight: 230, maxHeight: 330 });
+  function draw() {
+    cvU.redraw(); cvG.redraw();
+    const t = k * r * dx * dx; let e = 0; for (let i = 0; i <= M; i++) e = Math.max(e, Math.abs(u[i] - (k === 0 ? u[i] : exact(i * dx, t))));
+    MB.stat("pe-ft-o-k", String(k)); MB.stat("pe-ft-o-t", PE.num(t, 4)); MB.stat("pe-ft-o-g", PE.num(1 - 4 * r, 2)); MB.stat("pe-ft-o-e", MB.fmt(e, 2));
+    if (!isFinite(e) || e > 0.5) PE.msg("pe-ft-msg", "bad", `불안정! 톱니 모드가 걸음마다 ${PE.num(Math.abs(1 - 4 * r), 2)}배씩 부호를 바꾸며 자랐습니다. r ≤ 1/2로 낮추고 처음으로 돌아가세요.`);
+    else if (r > 0.5) PE.msg("pe-ft-msg", "", `r = ${PE.num(r, 2)} &gt; 1/2: 가운데 가중치 1 − 2r = ${PE.num(1 - 2 * r, 2)}가 음수입니다. 지금은 괜찮아 보여도 톱니 성분이 자라고 있습니다.`);
+    else PE.msg("pe-ft-msg", "ok", `r = ${PE.num(r, 2)} ≤ 1/2: 모든 격자 모드에서 |G| ≤ 1. 수치 해가 정확한 해를 따라갑니다.`);
+  }
+  MB.range("pe-ft-r", (v) => v.toFixed(2), (v) => { r = v; reset(); draw(); });
+  document.getElementById("pe-ft-pre").addEventListener("change", (e) => { key = e.target.value; reset(); draw(); });
+  document.getElementById("pe-ft-reset").addEventListener("click", () => { reset(); draw(); });
+  const btn = MB.playButton("pe-ft-run", () => { running = true; loop.start(); }, () => { running = false; }, ["▶ 걸음 진행", "■ 멈춤"]);
+  let acc = 0;
+  const loop = MB.loop(document.getElementById("sim-pe-ftcs"), (dt) => {
+    if (!running) return; acc += dt; if (acc < 0.06) return; acc = 0;
+    step(); draw();
+    const mx = Math.max(...u.map(Math.abs));
+    if (!isFinite(mx) || mx > 1e3 || k > 2000) { running = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 7. CFL */
+(function () {
+  const M = 100, dx = 1 / M;
+  let C = 0.9, u0 = [], u1 = [], k = 0, running = false, cvK = null;
+  const g = (x) => Math.exp(-(((x - 0.3) / 0.05) ** 2));
+  const ext = (x) => { const m = MB.mod(x, 2); return m <= 1 ? g(m) : -g(2 - m); };
+  const exact = (x, t) => 0.5 * (ext(x - t) + ext(x + t));
+  function reset() {
+    u0 = []; for (let i = 0; i <= M; i++) u0.push(i === 0 || i === M ? 0 : g(i * dx));
+    u1 = u0.slice(); for (let i = 1; i < M; i++) u1[i] = u0[i] + 0.5 * C * C * (u0[i + 1] - 2 * u0[i] + u0[i - 1]);
+    k = 1;
+  }
+  reset();
+  const step = () => { const v = new Array(M + 1).fill(0); for (let i = 1; i < M; i++) v[i] = 2 * u1[i] - u0[i] + C * C * (u1[i + 1] - 2 * u1[i] + u1[i - 1]); u0 = u1; u1 = v; k++; };
+  const cvU = MB.canvas("#pe-cv-cfl-u", (ctx, w, h) => {
+    const P = MB.palette(), box = PE.box(w, h, { top: 28 }), t = k * C * dx, ex = [];
+    for (let i = 0; i <= 400; i++) { const x = i / 400; ex.push([x, exact(x, t)]); }
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [-1.15, 1.15], xLabel: "x", yLabel: "u", series: [], hlines: [{ y: 0, color: P.axis, dash: [] }] });
+    PE.clip(ctx, ch);
+    PE.path(ctx, ch, ex, { color: P.text, width: 1.6, dash: [5, 4] });
+    PE.path(ctx, ch, u1.map((v, i) => [i * dx, MB.clamp(v, -3, 3)]), { color: P.accent, width: 2.4 });
+    ctx.restore();
+  }, { aspect: 0.66, minHeight: 230, maxHeight: 330 });
+  cvK = MB.canvas("#pe-cv-cfl-cone", (ctx, w, h) => {
+    const P = MB.palette(), cx = w / 2, top = 64, bot = h - 34, rows = 5, H = (bot - top) / rows;
+    const dxp = Math.min(34, (w - 40) / 14);
+    // 격자점
+    for (let j = 0; j <= rows; j++) for (let i = -6; i <= 6; i++) { ctx.fillStyle = P.faint; ctx.beginPath(); ctx.arc(cx + i * dxp, top + j * H, 2.4, 0, 7); ctx.fill(); }
+    // 수치 원뿔 (한 걸음 한 칸)
+    ctx.globalAlpha = 0.22; ctx.fillStyle = P.accent; ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx - rows * dxp, bot); ctx.lineTo(cx + rows * dxp, bot); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = P.accent; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(cx - rows * dxp, bot); ctx.lineTo(cx, top); ctx.lineTo(cx + rows * dxp, bot); ctx.stroke();
+    // 진짜 특성선: 한 걸음(Δt)에 c Δt = C Δx 이동
+    const spread = rows * C * dxp, bad = C > 1 + 1e-9;
+    ctx.strokeStyle = bad ? P.bad : P.red || P.bad; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(cx - spread, bot); ctx.lineTo(cx, top); ctx.lineTo(cx + spread, bot); ctx.stroke();
+    ctx.fillStyle = P.text; ctx.beginPath(); ctx.arc(cx, top, 5, 0, 7); ctx.fill();
+    ctx.font = PE.font(12); ctx.fillStyle = P.dim; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillText("(xᵢ, tᵏ)", cx, top - 8);
+    ctx.textBaseline = "top"; ctx.fillStyle = bad ? P.bad : P.ok;
+    ctx.fillText(bad ? "특성선이 원뿔 밖: 정보 누락 → 불안정" : "특성선이 원뿔 안: CFL 만족", cx, bot + 10);
+  }, { aspect: 0.66, minHeight: 230, maxHeight: 330 });
+  function draw() {
+    cvU.redraw(); cvK.redraw();
+    const mx = Math.max(...u1.map(Math.abs));
+    MB.stat("pe-cf-o-k", String(k)); MB.stat("pe-cf-o-t", PE.num(k * C * dx, 3)); MB.stat("pe-cf-o-mx", isFinite(mx) ? (mx > 1e3 ? PE.sci(mx, 1) : PE.num(mx, 3)) : "∞");
+    MB.stat("pe-cf-o-st", C > 1 + 1e-9 ? (mx > 2 ? "<span style='color:var(--bad)'>폭발</span>" : "불안정 (성장 중)") : Math.abs(C - 1) < 1e-9 ? "정확" : "안정");
+  }
+  MB.range("pe-cf-C", (v) => v.toFixed(2), (v) => { C = v; reset(); draw(); });
+  document.getElementById("pe-cf-reset").addEventListener("click", () => { reset(); draw(); });
+  const btn = MB.playButton("pe-cf-run", () => { running = true; loop.start(); }, () => { running = false; }, ["▶ 진행", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-pe-cfl"), () => {
+    if (!running) return; step(); step(); draw();
+    const mx = Math.max(...u1.map(Math.abs)); if (!isFinite(mx) || mx > 1e6 || k > 4000) { running = false; btn.set(false); }
+  });
+  draw();
+})();
+
+/* ================================================================ 8. 도펀트 확산 */
+(function () {
+  const CS = 1e20, Q = 1e15;
+  let mode = "erfc", sd = 0.1, lb = 16;
+  const erfc = (x) => { // 연분수/근사 (Numerical Recipes erfcc, 상대 오차 < 1.2e-7)
+    const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+    const r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    return x >= 0 ? r : 2 - r;
+  };
+  const sdcm = () => sd * 1e-4;
+  const Cerf = (x) => CS * erfc(x / (2 * sd));
+  const Cg = (x) => (Q / (Math.sqrt(Math.PI) * sdcm())) * Math.exp(-(x * x) / (4 * sd * sd));
+  const xj = () => {
+    const CB = Math.pow(10, lb), f = mode === "erfc" ? Cerf : Cg; if (f(0) <= CB) return NaN;
+    let a = 0, b = 20; for (let i = 0; i < 100; i++) { const m = (a + b) / 2; if (f(m) > CB) a = m; else b = m; } return (a + b) / 2;
+  };
+  const cv = MB.canvas("#pe-cv-dop", (ctx, w, h) => {
+    const C = MB.palette(), box = PE.box(w, h, { top: 44, left: 58 }), XM = 2;
+    const a = [], b = []; for (let i = 0; i <= 400; i++) { const x = (XM * i) / 400; a.push([x, Cerf(x)]); b.push([x, Cg(x)]); }
+    const on = mode === "erfc" ? a : b, off = mode === "erfc" ? b : a, j = xj();
+    MB.chart(ctx, box, { x: [0, XM], y: [1e13, 1e21], logY: true, xLabel: "깊이 x (μm)", yLabel: "C (cm⁻³)", series: [{ data: off, color: C.faint, width: 1.4, dash: [4, 4] }, { data: on, color: C.accent, width: 3 }], hlines: [{ y: Math.pow(10, lb), color: C.accent2, label: "배경 농도" }], vlines: isFinite(j) && j < XM ? [{ x: j, color: C.ok, label: "접합 xⱼ" }] : [], points: isFinite(j) && j < XM ? [{ x: j, y: Math.pow(10, lb), color: C.ok, r: 5 }] : [] });
+  }, { aspect: 0.48, minHeight: 250, maxHeight: 380 });
+  function draw() {
+    cv.redraw(); const j = xj();
+    const cs = mode === "erfc" ? CS : Q / (Math.sqrt(Math.PI) * sdcm()), q = mode === "erfc" ? 2 * CS * Math.sqrt(1 / Math.PI) * sdcm() : Q;
+    MB.stat("pe-dp-o-cs", PE.sci(cs, 2) + " cm⁻³"); MB.stat("pe-dp-o-q", PE.sci(q, 2) + " cm⁻²");
+    MB.stat("pe-dp-o-xj", isFinite(j) ? PE.num(j, 3) + " μm" : "접합 없음"); MB.stat("pe-dp-o-r", isFinite(j) ? PE.num(j / sd, 3) : "—");
+  }
+  MB.seg("pe-dp-m", (v) => { mode = v; draw(); });
+  MB.range("pe-dp-s", (v) => v.toFixed(3) + " μm", (v) => { sd = v; draw(); });
+  MB.range("pe-dp-b", (v) => "10^" + v.toFixed(1), (v) => { lb = v; draw(); });
+  draw();
+})();
+</script>
+</body>
+</html>

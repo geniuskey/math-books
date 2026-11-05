@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>해의 존재와 자율 방정식 · ODEBook</title>
+<meta name="description" content="피카르–린델뢰프 정리와 피카르 반복, √y와 물 새는 양동이에서 깨지는 유일성, y′ = y²의 유한 시간 폭발, 자율 방정식의 위상선과 평형점 안정성, 수확이 있는 로지스틱의 안장–마디 분기, 쌍안정 스위치를 시뮬레이터로 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .au-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .au-msg b { color: var(--text); }
+  .au-msg.ok { color: var(--ok); font-weight: 600; }
+  .au-msg.bad { color: var(--bad); font-weight: 600; }
+  .au-eq { padding: 8px 18px; font: 14px var(--mono); color: var(--text); border-top: 1px solid var(--border); background: var(--bg-elev); overflow-wrap: anywhere; line-height: 1.7; }
+  .au-three { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .au-tbl td, .au-tbl th { text-align: center; }
+  .au-tbl td { font-family: var(--mono); }
+  .au-st { color: var(--ok); font-weight: 700; }
+  .au-un { color: var(--bad); font-weight: 700; }
+  .au-se { color: var(--warn); font-weight: 700; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="autonomous">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 04</div>
+    <h1 data-no-glossary>해의 존재와 자율 방정식</h1>
+    <p class="lead">지금까지는 방정식을 받으면 곧바로 풀었습니다. 그런데 풀기 전에 물어야 할 것이 있습니다. <b>해가 정말 있는가, 그리고 하나뿐인가?</b> 수치 해법은 언제나 숫자를 내놓지만, 해가 없거나 여러 개인 문제에서는 그 숫자가 아무 뜻이 없습니다. 이 장의 앞부분은 이 질문에 답하는 <span class="term">존재·유일성 정리</span>와 그 증명의 엔진인 피카르 반복, 그리고 정리의 조건이 깨질 때 일어나는 일(해가 갈라지거나 유한 시간에 폭발)을 봅니다. 뒷부분은 해를 구하지 않고도 해의 운명을 읽는 방법입니다. 오른쪽이 \(y\)에만 달린 자율 방정식 \(y' = f(y)\)는 직선 하나 위의 화살표, <b>위상선</b>으로 모든 해를 요약할 수 있고, 평형점의 안정성은 \(f'\)의 부호 하나로 정해집니다. 매개변수가 바뀌면 평형점이 갑자기 사라지는 분기가 일어나는데, 이것이 어장이 무너지는 방식이자 생물학적 스위치가 동작하는 방식입니다.</p>
+    <ul class="objectives">
+      <li>피카르–린델뢰프 정리의 조건(연속성, 립시츠 조건)과 보장 구간 \(h = \min(a, b/M)\)을 설명한다.</li>
+      <li>초기값 문제를 적분 방정식으로 바꾸고, 피카르 반복으로 근사해를 만들어 수렴을 확인한다.</li>
+      <li>\(y' = \sqrt y\)와 물 새는 양동이에서 유일성이 깨지는 이유를 립시츠 조건으로 설명한다.</li>
+      <li>\(y' = y^2\)의 유한 시간 폭발을 계산하고, 선형 방정식과 대비한다.</li>
+      <li>자율 방정식의 위상선을 그리고, 평형점을 \(f'(y^*)\)의 부호로 안정·불안정·반안정으로 분류한다.</li>
+      <li>수확이 있는 로지스틱 모델에서 안장–마디 분기와 최대 지속 생산량 \(rK/4\)를 유도한다.</li>
+      <li>쌍안정 시스템이 펄스 입력으로 상태를 바꾸는 스위치(기억 소자)로 동작함을 이해한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>어획 한도와 생물학적 스위치</b></div>
+      <div class="o-body"><p>물고기 개체 수를 로지스틱 모델로 보면, 매년 일정량 \(h\)를 잡는 어장은 \(y' = ry(1 - y/K) - h\)를 따릅니다. 이 방정식의 해를 손으로 구하지 않아도 위상선 하나로 놀라운 사실을 알 수 있습니다. 어획량을 조금씩 늘리면 개체 수는 조금씩 줄다가, 어느 임계값 \(rK/4\)를 넘는 순간 평형점 자체가 사라져 <b>개체군이 0으로 무너집니다</b>. 어획량을 임계값 바로 아래로 되돌려도 이미 줄어든 개체군은 회복되지 않을 수 있습니다. 1992년 캐나다 정부가 뉴펀들랜드 연안의 북대서양 대구 어업을 중단(모라토리엄)한 뒤에도 자원이 오랫동안 회복되지 않은 사례는, 실제 원인이 이 단순한 모델보다 훨씬 복잡하더라도, "평형점이 사라지는 문턱"을 경계해야 하는 이유로 자주 거론됩니다.</p>
+        <p>같은 수학이 반대 방향으로도 쓰입니다. 평형점 두 개가 공존하는 <b>쌍안정</b> 시스템은 짧은 자극으로 한 상태에서 다른 상태로 넘어가 그대로 머무르므로 1비트를 기억합니다. 2000년 가드너<span class="en">(T. S. Gardner)</span>, 캔터<span class="en">(C. R. Cantor)</span>, 콜린스<span class="en">(J. J. Collins)</span>는 서로를 억제하는 두 유전자로 대장균 안에 이런 <b>유전자 토글 스위치</b>를 만들었다고 보고했습니다.</p>
+        <div class="o-chain"><span>y′ = f(y)</span><i>→</i><span>해를 몰라도</span><i>→</i><span class="tool">위상선 · f′(y*)의 부호 · 분기</span><i>→</i><span>붕괴 문턱과 스위치 설계</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="existence">
+    <h2>해는 언제 있고, 언제 하나뿐인가</h2>
+    <div class="problem"><strong>수치 해법은 거짓말을 할 수 있다</strong>
+      <p>\(y' = \sqrt{|y|}\), \(y(0) = 0\)을 RK4로 풀면 컴퓨터는 \(y \equiv 0\)을 내놓습니다. 그런데 \(y = t^2/4\)도 이 초기값 문제의 해입니다(대입해 보세요: \(y' = t/2 = \sqrt{t^2/4}\)). 어느 쪽이 "진짜" 해일까요? 물리 모델이라면 이 질문은 "이 시스템의 미래가 현재로 결정되는가"라는 질문입니다. 수치 해를 믿으려면 먼저 해가 하나뿐임을 알아야 합니다.</p></div>
+    <p>초기값 문제 \(y' = f(t, y)\), \(y(t_0) = y_0\)을 생각합니다. 먼저 <b>존재</b>는 놀랍도록 약한 조건으로 보장됩니다.</p>
+    <div class="callout deep"><strong>정리 4.1 (페아노 존재 정리)</strong> \(f\)가 \((t_0, y_0)\)를 포함하는 직사각형에서 연속이면, \(t_0\)를 포함하는 어떤 구간에서 초기값 문제의 해가 <b>적어도 하나</b> 존재한다.</div>
+    <p>연속성만으로는 유일성이 보장되지 않습니다. 위의 \(\sqrt{|y|}\)가 바로 그런 예입니다. 유일성을 위해서는 \(f\)가 \(y\) 방향으로 "너무 가파르게" 변하지 않아야 합니다.</p>
+    <div class="callout deep"><strong>정의 4.1 (립시츠 조건)</strong> 영역 \(R\)의 모든 \((t, y_1)\), \((t, y_2)\)에 대해
+      <div class="formula">$$|f(t, y_1) - f(t, y_2)| \le L\,|y_1 - y_2|$$</div>
+      인 상수 \(L\)이 있으면 \(f\)가 \(R\)에서 \(y\)에 대해 <span class="term">립시츠 조건</span><span class="en">(Lipschitz condition)</span>을 만족한다고 한다. \(\partial f/\partial y\)가 \(R\)(볼록 영역)에서 연속이고 \(|\partial f/\partial y| \le L\)이면 평균값 정리로 립시츠 조건이 성립한다.</div>
+    <div class="callout deep"><strong>정리 4.2 (피카르–린델뢰프 존재·유일성 정리)</strong> 직사각형 \(R = \{|t - t_0| \le a,\ |y - y_0| \le b\}\)에서 \(f\)가 연속이고 \(y\)에 대해 립시츠 조건을 만족한다고 하자(예: \(f\)와 \(\partial f/\partial y\)가 \(R\)에서 연속). \(M = \max_R |f|\)이라 하면 구간
+      <div class="formula">$$|t - t_0| \le h,\qquad h = \min\left(a,\ \frac{b}{M}\right)$$</div>
+      에서 초기값 문제의 해가 <b>정확히 하나</b> 존재한다.</div>
+    <p>보장 구간 \(h\)의 뜻은 그림 4-1이 보여 줍니다. 해의 기울기는 \(R\) 안에서 \(|y'| \le M\)이므로, 해곡선은 \((t_0, y_0)\)에서 기울기 \(\pm M\)인 두 직선이 만드는 쐐기 안에 갇힙니다. 쐐기가 직사각형의 위아래 변(\(|y - y_0| = b\))에 닿기 전까지, 즉 \(|t - t_0| \le b/M\)까지는 해가 \(R\)을 벗어나지 않으므로 \(f\)에 대한 가정이 계속 유효합니다. 이것은 <b>국소적</b> 정리입니다. 해가 더 멀리까지 존재할 수도 있지만 정리는 거기까지만 약속합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="피카르–린델뢰프 정리의 보장 구간: 직사각형과 기울기 쐐기">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <rect x="80" y="40" width="400" height="190" class="f-elev" style="stroke:var(--text-dim);stroke-width:1.5"/>
+        <path d="M280 135L380 40L380 230Z" class="f-acc-soft"/>
+        <path d="M280 135L180 40L180 230Z" class="f-acc-soft"/>
+        <path d="M180 40L380 230M180 230L380 40" style="stroke:var(--accent);stroke-width:1.6;stroke-dasharray:5 4;fill:none"/>
+        <path d="M180 112C220 120 250 140 280 135C310 130 340 100 380 92" fill="none" style="stroke:var(--accent-2);stroke-width:2.6"/>
+        <circle cx="280" cy="135" r="5" style="fill:var(--text)"/>
+        <g style="stroke:var(--text-faint);stroke-dasharray:3 4"><line x1="180" y1="40" x2="180" y2="245"/><line x1="380" y1="40" x2="380" y2="245"/></g>
+        <text x="280" y="155" text-anchor="middle" class="t-mono">(t₀, y₀)</text>
+        <text x="380" y="252" text-anchor="middle" class="t-mono">t₀ + h</text><text x="180" y="252" text-anchor="middle" class="t-mono">t₀ − h</text>
+        <text x="486" y="45" class="t-mono">y₀ + b</text><text x="486" y="232" class="t-mono">y₀ − b</text>
+        <text x="80" y="30" class="t-dim">직사각형 R: |t − t₀| ≤ a, |y − y₀| ≤ b</text>
+        <text x="350" y="70" text-anchor="end" class="t-acc">기울기 ±M</text>
+        <g transform="translate(520,70)">
+          <text x="0" y="0" class="t" style="font-weight:700">왜 h = min(a, b/M)?</text>
+          <text x="0" y="28" class="t-dim">|y′| ≤ M이므로 해는</text>
+          <text x="0" y="48" class="t-dim">쐐기(색칠) 안에 머문다.</text>
+          <text x="0" y="76" class="t-dim">쐐기가 R의 위아래 변에</text>
+          <text x="0" y="96" class="t-dim">닿는 시간이 b/M이다.</text>
+          <text x="0" y="128" class="t-acc">이 구간에서 해는 R 안 →</text>
+          <text x="0" y="148" class="t-acc">f의 가정이 계속 성립</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 4-1.</b> 정리 4.2의 보장 구간. 그림은 \(b/M \lt a\)인 경우다. 해곡선(청록)은 기울기 \(\pm M\)의 쐐기를 벗어날 수 없다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 4.1 (보장 구간은 보수적이다)</strong> \(y' = y^2\), \(y(0) = 1\)에 정리 4.2를 적용하라.
+      <ol>
+        <li>\(f = y^2\), \(\partial f/\partial y = 2y\)는 어디서나 연속이므로 어떤 직사각형에서도 조건을 만족한다. \(a\)는 아무리 커도 된다.</li>
+        <li>\(R\)에서 \(M = \max y^2 = (1 + b)^2\). 따라서 \(h = \min\bigl(a, \frac{b}{(1 + b)^2}\bigr)\).</li>
+        <li>\(b/(1 + b)^2\)는 \(b = 1\)에서 최대 \(1/4\). 정리가 보장하는 것은 \(|t| \le 1/4\)뿐이다.</li>
+        <li>실제 해 \(y = 1/(1 - t)\)는 \(t \lt 1\)에서 존재한다(4절). 정리는 1/4만 약속했지만 해는 그보다 오래 산다. 그리고 \(t = 1\)에서는 정말로 끝난다.</li>
+      </ol></div>
+    <p>유일성의 기하적 의미는 단순합니다. <b>두 해곡선은 교차하거나 접할 수 없습니다.</b> 만약 두 해가 한 점에서 만나면, 그 점을 초기값으로 하는 문제의 해가 두 개가 되기 때문입니다. 1장에서 방향장 위에 그린 해곡선들이 서로 겹치지 않았던 것은 이 정리 덕분입니다. 선형 방정식은 이보다 강해서, 계수가 연속인 구간 <b>전체</b>에서 해가 존재하고 유일합니다(<a href="linear-first.html#integrating-factor">3장 정리 3.1</a>).</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="picard">
+    <h2>피카르 반복: 해를 한 겹씩 다듬기</h2>
+    <p>정리 4.2의 증명은 해를 <b>직접 만들어</b> 보입니다. 첫걸음은 미분방정식을 적분 방정식으로 바꾸는 것입니다. 미적분의 기본 정리로</p>
+    <div class="formula">$$y' = f(t, y),\ y(t_0) = y_0 \iff y(t) = y_0 + \int_{t_0}^{t} f\bigl(s, y(s)\bigr)\,ds.$$
+      <div class="where">오른쪽의 \(y\)는 모르는 함수이므로 아직 풀이가 아니다. 하지만 오른쪽에 "대충 맞는" \(y\)를 넣으면 "조금 더 맞는" \(y\)가 나온다.</div></div>
+    <div class="callout deep"><strong>정의 4.2 (피카르 반복)</strong> \(y_0(t) \equiv y_0\)에서 시작해
+      <div class="formula">$$y_{n+1}(t) = y_0 + \int_{t_0}^{t} f\bigl(s, y_n(s)\bigr)\,ds,\qquad n = 0, 1, 2, \ldots$$</div>
+      로 함수열을 만드는 것을 <span class="term">피카르 반복</span><span class="en">(Picard iteration)</span> 또는 축차 근사라 한다.</div>
+    <p><b>증명의 핵심 아이디어.</b> 연속한 두 근사의 차이를 보면, 립시츠 조건으로</p>
+    <div class="formula">$$|y_{n+1}(t) - y_n(t)| \le \int_{t_0}^{t} \bigl|f(s, y_n) - f(s, y_{n-1})\bigr|\,ds \le L\int_{t_0}^{t} |y_n - y_{n-1}|\,ds.$$</div>
+    <p>이것을 되풀이하면 \(|y_{n+1} - y_n| \le \dfrac{M L^n |t - t_0|^{n+1}}{(n+1)!}\)이고, 오른쪽은 \(e^{L|t - t_0|}\)의 테일러 급수 항이라 합이 수렴합니다. 그래서 \(y_n\)은 어떤 함수 \(y\)로 고르게 수렴하고, 그 극한이 적분 방정식을 만족합니다. 유일성도 같은 부등식에서 나옵니다. 두 해의 차 \(w = |y - z|\)가 \(w \le L\int w\)를 만족하면 \(w \equiv 0\)이어야 합니다(그뢴월 부등식). 핵심은 언제나 <b>립시츠 상수 \(L\)이 오차의 증폭을 제한한다</b>는 것입니다.</p>
+    <div class="callout"><strong>예제 4.2 (지수 함수가 저절로 나온다)</strong> \(y' = y\), \(y(0) = 1\)에 피카르 반복을 적용하라.
+      <ol>
+        <li>\(y_0 = 1\). \(y_1 = 1 + \int_0^t 1\,ds = 1 + t\).</li>
+        <li>\(y_2 = 1 + \int_0^t (1 + s)\,ds = 1 + t + \frac{t^2}{2}\). \(y_3 = 1 + t + \frac{t^2}{2} + \frac{t^3}{6}\).</li>
+        <li>귀납적으로 \(y_n = \sum_{k=0}^n \frac{t^k}{k!}\). 이것은 \(e^t\)의 테일러 다항식이다(<a href="../../calculus/chapters/taylor.html">CalculusBook 테일러</a>). 반복 한 번에 항 하나씩 맞춰진다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 4.3</strong> \(y' = 2t(1 + y)\), \(y(0) = 0\)의 피카르 반복 세 번을 구하고 정확한 해와 비교하라.
+      <ol>
+        <li>\(y_1 = \int_0^t 2s\,ds = t^2\). \(y_2 = \int_0^t 2s(1 + s^2)\,ds = t^2 + \frac{t^4}{2}\).</li>
+        <li>\(y_3 = \int_0^t 2s\bigl(1 + s^2 + \frac{s^4}{2}\bigr)ds = t^2 + \frac{t^4}{2} + \frac{t^6}{6}\).</li>
+        <li>정확한 해는 변수분리로 \(\ln(1 + y) = t^2\), \(y = e^{t^2} - 1 = t^2 + \frac{t^4}{2!} + \frac{t^6}{3!} + \cdots\). \(t = 1\)에서 \(y_3 = 1.6667\), 정확한 값 \(e - 1 = 1.7183\).</li>
+      </ol></div>
+    <p>피카르 반복은 실제 계산법으로는 느립니다(적분을 반복해야 하고, 비선형이면 식이 금방 복잡해집니다). 하지만 "해가 존재한다"는 것을 <b>구성적으로</b> 보여 주고, 근사가 \(t_0\) 근처부터 점점 넓게 맞아 들어가는 모습은 국소 존재 정리의 뜻을 그대로 보여 줍니다.</p>
+
+    <div class="sim" id="sim-au-picard">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>피카르 반복: y<sub>n</sub>이 한 겹씩 해에 붙는다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="au-cv-pic"></canvas><span class="tag-tl" id="au-pic-tag">y′ = y, y(0) = 1</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="au-pic-pre">
+            <option value="exp">y′ = y, y(0) = 1</option>
+            <option value="p2">y′ = 2t(1 + y), y(0) = 0</option>
+            <option value="tan">y′ = 1 + y², y(0) = 0</option>
+          </select></label>
+          <label class="ctrl"><span>반복 횟수 n <output id="au-pic-n-out"></output></span><input type="range" id="au-pic-n" min="0" max="10" step="1" value="2"></label>
+          <label class="check"><input type="checkbox" id="au-pic-all" checked> 이전 반복도 흐리게</label>
+          <div class="btn-row"><button class="btn primary" id="au-pic-next">다음 반복 ▶</button><button class="btn" id="au-pic-reset">n = 0</button></div>
+        </div>
+      </div>
+      <div class="au-eq" id="au-pic-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">y<sub>n</sub>(T)</span><span class="v" id="au-pic-yn">—</span></div>
+        <div class="stat"><span class="k">참값 y(T)</span><span class="v" id="au-pic-ex">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="au-pic-err">—</span></div>
+        <div class="stat"><span class="k">오차 &lt; 0.01인 구간</span><span class="v" id="au-pic-ok">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n을 하나씩 올리며 근사(주황)가 t = 0 근처부터 점점 넓게 참값(점선)에 붙는 것을 보세요. '오차 &lt; 0.01인 구간'이 넓어집니다. ② y′ = y에서 y<sub>n</sub>은 eᵗ의 테일러 다항식입니다. ③ y′ = 1 + y²은 해(tan t)가 t = π/2에서 폭발합니다. T = 1.2까지는 수렴하지만 반복마다 다항식의 차수가 거의 두 배로 늘어납니다. 모델: 각 반복의 적분은 800칸 사다리꼴로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="nonunique">
+    <h2>유일성이 깨질 때: √y와 물 새는 양동이</h2>
+    <p>\(f(y) = \sqrt y\)(\(y \ge 0\))는 연속이지만 \(y = 0\)에서 립시츠가 아닙니다. \(\frac{\sqrt{y} - \sqrt0}{y - 0} = \frac{1}{\sqrt y} \to \infty\)이므로 어떤 상수 \(L\)로도 막을 수 없습니다. 기울기 \(f\)는 0 근처에서 <b>무한히 가파르게</b> 커집니다. 그 결과 해가 \(y = 0\)에 "머물다가 아무 때나 떠날" 수 있습니다.</p>
+    <div class="callout"><strong>예제 4.4 (해의 다발)</strong> \(y' = \sqrt y\), \(y(0) = 0\)의 해를 모두 구하라.
+      <ol>
+        <li>\(y \equiv 0\)은 해다.</li>
+        <li>\(y > 0\)인 곳에서 변수분리: \(y^{-1/2}dy = dt\), \(2\sqrt y = t - c\), \(y = \frac{(t - c)^2}{4}\) (\(t \ge c\)).</li>
+        <li>이어 붙이기: 임의의 \(c \ge 0\)에 대해 \(y_c(t) = 0\) (\(t \le c\)), \(\frac{(t - c)^2}{4}\) (\(t > c\))는 \(t = c\)에서 값과 도함수(0)가 이어지므로 해다.</li>
+        <li>따라서 해가 <b>무수히 많다</b>. 초기 상태가 미래를 결정하지 못한다. 정리 4.2의 조건이 실패하는 곳(\(y = 0\))에서 정확히 유일성이 깨진다.</li>
+      </ol></div>
+    <p>여기서 \(y = 0\)이 아닌 점, 예를 들어 \(y(0) = 1\)에서 출발하면 \(\partial f/\partial y = \frac{1}{2\sqrt y}\)가 그 근처에서 연속이므로 해는 유일합니다. 문제는 오직 립시츠 조건이 깨지는 \(y = 0\)뿐입니다. 아래 시뮬레이터에서 출발 시각 \(c\)를 끌어 보면, 모든 곡선이 같은 초기값을 가지면서도 서로 다른 미래로 갈라집니다. 같은 실험을 립시츠인 \(f = y\)로 하면 0에서 떠나는 해는 없습니다.</p>
+
+    <div class="sim" id="sim-au-nonunique">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>같은 초기값, 다른 미래: y′ = √y의 해 다발</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="au-cv-nu"></canvas><span class="tag-tl">점 c를 끌어 '떠나는 시각' 바꾸기</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>오른쪽 f(y)</span><div class="seg" id="au-nu-f"><button data-value="sqrt" class="on">√y (립시츠 아님)</button><button data-value="lin">y (립시츠)</button></div></div>
+          <label class="check"><input type="checkbox" id="au-nu-all" checked> 해 다발 모두 보기</label>
+          <label class="check"><input type="checkbox" id="au-nu-pert"> RK4: y(0) = 0 과 10⁻⁶</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">출발 시각 c</span><span class="v" id="au-nu-c">—</span></div>
+        <div class="stat"><span class="k">y(5)</span><span class="v" id="au-nu-y5">—</span></div>
+        <div class="stat"><span class="k">∂f/∂y (y → 0)</span><span class="v" id="au-nu-L">—</span></div>
+      </div>
+      <div class="au-msg" id="au-nu-msg"></div>
+      <div class="sim-note">해볼 것: ① 점 c를 0에서 4까지 끌어 보세요. 주황 곡선은 c까지 0에 머물다 포물선으로 떠나고, 모두 y(0) = 0을 만족합니다. ② 'RK4'를 켜면 y(0) = 0에서 출발한 수치 해는 0에 머물고, 10<sup>−6</sup>만 더하면 c ≈ 0인 해를 따라갑니다. 수치 해는 해 하나를 '고를' 뿐입니다. ③ f = y로 바꾸면 0에서 출발한 해는 0뿐이고, 10<sup>−6</sup>에서 출발해도 t ≈ 14까지 거의 0입니다. 모델: y′ = √max(y, 0).</div>
+    </div>
+
+    <h3>물 새는 양동이: 과거는 결정되지 않는다</h3>
+    <div class="problem"><strong>양동이는 언제 비었나</strong>
+      <p>바닥에 구멍이 난 양동이가 빈 채로 놓여 있습니다. 이 양동이가 언제 비었는지 알 수 있을까요? 토리첼리 법칙(<a href="separable.html">2장</a>)에 따르면 수위 \(h\)는 \(h' = -k\sqrt h\)를 따릅니다. 미래로는 문제없이 풀리지만, <b>과거로</b> 거슬러 올라가면 \(h = 0\)에서 유일성이 깨집니다.</p></div>
+    <p>\(h > 0\)이면 \(2\sqrt h = 2\sqrt{h_0} - kt\), 즉 \(\sqrt{h} = \sqrt{h_0} - \frac{k}{2}t\)이므로 양동이는 유한 시각 \(T = 2\sqrt{h_0}/k\)에 비고, 그 뒤로는 \(h \equiv 0\)입니다. 이것은 지수 감쇠와 다릅니다. 지수 함수 \(e^{-t}\)는 결코 0이 되지 않지만, \(\sqrt h\) 법칙은 립시츠가 아니라서 <b>유한 시간에 정확히 0</b>이 될 수 있습니다. 그 대가로 \(h = 0\)인 상태에서는 "언제 비었는가"라는 과거를 복원할 수 없습니다.</p>
+    <div class="callout"><strong>예제 4.5</strong> \(k = 0.2\)(단위 \(\sqrt{\text{m}}/\text{s}\))일 때 처음 수위 1 m, 0.64 m, 0.25 m인 세 양동이가 비는 시각을 구하라.
+      <ol>
+        <li>\(T = 2\sqrt{h_0}/k = 10\sqrt{h_0}\). 각각 \(T = 10\), \(8\), \(5\) s.</li>
+        <li>\(t = 12\) s에 세 양동이는 모두 \(h = 0\)으로 같은 상태다. 지금 상태만으로는 각각 \(T = 10, 8, 5\) 중 어느 것이었는지, 아니면 처음부터 비어 있었는지 구별할 수 없다.</li>
+        <li>수학적으로: 시각 12에서 \(h = 0\)을 초기값으로 거꾸로 풀면, \(T \le 12\)인 모든 \(T\)에 대해 \(h(t) = \frac{k^2}{4}(T - t)^2\)(\(t \le T\))가 해다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-au-bucket">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>물 새는 양동이: 비고 나면 과거를 모른다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="au-cv-bk-a"></canvas><span class="cap">양동이 세 개</span></div>
+          <div><canvas id="au-cv-bk-g"></canvas><span class="cap">수위 h(t) [m]</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>시각 t <output id="au-bk-t-out"></output></span><input type="range" id="au-bk-t" min="0" max="14" step="0.02" value="0"></label>
+          <label class="check"><input type="checkbox" id="au-bk-past"> 지금 h = 0에서 거꾸로: 가능한 과거 모두</label>
+          <div class="btn-row"><button class="btn primary" id="au-bk-play">▶ 재생</button><button class="btn" id="au-bk-reset">t = 0</button></div>
+        </div>
+      </div>
+      <div class="au-msg" id="au-bk-msg"></div>
+      <div class="sim-note">해볼 것: ① ▶로 재생해 세 양동이가 5, 8, 10초에 차례로 비는 것을 보세요. 수위는 지수 함수처럼 꼬리를 끌지 않고 정확히 0에 닿습니다. ② t &gt; 10에서 '가능한 과거'를 켜면 지금 상태 h = 0으로 끝나는 해곡선이 무수히 그려집니다. ③ 반대로 t &lt; 5에서는 각 양동이의 과거와 미래가 유일합니다(h &gt; 0에서는 립시츠). 모델: h′ = −0.2√h, 수직 원통 양동이.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="blowup">
+    <h2>유한 시간 폭발</h2>
+    <div class="problem"><strong>매끄러운 방정식의 해가 사라진다</strong>
+      <p>\(y' = y^2\)는 \(f\)도 \(\partial f/\partial y\)도 어디서나 연속인, 아무 문제 없어 보이는 방정식입니다. 그런데 \(y(0) = 1\)에서 출발한 해는 \(t = 1\)에서 무한대가 됩니다. 정리 4.2가 "국소적"이라고 한 이유가 이것입니다.</p></div>
+    <p>변수분리로 \(-1/y = t - 1/y_0\), 즉</p>
+    <div class="formula">$$y(t) = \frac{y_0}{1 - y_0t},\qquad T^* = \frac{1}{y_0}\quad (y_0 > 0).$$
+      <div class="where">\(t \to T^{*-}\)이면 \(y \to \infty\). 해는 \((-\infty, T^*)\)에서만 정의된다. 초기값이 클수록 일찍 폭발한다.</div></div>
+    <p>왜 폭발할까요? 선형 성장 \(y' = y\)에서는 크기가 두 배가 되는 데 걸리는 시간이 늘 \(\ln 2\)로 같습니다. 그런데 \(y' = y^2\)에서는 \(y\)가 클수록 상대 성장률 \(y'/y = y\)도 커져서, 두 배가 되는 시간이 점점 짧아집니다. 1에서 2까지 1/2, 2에서 4까지 1/4, 4에서 8까지 1/8 … 이 시간들의 합이 \(1/2 + 1/4 + \cdots = 1\)로 유한합니다. 무한히 많은 배가가 유한 시간 안에 끝나는 것입니다.</p>
+    <div class="callout deep"><strong>정리 4.3 (최대 존재 구간)</strong> \(f\)와 \(\partial f/\partial y\)가 평면 전체에서 연속이면 초기값 문제의 해는 최대 구간 \((T_-, T_+)\)까지 유일하게 연장된다. \(T_+ \lt \infty\)이면 \(t \to T_+\)일 때 반드시 \(|y(t)| \to \infty\)이다. 즉 해가 끝나는 이유는 <b>폭발</b>뿐이다.</div>
+    <p>거듭제곱 \(y' = y^p\)(\(y_0 > 0\))로 일반화하면 \(y^{1-p} = y_0^{1-p} - (p - 1)t\)이므로 \(p > 1\)이면 폭발 시각 \(T^* = \dfrac{y_0^{1-p}}{p - 1}\)이 있고, \(p \le 1\)이면 폭발하지 않습니다. 선형보다 빨리 자라는 피드백은 폭발할 수 있다는 것이 일반적인 교훈입니다. 엄밀히는 \(\int^\infty dy/f(y) \lt \infty\)이면 폭발합니다.</p>
+    <div class="callout"><strong>예제 4.6</strong> 다음 해의 폭발 시각을 구하라. (가) \(y' = 1 + y^2\), \(y(0) = 0\). (나) \(y' = y^3\), \(y(0) = 1\).
+      <ol>
+        <li>(가) \(\arctan y = t\), \(y = \tan t\). \(t = \pi/2 \approx 1.571\)에서 폭발. 일반적으로 \(y(0) = y_0\)이면 \(T^* = \pi/2 - \arctan y_0\). 이 방정식은 \(y = 0\)에서도 기울기 1을 가져 결코 쉬지 않는다.</li>
+        <li>(나) \(y^{-2} = 1 - 2t\), \(y = (1 - 2t)^{-1/2}\). \(T^* = 1/2\). \(t = 0.4\)에서 \(y = \sqrt5 \approx 2.236\)(RK4 2.236068).</li>
+      </ol></div>
+    <div class="callout warn"><strong>폭발은 모델이 끝나는 신호</strong> 실제 물리량은 무한대가 되지 않습니다. \(y' = y^2\) 꼴의 폭발이 나오면 "그 시각 근처에서 모델이 무시한 효과(포화, 자원 고갈, 상변화)가 반드시 중요해진다"고 읽어야 합니다. 또 수치 해법은 폭발 시각을 지나도 계속 숫자를 내놓거나 오버플로로 멈출 뿐, "해가 여기서 끝났다"고 알려 주지 않습니다.</div>
+
+    <div class="sim" id="sim-au-blowup">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>폭발 시각 T*는 초기값에 어떻게 달려 있나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="au-cv-bu-y"></canvas><span class="cap">해 y(t) (점 = RK4)</span></div>
+          <div><canvas id="au-cv-bu-T"></canvas><span class="cap">폭발 시각 T* vs y₀</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="au-bu-pre">
+            <option value="sq">y′ = y²</option>
+            <option value="cube">y′ = y³</option>
+            <option value="tan">y′ = 1 + y²</option>
+            <option value="lin">y′ = y (선형, 비교)</option>
+          </select></label>
+          <label class="ctrl"><span>초기값 y₀ <output id="au-bu-y0-out"></output></span><input type="range" id="au-bu-y0" min="0.2" max="3" step="0.05" value="1"></label>
+        </div>
+      </div>
+      <div class="au-eq" id="au-bu-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">폭발 시각 T*</span><span class="v" id="au-bu-T">—</span></div>
+        <div class="stat"><span class="k">y(T*/2)</span><span class="v" id="au-bu-half">—</span></div>
+        <div class="stat"><span class="k">y = 10이 되는 시각</span><span class="v" id="au-bu-10">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① y′ = y²에서 y₀를 1에서 2로 올리면 T*가 1에서 0.5로 반이 됩니다(T* = 1/y₀). ② y′ = y³은 더 빨리 폭발합니다(T* = 1/(2y₀²)). ③ '선형'을 고르면 T*가 없습니다. y = 10에 닿는 시각은 있어도 해는 영원히 존재합니다. 모델: 정확한 해를 실선으로, RK4(T*의 95%까지)를 점으로 그렸습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="phase-line">
+    <h2>자율 방정식과 위상선</h2>
+    <div class="problem"><strong>해를 구하지 않고 해의 운명 알기</strong>
+      <p>\(y' = -y(y - 1)(y - 2)\)를 변수분리로 풀면 부분 분수와 로그가 얽힌 음함수가 나오고, 그것으로는 "\(y(0) = 1.3\)이면 결국 어디로 가는가" 같은 질문에 답하기 어렵습니다. 그런데 오른쪽 \(f(y)\)의 <b>부호만</b> 보면 답이 바로 나옵니다. \(1 \lt y \lt 2\)에서 \(f > 0\)이므로 \(y\)는 증가하고, 2를 넘을 수 없으므로 2로 다가갑니다.</p></div>
+    <div class="callout deep"><strong>정의 4.3 (자율 방정식, 평형점, 위상선)</strong> 오른쪽이 \(t\)를 직접 포함하지 않는 \(y' = f(y)\)를 <span class="term">자율 방정식</span><span class="en">(autonomous equation)</span>이라 한다. \(f(y^*) = 0\)인 \(y^*\)를 <span class="term">평형점</span><span class="en">(equilibrium point)</span>이라 하고, 이때 상수 함수 \(y \equiv y^*\)는 해(평형해)다. \(y\)축 위에 평형점을 찍고, \(f > 0\)인 구간에 위쪽(증가), \(f \lt 0\)인 구간에 아래쪽(감소) 화살표를 그린 그림을 <span class="term">위상선</span><span class="en">(phase line)</span>이라 한다.</div>
+    <div class="callout deep"><strong>정리 4.4 (자율 방정식의 해의 성질)</strong> \(f\)가 연속 미분 가능하면
+      <ol style="margin:6px 0 0">
+        <li><b>시간 이동</b>: \(y(t)\)가 해이면 \(y(t - c)\)도 해다. 그래서 해곡선들은 서로 가로로 평행 이동한 모양이다.</li>
+        <li><b>단조성</b>: 평형해가 아닌 해는 평형점을 지나지 못하므로(유일성) \(f\)의 부호가 일정한 구간에 머물고, 그래서 엄격히 증가하거나 감소한다. 진동할 수 없다.</li>
+        <li><b>운명</b>: 유계인 해는 \(t \to \infty\)에서 평형점으로 수렴한다. 유계가 아니면 \(\pm\infty\)로 간다(유한 시간에 폭발할 수도 있다).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명(1).</b> \(z(t) = y(t - c)\)이면 \(z'(t) = y'(t - c) = f(y(t - c)) = f(z(t))\). \(f\)가 \(t\)를 포함하지 않기 때문에 성립한다. <b>(3)</b> 단조 유계 수열처럼 극한 \(L\)이 있고, \(y' = f(y) \to f(L)\)이 0이 아니면 \(y\)가 유계일 수 없으므로 \(f(L) = 0\). ∎</p></div>
+    <p>1차원 자율 방정식의 해는 진동도, 혼돈도 할 수 없습니다. 위상선 위의 점은 화살표를 따라 한 방향으로만 미끄러질 수 있기 때문입니다. 진동이 나타나려면 2차원(<a href="nonlinear.html">12장</a>), 혼돈이 나타나려면 3차원(<a href="chaos.html">13장</a>)이 필요합니다.</p>
+    <p>해곡선의 <b>오목성</b>도 \(f\)에서 바로 읽힙니다. 연쇄 법칙으로 \(y'' = f'(y)\,y' = f'(y)f(y)\)이므로, \(f\)의 극값(\(f' = 0\))에 해당하는 \(y\)에서 해곡선이 변곡합니다. 로지스틱 방정식 \(y' = ry(1 - y/K)\)에서 \(f\)는 \(y = K/2\)에서 최대이므로, S자 곡선은 정확히 수용력의 절반에서 꺾입니다. 성장 속도가 가장 빠른 개체 수이기도 합니다(7절에서 중요해집니다).</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="로지스틱 방정식의 f(y) 그래프, 위상선, 해곡선">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <g transform="translate(40,30)">
+          <text x="0" y="0" class="t" style="font-weight:700">① f(y) = y(1 − y)</text>
+          <line x1="0" y1="150" x2="240" y2="150" class="s-axis"/><line x1="40" y1="20" x2="40" y2="240" class="s-axis"/>
+          <path d="M10 186 C40 150 70 112 100 104 C130 98 150 120 160 150 C170 172 185 200 200 228" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+          <circle cx="40" cy="150" r="5" style="fill:var(--bad)"/><circle cx="160" cy="150" r="5" style="fill:var(--ok)"/>
+          <text x="40" y="170" text-anchor="middle" class="t-mono">0</text><text x="160" y="170" text-anchor="middle" class="t-mono">1</text><text x="236" y="168" class="t-mono">y</text>
+          <text x="100" y="94" text-anchor="middle" class="t-dim">f &gt; 0</text><text x="214" y="200" class="t-dim">f &lt; 0</text>
+        </g>
+        <g transform="translate(330,30)">
+          <text x="0" y="0" class="t" style="font-weight:700">② 위상선</text>
+          <line x1="40" y1="20" x2="40" y2="250" class="s-axis"/>
+          <circle cx="40" cy="80" r="6" style="fill:var(--ok)"/><circle cx="40" cy="200" r="6" style="fill:none;stroke:var(--bad);stroke-width:2.4"/>
+          <text x="54" y="84" class="t-mono">y = 1 안정</text><text x="54" y="204" class="t-mono">y = 0 불안정</text>
+          <path d="M40 40l0 22M34 54l6 8 6-8" style="stroke:var(--accent);stroke-width:2.2;fill:none;transform:rotate(180deg);transform-origin:40px 51px"/>
+          <path d="M40 120l0 40M34 112l6-8 6 8" style="stroke:var(--accent);stroke-width:2.2;fill:none"/>
+          <path d="M40 212l0 26M34 230l6 8 6-8" style="stroke:var(--accent);stroke-width:2.2;fill:none"/>
+          <text x="54" y="144" class="t-dim">↑ 증가</text>
+        </g>
+        <g transform="translate(500,30)">
+          <text x="0" y="0" class="t" style="font-weight:700">③ 해곡선 (t–y)</text>
+          <line x1="0" y1="200" x2="230" y2="200" class="s-axis"/><line x1="0" y1="20" x2="0" y2="250" class="s-axis"/>
+          <line x1="0" y1="80" x2="230" y2="80" style="stroke:var(--ok);stroke-dasharray:4 4"/>
+          <path d="M0 190C40 185 70 140 100 100C130 82 180 80 230 80" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+          <path d="M0 165C30 140 60 100 90 86C130 80 180 80 230 80" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+          <path d="M0 30C30 60 60 74 100 79C150 80 200 80 230 80" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+          <path d="M0 208C30 214 50 230 64 250" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+          <text x="226" y="216" class="t-mono">t</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 4-2.</b> 위상선 만드는 법. ① \(f(y)\)의 그래프에서 0점(평형점)과 부호를 읽고, ② \(y\)축에 화살표를 그리고, ③ 해곡선은 화살표를 따라 단조롭게 평형점으로 다가가거나 멀어진다. 채운 점은 안정, 빈 점은 불안정.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-au-phaseline">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>위상선과 해곡선 동기화: f(y)의 부호가 운명을 정한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="au-cv-pl-f"></canvas><span class="cap">f(y)와 위상선(가로축 = y)</span></div>
+          <div><canvas id="au-cv-pl-t"></canvas><span class="cap">해곡선: 클릭해 추가</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>f(y)</span><select id="au-pl-pre">
+            <option value="logi">y(1 − y)  로지스틱</option>
+            <option value="cubic">−y(y − 1)(y − 2)</option>
+            <option value="allee">y(y − 0.3)(1 − y)  앨리 효과</option>
+            <option value="semi">(y − 1)²</option>
+            <option value="sin">sin y</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="au-pl-curv"> 변곡선 (f′ = 0인 y)</label>
+          <div class="btn-row"><button class="btn primary" id="au-pl-fam">해 다발</button><button class="btn" id="au-pl-clear">지우기</button></div>
+        </div>
+      </div>
+      <div class="au-eq" id="au-pl-eq"></div>
+      <div class="sim-note">해볼 것: ① 오른쪽 그림 아무 곳이나 클릭해 해를 놓아 보세요. 해곡선은 평형선(점선)을 넘지 못하고 화살표 방향으로만 갑니다. ② '앨리 효과'에서 0.3 아래로 출발한 개체군은 멸종(0)하고, 위에서 출발하면 1로 회복합니다. 0.3은 문턱입니다. ③ '(y − 1)²'의 y = 1은 아래에서는 끌어당기고 위에서는 밀어내는 반안정점입니다. 변곡선을 켜면 S자 곡선이 꺾이는 높이가 f의 극값 위치와 같습니다. 모델: RK4, 해곡선은 클릭한 점에서 앞뒤로 적분.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="stability">
+    <h2>평형점의 안정성: f′의 부호 하나로</h2>
+    <p>평형점 근처에서 해가 어떻게 움직이는지가 공학에서 가장 중요한 질문입니다. 작은 교란을 받은 시스템이 원래 상태로 돌아오는가, 아니면 멀어지는가?</p>
+    <div class="callout deep"><strong>정의 4.4 (안정성)</strong> 평형점 \(y^*\) 근처에서 출발한 모든 해가 \(t \to \infty\)에서 \(y^*\)로 수렴하면 \(y^*\)를 <span class="term">점근 안정</span><span class="en">(asymptotically stable)</span>, 근처에서 출발한 해 중 멀어지는 것이 있으면 <span class="term">불안정</span><span class="en">(unstable)</span>이라 한다. 한쪽에서는 다가오고 다른 쪽에서는 멀어지면 <span class="term">반안정</span><span class="en">(semistable)</span>이라 한다.</div>
+    <p>위상선에서는 화살표가 양쪽에서 들어오면 안정, 양쪽으로 나가면 불안정입니다. 이것을 계산으로 바꾸는 것이 <b>선형화</b>입니다. \(y = y^* + \delta\)로 두고 테일러 전개하면 \(f(y^* + \delta) = f(y^*) + f'(y^*)\delta + O(\delta^2) = f'(y^*)\delta + O(\delta^2)\)이므로, 작은 교란 \(\delta\)는</p>
+    <div class="formula">$$\delta' \approx f'(y^*)\,\delta \;\Longrightarrow\; \delta(t) \approx \delta_0\,e^{f'(y^*)\,t}$$
+      <div class="where">교란은 지수적으로 줄거나 는다. 비율은 \(\lambda = f'(y^*)\), 시상수는 \(1/|\lambda|\). 선형 방정식(3장)의 \(e^{-pt}\)가 여기서 다시 나온다.</div></div>
+    <div class="callout deep"><strong>정리 4.5 (선형화 판정)</strong> \(f\)가 연속 미분 가능하고 \(f(y^*) = 0\)일 때
+      <ul style="margin:6px 0 0">
+        <li>\(f'(y^*) \lt 0\)이면 \(y^*\)는 점근 안정이다.</li>
+        <li>\(f'(y^*) > 0\)이면 \(y^*\)는 불안정이다.</li>
+        <li>\(f'(y^*) = 0\)이면 판정할 수 없다. 고차 항이 결정한다.</li>
+      </ul>
+      <p style="margin:8px 0 0"><b>증명.</b> \(f'(y^*) \lt 0\)이면 \(f'\)의 연속성으로 \(y^*\) 근처에서 \(f'\lt 0\)이고, 그래서 \(f\)는 감소 함수다. \(f(y^*) = 0\)이므로 \(y^*\) 바로 위에서 \(f \lt 0\), 바로 아래에서 \(f > 0\): 위상선 화살표가 양쪽에서 \(y^*\)를 향한다. 둘째도 같다. ∎</p></div>
+    <div class="table-wrap"><table class="au-tbl">
+      <thead><tr><th>\(f(y)\)</th><th>\(y^* = 0\)에서 \(f'\)</th><th>위상선</th><th>판정</th></tr></thead>
+      <tbody>
+        <tr><td>\(-y^3\)</td><td>0</td><td>→ ● ←</td><td class="au-st">안정 (느리게)</td></tr>
+        <tr><td>\(y^3\)</td><td>0</td><td>← ○ →</td><td class="au-un">불안정</td></tr>
+        <tr><td>\(y^2\)</td><td>0</td><td>→ ◐ →</td><td class="au-se">반안정</td></tr>
+      </tbody></table></div>
+    <p>표의 세 경우가 \(f'(y^*) = 0\)일 때 판정이 불가능한 이유입니다. \(f'\)이 0이어도 안정, 불안정, 반안정이 모두 가능합니다. 또 \(f' = 0\)이면 수렴이 지수적이 아니라 대수적으로 느려집니다. \(y' = -y^3\)의 해는 \(y = y_0/\sqrt{1 + 2y_0^2t} \sim 1/\sqrt{2t}\)로, \(e^{-t}\)보다 훨씬 천천히 0으로 갑니다.</p>
+    <div class="callout"><strong>예제 4.7 (평형점 세 개)</strong> \(y' = -y(y - 1)(y - 2)\)의 평형점을 분류하고, \(y(0) = 1.3\)인 해의 극한을 구하라.
+      <ol>
+        <li>평형점 0, 1, 2. \(f(y) = -(y^3 - 3y^2 + 2y)\), \(f'(y) = -(3y^2 - 6y + 2)\).</li>
+        <li>\(f'(0) = -2 \lt 0\): 안정. \(f'(1) = -(3 - 6 + 2) = 1 > 0\): 불안정. \(f'(2) = -(12 - 12 + 2) = -2 \lt 0\): 안정.</li>
+        <li>\(y(0) = 1.3\)은 불안정점 1과 안정점 2 사이이고 \(f(1.3) = -1.3(0.3)(-0.7) = 0.273 > 0\)이므로 증가하며 2로 간다. 1 바로 아래에서 출발하면 0으로 간다. 불안정점 1이 두 운명을 가르는 <b>분수령</b>이다.</li>
+        <li>안정점 근처의 교란은 시상수 \(1/|f'| = 0.5\)로 사라진다.</li>
+      </ol></div>
+    <p>이처럼 안정 평형점 두 개 사이에 불안정 평형점이 끼어 있는 구조를 <span class="term">쌍안정</span><span class="en">(bistable)</span>이라 합니다. 각 안정점으로 끌려가는 초기값의 집합을 그 점의 <b>끌림 영역</b><span class="en">(basin of attraction)</span>이라 하고, 불안정점이 끌림 영역의 경계가 됩니다. 8절에서 이 구조가 스위치가 됩니다.</p>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="harvest">
+    <h2>수확이 있는 로지스틱과 안장–마디 분기</h2>
+    <div class="problem"><strong>한 해에 얼마까지 잡아도 되는가</strong>
+      <p>내재 성장률 \(r = 0.5\)/년, 수용력 \(K = 1000\)톤인 어장이 있습니다. 매년 일정량 \(h\)톤을 잡습니다(쿼터제). \(h = 80\)이면 개체군은 어디에 자리 잡고, \(h\)를 얼마까지 올릴 수 있을까요? 이 질문의 답은 해의 공식이 아니라 평형점의 <b>개수</b>가 바뀌는 순간에 있습니다.</p></div>
+    <div class="formula">$$y' = ry\Bigl(1 - \frac{y}{K}\Bigr) - h$$
+      <div class="where">수확은 개체 수와 무관한 상수 \(h\)만큼 성장률을 깎는다. \(f(y)\)의 그래프(아래로 볼록한 포물선)가 \(h\)만큼 통째로 내려간다.</div></div>
+    <p>평형점은 \(\frac{r}{K}y^2 - ry + h = 0\)의 근입니다.</p>
+    <div class="formula">$$y^*_\pm = \frac K2\left(1 \pm \sqrt{1 - \frac{4h}{rK}}\right),\qquad h_c = \frac{rK}{4}.$$</div>
+    <ul>
+      <li>\(h \lt h_c\): 평형점 두 개. 포물선의 꼭대기가 0 위에 있으므로 큰 쪽 \(y^*_+\)에서 \(f' \lt 0\)(안정), 작은 쪽 \(y^*_-\)에서 \(f' > 0\)(불안정). \(y^*_-\)는 "이보다 적으면 멸종"하는 문턱이다.</li>
+      <li>\(h = h_c\): 두 평형점이 \(K/2\)에서 합쳐져 하나(반안정)가 된다.</li>
+      <li>\(h > h_c\): 평형점이 없다. \(f \lt 0\)이 어디서나 성립해, 어떤 초기 개체 수에서도 개체군이 유한 시간에 0이 된다.</li>
+    </ul>
+    <p>\(h_c = rK/4\)는 \(f\)가 최대인 \(y = K/2\)에서의 성장률 \(r(K/2)(1/2)\)이고, 지속적으로 거둘 수 있는 최대 수확량이라 <span class="term">최대 지속 생산량</span><span class="en">(maximum sustainable yield, MSY)</span>이라 부릅니다. 그런데 MSY에서 운영하는 것은 칼날 위에 서는 일입니다. 평형점이 반안정이라 아래로 조금만 교란되어도 붕괴로 이어집니다.</p>
+    <div class="callout"><strong>예제 4.8 (어장 관리)</strong> \(r = 0.5\), \(K = 1000\)일 때 (가) \(h = 80\)의 평형점, (나) \(h_c\), (다) \(h = 130\)이면 처음 \(y = K\)였던 개체군이 무너지는 시간을 구하라.
+      <ol>
+        <li>(가) \(4h/(rK) = 320/500 = 0.64\), \(\sqrt{0.36} = 0.6\). \(y^*_+ = 500(1.6) = 800\)(안정), \(y^*_- = 500(0.4) = 200\)(불안정 문턱).</li>
+        <li>(나) \(h_c = 0.5 \times 1000/4 = 125\)톤/년.</li>
+        <li>(다) 평형점이 없으므로 결국 붕괴한다. 수치 적분으로 \(y = 1000\)에서 0까지 약 54.9년. 쿼터를 \(h_c\)보다 4%만 넘겼는데도 붕괴하며, 다만 매우 느리다. 평형점이 사라진 자리(\(y \approx K/2\)) 근처에서 \(f\)가 0에 가까워 해가 오래 머물기 때문이다(\(h = 150\)이면 20.6년).</li>
+      </ol></div>
+    <p>(다)의 느린 붕괴는 위험합니다. 개체군이 수십 년 동안 서서히 줄어 "안정된 것처럼" 보이다가 갑자기 급락하기 때문입니다. 사라진 평형점이 남긴 이 느린 구간을 분기의 <b>유령</b>이라 부르고, 통과 시간은 \(h - h_c\)가 작을수록 \(1/\sqrt{h - h_c}\)에 비례해 길어집니다.</p>
+    <div class="callout deep"><strong>정의 4.5 (안장–마디 분기)</strong> 매개변수 \(\mu\)가 변할 때 평형점 두 개(안정 하나, 불안정 하나)가 다가와 합쳐진 뒤 사라지는 현상을 <span class="term">안장–마디 분기</span><span class="en">(saddle-node bifurcation)</span>라 한다. 가장 간단한 꼴(정규형)은
+      <div class="formula">$$y' = \mu - y^2:\qquad \mu > 0\text{이면 } y^* = \pm\sqrt\mu,\quad \mu = 0\text{이면 } y^* = 0,\quad \mu \lt 0\text{이면 평형점 없음.}$$</div>
+      평형점의 위치를 매개변수에 대해 그린 그림을 <span class="term">분기도</span><span class="en">(bifurcation diagram)</span>라 한다.</div>
+    <p>수확 모델을 \(y = K/2 + u\)로 옮기면 \(u' = (rK/4 - h) - \frac rK u^2\)로, 정확히 정규형입니다(\(\mu \propto h_c - h\)). 분기의 전체 목록(갈퀴, 횡단, 호프)과 이력 현상은 <a href="chaos.html">13장</a>에서 다룹니다.</p>
+    <div class="callout tip"><strong>쿼터 대신 노력량으로</strong> 일정량이 아니라 개체 수에 비례해 잡으면(\(h = Ey\), 어선 수를 고정) \(y' = ry(1 - y/K) - Ey\)이고 평형점은 \(y^* = K(1 - E/r)\), 수확량은 \(EK(1 - E/r)\)입니다. \(E = r/2\)에서 최대 \(rK/4\)로 MSY는 같지만, \(E \lt r\)이면 평형점이 언제나 안정이고 갑작스러운 붕괴가 없습니다. 같은 최대 수확량이라도 <b>규칙의 형태</b>가 안정성을 바꿉니다.</div>
+
+    <div class="sim" id="sim-au-harvest">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>어획량 h를 올리면: 위상선 · 분기도 · 개체 수</h3></div>
+      <div class="sim-body">
+        <div class="sim-view split au-three">
+          <div><canvas id="au-cv-hv-f"></canvas><span class="cap">f(y) = ry(1 − y/K) − h</span></div>
+          <div><canvas id="au-cv-hv-b"></canvas><span class="cap">분기도: 평형점 vs h</span></div>
+          <div><canvas id="au-cv-hv-t"></canvas><span class="cap">개체 수 y(t), 80년</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>연간 어획량 h <output id="au-hv-h-out"></output></span><input type="range" id="au-hv-h" min="0" max="160" step="1" value="80"></label>
+          <label class="ctrl"><span>처음 개체 수 y₀ <output id="au-hv-y0-out"></output></span><input type="range" id="au-hv-y0" min="20" max="1000" step="10" value="1000"></label>
+          <div class="ctrl"><span>수확 방식</span><div class="seg" id="au-hv-mode"><button data-value="quota" class="on">쿼터 h</button><button data-value="effort">노력량 E·y (E = h/500)</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">안정 y*₊</span><span class="v" id="au-hv-up">—</span></div>
+        <div class="stat"><span class="k">문턱 y*₋</span><span class="v" id="au-hv-lo">—</span></div>
+        <div class="stat"><span class="k">h<sub>c</sub> = rK/4</span><span class="v">125</span></div>
+        <div class="stat"><span class="k">80년 뒤 / 붕괴</span><span class="v" id="au-hv-st">—</span></div>
+      </div>
+      <div class="au-msg" id="au-hv-msg"></div>
+      <div class="sim-note">해볼 것: ① h를 0에서 125로 천천히 올리며 분기도의 두 가지(실선 안정, 점선 불안정)가 다가와 합쳐지는 것을 보세요. ② h = 126~130에서 y(t)는 수십 년 K/2 근처에서 머뭇거리다 무너집니다(유령). ③ h = 80, y₀를 200 아래로 내리면 평형점이 있는데도 멸종합니다(문턱 아래). ④ '노력량'으로 바꾸면 같은 h(평형 수확량 비교용)에서도 붕괴가 없습니다. 모델: r = 0.5/년, K = 1000톤, RK4, y = 0에서 멸종으로 멈춤.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="bistable">
+    <h2>쌍안정 스위치: 1비트를 기억하는 방정식</h2>
+    <div class="problem"><strong>짧은 자극을 오래 기억하려면</strong>
+      <p>세포는 짧은 신호(호르몬 펄스)를 받고 분화를 시작하면, 신호가 사라진 뒤에도 그 결정을 유지합니다. 전자 회로의 래치도 짧은 펄스로 상태를 바꾸고 유지합니다. 1차 선형 시스템(3장)은 입력이 사라지면 원래 상태로 돌아가므로 이런 기억을 할 수 없습니다. 기억에는 <b>안정 평형점이 둘</b> 필요합니다.</p></div>
+    <p>가장 간단한 모델은 다음과 같습니다(예제 4.7의 구조를 \(y = \pm1\) 대칭으로 옮긴 것).</p>
+    <div class="formula">$$y' = y - y^3 + s(t)$$
+      <div class="where">\(s = 0\)이면 평형점 \(-1\)(안정, "꺼짐"), \(0\)(불안정, 문턱), \(+1\)(안정, "켜짐"). \(f'(\pm1) = 1 - 3 = -2\), \(f'(0) = 1\). \(s(t)\)는 외부 입력.</div></div>
+    <p>상태가 \(-1\)에 있을 때 입력 \(s\)를 주면 \(f(y) = y - y^3 + s\)의 그래프가 위로 올라갑니다. 3차 함수의 극솟값은 \(y = -1/\sqrt3\)에서 \(-\frac{2}{3\sqrt3} + s\)이므로, \(s\)가</p>
+    <div class="formula">$$s_c = \frac{2}{3\sqrt3} \approx 0.385$$</div>
+    <p>를 넘으면 "꺼짐" 평형점이 문턱과 합쳐져 <b>안장–마디 분기로 사라지고</b>, 상태는 \(+1\) 근처의 유일한 평형점으로 넘어갑니다. 그 뒤 입력을 0으로 되돌려도 상태는 \(+1\)에 머뭅니다. 끄려면 \(s \lt -s_c\)인 음의 펄스가 필요합니다. 상태가 입력의 과거에 따라 달라지는 이 현상이 <span class="term">이력 현상</span><span class="en">(hysteresis)</span>이고, 비교기에 되먹임을 건 슈미트 트리거가 잡음 속에서도 깨끗하게 스위칭하는 원리와 같습니다.</p>
+    <p>펄스는 충분히 <b>크고 길어야</b> 합니다. \(s > s_c\)인 펄스라도 너무 짧으면 상태가 문턱(가운데 불안정점) 근처까지만 갔다가, 펄스가 끝난 뒤 원래 쪽으로 미끄러져 돌아옵니다. 펄스가 끝나는 순간 상태가 문턱을 넘어 있느냐가 기준입니다. 수치로 확인하면 \(A = 0.8\)인 펄스는 길이가 약 1.9, \(A = 0.5\)이면 약 5 이상이어야 스위칭됩니다. 문턱 \(s_c\) 바로 위의 펄스는 사라진 평형점의 유령 근처에서 오래 머물기 때문입니다(7절). 반대로 \(s \lt s_c\)이면 아무리 오래 눌러도 스위칭되지 않고, 다만 평형점이 조금 이동할 뿐입니다.</p>
+
+    <div class="sim" id="sim-au-switch">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>쌍안정 스위치: 펄스로 켜고 끄기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="au-cv-sw-t"></canvas><span class="cap">y(t) (주황) · 입력 s(t) (청록)</span></div>
+          <div><canvas id="au-cv-sw-f"></canvas><span class="cap">f(y) = y − y³ + s, 지금 상태 ●</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>펄스 세기 A <output id="au-sw-a-out"></output></span><input type="range" id="au-sw-a" min="0.1" max="1.2" step="0.01" value="0.8"></label>
+          <label class="ctrl"><span>펄스 길이 <output id="au-sw-d-out"></output></span><input type="range" id="au-sw-d" min="0.2" max="4" step="0.1" value="3"></label>
+          <label class="ctrl"><span>바이어스 s₀ <output id="au-sw-b-out"></output></span><input type="range" id="au-sw-b" min="-0.6" max="0.6" step="0.01" value="0"></label>
+          <label class="check"><input type="checkbox" id="au-sw-noise"> 잡음 넣기</label>
+          <div class="btn-row"><button class="btn primary" id="au-sw-on">＋ 켜기 펄스</button><button class="btn" id="au-sw-off">− 끄기 펄스</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">상태 y</span><span class="v" id="au-sw-y">—</span></div>
+        <div class="stat"><span class="k">입력 s</span><span class="v" id="au-sw-s">—</span></div>
+        <div class="stat"><span class="k">안정 평형점 수</span><span class="v" id="au-sw-n">—</span></div>
+        <div class="stat"><span class="k">기억</span><span class="v" id="au-sw-bit">—</span></div>
+      </div>
+      <div class="au-msg" id="au-sw-msg"></div>
+      <div class="sim-note">해볼 것: ① A = 0.8, 길이 3으로 '켜기'를 누르면 상태가 −1에서 +1로 넘어가 펄스가 끝난 뒤에도 머뭅니다. ② A를 0.35로 줄이면(&lt; 0.385) 아무리 길게 눌러도 넘어가지 않습니다. ③ A = 0.8, 길이 1이면 너무 짧아 문턱을 넘지 못하고 되돌아옵니다(A = 0.8에는 약 1.9, A = 0.5에는 약 5가 필요). ④ 바이어스 s₀를 ±0.385 너머로 밀면 평형점 하나가 사라져 스위치가 한쪽으로 '고정'됩니다. 모델: y′ = y − y³ + s(t), 시간 2배속, 잡음은 σ = 0.25의 백색 잡음.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>존재·유일성 정리는 "시뮬레이션 결과를 믿어도 되는가"의 수학적 근거이고, 위상선과 분기는 "매개변수를 바꾸면 무슨 일이 일어나는가"를 해를 풀지 않고 답하는 도구입니다.</p>
+    <div class="callout"><strong>열 폭주: 사라지는 평형점</strong> 리튬 이온 전지나 발열 반응기에서 온도 \(T\)는 \(CT' = Q(T) - k(T - T_a)\)를 따릅니다. 발열 \(Q(T)\)는 아레니우스 법칙으로 온도에 대해 지수적으로 늘고, 냉각은 선형입니다. 주변 온도 \(T_a\)가 낮으면 발열 곡선과 냉각 직선이 교차해 안정 평형점(정상 운전 온도)이 있지만, \(T_a\)가 오르거나 냉각 \(k\)가 나빠지면 두 곡선이 접했다가 떨어지며 평형점이 사라집니다. 7절과 같은 안장–마디 분기이고, 그 뒤 온도는 걷잡을 수 없이 오릅니다. 반응기 안전 설계에서 "임계 조건"을 계산하는 기본 아이디어입니다.</div>
+    <div class="uses">
+      <a href="numerical.html"><small>5장 · 수치 해법</small>립시츠 상수와 오차 증폭<br><span>오일러·RK의 전역 오차 한계에 e<sup>LT</sup>가 나오는 이유.</span></a>
+      <a href="nonlinear.html"><small>12장 · 비선형 시스템</small>2차원 평형점과 야코비안<br><span>f′(y*)의 부호가 야코비안의 고유값으로 바뀐다.</span></a>
+      <a href="chaos.html"><small>13장 · 분기와 혼돈</small>갈퀴·횡단·호프 분기와 이력<br><span>안장–마디 다음의 분기들과 이력 고리.</span></a>
+      <a href="linear-first.html"><small>3장 · 1계 선형 방정식</small>전역 존재와 해의 구조<br><span>선형이면 폭발도 비유일성도 없다.</span></a>
+      <a href="../../calculus/chapters/taylor.html"><small>CALCULUSBOOK</small>테일러 전개와 선형화<br><span>f(y* + δ) ≈ f′(y*)δ와 피카르 반복이 만드는 테일러 다항식.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식 개관<br><span>방향장과 평형점을 한눈에.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(f\)가 연속이면 해가 존재(페아노)하고, 더해 \(y\)에 대해 립시츠(예: \(\partial f/\partial y\) 연속)이면 \(|t - t_0| \le \min(a, b/M)\)에서 해가 유일하다(피카르–린델뢰프). 유일하면 해곡선은 교차하지 않는다.</li>
+      <li>피카르 반복 \(y_{n+1} = y_0 + \int f(s, y_n)\,ds\)는 해를 구성한다. 오차는 \(ML^n|t - t_0|^{n+1}/(n+1)!\)로 줄고, \(y' = y\)이면 \(e^t\)의 테일러 다항식이 나온다.</li>
+      <li>\(y' = \sqrt y\), \(y(0) = 0\)은 해가 무수히 많다(\(y = 0\)에서 립시츠가 아님). 물 새는 양동이 \(h' = -k\sqrt h\)는 유한 시간에 비고, 빈 상태에서는 과거가 결정되지 않는다.</li>
+      <li>\(y' = y^2\)의 해 \(y_0/(1 - y_0t)\)는 \(T^* = 1/y_0\)에서 폭발한다. 해가 끝나는 이유는 폭발뿐이다. 선형 방정식은 폭발하지 않는다.</li>
+      <li>자율 방정식 \(y' = f(y)\)의 해는 시간 이동해도 해이고, 단조롭고, 평형점으로 가거나 무한대로 간다. 위상선(\(f\)의 부호 화살표)이 모든 해를 요약한다. 변곡점은 \(f' = 0\)인 높이.</li>
+      <li>\(f'(y^*) \lt 0\)이면 안정, \(> 0\)이면 불안정, \(= 0\)이면 판정 불가(반안정 등). 교란은 \(e^{f'(y^*)t}\)로 변한다.</li>
+      <li>수확 모델 \(y' = ry(1 - y/K) - h\)는 \(h_c = rK/4\)(MSY)에서 안장–마디 분기를 겪는다. 넘으면 평형점이 사라져 붕괴하고, 바로 위에서는 유령 때문에 느리게 무너진다.</li>
+      <li>쌍안정 \(y' = y - y^3 + s\)는 \(|s| > 2/(3\sqrt3) \approx 0.385\)인 충분히 긴 펄스로 상태가 바뀌고 입력이 사라져도 유지된다: 기억, 스위치, 이력 현상.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 정리 4.2(피카르–린델뢰프)가 유일한 해를 보장하는 초기값 문제는?</p><div class="opts">
+        <button class="opt">\(y' = \sqrt{|y|}\), \(y(0) = 0\)</button>
+        <button class="opt">\(y' = y^{1/3}\), \(y(0) = 0\)</button>
+        <button class="opt" data-correct>\(y' = y^{1/3}\), \(y(2) = 1\)</button>
+        <button class="opt">\(y' = t + |y|^{1/2}\), \(y(0) = 0\)</button>
+      </div><div class="quiz-exp">\(\partial f/\partial y = \frac13y^{-2/3}\)은 \(y = 1\) 근처에서 연속이므로 조건을 만족한다. 나머지는 모두 립시츠 조건이 깨지는 \(y = 0\)에서 출발한다. 실제로 \(y' = y^{1/3}\), \(y(0) = 0\)은 \(y = 0\)과 \(y = (2t/3)^{3/2}\) 두 해를 가진다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(y' = y^2\), \(y(0) = 2\)의 해는 언제 폭발하는가?</p><div class="opts">
+        <button class="opt">\(t = 2\)</button>
+        <button class="opt">\(t = 1\)</button>
+        <button class="opt" data-correct>\(t = 1/2\)</button>
+        <button class="opt">폭발하지 않는다</button>
+      </div><div class="quiz-exp">\(y = \frac{2}{1 - 2t}\)이므로 \(T^* = 1/y_0 = 1/2\). 초기값이 클수록 빨리 폭발한다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(y' = y\), \(y(0) = 1\)에 피카르 반복을 두 번 적용한 \(y_2(t)\)는?</p><div class="opts">
+        <button class="opt">\(1 + t\)</button>
+        <button class="opt" data-correct>\(1 + t + t^2/2\)</button>
+        <button class="opt">\(1 + t + t^2\)</button>
+        <button class="opt">\(e^t\)</button>
+      </div><div class="quiz-exp">\(y_1 = 1 + \int_0^t 1\,ds = 1 + t\), \(y_2 = 1 + \int_0^t(1 + s)\,ds = 1 + t + t^2/2\). 반복할 때마다 \(e^t\)의 테일러 항이 하나씩 늘어난다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(y' = (y - 1)(y - 3)\)의 평형점 중 안정한 것은?</p><div class="opts">
+        <button class="opt" data-correct>\(y = 1\)</button>
+        <button class="opt">\(y = 3\)</button>
+        <button class="opt">둘 다</button>
+        <button class="opt">둘 다 불안정</button>
+      </div><div class="quiz-exp">\(f'(y) = 2y - 4\). \(f'(1) = -2 \lt 0\)이므로 안정, \(f'(3) = 2 > 0\)이므로 불안정. 위상선으로 봐도 \(1 \lt y \lt 3\)에서 \(f \lt 0\)(아래로), \(y \lt 1\)에서 \(f > 0\)(위로)이라 화살표가 1로 모인다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 자율 방정식 \(y' = f(y)\)(\(f\)는 매끄러움)의 해에 대해 틀린 것은?</p><div class="opts">
+        <button class="opt">\(y(t)\)가 해이면 \(y(t - 5)\)도 해다</button>
+        <button class="opt">평형해가 아닌 해는 단조롭다</button>
+        <button class="opt" data-correct>해가 두 평형점 사이를 오가며 진동할 수 있다</button>
+        <button class="opt">유계인 해는 평형점으로 수렴한다</button>
+      </div><div class="quiz-exp">해는 평형점을 지날 수 없고(유일성), 평형점 사이에서는 \(f\)의 부호가 일정하므로 한 방향으로만 움직인다. 1차원 자율 방정식에서는 진동이 불가능하다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(r = 0.4\)/년, \(K = 500\)인 개체군에서 일정량 수확 모델의 최대 지속 생산량 \(h_c\)는?</p><div class="opts">
+        <button class="opt">\(200\)</button>
+        <button class="opt">\(100\)</button>
+        <button class="opt" data-correct>\(50\)</button>
+        <button class="opt">\(25\)</button>
+      </div><div class="quiz-exp">\(h_c = rK/4 = 0.4 \times 500/4 = 50\). 이때 두 평형점이 \(K/2 = 250\)에서 합쳐진다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(y' = y^2\)의 평형점 \(y^* = 0\)의 성질은?</p><div class="opts">
+        <button class="opt">\(f'(0) = 0\)이므로 안정</button>
+        <button class="opt">점근 안정</button>
+        <button class="opt">불안정(양쪽 모두 멀어짐)</button>
+        <button class="opt" data-correct>반안정(아래에서는 다가오고 위에서는 멀어짐)</button>
+      </div><div class="quiz-exp">\(f = y^2 \ge 0\)이므로 0의 양쪽에서 화살표가 모두 위로 향한다. 아래(\(y \lt 0\))에서 출발한 해는 0으로 다가가고, 위에서 출발한 해는 멀어져 폭발한다. \(f'(0) = 0\)이면 선형화로는 판정할 수 없다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 쌍안정 스위치 \(y' = y - y^3 + s\)가 \(y \approx -1\)에 있다. 일정한 입력 \(s\)를 걸어 계속 유지할 때, 상태가 \(+1\) 쪽으로 넘어가려면?</p><div class="opts">
+        <button class="opt">\(s > 0\)이면 된다</button>
+        <button class="opt" data-correct>\(s > 2/(3\sqrt3) \approx 0.385\)이어야 한다</button>
+        <button class="opt">\(s > 1\)이어야 한다</button>
+        <button class="opt">\(s > 2\)이어야 한다</button>
+      </div><div class="quiz-exp">\(f\)의 극솟값 \(-\frac{2}{3\sqrt3} + s\)가 양수가 되어야 "꺼짐" 평형점이 사라진다(안장–마디 분기). \(0 \lt s \lt 0.385\)이면 평형점이 조금 이동할 뿐 상태는 \(-1\) 근처에 남는다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const AU = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  solve(f, y0, t0, t1, n = 400) {
+    return MB.rk4((t, y) => [f(t, y[0])], [y0], t0, (t1 - t0) / n, n).map(([t, y]) => [t, y[0]]);
+  },
+  field(P, f, o = {}) {
+    const nx = o.nx || 22, ny = o.ny || 15, C = P.P, ctx = P.ctx, L = o.len || Math.min(P.w / nx, P.h / ny) * 0.36;
+    ctx.save(); ctx.strokeStyle = o.color || C.faint; ctx.lineWidth = 1.3; ctx.globalAlpha = o.alpha || 0.9; ctx.beginPath();
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+      const px = ((i + 0.5) / nx) * P.w, py = ((j + 0.5) / ny) * P.h, x = P.ix(px), y = P.iy(py);
+      const m = f(x, y); if (!isFinite(m)) continue;
+      let dx = 1, dy = -m * (P.h / (P.y1 - P.y0)) / (P.w / (P.x1 - P.x0));
+      const n = Math.hypot(dx, dy); dx *= L / n; dy *= L / n;
+      ctx.moveTo(px - dx, py - dy); ctx.lineTo(px + dx, py + dy);
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  /** 가로축 위에 위상선 화살표(차트 좌표 X, Y 함수 사용) */
+  arrowsH(ctx, X, Y, f, lo, hi, n, C) {
+    ctx.save(); ctx.fillStyle = C.accent;
+    for (let i = 0; i < n; i++) {
+      const y = lo + ((i + 0.5) / n) * (hi - lo), v = f(y);
+      if (Math.abs(v) < 1e-3) continue;
+      const px = X(y), py = Y(0), s = v > 0 ? 1 : -1;
+      ctx.beginPath(); ctx.moveTo(px + 7 * s, py); ctx.lineTo(px - 5 * s, py - 5); ctx.lineTo(px - 5 * s, py + 5); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  },
+};
+
+/* ================================================================ 1. 피카르 반복 */
+(function () {
+  const PRE = {
+    exp: { f: (t, y) => y, y0: 1, T: 2, exact: Math.exp, yr: [0, 7.8], tag: "y′ = y, y(0) = 1" },
+    p2: { f: (t, y) => 2 * t * (1 + y), y0: 0, T: 1.3, exact: (t) => Math.exp(t * t) - 1, yr: [-0.2, 4.8], tag: "y′ = 2t(1 + y), y(0) = 0" },
+    tan: { f: (t, y) => 1 + y * y, y0: 0, T: 1.2, exact: Math.tan, yr: [-0.2, 3] , tag: "y′ = 1 + y², y(0) = 0" },
+  };
+  const N = 800;
+  let pre = PRE.exp, n = 2, all = true, its = [];
+  const fact = (k) => { let r = 1; for (let i = 2; i <= k; i++) r *= i; return r; };
+  const compute = () => {
+    const t = [...Array(N + 1)].map((_, i) => (pre.T * i) / N);
+    let y = t.map(() => pre.y0); its = [y];
+    for (let k = 0; k < 10; k++) {
+      const g = t.map((s, i) => pre.f(s, y[i])), ny = [pre.y0];
+      for (let i = 1; i <= N; i++) ny.push(ny[i - 1] + 0.5 * (g[i] + g[i - 1]) * (pre.T / N));
+      y = ny; its.push(y);
+    }
+  };
+  const formula = () => {
+    if (n === 0) return `y<sub>0</sub>(t) = ${pre.y0}`;
+    const terms = [];
+    if (pre === PRE.exp) { for (let k = 0; k <= n; k++) terms.push(k === 0 ? "1" : k === 1 ? "t" : `t<sup>${k}</sup>/${fact(k)}`); }
+    else if (pre === PRE.p2) { for (let k = 1; k <= n; k++) terms.push(k === 1 ? "t²" : `t<sup>${2 * k}</sup>/${fact(k)}`); }
+    else return `y<sub>${n}</sub>(t) = 차수 ${Math.pow(2, n) - 1}인 다항식 (y<sub>1</sub> = t, y<sub>2</sub> = t + t³/3, …)`;
+    const s = terms.length > 6 ? terms.slice(0, 4).join(" + ") + " + … + " + terms[terms.length - 1] : terms.join(" + ");
+    return `y<sub>${n}</sub>(t) = ${s}`;
+  };
+  compute();
+  const cv = MB.canvas("#au-cv-pic", (ctx) => {
+    const C = MB.palette(), ts = its[0].map((_, i) => (pre.T * i) / N);
+    const series = [{ data: ts.map((t) => [t, pre.exact(t)]), color: C.text, width: 2, dash: [6, 4] }];
+    if (all) for (let k = 0; k < n; k++) series.push({ data: ts.map((t, i) => [t, its[k][i]]), color: C.accent2, width: 1.4, dash: [2, 3] });
+    series.push({ data: ts.map((t, i) => [t, its[n][i]]), color: C.accent, width: 3 });
+    MB.chart(ctx, null, { x: [0, pre.T], y: pre.yr, xLabel: "t", series });
+    let err = 0, okT = pre.T;
+    for (let i = 0; i <= N; i++) { const e = Math.abs(its[n][i] - pre.exact(ts[i])); err = Math.max(err, e); if (e >= 0.01 && okT === pre.T) okT = ts[i]; }
+    MB.stat("au-pic-yn", AU.num(its[n][N], 4)); MB.stat("au-pic-ex", AU.num(pre.exact(pre.T), 4));
+    MB.stat("au-pic-err", MB.fmt(err, 3)); MB.stat("au-pic-ok", "0 ≤ t ≤ " + AU.num(okT, 2));
+    document.getElementById("au-pic-eq").innerHTML = formula();
+  }, { aspect: 0.52, maxHeight: 380, minHeight: 240 });
+  const gn = MB.range("au-pic-n", (v) => String(v), (v) => { n = v; cv.redraw(); });
+  MB.check("au-pic-all", (v) => { all = v; cv.redraw(); });
+  document.getElementById("au-pic-next").addEventListener("click", () => { gn.set(Math.min(10, n + 1)); });
+  document.getElementById("au-pic-reset").addEventListener("click", () => { gn.set(0); });
+  document.getElementById("au-pic-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; document.getElementById("au-pic-tag").textContent = pre.tag; compute(); cv.redraw(); });
+})();
+
+/* ================================================================ 2. 비유일 해 다발 */
+(function () {
+  let mode = "sqrt", all = true, pert = false;
+  const cpt = { x: 1.5, y: 0, lock: "y", r: 8, label: "c", constrain(p) { p.x = MB.clamp(p.x, 0, 5.5); } };
+  const msg = document.getElementById("au-nu-msg");
+  const f = (y) => (mode === "sqrt" ? Math.sqrt(Math.max(y, 0)) : y);
+  const yc = (c) => (t) => (t <= c ? 0 : ((t - c) * (t - c)) / 4);
+  const pl = MB.plane("#au-cv-nu", {
+    x: [-0.6, 6.4], y: [-0.5, 4.2], aspect: 0.6, maxHeight: 400, gridStep: 1, points: [cpt],
+    draw(P) {
+      const C = P.P; cpt.color = C.accent;
+      AU.field(P, (t, y) => f(y), { nx: 24, ny: 15 });
+      if (mode === "sqrt") {
+        if (all) for (let c = 0; c <= 5.5; c += 0.5) P.curve(yc(c), { color: C.accent2, width: 1.4, alpha: 0.55, from: 0 });
+        P.curve(yc(cpt.x), { color: C.accent, width: 3.2, from: 0 });
+      }
+      P.line(0, 0, P.x1, 0, { color: C.accent, width: mode === "sqrt" ? 1.6 : 3.2 });
+      if (pert) {
+        const a = AU.solve((t, y) => f(y), 0, 0, 6.4, 640), b = AU.solve((t, y) => f(y), 1e-6, 0, 6.4, 640);
+        a.filter((_, i) => i % 32 === 0).forEach(([t, y]) => P.dot(t, y, { r: 3.5, color: C.text }));
+        b.filter((_, i) => i % 24 === 0).forEach(([t, y]) => { if (y < 4.2) P.dot(t, y, { r: 3.5, color: C.ok }); });
+      }
+      P.dot(0, 0, { r: 5, color: C.text });
+      P.text("y(0) = 0", 0, 0, { dx: 8, dy: -12, size: 12, color: C.dim });
+      const c = cpt.x;
+      MB.stat("au-nu-c", mode === "sqrt" ? AU.num(c, 2) : "—");
+      MB.stat("au-nu-y5", mode === "sqrt" ? AU.num(yc(c)(5), 3) : "0");
+      MB.stat("au-nu-L", mode === "sqrt" ? "1/(2√y) → ∞" : "1 (유계)");
+      if (mode === "sqrt") { msg.className = "au-msg bad"; msg.innerHTML = `y = 0에 머물다 t = ${AU.num(c, 2)}에 떠나는 해 y = (t − ${AU.num(c, 2)})²/4. 모두 y(0) = 0을 만족합니다. 립시츠 조건이 깨져 유일성이 없습니다.${pert ? " 검은 점(RK4, y₀ = 0)은 0에 머물고, 초록 점(y₀ = 10<sup>−6</sup>)은 c ≈ 0인 해를 따라갑니다." : ""}`; }
+      else { msg.className = "au-msg ok"; msg.innerHTML = `f = y는 립시츠(L = 1)이므로 y(0) = 0의 해는 y ≡ 0 하나뿐입니다. 점 c를 끌어도 떠나는 해가 없습니다.${pert ? " y₀ = 10<sup>−6</sup>에서 출발한 해 10<sup>−6</sup>eᵗ는 t = 6.4에서도 0.0006에 불과합니다." : ""}`; }
+      cpt.hidden = mode !== "sqrt";
+    },
+  });
+  MB.seg("au-nu-f", (v) => { mode = v; pl.redraw(); });
+  MB.check("au-nu-all", (v) => { all = v; pl.redraw(); });
+  MB.check("au-nu-pert", (v) => { pert = v; pl.redraw(); });
+})();
+
+/* ================================================================ 3. 물 새는 양동이 */
+(function () {
+  const k = 0.2, H0 = [1, 0.64, 0.25], TM = 14;
+  let t = 0, past = false, playing = false;
+  const h = (h0, t) => { const s = Math.sqrt(h0) - (k / 2) * t; return s > 0 ? s * s : 0; };
+  const msg = document.getElementById("au-bk-msg");
+  let cvG = null;
+  const cvA = MB.canvas("#au-cv-bk-a", (ctx, w, hh) => {
+    const C = MB.palette(), font = getComputedStyle(document.body).getPropertyValue("--font");
+    const bw = w * 0.2, gap = (w - 3 * bw) / 4, top = hh * 0.17, bh = hh * 0.48;
+    H0.forEach((h0, i) => {
+      const x = gap + i * (bw + gap), lev = h(h0, t), lh = lev * bh;
+      ctx.fillStyle = C.accent2; ctx.globalAlpha = 0.55; ctx.fillRect(x, top + bh - lh, bw, lh); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, top + bh); ctx.lineTo(x + bw * 0.42, top + bh); ctx.moveTo(x + bw * 0.58, top + bh); ctx.lineTo(x + bw, top + bh); ctx.lineTo(x + bw, top); ctx.stroke();
+      if (lev > 0) { ctx.strokeStyle = C.accent2; ctx.lineWidth = Math.max(1.2, 4 * Math.sqrt(lev)); ctx.beginPath(); ctx.moveTo(x + bw / 2, top + bh); ctx.lineTo(x + bw / 2, top + bh + hh * 0.08); ctx.stroke(); }
+      ctx.fillStyle = C.text; ctx.font = "12px " + font; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(`h₀ = ${h0}`, x + bw / 2, top + bh + hh * 0.1);
+      ctx.fillStyle = lev > 0 ? C.dim : C.bad; ctx.fillText(lev > 0 ? `${lev.toFixed(3)} m` : `빔 (T = ${(2 * Math.sqrt(h0)) / k})`, x + bw / 2, top + bh + hh * 0.1 + 16);
+    });
+    ctx.fillStyle = C.text; ctx.font = "700 14px " + font; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(`t = ${t.toFixed(2)} s`, w / 2, hh * 0.08);
+    if (cvG) cvG.redraw();
+  }, { aspect: 0.72, maxHeight: 330, minHeight: 220 });
+  cvG = MB.canvas("#au-cv-bk-g", (ctx) => {
+    const C = MB.palette(), cols = [C.accent, C.warn, C.ok];
+    const series = [];
+    if (past && t > 0) {
+      for (let T = 0; T <= t + 1e-9; T += Math.max(0.5, t / 14)) { const d = []; for (let s = 0; s <= T; s += 0.05) d.push([s, ((k * k) / 4) * (T - s) * (T - s)]); d.push([t, 0]); series.push({ data: d, color: C.faint, width: 1.2 }); }
+    }
+    H0.forEach((h0, i) => { const d = []; for (let s = 0; s <= TM; s += 0.05) d.push([s, h(h0, s)]); series.push({ data: d, color: C.faint, width: 1, dash: [3, 4] }); });
+    H0.forEach((h0, i) => { const d = []; for (let s = 0; s <= t + 1e-9; s += 0.05) d.push([s, h(h0, s)]); d.push([t, h(h0, t)]); series.push({ data: d, color: cols[i], width: 2.6 }); });
+    MB.chart(ctx, null, { x: [0, TM], y: [-0.05, 1.1], xLabel: "t [s]", series, vlines: [{ x: t, color: C.dim, dash: [] }], points: H0.map((h0, i) => ({ x: t, y: h(h0, t), color: cols[i], r: 4 })) });
+  }, { aspect: 0.72, maxHeight: 330, minHeight: 220 });
+  const tick = () => {
+    const empty = H0.filter((h0) => h(h0, t) === 0).length;
+    if (empty === 3) { msg.className = "au-msg bad"; msg.innerHTML = `세 양동이가 모두 h = 0으로 같은 상태입니다. 지금 상태만으로는 각각 언제 비었는지 알 수 없습니다. h = 0에서 거꾸로 풀면 h′ = −k√h의 해가 유일하지 않습니다.`; }
+    else if (empty > 0) { msg.className = "au-msg"; msg.innerHTML = `빈 양동이 ${empty}개. 지수 감쇠와 달리 √h 법칙은 <b>유한 시간에 정확히 0</b>이 됩니다. T = 2√h₀/k.`; }
+    else { msg.className = "au-msg ok"; msg.innerHTML = `모든 양동이에 물이 있습니다(h &gt; 0). 여기서는 √h가 립시츠이므로 과거와 미래가 유일하게 정해집니다.`; }
+  };
+  const gt = MB.range("au-bk-t", (v) => v.toFixed(2) + " s", (v) => { t = v; tick(); cvA.redraw(); });
+  MB.check("au-bk-past", (v) => { past = v; cvG.redraw(); });
+  const btn = MB.playButton("au-bk-play", () => { if (t >= TM - 0.01) t = 0; playing = true; }, () => { playing = false; });
+  document.getElementById("au-bk-reset").addEventListener("click", () => { playing = false; btn.set(false); gt.set(0); });
+  tick();
+  MB.loop(document.getElementById("sim-au-bucket"), (dt) => {
+    if (!playing) return;
+    t = Math.min(TM, t + dt * 1.5); gt.set(t, false); tick(); cvA.redraw();
+    if (t >= TM) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 4. 유한 시간 폭발 */
+(function () {
+  const PRE = {
+    sq: { y: (y0, t) => y0 / (1 - y0 * t), T: (y0) => 1 / y0, f: (y) => y * y, eq: "y′ = y² → y = y₀/(1 − y₀t),  T* = 1/y₀" },
+    cube: { y: (y0, t) => y0 / Math.sqrt(1 - 2 * y0 * y0 * t), T: (y0) => 1 / (2 * y0 * y0), f: (y) => y * y * y, eq: "y′ = y³ → y = y₀/√(1 − 2y₀²t),  T* = 1/(2y₀²)" },
+    tan: { y: (y0, t) => Math.tan(t + Math.atan(y0)), T: (y0) => Math.PI / 2 - Math.atan(y0), f: (y) => 1 + y * y, eq: "y′ = 1 + y² → y = tan(t + arctan y₀),  T* = π/2 − arctan y₀" },
+    lin: { y: (y0, t) => y0 * Math.exp(t), T: () => Infinity, f: (y) => y, eq: "y′ = y → y = y₀eᵗ,  폭발 없음 (T* = ∞)" },
+  };
+  let pre = PRE.sq, y0 = 1, cvT = null;
+  const YM = 12;
+  const cvY = MB.canvas("#au-cv-bu-y", (ctx) => {
+    const C = MB.palette(), T = pre.T(y0), tm = isFinite(T) ? Math.min(T * 1.3, 6) : 4;
+    const d = []; const te = isFinite(T) ? T * 0.99999 : tm;
+    for (let i = 0; i <= 600; i++) { const t = (Math.min(te, tm) * i) / 600, y = pre.y(y0, t); d.push([t, y]); }
+    const num = isFinite(T) ? AU.solve((t, y) => pre.f(y), y0, 0, T * 0.95, 400) : AU.solve((t, y) => pre.f(y), y0, 0, tm, 400);
+    const pts = num.filter((_, i) => i % 25 === 0).filter(([, y]) => y < YM).map(([x, y]) => ({ x, y, r: 3.2, color: C.text }));
+    MB.chart(ctx, null, { x: [0, tm], y: [0, YM], xLabel: "t", series: [{ data: d, color: C.accent, width: 2.8 }], points: pts, vlines: isFinite(T) && T <= tm ? [{ x: T, color: C.bad, label: "T*" }] : [] });
+    if (cvT) cvT.redraw();
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  cvT = MB.canvas("#au-cv-bu-T", (ctx) => {
+    const C = MB.palette(), T = pre.T(y0);
+    const d = []; for (let i = 0; i <= 200; i++) { const v = 0.2 + (2.8 * i) / 200; d.push([v, pre.T(v)]); }
+    MB.chart(ctx, null, { x: [0.2, 3], y: [0, 6.5], xLabel: "y₀", series: isFinite(T) ? [{ data: d, color: C.accent2, width: 2.6 }] : [], points: isFinite(T) ? [{ x: y0, y: Math.min(T, 6.5), color: C.accent, r: 5.5 }] : [], hlines: isFinite(T) ? [] : [{ y: 6.3, color: C.dim, label: "T* = ∞ (위로 벗어남)" }] });
+    MB.stat("au-bu-T", isFinite(T) ? AU.num(T, 4) : "∞");
+    MB.stat("au-bu-half", isFinite(T) ? AU.num(pre.y(y0, T / 2), 3) : "—");
+    let t10 = null; for (let i = 1; i <= 20000; i++) { const t = (Math.min(isFinite(T) ? T : 10, 10) * i) / 20000; if (pre.y(y0, t) >= 10) { t10 = t; break; } }
+    MB.stat("au-bu-10", t10 == null ? "—" : AU.num(t10, 3));
+    document.getElementById("au-bu-eq").innerHTML = pre.eq;
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  MB.range("au-bu-y0", (v) => v.toFixed(2), (v) => { y0 = v; cvY.redraw(); });
+  document.getElementById("au-bu-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; cvY.redraw(); });
+})();
+
+/* ================================================================ 5. 위상선 */
+(function () {
+  const PRE = {
+    logi: { f: (y) => y * (1 - y), eq: [0, 1], yr: [-0.6, 1.8], fr: [-0.8, 0.45] },
+    cubic: { f: (y) => -y * (y - 1) * (y - 2), eq: [0, 1, 2], yr: [-0.6, 2.6], fr: [-1.3, 1.3] },
+    allee: { f: (y) => y * (y - 0.3) * (1 - y), eq: [0, 0.3, 1], yr: [-0.4, 1.5], fr: [-0.4, 0.25] },
+    semi: { f: (y) => (y - 1) * (y - 1), eq: [1], yr: [-0.4, 2.2], fr: [-0.3, 1.6] },
+    sin: { f: (y) => Math.sin(y), eq: [-Math.PI, 0, Math.PI, 2 * Math.PI], yr: [-4, 7], fr: [-1.3, 1.3] },
+  };
+  let pre = PRE.logi, curves = [], curv = false;
+  const dfn = (y) => (pre.f(y + 1e-5) - pre.f(y - 1e-5)) / 2e-5;
+  const kind = (e) => { const d = dfn(e); if (d < -1e-6) return "st"; if (d > 1e-6) return "un"; const a = pre.f(e - 1e-3), b = pre.f(e + 1e-3); if (a < 0 && b < 0) return "st"; if (a > 0 && b > 0) return "se"; if (a > 0 && b < 0) return "st"; if (a < 0 && b > 0) return "un"; return "se"; };
+  const inflect = () => { const out = [], [lo, hi] = pre.yr; let prev = dfn(lo); for (let i = 1; i <= 400; i++) { const y = lo + ((hi - lo) * i) / 400, d = dfn(y); if (prev * d < 0) out.push(y); prev = d; } return out; };
+  const colOf = (k, C) => (k === "st" ? C.ok : k === "un" ? C.bad : C.warn);
+  const add = (t0, y0) => {
+    const F = (t, y) => pre.f(y);
+    const cap = (arr) => { const o = []; for (const p of arr) { if (!isFinite(p[1]) || p[1] > pre.yr[1] + 2 || p[1] < pre.yr[0] - 2) break; o.push(p); } return o; };
+    const fw = cap(AU.solve(F, y0, t0, 10, Math.max(10, Math.round((10 - t0) * 40))));
+    const bw = t0 > 0 ? cap(AU.solve(F, y0, t0, 0, Math.max(10, Math.round(t0 * 40)))).reverse() : [];
+    curves.push(bw.concat(fw)); if (curves.length > 14) curves.shift();
+  };
+  const family = () => { curves = []; const [lo, hi] = pre.yr; for (let i = 0; i < 11; i++) add(0, lo + ((hi - lo) * (i + 0.5)) / 11); };
+  let plT = null;
+  const cvF = MB.canvas("#au-cv-pl-f", (ctx) => {
+    const C = MB.palette(), [lo, hi] = pre.yr;
+    const d = []; for (let i = 0; i <= 400; i++) { const y = lo + ((hi - lo) * i) / 400; d.push([y, pre.f(y)]); }
+    const ch = MB.chart(ctx, null, { x: [lo, hi], y: pre.fr, xLabel: "y", series: [{ data: d, color: C.accent, width: 2.6 }], hlines: [{ y: 0, color: C.axis, dash: [] }], vlines: curv ? inflect().map((x) => ({ x, color: C.warn })) : [] });
+    AU.arrowsH(ctx, ch.X, ch.Y, pre.f, lo, hi, 14, C);
+    pre.eq.forEach((e) => { const k = kind(e); ctx.beginPath(); ctx.arc(ch.X(e), ch.Y(0), 6, 0, 7); if (k === "un") { ctx.fillStyle = C.bg; ctx.fill(); ctx.strokeStyle = colOf(k, C); ctx.lineWidth = 2.4; ctx.stroke(); } else { ctx.fillStyle = colOf(k, C); ctx.fill(); } });
+    if (plT) plT.redraw();
+  }, { aspect: 0.8, maxHeight: 360, minHeight: 230 });
+  plT = MB.plane("#au-cv-pl-t", {
+    x: [-0.4, 10], y: pre.yr, aspect: 0.8, maxHeight: 360, minHeight: 230, gridStep: 1, axisLabels: true,
+    onPointer(x, y, type) { if (type !== "down") return; add(Math.max(0, x), y); plT.redraw(); },
+    draw(P) {
+      const C = P.P;
+      pre.eq.forEach((e) => { const k = kind(e); P.line(P.x0, e, P.x1, e, { color: colOf(k, C), width: 1.6, dash: [6, 4] }); });
+      if (curv) inflect().forEach((y) => P.line(P.x0, y, P.x1, y, { color: C.warn, width: 1, dash: [2, 4], alpha: 0.7 }));
+      curves.forEach((c) => P.poly(c, { color: C.accent, width: 2.2, close: false }));
+    },
+  });
+  const names = { st: "안정", un: "불안정", se: "반안정" };
+  const info = () => {
+    document.getElementById("au-pl-eq").innerHTML = "평형점: " + pre.eq.map((e) => { const k = kind(e), d = dfn(e); return `<span class="au-${k}">${AU.num(e, 2)} ${names[k]}</span> (f′ = ${AU.num(d, 2)}${Math.abs(d) > 1e-6 ? `, 시상수 ${AU.num(1 / Math.abs(d), 2)}` : ""})`; }).join(" · ");
+  };
+  const reset = () => { plT.view({ y: pre.yr }); family(); info(); cvF.redraw(); };
+  document.getElementById("au-pl-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; reset(); });
+  MB.check("au-pl-curv", (v) => { curv = v; cvF.redraw(); });
+  document.getElementById("au-pl-fam").addEventListener("click", () => { family(); plT.redraw(); });
+  document.getElementById("au-pl-clear").addEventListener("click", () => { curves = []; plT.redraw(); });
+  reset();
+})();
+
+/* ================================================================ 6. 수확과 분기 */
+(function () {
+  const r = 0.5, K = 1000, HC = (r * K) / 4, TM = 80;
+  let h = 80, y0 = 1000, mode = "quota", sol = [], tEnd = null;
+  const f = (y) => (mode === "quota" ? r * y * (1 - y / K) - h : r * y * (1 - y / K) - (h / 500) * y);
+  const eqs = () => {
+    if (mode === "quota") { const D = 1 - (4 * h) / (r * K); if (D < 0) return []; const s = Math.sqrt(D); return D === 0 ? [K / 2] : [(K / 2) * (1 + s), (K / 2) * (1 - s)]; }
+    const E = h / 500; return E < r ? [K * (1 - E / r), 0] : [0];
+  };
+  const compute = () => {
+    sol = []; tEnd = null; let y = y0, t = 0; const dt = 0.05; sol.push([0, y]);
+    while (t < TM - 1e-9) {
+      const k1 = f(y), k2 = f(y + (dt / 2) * k1), k3 = f(y + (dt / 2) * k2), k4 = f(y + dt * k3);
+      y += (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4); t += dt;
+      if (y <= 0) { sol.push([t, 0]); tEnd = t; sol.push([TM, 0]); break; }
+      sol.push([t, y]);
+    }
+  };
+  compute();
+  let cvB = null, cvT = null;
+  const cvF = MB.canvas("#au-cv-hv-f", (ctx) => {
+    const C = MB.palette();
+    const d = []; for (let i = 0; i <= 300; i++) { const y = (1100 * i) / 300; d.push([y, f(y)]); }
+    const ch = MB.chart(ctx, null, { x: [0, 1100], y: [-170, 140], xLabel: "y", series: [{ data: d, color: C.accent, width: 2.6 }], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    AU.arrowsH(ctx, ch.X, ch.Y, f, 0, 1100, 12, C);
+    eqs().forEach((e, i) => { if (e <= 0 && mode === "quota") return; ctx.beginPath(); ctx.arc(ch.X(e), ch.Y(0), 6, 0, 7); const st = (f(e + 1) - f(e - 1)) < 0; if (st) { ctx.fillStyle = C.ok; ctx.fill(); } else { ctx.fillStyle = C.bg; ctx.fill(); ctx.strokeStyle = C.bad; ctx.lineWidth = 2.4; ctx.stroke(); } });
+    if (cvB) cvB.redraw(); if (cvT) cvT.redraw();
+  }, { aspect: 0.85, maxHeight: 320, minHeight: 220 });
+  cvB = MB.canvas("#au-cv-hv-b", (ctx) => {
+    const C = MB.palette(), up = [], lo = [];
+    if (mode === "quota") {
+      for (let i = 0; i <= 200; i++) { const hh = (HC * i) / 200, s = Math.sqrt(Math.max(0, 1 - (4 * hh) / (r * K))); up.push([hh, (K / 2) * (1 + s)]); lo.push([hh, (K / 2) * (1 - s)]); }
+    } else {
+      for (let i = 0; i <= 200; i++) { const hh = (160 * i) / 200, E = hh / 500; up.push([hh, Math.max(0, K * (1 - E / r))]); }
+      lo.push([0, 0], [160, 0]);
+    }
+    const pts = eqs().filter((e) => mode === "effort" || e > 0).map((e) => ({ x: h, y: e, r: 5, color: (f(e + 1) - f(e - 1)) < 0 ? C.ok : C.bad }));
+    MB.chart(ctx, null, { x: [0, 160], y: [0, 1050], xLabel: mode === "quota" ? "h" : "h (= 500E)", series: [{ data: up, color: C.ok, width: 2.6 }, { data: lo, color: C.bad, width: 2, dash: [6, 4] }], vlines: [{ x: h, color: C.dim, dash: [] }].concat(mode === "quota" ? [{ x: HC, color: C.warn, label: "h_c" }] : []), points: pts, bands: mode === "quota" ? [{ x0: HC, x1: 160, color: "color-mix(in srgb, " + C.bad + " 10%, transparent)" }] : [] });
+  }, { aspect: 0.85, maxHeight: 320, minHeight: 220 });
+  cvT = MB.canvas("#au-cv-hv-t", (ctx) => {
+    const C = MB.palette();
+    const hl = eqs().filter((e) => e > 0).map((e) => ({ y: e, color: (f(e + 1) - f(e - 1)) < 0 ? C.ok : C.bad }));
+    MB.chart(ctx, null, { x: [0, TM], y: [0, 1050], xLabel: "t [년]", series: [{ data: sol, color: C.accent, width: 2.6 }], hlines: hl, vlines: tEnd ? [{ x: tEnd, color: C.bad, label: "붕괴" }] : [] });
+  }, { aspect: 0.85, maxHeight: 320, minHeight: 220 });
+  const msg = document.getElementById("au-hv-msg");
+  const stats = () => {
+    const e = eqs();
+    if (mode === "quota") {
+      MB.stat("au-hv-up", e.length ? AU.num(e[0], 1) : "없음"); MB.stat("au-hv-lo", e.length > 1 ? AU.num(e[1], 1) : e.length ? "(합쳐짐)" : "없음");
+    } else { MB.stat("au-hv-up", AU.num(e[0], 1)); MB.stat("au-hv-lo", "0 (멸종점)"); }
+    MB.stat("au-hv-st", tEnd ? AU.num(tEnd, 1) + "년에 붕괴" : AU.num(sol[sol.length - 1][1], 1));
+    if (mode === "effort") { const E = h / 500; msg.className = "au-msg ok"; msg.innerHTML = `노력량 E = ${AU.num(E, 3)}: 평형점 y* = K(1 − E/r) = ${AU.num(e[0], 1)}, 수확량 E·y* = ${AU.num(E * e[0], 1)}톤/년. E &lt; r이면 언제나 안정이라 갑작스러운 붕괴가 없습니다.`; return; }
+    if (h > HC) { msg.className = "au-msg bad"; msg.innerHTML = `h = ${h} &gt; h<sub>c</sub> = 125: 평형점이 없습니다(f &lt; 0이 어디서나). 어떤 y₀에서도 개체군은 무너집니다${tEnd ? ` — 이 경우 ${AU.num(tEnd, 1)}년` : ""}.`; }
+    else if (tEnd) { msg.className = "au-msg bad"; msg.innerHTML = `평형점은 있지만 y₀ = ${y0}가 문턱 y*₋ = ${AU.num(e[1], 1)}보다 작아 ${AU.num(tEnd, 1)}년에 멸종합니다.`; }
+    else if (h === HC) { msg.className = "au-msg"; msg.innerHTML = `h = h<sub>c</sub>: 두 평형점이 K/2 = 500에서 합쳐진 반안정점입니다. 아래로 조금만 밀려도 붕괴합니다.`; }
+    else { msg.className = "au-msg ok"; msg.innerHTML = `안정 평형점 ${AU.num(e[0], 1)}, 문턱 ${AU.num(e[1], 1)}. 개체군은 ${AU.num(e[0], 1)}에 자리 잡습니다. h<sub>c</sub>까지 여유 ${125 - h}톤/년.`; }
+  };
+  const all = () => { compute(); stats(); cvF.redraw(); };
+  MB.range("au-hv-h", (v) => v + " 톤/년", (v) => { h = v; all(); });
+  MB.range("au-hv-y0", (v) => v + " 톤", (v) => { y0 = v; all(); });
+  MB.seg("au-hv-mode", (v) => { mode = v; all(); });
+  stats();
+})();
+
+/* ================================================================ 7. 쌍안정 스위치 */
+(function () {
+  const WIN = 30, SPEED = 2;
+  let A = 0.8, D = 3, s0 = 0, noise = false, y = -1, t = 0, pulse = 0, pEnd = -1, hist = [[0, -1, 0]];
+  const s = () => s0 + (t < pEnd ? pulse : 0);
+  const roots = (sv) => { const out = []; let prev = null; for (let i = 0; i <= 2000; i++) { const x = -2 + (4 * i) / 2000, v = x - x * x * x + sv; if (prev != null && (prev < 0) !== (v < 0)) out.push(x); prev = v; } return out; };
+  const msg = document.getElementById("au-sw-msg");
+  let cvF = null;
+  const cvT = MB.canvas("#au-cv-sw-t", (ctx) => {
+    const C = MB.palette(), t0 = Math.max(0, t - WIN);
+    MB.chart(ctx, null, { x: [t0, t0 + WIN], y: [-1.7, 1.7], xLabel: "t", series: [{ data: hist.map((d) => [d[0], d[2]]), color: C.accent2, width: 2 }, { data: hist.map((d) => [d[0], d[1]]), color: C.accent, width: 2.6 }], hlines: [{ y: 0.385, color: C.faint }, { y: -0.385, color: C.faint }, { y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  cvF = MB.canvas("#au-cv-sw-f", (ctx) => {
+    const C = MB.palette(), sv = s(), d = [], d0 = [];
+    for (let i = 0; i <= 300; i++) { const x = -1.8 + (3.6 * i) / 300; d.push([x, x - x ** 3 + sv]); d0.push([x, x - x ** 3]); }
+    const ch = MB.chart(ctx, null, { x: [-1.8, 1.8], y: [-1.6, 1.6], xLabel: "y", series: [{ data: d0, color: C.faint, width: 1.4, dash: [3, 3] }, { data: d, color: C.accent, width: 2.6 }], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    AU.arrowsH(ctx, ch.X, ch.Y, (x) => x - x ** 3 + sv, -1.8, 1.8, 12, C);
+    roots(sv).forEach((e) => { const st = 1 - 3 * e * e < 0; ctx.beginPath(); ctx.arc(ch.X(e), ch.Y(0), 6, 0, 7); if (st) { ctx.fillStyle = C.ok; ctx.fill(); } else { ctx.fillStyle = C.bg; ctx.fill(); ctx.strokeStyle = C.bad; ctx.lineWidth = 2.2; ctx.stroke(); } });
+    ctx.beginPath(); ctx.arc(ch.X(MB.clamp(y, -1.8, 1.8)), ch.Y(0), 7.5, 0, 7); ctx.strokeStyle = C.accent; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(ch.X(MB.clamp(y, -1.8, 1.8)), ch.Y(0), 3.5, 0, 7); ctx.fill();
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  const stats = () => {
+    const sv = s(), nst = roots(sv).filter((e) => 1 - 3 * e * e < 0).length;
+    MB.stat("au-sw-y", AU.num(y, 3)); MB.stat("au-sw-s", AU.num(sv, 3)); MB.stat("au-sw-n", String(nst));
+    MB.stat("au-sw-bit", y > 0 ? "1 (켜짐)" : "0 (꺼짐)");
+    if (t < pEnd) { msg.className = "au-msg"; msg.innerHTML = `펄스 중: s = ${AU.num(sv, 2)}. ${Math.abs(sv) > 0.385 ? "|s| &gt; 0.385 → 지금 쪽 평형점이 사라졌습니다." : "|s| &lt; 0.385 → 평형점이 조금 움직일 뿐입니다."}`; }
+    else if (nst === 1) { msg.className = "au-msg bad"; msg.innerHTML = `바이어스 |s₀| = ${AU.num(Math.abs(s0), 2)} &gt; 0.385: 안정 평형점이 하나뿐이라 스위치가 한쪽으로 고정되었습니다.`; }
+    else { msg.className = "au-msg ok"; msg.innerHTML = `입력 없음: 안정 평형점 두 개. 지금 상태 ${y > 0 ? "+1(켜짐)" : "−1(꺼짐)"}을 기억하고 있습니다.`; }
+  };
+  const fire = (sg) => { pulse = sg * A; pEnd = t + D; };
+  MB.range("au-sw-a", (v) => v.toFixed(2), (v) => { A = v; });
+  MB.range("au-sw-d", (v) => v.toFixed(1), (v) => { D = v; });
+  MB.range("au-sw-b", (v) => v.toFixed(2), (v) => { s0 = v; stats(); cvF.redraw(); });
+  MB.check("au-sw-noise", (v) => { noise = v; });
+  document.getElementById("au-sw-on").addEventListener("click", () => fire(1));
+  document.getElementById("au-sw-off").addEventListener("click", () => fire(-1));
+  stats();
+  MB.loop(document.getElementById("sim-au-switch"), (dt) => {
+    const steps = 8, h = (dt * SPEED) / steps;
+    for (let i = 0; i < steps; i++) {
+      const sv = s(); y += h * (y - y * y * y + sv);
+      if (noise) y += 0.25 * Math.sqrt(h) * MB.randn();
+      t += h;
+    }
+    hist.push([t, y, s()]);
+    while (hist.length > 2 && hist[0][0] < t - WIN - 1) hist.shift();
+    stats(); cvT.redraw(); cvF.redraw();
+  });
+})();
+</script>
+</body>
+</html>

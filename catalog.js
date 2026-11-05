@@ -108,26 +108,29 @@ window.MATH_BOOKS = [
   },
   {
     "id": "odebook",
-    "code": "ODE",
     "title": "ODEBook",
     "subtitle": "미분방정식 교과서",
     "headline": "변화의 법칙에서 미래를 계산한다",
-    "description": "1계 미분방정식과 방향장, 2계 선형 방정식과 진동·공진, 라플라스 변환, 연립 방정식과 위상 평면, 안정성과 비선형 동역학, 편미분방정식 입문까지 회로·기계·열을 직접 시뮬레이션하며 익히는 미분방정식 교과서.",
+    "description": "방향장과 1계 방정식, 위상선과 수치 해법, 2계 선형 방정식과 진동·공진, 라플라스 변환과 전달 함수, 연립 방정식과 위상 평면, 비선형 안정성과 혼돈, 급수해와 푸리에 급수, 편미분방정식 입문까지 — 회로·기계·열을 직접 시뮬레이션하며 익히는 미분방정식 교과서.",
     "stage": "core",
-    "status": "planned",
+    "status": "published",
     "color": "#e8590c",
     "colorDark": "#ffa94d",
-    "motif": "ode",
     "topics": [
-      "방향장",
+      "방향장·1계 방정식",
+      "수치 해법",
       "진동·공진",
-      "라플라스 변환",
-      "위상 평면",
-      "안정성",
-      "편미분방정식"
+      "라플라스·전달 함수",
+      "위상 평면·안정성",
+      "혼돈·편미분방정식"
     ],
+    "motif": "ode",
+    "code": "ODE",
+    "legacyUrl": null,
     "slug": "ode",
-    "legacyUrl": null
+    "url": "ode/",
+    "chapters": 17,
+    "simulators": 121
   },
   {
     "id": "numericalbook",

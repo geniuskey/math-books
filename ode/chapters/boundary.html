@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>경계값 문제와 푸리에 급수 · ODEBook</title>
+<meta name="description" content="양 끝에서 조건을 주면 해가 없거나 무수히 많을 수 있다. 슈팅 방법, 고유값 문제와 기둥의 좌굴, 스튀름–리우빌 이론과 직교성, 함수 내적, 푸리에 급수와 짝·홀 확장, 기브스 현상, 파세발 등식, 고유함수 전개로 푸는 강제 경계값 문제.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .bv-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .bv-msg b { color: var(--text); }
+  .bv-msg.ok { color: var(--ok); font-weight: 600; }
+  .bv-msg.bad { color: var(--bad); font-weight: 600; }
+  .bv-tbl td { font-family: var(--mono); font-size: 13.5px; }
+  .bv-tbl td:first-child { font-family: var(--font); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="boundary">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 15</div>
+    <h1 data-no-glossary>경계값 문제와 푸리에 급수</h1>
+    <p class="lead">지금까지의 미분방정식은 모두 <b>한 순간</b>에서 출발했습니다. 처음 위치와 처음 속도를 주면 해가 하나로 정해지고, 우리는 그 해를 시간을 따라 그려 나갔습니다. 그런데 기타 줄은 양 끝이 묶여 있고, 기둥은 바닥과 천장에 고정되어 있으며, 막대의 온도는 양 끝에서 정해집니다. 조건이 <b>두 지점</b>에 나뉘어 있는 이런 문제를 <span class="term">경계값 문제</span>라고 합니다. 경계값 문제는 해가 없을 수도, 무수히 많을 수도 있고, 바로 그 "해가 생기는 특별한 값"이 줄의 음높이와 기둥이 무너지는 하중을 정합니다. 이 장은 그 특별한 값(고유값)과 짝을 이루는 함수(고유함수)를 찾고, 고유함수들이 서로 <b>직교</b>한다는 사실에서 임의의 함수를 사인과 코사인으로 쪼개는 <b>푸리에 급수</b>를 얻습니다. 다음 장의 편미분방정식은 모두 이 도구 위에 서 있습니다.</p>
+    <ul class="objectives">
+      <li>초기값 문제와 경계값 문제의 차이를 설명하고, 경계값 문제의 해가 없거나 무수히 많은 경우를 구별한다.</li>
+      <li>슈팅 방법으로 경계값 문제를 초기값 문제의 근 찾기로 바꾸어 푼다.</li>
+      <li>고유값 문제 \(y'' + \lambda y = 0\)을 여러 경계 조건에서 풀고, 기둥의 오일러 좌굴 하중을 유도한다.</li>
+      <li>스튀름–리우빌 문제의 고유값이 실수이고 고유함수가 가중 직교함을 증명한다.</li>
+      <li>함수 내적으로 직교 전개의 계수를 구하고, 푸리에 급수·사인 급수·코사인 급수를 짝·홀 확장으로 이해한다.</li>
+      <li>수렴 정리, 기브스 현상, 파세발 등식을 설명하고, 강제 경계값 문제를 고유함수 전개로 푼다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>가늘고 높은 기둥</b></div>
+      <div class="o-body"><p>굵은 돌기둥은 짓눌려 부서질 때까지 버팁니다. 그러나 가늘고 긴 철 기둥은 재료가 버틸 수 있는 응력에 한참 못 미치는 하중에서 갑자기 옆으로 휘며 무너집니다. 이 현상이 <span class="term">좌굴</span>입니다. 좌굴 하중은 재료의 강도가 아니라 <b>경계값 문제가 0이 아닌 해를 갖기 시작하는 하중</b>, 즉 고유값으로 정해집니다. 오일러<span class="en">(Leonhard Euler)</span>는 18세기에 탄성 곡선을 연구하며 이 하중이 \(\pi^2 EI/L^2\)임을 보였습니다.</p>
+        <p>같은 수학은 기타 줄이 내는 음의 높이, 원자 안 전자의 에너지 준위, 막대가 식는 속도도 정합니다. 그리고 고유함수가 서로 직교한다는 성질 덕분에, 아무리 복잡한 초기 모양도 고유함수의 합으로 쪼개 각 성분을 따로 다룰 수 있습니다. 19세기 초 푸리에<span class="en">(Joseph Fourier)</span>가 열 전도를 풀며 이 방법을 체계화했습니다.</p>
+        <div class="o-chain"><span>양 끝 조건</span><i>→</i><span>특별한 λ에서만 해</span><i>→</i><span class="tool">고유값 · 직교 고유함수</span><i>→</i><span>좌굴 하중 · 음높이 · 푸리에 급수</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="ivp-vs-bvp">
+    <h2>초기값 대 경계값: 해가 없거나 무수히 많을 때</h2>
+    <div class="problem"><strong>목표에 떨어지는 포물선</strong>
+      <p>대포를 쏠 때 포수가 정하는 것은 처음 높이와 처음 속도입니다. 이것은 초기값 문제입니다. 하지만 포수가 실제로 원하는 것은 "300 m 앞의 목표에 떨어지는" 궤적, 즉 <b>출발점과 도착점</b>이 정해진 궤적입니다. 처음 기울기는 모르고, 대신 끝에서의 값을 압니다. 이런 문제도 늘 해가 하나일까요?</p></div>
+    <p>2계 방정식 \(y'' = f(x, y, y')\)에 대해 조건 두 개를 한 점에서 주면 <span class="term">초기값 문제</span>, 두 점에서 나누어 주면 경계값 문제입니다.</p>
+    <div class="callout deep"><strong>정의 15.1 (2점 경계값 문제)</strong> 구간 \([a, b]\)에서 2계 방정식 \(y'' = f(x, y, y')\)와 양 끝의 조건
+      <div class="formula">$$\alpha_1 y(a) + \beta_1 y'(a) = \gamma_1,\qquad \alpha_2 y(b) + \beta_2 y'(b) = \gamma_2$$</div>
+      를 함께 푸는 문제를 <b>2점 경계값 문제</b>라 한다. \(\beta = 0\)이면 값을 주는 <span class="term">디리클레 조건</span><span class="en">(Dirichlet)</span>, \(\alpha = 0\)이면 기울기를 주는 <span class="term">노이만 조건</span><span class="en">(Neumann)</span>, 둘 다 0이 아니면 <span class="term">로뱅 조건</span><span class="en">(Robin)</span>이라 한다. \(\gamma_1 = \gamma_2 = 0\)이고 방정식이 선형 동차이면 <b>동차</b> 경계값 문제다.</div>
+    <p>4장의 존재·유일성 정리(<a href="autonomous.html">피카르–린델뢰프</a>)는 초기값 문제에만 해당합니다. 경계값 문제에서는 아주 단순한 방정식에서도 세 가지가 모두 일어납니다.</p>
+    <div class="callout"><strong>예제 15.1 (같은 방정식, 세 가지 운명)</strong> \(y'' + y = 0\)의 일반해는 \(y = c_1\cos x + c_2\sin x\)이다. 왼쪽 조건 \(y(0) = 0\)에서 \(c_1 = 0\), 즉 \(y = c_2\sin x\).
+      <ol>
+        <li>\(y(\pi/2) = 1\): \(c_2 = 1\). 해가 <b>하나</b>, \(y = \sin x\).</li>
+        <li>\(y(\pi) = 1\): \(c_2\sin\pi = 0 \ne 1\). \(c_2\)를 어떻게 골라도 맞지 않는다. 해가 <b>없다</b>.</li>
+        <li>\(y(\pi) = 0\): \(c_2\sin\pi = 0\)은 모든 \(c_2\)에서 성립한다. 해가 <b>무수히 많다</b>, \(y = c\sin x\).</li>
+      </ol>
+      (나)와 (다)의 차이는 오른쪽 값뿐이다. 구간의 길이가 마침 \(\pi\)라서 동차 문제(오른쪽 값 0)가 0이 아닌 해 \(\sin x\)를 가지기 때문에 이런 일이 생긴다.</div>
+    <p>이 관찰은 선형 경계값 문제 전체에 대한 정리로 바뀝니다. 증명은 일반해 \(y = y_p + c_1y_1 + c_2y_2\)를 두 경계 조건에 넣으면 \(c_1, c_2\)에 대한 2×2 연립 방정식이 된다는 데서 바로 나옵니다. 계수 행렬이 가역이면 해가 하나이고, 특이하면 해가 없거나 무수히 많습니다. 행렬이 특이하다는 것은 곧 동차 문제가 자명하지 않은 해를 가진다는 뜻입니다.</p>
+    <div class="callout deep"><strong>정리 15.2 (선형 경계값 문제의 양자택일)</strong> \(p, q, g\)가 \([a, b]\)에서 연속일 때 \(y'' + p(x)y' + q(x)y = g(x)\)와 위의 경계 조건에 대해 다음 중 정확히 하나가 성립한다.
+      <ol>
+        <li>대응하는 동차 문제(\(g = 0\), \(\gamma_1 = \gamma_2 = 0\))의 해가 \(y \equiv 0\)뿐이다. 그러면 모든 \(g, \gamma_1, \gamma_2\)에 대해 해가 <b>꼭 하나</b> 있다.</li>
+        <li>동차 문제가 0이 아닌 해를 가진다. 그러면 비동차 문제는 해가 <b>없거나 무수히 많다</b>.</li>
+      </ol></div>
+    <p>손으로 풀 수 없는 경계값 문제는 어떻게 풀까요? 가장 직관적인 방법은 포수처럼 하는 것입니다. 처음 기울기 \(s\)를 하나 골라 초기값 문제로 쏘고(<a href="numerical.html">5장의 RK4</a>), 도착점에서 얼마나 빗나갔는지 \(F(s) = y(b; s) - B\)를 잽니다. 그러면 경계값 문제는 <b>한 변수 방정식 \(F(s) = 0\)의 근 찾기</b>가 되고, 할선법으로 \(s\)를 고쳐 나가면 됩니다. 이것이 <span class="term">슈팅 방법</span><span class="en">(shooting method)</span>입니다.</p>
+    <div class="formula">$$s_{k+1} = s_k - F(s_k)\,\frac{s_k - s_{k-1}}{F(s_k) - F(s_{k-1})}$$
+      <div class="where">선형 방정식이면 \(F(s)\)가 \(s\)의 1차 함수이므로 할선법이 한 번에 정확히 맞춘다. 비선형이면 \(F\)가 굽어 있어 몇 번 반복해야 하고, 근이 여럿일 수도 있다.</div></div>
+    <div class="callout"><strong>예제 15.2 (해가 둘인 비선형 경계값 문제)</strong> \(y'' = \tfrac32 y^2\), \(y(0) = 4\), \(y(1) = 1\).
+      <ol>
+        <li>\(y = 4/(1 + x)^2\)을 넣어 본다. \(y'' = 24/(1+x)^4\)이고 \(\tfrac32 y^2 = \tfrac32\cdot 16/(1+x)^4 = 24/(1+x)^4\). 경계값도 \(y(0) = 4\), \(y(1) = 1\)로 맞다. 이 해의 처음 기울기는 \(y'(0) = -8\).</li>
+        <li>슈팅 함수 \(F(s)\)를 RK4로 그려 보면 \(s = -8\) 말고도 \(s \approx -35.86\)에서 한 번 더 0을 지난다. 이 두 번째 해는 처음에 가파르게 내려가 음수까지 내려갔다가 다시 올라와 \(y(1) = 1\)에 닿는다.</li>
+        <li>선형 문제의 양자택일(정리 15.2)은 비선형 문제에는 해당하지 않는다. 비선형 경계값 문제는 해가 둘일 수도 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-bv-shoot">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>슈팅 방법: 처음 기울기를 골라 목표에 맞히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-shoot-y"></canvas><span class="cap">y(x; s): 쏜 궤적과 목표점</span></div>
+          <div><canvas id="bv-cv-shoot-F"></canvas><span class="cap">빗나간 정도 F(s) = y(b; s) − B</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="bv-sh-pre">
+            <option value="lin">y″ + y = 0, y(0)=0, y(2)=1</option>
+            <option value="none">y″ + y = 0, y(0)=0, y(π)=1</option>
+            <option value="many">y″ + y = 0, y(0)=0, y(π)=0</option>
+            <option value="non">y″ = 1.5y², y(0)=4, y(1)=1</option>
+          </select></label>
+          <label class="ctrl"><span>처음 기울기 s <output id="bv-sh-s-out"></output></span><input type="range" id="bv-sh-s" min="-3" max="3" step="0.01" value="0.4"></label>
+          <label class="check"><input type="checkbox" id="bv-sh-fan" checked> 여러 s를 함께 쏘기</label>
+          <div class="btn-row"><button class="btn primary" id="bv-sh-go">▶ 할선법</button><button class="btn" id="bv-sh-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">s = y′(a)</span><span class="v" id="bv-sh-o-s">—</span></div>
+        <div class="stat"><span class="k">y(b; s)</span><span class="v" id="bv-sh-o-y">—</span></div>
+        <div class="stat"><span class="k">F(s)</span><span class="v" id="bv-sh-o-F">—</span></div>
+        <div class="stat"><span class="k">할선법 반복</span><span class="v" id="bv-sh-o-k">—</span></div>
+      </div>
+      <div class="bv-msg" id="bv-sh-msg"></div>
+      <div class="sim-note">해볼 것: ① 첫 문제에서 ▶ 할선법을 누르면 한 번 만에 s = 1/sin 2 ≈ 1.0998에 맞습니다. F(s)가 직선이기 때문입니다. ② 두 번째 문제는 모든 궤적이 x = π에서 0으로 모입니다. F(s)가 −1인 수평선이라 근이 없습니다. ③ 비선형 문제에서 s를 −20 근처에서 시작하면 −8로, −30 근처에서 시작하면 −35.86으로 수렴합니다. 모델: 각 궤적은 RK4(400걸음)로 적분합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="eigenvalue-problem">
+    <h2>고유값 문제 y″ + λy = 0</h2>
+    <div class="problem"><strong>줄은 어떤 모양으로만 떨 수 있는가</strong>
+      <p>길이 \(L\)인 줄의 양 끝이 묶여 있습니다. 줄이 한 모양을 유지한 채 크기만 진동하려면, 그 모양 \(y(x)\)는 \(y'' = -\lambda y\)(휨의 정도가 변위에 비례)와 \(y(0) = y(L) = 0\)을 만족해야 합니다(16장에서 유도). \(\lambda\)는 진동수의 제곱에 비례합니다. 그런데 예제 15.1에서 보았듯이 이 동차 문제는 대부분의 \(\lambda\)에서 \(y \equiv 0\)밖에 해가 없습니다. 어떤 \(\lambda\)에서 줄이 실제로 떨 수 있을까요?</p></div>
+    <div class="callout deep"><strong>정의 15.3 (고유값과 고유함수)</strong> 매개변수 \(\lambda\)를 포함한 동차 경계값 문제가 \(y \not\equiv 0\)인 해를 가지는 \(\lambda\)를 <b>고유값</b>, 그때의 해 \(y\)를 그 고유값에 대응하는 <span class="term">고유함수</span><span class="en">(eigenfunction)</span>라 한다. 고유함수의 상수배도 고유함수다.</div>
+    <p>행렬의 고유값 \(A\mathbf v = \lambda\mathbf v\)(<a href="../../linear/chapters/eigen.html">LinearBook 고유값 장</a>)과 같은 모양입니다. 연산자 \(-\frac{d^2}{dx^2}\)가 행렬 자리에, 함수 \(y\)가 벡터 자리에 있고, 경계 조건이 "어떤 함수들의 공간에서 연산자가 작용하는가"를 정합니다.</p>
+    <div class="callout deep"><strong>정리 15.4 (디리클레 고유값 문제)</strong> \(y'' + \lambda y = 0\), \(y(0) = 0\), \(y(L) = 0\)의 고유값과 고유함수는
+      <div class="formula">$$\lambda_n = \left(\frac{n\pi}{L}\right)^2,\qquad y_n(x) = \sin\frac{n\pi x}{L},\qquad n = 1, 2, 3, \ldots$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\lambda\)의 부호로 나눈다. (i) \(\lambda = -\kappa^2 \lt 0\): \(y = c_1\cosh\kappa x + c_2\sinh\kappa x\). \(y(0) = 0\)에서 \(c_1 = 0\), \(y(L) = c_2\sinh\kappa L = 0\)인데 \(\sinh\kappa L > 0\)이므로 \(c_2 = 0\). (ii) \(\lambda = 0\): \(y = c_1 + c_2x\)이고 두 조건에서 \(c_1 = c_2 = 0\). (iii) \(\lambda = k^2 > 0\): \(y = c_1\cos kx + c_2\sin kx\), \(c_1 = 0\), \(c_2\sin kL = 0\). \(c_2 \ne 0\)이려면 \(\sin kL = 0\), 즉 \(kL = n\pi\). ∎</p></div>
+    <p>경계 조건이 바뀌면 고유값도 바뀝니다. 같은 방식으로 풀면 다음 표를 얻습니다(구간 \([0, L]\)).</p>
+    <div class="table-wrap"><table class="bv-tbl">
+      <thead><tr><th>경계 조건</th><th>고유값 λₙ</th><th>고유함수</th><th>n</th></tr></thead>
+      <tbody>
+        <tr><td>y(0) = 0, y(L) = 0 (양끝 고정)</td><td>(nπ/L)²</td><td>sin(nπx/L)</td><td>1, 2, 3, …</td></tr>
+        <tr><td>y′(0) = 0, y′(L) = 0 (양끝 자유·단열)</td><td>(nπ/L)²</td><td>cos(nπx/L)</td><td>0, 1, 2, …</td></tr>
+        <tr><td>y(0) = 0, y′(L) = 0 (한끝 고정)</td><td>((2n−1)π/(2L))²</td><td>sin((2n−1)πx/(2L))</td><td>1, 2, 3, …</td></tr>
+        <tr><td>y(−L) = y(L), y′(−L) = y′(L) (주기)</td><td>(nπ/L)²</td><td>cos(nπx/L), sin(nπx/L)</td><td>0, 1, 2, …</td></tr>
+      </tbody></table></div>
+    <p>노이만 조건에서는 \(\lambda_0 = 0\)과 상수 함수 \(y_0 = 1\)이 고유쌍으로 들어갑니다. 양 끝이 단열된 막대에서 "어디나 같은 온도"가 영원히 변하지 않는 상태가 바로 이것입니다. 주기 조건에서는 \(n \ge 1\)마다 고유함수가 <b>둘</b>씩 있습니다. 이것이 다음 절들에서 만날 푸리에 급수의 사인·코사인 짝입니다.</p>
+    <p>고유값을 슈팅으로 찾을 수도 있습니다. 왼쪽 조건만 맞춘 해 \(y(x; \lambda)\)를 쏘고, 오른쪽 조건이 얼마나 빗나가는지를 \(\lambda\)의 함수로 그리면 그 함수의 0이 고유값입니다. 아래 시뮬레이터에서 \(\lambda\)를 움직여 보세요. 고유값을 지날 때마다 해곡선의 내부 영점이 하나씩 늘어납니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 220" role="img" aria-label="양끝 고정 고유함수 처음 세 개">
+        <rect x="10" y="10" width="740" height="200" rx="10" class="f-surface"/>
+        <g transform="translate(40,0)">
+          <line x1="0" y1="110" x2="200" y2="110" class="s-axis"/>
+          <path d="M0 110 Q100 10 200 110" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+          <text x="100" y="190" text-anchor="middle" class="t-mono">n = 1, λ = (π/L)²</text>
+          <text x="100" y="160" text-anchor="middle" class="t-dim">영점 0개</text>
+        </g>
+        <g transform="translate(280,0)">
+          <line x1="0" y1="110" x2="200" y2="110" class="s-axis"/>
+          <path d="M0 110 Q50 10 100 110 Q150 210 200 110" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+          <text x="100" y="190" text-anchor="middle" class="t-mono">n = 2, λ = 4(π/L)²</text>
+          <circle cx="100" cy="110" r="4" style="fill:var(--accent-2)"/>
+        </g>
+        <g transform="translate(520,0)">
+          <line x1="0" y1="110" x2="200" y2="110" class="s-axis"/>
+          <path d="M0 110 Q33.3 10 66.7 110 Q100 210 133.3 110 Q166.7 10 200 110" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+          <text x="100" y="190" text-anchor="middle" class="t-mono">n = 3, λ = 9(π/L)²</text>
+          <circle cx="66.7" cy="110" r="4" style="fill:var(--accent-2)"/><circle cx="133.3" cy="110" r="4" style="fill:var(--accent-2)"/>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-1.</b> 양끝 고정 문제의 고유함수 sin(nπx/L). n번째 고유함수는 내부에 영점(마디)을 정확히 n − 1개 가지고, 고유값은 n²에 비례해 커진다. 기타 줄의 기본음·2배음·3배음의 모양이다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-bv-eigen">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>λ를 쓸어 고유값 찾기: 오른쪽 끝이 맞는 순간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-eig-y"></canvas><span class="cap">y(x; λ), 왼쪽 조건만 맞춘 해</span></div>
+          <div><canvas id="bv-cv-eig-m"></canvas><span class="cap">오른쪽 조건의 어긋남 m(λ)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>경계 조건 (L = 1)</span><div class="seg" id="bv-eg-bc"><button data-value="DD" class="on">고정–고정</button><button data-value="DN">고정–자유</button><button data-value="NN">자유–자유</button></div></div>
+          <label class="ctrl"><span>λ <output id="bv-eg-l-out"></output></span><input type="range" id="bv-eg-l" min="-20" max="100" step="0.05" value="5"></label>
+          <div class="btn-row"><button class="btn" id="bv-eg-prev">◀ 이전 고유값</button><button class="btn primary" id="bv-eg-next">다음 고유값 ▶</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">λ</span><span class="v" id="bv-eg-o-l">—</span></div>
+        <div class="stat"><span class="k">√λ / π</span><span class="v" id="bv-eg-o-k">—</span></div>
+        <div class="stat"><span class="k">m(λ)</span><span class="v" id="bv-eg-o-m">—</span></div>
+        <div class="stat"><span class="k">내부 영점</span><span class="v" id="bv-eg-o-z">—</span></div>
+      </div>
+      <div class="bv-msg" id="bv-eg-msg"></div>
+      <div class="sim-note">해볼 것: ① 고정–고정에서 λ를 0에서 100까지 천천히 올리며 m(λ)가 0을 지날 때 해곡선의 오른쪽 끝이 축에 닿는 것을 보세요. π² ≈ 9.87, 4π² ≈ 39.5, 9π² ≈ 88.8입니다. ② λ &lt; 0으로 내리면 해가 cosh·sinh 모양으로 휘어 다시는 0으로 돌아오지 않습니다. 음의 고유값이 없는 이유입니다. ③ 자유–자유에서는 λ = 0이 고유값(상수 함수)입니다. 모델: y″ + λy = 0의 정확한 해. 왼쪽이 고정이면 y(0) = 0, y′(0) = max(1, √λ), 자유이면 y(0) = 1, y′(0) = 0에서 출발합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="buckling">
+    <h2>기둥의 좌굴: 오일러 하중</h2>
+    <div class="problem"><strong>지름 20 mm, 길이 2 m의 강철 봉</strong>
+      <p>강철의 항복 응력을 250 MPa로 잡으면, 지름 20 mm 봉(단면적 약 314 mm²)은 짓눌려 항복하기까지 약 78 kN을 버팁니다. 그런데 이 봉을 길이 2 m로 세우고 위에서 누르면 4 kN도 안 되는 하중에서 옆으로 휘어 버립니다. 무엇이 이 하중을 정할까요?</p></div>
+    <p>길이 \(L\)인 곧은 기둥의 양 끝을 핀(회전은 자유, 옆으로는 고정)으로 받치고 위에서 축 하중 \(P\)로 누릅니다. 기둥이 옆으로 \(y(x)\)만큼 휘었다고 하면, 높이 \(x\)의 단면에는 하중 \(P\)가 팔 길이 \(y\)로 만드는 굽힘 모멘트 \(M = -Py\)가 걸립니다. 보 이론에서 곡률은 모멘트에 비례하므로(작은 처짐에서 곡률 ≈ \(y''\)) \(EI\,y'' = M\)입니다. 여기서 \(E\)는 탄성 계수, \(I\)는 단면 2차 모멘트입니다.</p>
+    <div class="formula">$$EI\,y'' + P\,y = 0,\qquad y(0) = 0,\quad y(L) = 0.$$
+      <div class="where">\(\lambda = P/EI\)로 두면 정리 15.4의 고유값 문제 그 자체다. \(P\)가 고유값에 닿기 전에는 \(y \equiv 0\)(곧은 기둥)만 평형이고, 닿는 순간 휜 모양 \(\sin(\pi x/L)\)도 평형이 된다.</div></div>
+    <div class="callout deep"><strong>정리 15.5 (오일러 좌굴 하중)</strong> 양끝 핀 지지 기둥이 곧은 평형 말고 휜 평형을 가지기 시작하는 가장 작은 하중은
+      <div class="formula">$$P_{\text{cr}} = \lambda_1 EI = \frac{\pi^2 EI}{L^2}$$</div>
+      이다. 다른 지지 조건에서는 \(L\) 대신 <b>유효 길이</b> \(KL\)을 쓴다: 한끝 고정·한끝 자유 \(K = 2\), 한끝 고정·한끝 핀 \(K \approx 0.699\), 양끝 고정 \(K = 0.5\).</div>
+    <p>더 큰 고유값 \(4P_{\text{cr}}, 9P_{\text{cr}}, \ldots\)도 휜 평형을 주지만, 하중을 0에서 서서히 올리면 가장 먼저 닿는 \(P_{\text{cr}}\)에서 이미 무너지므로 실제로 중요한 것은 첫 고유값입니다. 한끝 고정·한끝 핀의 \(K\)는 4계 보 방정식을 풀면 나오는 조건 \(\tan kL = kL\)의 가장 작은 양의 근 \(kL \approx 4.4934\)에서 \(K = \pi/4.4934 \approx 0.699\)로 얻습니다.</p>
+    <div class="callout"><strong>예제 15.3 (강철 봉의 좌굴 하중)</strong> \(E = 200\) GPa, 지름 \(d = 20\) mm, 길이 \(L = 2\) m인 양끝 핀 강철 봉.
+      <ol>
+        <li>원형 단면의 2차 모멘트: \(I = \pi d^4/64 = \pi(0.02)^4/64 \approx 7.854\times10^{-9}\) m⁴. 그러면 \(EI \approx 1571\) N·m².</li>
+        <li>\(P_{\text{cr}} = \pi^2(1571)/2^2 \approx 3876\) N ≈ 3.88 kN. 문제 상자의 항복 하중 78 kN의 5%에 불과하다.</li>
+        <li>길이를 절반(1 m)으로 줄이면 \(L^2\)이 1/4이 되어 \(P_{\text{cr}} \approx 15.5\) kN. 같은 2 m라도 아래를 땅에 단단히 묻고 위를 자유롭게 두면(\(K = 2\)) 969 N밖에 되지 않는다.</li>
+      </ol></div>
+    <p>실제 기둥은 완전히 곧지 않습니다. 처음부터 \(e_0\sin(\pi x/L)\)만큼 굽은 기둥을 누르면 방정식이 \(EI(y - y_0)'' + Py = 0\)이 되고, 풀면 처짐의 크기가 \(e_0/(1 - P/P_{\text{cr}})\)입니다. 하중이 임계값에 다가갈수록 처짐이 끝없이 커집니다. 이것이 좌굴이 "갑자기" 오는 것처럼 보이는 이유입니다.</p>
+
+    <div class="sim" id="sim-bv-buckle">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>기둥 누르기: 하중이 고유값에 닿을 때</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-buck-col"></canvas><span class="cap">기둥 (처짐은 과장해서 그림)</span></div>
+          <div><canvas id="bv-cv-buck-amp"></canvas><span class="cap">처짐 확대 δ/e₀ = 1/(1 − P/P<sub>cr</sub>)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지지 조건</span><select id="bv-bk-sup">
+            <option value="pp">양끝 핀 (K = 1)</option>
+            <option value="ff">아래 고정 · 위 자유 (K = 2)</option>
+            <option value="fp">아래 고정 · 위 핀 (K ≈ 0.699)</option>
+            <option value="xx">양끝 고정 (K = 0.5)</option>
+          </select></label>
+          <label class="ctrl"><span>길이 L <output id="bv-bk-L-out"></output></span><input type="range" id="bv-bk-L" min="1" max="4" step="0.1" value="2"></label>
+          <label class="ctrl"><span>하중 P <output id="bv-bk-P-out"></output></span><input type="range" id="bv-bk-P" min="0" max="20" step="0.05" value="2"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">P<sub>cr</sub></span><span class="v" id="bv-bk-o-cr">—</span></div>
+        <div class="stat"><span class="k">P / P<sub>cr</sub></span><span class="v" id="bv-bk-o-r">—</span></div>
+        <div class="stat"><span class="k">최대 처짐 δ</span><span class="v" id="bv-bk-o-d">—</span></div>
+        <div class="stat"><span class="k">상태</span><span class="v" id="bv-bk-o-st">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 양끝 핀, L = 2 m에서 P를 3.88 kN 쪽으로 올리며 처짐이 1/(1 − P/P<sub>cr</sub>)로 폭증하는 것을 보세요. ② 같은 하중에서 지지 조건만 바꿔 보세요. 양끝 고정은 핀보다 4배를 버팁니다. ③ L을 두 배로 늘리면 P<sub>cr</sub>은 1/4이 됩니다. 모델: 강철(E = 200 GPa), 지름 20 mm 원형 단면, 처음 굽음 e₀ = L/1000을 1차 좌굴 모드 모양으로 가정한 선형 이론. 확대 공식은 양끝 핀에서 정확하고 다른 지지에서는 근사입니다. 재료의 항복과 큰 처짐 효과는 넣지 않았습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="sturm-liouville">
+    <h2>스튀름–리우빌 문제와 고유함수의 직교성</h2>
+    <div class="problem"><strong>굵기가 변하는 막대, 밀도가 다른 줄</strong>
+      <p>단면적이 위치마다 다른 막대의 열 전도, 밀도가 고르지 않은 줄의 진동, 원형 북의 반지름 방향 모양(14장의 베셀 방정식)은 모두 \(y'' + \lambda y = 0\)보다 복잡한 계수를 가집니다. 고유함수를 식으로 쓸 수 없을 때도 사인 함수가 가졌던 좋은 성질, 특히 "서로 직교한다"는 성질이 남아 있을까요?</p></div>
+    <div class="callout deep"><strong>정의 15.6 (정칙 스튀름–리우빌 문제)</strong> \([a, b]\)에서 \(p, p', q, w\)가 연속이고 \(p > 0\), \(w > 0\)일 때
+      <div class="formula">$$\bigl(p(x)\,y'\bigr)' + q(x)\,y + \lambda\,w(x)\,y = 0,\qquad \alpha_1 y(a) + \beta_1 y'(a) = 0,\quad \alpha_2 y(b) + \beta_2 y'(b) = 0$$</div>
+      (각 조건에서 \(\alpha_i, \beta_i\)가 둘 다 0은 아님)를 <span class="term">스튀름–리우빌 문제</span><span class="en">(Sturm–Liouville problem)</span>라 하고, \(w\)를 <span class="term">가중 함수</span><span class="en">(weight function)</span>라 한다.</div>
+    <p>\(p = 1, q = 0, w = 1\)이면 \(y'' + \lambda y = 0\)입니다. 르장드르 방정식 \(((1 - x^2)y')' + \lambda y = 0\)과 베셀 방정식 \((xy')' - \frac{\nu^2}{x}y + \lambda xy = 0\)(<a href="series-solutions.html">14장</a>)도 이 꼴인데, 끝점에서 \(p = 0\)이 되어 <b>특이</b> 스튀름–리우빌 문제라 부르고 경계 조건 대신 "끝점에서 유계"를 요구합니다. 계수가 \(y'' + P(x)y' + Q(x)y + \lambda R(x)y = 0\)처럼 주어져도 \(\mu = e^{\int P}\)를 곱하면 늘 이 꼴로 바꿀 수 있습니다(3장의 적분 인자와 같은 요령).</p>
+    <div class="callout deep"><strong>정리 15.7 (정칙 스튀름–리우빌 문제의 성질)</strong>
+      <ol>
+        <li>고유값은 모두 <b>실수</b>이고, 단순하며(고유값 하나에 고유함수는 상수배를 빼고 하나), \(\lambda_1 \lt \lambda_2 \lt \cdots \to \infty\)로 늘어선다.</li>
+        <li>\(n\)번째 고유함수 \(\phi_n\)은 \((a, b)\) 안에 영점을 정확히 \(n - 1\)개 가진다.</li>
+        <li>서로 다른 고유값의 고유함수는 가중 함수 \(w\)에 대해 <b>직교</b>한다: \(\displaystyle\int_a^b \phi_m(x)\phi_n(x)\,w(x)\,dx = 0\) \((m \ne n)\).</li>
+      </ol></div>
+    <p>셋째 성질의 증명은 짧고, 이 장 전체의 핵심입니다. 연산자 \(\mathcal L y = (py')' + qy\)라 두면 부분 적분 두 번으로 <b>라그랑주 항등식</b>을 얻습니다.</p>
+    <div class="formula">$$\int_a^b \bigl(u\,\mathcal L v - v\,\mathcal L u\bigr)\,dx = \Bigl[p\,(u v' - v u')\Bigr]_a^b.$$
+      <div class="where">\(u, v\)가 같은 경계 조건 \(\alpha y + \beta y' = 0\)을 만족하면 각 끝점에서 벡터 \((u, u')\)와 \((v, v')\)가 모두 \((\alpha, \beta)\)에 수직이라 서로 평행하고, 그래서 \(uv' - vu' = 0\)이다. 오른쪽이 사라진다.</div></div>
+    <p><b>직교성의 증명.</b> \(\mathcal L\phi_m = -\lambda_m w\phi_m\), \(\mathcal L\phi_n = -\lambda_n w\phi_n\)을 항등식에 넣으면 \(0 = \int(\phi_m\mathcal L\phi_n - \phi_n\mathcal L\phi_m) = (\lambda_m - \lambda_n)\int_a^b \phi_m\phi_n w\,dx\). \(\lambda_m \ne \lambda_n\)이므로 적분이 0이다. ∎ 고유값이 실수인 것도 같은 항등식에 \(u = \phi\), \(v = \bar\phi\)를 넣으면 \((\lambda - \bar\lambda)\int|\phi|^2 w = 0\)에서 나옵니다.</p>
+    <p>라그랑주 항등식의 오른쪽이 사라진다는 것은 \(\langle u, \mathcal L v\rangle = \langle \mathcal L u, v\rangle\), 즉 \(\mathcal L\)이 경계 조건과 함께 <b>대칭(자기 수반)</b>이라는 뜻입니다. 대칭 행렬의 고유값이 실수이고 고유벡터가 직교한다는 <a href="../../linear/chapters/symmetric.html">스펙트럼 정리</a>의 무한 차원판입니다.</p>
+    <div class="callout"><strong>예제 15.4 (고유값이 고르게 놓이지 않는 로뱅 문제)</strong> \(y'' + \lambda y = 0\), \(y(0) = 0\), \(y'(1) + y(1) = 0\).
+      <ol>
+        <li>\(\lambda \le 0\)이면 자명한 해뿐임을 정리 15.4처럼 확인할 수 있다. \(\lambda = k^2 > 0\)이면 \(y(0) = 0\)에서 \(y = \sin kx\).</li>
+        <li>오른쪽 조건: \(k\cos k + \sin k = 0\), 즉 \(\tan k = -k\). 이 방정식은 닫힌 해가 없지만 그래프로 보면 \(((n - \tfrac12)\pi, n\pi)\)마다 근이 하나씩 있다. 수치로 \(k_1 \approx 2.0288\), \(k_2 \approx 4.9132\), \(k_3 \approx 7.9787\).</li>
+        <li>\(k_n\)의 간격은 \(\pi\)가 아니지만, 정리 15.7에 따라 \(\int_0^1 \sin k_mx\,\sin k_nx\,dx = 0\)이다. 아래 시뮬레이터에서 수치로 확인할 수 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-bv-orth">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 고유함수의 곱을 적분하면 0</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-orth-f"></canvas><span class="cap">φ<sub>m</sub>(x), φ<sub>n</sub>(x)</span></div>
+          <div><canvas id="bv-cv-orth-p"></canvas><span class="cap">곱 φ<sub>m</sub>φ<sub>n</sub>과 부호 있는 넓이</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>경계 조건 ([0, 1])</span><div class="seg" id="bv-or-bc"><button data-value="D" class="on">고정–고정</button><button data-value="N">자유–자유</button><button data-value="R">로뱅</button></div></div>
+          <label class="ctrl"><span>m <output id="bv-or-m-out"></output></span><input type="range" id="bv-or-m" min="1" max="6" step="1" value="1"></label>
+          <label class="ctrl"><span>n <output id="bv-or-n-out"></output></span><input type="range" id="bv-or-n" min="1" max="6" step="1" value="2"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">λ<sub>m</sub></span><span class="v" id="bv-or-o-lm">—</span></div>
+        <div class="stat"><span class="k">λ<sub>n</sub></span><span class="v" id="bv-or-o-ln">—</span></div>
+        <div class="stat"><span class="k">∫φ<sub>m</sub>φ<sub>n</sub> dx</span><span class="v" id="bv-or-o-ip">—</span></div>
+        <div class="stat"><span class="k">∫φ<sub>m</sub>² dx</span><span class="v" id="bv-or-o-nm">—</span></div>
+      </div>
+      <div class="bv-msg" id="bv-or-msg"></div>
+      <div class="sim-note">해볼 것: ① m ≠ n이면 곱의 양(주황)과 음(청록) 넓이가 정확히 상쇄됩니다. ② 로뱅에서는 고유값 k<sub>n</sub>² 사이 간격이 고르지 않고 오른쪽 끝값도 0이 아닌데, 그래도 직교합니다. ③ m = n이면 적분은 ‖φ‖²이고, 사인·코사인은 1/2, 상수 함수는 1입니다. 모델: 로뱅 고유값은 tan k = −k를 이분법으로 푼 값, 적분은 심프슨 공식(1000칸).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="inner-product">
+    <h2>함수의 내적과 직교 전개</h2>
+    <div class="problem"><strong>함수를 성분으로 쪼갤 수 있다면</strong>
+      <p>3차원 벡터 \(\mathbf v\)를 직교 기저 \(\mathbf e_1, \mathbf e_2, \mathbf e_3\)로 쓰려면 연립 방정식을 풀 필요 없이 내적 하나로 성분을 읽습니다: \(c_k = \mathbf v\cdot\mathbf e_k/\|\mathbf e_k\|^2\). 고유함수들이 "직교"한다면, 함수도 같은 방식으로 고유함수 성분으로 쪼갤 수 있지 않을까요?</p></div>
+    <p>구간 \([a, b]\)에서 정의된 함수를 무한히 많은 성분을 가진 벡터로 봅니다. 점 \(x_1, \ldots, x_N\)에서의 값 \((f(x_1), \ldots, f(x_N))\)이 벡터이고, 두 벡터의 내적 \(\sum f(x_i)g(x_i)\Delta x\)에서 \(N \to \infty\)로 보낸 극한이 적분입니다.</p>
+    <div class="callout deep"><strong>정의 15.8 (함수 내적과 노름)</strong> 가중 함수 \(w > 0\)에 대해
+      <div class="formula">$$\langle f, g\rangle_w = \int_a^b f(x)\,g(x)\,w(x)\,dx,\qquad \|f\| = \sqrt{\langle f, f\rangle_w}$$</div>
+      를 <span class="term">함수 내적</span><span class="en">(inner product)</span>과 노름이라 한다. \(\langle f, g\rangle_w = 0\)이면 \(f\)와 \(g\)는 직교한다. 서로 직교하는 함수의 모임 \(\{\phi_n\}\)을 <span class="term">직교 함수계</span>라 한다.</div>
+    <p>\(f = \sum c_n\phi_n\)이라고 가정하고 양변에 \(\phi_m\)을 내적하면, 직교성 때문에 \(m = n\)인 항 하나만 남습니다. 그래서 계수는 <b>연립 방정식 없이</b> 하나씩 따로 정해집니다.</p>
+    <div class="formula">$$f(x) = \sum_{n} c_n\,\phi_n(x),\qquad c_n = \frac{\langle f, \phi_n\rangle_w}{\langle \phi_n, \phi_n\rangle_w} = \frac{\int_a^b f\,\phi_n\,w\,dx}{\int_a^b \phi_n^2\,w\,dx}.$$
+      <div class="where">이렇게 정한 급수를 \(f\)의 <b>일반화 푸리에 급수</b> 또는 <span class="term">고유함수 전개</span>라 한다. \(c_n\phi_n\)은 \(f\)를 \(\phi_n\) 방향으로 정사영한 것이다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="벡터의 정사영과 함수의 정사영 비교">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <g transform="translate(40,30)">
+          <text x="0" y="10" class="t" style="font-weight:700">벡터</text>
+          <line x1="20" y1="180" x2="300" y2="180" class="s-axis"/>
+          <line x1="20" y1="180" x2="20" y2="40" class="s-axis"/>
+          <line x1="20" y1="180" x2="220" y2="70" style="stroke:var(--accent);stroke-width:2.6"/>
+          <line x1="220" y1="70" x2="220" y2="180" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+          <line x1="20" y1="180" x2="220" y2="180" style="stroke:var(--accent-2);stroke-width:4"/>
+          <text x="228" y="66" class="t-acc">v</text>
+          <text x="120" y="200" text-anchor="middle" class="t-mono">c₁e₁,  c₁ = v·e₁ / ‖e₁‖²</text>
+        </g>
+        <g transform="translate(400,30)">
+          <text x="0" y="10" class="t" style="font-weight:700">함수</text>
+          <line x1="10" y1="120" x2="320" y2="120" class="s-axis"/>
+          <path d="M10 120 L10 50 L165 50 L165 120 L165 190 L320 190 L320 120" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+          <path d="M10 120 C50 20 125 20 165 120 C205 220 280 220 320 120" fill="none" style="stroke:var(--accent-2);stroke-width:2.4"/>
+          <text x="30" y="42" class="t-acc">f</text>
+          <text x="250" y="215" class="t-mono">c₁ sin(πx/L)</text>
+          <text x="10" y="230" class="t-dim">c₁ = ⟨f, φ₁⟩ / ⟨φ₁, φ₁⟩ = 4/π</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-2.</b> 왼쪽: 벡터를 기저 방향으로 정사영하면 성분이 나온다. 오른쪽: 사각파 f를 첫 고유함수 sin(πx/L)에 정사영한 것. 같은 공식이고, 내적만 합에서 적분으로 바뀌었다.</figcaption>
+    </figure>
+    <p>정사영이라는 관점은 계수의 또 다른 뜻을 알려 줍니다. <a href="../../linear/chapters/orthogonality.html">LinearBook 직교성 장</a>에서 정사영은 부분공간에서 <b>가장 가까운 점</b>이었습니다. 함수에서도 같습니다.</p>
+    <div class="callout deep"><strong>정리 15.9 (최량 근사와 베셀 부등식)</strong> 직교 함수계 \(\phi_1, \ldots, \phi_N\)의 일차결합 \(\sum_{n\le N} d_n\phi_n\) 중에서 \(\|f - \sum d_n\phi_n\|\)을 가장 작게 하는 것은 \(d_n = c_n\)(위의 계수)일 때다. 또한
+      <div class="formula">$$\sum_{n=1}^{N} c_n^2\,\|\phi_n\|^2 \le \|f\|^2\qquad\text{(베셀 부등식)}.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\|f - \sum d_n\phi_n\|^2 = \|f\|^2 - 2\sum d_n\langle f, \phi_n\rangle + \sum d_n^2\|\phi_n\|^2 = \|f\|^2 - \sum c_n^2\|\phi_n\|^2 + \sum (d_n - c_n)^2\|\phi_n\|^2\). 마지막 합은 \(d_n = c_n\)일 때 0으로 가장 작고, 이때 왼쪽이 0 이상이므로 부등식이 나온다. ∎</p></div>
+    <p>항을 하나 더하면 앞의 계수를 다시 계산할 필요가 없다는 점도 중요합니다. 직교성 덕분에 \(c_n\)은 \(N\)과 상관없습니다. 다항식 \(1, x, x^2, \ldots\)처럼 직교하지 않는 함수로 최소제곱 근사를 하면 항을 더할 때마다 모든 계수가 바뀝니다.</p>
+    <div class="callout"><strong>예제 15.5 (상수 1을 사인으로)</strong> \([0, 1]\)에서 \(f = 1\)을 \(\phi_n = \sin n\pi x\)로 전개하라.
+      <ol>
+        <li>\(\|\phi_n\|^2 = \int_0^1\sin^2 n\pi x\,dx = \tfrac12\).</li>
+        <li>\(\langle 1, \phi_n\rangle = \int_0^1\sin n\pi x\,dx = \frac{1 - \cos n\pi}{n\pi} = \frac{1 - (-1)^n}{n\pi}\). 홀수 \(n\)이면 \(2/(n\pi)\), 짝수이면 0.</li>
+        <li>\(c_n = 4/(n\pi)\) (홀수 \(n\)), 즉 \(1 = \frac4\pi\bigl(\sin\pi x + \frac13\sin3\pi x + \frac15\sin5\pi x + \cdots\bigr)\), \(0 \lt x \lt 1\).</li>
+        <li>\(x = \tfrac12\)을 넣으면 \(1 = \frac4\pi(1 - \frac13 + \frac15 - \cdots)\), 즉 라이프니츠 급수 \(1 - \frac13 + \frac15 - \cdots = \frac\pi4\)가 덤으로 나온다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="fourier-series">
+    <h2>푸리에 급수: 사인·코사인 급수와 짝·홀 확장</h2>
+    <div class="problem"><strong>한 주기의 모양을 배음으로</strong>
+      <p>전력 전자 회로의 사각파 전압, 톱니파 스캔 신호, 바이올린 음의 파형은 모두 주기 함수입니다. 각 주파수 성분이 얼마나 들어 있는지 알면, 회로가 각 성분에 어떻게 반응하는지(<a href="forced.html">8장의 주파수 응답</a>) 따로 계산해 더할 수 있습니다.</p></div>
+    <p>주기 조건의 고유함수 \(1, \cos\frac{n\pi x}{L}, \sin\frac{n\pi x}{L}\)은 \([-L, L]\)에서 서로 직교합니다(정리 15.7). 이 직교 함수계로 전개한 것이 고전적인 푸리에 급수입니다.</p>
+    <div class="callout deep"><strong>정의 15.10 (푸리에 급수)</strong> 주기 \(2L\)인 함수 \(f\)의 <span class="term">푸리에 급수</span><span class="en">(Fourier series)</span>는
+      <div class="formula">$$f(x) \sim \frac{a_0}{2} + \sum_{n=1}^\infty\Bigl(a_n\cos\frac{n\pi x}{L} + b_n\sin\frac{n\pi x}{L}\Bigr),$$
+      $$a_n = \frac1L\int_{-L}^{L} f(x)\cos\frac{n\pi x}{L}\,dx,\qquad b_n = \frac1L\int_{-L}^{L} f(x)\sin\frac{n\pi x}{L}\,dx.$$
+      <div class="where">\(\|\cos\|^2 = \|\sin\|^2 = L\)이고 \(\|1\|^2 = 2L\)이라서 \(a_0\)에 \(\tfrac12\)이 붙는다. \(a_0/2\)는 한 주기의 평균값이다. \(\sim\)은 "이 급수가 대응한다"는 뜻이고, 언제 등호가 되는지는 다음 절에서 다룬다.</div></div></div>
+    <p>짝함수 \(f(-x) = f(x)\)이면 \(f\sin\)이 홀함수라 \(b_n = 0\), 코사인만 남습니다. 홀함수이면 \(a_n = 0\), 사인만 남습니다. 이 사실을 거꾸로 쓰면 \([0, L]\)에서만 정의된 함수(막대의 온도, 줄의 모양)를 세 가지 방식으로 전개할 수 있습니다.</p>
+    <div class="table-wrap"><table class="bv-tbl">
+      <thead><tr><th>확장</th><th>결과 급수</th><th>계수</th><th>잘 맞는 경계 조건</th></tr></thead>
+      <tbody>
+        <tr><td><span class="term">홀 확장</span>: f(−x) = −f(x)</td><td>사인 급수 Σ bₙ sin(nπx/L)</td><td>bₙ = (2/L)∫₀ᴸ f sin(nπx/L) dx</td><td>양끝 고정 (y = 0)</td></tr>
+        <tr><td><span class="term">짝 확장</span>: f(−x) = f(x)</td><td>코사인 급수 a₀/2 + Σ aₙ cos(nπx/L)</td><td>aₙ = (2/L)∫₀ᴸ f cos(nπx/L) dx</td><td>양끝 단열 (y′ = 0)</td></tr>
+        <tr><td>주기 L로 반복</td><td>완전 푸리에 급수 (주기 L)</td><td>정의 15.10에서 2L → L</td><td>고리, 주기 신호</td></tr>
+      </tbody></table></div>
+    <p>이렇게 \([0, L]\) 위의 함수를 사인 급수나 코사인 급수로 쓰는 것을 <span class="term">반구간 전개</span><span class="en">(half-range expansion)</span>라 합니다. 사인 급수는 표의 첫 고유값 문제, 코사인 급수는 둘째 고유값 문제의 고유함수 전개입니다. 어떤 확장을 고를지는 수학이 아니라 <b>물리적 경계 조건</b>이 정합니다.</p>
+    <div class="callout"><strong>예제 15.6 (톱니파와 바젤 문제의 실마리)</strong> \(f(x) = x\), \(-\pi \lt x \lt \pi\)를 주기 \(2\pi\)로 확장한 톱니파의 푸리에 급수를 구하라.
+      <ol>
+        <li>\(f\)가 홀함수이므로 \(a_n = 0\).</li>
+        <li>\(b_n = \frac1\pi\int_{-\pi}^\pi x\sin nx\,dx = \frac2\pi\int_0^\pi x\sin nx\,dx\). 부분 적분: \(\int_0^\pi x\sin nx\,dx = \bigl[-\frac{x\cos nx}{n}\bigr]_0^\pi + \frac1n\int_0^\pi\cos nx\,dx = -\frac{\pi(-1)^n}{n}\).</li>
+        <li>\(b_n = \frac{2(-1)^{n+1}}{n}\), 즉 \(x = 2\bigl(\sin x - \frac{\sin2x}{2} + \frac{\sin3x}{3} - \cdots\bigr)\), \(-\pi \lt x \lt \pi\).</li>
+        <li>계수가 \(1/n\)로만 줄어든다. 확장한 톱니파가 \(x = \pm\pi\)에서 \(\pi\)에서 \(-\pi\)로 뛰는 불연속을 가지기 때문이다(다음 절).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-bv-fourier">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>항을 하나씩 더하기: 확장을 고르면 급수가 바뀐다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="bv-cv-four"></canvas><span class="tag-tl">굵은 선: [0, π]의 f · 점선: 확장 · 주황: 부분합 S<sub>N</sub></span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>[0, π]에서의 f</span><select id="bv-fs-pre">
+            <option value="sq">상수 1</option>
+            <option value="lin">f = x</option>
+            <option value="par">f = x(π − x)</option>
+            <option value="tri">삼각형 min(x, π − x)</option>
+            <option value="step">계단 (π/2에서 0 → 1)</option>
+          </select></label>
+          <div class="ctrl"><span>확장</span><div class="seg" id="bv-fs-ext"><button data-value="odd" class="on">홀 → 사인</button><button data-value="even">짝 → 코사인</button><button data-value="per">주기 π</button></div></div>
+          <label class="ctrl"><span>항 수 N <output id="bv-fs-N-out"></output></span><input type="range" id="bv-fs-N" min="1" max="60" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="bv-fs-terms"> 마지막에 더한 항 보이기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">처음 계수</span><span class="v" id="bv-fs-o-c">—</span></div>
+        <div class="stat"><span class="k">[0, π] RMS 오차</span><span class="v" id="bv-fs-o-rms">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="bv-fs-o-max">—</span></div>
+        <div class="stat"><span class="k">계수 감소</span><span class="v" id="bv-fs-o-dec">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① f = x를 사인 급수로 보면 확장이 x = π에서 뛰므로 수렴이 느립니다. 코사인 급수로 바꾸면 확장이 연속인 삼각파가 되어 몇 항만으로도 거의 겹칩니다. ② f = x(π − x)의 사인 급수는 계수가 1/n³로 줄어 N = 1만으로도 오차가 작습니다. ③ '주기 π'에서는 x = 0, π에서 확장이 끊어지는 함수마다 끝점에서 급수가 두 값의 평균을 지납니다. 모델: 계수는 중점 공식(3000칸) 수치 적분.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="convergence">
+    <h2>수렴 정리와 기브스 현상</h2>
+    <div class="problem"><strong>불연속을 매끄러운 함수로?</strong>
+      <p>사인 함수는 모두 매끄러운데, 그 합이 사각파처럼 뛰는 함수가 될 수 있을까요? 된다면, 뛰는 바로 그 점에서는 어떤 값으로 갈까요? 그리고 항을 아무리 늘려도 사라지지 않는 뾰족한 귀는 무엇일까요?</p></div>
+    <div class="callout deep"><strong>정리 15.11 (푸리에 급수의 수렴)</strong> 주기 \(2L\)인 \(f\)가 <b>구간별로 매끄럽다</b>(한 주기 안에서 \(f\)와 \(f'\)이 유한 개의 점을 빼고 연속이고, 그 점들에서 좌우 극한이 있다)고 하자.
+      <ol>
+        <li>푸리에 급수는 모든 \(x\)에서 \(\tfrac12\bigl(f(x^+) + f(x^-)\bigr)\)로 수렴한다. \(f\)가 연속인 점에서는 \(f(x)\)로 수렴한다.</li>
+        <li>\(f\)가 모든 곳에서 연속(주기 확장까지 포함)이면 수렴은 <b>균등</b>하다: \(\max|f - S_N| \to 0\).</li>
+      </ol></div>
+    <p>증명은 부분합을 디리클레 핵과의 합성곱으로 쓰는 것이 핵심인데, 길어서 생략합니다(<a href="../../foundations/chapters/fourier.html">MathBook 푸리에 장</a>에서 핵의 그림을 볼 수 있습니다). 실무에서 쓸모 있는 것은 <b>매끄러움과 계수 감소 속도의 관계</b>입니다. 부분 적분을 한 번 할 때마다 \(1/n\)이 하나씩 나오고, 경계 항이 불연속의 크기를 남깁니다.</p>
+    <div class="table-wrap"><table class="bv-tbl">
+      <thead><tr><th>주기 확장의 매끄러움</th><th>계수의 크기</th><th>예</th></tr></thead>
+      <tbody>
+        <tr><td>함수가 뛴다 (불연속)</td><td>~ 1/n</td><td>사각파 4/(nπ), 톱니파 2/n</td></tr>
+        <tr><td>연속이지만 꺾인다 (f′이 뛴다)</td><td>~ 1/n²</td><td>삼각파 4/(πn²)</td></tr>
+        <tr><td>f′까지 연속, f″이 뛴다</td><td>~ 1/n³</td><td>x(π − x)의 사인 급수 8/(πn³)</td></tr>
+        <tr><td>무한히 매끄럽다</td><td>n의 어떤 거듭제곱보다 빠르게</td><td>e<sup>cos x</sup></td></tr>
+      </tbody></table></div>
+    <p>불연속점 근처에서는 특이한 일이 생깁니다. 사각파 \(f = \operatorname{sgn}(\sin x)\)의 부분합은 뛰는 점 바로 옆에서 1을 넘어 약 1.18까지 솟습니다. 항을 늘리면 솟은 귀가 점점 <b>좁아지고 불연속 쪽으로 다가가지만, 높이는 줄지 않습니다</b>. 이것이 <span class="term">기브스 현상</span><span class="en">(Gibbs phenomenon)</span>입니다.</p>
+    <div class="callout deep"><strong>정리 15.12 (기브스 현상)</strong> 사각파 \(\frac4\pi\sum_{k\,\text{홀수}\le N}\frac{\sin kx}{k}\)의 부분합은 \(x = \pi/(N + 1)\)에서 첫 극대를 가지며, \(N \to \infty\)일 때 그 값은
+      <div class="formula">$$\frac2\pi\int_0^\pi\frac{\sin t}{t}\,dt \approx 1.17898$$</div>
+      로 간다. 즉 점프 크기 2의 약 <b>8.95%</b>만큼 넘친다. 구간별로 매끄러운 어떤 함수의 점프에서도 넘침의 비율은 같다.</div>
+    <p>정리 15.11과 모순은 아닙니다. 각 고정된 \(x \ne 0\)에서는 \(N\)이 충분히 크면 귀가 그 점을 지나쳐 가므로 \(S_N(x) \to 1\)입니다. 다만 귀가 움직이므로 최댓값은 줄지 않고, 수렴이 균등하지 않습니다. 넘침을 없애려면 높은 차수의 계수를 조금씩 줄여 주는 창(window)을 씁니다. 부분합들의 평균인 <b>페예르 합</b><span class="en">(Fejér sum)</span>은 계수에 \(1 - n/(N + 1)\)을 곱한 것인데, 넘침이 전혀 없는 대신 점프가 더 무뎌집니다.</p>
+
+    <div class="sim" id="sim-bv-gibbs">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>기브스의 귀: 항을 늘려도 줄지 않는 넘침</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="bv-cv-gibbs"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>마지막 홀수 항 N <output id="bv-gb-N-out"></output></span><input type="range" id="bv-gb-N"></label>
+          <div class="ctrl"><span>계수 처리</span><div class="seg" id="bv-gb-win"><button data-value="none" class="on">그대로</button><button data-value="sig">σ 인자</button><button data-value="fej">페예르</button></div></div>
+          <label class="check"><input type="checkbox" id="bv-gb-zoom" checked> 점프 근처 확대 (폭 ∝ 1/N)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최댓값</span><span class="v" id="bv-gb-o-pk">—</span></div>
+        <div class="stat"><span class="k">넘침 / 점프</span><span class="v" id="bv-gb-o-ov">—</span></div>
+        <div class="stat"><span class="k">극대 위치</span><span class="v" id="bv-gb-o-x">—</span></div>
+        <div class="stat"><span class="k">π/(N + 1)</span><span class="v" id="bv-gb-o-xp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 확대를 켠 채로 N을 키우면 그림이 거의 그대로입니다. 귀의 모양이 1/N 축척으로 닮은꼴이기 때문입니다. 넘침은 9.4%(N = 5)에서 8.95%로 다가갑니다. ② 확대를 끄면 귀가 점프 쪽으로 좁아지는 것이 보입니다. ③ 페예르로 바꾸면 넘침이 0이 되지만 점프가 완만해집니다. σ 인자(란초스)는 그 중간입니다. 모델: f = sgn(sin x)의 사인 급수, 극대는 (0, 4π/(N+1))에서 촘촘히 찾습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="parseval">
+    <h2>파세발 등식: 에너지는 계수에 나뉘어 담긴다</h2>
+    <div class="problem"><strong>항 몇 개면 충분한가</strong>
+      <p>신호를 압축하거나 진동을 해석할 때 묻는 것은 "처음 몇 개의 배음이 전체 에너지의 몇 %를 담는가"입니다. 베셀 부등식(정리 15.9)은 계수의 제곱합이 전체 에너지를 넘지 않는다고만 말했습니다. 언제 정확히 같아질까요?</p></div>
+    <div class="callout deep"><strong>정리 15.13 (파세발 등식)</strong> \(f\)와 \(f^2\)이 \([-L, L]\)에서 적분 가능하면
+      <div class="formula">$$\frac1L\int_{-L}^{L} f(x)^2\,dx = \frac{a_0^2}{2} + \sum_{n=1}^\infty\bigl(a_n^2 + b_n^2\bigr).$$
+      <div class="where">사인 급수만 쓰는 반구간 전개라면 \(\frac2L\int_0^L f^2\,dx = \sum b_n^2\). 이때 \(\|f - S_N\|^2 = \frac L2\sum_{n>N}b_n^2 \to 0\), 즉 부분합은 <b>평균 제곱</b>의 뜻으로 \(f\)에 수렴한다.</div></div></div>
+    <p>파세발 등식은 피타고라스 정리의 무한 차원판입니다. 서로 직교하는 성분으로 쪼갠 벡터의 길이 제곱은 성분 길이 제곱의 합입니다. 베셀 부등식이 등식이 된다는 것은 삼각 함수계가 <b>완비</b>하다는 뜻, 즉 빠진 방향이 없다는 뜻입니다. 직교성과 완비성이 함께 있어야 "모든 함수를 전개할 수 있다"가 성립합니다.</p>
+    <div class="callout"><strong>예제 15.7 (바젤 문제)</strong> 예제 15.6의 톱니파 \(f = x\) (\(-\pi \lt x \lt \pi\))에 파세발 등식을 써라.
+      <ol>
+        <li>왼쪽: \(\frac1\pi\int_{-\pi}^\pi x^2\,dx = \frac1\pi\cdot\frac{2\pi^3}{3} = \frac{2\pi^2}{3}\).</li>
+        <li>오른쪽: \(b_n^2 = 4/n^2\)이므로 \(\sum 4/n^2\).</li>
+        <li>같다고 놓으면 \(\displaystyle\sum_{n=1}^\infty\frac1{n^2} = \frac{\pi^2}{6}\). 오일러가 처음 구한 이 합이 푸리에 급수 한 줄에서 나온다.</li>
+        <li>에너지 분배: 첫 항 \(b_1^2 = 4\)는 전체 \(2\pi^2/3 \approx 6.58\)의 약 61%뿐이다. 같은 계산을 \(x(\pi - x)\)의 사인 급수로 하면 첫 항이 99.86%를 담는다. 매끄러운 함수일수록 에너지가 낮은 차수에 몰린다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-bv-spectrum">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>계수 막대와 누적 에너지</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-spec-b"></canvas><span class="cap">|b<sub>n</sub>| (사인 급수, [0, π])</span></div>
+          <div><canvas id="bv-cv-spec-E"></canvas><span class="cap">Σ<sub>k≤n</sub> b<sub>k</sub>² / 전체 에너지</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="bv-sp-pre">
+            <option value="sq">사각파 (상수 1)</option>
+            <option value="lin">톱니 (f = x)</option>
+            <option value="tri">삼각파 min(x, π − x)</option>
+            <option value="par">포물선 x(π − x)</option>
+          </select></label>
+          <label class="ctrl"><span>남길 항 수 N <output id="bv-sp-N-out"></output></span><input type="range" id="bv-sp-N" min="1" max="30" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="bv-sp-log"> 로그 축 (기울기 = 감소 차수)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">전체 (2/π)∫f²</span><span class="v" id="bv-sp-o-E">—</span></div>
+        <div class="stat"><span class="k">Σ<sub>n≤N</sub> b<sub>n</sub>²</span><span class="v" id="bv-sp-o-S">—</span></div>
+        <div class="stat"><span class="k">담긴 비율</span><span class="v" id="bv-sp-o-p">—</span></div>
+        <div class="stat"><span class="k">RMS 오차</span><span class="v" id="bv-sp-o-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 사각파에서 N = 1이면 81%, N = 5이면 93%입니다. 남은 7%가 기브스 귀와 점프 근처에 몰려 있습니다. ② 로그 축을 켜면 사각파·톱니는 기울기 −1, 삼각파는 −2, 포물선은 −3인 직선 위에 막대 끝이 놓입니다. ③ 포물선은 N = 1에서 이미 99.86%입니다. 모델: 정확한 계수 공식, 전체 에너지는 해석적으로 계산한 값(2, 2π²/3, π²/6, π⁴/15). RMS 오차는 √((1/π)∫₀^π (f − S<sub>N</sub>)² dx).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="eigenfunction-expansion">
+    <h2>강제 경계값 문제를 고유함수 전개로 풀기</h2>
+    <div class="problem"><strong>짐을 실은 줄</strong>
+      <p>장력 1로 당긴 줄(길이 π)의 양 끝을 묶고 위치마다 다른 하중 \(f(x)\)를 얹습니다. 줄이 탄성 기초 위에 놓여 있거나, 줄 전체가 진동수 \(\sqrt\mu\)로 흔들리고 있으면 방정식에 \(\mu y\) 항이 붙습니다. \(y'' + \mu y = -f(x)\), \(y(0) = y(\pi) = 0\). 하중이 복잡해도 풀 수 있을까요? 언제 해가 터질까요?</p></div>
+    <p>8장의 강제 진동에서 우리는 입력을 사인 성분으로 나누어 각 성분의 응답을 더했습니다. 공간에서도 똑같이 합니다. 핵심은 고유함수 \(\phi_n = \sin nx\)에 연산자가 작용하면 그냥 수가 곱해진다는 것입니다: \(\phi_n'' + \mu\phi_n = (\mu - n^2)\phi_n\).</p>
+    <ol>
+      <li>하중을 고유함수로 전개한다: \(f(x) = \sum f_n\sin nx\), \(f_n = \frac2\pi\int_0^\pi f\sin nx\,dx\).</li>
+      <li>해도 같은 꼴로 둔다: \(y = \sum c_n\sin nx\). 경계 조건은 저절로 맞는다.</li>
+      <li>방정식에 넣으면 \(\sum c_n(\mu - n^2)\sin nx = -\sum f_n\sin nx\). 직교성으로 성분마다 비교한다.</li>
+    </ol>
+    <div class="formula">$$c_n = \frac{f_n}{n^2 - \mu}\qquad\Longrightarrow\qquad y(x) = \sum_{n=1}^\infty\frac{f_n}{\lambda_n - \mu}\,\phi_n(x).$$
+      <div class="where">미분방정식이 성분마다 나눗셈 하나로 바뀌었다. \(1/(\lambda_n - \mu)\)는 \(n\)번째 모드의 <b>증폭률</b>이다. \(\mu\)가 고유값 \(\lambda_n = n^2\)에 다가가면 그 모드가 공진처럼 커진다.</div></div>
+    <div class="callout deep"><strong>정리 15.14 (프레드홀름 양자택일)</strong> \(\mu\)가 고유값이 아니면 \(y'' + \mu y = -f\), \(y(0) = y(\pi) = 0\)은 모든 연속 \(f\)에 대해 해가 꼭 하나 있다. \(\mu = \lambda_k\)이면 해는 \(\langle f, \phi_k\rangle = 0\)일 때만 존재하고, 그때는 \(c_k\)가 임의라 해가 무수히 많다.</div>
+    <p>정리 15.2를 성분의 언어로 다시 쓴 것입니다. 하중이 공진 모드와 직교하면, 즉 그 모드를 "밀지" 않으면 공진 조건에서도 해가 있습니다. 기타 줄의 한가운데를 튕기면 가운데가 마디인 2배음이 생기지 않는 것과 같은 원리입니다(16장).</p>
+    <div class="callout"><strong>예제 15.8 (선형 하중)</strong> \(y'' = -x\), \(y(0) = y(\pi) = 0\) (\(\mu = 0\))을 고유함수로 풀고 직접 푼 해와 비교하라.
+      <ol>
+        <li>예제 15.6에서 \(x = \sum\frac{2(-1)^{n+1}}{n}\sin nx\) (\(0 \lt x \lt \pi\))이므로 \(f_n = 2(-1)^{n+1}/n\).</li>
+        <li>\(c_n = f_n/n^2 = 2(-1)^{n+1}/n^3\). 하중 계수는 \(1/n\)로 느리게 줄었지만 해의 계수는 \(1/n^3\)으로 빠르게 준다. 두 번 적분하면 매끄러워진다.</li>
+        <li>직접 풀기: 두 번 적분하면 \(y = -x^3/6 + Ax + B\), 경계 조건에서 \(B = 0\), \(A = \pi^2/6\). 즉 \(y = x(\pi^2 - x^2)/6\).</li>
+        <li>확인: \(x = 1\)에서 \(y = (\pi^2 - 1)/6 \approx 1.4783\)이고, 급수 \(\sum 2(-1)^{n+1}\sin n/n^3\)도 같은 값을 준다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-bv-forced">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>하중을 모드로 나누어 풀기: μ가 고유값에 다가가면</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="bv-cv-frc-y"></canvas><span class="cap">y(x): 급수 해(주황)와 차분법 해(점선)</span></div>
+          <div><canvas id="bv-cv-frc-c"></canvas><span class="cap">모드 계수 c<sub>n</sub> = f<sub>n</sub>/(n² − μ)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>하중 f(x)</span><select id="bv-fr-load">
+            <option value="uni">고른 하중 f = 1</option>
+            <option value="lin">선형 하중 f = x</option>
+            <option value="pt">점 하중 (x = π/3)</option>
+            <option value="m2">f = sin 2x (2번 모드만)</option>
+          </select></label>
+          <label class="ctrl"><span>μ <output id="bv-fr-mu-out"></output></span><input type="range" id="bv-fr-mu" min="-4" max="10" step="0.01" value="0"></label>
+          <label class="ctrl"><span>항 수 N <output id="bv-fr-N-out"></output></span><input type="range" id="bv-fr-N" min="1" max="40" step="1" value="10"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">c₁</span><span class="v" id="bv-fr-o-c1">—</span></div>
+        <div class="stat"><span class="k">1번 모드 증폭 1/(1 − μ)</span><span class="v" id="bv-fr-o-g">—</span></div>
+        <div class="stat"><span class="k">max |y|</span><span class="v" id="bv-fr-o-mx">—</span></div>
+        <div class="stat"><span class="k">급수 − 차분 (최대)</span><span class="v" id="bv-fr-o-err">—</span></div>
+      </div>
+      <div class="bv-msg" id="bv-fr-msg"></div>
+      <div class="sim-note">해볼 것: ① μ = 0, 고른 하중에서 N = 1만으로도 해 x(π − x)/2와 거의 겹칩니다. 계수가 1/n³로 줄기 때문입니다. ② μ를 1 쪽으로 올리면 c₁만 폭증합니다. 9 근처에서는 3번 모드가 튀어나옵니다. ③ 'sin 2x' 하중에서는 μ = 1을 지나도 아무 일이 없고 μ = 4에서만 터집니다. 하중이 1번 모드와 직교하기 때문입니다(정리 15.14). 모델: 고유함수 급수와, 400칸 중심 차분 + 삼중대각 풀이를 비교합니다. 점 하중은 크기 1의 델타 하중입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>경계값 문제와 고유함수 전개는 "공간에 퍼져 있는 시스템"을 다루는 공학의 공용어입니다. 고유값이 시스템의 특성(음높이, 임계 하중, 에너지 준위)을 정하고, 직교 전개가 복잡한 입력을 독립된 모드로 쪼갭니다.</p>
+    <div class="callout"><strong>JPEG와 코사인 급수</strong> JPEG 이미지 압축은 8×8 픽셀 블록을 이산 코사인 변환(DCT)으로 바꾸어 높은 주파수 계수를 거칠게 양자화합니다. 사인 대신 코사인을 쓰는 이유가 이 장의 짝 확장입니다. 블록을 짝 확장하면 경계에서 끊김이 생기지 않아 계수가 빠르게 줄고(1/n² 이상), 에너지가 낮은 차수에 몰려 적은 계수로 블록을 잘 나타낼 수 있습니다. 사인 급수를 쓰면 경계의 점프 때문에 계수가 1/n로 느리게 줄고 기브스 같은 고리 무늬가 생깁니다.</div>
+    <div class="callout"><strong>상자 속 입자</strong> 양자역학에서 폭 \(L\)인 상자에 갇힌 입자의 슈뢰딩거 방정식 \(-\frac{\hbar^2}{2m}\psi'' = E\psi\), \(\psi(0) = \psi(L) = 0\)은 정리 15.4의 고유값 문제입니다. 허용된 에너지는 \(E_n = \frac{\hbar^2\pi^2n^2}{2mL^2}\)로 띄엄띄엄하고, 양자점의 크기를 줄이면 에너지 간격이 커져 내는 빛의 색이 파란 쪽으로 옮겨 갑니다.</div>
+    <div class="uses">
+      <a href="pde.html"><small>16장 · 편미분방정식</small>열·파동·라플라스 방정식<br><span>변수분리로 공간 부분이 이 장의 고유값 문제가 된다.</span></a>
+      <a href="series-solutions.html"><small>14장 · 급수해</small>르장드르·베셀 함수<br><span>특이 스튀름–리우빌 문제의 고유함수. 원형 북과 구의 모드.</span></a>
+      <a href="forced.html"><small>8장 · 강제 진동</small>공진과 주파수 응답<br><span>시간의 공진 1/(ω₀² − ω²)가 공간에서는 1/(λₙ − μ).</span></a>
+      <a href="../../linear/chapters/symmetric.html"><small>LINEARBOOK</small>대칭 행렬과 스펙트럼 정리<br><span>실수 고유값과 직교 고유벡터. 스튀름–리우빌은 그 무한 차원판.</span></a>
+      <a href="../../linear/chapters/orthogonality.html"><small>LINEARBOOK</small>직교성과 정사영<br><span>푸리에 계수는 정사영, 부분합은 최소제곱 근사.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 변환과 스펙트럼<br><span>주기를 무한히 늘리면 급수가 변환이 된다. FFT와 신호 처리.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>경계값 문제는 조건을 두 점에 나누어 준다. 선형 문제는 동차 문제가 자명한 해만 가지면 해가 꼭 하나, 아니면 해가 없거나 무수히 많다(정리 15.2). 비선형 문제는 해가 여럿일 수도 있다.</li>
+      <li>슈팅 방법은 처음 기울기 s로 초기값 문제를 쏘고, 빗나간 양 F(s) = 0을 할선법으로 푼다. 선형 문제는 한 번에 맞는다.</li>
+      <li>y″ + λy = 0, y(0) = y(L) = 0의 고유값은 (nπ/L)², 고유함수는 sin(nπx/L). 노이만 조건은 cos와 λ₀ = 0, 주기 조건은 sin·cos 짝을 준다.</li>
+      <li>기둥의 좌굴은 EIy″ + Py = 0의 첫 고유값: P<sub>cr</sub> = π²EI/(KL)². 처음 굽음은 1/(1 − P/P<sub>cr</sub>)로 확대된다.</li>
+      <li>스튀름–리우빌 문제 (py′)′ + qy + λwy = 0은 실수이고 늘어서는 고유값, n − 1개의 영점, 가중 직교성을 가진다. 증명의 열쇠는 라그랑주 항등식(연산자의 대칭성)이다.</li>
+      <li>직교 전개의 계수는 cₙ = ⟨f, φₙ⟩/⟨φₙ, φₙ⟩, 즉 정사영이고 최소제곱의 뜻에서 최량 근사다. 반구간 전개에서 홀 확장은 사인 급수, 짝 확장은 코사인 급수를 준다.</li>
+      <li>구간별로 매끄러운 함수의 푸리에 급수는 점프에서 좌우 극한의 평균으로 수렴한다. 점프마다 약 8.95%의 기브스 넘침이 남는다. 계수 감소는 1/n(점프), 1/n²(꺾임), 1/n³ 순으로 매끄러움을 반영한다.</li>
+      <li>파세발: (1/L)∫f² = a₀²/2 + Σ(aₙ² + bₙ²). 강제 문제는 cₙ = fₙ/(λₙ − μ)로 풀리고, μ = λₖ이면 ⟨f, φₖ⟩ = 0일 때만 해가 있다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(y'' + 4y = 0\), \(y(0) = 0\), \(y(\pi/2) = 3\)의 해는?</p><div class="opts">
+        <button class="opt">\(y = 3\sin 2x\) 하나뿐</button>
+        <button class="opt">\(y = c\sin 2x\), \(c\)는 임의</button>
+        <button class="opt" data-correct>해가 없다</button>
+        <button class="opt">\(y = 3\cos 2x\)</button>
+      </div><div class="quiz-exp">\(y(0) = 0\)에서 \(y = c\sin 2x\). \(x = \pi/2\)에서 \(\sin\pi = 0\)이므로 \(y(\pi/2) = 0 \ne 3\). 구간 길이 \(\pi/2\)가 마침 \(\lambda = 4\)의 고유값을 만드는 길이라서 동차 문제가 0이 아닌 해를 가지고, 오른쪽 값이 0이 아니면 해가 없다(정리 15.2).</div></div>
+
+      <div class="quiz-q"><p>Q2. \(y'' + \lambda y = 0\), \(y(0) = 0\), \(y'(L) = 0\)의 가장 작은 고유값은?</p><div class="opts">
+        <button class="opt">\(0\)</button>
+        <button class="opt" data-correct>\(\pi^2/(4L^2)\)</button>
+        <button class="opt">\(\pi^2/L^2\)</button>
+        <button class="opt">\(4\pi^2/L^2\)</button>
+      </div><div class="quiz-exp">\(y = \sin kx\)이고 \(y'(L) = k\cos kL = 0\)에서 \(kL = \pi/2, 3\pi/2, \ldots\). 가장 작은 값은 \(k = \pi/(2L)\), \(\lambda_1 = \pi^2/(4L^2)\). 한끝이 자유로운 줄(또는 한끝 고정 기둥)은 양끝 고정보다 고유값이 1/4이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 양끝 핀으로 받친 기둥의 길이를 두 배로 하고, 아래쪽만 바닥에 고정하고 위를 자유롭게 바꾸었다. 좌굴 하중은 원래의 몇 배인가?</p><div class="opts">
+        <button class="opt">1/4</button>
+        <button class="opt">1/8</button>
+        <button class="opt" data-correct>1/16</button>
+        <button class="opt">2</button>
+      </div><div class="quiz-exp">\(P_{\text{cr}} = \pi^2EI/(KL)^2\). 원래는 \(KL = L\). 바꾼 뒤에는 \(K = 2\), 길이 \(2L\)이므로 \(KL = 4L\), 하중은 \(1/16\)배.</div></div>
+
+      <div class="quiz-q"><p>Q4. 스튀름–리우빌 문제의 고유함수 직교성 증명에서 경계 조건은 어떤 역할을 하는가?</p><div class="opts">
+        <button class="opt">고유값을 양수로 만든다</button>
+        <button class="opt" data-correct>라그랑주 항등식의 경계 항 \([p(uv' - vu')]_a^b\)를 0으로 만든다</button>
+        <button class="opt">가중 함수 \(w\)를 1로 만든다</button>
+        <button class="opt">고유함수를 사인 함수로 만든다</button>
+      </div><div class="quiz-exp">두 고유함수가 같은 조건 \(\alpha y + \beta y' = 0\)을 만족하면 각 끝에서 \(uv' - vu' = 0\)이다. 그러면 \((\lambda_m - \lambda_n)\int\phi_m\phi_n w = 0\)만 남아 직교성이 나온다. 경계 조건이 연산자를 대칭으로 만드는 것이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(f(x) = x\)를 \([0, \pi]\)에서 반구간 전개할 때, 계수가 더 빨리 줄어드는 쪽과 그 이유는?</p><div class="opts">
+        <button class="opt">사인 급수, 홀 확장이 원점에서 매끄러워서</button>
+        <button class="opt" data-correct>코사인 급수, 짝 확장(삼각파)이 연속이어서</button>
+        <button class="opt">둘이 같다, 같은 함수이므로</button>
+        <button class="opt">사인 급수, 끝값 f(0) = 0이어서</button>
+      </div><div class="quiz-exp">홀 확장은 \(x = \pi\)에서 \(\pi\)에서 \(-\pi\)로 뛰어 계수가 \(2/n\)으로 줄고, 짝 확장은 \(|x|\)의 주기 확장(삼각파)으로 연속이라 계수가 \(1/n^2\)로 준다. 같은 \([0, \pi]\) 위의 함수라도 확장에 따라 수렴 속도가 다르다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 사각파의 푸리에 부분합에서 항 수를 10배로 늘리면 점프 근처의 넘침(기브스 귀)은?</p><div class="opts">
+        <button class="opt">높이가 1/10로 준다</button>
+        <button class="opt">높이와 폭이 모두 그대로다</button>
+        <button class="opt" data-correct>폭은 약 1/10로 좁아지지만 높이는 점프의 약 9%로 거의 그대로다</button>
+        <button class="opt">완전히 사라진다</button>
+      </div><div class="quiz-exp">첫 극대 위치는 \(\pi/(N + 1)\)로 좁아지지만 높이는 \(\frac2\pi\mathrm{Si}(\pi) \approx 1.179\)로 간다(점프 2의 8.95%). 각 점에서는 수렴하지만 균등 수렴은 아니다. 넘침을 없애려면 페예르 합 같은 창을 쓴다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \([0, \pi]\)에서 \(f = 1\)의 사인 급수 \(\frac4\pi\sum_{n\,\text{홀수}}\frac{\sin nx}{n}\)에 파세발 등식 \(\frac2\pi\int_0^\pi f^2dx = \sum b_n^2\)을 쓰면 얻는 합은?</p><div class="opts">
+        <button class="opt">\(\sum_{n\,\text{홀수}} 1/n = \pi/4\)</button>
+        <button class="opt" data-correct>\(\sum_{n\,\text{홀수}} 1/n^2 = \pi^2/8\)</button>
+        <button class="opt">\(\sum 1/n^2 = \pi^2/8\)</button>
+        <button class="opt">\(\sum_{n\,\text{홀수}} 1/n^2 = \pi^2/6\)</button>
+      </div><div class="quiz-exp">왼쪽은 \(\frac2\pi\cdot\pi = 2\), 오른쪽은 \(\frac{16}{\pi^2}\sum_{\text{홀수}}\frac1{n^2}\). 따라서 \(\sum_{\text{홀수}}1/n^2 = \pi^2/8\). 짝수 항까지 더하면 \(\frac{\pi^2}{8}\cdot\frac43 = \frac{\pi^2}{6}\)으로 바젤 합과 맞는다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(y'' + 4y = -\sin x\), \(y(0) = y(\pi) = 0\)의 해는?</p><div class="opts">
+        <button class="opt">해가 없다, μ = 4가 고유값이므로</button>
+        <button class="opt">\(y = -\tfrac13\sin x\)</button>
+        <button class="opt" data-correct>\(y = -\tfrac13\sin x + c\sin 2x\) (무수히 많음)</button>
+        <button class="opt">\(y = \tfrac15\sin x\)</button>
+      </div><div class="quiz-exp">μ = 4 = λ₂는 고유값이지만 하중 \(\sin x\)는 \(\phi_2 = \sin 2x\)와 직교하므로 해가 있다(정리 15.14). \(c_1 = f_1/(1 - 4) = -1/3\)이고 \(c_2\)는 임의. 검산: \(y = -\frac13\sin x\)이면 \(y'' + 4y = \frac13\sin x - \frac43\sin x = -\sin x\).</div></div>
+    </div>
+  </section>
+</main>
+<script>
+const BV = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  simpson(f, a, b, n = 1000) {
+    n += n % 2; const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2);
+    return (s * h) / 3;
+  },
+  /** 고정 간격 RK4로 [a,b]를 n걸음 적분, 궤적 [[x,y,y'],...] 반환 */
+  shoot(f, a, b, y0, s, n = 400) {
+    const h = (b - a) / n, out = [[a, y0, s]]; let x = a, y = [y0, s];
+    for (let k = 0; k < n; k++) {
+      const k1 = f(x, y), k2 = f(x + h / 2, [y[0] + (h / 2) * k1[0], y[1] + (h / 2) * k1[1]]);
+      const k3 = f(x + h / 2, [y[0] + (h / 2) * k2[0], y[1] + (h / 2) * k2[1]]), k4 = f(x + h, [y[0] + h * k3[0], y[1] + h * k3[1]]);
+      y = [y[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])]; x += h;
+      if (!isFinite(y[0]) || Math.abs(y[0]) > 1e6) { out.push([x, NaN, NaN]); break; }
+      out.push([x, y[0], y[1]]);
+    }
+    return out;
+  },
+  /** 선분 그리기 보조: 차트 좌표의 점 배열을 캔버스 경로로 */
+  path(ctx, ch, pts, o = {}) {
+    ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 2; ctx.setLineDash(o.dash || []); ctx.globalAlpha = o.alpha != null ? o.alpha : 1;
+    ctx.beginPath(); let st = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y)) { st = false; return; } const px = ch.X(x), py = ch.Y(y); st ? ctx.lineTo(px, py) : ctx.moveTo(px, py); st = true; });
+    ctx.stroke(); ctx.restore();
+  },
+  box(w, h, o = {}) { return { x: o.left || 52, y: o.top || 30, w: w - (o.left || 52) - (o.right || 16), h: h - (o.top || 30) - (o.bottom || 40) }; },
+  clip(ctx, ch) { ctx.save(); ctx.beginPath(); ctx.rect(ch.box.x, ch.box.y, ch.box.w, ch.box.h); ctx.clip(); },
+  msg(id, cls, html) { const el = document.getElementById(id); el.className = "bv-msg" + (cls ? " " + cls : ""); el.innerHTML = html; },
+};
+
+/* ================================================================ 1. 슈팅 방법 */
+(function () {
+  const lin = (x, y) => [y[1], -y[0]], non = (x, y) => [y[1], 1.5 * y[0] * y[0]];
+  const PRE = {
+    lin: { f: lin, a: 0, b: 2, A: 0, B: 1, s: [-3, 3], s0: 0.4, y: [-3, 3], F: [-4, 4], bl: "2" },
+    none: { f: lin, a: 0, b: Math.PI, A: 0, B: 1, s: [-3, 3], s0: 0.5, y: [-3, 3], F: [-4, 4], bl: "π" },
+    many: { f: lin, a: 0, b: Math.PI, A: 0, B: 0, s: [-3, 3], s0: 0.5, y: [-3, 3], F: [-4, 4], bl: "π" },
+    non: { f: non, a: 0, b: 1, A: 4, B: 1, s: [-45, 0], s0: -20, y: [-8, 10], F: [-8, 10], bl: "1" },
+  };
+  let pre = PRE.lin, s = pre.s0, fan = true, iters = 0, hist = [], Fcurve = [], cvF = null, timer = 0;
+  const sR = MB.range("bv-sh-s", (v) => BV.num(v, 2), (v) => { s = v; iters = 0; hist = []; draw(); });
+  const Fof = (sv) => { const tr = BV.shoot(pre.f, pre.a, pre.b, pre.A, sv); const e = tr[tr.length - 1]; return e[0] < pre.b - 1e-9 ? NaN : e[1] - pre.B; };
+  const build = () => { Fcurve = []; for (let i = 0; i <= 160; i++) { const sv = pre.s[0] + ((pre.s[1] - pre.s[0]) * i) / 160; Fcurve.push([sv, Fof(sv)]); } };
+  build();
+  const cvY = MB.canvas("#bv-cv-shoot-y", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 });
+    const ch = MB.chart(ctx, box, { x: [pre.a, pre.b], y: pre.y, xLabel: "x", yLabel: "y", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    BV.clip(ctx, ch);
+    if (fan) for (let i = 0; i <= 10; i++) { const sv = pre.s[0] + ((pre.s[1] - pre.s[0]) * i) / 10; BV.path(ctx, ch, BV.shoot(pre.f, pre.a, pre.b, pre.A, sv, 200), { color: C.faint, width: 1.2 }); }
+    hist.forEach((hs) => BV.path(ctx, ch, BV.shoot(pre.f, pre.a, pre.b, pre.A, hs), { color: C.accent2, width: 1.4, dash: [4, 3] }));
+    const tr = BV.shoot(pre.f, pre.a, pre.b, pre.A, s);
+    BV.path(ctx, ch, tr, { color: C.accent, width: 3 });
+    const L = 0.25 * (pre.b - pre.a);
+    BV.path(ctx, ch, [[pre.a, pre.A], [pre.a + L, pre.A + s * L]], { color: C.accent, width: 1.5, dash: [3, 3] });
+    ctx.restore();
+    const end = tr[tr.length - 1];
+    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(ch.X(pre.a), ch.Y(pre.A), 5, 0, 7); ctx.fill();
+    ctx.strokeStyle = C.ok; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(ch.X(pre.b), ch.Y(pre.B), 9, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ch.X(pre.b), ch.Y(pre.B), 3, 0, 7); ctx.fillStyle = C.ok; ctx.fill();
+    if (isFinite(end[1]) && end[0] >= pre.b - 1e-9) { ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(ch.X(pre.b), ch.Y(MB.clamp(end[1], pre.y[0], pre.y[1])), 5, 0, 7); ctx.fill(); }
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.fillStyle = C.ok; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+    ctx.fillText("목표 (" + pre.bl + ", " + pre.B + ")", ch.X(pre.b) - 10, ch.Y(pre.B) - 10);
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  cvF = MB.canvas("#bv-cv-shoot-F", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 });
+    const Fs = Fof(s);
+    const pts = [{ x: s, y: MB.clamp(Fs, pre.F[0], pre.F[1]), color: C.accent, r: 5.5 }];
+    hist.forEach((hs) => pts.push({ x: hs, y: MB.clamp(Fof(hs), pre.F[0], pre.F[1]), color: C.accent2, r: 3.5 }));
+    MB.chart(ctx, box, { x: pre.s, y: pre.F, xLabel: "처음 기울기 s", yLabel: "F(s)", series: [{ data: Fcurve, color: C.text, width: 2 }], hlines: [{ y: 0, color: C.ok, label: "F = 0 이면 명중" }], points: pts });
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  function draw() {
+    cvY.redraw(); cvF.redraw();
+    const Fs = Fof(s);
+    MB.stat("bv-sh-o-s", BV.num(s, 4)); MB.stat("bv-sh-o-y", BV.num(Fs + pre.B, 4)); MB.stat("bv-sh-o-F", BV.num(Fs, 4)); MB.stat("bv-sh-o-k", String(iters));
+    if (pre === PRE.none) BV.msg("bv-sh-msg", "bad", "모든 궤적이 x = π에서 0으로 모입니다(y = s·sin x). F(s) ≡ −1이라 어떤 s도 목표 1에 닿지 않습니다. <b>해가 없습니다.</b>");
+    else if (pre === PRE.many) BV.msg("bv-sh-msg", "ok", "모든 궤적이 x = π에서 0에 닿습니다. F(s) ≡ 0이라 <b>모든 s가 해</b>, y = s·sin x로 무수히 많습니다.");
+    else if (Math.abs(Fs) < 1e-6) BV.msg("bv-sh-msg", "ok", `명중! s = ${BV.num(s, 4)}. ` + (pre === PRE.non ? (s > -20 ? "해 y = 4/(1 + x)²입니다." : "두 번째 해입니다. 음수까지 내려갔다 올라옵니다.") : "y = sin x / sin 2 입니다."));
+    else BV.msg("bv-sh-msg", "", `빗나감 F(s) = ${BV.num(Fs, 3)}. ` + (Fs > 0 ? "너무 높습니다. s를 줄이세요." : "너무 낮습니다. s를 키우세요.") + " ▶ 할선법은 F의 두 점을 잇는 직선의 근으로 s를 고칩니다.");
+  }
+  function secant() {
+    clearInterval(timer);
+    if (pre === PRE.none || pre === PRE.many) { iters = 0; draw(); return; }
+    let s0 = s, s1 = s + 0.05 * (pre.s[1] - pre.s[0]); iters = 0; hist = [s0];
+    timer = setInterval(() => {
+      const f0 = Fof(s0), f1 = Fof(s1);
+      if (!isFinite(f0) || !isFinite(f1) || Math.abs(f1 - f0) < 1e-14 || iters > 25) { clearInterval(timer); return; }
+      const s2 = MB.clamp(s1 - (f1 * (s1 - s0)) / (f1 - f0), pre.s[0], pre.s[1]);
+      hist.push(s1); s0 = s1; s1 = s2; iters++; s = s2; sR.set(s, false); draw();
+      if (Math.abs(Fof(s2)) < 1e-9) clearInterval(timer);
+    }, 450);
+  }
+  document.getElementById("bv-sh-go").addEventListener("click", secant);
+  document.getElementById("bv-sh-reset").addEventListener("click", () => { clearInterval(timer); s = pre.s0; iters = 0; hist = []; sR.set(s, false); draw(); });
+  MB.check("bv-sh-fan", (v) => { fan = v; draw(); });
+  document.getElementById("bv-sh-pre").addEventListener("change", (e) => {
+    clearInterval(timer); pre = PRE[e.target.value]; s = pre.s0; iters = 0; hist = [];
+    const el = sR.el; el.min = pre.s[0]; el.max = pre.s[1]; el.step = pre === PRE.non ? 0.05 : 0.01; sR.set(s, false); build(); draw();
+  });
+  draw();
+})();
+
+/* ================================================================ 2. 고유값 쓸기 */
+(function () {
+  let bc = "DD", lam = 5, cvM = null;
+  const start = (l) => (bc[0] === "D" ? [0, Math.max(1, Math.sqrt(Math.max(l, 0)))] : [1, 0]);
+  const sol = (l, x) => {
+    const [y0, p0] = start(l);
+    if (l > 1e-9) { const k = Math.sqrt(l); return [y0 * Math.cos(k * x) + (p0 / k) * Math.sin(k * x), -y0 * k * Math.sin(k * x) + p0 * Math.cos(k * x)]; }
+    if (l < -1e-9) { const k = Math.sqrt(-l); return [y0 * Math.cosh(k * x) + (p0 / k) * Math.sinh(k * x), y0 * k * Math.sinh(k * x) + p0 * Math.cosh(k * x)]; }
+    return [y0 + p0 * x, p0];
+  };
+  const miss = (l) => { const [y, p] = sol(l, 1); return bc[1] === "D" ? y : p / Math.max(1, Math.sqrt(Math.abs(l))); };
+  const eigs = () => { const out = []; for (let n = 0; n < 6; n++) { let v; if (bc === "DD") v = ((n + 1) * Math.PI) ** 2; else if (bc === "DN") v = ((n + 0.5) * Math.PI) ** 2; else v = (n * Math.PI) ** 2; if (v <= 100) out.push(v); } return out; };
+  const lR = MB.range("bv-eg-l", (v) => BV.num(v, 2), (v) => { lam = v; draw(); });
+  const cvY = MB.canvas("#bv-cv-eig-y", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 });
+    const pts = []; let mx = 1e-9; for (let i = 0; i <= 300; i++) { const x = i / 300, y = sol(lam, x)[0]; pts.push([x, y]); mx = Math.max(mx, Math.abs(y)); }
+    pts.forEach((p) => (p[1] /= mx));
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [-1.25, 1.25], xLabel: "x", yLabel: "y / max|y|", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    const ok = Math.abs(miss(lam)) < 0.02;
+    BV.clip(ctx, ch); BV.path(ctx, ch, pts, { color: ok ? C.ok : C.accent, width: 3 }); ctx.restore();
+    // 끝 조건 표시
+    ctx.fillStyle = C.text; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font");
+    const mark = (x, kind) => { const px = ch.X(x), py = ch.Y(0); ctx.strokeStyle = C.text; ctx.lineWidth = 2; if (kind === "D") { ctx.beginPath(); ctx.moveTo(px, py - 14); ctx.lineTo(px, py + 14); ctx.stroke(); } else { ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(px, ch.box.y); ctx.lineTo(px, ch.box.y + ch.box.h); ctx.stroke(); ctx.setLineDash([]); } };
+    mark(0, bc[0]); mark(1, bc[1]);
+    const end = pts[pts.length - 1];
+    ctx.fillStyle = ok ? C.ok : C.accent2; ctx.beginPath(); ctx.arc(ch.X(1), ch.Y(end[1]), 5.5, 0, 7); ctx.fill();
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  cvM = MB.canvas("#bv-cv-eig-m", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), data = [];
+    for (let i = 0; i <= 600; i++) { const l = -20 + (120 * i) / 600; data.push([l, MB.clamp(miss(l), -2, 2)]); }
+    MB.chart(ctx, box, { x: [-20, 100], y: [-1.6, 1.6], xLabel: "λ", yLabel: "m(λ)", series: [{ data, color: C.text, width: 1.8 }], hlines: [{ y: 0, color: C.ok }], vlines: eigs().map((v) => ({ x: v, color: C.ok, dash: [2, 4] })), points: [{ x: lam, y: MB.clamp(miss(lam), -1.6, 1.6), color: C.accent, r: 5.5 }] });
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  function draw() {
+    cvY.redraw(); cvM.redraw();
+    const m = miss(lam); let z = 0, prev = sol(lam, 0.002)[0];
+    for (let i = 1; i <= 500; i++) { const x = 0.002 + (0.996 * i) / 500, y = sol(lam, x)[0]; if (y * prev < 0) z++; prev = y; }
+    MB.stat("bv-eg-o-l", BV.num(lam, 2)); MB.stat("bv-eg-o-k", lam >= 0 ? BV.num(Math.sqrt(lam) / Math.PI, 3) : "허수"); MB.stat("bv-eg-o-m", BV.num(m, 3)); MB.stat("bv-eg-o-z", z + "개");
+    const E = eigs(), near = E.findIndex((v) => Math.abs(v - lam) < 0.06);
+    if (near >= 0) {
+      const n = bc === "NN" ? near : near + 1;
+      const fn = bc === "DD" ? `sin(${n}πx)` : bc === "DN" ? `sin(${2 * n - 1}πx/2)` : n === 0 ? "1 (상수)" : `cos(${n}πx)`;
+      BV.msg("bv-eg-msg", "ok", `고유값! λ = ${BV.num(E[near], 3)}, 고유함수 ${fn}, 내부 영점 ${z}개.`);
+    } else BV.msg("bv-eg-msg", "", lam < 0 ? "λ &lt; 0: 해가 지수적으로 휘어 오른쪽 조건을 맞출 수 없습니다." : `오른쪽 조건이 ${BV.num(m, 3)}만큼 어긋납니다. 해가 없지는 않지만 그것은 y ≡ 0뿐입니다.`);
+  }
+  const jump = (dir) => { const E = eigs(); const t = dir > 0 ? E.find((v) => v > lam + 0.06) : [...E].reverse().find((v) => v < lam - 0.06); if (t != null) { lam = Math.round(t / 0.05) * 0.05; lR.set(lam, false); lam = t; draw(); } };
+  document.getElementById("bv-eg-next").addEventListener("click", () => jump(1));
+  document.getElementById("bv-eg-prev").addEventListener("click", () => jump(-1));
+  MB.seg("bv-eg-bc", (v) => { bc = v; draw(); });
+  draw();
+})();
+
+/* ================================================================ 3. 좌굴 */
+(function () {
+  const EI = 200e9 * (Math.PI * Math.pow(0.02, 4)) / 64;
+  const KL = 4.493409457909064;
+  const SUP = {
+    pp: { K: 1, shape: (s) => Math.sin(Math.PI * s), base: "pin", top: "pin" },
+    ff: { K: 2, shape: (s) => 1 - Math.cos((Math.PI * s) / 2), base: "fix", top: "free" },
+    fp: { K: Math.PI / KL, shape: null, base: "fix", top: "pin" },
+    xx: { K: 0.5, shape: (s) => (1 - Math.cos(2 * Math.PI * s)) / 2, base: "fix", top: "fix" },
+  };
+  { const g = (s) => Math.sin(KL * s) - KL * s + KL * (1 - Math.cos(KL * s)); let mx = 0; for (let i = 0; i <= 400; i++) mx = Math.max(mx, Math.abs(g(i / 400))); SUP.fp.shape = (s) => g(s) / mx; }
+  let sup = SUP.pp, L = 2, P = 2000, cvA = null;
+  const Pcr = () => (Math.PI ** 2 * EI) / (sup.K * L) ** 2;
+  const cvC = MB.canvas("#bv-cv-buck-col", (ctx, w, h) => {
+    const C = MB.palette(), r = P / Pcr(), amp = r < 1 ? 1 / (1 - r) : Infinity;
+    const cx = w / 2, top = 96, bot = h - 34, H = bot - top;
+    const dpx = Math.min(w * 0.3, 3 * (isFinite(amp) ? amp : 1e9));
+    // 지지
+    ctx.strokeStyle = C.dim; ctx.fillStyle = C.elev; ctx.lineWidth = 2;
+    const ground = (y, up) => { ctx.beginPath(); ctx.moveTo(cx - 40, y); ctx.lineTo(cx + 40, y); ctx.stroke(); for (let i = -40; i < 40; i += 8) { ctx.beginPath(); ctx.moveTo(cx + i, y); ctx.lineTo(cx + i + 6, y + (up ? -8 : 8)); ctx.stroke(); } };
+    const pin = (y, up) => { ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx - 11, y + (up ? -16 : 16)); ctx.lineTo(cx + 11, y + (up ? -16 : 16)); ctx.closePath(); ctx.fill(); ctx.stroke(); ground(y + (up ? -16 : 16), up); };
+    if (sup.base === "pin") pin(bot, false); else { ctx.fillStyle = C.dim; ctx.fillRect(cx - 30, bot, 60, 10); ground(bot + 10, false); }
+    if (sup.top === "pin") { pin(top, true); }
+    else if (sup.top === "fix") { ctx.fillStyle = C.dim; ctx.fillRect(cx - 30, top - 10, 60, 10); }
+    // 기둥
+    ctx.strokeStyle = r >= 1 ? C.bad : C.accent; ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.beginPath();
+    for (let i = 0; i <= 120; i++) { const s = i / 120, x = cx + dpx * sup.shape(s), y = bot - s * H; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke(); ctx.lineCap = "butt";
+    // 하중 화살표
+    const tx = cx + dpx * sup.shape(1), ah = 14 + Math.min(1, P / 20000) * 20;
+    ctx.strokeStyle = C.text; ctx.fillStyle = C.text; ctx.lineWidth = 2.5;
+    const y0 = top - (sup.top === "pin" ? 30 : sup.top === "fix" ? 12 : 6);
+    ctx.beginPath(); ctx.moveTo(tx, y0 - ah); ctx.lineTo(tx, y0 - 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx, y0); ctx.lineTo(tx - 6, y0 - 10); ctx.lineTo(tx + 6, y0 - 10); ctx.closePath(); ctx.fill();
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText("P = " + (P / 1000).toFixed(2) + " kN", tx + 12, y0 - ah / 2 - 4);
+    ctx.fillStyle = C.dim; ctx.fillText("L = " + L.toFixed(1) + " m", 10, h - 12);
+  }, { aspect: 0.9, minHeight: 260, maxHeight: 360 });
+  cvA = MB.canvas("#bv-cv-buck-amp", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), r = P / Pcr(), data = [];
+    for (let i = 0; i <= 300; i++) { const x = (0.985 * i) / 300; data.push([x, 1 / (1 - x)]); }
+    MB.chart(ctx, box, { x: [0, 1.2], y: [0, 25], xLabel: "P / Pcr", yLabel: "δ / e₀", series: [{ data, color: C.accent, width: 2.4 }], vlines: [{ x: 1, color: C.bad, label: "좌굴" }], points: r < 1 ? [{ x: r, y: Math.min(25, 1 / (1 - r)), color: C.accent2, r: 6 }] : [{ x: Math.min(r, 1.2), y: 25, color: C.bad, r: 6 }] });
+  }, { aspect: 0.9, minHeight: 260, maxHeight: 360 });
+  function draw() {
+    cvC.redraw(); cvA.redraw();
+    const pc = Pcr(), r = P / pc, e0 = L / 1000;
+    MB.stat("bv-bk-o-cr", (pc / 1000).toFixed(2) + " kN"); MB.stat("bv-bk-o-r", r.toFixed(3));
+    MB.stat("bv-bk-o-d", r < 1 ? ((e0 / (1 - r)) * 1000).toFixed(1) + " mm" : "∞");
+    MB.stat("bv-bk-o-st", r < 0.5 ? "안전" : r < 0.9 ? "주의" : r < 1 ? "임계 직전" : "<span style='color:var(--bad)'>좌굴</span>");
+  }
+  MB.range("bv-bk-L", (v) => v.toFixed(1) + " m", (v) => { L = v; draw(); });
+  MB.range("bv-bk-P", (v) => v.toFixed(2) + " kN", (v) => { P = v * 1000; draw(); });
+  document.getElementById("bv-bk-sup").addEventListener("change", (e) => { sup = SUP[e.target.value]; draw(); });
+  draw();
+})();
+
+/* ================================================================ 4. 직교성 */
+(function () {
+  const bis = (f, a, b) => { for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (f(a) * f(m) <= 0) b = m; else a = m; } return (a + b) / 2; };
+  const RK = []; for (let n = 1; n <= 7; n++) RK.push(bis((k) => Math.tan(k) + k, (n - 0.5) * Math.PI + 1e-6, n * Math.PI - 1e-6));
+  let bc = "D", m = 1, n = 2, cvP = null;
+  const mode = (i) => (bc === "N" ? i - 1 : i);
+  const kOf = (i) => (bc === "R" ? RK[i - 1] : mode(i) * Math.PI);
+  const phi = (i) => { const k = kOf(i); return bc === "N" ? (x) => Math.cos(k * x) : (x) => Math.sin(k * x); };
+  const sub = (i) => String(i).split("").map((d) => "₀₁₂₃₄₅₆₇₈₉"[+d]).join("");
+  const mR = MB.range("bv-or-m", (v) => "φ" + sub(mode(v)), (v) => { m = v; draw(); });
+  const nR = MB.range("bv-or-n", (v) => "φ" + sub(mode(v)), (v) => { n = v; draw(); });
+  const cvF = MB.canvas("#bv-cv-orth-f", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), fm = phi(m), fn = phi(n), A = [], B = [];
+    for (let i = 0; i <= 300; i++) { const x = i / 300; A.push([x, fm(x)]); B.push([x, fn(x)]); }
+    MB.chart(ctx, box, { x: [0, 1], y: [-1.3, 1.3], xLabel: "x", series: [{ data: A, color: C.accent, width: 2.6 }, { data: B, color: C.accent2, width: 2.6, dash: m === n ? [6, 4] : [] }], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.62, minHeight: 220, maxHeight: 320 });
+  cvP = MB.canvas("#bv-cv-orth-p", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), fm = phi(m), fn = phi(n);
+    const ch = MB.chart(ctx, box, { x: [0, 1], y: [-1.15, 1.15], xLabel: "x", series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    BV.clip(ctx, ch);
+    [[1, C.accent], [-1, C.accent2]].forEach(([sg, col]) => {
+      ctx.globalAlpha = 0.35; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(ch.X(0), ch.Y(0));
+      for (let i = 0; i <= 400; i++) { const x = i / 400, y = fm(x) * fn(x); ctx.lineTo(ch.X(x), ch.Y(sg > 0 ? Math.max(0, y) : Math.min(0, y))); }
+      ctx.lineTo(ch.X(1), ch.Y(0)); ctx.closePath(); ctx.fill();
+    });
+    ctx.globalAlpha = 1; const pts = []; for (let i = 0; i <= 400; i++) { const x = i / 400; pts.push([x, fm(x) * fn(x)]); }
+    BV.path(ctx, ch, pts, { color: C.text, width: 2 }); ctx.restore();
+  }, { aspect: 0.62, minHeight: 220, maxHeight: 320 });
+  function draw() {
+    cvF.redraw(); cvP.redraw();
+    const fm = phi(m), fn = phi(n), ip = BV.simpson((x) => fm(x) * fn(x), 0, 1, 1000), nm = BV.simpson((x) => fm(x) ** 2, 0, 1, 1000);
+    MB.stat("bv-or-o-lm", BV.num(kOf(m) ** 2, 3)); MB.stat("bv-or-o-ln", BV.num(kOf(n) ** 2, 3));
+    MB.stat("bv-or-o-ip", BV.num(ip, 6)); MB.stat("bv-or-o-nm", BV.num(nm, 4));
+    if (m === n) BV.msg("bv-or-msg", "", `같은 함수끼리의 내적은 노름의 제곱 ‖φ‖² = ${BV.num(ip, 4)}입니다. 곱이 제곱이라 넓이가 모두 양수입니다.`);
+    else BV.msg("bv-or-msg", Math.abs(ip) < 1e-6 ? "ok" : "bad", `∫φ<sub>${mode(m)}</sub>φ<sub>${mode(n)}</sub> dx = ${BV.num(ip, 6)}. 양의 넓이와 음의 넓이가 정확히 상쇄되어 <b>직교</b>합니다.` + (bc === "R" ? " 로뱅 고유값은 고르게 놓여 있지 않은데도 그렇습니다." : ""));
+  }
+  MB.seg("bv-or-bc", (v) => { bc = v; mR.set(m, false); nR.set(n, false); draw(); });
+  draw();
+})();
+
+/* ================================================================ 5. 푸리에 급수 */
+(function () {
+  const PI = Math.PI;
+  const F = { sq: () => 1, lin: (x) => x, par: (x) => x * (PI - x), tri: (x) => Math.min(x, PI - x), step: (x) => (x < PI / 2 ? 0 : 1) };
+  const YR = { sq: [-1.6, 1.6], lin: [-4, 4], par: [-3, 3], tri: [-2, 2], step: [-1.6, 1.6] };
+  let key = "sq", ext = "odd", N = 3, showLast = false, A = [], B = [], a0 = 0;
+  const M = 3000;
+  function coeffs() {
+    const f = F[key]; A = [0]; B = [0];
+    const xs = [], fs = []; for (let i = 0; i < M; i++) { const x = ((i + 0.5) * PI) / M; xs.push(x); fs.push(f(x)); }
+    const dx = PI / M, w = ext === "per" ? 2 : 1;
+    a0 = 0; for (let i = 0; i < M; i++) a0 += fs[i] * dx; a0 *= 2 / PI;
+    for (let n = 1; n <= 60; n++) { let a = 0, b = 0; for (let i = 0; i < M; i++) { a += fs[i] * Math.cos(w * n * xs[i]); b += fs[i] * Math.sin(w * n * xs[i]); } A.push((a * dx * 2) / PI); B.push((b * dx * 2) / PI); }
+  }
+  const extF = (x) => {
+    const f = F[key];
+    if (ext === "per") return f(MB.mod(x, PI));
+    const u = MB.mod(x + PI, 2 * PI) - PI;
+    return u >= 0 ? f(u) : ext === "odd" ? -f(-u) : f(-u);
+  };
+  const S = (x, n = N) => {
+    let s = ext === "odd" ? 0 : a0 / 2;
+    for (let k = 1; k <= n; k++) {
+      if (ext === "odd") s += B[k] * Math.sin(k * x);
+      else if (ext === "even") s += A[k] * Math.cos(k * x);
+      else s += A[k] * Math.cos(2 * k * x) + B[k] * Math.sin(2 * k * x);
+    }
+    return s;
+  };
+  coeffs();
+  const cv = MB.canvas("#bv-cv-four", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 34 });
+    const ch = MB.chart(ctx, box, { x: [-2 * PI, 2 * PI], y: YR[key], xLabel: "x", xTicks: [-2 * PI, -PI, 0, PI, 2 * PI], xFmt: (v) => ({ "-2": "−2π", "-1": "−π", "0": "0", "1": "π", "2": "2π" })[Math.round(v / PI)], series: [], hlines: [{ y: 0, color: C.axis, dash: [] }], bands: [{ x0: 0, x1: PI, color: C.grid }] });
+    BV.clip(ctx, ch);
+    const ext_ = [], src = [], ps = [], last = [];
+    for (let i = 0; i <= 1200; i++) { const x = -2 * PI + (4 * PI * i) / 1200; ext_.push([x, extF(x)]); ps.push([x, S(x)]); }
+    // 확장: 점프에서 세로선 안 긋게 끊기
+    const segs = []; let cur = [];
+    ext_.forEach((p, i) => { if (i && Math.abs(p[1] - ext_[i - 1][1]) > 0.3 * (YR[key][1] - YR[key][0]) / 2) { segs.push(cur); cur = []; } cur.push(p); }); segs.push(cur);
+    segs.forEach((sg) => BV.path(ctx, ch, sg, { color: C.dim, width: 1.6, dash: [5, 4] }));
+    for (let i = 0; i <= 400; i++) { const x = (PI * i) / 400; src.push([x, F[key](Math.min(x, PI - 1e-9))]); }
+    const sseg = []; let c2 = []; src.forEach((p, i) => { if (i && Math.abs(p[1] - src[i - 1][1]) > 0.2) { sseg.push(c2); c2 = []; } c2.push(p); }); sseg.push(c2);
+    sseg.forEach((sg) => BV.path(ctx, ch, sg, { color: C.text, width: 3.2 }));
+    if (showLast && N >= 1) {
+      for (let i = 0; i <= 1200; i++) { const x = -2 * PI + (4 * PI * i) / 1200; last.push([x, S(x, N) - S(x, N - 1)]); }
+      BV.path(ctx, ch, last, { color: C.accent2, width: 1.6 });
+    }
+    BV.path(ctx, ch, ps, { color: C.accent, width: 2.6 });
+    ctx.restore();
+  }, { aspect: 0.48, minHeight: 240, maxHeight: 380 });
+  function draw() {
+    cv.redraw();
+    let se = 0, mx = 0; const K = 800;
+    for (let i = 0; i < K; i++) { const x = ((i + 0.5) * PI) / K, e = F[key](x) - S(x); se += e * e; mx = Math.max(mx, Math.abs(e)); }
+    MB.stat("bv-fs-o-rms", BV.num(Math.sqrt(se / K), 4)); MB.stat("bv-fs-o-max", BV.num(mx, 3));
+    const nm = ext === "odd" ? "b" : "a", arr = ext === "odd" ? B : A;
+    MB.stat("bv-fs-o-c", ext === "odd" ? "b<sub>1</sub>, b<sub>2</sub>, b<sub>3</sub> = " + [1, 2, 3].map((k) => BV.num(B[k], 3)).join(", ")
+      : ext === "even" ? "a<sub>0</sub>/2 = " + BV.num(a0 / 2, 3) + ", " + [1, 2].map((k) => "a<sub>" + k + "</sub> = " + BV.num(A[k], 3)).join(", ")
+      : "a<sub>0</sub>/2 = " + BV.num(a0 / 2, 3) + ", a<sub>1</sub> = " + BV.num(A[1], 3) + ", b<sub>1</sub> = " + BV.num(B[1], 3));
+    const DEC = { sq: { odd: "~1/n (점프)", even: "a₀ 하나뿐", per: "a₀ 하나뿐" }, lin: { odd: "~1/n (점프)", even: "~1/n² (꺾임)", per: "~1/n (점프)" },
+      par: { odd: "~1/n³", even: "~1/n² (꺾임)", per: "~1/n² (꺾임)" }, tri: { odd: "~1/n² (꺾임)", even: "~1/n² (꺾임)", per: "~1/n² (꺾임)" }, step: { odd: "~1/n (점프)", even: "~1/n (점프)", per: "~1/n (점프)" } };
+    const dec = DEC[key][ext];
+    MB.stat("bv-fs-o-dec", dec);
+  }
+  MB.range("bv-fs-N", (v) => String(v), (v) => { N = v; draw(); });
+  MB.check("bv-fs-terms", (v) => { showLast = v; draw(); });
+  MB.seg("bv-fs-ext", (v) => { ext = v; coeffs(); draw(); });
+  document.getElementById("bv-fs-pre").addEventListener("change", (e) => { key = e.target.value; coeffs(); draw(); });
+  draw();
+})();
+
+/* ================================================================ 6. 기브스 */
+(function () {
+  const NS = [1, 3, 5, 7, 9, 11, 15, 21, 31, 51, 75, 101, 151, 201];
+  let N = 9, win = "none", zoom = true;
+  const fac = (k) => (win === "none" ? 1 : win === "fej" ? 1 - k / (N + 1) : Math.sin((k * Math.PI) / (N + 1)) / ((k * Math.PI) / (N + 1)));
+  const S = (x) => { let s = 0; for (let k = 1; k <= N; k += 2) s += (fac(k) * Math.sin(k * x)) / k; return (4 / Math.PI) * s; };
+  const cv = MB.canvas("#bv-cv-gibbs", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 20 });
+    const X1 = zoom ? Math.min(Math.PI, (8 * Math.PI) / (N + 1)) : Math.PI, X0 = -X1;
+    const data = []; for (let i = 0; i <= 1000; i++) { const x = X0 + ((X1 - X0) * i) / 1000; data.push([x, S(x)]); }
+    const sq = [[X0, -1], [0, -1], [0, 1], [X1, 1]];
+    MB.chart(ctx, box, { x: [X0, X1], y: [-1.45, 1.45], xLabel: zoom ? "x (확대: ±8π/(N+1))" : "x", series: [{ data: sq, color: C.dim, width: 1.6, dash: [5, 4] }, { data, color: C.accent, width: 2.4 }], hlines: [{ y: 1.17898, color: C.bad, label: "1.179 (N → ∞ 극한)" }, { y: 1, color: C.faint }, { y: 0, color: C.axis, dash: [] }], vlines: [{ x: Math.PI / (N + 1), color: C.ok, label: "π/(N+1)" }] });
+  }, { aspect: 0.48, minHeight: 240, maxHeight: 380 });
+  function draw() {
+    cv.redraw();
+    let pk = -9, xp = 0; const X = Math.min(Math.PI / 2, (4 * Math.PI) / (N + 1));
+    for (let i = 1; i <= 3000; i++) { const x = (X * i) / 3000, v = S(x); if (v > pk) { pk = v; xp = x; } }
+    MB.stat("bv-gb-o-pk", BV.num(pk, 5)); MB.stat("bv-gb-o-ov", BV.num((Math.max(0, pk - 1) / 2) * 100, 2) + " %");
+    MB.stat("bv-gb-o-x", BV.num(xp, 4)); MB.stat("bv-gb-o-xp", BV.num(Math.PI / (N + 1), 4));
+  }
+  MB.steps("bv-gb-N", NS, (v) => String(v), 9, (v) => { N = v; draw(); });
+  MB.seg("bv-gb-win", (v) => { win = v; draw(); });
+  MB.check("bv-gb-zoom", (v) => { zoom = v; draw(); });
+  draw();
+})();
+
+/* ================================================================ 7. 스펙트럼과 파세발 */
+(function () {
+  const PI = Math.PI;
+  const PRE = {
+    sq: { b: (n) => (n % 2 ? 4 / (n * PI) : 0), E: 2, rate: "1/n" },
+    lin: { b: (n) => (2 * (n % 2 ? 1 : -1)) / n, E: (2 * PI * PI) / 3, rate: "1/n" },
+    tri: { b: (n) => (4 * Math.sin((n * PI) / 2)) / (PI * n * n), E: (PI * PI) / 6, rate: "1/n²" },
+    par: { b: (n) => (n % 2 ? 8 / (PI * n ** 3) : 0), E: PI ** 4 / 15, rate: "1/n³" },
+  };
+  let pre = PRE.sq, N = 3, log = false, cvE = null;
+  const cvB = MB.canvas("#bv-cv-spec-b", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 });
+    const vals = []; for (let n = 1; n <= 30; n++) vals.push(Math.abs(pre.b(n)));
+    const top = Math.max(...vals) * 1.15;
+    const yr = log ? [1e-5, Math.pow(10, Math.ceil(Math.log10(top)))] : [0, top];
+    const ch = MB.chart(ctx, box, { x: log ? [0.8, 40] : [0, 31], y: yr, logX: log, logY: log, xLabel: "n", series: [] });
+    BV.clip(ctx, ch);
+    vals.forEach((v, i) => {
+      const n = i + 1; if (v < 1e-12) return;
+      ctx.fillStyle = n <= N ? C.accent : C.faint;
+      const x = ch.X(n), bw = log ? 5 : Math.max(2, (box.w / 31) * 0.7);
+      const y0 = ch.Y(yr[0]), y1 = ch.Y(v); ctx.fillRect(x - bw / 2, y1, bw, y0 - y1);
+    });
+    if (log) { const p = pre.rate === "1/n" ? 1 : pre.rate === "1/n²" ? 2 : 3, c = Math.abs(pre.b(1)); BV.path(ctx, ch, [[1, c], [40, c / Math.pow(40, p)]], { color: C.accent2, width: 1.6, dash: [5, 4] }); }
+    ctx.restore();
+    ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "right"; ctx.textBaseline = "top";
+    ctx.fillText("감소 ~ " + pre.rate, box.x + box.w - 4, box.y + 4);
+  }, { aspect: 0.62, minHeight: 220, maxHeight: 320 });
+  cvE = MB.canvas("#bv-cv-spec-E", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), data = [[0, 0]]; let s = 0;
+    for (let n = 1; n <= 30; n++) { s += pre.b(n) ** 2; data.push([n - 0.0001, data[data.length - 1][1]]); data.push([n, (100 * s) / pre.E]); }
+    let sN = 0; for (let n = 1; n <= N; n++) sN += pre.b(n) ** 2;
+    const lo = 50;
+    MB.chart(ctx, box, { x: [0, 30], y: [lo, 108], yTicks: [50, 60, 70, 80, 90, 100], xLabel: "n", yLabel: "누적 %", series: [{ data: data.map(([x, y]) => [x, Math.max(lo, y)]), color: C.accent, width: 2.4 }], hlines: [{ y: 100, color: C.ok, label: "100% (파세발)" }], vlines: [{ x: N, color: C.accent2 }], points: [{ x: N, y: Math.max(lo, (100 * sN) / pre.E), color: C.accent2, r: 5.5 }] });
+  }, { aspect: 0.62, minHeight: 220, maxHeight: 320 });
+  function draw() {
+    cvB.redraw(); cvE.redraw();
+    let s = 0; for (let n = 1; n <= N; n++) s += pre.b(n) ** 2;
+    MB.stat("bv-sp-o-E", BV.num(pre.E, 4)); MB.stat("bv-sp-o-S", BV.num(s, 4)); MB.stat("bv-sp-o-p", BV.num((100 * s) / pre.E, 2) + " %");
+    MB.stat("bv-sp-o-r", BV.num(Math.sqrt(Math.max(0, pre.E - s) / 2), 4));
+  }
+  MB.range("bv-sp-N", (v) => String(v), (v) => { N = v; draw(); });
+  MB.check("bv-sp-log", (v) => { log = v; draw(); });
+  document.getElementById("bv-sp-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; draw(); });
+  draw();
+})();
+
+/* ================================================================ 8. 강제 경계값 문제 */
+(function () {
+  const PI = Math.PI, X0 = PI / 3;
+  const LOAD = {
+    uni: { fn: (n) => (n % 2 ? 4 / (n * PI) : 0), f: () => 1 },
+    lin: { fn: (n) => (2 * (n % 2 ? 1 : -1)) / n, f: (x) => x },
+    pt: { fn: (n) => (2 / PI) * Math.sin(n * X0), f: null },
+    m2: { fn: (n) => (n === 2 ? 1 : 0), f: (x) => Math.sin(2 * x) },
+  };
+  let load = LOAD.uni, mu = 0, N = 10, fd = [], cvC = null;
+  const c = (n) => { const d = n * n - mu, fn = load.fn(n); if (Math.abs(d) < 1e-9) return Math.abs(fn) < 1e-12 ? 0 : NaN; return fn / d; };
+  const Y = (x) => { let s = 0; for (let n = 1; n <= N; n++) s += c(n) * Math.sin(n * x); return s; };
+  function solveFD() {
+    const M = 400, h = PI / M, a = [], b = [], cc = [], d = [];
+    for (let i = 1; i < M; i++) {
+      const x = i * h; let f;
+      if (load.f) f = load.f(x); else f = Math.abs(x - X0) < h / 2 ? 1 / h : 0;
+      a.push(1 / (h * h)); b.push(-2 / (h * h) + mu); cc.push(1 / (h * h)); d.push(-f);
+    }
+    const n = b.length; for (let i = 1; i < n; i++) { const m = a[i] / b[i - 1]; b[i] -= m * cc[i - 1]; d[i] -= m * d[i - 1]; }
+    const y = new Array(n); y[n - 1] = d[n - 1] / b[n - 1]; for (let i = n - 2; i >= 0; i--) y[i] = (d[i] - cc[i] * y[i + 1]) / b[i];
+    fd = [[0, 0]]; y.forEach((v, i) => fd.push([(i + 1) * h, v])); fd.push([PI, 0]);
+  }
+  solveFD();
+  const cvY = MB.canvas("#bv-cv-frc-y", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), ser = [];
+    for (let i = 0; i <= 400; i++) { const x = (PI * i) / 400; ser.push([x, Y(x)]); }
+    const vals = ser.map((p) => p[1]).concat(fd.map((p) => p[1])).filter(isFinite);
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const sp = Math.max(hi - lo, 0.2); lo -= sp * 0.12; hi += sp * 0.12;
+    const ch = MB.chart(ctx, box, { x: [0, PI], y: [lo, hi], xLabel: "x", yLabel: "y", xTicks: [0, PI / 3, PI / 2, (2 * PI) / 3, PI], xFmt: (v) => ["0", "π/3", "π/2", "2π/3", "π"][[0, PI / 3, PI / 2, (2 * PI) / 3, PI].findIndex((t) => Math.abs(t - v) < 1e-6)], series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    BV.clip(ctx, ch);
+    BV.path(ctx, ch, ser, { color: C.accent, width: 3 });
+    BV.path(ctx, ch, fd, { color: C.text, width: 1.6, dash: [5, 4] });
+    ctx.restore();
+    if (!load.f) { ctx.fillStyle = C.accent2; ctx.beginPath(); const px = ch.X(X0), py = ch.box.y + 4; ctx.moveTo(px, py + 14); ctx.lineTo(px - 6, py + 4); ctx.lineTo(px + 6, py + 4); ctx.closePath(); ctx.fill(); }
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  cvC = MB.canvas("#bv-cv-frc-c", (ctx, w, h) => {
+    const C = MB.palette(), box = BV.box(w, h, { top: 28 }), cs = [];
+    for (let n = 1; n <= 8; n++) cs.push(c(n));
+    const mx = Math.max(0.05, ...cs.filter(isFinite).map(Math.abs)) * 1.2;
+    const ch = MB.chart(ctx, box, { x: [0.3, 8.7], y: [-mx, mx], xLabel: "모드 n", xTicks: [1, 2, 3, 4, 5, 6, 7, 8], series: [], hlines: [{ y: 0, color: C.axis, dash: [] }] });
+    cs.forEach((v, i) => {
+      const n = i + 1, x = ch.X(n), bw = Math.max(8, (box.w / 9) * 0.55);
+      if (!isFinite(v)) { ctx.fillStyle = C.bad; ctx.fillRect(x - bw / 2, ch.box.y, bw, ch.box.h); return; }
+      ctx.fillStyle = n <= N ? (v >= 0 ? C.accent : C.accent2) : C.faint;
+      const y0 = ch.Y(0), y1 = ch.Y(v); ctx.fillRect(x - bw / 2, Math.min(y0, y1), bw, Math.abs(y1 - y0));
+    });
+    ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const sq = Math.sqrt(Math.max(mu, 0)); if (mu > 0.3 && mu < 8.7) { ctx.strokeStyle = C.bad; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ch.X(sq), ch.box.y); ctx.lineTo(ch.X(sq), ch.box.y + ch.box.h); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.bad; ctx.fillText("√μ", ch.X(sq), ch.box.y + 2); }
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 340 });
+  function draw() {
+    solveFD(); cvY.redraw(); cvC.redraw();
+    let mx = 0, err = 0; fd.forEach(([x, v]) => { const s = Y(x); mx = Math.max(mx, Math.abs(s)); if (load.f) err = Math.max(err, Math.abs(s - v)); });
+    MB.stat("bv-fr-o-c1", BV.num(c(1), 4)); MB.stat("bv-fr-o-g", Math.abs(1 - mu) < 1e-9 ? "∞" : BV.num(1 / (1 - mu), 3));
+    MB.stat("bv-fr-o-mx", BV.num(mx, 4)); MB.stat("bv-fr-o-err", load.f ? MB.fmt(err, 2) : "점 하중: 꺾임 근처 오차");
+    const near = [1, 4, 9].find((v) => Math.abs(mu - v) < 0.15);
+    if (near) {
+      const k = Math.sqrt(near), fk = load.fn(k);
+      if (Math.abs(fk) < 1e-12) BV.msg("bv-fr-msg", "ok", `μ ≈ λ<sub>${k}</sub> = ${near}이지만 하중의 ${k}번 성분 f<sub>${k}</sub> = 0입니다. 하중이 그 모드와 직교해서 공진이 일어나지 않습니다(정리 15.14).`);
+      else BV.msg("bv-fr-msg", "bad", `μ가 고유값 λ<sub>${k}</sub> = ${near}에 가깝습니다. c<sub>${k}</sub> = f<sub>${k}</sub>/(${near} − μ)가 폭증하고 해가 sin ${k}x 모양으로 커집니다. μ = ${near}이면 해가 없습니다.`);
+    } else BV.msg("bv-fr-msg", "", `증폭률 1/(n² − μ): n = 1에서 ${BV.num(1 / (1 - mu), 3)}, n = 2에서 ${BV.num(1 / (4 - mu), 3)}. μ &lt; 0(탄성 기초)이면 모든 모드가 줄어듭니다.`);
+  }
+  MB.range("bv-fr-mu", (v) => BV.num(v, 2), (v) => { mu = v; draw(); });
+  MB.range("bv-fr-N", (v) => String(v), (v) => { N = v; draw(); });
+  document.getElementById("bv-fr-load").addEventListener("change", (e) => { load = LOAD[e.target.value]; draw(); });
+  draw();
+})();
+</script>
+</body>
+</html>

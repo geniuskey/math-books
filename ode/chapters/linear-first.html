@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>1계 선형 방정식과 완전 방정식 · ODEBook</title>
+<meta name="description" content="y′ + p(t)y = g(t)를 적분 인자로 푸는 법을 유도하고, RC·RL 회로의 시상수, 혼합 탱크, 사인 입력의 과도·정상 응답, 해의 구조 y = y_h + y_p, 완전 방정식과 퍼텐셜, 적분 인자로 완전하게 만들기, 베르누이 방정식까지 시뮬레이터로 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .lf-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .lf-msg b { color: var(--text); }
+  .lf-msg.ok { color: var(--ok); font-weight: 600; }
+  .lf-msg.bad { color: var(--bad); font-weight: 600; }
+  .lf-eq { padding: 8px 18px; font: 14px var(--mono); color: var(--text); border-top: 1px solid var(--border); background: var(--bg-elev); overflow-wrap: anywhere; }
+  .lf-tbl td, .lf-tbl th { text-align: center; }
+  .lf-tbl td { font-family: var(--mono); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="linear-first">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 03</div>
+    <h1 data-no-glossary>1계 선형 방정식과 완전 방정식</h1>
+    <p class="lead">2장의 변수분리는 \(y' = g(t)h(y)\)처럼 \(t\)와 \(y\)를 양쪽으로 갈라놓을 수 있을 때만 통했습니다. 그런데 전원이 걸린 RC 회로 \(RCv' + v = V(t)\)나 소금물이 드나드는 탱크처럼 <b>입력이 시간에 따라 바뀌는</b> 문제는 갈라지지 않습니다. 이 장은 공학에서 가장 자주 만나는 1계 방정식인 <span class="term">1계 선형 미분방정식</span> \(y' + p(t)y = g(t)\)를 <b>단 하나의 곱셈</b>, 적분 인자로 언제나 풀 수 있음을 보이고, 그 해가 "초기값을 잊어 가는 과도 성분 + 입력을 따라가는 정상 성분"으로 갈라진다는 구조를 읽습니다. 이어서 해곡선을 어떤 함수 \(\psi(x, y)\)의 등고선으로 보는 완전 방정식과, 비선형이지만 치환 한 번으로 선형이 되는 베르누이 방정식까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>1계 선형 방정식을 표준형 \(y' + p(t)y = g(t)\)로 바꾸고, 적분 인자 \(\mu = e^{\int p\,dt}\)를 유도해 일반해 공식을 쓴다.</li>
+      <li>RC·RL 회로를 키르히호프 법칙에서 세우고, 시상수 \(\tau\)를 해와 측정 곡선에서 읽는다.</li>
+      <li>혼합 탱크를 물질 수지(들어온 양 − 나간 양)로 세우고, 부피가 변하는 경우까지 푼다.</li>
+      <li>사인 입력에 대한 해를 과도 응답과 정상 상태 응답으로 나누고, 이득과 위상 지연을 계산한다.</li>
+      <li>선형 방정식의 해가 \(y = y_h + y_p\)임을 증명하고, 해곡선 족 전체를 이 구조로 읽는다.</li>
+      <li>완전 방정식을 \(M_y = N_x\)로 판정하고 퍼텐셜 \(\psi\)를 찾으며, 적분 인자로 완전하지 않은 방정식을 완전하게 만든다.</li>
+      <li>베르누이 방정식을 \(v = y^{1-n}\)으로 선형화해 로지스틱 방정식을 다시 푼다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>RC 타이머와 저역 통과 필터</b></div>
+      <div class="o-body"><p>카메라 플래시가 충전되는 몇 초, 전등 스위치를 끄면 천천히 어두워지는 LED 조명, 오디오 앰프의 고음 잡음을 걸러 내는 필터, 마이크로컨트롤러가 전원을 켠 뒤 잠깐 기다리는 리셋 회로. 모두 저항 하나와 축전기 하나가 만드는 <b>시상수</b> \(\tau = RC\)로 동작합니다. 설계자는 "몇 초 뒤 몇 볼트"를 정확히 알아야 하는데, 축전기 전압은 들어오는 전압과 자기 자신의 전압 차이로 변하므로 \(v' = (V - v)/RC\)라는 미분방정식을 풀어야 답이 나옵니다.</p>
+        <p>입력 \(V\)가 상수이면 2장의 변수분리로도 풀리지만, 입력이 사인파이거나 계단처럼 켜졌다 꺼지면 변수분리는 막힙니다. 양변에 \(e^{t/RC}\)를 곱하는 한 수, 적분 인자가 이 벽을 넘습니다. 적분 인자의 방법은 18세기에 오일러<span class="en">(Leonhard Euler)</span> 등이 체계적으로 다루었고, 오늘날 회로·열·화학 반응·약물 동태의 1차 모델은 거의 모두 이 공식 하나로 풀립니다.</p>
+        <div class="o-chain"><span>RCv′ + v = V(t)</span><i>→</i><span>변수분리 불가</span><i>→</i><span class="tool">적분 인자 μ = e<sup>∫p</sup></span><i>→</i><span>과도 + 정상 응답, 시상수 τ</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="standard-form">
+    <h2>표준형: 선형이라는 것의 뜻</h2>
+    <div class="problem"><strong>왜 이 방정식은 갈라지지 않는가</strong>
+      <p>축전기에 사인파 전압을 걸면 \(v' + v = \sin t\)(시상수 1 s)가 됩니다. 2장처럼 \(dv/dt\)를 "\(t\)만의 함수 × \(v\)만의 함수"로 쓰려 해도 \(\sin t - v\)는 곱으로 갈라지지 않습니다. 하지만 이 방정식은 \(v\)와 \(v'\)에 대해 <b>1차식</b>이라는 아주 특별한 성질을 가집니다. 이 성질 하나가 풀이를 보장합니다.</p></div>
+    <div class="callout deep"><strong>정의 3.1 (1계 선형 방정식과 표준형)</strong> 미지 함수 \(y(t)\)와 그 도함수에 대해 1차인 방정식
+      <div class="formula">$$a_1(t)\,y' + a_0(t)\,y = b(t)$$</div>
+      를 <span class="term">1계 선형 미분방정식</span>이라 한다. \(a_1(t) \ne 0\)인 구간에서 양변을 \(a_1\)로 나눈
+      <div class="formula">$$y' + p(t)\,y = g(t), \qquad p = \frac{a_0}{a_1},\quad g = \frac{b}{a_1}$$</div>
+      를 <span class="term">표준형</span><span class="en">(standard form)</span>이라 한다. \(g \equiv 0\)이면 <span class="term">동차</span><span class="en">(homogeneous)</span>, 아니면 <span class="term">비동차</span><span class="en">(nonhomogeneous)</span> 방정식이라 하고, \(g\)를 <b>입력</b> 또는 <b>강제 항</b>이라 부른다.</div>
+    <p>"선형"은 \(y\)의 그래프가 직선이라는 뜻이 아닙니다. \(y\)와 \(y'\)이 <b>1차로, 서로 곱해지지 않고, 함수 안에 들어가지 않고</b> 나타난다는 뜻입니다. 계수 \(p(t)\), \(g(t)\)는 \(t\)에 대해 아무리 복잡해도 괜찮습니다.</p>
+    <div class="table-wrap"><table class="lf-tbl">
+      <thead><tr><th>방정식</th><th>선형?</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>\(t^2y' + (\sin t)\,y = e^t\)</td><td>예</td><td>\(p = \sin t / t^2\), \(g = e^t/t^2\) (\(t \ne 0\))</td></tr>
+        <tr><td>\(y' = 3 - 0.04y\)</td><td>예</td><td>\(y' + 0.04y = 3\)</td></tr>
+        <tr><td>\(y' + y^2 = t\)</td><td>아니오</td><td>\(y^2\) 항</td></tr>
+        <tr><td>\(y' = \sin y\)</td><td>아니오</td><td>\(y\)가 함수 안에 들어감</td></tr>
+        <tr><td>\(yy' = t\)</td><td>아니오</td><td>\(y\)와 \(y'\)의 곱</td></tr>
+      </tbody></table></div>
+    <p>동차 방정식 \(y' + p(t)y = 0\)은 변수분리형입니다(<a href="separable.html">2장</a>). \(dy/y = -p(t)\,dt\)를 적분하면 \(\ln|y| = -\int p\,dt + c\), 즉</p>
+    <div class="formula">$$y_h(t) = C\,e^{-\int p(t)\,dt}.$$<div class="where">\(C\)는 임의의 상수(\(C = 0\)이면 상수 해 \(y \equiv 0\)도 포함된다).</div></div>
+    <p>이 동차해가 다음 절의 열쇠입니다. 비동차 방정식을 풀 때 필요한 "마법의 곱수"는 바로 이 \(e^{-\int p}\)의 역수입니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="integrating-factor">
+    <h2>적분 인자: 왼쪽을 곱의 도함수로 만들기</h2>
+    <div class="problem"><strong>\(y' + 2y = 4\)를 적분하고 싶다</strong>
+      <p>양변을 그냥 적분하면 \(y + 2\int y\,dt = 4t + C\)가 되는데, \(\int y\,dt\)는 \(y\)를 모르면 계산할 수 없습니다. 왼쪽 \(y' + 2y\)가 어떤 함수의 <b>도함수 하나</b>로 묶여 있다면 바로 적분할 수 있을 텐데요. 곱의 미분 \((\mu y)' = \mu y' + \mu' y\)가 그 모양과 닮았습니다.</p></div>
+    <p>양변에 아직 모르는 함수 \(\mu(t) > 0\)를 곱합니다.</p>
+    <div class="formula">$$\mu y' + \mu p\,y = \mu g.$$</div>
+    <p>왼쪽이 \((\mu y)' = \mu y' + \mu' y\)와 같아지려면 \(\mu' = p\mu\)이면 됩니다. 이것은 \(\mu\)에 대한 변수분리형 방정식이고, 해 하나 \(\mu = e^{\int p\,dt}\)를 고르면 충분합니다(적분 상수는 \(\mu\)에 상수배를 곱할 뿐이고, 양변에 같이 곱해지므로 지워집니다). 그러면 방정식은</p>
+    <div class="formula">$$\bigl(\mu(t)\,y\bigr)' = \mu(t)\,g(t)$$<div class="where">왼쪽이 도함수 <b>하나</b>가 되었으므로 양변을 적분할 수 있다.</div></div>
+    <div class="callout deep"><strong>정리 3.1 (적분 인자와 일반해)</strong> \(p\), \(g\)가 구간 \(I\)에서 연속이면, <span class="term">적분 인자</span><span class="en">(integrating factor)</span> \(\mu(t) = e^{\int p(t)\,dt}\)에 대해 \(y' + p(t)y = g(t)\)의 모든 해는
+      <div class="formula">$$y(t) = \frac{1}{\mu(t)}\left(\int \mu(t)\,g(t)\,dt + C\right)$$</div>
+      꼴이다. 초기 조건 \(y(t_0) = y_0\)를 주면 \(\mu(t) = \exp\int_{t_0}^t p(s)\,ds\)로 잡아
+      <div class="formula">$$y(t) = \frac{1}{\mu(t)}\left(y_0 + \int_{t_0}^{t} \mu(s)\,g(s)\,ds\right)$$</div>
+      가 \(I\) 전체에서 정의되는 유일한 해다.
+      <p style="margin:8px 0 0"><b>증명.</b> 위의 계산을 거꾸로 따라가면 공식이 해임을 확인할 수 있다. 거꾸로 \(y\)가 임의의 해이면 \((\mu y)' = \mu y' + p\mu y = \mu g\)이므로 기본 정리로 \(\mu(t)y(t) - \mu(t_0)y(t_0) = \int_{t_0}^t \mu g\,ds\)이고, \(\mu(t_0) = 1\)이므로 \(y\)는 공식과 같다. 따라서 해는 하나뿐이다. ∎</p></div>
+    <p>이 정리는 4장에서 다룰 일반적인 존재·유일성 정리보다 훨씬 강합니다. 선형 방정식의 해는 <b>계수가 연속인 구간 전체</b>에서 존재하고, 도중에 무한대로 튀는 일이 없습니다. 비선형 방정식 \(y' = y^2\)의 해가 유한 시각에 폭발하는 것(<a href="autonomous.html#blowup">4장</a>)과 대조됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 200" role="img" aria-label="적분 인자 풀이 다섯 단계 흐름도">
+        <rect x="10" y="10" width="760" height="180" rx="10" class="f-surface"/>
+        <g class="t" text-anchor="middle">
+          <rect x="24" y="52" width="130" height="70" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="89" y="80" style="font-weight:700">① 표준형</text><text x="89" y="104" class="t-mono">y′ + p y = g</text>
+          <rect x="174" y="52" width="130" height="70" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="239" y="80" style="font-weight:700">② μ 구하기</text><text x="239" y="104" class="t-mono">μ = e^∫p</text>
+          <rect x="324" y="52" width="130" height="70" rx="8" class="f-acc-soft" style="stroke:var(--accent)"/>
+          <text x="389" y="80" style="font-weight:700">③ 곱하기</text><text x="389" y="104" class="t-mono">(μy)′ = μg</text>
+          <rect x="474" y="52" width="130" height="70" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="539" y="80" style="font-weight:700">④ 적분</text><text x="539" y="104" class="t-mono">μy = ∫μg + C</text>
+          <rect x="624" y="52" width="130" height="70" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="689" y="80" style="font-weight:700">⑤ 나누고 C</text><text x="689" y="104" class="t-mono">y(t₀) = y₀</text>
+        </g>
+        <g class="s-line" style="stroke-width:1.6"><path d="M154 87h20M304 87h20M454 87h20M604 87h20"/></g>
+        <text x="390" y="160" text-anchor="middle" class="t-dim">핵심은 ③: μ′ = pμ이므로 왼쪽 μy′ + μpy가 곱의 미분 (μy)′로 정확히 묶인다</text>
+      </svg>
+      <figcaption><b>그림 3-1.</b> 적분 인자 풀이의 다섯 단계. 표준형이 아니면(예: \(ty' + 2y = \cdots\)) 먼저 \(y'\)의 계수로 나눠야 \(p\)를 바르게 읽는다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 3.1 (상수 계수)</strong> \(y' + 2y = 4\), \(y(0) = 0\)을 풀어라.
+      <ol>
+        <li>\(p = 2\)이므로 \(\mu = e^{2t}\).</li>
+        <li>곱하면 \((e^{2t}y)' = 4e^{2t}\). 적분하면 \(e^{2t}y = 2e^{2t} + C\).</li>
+        <li>\(y = 2 + Ce^{-2t}\). \(y(0) = 0\)에서 \(C = -2\), 따라서 \(y = 2(1 - e^{-2t})\).</li>
+        <li>검산: \(y' = 4e^{-2t}\), \(y' + 2y = 4e^{-2t} + 4 - 4e^{-2t} = 4\). ✓ RK4로 \(t = 1.3\)까지 적분한 값 1.851453도 공식과 소수 여섯째 자리까지 같다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 3.2 (입력이 시간의 함수)</strong> \(y' + y = t\), \(y(0) = 1\)을 풀어라.
+      <ol>
+        <li>\(\mu = e^t\). \((e^ty)' = te^t\).</li>
+        <li>부분 적분(<a href="../../calculus/chapters/techniques.html">CalculusBook 9장</a>)으로 \(\int te^t\,dt = (t - 1)e^t + C\).</li>
+        <li>\(y = t - 1 + Ce^{-t}\). \(y(0) = -1 + C = 1\)이므로 \(C = 2\): \(y = t - 1 + 2e^{-t}\).</li>
+        <li>\(t\)가 커지면 \(2e^{-t}\)는 사라지고 해는 직선 \(t - 1\)을 따라간다. 입력 \(t\)를 시상수 1만큼 <b>늦게</b> 따라가는 셈이다. \(y(2) = 1 + 2e^{-2} \approx 1.2707\).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 3.3 (계수가 변할 때: 표준형부터)</strong> \(ty' + 2y = 4t^2\), \(y(1) = 2\)를 \(t > 0\)에서 풀어라.
+      <ol>
+        <li>\(t\)로 나눠 표준형으로: \(y' + \frac{2}{t}y = 4t\). 그러므로 \(p = 2/t\)(나누기 전의 2가 아니다).</li>
+        <li>\(\mu = e^{\int 2/t\,dt} = e^{2\ln t} = t^2\). \((t^2y)' = 4t^3\), \(t^2y = t^4 + C\).</li>
+        <li>\(y = t^2 + C/t^2\). \(y(1) = 1 + C = 2\)이므로 \(y = t^2 + t^{-2}\).</li>
+        <li>\(p = 2/t\)는 \(t = 0\)에서 불연속이므로 정리 3.1이 보장하는 구간은 \(t > 0\)이다. 실제로 해는 \(t \to 0^+\)에서 발산한다. \(y(2.5) = 6.41\)(RK4와 일치).</li>
+      </ol></div>
+    <p>아래 시뮬레이터는 적분 인자가 하는 일을 직접 보여 줍니다. 왼쪽은 해 \(y(t)\), 오른쪽은 \(\mu y\)와 "\(y_0 + \int \mu g\)"입니다. 오른쪽 두 곡선이 정확히 겹친다는 것이 정리 3.1의 내용입니다. \(\mu\)를 곱하는 순간 \(y\)가 얽혀 있던 방정식이 <b>그냥 적분</b>으로 바뀝니다.</p>
+
+    <div class="sim" id="sim-lf-factor">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>μ를 곱하면 적분만 남는다: (μy)′ = μg</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="lf-cv-fac-y"></canvas><span class="cap">해 y(t)</span></div>
+          <div><canvas id="lf-cv-fac-m"></canvas><span class="cap">μy (실선) vs y₀ + ∫μg (점선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="lf-fac-pre">
+            <option value="c">y′ + 2y = 4</option>
+            <option value="t">y′ + y = t</option>
+            <option value="v">t y′ + 2y = 4t² (t &gt; 0)</option>
+            <option value="s">y′ + 0.5y = sin 2t</option>
+          </select></label>
+          <label class="ctrl"><span>초기값 y(t₀) <output id="lf-fac-y0-out"></output></span><input type="range" id="lf-fac-y0" min="-2" max="4" step="0.1" value="0"></label>
+          <label class="ctrl"><span>시각 t <output id="lf-fac-t-out"></output></span><input type="range" id="lf-fac-t" min="0" max="1" step="0.002" value="0.4"></label>
+        </div>
+      </div>
+      <div class="lf-eq" id="lf-fac-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">μ(t)</span><span class="v" id="lf-fac-mu">—</span></div>
+        <div class="stat"><span class="k">y(t)</span><span class="v" id="lf-fac-y">—</span></div>
+        <div class="stat"><span class="k">(μy)′ 수치 미분</span><span class="v" id="lf-fac-d">—</span></div>
+        <div class="stat"><span class="k">μ(t)·g(t)</span><span class="v" id="lf-fac-mg">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 시각 t를 옮기며 (μy)′와 μg가 늘 같은 값인지 보세요. ② 초기값을 바꾸면 오른쪽 두 곡선이 함께 위아래로 평행 이동합니다. 적분 상수 C가 하는 일입니다. ③ 't y′ + 2y = 4t²'에서는 μ = t²(μ = e²ᵗ가 아님)이고, 시작 시각이 t₀ = 1입니다. 모델: y는 RK4(400걸음)로, ∫μg는 같은 격자 위의 사다리꼴 적분으로 따로 계산해 비교합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="rc-circuit">
+    <h2>RC·RL 회로와 시상수</h2>
+    <div class="problem"><strong>플래시 축전기는 언제 다 차는가</strong>
+      <p>5 V 전원에 10 kΩ 저항과 100 μF 축전기를 직렬로 연결하고 스위치를 닫습니다. 축전기 전압이 4.5 V(90%)에 이르면 "충전 완료" LED를 켜려 합니다. 몇 초 뒤일까요? 전류는 전압 차 \(5 - v\)에 비례하는데, 충전될수록 그 차이가 줄어 전류도 줄어듭니다. 변화율이 현재 상태에 달려 있으니 미분방정식입니다.</p></div>
+    <p><b>모델.</b> 키르히호프 전압 법칙: 고리를 한 바퀴 돌면 전압 강하의 합은 전원 전압과 같습니다. 저항의 강하는 \(Ri\)(옴의 법칙), 축전기의 강하는 \(v = q/C\)이고, 전류는 축전기에 쌓이는 전하의 변화율 \(i = dq/dt = C\,dv/dt\)입니다.</p>
+    <div class="formula">$$Ri + v = V_s \;\Longrightarrow\; RC\,\frac{dv}{dt} + v = V_s \;\Longrightarrow\; v' + \frac{1}{RC}\,v = \frac{V_s}{RC}.$$</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="RC 직렬 회로와 충전 곡선">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <g class="s-line" style="stroke-width:2;fill:none">
+          <path d="M70 70H150M200 70H220l8-14 16 28 16-28 16 28 16-28 8 14H340V110M340 150V200H70V150M70 110V70"/>
+          <path d="M150 70l40-16"/>
+          <path d="M318 110h44M318 150h44" style="stroke-width:3"/>
+          <path d="M52 110h36M60 150h20" style="stroke-width:3"/>
+        </g>
+        <circle cx="150" cy="70" r="3.5" style="fill:var(--text)"/><circle cx="200" cy="70" r="3.5" style="fill:var(--text)"/>
+        <text x="96" y="112" class="t-mono">+</text>
+        <text x="30" y="135" class="t">Vₛ</text>
+        <text x="260" y="48" text-anchor="middle" class="t">R</text>
+        <text x="372" y="135" class="t">C</text>
+        <text x="175" y="40" text-anchor="middle" class="t-dim">스위치</text>
+        <text x="372" y="160" class="t-dim">v(t)</text>
+        <path d="M232 92l24 0" style="stroke:var(--accent);stroke-width:2;fill:none" marker-end="url(#lf-arr)"/>
+        <text x="244" y="110" text-anchor="middle" class="t-acc">i</text>
+        <defs><marker id="lf-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--accent)"/></marker></defs>
+        <g transform="translate(450,30)">
+          <line x1="0" y1="190" x2="280" y2="190" class="s-axis"/><line x1="0" y1="190" x2="0" y2="10" class="s-axis"/>
+          <line x1="0" y1="40" x2="280" y2="40" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+          <line x1="0" y1="95.2" x2="56" y2="95.2" style="stroke:var(--accent-2);stroke-dasharray:3 3"/>
+          <line x1="56" y1="95.2" x2="56" y2="190" style="stroke:var(--accent-2);stroke-dasharray:3 3"/>
+          <line x1="0" y1="190" x2="56" y2="40" style="stroke:var(--text-dim);stroke-dasharray:2 3"/>
+          <path d="M0 190 C25 120 50 96 80 76 C120 54 170 44 280 41" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+          <text x="284" y="44" class="t-mono">Vₛ</text>
+          <text x="-6" y="99" text-anchor="end" class="t-mono" style="fill:var(--accent-2)">0.632Vₛ</text>
+          <text x="56" y="206" text-anchor="middle" class="t-mono" style="fill:var(--accent-2)">τ</text>
+          <text x="140" y="206" text-anchor="middle" class="t-dim">t</text>
+          <text x="90" y="140" class="t-dim">t = 0 접선은 t = τ에서 Vₛ에 닿는다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 3-2.</b> 왼쪽: 전원 \(V_s\), 저항 \(R\), 축전기 \(C\)의 직렬 회로. 오른쪽: 충전 곡선 \(v = V_s(1 - e^{-t/\tau})\). \(t = \tau\)에서 최종값의 63.2%에 이르고, 처음 접선은 정확히 \(t = \tau\)에서 최종값에 닿는다.</figcaption>
+    </figure>
+    <p>\(\mu = e^{t/RC}\)를 곱하면 \((e^{t/RC}v)' = \frac{V_s}{RC}e^{t/RC}\), 적분해 \(v = V_s + Ce^{-t/RC}\)입니다. 처음 비어 있던(\(v(0) = 0\)) 축전기라면</p>
+    <div class="formula">$$v(t) = V_s\left(1 - e^{-t/\tau}\right),\qquad i(t) = \frac{V_s}{R}e^{-t/\tau},\qquad \tau = RC.$$
+      <div class="where">\(\tau\)의 단위는 \(\Omega\cdot\text{F} = \frac{\text{V}}{\text{A}}\cdot\frac{\text{A}\cdot\text{s}}{\text{V}} = \text{s}\). 방전(\(V_s = 0\), \(v(0) = V_0\))이면 \(v = V_0e^{-t/\tau}\).</div></div>
+    <div class="callout deep"><strong>정의 3.2 (시상수)</strong> 1차 시스템 \(\tau y' + y = u\)에서 \(\tau > 0\)를 <span class="term">시상수</span><span class="en">(time constant)</span>라 한다. 계단 입력 후 출력은 남은 거리 \(u - y\)를 시간 \(\tau\)마다 \(1/e \approx 0.368\)배로 줄인다. 처음 기울기 \(\frac{u - y(0)}{\tau}\)로 계속 갔다면 정확히 \(\tau\) 뒤에 도착했을 것이다.</div>
+    <div class="table-wrap"><table class="lf-tbl">
+      <thead><tr><th>경과 시간</th><th>τ</th><th>2τ</th><th>3τ</th><th>4τ</th><th>5τ</th></tr></thead>
+      <tbody><tr><td>도달률 \(1 - e^{-t/\tau}\)</td><td>63.2%</td><td>86.5%</td><td>95.0%</td><td>98.2%</td><td>99.3%</td></tr></tbody></table></div>
+    <p>엔지니어가 "5τ면 다 찼다"고 말하는 근거가 이 표입니다. 지수 함수는 끝내 \(V_s\)에 닿지 않으므로 "다 찼다"는 언제나 허용 오차를 정한 말입니다.</p>
+    <div class="callout"><strong>예제 3.4 (충전 완료까지의 시간)</strong> 위 문제(\(V_s = 5\) V, \(R = 10\) kΩ, \(C = 100\) μF)에서 \(v = 4.5\) V가 되는 시각과, 그때의 전류를 구하라.
+      <ol>
+        <li>\(\tau = RC = 10^4 \times 10^{-4} = 1\) s.</li>
+        <li>\(1 - e^{-t} = 0.9\)에서 \(t = \ln 10 \approx 2.303\) s(약 2.3τ).</li>
+        <li>\(i = \frac{V_s}{R}e^{-t/\tau} = 0.5\ \text{mA} \times 0.1 = 0.05\) mA. 전류는 전압 차에 비례하므로 남은 거리 10%만큼만 흐른다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>에너지의 절반은 저항이 가져간다</strong> 충전이 끝나면 축전기에는 \(\frac12CV_s^2\)이 저장되고, 전원은 전하 \(CV_s\)를 전압 \(V_s\)로 밀어 넣었으니 \(CV_s^2\)의 일을 했습니다. 나머지 절반은 저항에서 열이 됩니다: \(\int_0^\infty i^2R\,dt = \frac{V_s^2}{R}\cdot\frac{\tau}{2} = \frac12CV_s^2\). 놀랍게도 \(R\)이 얼마든 같습니다. \(R\)은 충전 <b>속도</b>만 정합니다.</div>
+    <p><b>RL 회로.</b> 축전기 대신 인덕터 \(L\)을 두면 인덕터 전압이 \(L\,di/dt\)이므로 \(L i' + Ri = V_s\), 즉 \(i' + \frac{R}{L}i = \frac{V_s}{L}\)입니다. 같은 꼴이고 시상수는 \(\tau = L/R\), 해는 \(i = \frac{V_s}{R}(1 - e^{-Rt/L})\)입니다. 예를 들어 \(L = 0.5\) H, \(R = 10\) Ω, \(V_s = 12\) V이면 \(\tau = 0.05\) s이고 전류는 0.25 s(5τ) 만에 최종값 1.2 A의 99.3%에 이릅니다. 인덕터는 전류의 급변을 막으므로, 스위치를 갑자기 끊으면 \(L\,di/dt\)가 매우 커져 불꽃이 튑니다. 릴레이 코일에 다이오드를 병렬로 다는 이유입니다.</p>
+
+    <div class="sim" id="sim-lf-rc">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>RC 회로 충전·방전: 회로와 그래프 동기화</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="lf-cv-rc-c"></canvas><span class="cap">회로 (점 = 전류)</span></div>
+          <div><canvas id="lf-cv-rc-g"></canvas><span class="cap">v<sub>C</sub> (주황) · v<sub>R</sub> = Ri (청록)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>스위치</span><div class="seg" id="lf-rc-sw"><button data-value="1" class="on">충전 (전원)</button><button data-value="0">방전 (단락)</button></div></div>
+          <label class="ctrl"><span>R <output id="lf-rc-r-out"></output></span><input type="range" id="lf-rc-r" min="5" max="50" step="1" value="10"></label>
+          <label class="ctrl"><span>C <output id="lf-rc-c-out"></output></span><input type="range" id="lf-rc-c" min="10" max="100" step="5" value="100"></label>
+          <label class="ctrl"><span>전원 Vₛ <output id="lf-rc-v-out"></output></span><input type="range" id="lf-rc-v" min="1" max="9" step="0.5" value="5"></label>
+          <div class="btn-row"><button class="btn primary" id="lf-rc-play">■ 정지</button><button class="btn" id="lf-rc-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">τ = RC</span><span class="v" id="lf-rc-tau">—</span></div>
+        <div class="stat"><span class="k">v<sub>C</sub></span><span class="v" id="lf-rc-vc">—</span></div>
+        <div class="stat"><span class="k">i</span><span class="v" id="lf-rc-i">—</span></div>
+        <div class="stat"><span class="k">스위치 후 경과</span><span class="v" id="lf-rc-el">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 충전 중 1τ 표시선(점선)에서 v<sub>C</sub>가 63%에 닿는지 보세요. ② 반쯤 찼을 때 '방전'으로 바꾸면 전류의 방향이 뒤집히고(점이 거꾸로 흐름) v<sub>R</sub>가 음수가 됩니다. ③ R을 키우면 같은 C에서 τ가 늘어 느려집니다. 언제나 v<sub>C</sub> + v<sub>R</sub> = 입력 전압(키르히호프). 모델: 이상적인 부품, 정확한 지수 갱신 v ← V + (v − V)e<sup>−Δt/τ</sup>, 시간은 실시간 1배속.</div>
+    </div>
+
+    <h3>측정 곡선에서 시상수 읽기</h3>
+    <p>실험실에서는 \(R\)과 \(C\)의 공칭값이 ±10%쯤 틀리기 일쑤이고, 센서나 온도계처럼 \(\tau\)를 부품값으로 알 수 없는 1차 시스템도 많습니다. 그때는 계단 응답을 측정해 \(\tau\)를 <b>읽습니다</b>. 세 가지 방법이 있습니다.</p>
+    <ul>
+      <li><b>63.2% 법</b>: 최종값의 63.2%에 닿는 시각이 \(\tau\)다. 간단하지만 그 한 점의 잡음에 민감하다.</li>
+      <li><b>처음 접선 법</b>: \(t = 0\)의 접선이 최종값 수평선과 만나는 시각이 \(\tau\)다. 초기 기울기를 잘 재야 한다.</li>
+      <li><b>반로그 그래프 법</b>: \(\ln\bigl(1 - v/V_s\bigr) = -t/\tau\)이므로 이 값을 \(t\)에 대해 그리면 기울기 \(-1/\tau\)인 직선이다. 여러 점을 한꺼번에 쓰므로 가장 정확하다. 다만 \(v\)가 \(V_s\)에 가까운 뒤쪽 점은 \(1 - v/V_s\)가 잡음보다 작아져 믿을 수 없다.</li>
+    </ul>
+
+    <div class="sim" id="sim-lf-tau">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>잡음 낀 측정에서 τ 맞히기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lf-cv-tau"></canvas><span class="tag-tl" id="lf-tau-tag">측정 v(t) [V], 가로축 t [s]</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>보기</span><div class="seg" id="lf-tau-mode"><button data-value="lin" class="on">선형 축</button><button data-value="log">반로그 ln(1 − v/Vₛ)</button></div></div>
+          <label class="ctrl"><span>잡음 크기 <output id="lf-tau-n-out"></output></span><input type="range" id="lf-tau-n" min="0" max="0.3" step="0.01" value="0.08"></label>
+          <label class="check"><input type="checkbox" id="lf-tau-tan" checked> 처음 접선 표시</label>
+          <div class="btn-row"><button class="btn primary" id="lf-tau-new">새 측정</button><button class="btn" id="lf-tau-show">정답 보기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">추정 τ̂</span><span class="v" id="lf-tau-est">—</span></div>
+        <div class="stat"><span class="k">모델 RMS 오차</span><span class="v" id="lf-tau-rms">—</span></div>
+        <div class="stat"><span class="k">참 τ</span><span class="v" id="lf-tau-true">?</span></div>
+      </div>
+      <div class="lf-msg" id="lf-tau-msg"></div>
+      <div class="sim-note">해볼 것: ① 가로축 위의 점 τ̂를 끌어 점선 모델 곡선을 측정점에 맞추세요. 63.2% 수평선과 측정점이 만나는 곳이 출발점입니다. ② '반로그'로 바꾸면 측정점이 직선으로 늘어서고, 모델은 기울기 −1/τ̂인 직선입니다. 뒤쪽 점이 흩어지는 이유를 생각해 보세요. ③ 잡음을 0.3 V로 키우면 63.2% 한 점보다 반로그 직선 맞추기가 더 안정적입니다. 모델: Vₛ = 5 V, 0.2 s 간격 표본에 정규 잡음을 더했습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="mixing">
+    <h2>혼합 탱크: 들어온 양 − 나간 양</h2>
+    <div class="problem"><strong>호수의 오염은 얼마나 빨리 빠지는가</strong>
+      <p>공장이 오염 물질 배출을 멈췄습니다. 호수에는 깨끗한 강물이 흘러들고 같은 양이 흘러 나갑니다. 오염 농도가 처음의 10%로 내려가는 데 몇 년이 걸릴까요? 호수를 "잘 섞인 탱크"로 보면 이것은 1계 선형 방정식 하나입니다. 같은 틀이 약물의 혈중 농도, 실내 공기의 CO₂ 환기, 화학 반응기의 농도에도 쓰입니다.</p></div>
+    <p><b>모델(물질 수지).</b> 탱크 안의 용질 양을 \(Q(t)\)(kg), 부피를 \(V(t)\)(L)라 합니다. 농도 \(c_{\text{in}}\)(kg/L)의 용액이 유량 \(q_{\text{in}}\)(L/min)으로 들어오고, <b>잘 섞인</b> 탱크 안의 용액이 유량 \(q_{\text{out}}\)으로 나갑니다. 나가는 용액의 농도는 탱크 안의 농도 \(Q/V\)와 같습니다.</p>
+    <div class="formula">$$\frac{dQ}{dt} = \underbrace{q_{\text{in}}\,c_{\text{in}}}_{\text{들어오는 양}} - \underbrace{q_{\text{out}}\,\frac{Q}{V(t)}}_{\text{나가는 양}},\qquad V(t) = V_0 + (q_{\text{in}} - q_{\text{out}})\,t.$$
+      <div class="where">표준형 \(Q' + \frac{q_{\text{out}}}{V(t)}Q = q_{\text{in}}c_{\text{in}}\). \(V/q_{\text{out}}\)은 탱크를 한 번 갈아 치우는 데 걸리는 시간으로, 유량이 같으면 바로 시상수다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="잘 섞인 혼합 탱크 모델">
+        <rect x="10" y="10" width="740" height="210" rx="10" class="f-surface"/>
+        <path d="M60 50H230V80" fill="none" style="stroke:var(--accent-2);stroke-width:10;opacity:.55"/>
+        <rect x="200" y="80" width="200" height="120" rx="6" class="f-acc2-soft" style="stroke:var(--text-dim);stroke-width:2"/>
+        <path d="M400 185H560" fill="none" style="stroke:var(--accent-2);stroke-width:10;opacity:.35"/>
+        <path d="M290 110c10 10 20-10 30 0s20-10 30 0" fill="none" style="stroke:var(--text-dim);stroke-width:1.6"/>
+        <text x="60" y="38" class="t">유입: q<tspan baseline-shift="sub" font-size="10">in</tspan> (L/min), 농도 c<tspan baseline-shift="sub" font-size="10">in</tspan></text>
+        <text x="300" y="160" text-anchor="middle" class="t">V(t), Q(t)</text>
+        <text x="300" y="180" text-anchor="middle" class="t-dim">잘 섞임: 어디서나 농도 Q/V</text>
+        <text x="420" y="172" class="t">유출: q<tspan baseline-shift="sub" font-size="10">out</tspan>, 농도 Q/V</text>
+        <g transform="translate(590,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">수지 = 변화율</text>
+          <text x="0" y="30" class="t-mono">dQ/dt</text>
+          <text x="0" y="54" class="t-mono">= (들어옴)</text>
+          <text x="0" y="78" class="t-mono">− (나감)</text>
+          <text x="0" y="110" class="t-dim">kg/min 단위로</text>
+          <text x="0" y="130" class="t-dim">양변을 맞춘다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 3-3.</b> 혼합 탱크. "잘 섞였다"는 가정이 나가는 농도를 \(Q/V\)로 만들고, 그래서 방정식이 \(Q\)에 대해 선형이 된다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 3.5 (유입량 = 유출량)</strong> 100 L의 맑은 물이 든 탱크에 농도 0.5 kg/L의 소금물이 4 L/min으로 들어오고, 섞인 물이 4 L/min으로 나간다. \(Q(t)\)와 소금이 40 kg이 되는 시각을 구하라.
+      <ol>
+        <li>\(V = 100\)으로 일정. \(Q' = 4(0.5) - 4\frac{Q}{100} = 2 - 0.04Q\), \(Q(0) = 0\).</li>
+        <li>\(\mu = e^{0.04t}\), \((e^{0.04t}Q)' = 2e^{0.04t}\), \(Q = 50 + Ce^{-0.04t}\). \(C = -50\).</li>
+        <li>\(Q(t) = 50(1 - e^{-t/25})\). 시상수는 \(V/q = 25\) min이고, 농도는 유입 농도 0.5 kg/L(소금 50 kg)로 다가간다. \(Q(25) = 50(1 - e^{-1}) \approx 31.6\) kg.</li>
+        <li>\(Q = 40\): \(e^{-t/25} = 0.2\), \(t = 25\ln 5 \approx 40.2\) min.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 3.6 (부피가 변할 때)</strong> 같은 탱크(처음 100 L 맑은 물)에 0.5 kg/L 소금물이 3 L/min으로 들어오고 2 L/min으로 나간다. 50분 뒤 소금의 양과 농도는?
+      <ol>
+        <li>\(V(t) = 100 + t\). \(Q' = 1.5 - \frac{2Q}{100 + t}\), 즉 \(Q' + \frac{2}{100 + t}Q = 1.5\).</li>
+        <li>\(\mu = e^{\int 2/(100+t)\,dt} = (100 + t)^2\). \(\bigl((100 + t)^2Q\bigr)' = 1.5(100 + t)^2\).</li>
+        <li>적분: \((100 + t)^2Q = 0.5(100 + t)^3 + C\). \(Q(0) = 0\)에서 \(C = -0.5\times 10^6\).</li>
+        <li>\(Q(t) = 0.5(100 + t) - \dfrac{5\times 10^5}{(100 + t)^2}\). \(t = 50\)에서 \(Q = 75 - 22.2 = 52.8\) kg, 부피 150 L, 농도 0.352 kg/L(RK4 52.777778과 일치).</li>
+        <li>계수 \(p(t) = 2/(100 + t)\)가 시간에 따라 변하므로 "시상수" 하나로 말할 수 없다. 이런 문제를 변수분리로는 풀 수 없고, 적분 인자가 필요하다.</li>
+      </ol></div>
+    <p>호수 문제로 돌아가면, 유입이 맑은 물(\(c_{\text{in}} = 0\))이고 부피가 일정하면 \(Q = Q_0e^{-qt/V}\)이므로 10%가 되는 시간은 \(\frac{V}{q}\ln 10 \approx 2.3\frac{V}{q}\)입니다. 호수 물이 한 번 갈리는 시간의 2.3배입니다. 실제 호수는 잘 섞이지 않고 바닥 퇴적물이 오염 물질을 다시 내놓아 더 오래 걸리는 것이 보통입니다. 모델의 가정을 기억해야 하는 이유입니다.</p>
+
+    <div class="sim" id="sim-lf-mixing">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>혼합 탱크: 유량·농도를 바꾸며 농도 곡선 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="lf-cv-mix-t"></canvas><span class="cap">탱크 (색 = 농도)</span></div>
+          <div><canvas id="lf-cv-mix-g"></canvas><span class="cap">농도 c = Q/V [kg/L]</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>유입 유량 <output id="lf-mix-qi-out"></output></span><input type="range" id="lf-mix-qi" min="1" max="8" step="0.5" value="4"></label>
+          <label class="ctrl"><span>유출 유량 <output id="lf-mix-qo-out"></output></span><input type="range" id="lf-mix-qo" min="1" max="8" step="0.5" value="4"></label>
+          <label class="ctrl"><span>유입 농도 <output id="lf-mix-ci-out"></output></span><input type="range" id="lf-mix-ci" min="0" max="0.5" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span>처음 소금 Q₀ <output id="lf-mix-q0-out"></output></span><input type="range" id="lf-mix-q0" min="0" max="50" step="1" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="lf-mix-play">▶ 재생</button><button class="btn" id="lf-mix-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="lf-mix-t">—</span></div>
+        <div class="stat"><span class="k">V</span><span class="v" id="lf-mix-v">—</span></div>
+        <div class="stat"><span class="k">Q</span><span class="v" id="lf-mix-q">—</span></div>
+        <div class="stat"><span class="k">c = Q/V</span><span class="v" id="lf-mix-c">—</span></div>
+      </div>
+      <div class="lf-msg" id="lf-mix-msg"></div>
+      <div class="sim-note">해볼 것: ① 기본값(예제 3.5)에서 25분 표시선의 농도가 0.5 × 0.632 ≈ 0.316인지 확인하세요. ② 유입 3, 유출 2로 두면 예제 3.6입니다. 50분 농도 0.352. ③ 유입 농도 0, Q₀ = 50으로 두면 호수 정화 문제입니다. 유출을 유입보다 크게 하면 탱크가 언젠가 비고, 200 L를 넘으면 넘칩니다. 모델: 순간 완전 혼합, V₀ = 100 L, 용량 200 L, RK4.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="sinusoidal">
+    <h2>사인 입력: 과도 응답과 정상 상태</h2>
+    <div class="problem"><strong>RC 필터는 고음을 얼마나 줄이는가</strong>
+      <p>RC 회로의 출력을 축전기 양단에서 뽑으면 빠르게 변하는 신호일수록 축전기가 따라가지 못해 작아집니다. 이것이 <b>저역 통과 필터</b>입니다. 입력이 \(\sin\omega t\)이면 출력은 처음에 초기 전압의 영향을 받다가, 곧 같은 진동수로 진동하되 작아지고 늦어진 사인파가 됩니다. 얼마나 작아지고 얼마나 늦어질까요?</p></div>
+    <p>\(k = 1/\tau\)로 쓰면 \(\tau v' + v = \sin\omega t\)는 \(y' + ky = k\sin\omega t\)입니다. 적분 인자로 풀 수 있지만, 해가 "같은 진동수의 사인파"일 것이라 짐작하고 \(y_p = A\cos\omega t + B\sin\omega t\)를 대입하는 편이 빠릅니다(<a href="forced.html">8장</a>의 미정계수법).</p>
+    <div class="formula">$$-A\omega\sin\omega t + B\omega\cos\omega t + kA\cos\omega t + kB\sin\omega t = k\sin\omega t$$
+      <div class="where">\(\cos\): \(B\omega + kA = 0\), \(\sin\): \(-A\omega + kB = k\). 풀면 \(A = -\dfrac{k\omega}{k^2 + \omega^2}\), \(B = \dfrac{k^2}{k^2 + \omega^2}\).</div></div>
+    <p>두 성분을 하나의 사인파로 합치면(\(B\sin + A\cos = R\sin(\omega t - \varphi)\)) 다음 정리가 됩니다.</p>
+    <div class="callout deep"><strong>정리 3.2 (1차 시스템의 사인 응답)</strong> \(k > 0\)일 때 \(y' + ky = k\sin\omega t\), \(y(0) = y_0\)의 해는
+      <div class="formula">$$y(t) = \underbrace{G\sin(\omega t - \varphi)}_{\text{정상 상태 응답}} + \underbrace{\Bigl(y_0 + \frac{k\omega}{k^2 + \omega^2}\Bigr)e^{-kt}}_{\text{과도 응답}},\qquad G = \frac{k}{\sqrt{k^2 + \omega^2}} = \frac{1}{\sqrt{1 + (\omega\tau)^2}},\quad \varphi = \arctan\frac{\omega}{k} = \arctan(\omega\tau).$$</div>
+      \(G\)를 <b>이득</b>, \(\varphi\)를 <b>위상 지연</b>이라 한다. 과도 응답은 시상수 \(\tau = 1/k\)로 사라지고, 정상 상태 응답은 초기값과 무관하다.</div>
+    <p><span class="term">과도 응답</span><span class="en">(transient response)</span>은 초기값의 "기억"이고 <span class="term">정상 상태 응답</span><span class="en">(steady-state response)</span>은 입력의 "흉내"입니다. \(\omega\tau \ll 1\)(느린 입력)이면 \(G \approx 1\), \(\varphi \approx 0\)으로 출력이 입력을 거의 그대로 따라가고, \(\omega\tau \gg 1\)(빠른 입력)이면 \(G \approx 1/(\omega\tau)\)로 작아지고 위상이 거의 90° 늦어집니다. 경계인 \(\omega = 1/\tau\)에서 \(G = 1/\sqrt2 \approx 0.707\)(약 −3 dB), \(\varphi = 45°\)이며 이 진동수를 <span class="term">차단 주파수</span><span class="en">(cutoff frequency)</span>라 합니다. 주파수 응답과 보드 선도는 <a href="transfer.html">10장</a>에서 본격적으로 다룹니다.</p>
+    <div class="callout"><strong>예제 3.7 (차단 주파수에서의 응답)</strong> \(y' + y = \sin t\), \(y(0) = 0\)을 풀고 \(y(3)\)을 구하라.
+      <ol>
+        <li>\(k = \omega = 1\)이므로 \(A = -\frac12\), \(B = \frac12\). \(y_p = \frac12(\sin t - \cos t) = \frac{1}{\sqrt2}\sin(t - 45°)\).</li>
+        <li>\(y = y_p + Ce^{-t}\), \(y(0) = -\frac12 + C = 0\)에서 \(C = \frac12\).</li>
+        <li>\(y(t) = \frac12(\sin t - \cos t + e^{-t})\). \(y(3) = \frac12(0.1411 + 0.9900 + 0.0498) \approx 0.5905\)(RK4 0.590450).</li>
+        <li>\(t = 4.6\)(4.6τ)쯤이면 과도 성분은 처음의 1% 아래로 줄고, 진폭 0.707, 위상 45° 늦은 사인파만 남는다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lf-sine">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>사인 입력: 과도 응답이 사라지고 정상 상태가 남는다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lf-cv-sine"></canvas><span class="tag-tl">y′ + ky = k sin ωt</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>k = 1/τ <output id="lf-sin-k-out"></output></span><input type="range" id="lf-sin-k" min="0.1" max="5" step="0.05" value="1"></label>
+          <label class="ctrl"><span>입력 진동수 ω <output id="lf-sin-w-out"></output></span><input type="range" id="lf-sin-w" min="0.2" max="5" step="0.05" value="1"></label>
+          <label class="ctrl"><span>초기값 y(0) <output id="lf-sin-y0-out"></output></span><input type="range" id="lf-sin-y0" min="-2" max="2" step="0.1" value="0"></label>
+          <label class="check"><input type="checkbox" id="lf-sin-parts" checked> 과도·정상 성분 따로 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이득 G</span><span class="v" id="lf-sin-g">—</span></div>
+        <div class="stat"><span class="k">dB</span><span class="v" id="lf-sin-db">—</span></div>
+        <div class="stat"><span class="k">위상 지연 φ</span><span class="v" id="lf-sin-ph">—</span></div>
+        <div class="stat"><span class="k">과도 1% 시각</span><span class="v" id="lf-sin-tr">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ω = k(차단 주파수)에 두고 이득 0.707, 위상 45°를 확인하세요. ② ω를 5로 올리면 출력(주황)이 입력(회색)보다 훨씬 작아지고 거의 90° 늦어집니다. 고음이 걸러지는 모습입니다. ③ y(0)을 2로 두고 k를 줄이면 과도 성분(점선 회색)이 오래 남습니다. 어떤 초기값에서 출발해도 정상 상태(청록 점선)는 같습니다. 모델: 정리 3.2의 닫힌 해, RK4와 비교해 오차를 readout 대신 그림 위 점(5개)으로 표시합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="structure">
+    <h2>해의 구조: 동차해 + 특수해</h2>
+    <p>예제 3.1의 \(y = 2 + Ce^{-2t}\), 예제 3.2의 \(y = (t - 1) + Ce^{-t}\), 정리 3.2의 \(y = G\sin(\omega t - \varphi) + Ce^{-kt}\)는 모두 같은 모양입니다. <b>특정한 해 하나 + 동차 방정식의 해 전체</b>. 이것은 우연이 아니라 선형성의 결과입니다.</p>
+    <div class="callout deep"><strong>정리 3.3 (선형 방정식의 해 구조)</strong> \(y_p\)가 \(y' + p(t)y = g(t)\)의 해 하나이면, 이 방정식의 모든 해는
+      <div class="formula">$$y = y_p + y_h,\qquad y_h = C\,e^{-\int p\,dt}$$</div>
+      꼴이다. \(y_p\)를 <span class="term">특수해</span><span class="en">(particular solution)</span>, \(y_h\)를 <span class="term">동차해</span><span class="en">(homogeneous solution)</span>라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(L[y] = y' + py\)라 쓰면 \(L\)은 선형이다: \(L[ay_1 + by_2] = aL[y_1] + bL[y_2]\). \(y\)가 임의의 해이면 \(L[y - y_p] = g - g = 0\)이므로 \(y - y_p\)는 동차해이고, 동차해는 모두 \(Ce^{-\int p}\)(1절)이다. 거꾸로 \(L[y_p + y_h] = g + 0 = g\). ∎</p></div>
+    <div class="callout deep"><strong>따름정리 3.4 (입력의 중첩)</strong> \(L[y_1] = g_1\), \(L[y_2] = g_2\)이면 \(L[ay_1 + by_2] = ag_1 + bg_2\). 입력이 여러 성분의 합이면, 성분마다 응답을 구해 더하면 된다.</div>
+    <p>예를 들어 RC 회로에 직류 2 V와 사인파 \(\sin t\)가 겹친 입력이 들어오면(\(\tau = 1\)), 직류 응답 2와 사인 응답 \(\frac{1}{\sqrt2}\sin(t - 45°)\)를 더한 것이 정상 상태 출력입니다. 오디오 신호처럼 수많은 진동수가 섞인 입력도 진동수마다 이득과 위상을 곱해 더하면 됩니다. 이 생각이 푸리에 해석(<a href="boundary.html">15장</a>)과 라플라스 변환(<a href="laplace.html">9장</a>)의 출발점입니다.</p>
+    <p>정리 3.3은 해곡선 족 전체를 한눈에 읽게 합니다. \(p > 0\)(상수)이면 \(y_h = Ce^{-pt} \to 0\)이므로 <b>모든 해가 시간이 지나면 \(y_p\) 하나로 모입니다</b>. 시스템이 초기값을 잊는 것입니다. 반대로 \(p \lt 0\)이면 \(y_h\)가 지수적으로 커져 해들이 \(y_p\)에서 벌어집니다. 이때 \(y_p\)는 "평형"이지만 불안정합니다(<a href="autonomous.html#stability">4장</a>의 안정성).</p>
+
+    <div class="sim" id="sim-lf-structure">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>방향장 위에 해 놓기: 모든 해는 y<sub>p</sub> + Ce<sup>−∫p</sup></h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lf-cv-str"></canvas><span class="tag-tl">클릭: 그 점을 지나는 해</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="lf-str-pre">
+            <option value="ramp">y′ + y = t</option>
+            <option value="step">y′ + 2y = 4</option>
+            <option value="cos">y′ + y = 2cos t</option>
+            <option value="unst">y′ − 0.5y = −1</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="lf-str-yp" checked> 특수해 yₚ (청록)</label>
+          <label class="check"><input type="checkbox" id="lf-str-yh"> 각 해의 y − yₚ (점선)</label>
+          <div class="btn-row"><button class="btn primary" id="lf-str-fam">해 다발 그리기</button><button class="btn" id="lf-str-clear">지우기</button></div>
+        </div>
+      </div>
+      <div class="lf-eq" id="lf-str-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">마지막 해의 C</span><span class="v" id="lf-str-c">—</span></div>
+        <div class="stat"><span class="k">t = 6에서 y − y<sub>p</sub></span><span class="v" id="lf-str-d">—</span></div>
+        <div class="stat"><span class="k">해 개수</span><span class="v" id="lf-str-n">0</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'y′ + y = t'에서 여러 점을 클릭해 보세요. 모든 해가 직선 y = t − 1로 모입니다. ② '각 해의 y − y<sub>p</sub>'를 켜면 점선들이 모두 Ce<sup>−t</sup> 모양, 즉 동차해입니다. ③ 'y′ − 0.5y = −1'은 p &lt; 0인 경우로, 해들이 y<sub>p</sub> = 2에서 멀어집니다. 모델: 해는 RK4로 클릭한 점에서 앞뒤로 적분하고, 짧은 선분은 기울기 g − py입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="exact">
+    <h2>완전 방정식: 해곡선은 퍼텐셜의 등고선</h2>
+    <div class="problem"><strong>선형도 아니고 분리도 안 되는 방정식</strong>
+      <p>\(\dfrac{dy}{dx} = -\dfrac{3x^2 + 2xy}{x^2 + 2y}\)는 \(y\)에 대해 선형이 아니고 변수도 갈라지지 않습니다. 그런데 이 방정식을 \((3x^2 + 2xy)\,dx + (x^2 + 2y)\,dy = 0\)으로 쓰고 보면, 왼쪽이 \(\psi = x^3 + x^2y + y^2\)의 <b>전미분</b> \(d\psi = \psi_x\,dx + \psi_y\,dy\)와 똑같습니다. 그렇다면 해곡선 위에서 \(d\psi = 0\), 즉 \(\psi\)가 일정합니다. 해곡선은 지형도의 등고선이었습니다.</p></div>
+    <p>미분 형식 \(M(x, y)\,dx + N(x, y)\,dy = 0\)은 \(dy/dx = -M/N\)의 다른 표기입니다. \(x\)와 \(y\)를 대등하게 다루므로, 해곡선이 수직 접선을 가져도(\(N = 0\)) 문제없이 다룰 수 있다는 장점이 있습니다.</p>
+    <div class="callout deep"><strong>정의 3.3 (완전 방정식과 퍼텐셜)</strong> 영역 \(R\)에서 \(\psi_x = M\), \(\psi_y = N\)인 함수 \(\psi(x, y)\)가 있으면 \(M\,dx + N\,dy = 0\)을 <span class="term">완전 방정식</span><span class="en">(exact equation)</span>, \(\psi\)를 <span class="term">퍼텐셜 함수</span><span class="en">(potential function)</span>라 한다. 이때 해는 음함수 \(\psi(x, y) = C\)로 주어진다.</div>
+    <p>왜 그런지는 연쇄 법칙 한 줄입니다(<a href="../../calculus/chapters/partial.html">CalculusBook 편미분</a>). \(y(x)\)가 해이면 \(\frac{d}{dx}\psi(x, y(x)) = \psi_x + \psi_y\,y' = M + Ny' = 0\)이므로 \(\psi\)는 해를 따라 상수입니다. 기하적으로는 기울기 벡터 \(\nabla\psi = (M, N)\)이 등고선에 수직이고, 방정식이 요구하는 접선 방향 \((N, -M)\)은 \(\nabla\psi\)와 수직입니다.</p>
+    <p>그러면 \(\psi\)가 있는지 어떻게 알까요? \(\psi\)가 매끄러우면 혼합 편도함수가 같아야 하므로(클레로 정리) \(M_y = \psi_{xy} = \psi_{yx} = N_x\)가 <b>필요</b>합니다. 놀랍게도 직사각형 같은 단순한 영역에서는 이것이 <b>충분</b>하기도 합니다.</p>
+    <div class="callout deep"><strong>정리 3.5 (완전성 판정)</strong> \(M\), \(N\), \(M_y\), \(N_x\)가 직사각형 영역 \(R\)에서 연속이면
+      <div class="formula">$$M\,dx + N\,dy = 0 \text{ 이 } R\text{에서 완전} \iff \frac{\partial M}{\partial y} = \frac{\partial N}{\partial x} \ \text{ (}R\text{ 전체에서)}.$$</div>
+      <p style="margin:8px 0 0"><b>증명(충분성의 구성).</b> \(\psi(x, y) = \int_{x_0}^x M(s, y)\,ds + h(y)\)로 두면 \(\psi_x = M\)이다. \(\psi_y = \int_{x_0}^x M_y(s, y)\,ds + h'(y) = \int_{x_0}^x N_x(s, y)\,ds + h'(y) = N(x, y) - N(x_0, y) + h'(y)\)이므로 \(h'(y) = N(x_0, y)\)로 잡으면 \(\psi_y = N\). \(h\)는 \(y\)만의 함수이므로 적분할 수 있다. ∎</p></div>
+    <p>이 증명이 그대로 풀이법입니다: \(M\)을 \(x\)로 적분하고, \(y\)로 미분해 \(N\)과 비교해서 빠진 \(h(y)\)를 찾습니다. 전자기학에서 보존력장의 퍼텐셜을 찾는 것과 똑같은 계산입니다(<a href="../../calculus/chapters/vector-calculus.html">CalculusBook 벡터 미적분</a>).</p>
+    <div class="callout"><strong>예제 3.8 (완전 방정식 풀기)</strong> \((3x^2 + 2xy)\,dx + (x^2 + 2y)\,dy = 0\), \(y(0) = 2\)를 풀어라.
+      <ol>
+        <li>판정: \(M_y = 2x\), \(N_x = 2x\). 같으므로 완전하다.</li>
+        <li>\(\psi = \int(3x^2 + 2xy)\,dx = x^3 + x^2y + h(y)\).</li>
+        <li>\(\psi_y = x^2 + h'(y) = N = x^2 + 2y\)이므로 \(h' = 2y\), \(h = y^2\). \(\psi = x^3 + x^2y + y^2\).</li>
+        <li>\(\psi(0, 2) = 4\)이므로 해는 \(x^3 + x^2y + y^2 = 4\). \(y\)에 대한 이차식으로 풀어 \(y = \frac12\bigl(-x^2 + \sqrt{x^4 - 4x^3 + 16}\bigr)\)(\(y(0) = 2\)이므로 + 부호).</li>
+        <li>\(x = 1.5\)에서 \(y = \frac12(-2.25 + 2.75) = 0.25\). \(dy/dx = -M/N\)을 RK4로 적분한 값과 일치한다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 3.9 (삼각·지수 함수가 섞인 경우)</strong> \((y\cos x + 2xe^y)\,dx + (\sin x + x^2e^y - 1)\,dy = 0\)의 일반해를 구하라.
+      <ol>
+        <li>\(M_y = \cos x + 2xe^y\), \(N_x = \cos x + 2xe^y\). 완전하다.</li>
+        <li>\(\psi = \int M\,dx = y\sin x + x^2e^y + h(y)\). \(\psi_y = \sin x + x^2e^y + h'(y) = N\)이므로 \(h' = -1\).</li>
+        <li>일반해 \(y\sin x + x^2e^y - y = C\). \(y\)에 대해 풀 수 없지만 음함수로 충분하다. 등고선을 그리면 해곡선이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lf-exact">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>퍼텐셜 지형도와 해곡선: 클릭한 점의 등고선 따라가기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="lf-cv-ex"></canvas><span class="tag-tl" id="lf-ex-tag">색 = ψ(x, y), 선 = 등고선</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식 M dx + N dy = 0</span><select id="lf-ex-pre">
+            <option value="a">(3x² + 2xy)dx + (x² + 2y)dy</option>
+            <option value="b">(y cos x + 2xeʸ)dx + (sin x + x²eʸ − 1)dy</option>
+            <option value="c">(3xy + y²)dx + (x² + xy)dy</option>
+            <option value="d">(y − x)dx + dy  [y′ + y = x]</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="lf-ex-mu"> 적분 인자 μ 곱하기</label>
+          <label class="check"><input type="checkbox" id="lf-ex-grad"> ∇ψ = (M, N) 화살표</label>
+          <div class="btn-row"><button class="btn" id="lf-ex-clear">해곡선 지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∂M/∂y</span><span class="v" id="lf-ex-my">—</span></div>
+        <div class="stat"><span class="k">∂N/∂x</span><span class="v" id="lf-ex-nx">—</span></div>
+        <div class="stat"><span class="k">완전?</span><span class="v" id="lf-ex-ok">—</span></div>
+        <div class="stat"><span class="k">ψ(클릭 점)</span><span class="v" id="lf-ex-psi">—</span></div>
+      </div>
+      <div class="lf-msg" id="lf-ex-msg"></div>
+      <div class="sim-note">해볼 것: ① 첫 방정식에서 (0, 2)를 클릭하면 예제 3.8의 해 ψ = 4가 그려집니다. 해곡선은 언제나 등고선을 따라갑니다. ② 세 번째 방정식은 M<sub>y</sub> ≠ N<sub>x</sub>라서 지형이 없습니다. 'μ 곱하기'를 켜면 μ = x가 곱해져 지형이 나타나고, 해곡선은 그대로입니다. ③ 네 번째는 1계 선형 방정식 y′ + y = x를 미분 형식으로 쓴 것이고, μ = eˣ가 바로 적분 인자입니다. 모델: 해곡선은 접선 방향 (N, −M)을 단위 속도로 RK4 적분, 등고선은 격자 위 마칭 스퀘어.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="exact-factor">
+    <h2>적분 인자로 완전하게 만들기</h2>
+    <div class="problem"><strong>거의 완전한 방정식</strong>
+      <p>\((3xy + y^2)\,dx + (x^2 + xy)\,dy = 0\)은 \(M_y = 3x + 2y\), \(N_x = 2x + y\)로 완전하지 않습니다. 하지만 해곡선 자체는 \(M\)과 \(N\)의 <b>비율</b> \(-M/N\)만으로 정해지므로, 양변에 같은 함수 \(\mu(x, y)\)를 곱해도 해곡선은 바뀌지 않습니다. 잘 고른 \(\mu\)를 곱해 완전하게 만들 수 있을까요?</p></div>
+    <p>\(\mu M\,dx + \mu N\,dy = 0\)이 완전하려면 \((\mu M)_y = (\mu N)_x\), 즉 \(\mu_yM + \mu M_y = \mu_xN + \mu N_x\)이어야 합니다. 이것은 \(\mu\)에 대한 편미분방정식이라 일반적으로는 원래 문제보다 어렵습니다. 그러나 \(\mu\)가 <b>한 변수만의 함수</b>라고 가정하면 1계 상미분방정식이 됩니다.</p>
+    <div class="callout deep"><strong>정리 3.6 (한 변수 적분 인자)</strong>
+      <ul style="margin:6px 0 0">
+        <li>\(\dfrac{M_y - N_x}{N}\)가 \(x\)만의 함수 \(F(x)\)이면 \(\mu(x) = e^{\int F(x)\,dx}\)가 적분 인자다.</li>
+        <li>\(\dfrac{N_x - M_y}{M}\)가 \(y\)만의 함수 \(G(y)\)이면 \(\mu(y) = e^{\int G(y)\,dy}\)가 적분 인자다.</li>
+      </ul>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\mu = \mu(x)\)이면 \(\mu_y = 0\)이므로 조건은 \(\mu M_y = \mu'N + \mu N_x\), 즉 \(\mu'/\mu = (M_y - N_x)/N\). 오른쪽이 \(x\)만의 함수일 때만 이 식이 \(x\)만으로 풀리고, 해가 \(\mu = e^{\int F}\)다. 둘째도 같다. ∎</p></div>
+    <div class="callout"><strong>예제 3.10</strong> \((3xy + y^2)\,dx + (x^2 + xy)\,dy = 0\)을 풀어라.
+      <ol>
+        <li>\(\dfrac{M_y - N_x}{N} = \dfrac{(3x + 2y) - (2x + y)}{x(x + y)} = \dfrac{x + y}{x(x + y)} = \dfrac1x\). \(x\)만의 함수다.</li>
+        <li>\(\mu = e^{\int dx/x} = x\)(\(x > 0\)). 곱하면 \((3x^2y + xy^2)\,dx + (x^3 + x^2y)\,dy = 0\). 확인: \(\partial_y(3x^2y + xy^2) = 3x^2 + 2xy = \partial_x(x^3 + x^2y)\). ✓</li>
+        <li>\(\psi = \int(3x^2y + xy^2)\,dx = x^3y + \frac12x^2y^2 + h(y)\). \(\psi_y = x^3 + x^2y + h' = x^3 + x^2y\)이므로 \(h = 0\).</li>
+        <li>일반해 \(x^3y + \frac12x^2y^2 = C\). (1, 1)을 지나는 해는 \(C = 1.5\)이고, RK4로 \(x = 2\)까지 적분한 점에서 \(\psi\)를 계산하면 1.5000이 나온다.</li>
+      </ol></div>
+    <p><b>선형 방정식은 특별한 경우다.</b> \(y' + p(x)y = g(x)\)를 \((p(x)y - g(x))\,dx + dy = 0\)으로 쓰면 \(M_y = p\), \(N_x = 0\)이므로 \((M_y - N_x)/N = p(x)\)입니다. 정리 3.6이 주는 적분 인자는 \(\mu = e^{\int p\,dx}\), 바로 2절의 적분 인자입니다. 2절에서 "왼쪽을 곱의 도함수로 만든다"고 했던 것은 "미분 형식을 완전하게 만든다"는 것과 같은 일이었습니다. 이때 퍼텐셜은 \(\psi = \mu y - \int\mu g\,dx\)이고, \(\psi = C\)가 정리 3.1의 공식입니다.</p>
+    <div class="callout warn"><strong>적분 인자를 곱할 때 잃거나 얻는 해</strong> \(\mu\)가 0이 되거나 정의되지 않는 곳에서는 해가 생기거나 사라질 수 있습니다. 예제 3.10에서 \(\mu = x\)를 곱하면 \(x = 0\)이 새로 "해"처럼 보이는데, 원래 방정식에서 \(x = 0\)은 \(N = 0\)이 되는 곳입니다. 또 \(y \equiv 0\)은 원래 방정식의 해(\(M = 0\))이고 일반해의 \(C = 0\)에 들어 있습니다. 2장에서 상수 해를 잃지 않도록 조심했던 것과 같은 주의가 필요합니다.</div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="bernoulli">
+    <h2>베르누이 방정식: 치환으로 선형이 되는 비선형</h2>
+    <div class="problem"><strong>로지스틱 방정식을 적분 없이 풀 수 있을까</strong>
+      <p>2장에서 로지스틱 방정식 \(y' = ry(1 - y/K)\)를 부분 분수로 풀었습니다. 계산이 길었죠. 이 방정식은 \(y' - ry = -\frac{r}{K}y^2\)으로, 선형 방정식에 \(y^2\) 항 하나가 붙은 꼴입니다. 이런 꼴은 \(1/y\)로 바꿔 보면 선형이 됩니다.</p></div>
+    <div class="callout deep"><strong>정리 3.7 (베르누이 방정식)</strong> \(n \ne 0, 1\)인 실수 \(n\)에 대해
+      <div class="formula">$$y' + p(t)\,y = q(t)\,y^n$$</div>
+      을 <span class="term">베르누이 방정식</span><span class="en">(Bernoulli equation)</span>이라 한다. \(y > 0\)에서 \(v = y^{1-n}\)으로 치환하면 \(v\)는 1계 선형 방정식
+      <div class="formula">$$v' + (1 - n)\,p(t)\,v = (1 - n)\,q(t)$$</div>
+      를 만족한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(v' = (1 - n)y^{-n}y'\). 원래 식에 \(y^{-n}\)을 곱하면 \(y^{-n}y' + p\,y^{1-n} = q\), 즉 \(\frac{v'}{1 - n} + pv = q\). ∎</p></div>
+    <p>이 방정식은 1695년 야코프 베르누이<span class="en">(Jakob Bernoulli)</span>가 제기했고, 라이프니츠<span class="en">(Gottfried Wilhelm Leibniz)</span>가 선형 방정식으로 바꾸어 푼 것으로 알려져 있습니다. \(n = 0\)이면 이미 선형이고, \(n = 1\)이면 \(y' = (q - p)y\)로 변수분리형입니다.</p>
+    <div class="callout"><strong>예제 3.11 (로지스틱 방정식을 선형으로)</strong> \(y' = ry - \frac{r}{K}y^2\), \(y(0) = y_0 > 0\)을 풀어라.
+      <ol>
+        <li>\(n = 2\), \(p = -r\), \(q = -r/K\). \(v = 1/y\)로 두면 \(v' + rv = r/K\).</li>
+        <li>\(v = \frac1K + Ce^{-rt}\), \(C = \frac{1}{y_0} - \frac1K\).</li>
+        <li>\(y = \dfrac{1}{v} = \dfrac{K}{1 + \bigl(\frac{K}{y_0} - 1\bigr)e^{-rt}}\). 2장의 결과와 같다.</li>
+        <li>\(r = 0.8\), \(K = 10\), \(y_0 = 1\)이면 \(y(5) = 10/(1 + 9e^{-4}) \approx 8.585\)(RK4와 일치). 비선형인 \(y\)가 S자로 가는 동안 \(v = 1/y\)는 <b>단순한 지수 감쇠</b>로 \(1/K\)에 다가간다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 3.12 (n = 3)</strong> \(y' = y - y^3\), \(y(0) = 0.2\)를 풀어라.
+      <ol>
+        <li>\(n = 3\), \(v = y^{-2}\). \(v' = -2y^{-3}y' = -2y^{-2} + 2 = -2v + 2\), 즉 \(v' + 2v = 2\).</li>
+        <li>\(v = 1 + Ce^{-2t}\), \(v(0) = 25\)이므로 \(C = 24\). \(y = (1 + 24e^{-2t})^{-1/2}\).</li>
+        <li>\(y(2) = (1 + 24e^{-4})^{-1/2} \approx 0.8335\)(RK4 0.833456). 해는 평형점 1로 다가간다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lf-bernoulli">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>베르누이 치환: 구부러진 y가 v = y<sup>1−n</sup>에서는 지수 곡선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="lf-cv-be-y"></canvas><span class="cap">y(t): RK4 (주황) · 치환 공식 (점)</span></div>
+          <div><canvas id="lf-cv-be-v"></canvas><span class="cap">v = y<sup>1−n</sup>: 선형 방정식의 해</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지수 n <output id="lf-be-n-out"></output></span><input type="range" id="lf-be-n"></label>
+          <label class="ctrl"><span>a <output id="lf-be-a-out"></output></span><input type="range" id="lf-be-a" min="0.2" max="2" step="0.05" value="0.8"></label>
+          <label class="ctrl"><span>b <output id="lf-be-b-out"></output></span><input type="range" id="lf-be-b" min="0.02" max="2" step="0.02" value="0.4"></label>
+          <label class="ctrl"><span>y(0) <output id="lf-be-y0-out"></output></span><input type="range" id="lf-be-y0" min="0.05" max="3" step="0.05" value="0.2"></label>
+        </div>
+      </div>
+      <div class="lf-eq" id="lf-be-eq"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">평형점 y*</span><span class="v" id="lf-be-ys">—</span></div>
+        <div class="stat"><span class="k">v의 시상수</span><span class="v" id="lf-be-tau">—</span></div>
+        <div class="stat"><span class="k">max |RK4 − 공식|</span><span class="v" id="lf-be-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n = 2, a = 0.8, b = 0.08이면 예제 3.11의 로지스틱(K = 10)입니다. y는 S자, v는 1/K로 가는 지수 곡선입니다. ② n = 3, a = b = 1, y(0) = 0.2이면 예제 3.12입니다. ③ n = 0.5로 두면 1 − n &gt; 0이라 v의 지수가 커지는 쪽으로 바뀌어 평형점이 불안정해지고, y(0)이 평형점보다 작으면 v가 유한 시각에 0에 닿습니다. 그 뒤의 해는 유일하지 않습니다(4장). 모델: y′ = ay − byⁿ, v(t) = b/a + (v₀ − b/a)e<sup>(1−n)at</sup>.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="method-map">
+    <h2>1계 방정식, 어떤 방법을 쓸까</h2>
+    <p>2장과 3장에서 손으로 푸는 1계 방정식의 주요 꼴을 모두 보았습니다. 실전에서는 먼저 꼴을 알아보는 것이 반이고, 한 방정식이 여러 꼴에 동시에 속하기도 합니다(\(y' + 2y = 4\)는 분리형이자 선형).</p>
+    <div class="table-wrap"><table class="lf-tbl">
+      <thead><tr><th>꼴</th><th>알아보는 법</th><th>방법</th><th>해의 모양</th></tr></thead>
+      <tbody>
+        <tr><td>\(y' = g(t)h(y)\)</td><td>오른쪽이 곱으로 갈라짐</td><td>변수분리(2장)</td><td>\(\int dy/h = \int g\,dt\)</td></tr>
+        <tr><td>\(y' + p(t)y = g(t)\)</td><td>\(y, y'\)에 1차</td><td>적분 인자 \(e^{\int p}\)</td><td>\(y_p + Ce^{-\int p}\)</td></tr>
+        <tr><td>\(M\,dx + N\,dy = 0\)</td><td>\(M_y = N_x\)</td><td>퍼텐셜 \(\psi\)</td><td>\(\psi(x, y) = C\)</td></tr>
+        <tr><td>거의 완전</td><td>\((M_y - N_x)/N\)이 \(x\)만</td><td>\(\mu(x)\)를 곱함</td><td>\(\psi = C\)</td></tr>
+        <tr><td>\(y' + py = qy^n\)</td><td>선형 + \(y^n\) 한 항</td><td>\(v = y^{1-n}\)</td><td>\(v\)는 선형</td></tr>
+        <tr><td>\(y' = F(y/t)\)</td><td>동차형</td><td>\(u = y/t\)(2장)</td><td>분리형으로</td></tr>
+        <tr><td>그 밖</td><td>—</td><td>방향장·수치 해(5장)</td><td>RK4</td></tr>
+      </tbody></table></div>
+    <p>마지막 줄이 사실 가장 흔합니다. 손으로 풀리는 방정식은 예외적이지만, 이 예외들이 회로·탱크·성장 같은 모델의 뼈대이고, 수치 해를 검증하는 기준이 됩니다. 수치 해법은 <a href="numerical.html">5장</a>에서 다룹니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"변화율 = 입력 − 현재 상태에 비례하는 손실"이라는 1차 시스템은 공학에서 가장 흔한 동역학입니다. 시상수 하나로 시스템의 빠르기를 요약하는 언어가 여기서 나옵니다.</p>
+    <div class="callout"><strong>온도 센서의 응답 지연</strong> 열전대를 뜨거운 물에 넣으면 센서 자체의 열용량 때문에 표시값이 1차 시스템 \(\tau T_s' + T_s = T\)를 따라 늦게 오릅니다. 데이터시트의 "시상수 2 s"는 63.2%에 닿는 시간이고, 빠르게 변하는 온도를 잴 때는 정리 3.2의 이득·위상 지연만큼 측정값이 작고 늦게 나옵니다. 측정값에 \(T = T_s + \tau T_s'\)를 적용해 원래 온도를 복원하는 보정도 이 방정식에서 나옵니다.</div>
+    <div class="uses">
+      <a href="transfer.html"><small>10장 · 전달 함수</small>1차 시스템의 계단 응답과 보드 선도<br><span>시상수 τ가 극점 s = −1/τ가 된다.</span></a>
+      <a href="laplace.html"><small>9장 · 라플라스 변환</small>적분 인자 없이 대수로 풀기<br><span>y′ + ky = g가 (s + k)Y = G + y₀이 된다.</span></a>
+      <a href="second-order.html"><small>6장 · 2계 선형 방정식</small>y = y<sub>h</sub> + y<sub>p</sub>의 확장<br><span>해 구조 정리가 2계에서도 그대로 성립한다.</span></a>
+      <a href="numerical.html"><small>5장 · 수치 해법</small>닫힌 해로 오차 재기<br><span>y′ + 2y = 4처럼 답을 아는 문제로 방법의 정확도를 시험한다.</span></a>
+      <a href="../../calculus/chapters/vector-calculus.html"><small>CALCULUSBOOK</small>보존장과 퍼텐셜<br><span>M<sub>y</sub> = N<sub>x</sub>는 곡선 적분이 경로에 무관할 조건과 같다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식 개관<br><span>RC 회로와 지수 감쇠를 한눈에.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>1계 선형 방정식은 표준형 \(y' + p(t)y = g(t)\)로 쓴다. 표준형으로 바꾼 뒤에 \(p\)를 읽는다(\(ty' + 2y\)이면 \(p = 2/t\)).</li>
+      <li>적분 인자 \(\mu = e^{\int p\,dt}\)를 곱하면 \((\mu y)' = \mu g\)가 되어 \(y = \frac1\mu\bigl(\int\mu g\,dt + C\bigr)\). \(p, g\)가 연속인 구간 전체에서 해가 존재하고 유일하다.</li>
+      <li>RC 회로 \(RCv' + v = V_s\), RL 회로 \(Li' + Ri = V_s\)의 시상수는 \(RC\), \(L/R\). \(\tau\)마다 남은 거리가 \(1/e\)배, 5τ면 99.3%. 측정에서는 63.2%점, 처음 접선, 반로그 직선으로 τ를 읽는다.</li>
+      <li>혼합 탱크는 \(Q' = q_{\text{in}}c_{\text{in}} - q_{\text{out}}Q/V(t)\). 부피가 변하면 계수가 시간의 함수가 되어 적분 인자가 필요하다.</li>
+      <li>사인 입력 \(y' + ky = k\sin\omega t\)의 해 = 정상 상태 \(G\sin(\omega t - \varphi)\) + 과도 \(Ce^{-kt}\). \(G = 1/\sqrt{1 + (\omega\tau)^2}\), \(\varphi = \arctan\omega\tau\). 차단 주파수 \(\omega = 1/\tau\)에서 0.707, 45°.</li>
+      <li>선형 방정식의 모든 해는 \(y = y_p + Ce^{-\int p}\). 입력이 합이면 응답도 합(중첩). \(p > 0\)이면 모든 해가 \(y_p\)로 모인다.</li>
+      <li>\(M\,dx + N\,dy = 0\)은 \(M_y = N_x\)이면 완전하고, 해는 퍼텐셜의 등고선 \(\psi = C\). 완전하지 않아도 \((M_y - N_x)/N\)이 \(x\)만의 함수이면 \(\mu(x)\)로 완전하게 만들 수 있다. 선형 방정식의 적분 인자가 그 특별한 경우다.</li>
+      <li>베르누이 방정식 \(y' + py = qy^n\)은 \(v = y^{1-n}\)으로 선형이 된다. 로지스틱 방정식은 \(n = 2\)인 베르누이 방정식이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(ty' + 3y = t^2\) (\(t > 0\))의 적분 인자는?</p><div class="opts">
+        <button class="opt">\(e^{3t}\)</button>
+        <button class="opt" data-correct>\(t^3\)</button>
+        <button class="opt">\(e^{t^3}\)</button>
+        <button class="opt">\(3\ln t\)</button>
+      </div><div class="quiz-exp">먼저 표준형 \(y' + \frac3t y = t\)로 바꾼다. \(p = 3/t\)이므로 \(\mu = e^{3\ln t} = t^3\). 표준형으로 바꾸지 않고 3을 \(p\)로 읽으면 \(e^{3t}\)라는 오답이 나온다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(R = 2\) kΩ, \(C = 500\) μF인 RC 회로를 빈 상태에서 충전한다. 2초 뒤 축전기 전압은 전원 전압의 약 몇 %인가?</p><div class="opts">
+        <button class="opt">63.2%</button>
+        <button class="opt" data-correct>86.5%</button>
+        <button class="opt">95.0%</button>
+        <button class="opt">100%</button>
+      </div><div class="quiz-exp">\(\tau = 2000 \times 5\times10^{-4} = 1\) s이므로 2초는 2τ. \(1 - e^{-2} \approx 0.865\).</div></div>
+
+      <div class="quiz-q"><p>Q3. 200 L 탱크에 소금 40 kg이 녹아 있다. 맑은 물이 10 L/min으로 들어오고 섞인 물이 10 L/min으로 나간다. 소금이 20 kg이 되는 시각은?</p><div class="opts">
+        <button class="opt">10 min</button>
+        <button class="opt" data-correct>약 13.9 min</button>
+        <button class="opt">20 min</button>
+        <button class="opt">약 27.7 min</button>
+      </div><div class="quiz-exp">\(Q' = -\frac{10}{200}Q\)이므로 \(Q = 40e^{-t/20}\). 절반이 되는 시간은 \(20\ln 2 \approx 13.9\) min. 시상수 20 min과 반감기를 혼동하지 말 것.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(y' + 3y = 3\sin 4t\)의 정상 상태 응답의 진폭과 위상 지연은?</p><div class="opts">
+        <button class="opt">진폭 1, 지연 0°</button>
+        <button class="opt">진폭 0.75, 지연 36.9°</button>
+        <button class="opt" data-correct>진폭 0.6, 지연 약 53.1°</button>
+        <button class="opt">진폭 0.6, 지연 약 36.9°</button>
+      </div><div class="quiz-exp">\(k = 3\), \(\omega = 4\). \(G = 3/\sqrt{9 + 16} = 0.6\), \(\varphi = \arctan(4/3) \approx 53.1°\). 입력이 차단 주파수(ω = 3)보다 빠르므로 이득이 0.707보다 작고 지연이 45°보다 크다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \((2xy + y^3)\,dx + (x^2 + 3xy^2)\,dy = 0\)의 퍼텐셜 함수는?</p><div class="opts">
+        <button class="opt">\(x^2y + y^3\)</button>
+        <button class="opt" data-correct>\(x^2y + xy^3\)</button>
+        <button class="opt">\(2xy + 3xy^2\)</button>
+        <button class="opt">완전하지 않아 퍼텐셜이 없다</button>
+      </div><div class="quiz-exp">\(M_y = 2x + 3y^2 = N_x\)이므로 완전하다. \(\int M\,dx = x^2y + xy^3 + h(y)\), \(\psi_y = x^2 + 3xy^2 + h' = N\)이므로 \(h = 0\).</div></div>
+
+      <div class="quiz-q"><p>Q6. 베르누이 방정식 \(y' + y = y^3\)에 \(v = y^{-2}\)를 넣으면?</p><div class="opts">
+        <button class="opt">\(v' + 2v = 2\)</button>
+        <button class="opt" data-correct>\(v' - 2v = -2\)</button>
+        <button class="opt">\(v' - v = 1\)</button>
+        <button class="opt">\(v' + 2v = -2\)</button>
+      </div><div class="quiz-exp">\(n = 3\), \(p = 1\), \(q = 1\). 정리 3.7로 \(v' + (1 - 3)(1)v = (1 - 3)(1)\), 즉 \(v' - 2v = -2\). 직접: \(v' = -2y^{-3}y' = -2y^{-3}(y^3 - y) = -2 + 2v\).</div></div>
+
+      <div class="quiz-q"><p>Q7. \(y_1\)과 \(y_2\)가 모두 \(y' + p(t)y = g(t)\)의 해이다(\(g \ne 0\)). 항상 참인 것은?</p><div class="opts">
+        <button class="opt">\(y_1 + y_2\)도 같은 방정식의 해다</button>
+        <button class="opt" data-correct>\(y_1 - y_2\)는 동차 방정식 \(y' + py = 0\)의 해다</button>
+        <button class="opt">\(y_1 = y_2\)이다</button>
+        <button class="opt">\(y_1y_2\)는 동차 방정식의 해다</button>
+      </div><div class="quiz-exp">\(L[y_1 - y_2] = g - g = 0\). 합은 \(L[y_1 + y_2] = 2g\)이라 원래 방정식의 해가 아니다. 그래서 "특수해 하나 + 동차해"가 모든 해다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(y' + y = 3\), \(y(0) = 5\)일 때 \(y(\ln 2)\)는?</p><div class="opts">
+        <button class="opt">3</button>
+        <button class="opt">3.5</button>
+        <button class="opt" data-correct>4</button>
+        <button class="opt">5</button>
+      </div><div class="quiz-exp">\(y = 3 + 2e^{-t}\). \(t = \ln 2\)이면 \(e^{-t} = 1/2\)이므로 \(y = 3 + 1 = 4\). 처음 거리 2가 반감기 \(\ln 2\)만에 절반이 되었다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const LF = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  /** 스칼라 RK4: [[t, y], ...] */
+  solve(f, y0, t0, t1, n = 400) {
+    return MB.rk4((t, y) => [f(t, y[0])], [y0], t0, (t1 - t0) / n, n).map(([t, y]) => [t, y[0]]);
+  },
+  range(vals, pad = 0.12, incl0 = false) {
+    let lo = Infinity, hi = -Infinity;
+    vals.forEach((v) => { if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+    if (incl0) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    if (!isFinite(lo)) { lo = -1; hi = 1; }
+    const s = Math.max(hi - lo, 0.2); return [lo - s * pad, hi + s * pad];
+  },
+  /** plane 위에 기울기 장 */
+  field(P, f, o = {}) {
+    const nx = o.nx || 22, ny = o.ny || 15, C = P.P, ctx = P.ctx, L = o.len || Math.min(P.w / nx, P.h / ny) * 0.36;
+    ctx.save(); ctx.strokeStyle = o.color || C.faint; ctx.lineWidth = 1.3; ctx.globalAlpha = o.alpha || 0.9; ctx.beginPath();
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+      const px = ((i + 0.5) / nx) * P.w, py = ((j + 0.5) / ny) * P.h, x = P.ix(px), y = P.iy(py);
+      const m = f(x, y); if (!isFinite(m)) continue;
+      let dx = P.unit, dy = -m * (P.h / (P.y1 - P.y0)) * ((P.x1 - P.x0) / P.w) * P.unit; // 픽셀 기울기
+      const n = Math.hypot(dx, dy); dx *= L / n; dy *= L / n;
+      ctx.moveTo(px - dx, py - dy); ctx.lineTo(px + dx, py + dy);
+    }
+    ctx.stroke(); ctx.restore();
+  },
+};
+
+/* ================================================================ 1. 적분 인자 */
+(function () {
+  const PRE = {
+    c: { p: () => 2, g: () => 4, P: (t) => 2 * t, t0: 0, t1: 3, y0: 0, eq: "y′ + 2y = 4 → p = 2, μ = e<sup>2t</sup>, (e<sup>2t</sup>y)′ = 4e<sup>2t</sup>" },
+    t: { p: () => 1, g: (t) => t, P: (t) => t, t0: 0, t1: 4, y0: 1, eq: "y′ + y = t → p = 1, μ = e<sup>t</sup>, (e<sup>t</sup>y)′ = t·e<sup>t</sup>" },
+    v: { p: (t) => 2 / t, g: (t) => 4 * t, P: (t) => 2 * Math.log(t), t0: 1, t1: 3, y0: 2, eq: "y′ + (2/t)y = 4t → p = 2/t, μ = t², (t²y)′ = 4t³" },
+    s: { p: () => 0.5, g: (t) => Math.sin(2 * t), P: (t) => 0.5 * t, t0: 0, t1: 8, y0: 1, eq: "y′ + 0.5y = sin 2t → μ = e<sup>t/2</sup>, (e<sup>t/2</sup>y)′ = e<sup>t/2</sup>sin 2t" },
+  };
+  const N = 400;
+  let pre = PRE.c, y0 = 0, u = 0.4, sol = [], I = [], mu = [];
+  const compute = () => {
+    sol = LF.solve((t, y) => pre.g(t) - pre.p(t) * y, y0, pre.t0, pre.t1, N);
+    mu = sol.map(([t]) => Math.exp(pre.P(t) - pre.P(pre.t0)));
+    I = [y0];
+    for (let i = 1; i <= N; i++) { const a = sol[i - 1][0], b = sol[i][0]; I.push(I[i - 1] + 0.5 * (mu[i - 1] * pre.g(a) + mu[i] * pre.g(b)) * (b - a)); }
+  };
+  const idx = () => Math.round(u * N);
+  compute();
+  let cvM = null;
+  const cvY = MB.canvas("#lf-cv-fac-y", (ctx) => {
+    const C = MB.palette(), i = idx(), t = sol[i][0];
+    const yr = LF.range(sol.map((d) => d[1]), 0.12, true);
+    MB.chart(ctx, null, { x: [pre.t0, pre.t1], y: yr, xLabel: "t", series: [{ data: sol, color: C.accent, width: 2.6 }], vlines: [{ x: t, color: C.dim }], points: [{ x: t, y: sol[i][1], color: C.accent, r: 5 }] });
+    if (cvM) cvM.redraw();
+  }, { aspect: 0.75, maxHeight: 340, minHeight: 220 });
+  cvM = MB.canvas("#lf-cv-fac-m", (ctx) => {
+    const C = MB.palette(), i = idx(), t = sol[i][0];
+    const my = sol.map((d, k) => [d[0], mu[k] * d[1]]), Ii = sol.map((d, k) => [d[0], I[k]]);
+    const yr = LF.range(my.map((d) => d[1]).concat(I), 0.12, true);
+    MB.chart(ctx, null, { x: [pre.t0, pre.t1], y: yr, xLabel: "t", series: [{ data: my, color: C.accent, width: 4 }, { data: Ii, color: C.accent2, width: 2, dash: [6, 5] }], vlines: [{ x: t, color: C.dim }], points: [{ x: t, y: my[i][1], color: C.accent, r: 5 }] });
+    const j = Math.min(N, i + 1), k = Math.max(0, i - 1);
+    const d = (mu[j] * sol[j][1] - mu[k] * sol[k][1]) / (sol[j][0] - sol[k][0]);
+    MB.stat("lf-fac-mu", LF.num(mu[i], 3)); MB.stat("lf-fac-y", LF.num(sol[i][1], 4));
+    MB.stat("lf-fac-d", LF.num(d, 3)); MB.stat("lf-fac-mg", LF.num(mu[i] * pre.g(t), 3));
+  }, { aspect: 0.75, maxHeight: 340, minHeight: 220 });
+  const redraw = () => { compute(); cvY.redraw(); };
+  const tOut = () => document.getElementById("lf-fac-t-out");
+  const gy = MB.range("lf-fac-y0", (v) => v.toFixed(1), (v) => { y0 = v; redraw(); });
+  MB.range("lf-fac-t", (v) => (pre.t0 + v * (pre.t1 - pre.t0)).toFixed(2), (v) => { u = v; cvY.redraw(); });
+  const setEq = () => { document.getElementById("lf-fac-eq").innerHTML = pre.eq; };
+  setEq();
+  document.getElementById("lf-fac-pre").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; y0 = pre.y0; gy.set(y0, false); setEq();
+    tOut().textContent = (pre.t0 + u * (pre.t1 - pre.t0)).toFixed(2); redraw();
+  });
+})();
+
+/* ================================================================ 2. RC 회로 */
+(function () {
+  let R = 10, Cu = 100, Vs = 5, sw = 1, v = 0, t = 0, hist = [[0, 0, 5]], tSw = 0, vSw = 0, phase = 0, running = true;
+  const tau = () => (R * 1e3 * Cu * 1e-6);
+  const WIN = 12;
+  const pathPts = (w, h, mode) => {
+    const L = w * 0.14, Rr = w * 0.84, T = h * 0.2, B = h * 0.82, c1x = w * 0.3, pv = w * 0.44, c2y = T + h * 0.16;
+    return mode ? [[L, B], [L, T], [c1x, T], [pv, T], [Rr, T], [Rr, B], [L, B]] : [[c1x, c2y], [pv, T], [Rr, T], [Rr, B], [c1x, B], [c1x, c2y]];
+  };
+  const along = (pts, s) => {
+    const seg = []; let tot = 0;
+    for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(l); tot += l; }
+    s = MB.mod(s, 1) * tot;
+    for (let i = 0; i < seg.length; i++) { if (s <= seg[i]) { const u = s / seg[i]; return [pts[i][0] + u * (pts[i + 1][0] - pts[i][0]), pts[i][1] + u * (pts[i + 1][1] - pts[i][1])]; } s -= seg[i]; }
+    return pts[0];
+  };
+  const cvC = MB.canvas("#lf-cv-rc-c", (ctx, w, h) => {
+    const C = MB.palette(), L = w * 0.14, Rr = w * 0.84, T = h * 0.2, B = h * 0.82, c1x = w * 0.3, pv = w * 0.44, c2y = T + h * 0.16, my = (T + B) / 2;
+    const font = getComputedStyle(document.body).getPropertyValue("--font");
+    const vin = sw ? Vs : 0, i = (vin - v) / (R * 1e3);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const wire = (pts, col, wd) => { ctx.strokeStyle = col; ctx.lineWidth = wd || 2.2; ctx.beginPath(); pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); };
+    // 배터리 가지
+    wire([[L, B], [L, my + 12]], C.text); wire([[L, my - 12], [L, T], [c1x, T]], C.text);
+    ctx.lineWidth = 3; ctx.strokeStyle = sw ? C.text : C.faint;
+    ctx.beginPath(); ctx.moveTo(L - 16, my - 12); ctx.lineTo(L + 16, my - 12); ctx.moveTo(L - 9, my + 12); ctx.lineTo(L + 9, my + 12); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = "12px " + font; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(Vs + " V", L + 20, my);
+    // 단락 가지
+    wire([[c1x, c2y], [c1x, B]], sw ? C.faint : C.text);
+    // 아래 선
+    wire([[L, B], [Rr, B]], C.text);
+    // 스위치
+    ctx.fillStyle = C.text; [[c1x, T], [c1x, c2y], [pv, T]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill(); });
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pv, T); ctx.lineTo(sw ? c1x + 4 : c1x + 3, sw ? T - 1 : c2y - 2); ctx.stroke();
+    // 저항
+    const r0 = w * 0.52, r1 = w * 0.72, zz = 7;
+    wire([[pv, T], [r0, T]], C.text); wire([[r1, T], [Rr, T], [Rr, my - 8]], C.text); wire([[Rr, my + 8], [Rr, B]], C.text);
+    ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r0, T);
+    for (let k = 1; k <= 8; k++) ctx.lineTo(r0 + ((r1 - r0) * k) / 8 - (k === 8 ? 0 : (r1 - r0) / 16), T + (k === 8 ? 0 : (k % 2 ? -zz : zz)));
+    ctx.lineTo(r1, T); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("R = " + R + " kΩ", (r0 + r1) / 2, T - 10);
+    // 축전기
+    const fr = MB.clamp(v / 9, 0, 1);
+    ctx.fillStyle = C.accent; ctx.globalAlpha = 0.15 + 0.6 * fr; ctx.fillRect(Rr - 18, my - 8, 36, 16); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.text; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(Rr - 20, my - 8); ctx.lineTo(Rr + 20, my - 8); ctx.moveTo(Rr - 20, my + 8); ctx.lineTo(Rr + 20, my + 8); ctx.stroke();
+    ctx.fillStyle = C.accent; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "700 13px " + font;
+    ctx.fillText("vC = " + v.toFixed(2) + " V", Rr - 26, my);
+    ctx.fillStyle = C.dim; ctx.font = "12px " + font; ctx.textAlign = "left"; ctx.fillText("C", Rr + 24, my);
+    ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText(sw ? "충전 중" : "방전 중", (L + Rr) / 2, B + 10);
+    // 전류 점
+    const pts = pathPts(w, h, sw), amp = Math.abs(i) / (Vs / (R * 1e3));
+    if (amp > 0.004) { ctx.fillStyle = C.accent2; ctx.globalAlpha = Math.min(1, 0.25 + amp); for (let k = 0; k < 14; k++) { const [x, y] = along(pts, phase + k / 14); ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
+  }, { aspect: 0.72, maxHeight: 330, minHeight: 220 });
+  const cvG = MB.canvas("#lf-cv-rc-g", (ctx) => {
+    const C = MB.palette(), t0 = Math.max(0, t - WIN), ta = tau();
+    const vc = hist.map((d) => [d[0], d[1]]), vr = hist.map((d) => [d[0], d[2] - d[1]]);
+    const vl = [], target = sw ? Vs : 0;
+    if (tSw + ta >= t0) vl.push({ x: tSw + ta, color: C.dim });
+    MB.chart(ctx, null, { x: [t0, t0 + WIN], y: [-Vs * 1.15 - 0.3, Vs * 1.25 + 0.3], xLabel: "t [s]", series: [{ data: vr, color: C.accent2, width: 2 }, { data: vc, color: C.accent, width: 2.6 }], vlines: vl, hlines: [{ y: vSw + 0.632 * (target - vSw), color: C.faint, label: "63.2%" }, { y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.72, maxHeight: 330, minHeight: 220 });
+  const stats = () => {
+    const vin = sw ? Vs : 0, i = (vin - v) / (R * 1e3);
+    MB.stat("lf-rc-tau", LF.num(tau(), 2) + " s"); MB.stat("lf-rc-vc", LF.num(v, 3) + " V");
+    MB.stat("lf-rc-i", LF.num(i * 1e3, 3) + " mA"); MB.stat("lf-rc-el", LF.num((t - tSw) / tau(), 2) + " τ");
+  };
+  const mark = () => { tSw = t; vSw = v; };
+  MB.range("lf-rc-r", (x) => x + " kΩ", (x) => { R = x; mark(); stats(); cvC.redraw(); cvG.redraw(); });
+  MB.range("lf-rc-c", (x) => x + " μF", (x) => { Cu = x; mark(); stats(); cvC.redraw(); cvG.redraw(); });
+  MB.range("lf-rc-v", (x) => x + " V", (x) => { Vs = x; mark(); stats(); cvC.redraw(); cvG.redraw(); });
+  MB.seg("lf-rc-sw", (x) => { sw = +x; mark(); stats(); cvC.redraw(); });
+  const play = MB.playButton("lf-rc-play", () => { running = true; }, () => { running = false; }, ["▶ 재생", "■ 정지"]);
+  play.set(true);
+  document.getElementById("lf-rc-reset").addEventListener("click", () => { v = 0; t = 0; tSw = 0; vSw = 0; hist = [[0, 0, sw ? Vs : 0]]; stats(); cvC.redraw(); cvG.redraw(); });
+  stats();
+  MB.loop(document.getElementById("sim-lf-rc"), (dt) => {
+    if (!running) return;
+    const vin = sw ? Vs : 0, ta = tau();
+    v = vin + (v - vin) * Math.exp(-dt / ta); t += dt;
+    phase += (dt * 0.35 * ((vin - v) / Vs)) * (sw ? 1 : 1);
+    hist.push([t, v, vin]);
+    while (hist.length > 2 && hist[0][0] < t - WIN - 0.5) hist.shift();
+    stats(); cvC.redraw(); cvG.redraw();
+  });
+})();
+
+/* ================================================================ 3. τ 맞히기 */
+(function () {
+  const V = 5, TMAX = 8;
+  let tauT = 1.4, noise = 0.08, mode = "lin", tan = true, shown = false, data = [], rng = MB.rng(7);
+  const gen = () => {
+    data = [];
+    for (let t = 0; t <= TMAX + 1e-9; t += 0.2) { const r = rng(); const z = Math.sqrt(-2 * Math.log(Math.max(1e-9, r))) * Math.cos(2 * Math.PI * rng()); data.push([t, V * (1 - Math.exp(-t / tauT)) + noise * z]); }
+  };
+  const est = { x: 2.5, y: 0, lock: "y", r: 8, label: "τ̂", constrain(p) { p.x = MB.clamp(p.x, 0.2, 5); } };
+  const msg = document.getElementById("lf-tau-msg");
+  gen();
+  const pl = MB.plane("#lf-cv-tau", {
+    x: [-0.5, 8.4], y: [-0.8, 6.2], aspect: 0.56, maxHeight: 380, gridStep: 1, points: [est],
+    draw(P) {
+      const C = P.P, th = est.x;
+      est.color = C.accent2;
+      if (mode === "lin") {
+        P.line(P.x0, V, P.x1, V, { color: C.faint, width: 1.2, dash: [4, 4] });
+        P.line(P.x0, 0.632 * V, P.x1, 0.632 * V, { color: C.accent2, width: 1, dash: [3, 4], alpha: 0.7 });
+        P.text("0.632 Vₛ", P.x1, 0.632 * V, { color: C.accent2, align: "right", dy: -9, size: 12 });
+        if (tan) P.line(0, 0, th, V, { color: C.dim, width: 1.4, dash: [2, 3] });
+        P.line(th, 0, th, 0.632 * V, { color: C.accent2, width: 1.4, dash: [4, 3] });
+        data.forEach(([t, v]) => P.dot(t, v, { r: 3, color: C.text }));
+        P.curve((t) => V * (1 - Math.exp(-t / th)), { color: C.accent, width: 2.4, dash: [7, 4], from: 0, to: TMAX });
+        if (shown) P.curve((t) => V * (1 - Math.exp(-t / tauT)), { color: C.ok, width: 2, from: 0, to: TMAX });
+        est.y = 0; est.hidden = false;
+      } else {
+        const Ys = (v) => Math.log(Math.max(1e-6, 1 - v / V));
+        data.forEach(([t, v]) => { if (v < V * 0.995) P.dot(t, MB.clamp(Ys(v), -5.6, 0.6), { r: 3, color: v > V * 0.95 ? C.faint : C.text }); });
+        P.line(0, 0, TMAX, -TMAX / th, { color: C.accent, width: 2.4, dash: [7, 4] });
+        if (shown) P.line(0, 0, TMAX, -TMAX / tauT, { color: C.ok, width: 2 });
+        P.line(th, 0, th, -1, { color: C.accent2, width: 1.4, dash: [4, 3] });
+        P.line(P.x0, -1, P.x1, -1, { color: C.accent2, width: 1, dash: [3, 4], alpha: 0.7 });
+        P.text("ln(1 − v/Vₛ) = −1 ↔ t = τ", P.x1, -1, { color: C.accent2, align: "right", dy: 10, size: 12 });
+        est.y = 0;
+      }
+      let s = 0; data.forEach(([t, v]) => { s += (v - V * (1 - Math.exp(-t / th))) ** 2; });
+      const rms = Math.sqrt(s / data.length);
+      MB.stat("lf-tau-est", LF.num(th, 2) + " s"); MB.stat("lf-tau-rms", LF.num(rms, 3) + " V");
+      MB.stat("lf-tau-true", shown ? LF.num(tauT, 2) + " s" : "?");
+      const rel = Math.abs(th - tauT) / tauT;
+      if (shown) { msg.className = "lf-msg " + (rel < 0.05 ? "ok" : "bad"); msg.innerHTML = `참 τ = ${LF.num(tauT, 2)} s, 추정 오차 ${LF.num(rel * 100, 1)}%. ${rel < 0.05 ? "5% 안에 맞혔습니다." : "모델 RMS 오차가 가장 작아지는 곳을 찾아보세요."}`; }
+      else { msg.className = "lf-msg"; msg.innerHTML = `RMS 오차가 잡음 크기(${noise.toFixed(2)} V)에 가까워지면 잘 맞춘 것입니다. 지금 ${LF.num(rms, 3)} V.`; }
+    },
+  });
+  const setView = () => { if (mode === "lin") pl.view({ x: [-0.5, 8.4], y: [-0.8, 6.2] }); else pl.view({ x: [-0.5, 8.4], y: [-5.8, 0.9] }); document.getElementById("lf-tau-tag").textContent = mode === "lin" ? "측정 v(t) [V], 가로축 t [s]" : "ln(1 − v/Vₛ): 기울기 −1/τ인 직선"; };
+  MB.seg("lf-tau-mode", (m) => { mode = m; setView(); });
+  MB.range("lf-tau-n", (x) => x.toFixed(2) + " V", (x) => { noise = x; rng = MB.rng(Math.round(tauT * 1000)); gen(); pl.redraw(); });
+  MB.check("lf-tau-tan", (x) => { tan = x; pl.redraw(); });
+  document.getElementById("lf-tau-new").addEventListener("click", () => { tauT = 0.6 + Math.random() * 1.9; shown = false; rng = MB.rng(Math.round(tauT * 1000)); gen(); pl.redraw(); });
+  document.getElementById("lf-tau-show").addEventListener("click", () => { shown = true; pl.redraw(); });
+})();
+
+/* ================================================================ 4. 혼합 탱크 */
+(function () {
+  const V0 = 100, VMAX = 200, TMAX = 100;
+  let qi = 4, qo = 4, ci = 0.5, Q0 = 0, sol = [], tc = 0, playing = false, end = TMAX, endMsg = "";
+  const compute = () => {
+    sol = []; end = TMAX; endMsg = "";
+    let Q = Q0, t = 0; const dt = 0.05;
+    const f = (t, Q) => { const V = V0 + (qi - qo) * t; return qi * ci - (qo * Q) / V; };
+    sol.push([0, Q, V0]);
+    while (t < TMAX - 1e-9) {
+      const V1 = V0 + (qi - qo) * (t + dt);
+      if (V1 <= 1) { end = t; endMsg = `t ≈ ${LF.num((V0 - 1) / (qo - qi), 1)} min에 탱크가 거의 비어 계산을 멈춥니다(V → 0).`; break; }
+      if (V1 >= VMAX) { end = t; endMsg = `t ≈ ${LF.num((VMAX - V0) / (qi - qo), 1)} min에 200 L가 차서 넘칩니다. 모델은 여기까지.`; break; }
+      const k1 = f(t, Q), k2 = f(t + dt / 2, Q + (dt / 2) * k1), k3 = f(t + dt / 2, Q + (dt / 2) * k2), k4 = f(t + dt, Q + dt * k3);
+      Q += (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4); t += dt; sol.push([t, Q, V0 + (qi - qo) * t]);
+    }
+    tc = Math.min(tc, end);
+  };
+  const at = (t) => { const i = MB.clamp(Math.round(t / 0.05), 0, sol.length - 1); return sol[i]; };
+  compute();
+  let drops = 0;
+  const cvT = MB.canvas("#lf-cv-mix-t", (ctx, w, h) => {
+    const C = MB.palette(), [, Q, V] = at(tc), c = Q / V, cmax = 0.5;
+    const tx = w * 0.26, tw = w * 0.48, ty = h * 0.36, th = h * 0.54, lev = (V / VMAX) * th;
+    ctx.fillStyle = C.accent2; ctx.globalAlpha = 0.08 + 0.8 * MB.clamp(c / cmax, 0, 1);
+    ctx.fillRect(tx, ty + th - lev, tw, lev); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty + th); ctx.lineTo(tx + tw, ty + th); ctx.lineTo(tx + tw, ty); ctx.stroke();
+    ctx.strokeStyle = C.faint; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(tx, ty + th - (V0 / VMAX) * th); ctx.lineTo(tx + tw, ty + th - (V0 / VMAX) * th); ctx.stroke(); ctx.setLineDash([]);
+    // 유입관
+    ctx.lineWidth = 8; ctx.lineCap = "butt"; ctx.strokeStyle = C.accent2; ctx.globalAlpha = 0.15 + 0.8 * (ci / cmax);
+    ctx.beginPath(); ctx.moveTo(w * 0.04, ty - 22); ctx.lineTo(tx + 24, ty - 22); ctx.lineTo(tx + 24, ty + th - lev); ctx.stroke();
+    ctx.globalAlpha = 0.15 + 0.8 * MB.clamp(c / cmax, 0, 1);
+    ctx.beginPath(); ctx.moveTo(tx + tw, ty + th - 10); ctx.lineTo(w * 0.96, ty + th - 10); ctx.stroke(); ctx.globalAlpha = 1;
+    // 물방울
+    ctx.fillStyle = C.accent2;
+    for (let k = 0; k < 4; k++) { const s = MB.mod(drops * qi * 0.08 + k / 4, 1); ctx.beginPath(); ctx.arc(w * 0.04 + s * (tx + 24 - w * 0.04), ty - 22, 2.5, 0, 7); ctx.fill(); }
+    for (let k = 0; k < 4; k++) { const s = MB.mod(drops * qo * 0.08 + k / 4, 1); ctx.beginPath(); ctx.arc(tx + tw + s * (w * 0.96 - tx - tw), ty + th - 10, 2.5, 0, 7); ctx.fill(); }
+    const font = getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.fillStyle = C.text; ctx.font = "12px " + font; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText(`${qi} L/min, ${ci.toFixed(2)} kg/L`, w * 0.04, ty - 30);
+    ctx.textAlign = "right"; ctx.textBaseline = "top"; ctx.fillText(`${qo} L/min`, w * 0.96, ty + th - 2);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 13px " + font;
+    ctx.fillText(`${V.toFixed(0)} L`, tx + tw / 2, ty + th - Math.max(lev / 2, 10));
+    ctx.font = "11px " + font; ctx.fillStyle = C.dim; ctx.fillText("V₀ = 100 L", tx + tw / 2, ty + th - (V0 / VMAX) * th - 9);
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  const cvG = MB.canvas("#lf-cv-mix-g", (ctx) => {
+    const C = MB.palette();
+    const all = sol.map(([t, Q, V]) => [t, Q / V]), done = all.filter(([t]) => t <= tc + 1e-9);
+    MB.chart(ctx, null, { x: [0, TMAX], y: [0, 0.55], xLabel: "t [min]", series: [{ data: all, color: C.faint, width: 1.5, dash: [3, 3] }, { data: done, color: C.accent, width: 2.6 }], hlines: [{ y: ci, color: C.accent2, label: "c_in" }], vlines: [{ x: 25, color: C.faint }, { x: tc, color: C.dim, dash: [] }] });
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  const msg = document.getElementById("lf-mix-msg");
+  const stats = () => {
+    const [t, Q, V] = at(tc);
+    MB.stat("lf-mix-t", LF.num(t, 1) + " min"); MB.stat("lf-mix-v", LF.num(V, 1) + " L"); MB.stat("lf-mix-q", LF.num(Q, 2) + " kg"); MB.stat("lf-mix-c", LF.num(Q / V, 3) + " kg/L");
+    const eq = qi === qo ? `유입 = 유출: V 일정, 시상수 V/q = ${LF.num(V0 / qo, 1)} min, c → c<sub>in</sub> = ${ci.toFixed(2)}.` : `V(t) = 100 ${qi > qo ? "+" : "−"} ${Math.abs(qi - qo)}t: 계수 q<sub>out</sub>/V(t)가 시간에 따라 변합니다.`;
+    msg.className = "lf-msg" + (endMsg ? " bad" : ""); msg.innerHTML = `Q′ = ${qi}·${ci.toFixed(2)} − ${qo}·Q/V(t). ${eq} ${endMsg}`;
+  };
+  const all = () => { compute(); stats(); cvT.redraw(); cvG.redraw(); };
+  MB.range("lf-mix-qi", (x) => x + " L/min", (x) => { qi = x; all(); });
+  MB.range("lf-mix-qo", (x) => x + " L/min", (x) => { qo = x; all(); });
+  MB.range("lf-mix-ci", (x) => x.toFixed(2) + " kg/L", (x) => { ci = x; all(); });
+  MB.range("lf-mix-q0", (x) => x + " kg", (x) => { Q0 = x; all(); });
+  const btn = MB.playButton("lf-mix-play", () => { if (tc >= end - 1e-6) tc = 0; playing = true; }, () => { playing = false; });
+  document.getElementById("lf-mix-reset").addEventListener("click", () => { tc = 0; playing = false; btn.set(false); stats(); cvT.redraw(); cvG.redraw(); });
+  stats();
+  MB.loop(document.getElementById("sim-lf-mixing"), (dt) => {
+    drops += dt;
+    if (playing) { tc = Math.min(end, tc + dt * 8); if (tc >= end) { playing = false; btn.set(false); } stats(); cvG.redraw(); }
+    cvT.redraw();
+  });
+})();
+
+/* ================================================================ 5. 사인 입력 */
+(function () {
+  let k = 1, w = 1, y0 = 0, parts = true;
+  const TM = 20;
+  const cv = MB.canvas("#lf-cv-sine", (ctx) => {
+    const C = MB.palette(), D = k * k + w * w, G = k / Math.sqrt(D), ph = Math.atan2(w, k), Ct = y0 + (k * w) / D;
+    const yss = (t) => G * Math.sin(w * t - ph), ytr = (t) => Ct * Math.exp(-k * t);
+    const S = (fn) => { const a = []; for (let i = 0; i <= 800; i++) { const t = (TM * i) / 800; a.push([t, fn(t)]); } return a; };
+    const series = [{ data: S((t) => Math.sin(w * t)), color: C.faint, width: 1.4 }];
+    if (parts) { series.push({ data: S(ytr), color: C.dim, width: 1.6, dash: [3, 4] }); series.push({ data: S(yss), color: C.accent2, width: 2, dash: [7, 5] }); }
+    series.push({ data: S((t) => yss(t) + ytr(t)), color: C.accent, width: 2.8 });
+    const num = LF.solve((t, y) => k * Math.sin(w * t) - k * y, y0, 0, TM, 2000);
+    const pts = [2, 5, 9, 13, 17].map((t) => ({ x: t, y: num[Math.round((t / TM) * 2000)][1], color: C.text, r: 3.5 }));
+    const lo = Math.min(-1.2, y0 - 0.2), hi = Math.max(1.2, y0 + 0.2);
+    MB.chart(ctx, null, { x: [0, TM], y: [lo, hi], xLabel: "t", series, points: pts, hlines: [{ y: G, color: C.accent2, dash: [2, 4] }, { y: -G, color: C.accent2, dash: [2, 4] }] });
+    MB.stat("lf-sin-g", LF.num(G, 3)); MB.stat("lf-sin-db", LF.num(20 * Math.log10(G), 1) + " dB");
+    MB.stat("lf-sin-ph", LF.num((ph * 180) / Math.PI, 1) + "°"); MB.stat("lf-sin-tr", Math.abs(Ct) < 1e-9 ? "과도 없음" : LF.num(Math.log(100) / k, 2) + " (4.6τ)");
+  }, { aspect: 0.5, maxHeight: 360, minHeight: 240 });
+  MB.range("lf-sin-k", (x) => x.toFixed(2), (x) => { k = x; cv.redraw(); });
+  MB.range("lf-sin-w", (x) => x.toFixed(2), (x) => { w = x; cv.redraw(); });
+  MB.range("lf-sin-y0", (x) => x.toFixed(1), (x) => { y0 = x; cv.redraw(); });
+  MB.check("lf-sin-parts", (x) => { parts = x; cv.redraw(); });
+})();
+
+/* ================================================================ 6. 해 구조 */
+(function () {
+  const PRE = {
+    ramp: { p: 1, g: (t) => t, yp: (t) => t - 1, eq: "y′ + y = t:  y<sub>p</sub> = t − 1,  y<sub>h</sub> = Ce<sup>−t</sup>" },
+    step: { p: 2, g: () => 4, yp: () => 2, eq: "y′ + 2y = 4:  y<sub>p</sub> = 2,  y<sub>h</sub> = Ce<sup>−2t</sup>" },
+    cos: { p: 1, g: (t) => 2 * Math.cos(t), yp: (t) => Math.cos(t) + Math.sin(t), eq: "y′ + y = 2cos t:  y<sub>p</sub> = cos t + sin t,  y<sub>h</sub> = Ce<sup>−t</sup>" },
+    unst: { p: -0.5, g: () => -1, yp: () => 2, eq: "y′ − 0.5y = −1:  y<sub>p</sub> = 2,  y<sub>h</sub> = Ce<sup>0.5t</sup> (커진다)" },
+  };
+  let pre = PRE.ramp, curves = [], showP = true, showH = false;
+  const f = (t, y) => pre.g(t) - pre.p * y;
+  const add = (t0, y0) => {
+    const fw = LF.solve(f, y0, t0, 6.5, Math.max(10, Math.round((6.5 - t0) * 60)));
+    const bw = t0 > -0.5 ? LF.solve(f, y0, t0, -0.5, Math.max(10, Math.round((t0 + 0.5) * 60))).reverse() : [];
+    const C = (y0 - pre.yp(t0)) / Math.exp(-pre.p * t0);
+    curves.push({ pts: bw.concat(fw), C });
+    if (curves.length > 10) curves.shift();
+  };
+  const pl = MB.plane("#lf-cv-str", {
+    x: [-0.5, 6.5], y: [-3, 5], aspect: 0.6, maxHeight: 420, gridStep: 1,
+    onPointer(x, y, type) { if (type !== "down") return; add(x, y); stats(); pl.redraw(); },
+    draw(P) {
+      const C = P.P;
+      LF.field(P, f, { nx: 26, ny: 16 });
+      curves.forEach((c) => {
+        const clip = c.pts.filter(([, y]) => Math.abs(y) < 40);
+        P.poly(clip, { color: C.accent, width: 2.2, close: false });
+        if (showH) P.poly(clip.map(([t, y]) => [t, y - pre.yp(t)]), { color: C.dim, width: 1.6, dash: [4, 4], close: false });
+      });
+      if (showP) P.curve(pre.yp, { color: C.accent2, width: 3.4 });
+    },
+  });
+  const stats = () => {
+    document.getElementById("lf-str-eq").innerHTML = pre.eq;
+    MB.stat("lf-str-n", String(curves.length));
+    if (!curves.length) { MB.stat("lf-str-c", "—"); MB.stat("lf-str-d", "—"); return; }
+    const c = curves[curves.length - 1];
+    MB.stat("lf-str-c", LF.num(c.C, 3)); MB.stat("lf-str-d", MB.fmt(c.C * Math.exp(-pre.p * 6), 3));
+  };
+  MB.check("lf-str-yp", (v) => { showP = v; pl.redraw(); });
+  MB.check("lf-str-yh", (v) => { showH = v; pl.redraw(); });
+  document.getElementById("lf-str-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; curves = []; stats(); pl.redraw(); });
+  document.getElementById("lf-str-clear").addEventListener("click", () => { curves = []; stats(); pl.redraw(); });
+  document.getElementById("lf-str-fam").addEventListener("click", () => { curves = []; [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5].forEach((y) => add(0, y)); stats(); pl.redraw(); });
+  [-2, 1, 4].forEach((y) => add(0, y)); stats(); pl.redraw();
+})();
+
+/* ================================================================ 7. 완전 방정식 */
+(function () {
+  const PRE = {
+    a: { M: (x, y) => 3 * x * x + 2 * x * y, N: (x, y) => x * x + 2 * y, My: (x) => 2 * x, Nx: (x) => 2 * x, psi: (x, y) => x ** 3 + x * x * y + y * y, mu: null, view: [-2.6, 2.6] },
+    b: { M: (x, y) => y * Math.cos(x) + 2 * x * Math.exp(y), N: (x, y) => Math.sin(x) + x * x * Math.exp(y) - 1, My: (x, y) => Math.cos(x) + 2 * x * Math.exp(y), Nx: (x, y) => Math.cos(x) + 2 * x * Math.exp(y), psi: (x, y) => y * Math.sin(x) + x * x * Math.exp(y) - y, mu: null, view: [-2.6, 2.6] },
+    c: { M: (x, y) => 3 * x * y + y * y, N: (x, y) => x * x + x * y, My: (x, y) => 3 * x + 2 * y, Nx: (x, y) => 2 * x + y, psi: null, mu: (x) => x, muPsi: (x, y) => x ** 3 * y + 0.5 * x * x * y * y, muName: "μ = x", view: [-2.6, 2.6] },
+    d: { M: (x, y) => y - x, N: () => 1, My: () => 1, Nx: () => 0, psi: null, mu: (x) => Math.exp(x), muPsi: (x, y) => Math.exp(x) * (y - x + 1), muName: "μ = eˣ", view: [-2.6, 2.6] },
+  };
+  let pre = PRE.a, useMu = false, grad = false, curves = [], click = null;
+  const msg = document.getElementById("lf-ex-msg");
+  const psiNow = () => (pre.psi ? pre.psi : useMu ? pre.muPsi : null);
+  const trace = (x0, y0) => {
+    const out = [];
+    [1, -1].forEach((dir) => {
+      let x = x0, y = y0; const seg = [[x, y]];
+      const F = (x, y) => { const a = pre.N(x, y), b = -pre.M(x, y), n = Math.hypot(a, b) || 1; return [(dir * a) / n, (dir * b) / n]; };
+      const h = 0.012;
+      for (let k = 0; k < 1400; k++) {
+        const k1 = F(x, y), k2 = F(x + (h / 2) * k1[0], y + (h / 2) * k1[1]), k3 = F(x + (h / 2) * k2[0], y + (h / 2) * k2[1]), k4 = F(x + h * k3[0], y + h * k3[1]);
+        x += (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]); y += (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+        if (Math.abs(x) > 3.2 || Math.abs(y) > 3.2 || !isFinite(x + y)) break;
+        seg.push([x, y]);
+        if (k > 30 && Math.hypot(x - x0, y - y0) < h * 0.8) break;
+      }
+      out.push(seg);
+    });
+    return out;
+  };
+  let off = null;
+  const pl = MB.plane("#lf-cv-ex", {
+    x: [-2.6, 2.6], aspect: 0.78, maxHeight: 460, gridStep: 1,
+    onPointer(x, y, type) { if (type !== "down") return; click = [x, y]; curves.push(trace(x, y)); if (curves.length > 8) curves.shift(); stats(); pl.redraw(); },
+    draw(P) {
+      const C = P.P, ctx = P.ctx, psi = psiNow();
+      if (psi) {
+        const gw = Math.ceil(P.w / 4), gh = Math.ceil(P.h / 4);
+        const vals = new Float64Array((gw + 1) * (gh + 1));
+        for (let j = 0; j <= gh; j++) for (let i = 0; i <= gw; i++) vals[j * (gw + 1) + i] = psi(P.ix((i * P.w) / gw), P.iy((j * P.h) / gh));
+        const sorted = Array.from(vals).filter(isFinite).map(Math.abs).sort((a, b) => a - b), sc = sorted[Math.floor(sorted.length * 0.6)] || 1;
+        if (!off) off = document.createElement("canvas");
+        off.width = gw; off.height = gh; const oc = off.getContext("2d"), im = oc.createImageData(gw, gh);
+        for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) { const v = vals[j * (gw + 1) + i], c = MB.colormap(0.5 + 0.5 * Math.tanh(v / sc), "diverge"), o = 4 * (j * gw + i); im.data[o] = c[0]; im.data[o + 1] = c[1]; im.data[o + 2] = c[2]; im.data[o + 3] = 255; }
+        oc.putImageData(im, 0, 0);
+        ctx.save(); ctx.globalAlpha = MB.isDark() ? 0.42 : 0.5; ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 0, 0, P.w, P.h); ctx.restore();
+        // 등고선(마칭 스퀘어)
+        const step = sc / 3; ctx.save(); ctx.strokeStyle = C.text; ctx.globalAlpha = 0.35; ctx.lineWidth = 1; ctx.beginPath();
+        const cx = (i) => (i * P.w) / gw, cy = (j) => (j * P.h) / gh;
+        for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+          const a = vals[j * (gw + 1) + i], b = vals[j * (gw + 1) + i + 1], c = vals[(j + 1) * (gw + 1) + i + 1], d = vals[(j + 1) * (gw + 1) + i];
+          const lo = Math.min(a, b, c, d), hi = Math.max(a, b, c, d);
+          if (!isFinite(lo) || hi - lo > 40 * step) continue;
+          for (let L = Math.ceil(lo / step) * step; L <= hi; L += step) {
+            const pts = [];
+            const e = (p, q, x0, y0, x1, y1) => { if ((p - L) * (q - L) < 0) { const u = (L - p) / (q - p); pts.push([x0 + u * (x1 - x0), y0 + u * (y1 - y0)]); } };
+            e(a, b, cx(i), cy(j), cx(i + 1), cy(j)); e(b, c, cx(i + 1), cy(j), cx(i + 1), cy(j + 1)); e(c, d, cx(i + 1), cy(j + 1), cx(i), cy(j + 1)); e(d, a, cx(i), cy(j + 1), cx(i), cy(j));
+            if (pts.length >= 2) { ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); }
+            if (pts.length === 4) { ctx.moveTo(pts[2][0], pts[2][1]); ctx.lineTo(pts[3][0], pts[3][1]); }
+          }
+        }
+        ctx.stroke(); ctx.restore();
+      } else {
+        LF.field(P, (x, y) => -pre.M(x, y) / pre.N(x, y), { nx: 24, ny: 19 });
+      }
+      if (grad) {
+        const m = (useMu && pre.mu) ? pre.mu : () => 1;
+        for (let i = 0; i < 11; i++) for (let j = 0; j < 9; j++) {
+          const x = P.x0 + ((i + 0.5) / 11) * (P.x1 - P.x0), y = P.y0 + ((j + 0.5) / 9) * (P.y1 - P.y0);
+          let a = m(x) * pre.M(x, y), b = m(x) * pre.N(x, y); const n = Math.hypot(a, b); if (!n) continue;
+          a *= 0.17 / n; b *= 0.17 / n; P.arrow(x - a, y - b, x + a, y + b, { color: C.dim, width: 1.3, head: 6 });
+        }
+      }
+      curves.forEach((cs) => cs.forEach((s) => P.poly(s, { color: C.accent, width: 2.8, close: false })));
+      if (click) P.dot(click[0], click[1], { r: 5, color: C.accent, stroke: C.bg });
+    },
+  });
+  const stats = () => {
+    const [x, y] = click || [1, 1];
+    const my = pre.My(x, y), nx = pre.Nx(x, y), ex = Math.abs(my - nx) < 1e-9;
+    MB.stat("lf-ex-my", LF.num(my, 3)); MB.stat("lf-ex-nx", LF.num(nx, 3));
+    const psi = psiNow();
+    MB.stat("lf-ex-ok", pre.psi ? "예 (어디서나)" : useMu ? pre.muName + " 곱한 뒤 예" : "아니오");
+    MB.stat("lf-ex-psi", psi && click ? LF.num(psi(x, y), 3) : "—");
+    document.getElementById("lf-ex-tag").textContent = psi ? "색 = ψ(x, y), 선 = 등고선" : "ψ 없음: 짧은 선분 = 기울기 −M/N";
+    if (pre.psi) { msg.className = "lf-msg ok"; msg.innerHTML = `M<sub>y</sub> = N<sub>x</sub> → 완전. 해곡선은 ψ = 상수인 등고선입니다.${click ? ` 이 해: ψ = ${LF.num(psi(x, y), 3)}.` : " 아무 데나 클릭하세요."}`; }
+    else if (!useMu) { msg.className = "lf-msg bad"; msg.innerHTML = `(${LF.num(x, 2)}, ${LF.num(y, 2)})에서 M<sub>y</sub> = ${LF.num(my, 2)} ≠ N<sub>x</sub> = ${LF.num(nx, 2)} → 완전하지 않음. (M<sub>y</sub> − N<sub>x</sub>)/N = ${pre === PRE.c ? "1/x" : "1"}은 x만의 함수이므로 ${pre.muName}로 완전하게 만들 수 있습니다.`; }
+    else { msg.className = "lf-msg ok"; msg.innerHTML = `${pre.muName}를 곱해 완전해졌습니다. ψ = ${pre === PRE.c ? "x³y + x²y²/2" : "eˣ(y − x + 1)"}. 해곡선은 μ를 곱하기 전과 같습니다.`; }
+    if (!ex && pre.psi) { /* 불가능 */ }
+  };
+  MB.check("lf-ex-mu", (v) => { useMu = v; stats(); pl.redraw(); });
+  MB.check("lf-ex-grad", (v) => { grad = v; pl.redraw(); });
+  document.getElementById("lf-ex-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; curves = []; click = null; stats(); pl.redraw(); });
+  document.getElementById("lf-ex-clear").addEventListener("click", () => { curves = []; click = null; stats(); pl.redraw(); });
+  click = [0, 2]; curves.push(trace(0, 2)); stats(); pl.redraw();
+})();
+
+/* ================================================================ 8. 베르누이 */
+(function () {
+  const NS = [0, 0.5, 2, 3, 4];
+  let n = 2, a = 0.8, b = 0.4, y0 = 0.2;
+  const TM = 8;
+  let cvV = null, rk = [], cl = [], vv = [];
+  const compute = () => {
+    const f = (t, y) => a * y - b * Math.pow(Math.max(y, 0), n);
+    rk = LF.solve(f, y0, 0, TM, 800);
+    const v0 = Math.pow(y0, 1 - n), vs = b / a;
+    vv = []; cl = [];
+    for (let i = 0; i <= 160; i++) {
+      const t = (TM * i) / 160, v = vs + (v0 - vs) * Math.exp((1 - n) * a * t);
+      vv.push([t, v]); cl.push([t, v > 0 ? Math.pow(v, 1 / (1 - n)) : 0]);
+    }
+  };
+  compute();
+  const cvY = MB.canvas("#lf-cv-be-y", (ctx) => {
+    const C = MB.palette(), ys = Math.pow(a / b, 1 / (n - 1));
+    const vals = rk.map((d) => d[1]).filter((v) => v < 50); vals.push(ys < 50 ? ys : 0);
+    const yr = LF.range(vals, 0.1, true);
+    MB.chart(ctx, null, { x: [0, TM], y: yr, xLabel: "t", series: [{ data: rk, color: C.accent, width: 2.8 }], points: cl.filter((_, i) => i % 8 === 0).map(([x, y]) => ({ x, y, r: 3, color: C.accent2 })), hlines: n !== 1 && isFinite(ys) && ys < yr[1] ? [{ y: ys, color: C.accent2, label: "y*" }] : [] });
+    if (cvV) cvV.redraw();
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  cvV = MB.canvas("#lf-cv-be-v", (ctx) => {
+    const C = MB.palette(), vs = b / a;
+    const vals = vv.map((d) => d[1]).filter((v) => Math.abs(v) < 200); vals.push(vs);
+    const yr = LF.range(vals, 0.1, true);
+    MB.chart(ctx, null, { x: [0, TM], y: yr, xLabel: "t", series: [{ data: vv, color: C.accent2, width: 2.6 }], hlines: [{ y: vs, color: C.dim, label: "b/a" }, { y: 0, color: C.axis, dash: [] }] });
+    let err = 0; rk.forEach(([t, y], i) => { if (i % 5) return; const j = Math.round((t / TM) * 160), c = cl[j][1]; if (isFinite(c) && isFinite(y) && Math.abs(c - y) < 1e3) err = Math.max(err, Math.abs(c - y)); });
+    MB.stat("lf-be-ys", LF.num(Math.pow(a / b, 1 / (n - 1)), 3));
+    MB.stat("lf-be-tau", LF.num(1 / Math.abs((1 - n) * a), 2) + (n < 1 ? " (커짐)" : " (감쇠)"));
+    MB.stat("lf-be-err", MB.fmt(err, 2));
+    const k = 1 - n;
+    document.getElementById("lf-be-eq").innerHTML = `y′ = ${a.toFixed(2)}y − ${b.toFixed(2)}y<sup>${n}</sup>   →   v = y<sup>${(Number.isInteger(k) ? String(k) : k.toFixed(1)).replace("-", "−")}</sup>:  v′ ${k * a > 0 ? "−" : "+"} ${LF.num(Math.abs(k * a), 2)}v = ${LF.num(-k * b, 2)}`;
+  }, { aspect: 0.75, maxHeight: 330, minHeight: 220 });
+  const redraw = () => { compute(); cvY.redraw(); };
+  MB.steps("lf-be-n", NS, (v) => String(v), 2, (v) => { n = v; redraw(); });
+  MB.range("lf-be-a", (v) => v.toFixed(2), (v) => { a = v; redraw(); });
+  MB.range("lf-be-b", (v) => v.toFixed(2), (v) => { b = v; redraw(); });
+  MB.range("lf-be-y0", (v) => v.toFixed(2), (v) => { y0 = v; redraw(); });
+})();
+</script>
+</body>
+</html>

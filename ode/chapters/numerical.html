@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>수치 해법 · ODEBook</title>
+<meta name="description" content="손으로 풀 수 없는 미분방정식을 컴퓨터로 푸는 법. 오일러 방법의 국소·전역 오차, 로그–로그 기울기로 읽는 차수, 호인·중점법·룽게–쿠타 4차, 연립 방정식, 적응 간격, 안정성 영역과 강성, 음적 오일러, 심플렉틱 적분과 에너지 보존.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .nu-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .nu-two > div { position: relative; min-width: 0; }
+  .nu-two > div + div { border-top: 1px solid var(--border); }
+  .nu-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .nu-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .nu-msg b { color: var(--text); }
+  .nu-msg.ok { color: var(--ok); font-weight: 600; }
+  .nu-msg.bad { color: var(--bad); font-weight: 600; }
+  .nu-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .nu-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .nu-tbl td, .nu-tbl th { font-family: var(--mono); text-align: right; }
+  .nu-tbl td:first-child, .nu-tbl th:first-child { text-align: left; font-family: inherit; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="numerical">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 05</div>
+    <h1 data-no-glossary>수치 해법</h1>
+    <p class="lead">2~4장에서 푼 방정식은 운이 좋은 경우였습니다. 변수가 분리되거나, 선형이거나, 적분 인자가 보였습니다. \(y' = t - y^2\)처럼 한 글자만 바꿔도 기본 함수로 쓸 수 있는 해는 사라집니다. 그래도 4장의 존재·유일성 정리는 해가 <b>있다</b>고 말해 줍니다. 이 장은 그 해를 <b>숫자로</b> 만드는 법입니다. 1장에서 맛본 <span class="term">오일러 방법</span>, 곧 "지금의 기울기로 조금 걷기"를 출발점으로 삼아, 왜 그것이 느린지(오차 차수 1), 기울기를 몇 번 더 재면 얼마나 빨라지는지(룽게–쿠타 4차), 걸음 폭을 스스로 고르는 법(적응 간격), 그리고 걸음 폭을 아무리 줄여도 터지는 방정식(강성)과 오래 돌리면 에너지가 새는 궤도(심플렉틱 적분)까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>오일러 방법을 테일러 전개로 유도하고, 국소 절단 오차 \(O(h^2)\)가 전역 오차 \(O(h)\)로 쌓이는 과정을 설명한다.</li>
+      <li>오차–간격 로그–로그 그래프의 기울기로 방법의 차수를 읽고, 계산 비용과 정확도를 비교한다.</li>
+      <li>개선 오일러(호인), 중점법, 룽게–쿠타 4차의 기울기 조합을 그림으로 이해하고 한 걸음을 손으로 계산한다.</li>
+      <li>고계 방정식을 1계 연립으로 바꾸어 같은 방법을 벡터에 적용한다.</li>
+      <li>내장 쌍으로 국소 오차를 추정해 걸음 폭을 자동으로 조절하는 원리를 안다.</li>
+      <li>시험 방정식 \(y' = \lambda y\)로 안정성 영역을 그리고, 강성 방정식에서 음적 오일러가 필요한 이유와 심플렉틱 방법이 에너지를 지키는 이유를 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>일기예보와 궤도 계산</b></div>
+      <div class="o-body"><p>대기의 운동 방정식, 행성 세 개가 서로 끌어당기는 삼체 문제, 트랜지스터 수천 개가 얽힌 회로의 방정식은 손으로 풀리는 꼴이 아닙니다. 삼체 문제는 일반적인 경우 기본 함수로 쓸 수 있는 해가 없다고 알려져 있습니다. 그런데도 우리는 내일의 기압 배치를 예보하고, 탐사선을 수년 뒤의 행성 근처로 보내고, 칩을 만들기 전에 회로를 시뮬레이션합니다. 모두 "지금 상태와 변화율에서 조금 뒤의 상태를 계산하고, 이를 수백만 번 되풀이하는" 수치 적분 덕분입니다.</p>
+        <p>이 아이디어의 뿌리는 오일러<span class="en">(Leonhard Euler)</span>의 18세기 적분학 교재에 있고, 기울기를 한 걸음 안에서 여러 번 재는 방법은 19세기 말 룽게<span class="en">(Carl Runge)</span>가 제안하고 20세기 초 쿠타<span class="en">(Martin Wilhelm Kutta)</span>가 체계화했습니다. 오늘날 MATLAB의 <code>ode45</code>나 SciPy의 <code>solve_ivp</code> 기본값은 이 계열에 걸음 폭 자동 조절을 더한 방법입니다.</p>
+        <div class="o-chain"><span>y′ = f(t, y)</span><i>→</i><span>기울기로 한 걸음</span><i>→</i><span class="tool">yₙ₊₁ = yₙ + h·(기울기의 가중 평균)</span><i>→</i><span>예보·궤도·회로 시뮬레이션</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="euler">
+    <h2>오일러 방법과 국소·전역 오차</h2>
+    <div class="problem"><strong>걸음을 반으로 줄이면 오차는 얼마나 줄까</strong>
+      <p>1장에서 오일러 방법으로 \(y' = y\), \(y(0) = 1\)을 \(h = 0.1\)로 풀면 \(y(1) \approx 2.5937\)이었습니다. 참값 \(e = 2.7183\)과 0.12만큼 차이가 납니다. 소수 넷째 자리까지 맞추려면 \(h\)를 얼마로 해야 할까요? 그러려면 오차가 \(h\)에 따라 <b>어떤 법칙으로</b> 줄어드는지 알아야 합니다.</p></div>
+    <p>초기값 문제 \(y' = f(t, y)\), \(y(t_0) = y_0\)의 해를 시각 \(t_n = t_0 + nh\)에서의 근삿값 \(y_n\)으로 구합니다. \(h\)를 <span class="term">걸음 폭</span><span class="en">(step size)</span>이라 합니다. 해 \(y(t)\)를 \(t_n\)에서 테일러 전개하면(<a href="../../calculus/chapters/taylor.html">CalculusBook 12장</a>)</p>
+    <div class="formula">$$y(t_n + h) = y(t_n) + h\,y'(t_n) + \frac{h^2}{2}y''(\xi_n) = y(t_n) + h\,f(t_n, y(t_n)) + \frac{h^2}{2}y''(\xi_n)$$
+      <div class="where">\(\xi_n\)은 \(t_n\)과 \(t_{n+1}\) 사이의 어떤 점(테일러 정리의 라그랑주 나머지). 미분방정식 덕분에 \(y'\)은 \(f\)로 바로 계산된다.</div></div>
+    <p>마지막 항을 버리고, 모르는 \(y(t_n)\) 대신 이미 계산한 \(y_n\)을 넣은 것이 오일러 방법입니다.</p>
+    <div class="callout deep"><strong>정의 5.1 (오일러 방법)</strong> 걸음 폭 \(h\)와 \(t_n = t_0 + nh\)에 대해
+      <div class="formula">$$y_{n+1} = y_n + h\,f(t_n, y_n), \qquad n = 0, 1, 2, \dots$$</div>
+      로 근삿값을 만드는 방법을 (전진) 오일러 방법이라 한다. 한 걸음에 \(f\)를 한 번 계산한다.</div>
+    <p>버린 항이 오차의 원천입니다. 그런데 오차에는 두 종류가 있다는 것을 구별해야 합니다. 한 걸음에서 새로 생기는 오차와, 지금까지 쌓인 오차입니다.</p>
+    <div class="callout deep"><strong>정의 5.2 (국소 절단 오차와 전역 오차)</strong> \(u_n(t)\)를 점 \((t_n, y_n)\)을 지나는 미분방정식의 <b>정확한</b> 해라 하자. 한 걸음의 <span class="term">국소 절단 오차</span><span class="en">(local truncation error)</span>는 \(\tau_{n+1} = u_n(t_{n+1}) - y_{n+1}\), 곧 맞는 점에서 출발해 한 걸음만 걸었을 때의 오차다. <span class="term">전역 오차</span><span class="en">(global error)</span>는 원래 해와의 차이 \(E_n = y(t_n) - y_n\)이다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 320" role="img" aria-label="오일러 한 걸음의 국소 오차와 전역 오차">
+        <rect x="10" y="10" width="740" height="300" rx="10" class="f-surface"/>
+        <line x1="50" y1="280" x2="520" y2="280" class="s-axis"/>
+        <path d="M60 230 C170 210 280 160 480 50" fill="none" class="s-line" style="stroke-width:2.6"/>
+        <path d="M200 238 C290 222 380 185 480 120" fill="none" style="stroke:var(--text-dim);stroke-width:1.8;stroke-dasharray:6 4"/>
+        <line x1="200" y1="238" x2="480" y2="190" style="stroke:var(--bad);stroke-width:2.4"/>
+        <line x1="60" y1="230" x2="200" y2="238" style="stroke:var(--bad);stroke-width:2.4"/>
+        <circle cx="60" cy="230" r="5" style="fill:var(--text)"/>
+        <circle cx="200" cy="238" r="5" style="fill:var(--bad)"/><circle cx="480" cy="190" r="5" style="fill:var(--bad)"/>
+        <line x1="488" y1="190" x2="488" y2="120" style="stroke:var(--warn);stroke-width:4"/>
+        <line x1="500" y1="190" x2="500" y2="50" style="stroke:var(--accent-2);stroke-width:4"/>
+        <text x="60" y="300" text-anchor="middle" class="t-mono">t₀</text><text x="200" y="300" text-anchor="middle" class="t-mono">tₙ</text><text x="480" y="300" text-anchor="middle" class="t-mono">tₙ₊₁</text>
+        <text x="380" y="62" class="t">참 해 y(t)</text>
+        <text x="300" y="168" class="t-dim">uₙ(t): (tₙ, yₙ)을 지나는 해</text>
+        <text x="300" y="228" class="t" style="fill:var(--bad)">접선 걸음</text>
+        <text x="200" y="258" text-anchor="middle" class="t-mono" style="fill:var(--bad)">yₙ</text>
+        <text x="460" y="210" text-anchor="end" class="t-mono" style="fill:var(--bad)">yₙ₊₁</text>
+        <g transform="translate(540,60)">
+          <rect x="0" y="0" width="14" height="4" style="fill:var(--warn)"/><text x="22" y="6" class="t">국소 오차 τₙ₊₁</text>
+          <text x="22" y="28" class="t-dim">한 걸음에서 새로 생김</text>
+          <text x="22" y="48" class="t-dim">크기 ≈ (h²/2)·|y″|</text>
+          <rect x="0" y="80" width="14" height="4" style="fill:var(--accent-2)"/><text x="22" y="86" class="t">전역 오차 Eₙ₊₁</text>
+          <text x="22" y="108" class="t-dim">지금까지 쌓인 것</text>
+          <text x="22" y="128" class="t-dim">이전 오차 + 이번 국소 오차</text>
+          <text x="22" y="148" class="t-dim">(해곡선이 벌어지면 증폭)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 5-1.</b> 오일러 걸음은 지금 점의 접선을 따라간다. 한 걸음 동안 생기는 국소 오차(노랑)는 지금 점을 지나는 해 \(u_n\)과의 차이이고, 전역 오차(청록)는 처음 해 \(y\)와의 차이다. 앞선 걸음의 오차 때문에 이미 다른 해곡선 위에 올라탔다는 점이 핵심이다.</figcaption>
+    </figure>
+    <p>국소 오차는 위의 테일러 나머지 그 자체라서 \(|\tau_{n+1}| \le \frac{M}{2}h^2\)(\(M = \max|y''|\))입니다. 구간 \([t_0, T]\)를 지나려면 \(N = (T - t_0)/h\)걸음이 필요하니, 국소 오차를 그냥 더하면 \(N\cdot\frac{M}{2}h^2 = \frac{M(T - t_0)}{2}h\), 즉 \(h\)의 1제곱입니다. 실제로는 앞선 오차가 다음 걸음에서 해곡선의 벌어짐에 따라 커지거나 줄어드므로 한 가지 인자가 더 붙습니다.</p>
+    <div class="callout deep"><strong>정리 5.3 (오일러 방법의 오차)</strong> \(f\)가 \(y\)에 대해 립시츠 상수 \(L\)을 가지고(\(|f(t, y) - f(t, z)| \le L|y - z|\)), 해가 \(|y''| \le M\)을 만족하면 \(t_n \le T\)인 모든 \(n\)에 대해
+      <div class="formula">$$|E_n| = |y(t_n) - y_n| \le \frac{Mh}{2L}\left(e^{L(t_n - t_0)} - 1\right).$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 참 해의 테일러 전개에서 오일러 식을 빼면 \(E_{n+1} = E_n + h\bigl(f(t_n, y(t_n)) - f(t_n, y_n)\bigr) + \frac{h^2}{2}y''(\xi_n)\). 립시츠 조건으로 \(|E_{n+1}| \le (1 + hL)|E_n| + \frac{M}{2}h^2\). 이 부등식을 \(E_0 = 0\)부터 되풀이하면 등비수열의 합 \(\frac{M}{2}h^2\cdot\frac{(1 + hL)^n - 1}{hL}\)이 나오고, \(1 + hL \le e^{hL}\)을 쓰면 위 식이다. ∎</p></div>
+    <p>정리의 메시지는 둘입니다. 첫째, 전역 오차는 \(h\)에 <b>비례</b>합니다. \(h\)를 반으로 줄이면 오차도 반이 됩니다. 국소 오차는 \(h^2\)인데 걸음 수가 \(1/h\)이므로 하나가 깎입니다. 둘째, \(e^{L(t - t_0)}\) 인자 때문에 해곡선이 서로 벌어지는 방정식(\(\partial f/\partial y > 0\))에서는 오래 적분할수록 오차가 지수적으로 커질 수 있습니다. 해곡선이 모이는 방정식에서는 이 상한이 지나치게 비관적입니다.</p>
+    <div class="callout"><strong>예제 5.1 (오차가 h에 비례하는지 확인)</strong> \(y' = y\), \(y(0) = 1\)을 오일러 방법으로 풀어 \(y(1)\)을 근사하라. \(h = 0.1\)과 \(h = 0.05\)를 비교하라.
+      <ol>
+        <li>\(f = y\)이므로 \(y_{n+1} = y_n + hy_n = (1 + h)y_n\), 곧 \(y_N = (1 + h)^N\)이다.</li>
+        <li>\(h = 0.1\), \(N = 10\): \(1.1^{10} = 2.593742\). 오차 \(e - 2.593742 = 0.124539\).</li>
+        <li>\(h = 0.05\), \(N = 20\): \(1.05^{20} = 2.653298\). 오차 \(0.064984\).</li>
+        <li>비율 \(0.124539 / 0.064984 = 1.92\). \(h\)를 반으로 줄였더니 오차가 거의 반이 되었다. 오차 \(10^{-4}\)를 원하면 \(h\)를 약 \(0.1\times 0.1245/10^{-4} \approx 10^{-4}\)까지, 즉 1만 걸음 가까이 줄여야 한다. 오일러 방법이 "정확하지만 느리다"는 말의 정량적 뜻이다.</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 각 걸음의 국소 오차(노란 막대)와 끝점의 전역 오차(청록 막대)를 보세요. 점선은 각 걸음의 출발점을 지나는 정확한 해 \(u_n\)입니다. \(y' = y\)에서는 점선들이 위로 벌어지므로 국소 오차가 쌓이며 커지고, \(y' = t - y\)에서는 점선들이 한데 모이므로 앞선 오차가 저절로 줄어듭니다.</p>
+
+    <div class="sim" id="sim-nu-euler-error">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오일러 걸음: 국소 오차가 전역 오차로 쌓이는 과정</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nu-ee-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="nu-ee-pre">
+            <option value="exp">y′ = y, y(0) = 1 (해가 벌어짐)</option>
+            <option value="gauss">y′ = −2ty, y(0) = 1</option>
+            <option value="relax">y′ = t − y, y(0) = 2 (해가 모임)</option>
+          </select></label>
+          <label class="ctrl"><span>걸음 폭 h <output id="nu-ee-h-out"></output></span><input type="range" id="nu-ee-h"></label>
+          <label class="check"><input type="checkbox" id="nu-ee-local" checked> 각 걸음의 국소 해 uₙ(t)</label>
+          <label class="check"><input type="checkbox" id="nu-ee-field" checked> 방향장</label>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--text)"></i>참 해</span><span><i style="background:var(--bad)"></i>오일러 근사</span><span><i style="background:var(--warn)"></i>국소 오차</span><span><i style="background:var(--accent-2)"></i>전역 오차 (t = 2)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 수 N</span><span class="v" id="nu-ee-n">—</span></div>
+        <div class="stat"><span class="k">y<sub>N</sub> / 참값 y(2)</span><span class="v" id="nu-ee-y">—</span></div>
+        <div class="stat"><span class="k">전역 오차 E<sub>N</sub></span><span class="v" id="nu-ee-ge">—</span></div>
+        <div class="stat"><span class="k">국소 오차 합 Σ|τ|</span><span class="v" id="nu-ee-le">—</span></div>
+        <div class="stat"><span class="k">|E<sub>N</sub>| / h</span><span class="v" id="nu-ee-ratio">—</span></div>
+      </div>
+      <div class="nu-msg" id="nu-ee-msg"></div>
+      <div class="sim-note">해볼 것: ① h를 0.2 → 0.1 → 0.05로 반씩 줄이며 아래 메시지의 오차 비율이 2에 가까운지 보세요. |E<sub>N</sub>|/h가 거의 일정합니다. ② y′ = y에서는 전역 오차가 국소 오차 합보다 크고, y′ = t − y에서는 더 작습니다. 해곡선이 벌어지느냐 모이느냐의 차이입니다. ③ h = 0.5에서 각 노란 막대가 h²에 비례해 큰 것을 보세요. 모델: 국소 해 uₙ는 각 방정식의 일반해 공식으로 정확히 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="order">
+    <h2>오차 차수: 로그–로그 그래프의 기울기</h2>
+    <p>정리 5.3은 오일러 방법의 오차가 \(Ch\) 꼴이라는 것을 말합니다. 더 좋은 방법은 \(Ch^2\), \(Ch^4\)처럼 \(h\)의 더 높은 거듭제곱으로 줄어듭니다. 이 지수를 방법의 차수라 합니다.</p>
+    <div class="callout deep"><strong>정의 5.4 (방법의 차수)</strong> 충분히 매끄러운 \(f\)에 대해 국소 절단 오차가 \(O(h^{p+1})\)이고, 따라서 고정된 구간에서 전역 오차가 \(|E_N| \le Ch^p\)이면 그 방법을 <span class="term">p차 방법</span><span class="en">(method of order p)</span>이라 한다. 오일러 방법은 1차다.</div>
+    <p>\(E \approx Ch^p\)의 양변에 로그를 취하면 \(\log E \approx \log C + p\log h\). 그래서 오차를 \(h\)에 대해 <b>로그–로그 눈금</b>으로 그리면 직선이 되고, 그 <b>기울기가 차수</b> \(p\)입니다. 두 간격 \(h\)와 \(h/2\)의 오차만 있어도 \(p \approx \log_2(E_h / E_{h/2})\)로 차수를 추정할 수 있습니다. 예제 5.1에서 \(\log_2 1.92 = 0.94\), 1에 가깝습니다.</p>
+    <p>이 기울기는 새 프로그램을 검증하는 가장 강력한 도구입니다. RK4를 구현했는데 기울기가 4가 아니라 1로 나오면 어딘가에 버그가 있습니다(흔히 \(k_2\)를 계산할 때 \(t + h/2\) 대신 \(t\)를 넣은 경우). 반대로 \(h\)를 너무 줄이면 오차가 더 이상 줄지 않고 들쭉날쭉해지는 바닥이 나타납니다. 컴퓨터의 실수가 약 16자리만 저장하기 때문에 생기는 <b>반올림 오차</b>로, 걸음 수가 많을수록 쌓입니다(<a href="../../foundations/chapters/numerics.html">MathBook: 컴퓨터는 어떻게 틀리는가</a>).</p>
+
+    <div class="sim" id="sim-nu-loglog">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차–간격 로그–로그 그래프: 기울기가 차수다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nu-ll-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="nu-ll-pre">
+            <option value="exp">y′ = y, y(0) = 1, t ∈ [0, 1]</option>
+            <option value="rat">y′ = −2ty², y(0) = 1, t ∈ [0, 2]</option>
+            <option value="esin">y′ = y cos t, y(0) = 1, t ∈ [0, 3]</option>
+          </select></label>
+          <div class="ctrl"><span>가로축</span><div class="seg" id="nu-ll-axis"><button data-value="h" class="on">걸음 폭 h</button><button data-value="ev">f 계산 횟수</button></div></div>
+          <label class="check"><input type="checkbox" id="nu-ll-ref" checked> 기준선 h, h², h⁴</label>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--bad)"></i>오일러</span><span><i style="background:var(--warn)"></i>호인</span><span><i style="background:var(--ok)"></i>중점법</span><span><i style="background:var(--blue)"></i>RK4</span><span><i style="background:var(--text-faint)"></i>기준선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">오일러 기울기</span><span class="v" id="nu-ll-s0">—</span></div>
+        <div class="stat"><span class="k">호인 기울기</span><span class="v" id="nu-ll-s1">—</span></div>
+        <div class="stat"><span class="k">중점법 기울기</span><span class="v" id="nu-ll-s2">—</span></div>
+        <div class="stat"><span class="k">RK4 기울기</span><span class="v" id="nu-ll-s3">—</span></div>
+      </div>
+      <div class="nu-msg" id="nu-ll-msg"></div>
+      <div class="sim-note">해볼 것: ① 네 직선의 기울기가 1, 2, 2, 4인 것을 확인하세요(기울기는 반올림 바닥 위의 점들로만 맞춥니다). ② RK4는 h ≈ 10⁻³ 아래에서 10⁻¹⁴ 근처의 바닥에 닿아 더 줄지 않습니다. 반올림 오차입니다. ③ 가로축을 'f 계산 횟수'로 바꾸면 공정한 비용 비교가 됩니다. 같은 오차 10⁻⁶을 얻는 데 오일러는 백만 번이 넘게, RK4는 수십 번이면 됩니다(아래 메시지). 모델: h = 2⁻¹ … 2⁻¹³, 오차는 끝점에서 참 해와의 차이입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="improved">
+    <h2>개선 오일러(호인)와 중점법</h2>
+    <div class="problem"><strong>기울기를 한 번 더 재면</strong>
+      <p>오일러 방법은 구간의 <b>왼쪽 끝</b> 기울기만 씁니다. 해가 휘어 있으면 걸음 내내 그 기울기가 틀려 갑니다. 적분에서 왼쪽 직사각형 합보다 사다리꼴 공식이나 중점 공식이 훨씬 정확했던 것(<a href="../../calculus/chapters/integral.html">CalculusBook 7장</a>)과 같은 처방을 쓸 수 있지 않을까요?</p></div>
+    <p>미분방정식을 한 걸음 적분하면 \(y(t_{n+1}) = y(t_n) + \int_{t_n}^{t_{n+1}} f(t, y(t))\,dt\)입니다. 오일러 방법은 이 적분을 왼쪽 직사각형으로 근사한 것입니다. 사다리꼴 공식을 쓰면 오른쪽 끝의 기울기 \(f(t_{n+1}, y_{n+1})\)이 필요한데, 그 \(y_{n+1}\)이 바로 지금 구하려는 값입니다. 해결책은 <b>오일러로 먼저 어림해서(예측) 그 점의 기울기를 재고, 평균을 쓰는(수정)</b> 것입니다.</p>
+    <div class="callout deep"><strong>정의 5.5 (호인 방법과 중점법)</strong>
+      <p style="margin:6px 0"><b>개선 오일러(호인) 방법</b><span class="en">(Heun's method)</span>: 예측–수정 두 단계.</p>
+      <div class="formula">$$k_1 = f(t_n, y_n),\quad k_2 = f(t_n + h,\ y_n + hk_1),\quad y_{n+1} = y_n + \frac{h}{2}(k_1 + k_2).$$</div>
+      <p style="margin:6px 0"><b>중점법</b><span class="en">(midpoint method)</span>: 반 걸음 가서 기울기를 잰 뒤 그 기울기로 처음부터 한 걸음.</p>
+      <div class="formula">$$k_1 = f(t_n, y_n),\quad k_2 = f\!\left(t_n + \tfrac{h}{2},\ y_n + \tfrac{h}{2}k_1\right),\quad y_{n+1} = y_n + hk_2.$$</div>
+      둘 다 한 걸음에 \(f\)를 두 번 계산하는 2단 룽게–쿠타 방법이다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="호인 방법의 예측 수정 그림">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="40" y1="260" x2="440" y2="260" class="s-axis"/>
+        <path d="M70 210 C170 190 290 140 410 60" fill="none" class="s-line" style="stroke-width:2.4"/>
+        <line x1="70" y1="210" x2="410" y2="150" style="stroke:var(--bad);stroke-width:2;stroke-dasharray:6 4"/>
+        <circle cx="410" cy="150" r="5" style="fill:var(--bad)"/>
+        <line x1="340" y1="185" x2="440" y2="125" style="stroke:var(--warn);stroke-width:2.6"/>
+        <line x1="70" y1="210" x2="410" y2="102" style="stroke:var(--accent-2);stroke-width:2.6"/>
+        <circle cx="410" cy="102" r="5.5" style="fill:var(--accent-2)"/>
+        <circle cx="70" cy="210" r="5" style="fill:var(--text)"/>
+        <text x="70" y="280" text-anchor="middle" class="t-mono">tₙ</text><text x="410" y="280" text-anchor="middle" class="t-mono">tₙ + h</text>
+        <text x="190" y="226" class="t" style="fill:var(--bad)">① 기울기 k₁로 예측</text>
+        <text x="424" y="166" class="t" style="fill:var(--warn)">② 예측점의 기울기 k₂</text>
+        <text x="150" y="128" class="t" style="fill:var(--accent-2)">③ 평균 (k₁ + k₂)/2로 다시 걷기</text>
+        <text x="330" y="52" class="t">참 해</text>
+        <g transform="translate(470,200)">
+          <text x="0" y="0" class="t-dim">오른쪽 끝의 기울기는 더 가파르다</text>
+          <text x="0" y="22" class="t-dim">→ 평균 기울기가 해의 할선에 가깝다</text>
+          <text x="0" y="44" class="t-dim">(적분의 사다리꼴 공식)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 5-2.</b> 호인 방법. 오일러 걸음(빨강 점선)은 예측일 뿐이고, 그 끝점에서 잰 기울기 \(k_2\)와 처음 기울기 \(k_1\)의 평균으로 처음 점에서 다시 걷는다(청록). 아래로 볼록한 해에서 \(k_1\)은 너무 작고 \(k_2\)는 너무 크므로 평균이 오차를 상쇄한다.</figcaption>
+    </figure>
+    <p>왜 2차일까요? 참 해의 테일러 전개를 2차 항까지 쓰면 \(y(t + h) = y + hf + \frac{h^2}{2}(f_t + f_y f) + O(h^3)\)입니다(연쇄 법칙으로 \(y'' = f_t + f_y y' = f_t + f_y f\)). 한편 호인의 \(k_2\)를 전개하면 \(k_2 = f + h(f_t + f_y f) + O(h^2)\)이므로 \(y + \frac{h}{2}(k_1 + k_2) = y + hf + \frac{h^2}{2}(f_t + f_y f) + O(h^3)\). 2차 항까지 정확히 일치합니다.</p>
+    <div class="callout deep"><strong>정리 5.6 (2단 방법의 2차 조건)</strong> \(y_{n+1} = y_n + h(b_1k_1 + b_2k_2)\), \(k_2 = f(t_n + ch,\ y_n + chk_1)\) 꼴의 방법이 2차일 필요충분조건은 \(b_1 + b_2 = 1\), \(b_2c = \frac12\)이다. 호인은 \(b_1 = b_2 = \frac12, c = 1\), 중점법은 \(b_1 = 0, b_2 = 1, c = \frac12\)이다. 국소 오차는 \(O(h^3)\), 전역 오차는 \(O(h^2)\)이다.</div>
+    <div class="callout"><strong>예제 5.2 (한 걸음 손계산)</strong> \(y' = t + y\), \(y(0) = 1\), \(h = 0.1\)로 한 걸음을 세 방법으로 계산하고 참 해 \(y = 2e^t - t - 1\)과 비교하라.
+      <ol>
+        <li>참값: \(y(0.1) = 2e^{0.1} - 1.1 = 1.1103418\).</li>
+        <li>오일러: \(k_1 = f(0, 1) = 1\), \(y_1 = 1 + 0.1\cdot 1 = 1.1\). 오차 \(1.03\times10^{-2}\).</li>
+        <li>호인: 예측점 \((0.1,\ 1.1)\)에서 \(k_2 = 0.1 + 1.1 = 1.2\). \(y_1 = 1 + 0.05(1 + 1.2) = 1.11\). 오차 \(3.4\times10^{-4}\).</li>
+        <li>중점법: 반 걸음 점 \((0.05,\ 1.05)\)에서 \(k_2 = 1.1\). \(y_1 = 1 + 0.1\cdot 1.1 = 1.11\). 오차 \(3.4\times10^{-4}\).</li>
+        <li>계산 한 번을 더해 오차가 30분의 1이 되었다. (\(f\)가 \(t\)와 \(y\)에 대해 1차식이라 두 2차 방법의 결과가 같아졌다. 비선형 \(f\)에서는 서로 다르다.)</li>
+      </ol></div>
+    <p>아래 시뮬레이터는 세 방법(그리고 다음 절의 RK4)을 같은 방향장 위에서 나란히 걷게 합니다. 출발점을 끌고 걸음 폭을 바꿔 보세요. 회색 굵은 선은 아주 작은 걸음으로 계산한 기준 해입니다.</p>
+
+    <div class="sim" id="sim-nu-compare">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 방법 나란히: 오일러 · 호인 · 중점법 (+ RK4)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nu-cm-cv"></canvas><span class="tag-tl">t = 0의 점을 위아래로 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="nu-cm-pre">
+            <option value="tsq">y′ = t − y² (닫힌 꼴 해 없음)</option>
+            <option value="sin">y′ = sin(ty)</option>
+            <option value="fast">y′ = −4(y − sin 2t)</option>
+          </select></label>
+          <label class="ctrl"><span>걸음 폭 h <output id="nu-cm-h-out"></output></span><input type="range" id="nu-cm-h"></label>
+          <label class="check"><input type="checkbox" id="nu-cm-e" checked> 오일러</label>
+          <label class="check"><input type="checkbox" id="nu-cm-hn" checked> 호인</label>
+          <label class="check"><input type="checkbox" id="nu-cm-m" checked> 중점법</label>
+          <label class="check"><input type="checkbox" id="nu-cm-r"> RK4</label>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--text-dim)"></i>기준 해</span><span><i style="background:var(--bad)"></i>오일러</span><span><i style="background:var(--warn)"></i>호인</span><span><i style="background:var(--ok)"></i>중점법</span><span><i style="background:var(--blue)"></i>RK4</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">오일러 |오차| (t = 4)</span><span class="v" id="nu-cm-o0">—</span></div>
+        <div class="stat"><span class="k">호인</span><span class="v" id="nu-cm-o1">—</span></div>
+        <div class="stat"><span class="k">중점법</span><span class="v" id="nu-cm-o2">—</span></div>
+        <div class="stat"><span class="k">RK4</span><span class="v" id="nu-cm-o3">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① h = 0.5에서 오일러는 처음 구간에서 기준 해보다 크게 뒤처지지만 호인·중점법은 거의 붙어 갑니다. 출발점을 y = 2.5로 올리고 h = 1로 하면 오일러는 첫 걸음에 아래로 튀어 발산합니다. ② 'y′ = −4(y − sin 2t)'에서 h = 0.5로 하면 오일러가 위아래로 지그재그합니다. h·4 = 2가 경계라는 것을 6절에서 봅니다. ③ RK4를 켜고 h = 1로 키워도 꽤 맞는 것을 보세요. 괄호 안 숫자는 f 계산 횟수입니다. 모델: 기준 해는 h = 0.002의 RK4.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="rk4">
+    <h2>룽게–쿠타 4차: 기울기 네 개의 가중 평균</h2>
+    <p>같은 생각을 더 밀고 나가면, 한 걸음 안에서 기울기를 네 번 재서 테일러 전개의 4차 항까지 맞출 수 있습니다. 이것이 공학 계산의 표준 도구인 <span class="term">룽게–쿠타 4차 방법</span><span class="en">(classical Runge–Kutta, RK4)</span>입니다.</p>
+    <div class="callout deep"><strong>정의 5.7 (RK4)</strong>
+      <div class="formula">$$\begin{aligned} k_1 &= f(t_n,\ y_n), & k_2 &= f\!\left(t_n + \tfrac{h}{2},\ y_n + \tfrac{h}{2}k_1\right),\\ k_3 &= f\!\left(t_n + \tfrac{h}{2},\ y_n + \tfrac{h}{2}k_2\right), & k_4 &= f(t_n + h,\ y_n + hk_3),\end{aligned}$$
+      $$y_{n+1} = y_n + \frac{h}{6}\left(k_1 + 2k_2 + 2k_3 + k_4\right).$$
+      <div class="where">\(k_1\): 왼쪽 끝, \(k_2\): \(k_1\)로 반 걸음 간 중점, \(k_3\): \(k_2\)로 다시 반 걸음 간 중점, \(k_4\): \(k_3\)로 한 걸음 간 오른쪽 끝의 기울기. 한 걸음에 \(f\)를 네 번 계산한다.</div></div>
+    </div>
+    <p>가중치 \(1, 2, 2, 1\)(합 6)이 낯익습니다. \(f\)가 \(t\)에만 의존하면(\(y' = f(t)\)) \(k_2 = k_3 = f(t_n + h/2)\)이고 RK4는 \(\frac{h}{6}\bigl(f(t_n) + 4f(t_n + \frac h2) + f(t_n + h)\bigr)\), 바로 <b>심프슨 공식</b>입니다. 심프슨 공식이 4차인 것처럼 RK4도 4차입니다.</p>
+    <div class="callout deep"><strong>정리 5.8 (RK4는 4차)</strong> \(f\)가 충분히 매끄러우면 RK4의 국소 절단 오차는 \(O(h^5)\), 전역 오차는 \(O(h^4)\)이다.
+      <p style="margin:8px 0 0"><b>선형 방정식에서 확인.</b> 일반적인 증명은 다변수 테일러 전개의 긴 계산이지만, \(y' = \lambda y\)에서는 바로 보인다. \(z = h\lambda\)라 하면 \(hk_1 = zy_n\), \(hk_2 = z(1 + \frac z2)y_n\), \(hk_3 = z(1 + \frac z2 + \frac{z^2}{4})y_n\), \(hk_4 = z(1 + z + \frac{z^2}{2} + \frac{z^3}{4})y_n\). 가중 평균을 정리하면
+      \(y_{n+1} = \left(1 + z + \frac{z^2}{2} + \frac{z^3}{6} + \frac{z^4}{24}\right)y_n\)이고, 이는 참 해의 한 걸음 인자 \(e^z\)의 테일러 다항식 4차까지와 정확히 같다. 차이는 \(z^5/120\)부터다. ∎</p></div>
+    <div class="callout"><strong>예제 5.3 (RK4 한 걸음)</strong> 예제 5.2의 \(y' = t + y\), \(y(0) = 1\), \(h = 0.1\)을 RK4로 한 걸음 계산하라.
+      <ol>
+        <li>\(k_1 = f(0,\ 1) = 1\).</li>
+        <li>\(k_2 = f(0.05,\ 1 + 0.05\cdot 1) = 0.05 + 1.05 = 1.1\).</li>
+        <li>\(k_3 = f(0.05,\ 1 + 0.05\cdot 1.1) = 0.05 + 1.055 = 1.105\).</li>
+        <li>\(k_4 = f(0.1,\ 1 + 0.1\cdot 1.105) = 0.1 + 1.1105 = 1.2105\).</li>
+        <li>\(y_1 = 1 + \frac{0.1}{6}(1 + 2.2 + 2.21 + 1.2105) = 1 + \frac{0.1}{6}\cdot 6.6205 = 1.1103417\). 참값 \(1.1103418\)과의 오차는 \(1.7\times10^{-7}\)이다. 오일러보다 계산이 네 배지만 오차는 6만분의 1이다.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="nu-tbl">
+      <thead><tr><th>\(y' = t + y\), \(y(1)\)의 오차</th><th>\(h = 0.1\)</th><th>\(h = 0.05\)</th><th>비율</th><th>\(\log_2\)(비율)</th></tr></thead>
+      <tbody>
+        <tr><td>오일러 (1차)</td><td>2.49×10⁻¹</td><td>1.30×10⁻¹</td><td>1.92</td><td>0.94</td></tr>
+        <tr><td>호인 (2차)</td><td>8.40×10⁻³</td><td>2.18×10⁻³</td><td>3.85</td><td>1.95</td></tr>
+        <tr><td>RK4 (4차)</td><td>4.17×10⁻⁶</td><td>2.72×10⁻⁷</td><td>15.35</td><td>3.94</td></tr>
+      </tbody></table></div>
+    <p>표의 마지막 열이 차수입니다. \(h\)를 반으로 줄이면 RK4의 오차는 \(2^4 = 16\)분의 1이 됩니다. 아래 시뮬레이터에서 기울기 네 개가 어디서 재어지는지 단계별로 보세요.</p>
+
+    <div class="sim" id="sim-nu-rk4">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>RK4 한 걸음 해부: 기울기 네 개 k₁ … k₄</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nu-rk-cv"></canvas><span class="tag-tl">출발점 (tₙ, yₙ)을 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="nu-rk-pre">
+            <option value="lin">y′ = t + y</option>
+            <option value="tan">y′ = 1 + y²</option>
+            <option value="osc">y′ = 2y cos 3t</option>
+          </select></label>
+          <label class="ctrl"><span>걸음 폭 h <output id="nu-rk-h-out"></output></span><input type="range" id="nu-rk-h" min="0.1" max="1.2" step="0.05" value="0.8"></label>
+          <div class="ctrl"><span>보일 단계</span><div class="seg" id="nu-rk-stage"><button data-value="1">k₁</button><button data-value="2">k₂</button><button data-value="3">k₃</button><button data-value="4">k₄</button><button data-value="5" class="on">합치기</button></div></div>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--text-dim)"></i>참 해</span><span><i style="background:var(--bad)"></i>k₁</span><span><i style="background:var(--warn)"></i>k₂</span><span><i style="background:var(--ok)"></i>k₃</span><span><i style="background:var(--accent)"></i>k₄</span><span><i style="background:var(--blue)"></i>RK4 걸음</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">k₁, k₂, k₃, k₄</span><span class="v" id="nu-rk-k">—</span></div>
+        <div class="stat"><span class="k">가중 평균 (k₁+2k₂+2k₃+k₄)/6</span><span class="v" id="nu-rk-avg">—</span></div>
+        <div class="stat"><span class="k">RK4 yₙ₊₁ / 참값</span><span class="v" id="nu-rk-y">—</span></div>
+        <div class="stat"><span class="k">오차 RK4 · 오일러</span><span class="v" id="nu-rk-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 단계를 k₁ → k₄로 넘기며 시험점(작은 원)이 반 걸음, 반 걸음, 한 걸음 위치에 놓이는 것을 보세요. ② 'y′ = 1 + y²'에서 출발점을 y = 1 위로 올리고 h를 키우면 해가 곧 폭발(4장)하므로 k₄가 매우 커집니다. RK4도 이런 곳에서는 작은 h가 필요합니다. ③ h를 반으로 줄이면 RK4 오차가 약 16분의 1이 됩니다. 모델: 참 해는 h/200의 RK4.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="systems">
+    <h2>연립 방정식과 고계 방정식에 적용하기</h2>
+    <div class="problem"><strong>큰 각도로 흔들리는 진자의 주기</strong>
+      <p>길이 \(L\)인 진자의 각도는 \(\theta'' = -\frac{g}{L}\sin\theta\)를 따릅니다. 작은 각도에서는 \(\sin\theta \approx \theta\)로 단진동(<a href="oscillations.html">7장</a>)이 되어 주기가 \(2\pi\sqrt{L/g}\)이지만, 90°에서 놓으면 얼마일까요? 이 방정식은 2계이고 비선형입니다. 지금까지의 방법은 1계 스칼라 방정식용이었습니다.</p></div>
+    <p>요령은 두 가지입니다. 첫째, <b>고계 방정식은 1계 연립으로</b> 바꿉니다. 각도 \(\theta\)와 각속도 \(\omega = \theta'\)를 함께 상태로 보면 \(\theta' = \omega\), \(\omega' = -\frac{g}{L}\sin\theta\)입니다. 일반적으로 \(y^{(m)} = F(t, y, y', \dots, y^{(m-1)})\)은 \(\mathbf{u} = (y, y', \dots, y^{(m-1)})\)로 두면 \(\mathbf{u}' = \mathbf{f}(t, \mathbf{u})\) 꼴의 1계 연립이 됩니다(<a href="systems.html">11장</a>에서 다시 씁니다). 둘째, 오일러·호인·RK4의 식은 <b>그대로 벡터에 적용</b>됩니다. \(y_n\)을 벡터 \(\mathbf{u}_n\)으로, \(f\)를 벡터 함수로 읽기만 하면 됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="2계 방정식을 상태 벡터의 1계 연립으로 바꾸는 그림">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <text x="40" y="50" class="t" style="font-weight:700">2계 방정식</text>
+        <text x="40" y="80" class="t-mono">θ″ = −(g/L) sin θ</text>
+        <text x="40" y="128" class="t" style="font-weight:700">상태 벡터 u = (θ, ω)</text>
+        <text x="40" y="158" class="t-mono">θ′ = ω</text>
+        <text x="40" y="182" class="t-mono">ω′ = −(g/L) sin θ</text>
+        <text x="40" y="226" class="t-dim">한 걸음: uₙ₊₁ = uₙ + h·f(uₙ) (오일러)</text>
+        <line x1="400" y1="135" x2="720" y2="135" class="s-axis"/><line x1="560" y1="30" x2="560" y2="245" class="s-axis"/>
+        <text x="712" y="152" class="t-mono" text-anchor="end">θ</text><text x="570" y="44" class="t-mono">ω</text>
+        <ellipse cx="560" cy="135" rx="120" ry="82" fill="none" style="stroke:var(--text-faint);stroke-width:1.4;stroke-dasharray:5 4"/>
+        <circle cx="645" cy="77" r="5" style="fill:var(--accent)"/>
+        <line x1="645" y1="77" x2="590" y2="57" style="stroke:var(--accent);stroke-width:2.4"/>
+        <polygon points="590,57 602,56 599,65" style="fill:var(--accent)"/>
+        <text x="652" y="72" class="t-mono t-acc">uₙ</text>
+        <text x="540" y="50" class="t-dim" text-anchor="end">f(uₙ) = (ω, −(g/L) sin θ)</text>
+      </svg>
+      <figcaption><b>그림 5-3.</b> 2계 방정식의 상태는 위치와 속도의 쌍이다. 위상 평면(\(\theta\), \(\omega\))의 각 점에 화살표 \(\mathbf f\)가 붙은 벡터장이 되고, 수치 해법은 1계 스칼라 때와 똑같이 이 화살표를 따라 걷는다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 5.4 (진자의 오일러 한 걸음과 RK4 주기)</strong> \(g/L = 1\), \(\theta(0) = \pi/2\), \(\omega(0) = 0\).
+      <ol>
+        <li>상태 \(\mathbf u_0 = (1.5708,\ 0)\), \(\mathbf f(\mathbf u_0) = (0,\ -\sin 1.5708) = (0,\ -1)\).</li>
+        <li>오일러 \(h = 0.1\): \(\mathbf u_1 = (1.5708,\ 0) + 0.1(0,\ -1) = (1.5708,\ -0.1)\). 각도는 그대로이고 속도만 생겼다.</li>
+        <li>RK4(\(h = 0.001\))로 \(\theta\)가 처음 0이 되는 시각을 찾아 4배 하면 주기 \(T = 7.4163\). 작은 진동의 주기 \(2\pi = 6.2832\)의 1.1803배다.</li>
+        <li>이 값은 타원 적분으로 표현되는 정확한 주기 \(4K(\sin 45°)\)와 소수 넷째 자리까지 일치한다. 수치 해법은 닫힌 꼴이 없거나 특수 함수가 필요한 답을 곧바로 준다.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="nu-tbl">
+      <thead><tr><th>진폭 θ₀</th><th>10°</th><th>30°</th><th>60°</th><th>90°</th><th>120°</th><th>150°</th><th>170°</th></tr></thead>
+      <tbody><tr><td>주기 / 2π√(L/g)</td><td>1.0019</td><td>1.0174</td><td>1.0732</td><td>1.1803</td><td>1.3729</td><td>1.7622</td><td>2.4394</td></tr></tbody>
+    </table></div>
+    <p>표는 RK4로 계산한 값입니다. 진폭 30°에서도 단진동 공식과 1.7%밖에 차이 나지 않으니 괘종시계의 작은 흔들림에는 단진동 근사가 충분하고, 180°에 가까워지면 진자가 꼭대기에서 오래 머물러 주기가 한없이 길어집니다. 위상 평면의 그림은 <a href="nonlinear.html">12장</a>에서 다시 봅니다.</p>
+    <div class="callout tip"><strong>실무 메모</strong> 라이브러리 함수(<code>solve_ivp</code>, <code>ode45</code>)는 모두 1계 연립 \(\mathbf u' = \mathbf f(t, \mathbf u)\) 꼴만 받습니다. 그래서 2계 방정식을 넘길 때는 항상 상태 벡터로 바꾸는 이 단계를 손으로 해야 합니다. 질량 \(m\), 감쇠 \(c\), 강성 \(k\)인 용수철이라면 \(\mathbf f(t, (x, v)) = \bigl(v,\ (F(t) - cv - kx)/m\bigr)\)입니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="adaptive">
+    <h2>적응 간격: 걸음 폭을 스스로 고르기</h2>
+    <div class="problem"><strong>혜성은 태양 근처에서만 빠르다</strong>
+      <p>이심률이 큰 타원 궤도를 도는 혜성은 태양에서 멀 때는 느릿느릿 움직이다가 근일점을 순식간에 지나갑니다. 고정된 \(h\)를 쓰면 근일점에 맞춰 \(h\)를 아주 작게 해야 하는데, 그러면 궤도 대부분에서 걸음을 낭비합니다. 어려운 곳에서만 촘촘히 걸을 수는 없을까요?</p></div>
+    <p>걸음 폭을 고르려면 지금 걸음의 오차를 알아야 하는데, 참 해를 모르니 오차를 직접 잴 수는 없습니다. 대신 <b>차수가 다른 두 방법</b>으로 같은 걸음을 계산해 그 차이를 오차의 추정값으로 씁니다. 차수가 높은 쪽이 훨씬 정확하므로 차이는 거의 낮은 쪽의 오차입니다.</p>
+    <div class="callout deep"><strong>정의 5.9 (내장 쌍과 걸음 폭 조절)</strong> 같은 기울기 \(k_1, \dots, k_s\)를 다른 가중치로 조합해 \(p\)차 근사 \(y_{n+1}\)과 \(p + 1\)차 근사 \(\hat y_{n+1}\)을 함께 만드는 룽게–쿠타 공식을 <span class="term">내장 쌍</span><span class="en">(embedded pair)</span>이라 한다. 오차 추정 \(\mathrm{err} = |\hat y_{n+1} - y_{n+1}|\)를 허용 오차 \(\mathrm{tol}\)과 비교해
+      <ul style="margin:6px 0 0">
+        <li>\(\mathrm{err} \le \mathrm{tol}\)이면 걸음을 받아들이고(정확한 쪽 \(\hat y\)를 쓴다),</li>
+        <li>그렇지 않으면 버리고 더 작은 \(h\)로 다시 시도한다.</li>
+        <li>어느 경우든 다음 걸음 폭은 \(h_{\text{new}} = 0.9\,h\,(\mathrm{tol}/\mathrm{err})^{1/(p+1)}\)로 정한다.</li>
+      </ul></div>
+    <p>마지막 식의 뜻은 간단합니다. 국소 오차가 \(Ch^{p+1}\)에 비례하므로, 오차를 \(\mathrm{tol}\)로 맞추려면 \(h\)에 \((\mathrm{tol}/\mathrm{err})^{1/(p+1)}\)을 곱하면 됩니다. 0.9는 다음 걸음이 다시 버려지지 않도록 두는 안전 계수입니다. 실무의 표준은 6단 공식 안에 4차와 5차 근사를 함께 담은 <b>RK45</b> 계열이며, <code>ode45</code>와 <code>solve_ivp</code>의 기본값인 도르만드–프린스 쌍<span class="en">(Dormand–Prince)</span>도 그중 하나입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="적응 간격 제어의 흐름">
+        <rect x="10" y="10" width="740" height="190" rx="10" class="f-surface"/>
+        <rect x="30" y="70" width="150" height="56" rx="8" class="f-elev" style="stroke:var(--border)"/>
+        <text x="105" y="94" text-anchor="middle" class="t">h로 한 걸음</text><text x="105" y="114" text-anchor="middle" class="t-dim">4차 y, 5차 ŷ</text>
+        <rect x="230" y="70" width="150" height="56" rx="8" class="f-elev" style="stroke:var(--border)"/>
+        <text x="305" y="94" text-anchor="middle" class="t">err = |ŷ − y|</text><text x="305" y="114" text-anchor="middle" class="t-dim">오차 추정</text>
+        <rect x="430" y="40" width="140" height="44" rx="8" class="f-acc-soft"/>
+        <text x="500" y="67" text-anchor="middle" class="t">err ≤ tol: 채택</text>
+        <rect x="430" y="114" width="140" height="44" rx="8" class="f-acc2-soft"/>
+        <text x="500" y="141" text-anchor="middle" class="t">err > tol: 버림</text>
+        <rect x="610" y="70" width="125" height="56" rx="8" class="f-elev" style="stroke:var(--border)"/>
+        <text x="672" y="94" text-anchor="middle" class="t-mono">h ← 0.9h</text><text x="672" y="114" text-anchor="middle" class="t-mono">·(tol/err)^⅕</text>
+        <g class="s-line" style="stroke-width:1.6"><line x1="180" y1="98" x2="226" y2="98"/><line x1="380" y1="92" x2="426" y2="66"/><line x1="380" y1="104" x2="426" y2="134"/><line x1="570" y1="62" x2="606" y2="90"/><line x1="570" y1="136" x2="606" y2="106"/></g>
+        <path d="M672 126 L672 180 L105 180 L105 130" fill="none" class="s-line" style="stroke-width:1.6;stroke-dasharray:5 4"/>
+        <text x="390" y="174" text-anchor="middle" class="t-dim">다음 시도 (채택이면 t ← t + h)</text>
+      </svg>
+      <figcaption><b>그림 5-4.</b> 적응 간격 제어. 오차 추정이 허용 오차보다 작으면 걸음을 채택하고 더 크게, 크면 버리고 더 작게 다시 걷는다. 사용자는 \(h\) 대신 원하는 정확도 \(\mathrm{tol}\)을 준다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-nu-adaptive">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>적응 간격 점 찍기: 혜성 궤도의 도르만드–프린스 RK45</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nu-two">
+          <div><canvas id="nu-ad-cv"></canvas><span class="nu-cap">궤도 위 채택된 걸음 (색 = 걸음 폭)</span></div>
+          <div><canvas id="nu-ad-ch"></canvas><span class="nu-cap">걸음 폭 h(t), 로그 눈금</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>이심률 e <output id="nu-ad-e-out"></output></span><input type="range" id="nu-ad-e" min="0" max="0.95" step="0.05" value="0.8"></label>
+          <label class="ctrl"><span>허용 오차 tol <output id="nu-ad-tol-out"></output></span><input type="range" id="nu-ad-tol"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">채택 / 버린 걸음</span><span class="v" id="nu-ad-n">—</span></div>
+        <div class="stat"><span class="k">최소 h · 최대 h</span><span class="v" id="nu-ad-h">—</span></div>
+        <div class="stat"><span class="k">한 바퀴 뒤 위치 오차</span><span class="v" id="nu-ad-err">—</span></div>
+        <div class="stat"><span class="k">같은 오차의 고정 RK4</span><span class="v" id="nu-ad-fix">—</span></div>
+      </div>
+      <div class="nu-msg" id="nu-ad-msg"></div>
+      <div class="sim-note">해볼 것: ① e = 0(원 궤도)에서는 점이 고르게 찍히고 h가 거의 일정합니다. ② e를 0.9로 키우면 근일점(오른쪽, 태양 근처)에서 점이 빽빽해지고 h가 수백 배 작아집니다. ③ tol을 100배 줄이면 걸음 수는 약 100<sup>1/5</sup> ≈ 2.5배만 늘어납니다. 모델: 중력 상수 1, 장반경 1(주기 2π), 근일점에서 출발. 오차 척도는 tol·(1 + |y|), 처음 h = 0.01. 고정 RK4 걸음 수는 두 배씩 늘려 찾은 값입니다.</div>
+    </div>
+    <p>시뮬레이터에서 이심률을 0.9, tol을 10⁻⁶으로 두면 적응 방법은 한 바퀴에 54걸음을 채택하고(24번 버림) 위치 오차 약 \(9\times10^{-4}\)으로 돌아옵니다. 고정 간격 RK4로 같은 오차를 얻으려면 걸음 수를 두 배씩 늘려 찾았을 때 3200걸음이 필요합니다. 걸음 폭은 근일점 근처의 10⁻³ 수준부터 원일점 근처의 0.5 가까이까지 수백 배 바뀝니다. 적응 간격이 \(h\)를 고르는 일을 사용자에게서 덜어 줄 뿐 아니라 계산량도 몇 분의 1로 줄인 것입니다.</p>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="stiff">
+    <h2>안정성 영역과 강성, 음적 오일러</h2>
+    <div class="problem"><strong>정확도는 충분한데 해가 터진다</strong>
+      <p>회로에 아주 빨리 사라지는 과도 성분(시상수 1 μs)과 천천히 변하는 신호(주기 1 ms)가 함께 있습니다. 우리가 보고 싶은 것은 느린 신호뿐이라 \(h = 10\) μs면 충분해 보입니다. 그런데 오일러 방법으로 돌리면 몇 걸음 만에 값이 \(10^{30}\)으로 튑니다. 이미 사라진 빠른 성분이 왜 계산을 망칠까요?</p></div>
+    <p>이 현상을 이해하는 열쇠는 가장 단순한 방정식, <b>시험 방정식</b> \(y' = \lambda y\)입니다. \(\lambda\)는 복소수일 수도 있습니다(진동하는 성분). 실수부가 음수면 참 해 \(e^{\lambda t}\)는 0으로 줄어듭니다. 수치 해도 줄어드는가가 질문입니다. 앞 절의 계산처럼 어떤 룽게–쿠타 방법도 이 방정식에서는 \(y_{n+1} = R(z)\,y_n\), \(z = h\lambda\) 꼴이 됩니다.</p>
+    <div class="callout deep"><strong>정의 5.10 (안정성 함수와 절대 안정 영역)</strong> 시험 방정식에 적용한 한 걸음 인자 \(R(z)\)를 그 방법의 <span class="term">안정성 함수</span><span class="en">(stability function)</span>, 복소평면에서 \(|R(z)| \le 1\)인 \(z = h\lambda\)의 집합을 <span class="term">절대 안정 영역</span><span class="en">(region of absolute stability)</span>이라 한다.
+      <div class="formula">$$R_{\text{오일러}} = 1 + z,\quad R_{\text{호인}} = 1 + z + \tfrac{z^2}{2},\quad R_{\text{RK4}} = 1 + z + \tfrac{z^2}{2} + \tfrac{z^3}{6} + \tfrac{z^4}{24},\quad R_{\text{음적 오일러}} = \frac{1}{1 - z}.$$</div></div>
+    <div class="callout deep"><strong>정리 5.11 (오일러 방법의 안정 조건)</strong> 오일러 방법의 절대 안정 영역은 \(-1\)을 중심으로 하는 반지름 1인 원판 \(|1 + z| \le 1\)이다. 특히 \(\lambda \lt 0\)인 실수이면 수치 해가 줄어들 조건은
+      <div class="formula">$$h \le \frac{2}{|\lambda|}$$</div>
+      이고, \(h > 2/|\lambda|\)이면 \(|y_n| = |1 + h\lambda|^n|y_0|\)가 부호를 바꾸며 지수적으로 커진다. 순허수 \(\lambda = i\omega\)(감쇠 없는 진동)에서는 어떤 \(h > 0\)도 \(|1 + i h\omega| > 1\)이라 진폭이 항상 커진다.</div>
+    <p>RK4의 영역은 더 넓어서 실수축에서는 \(-2.785 \le z \le 0\), 허수축에서는 \(|z| \le 2\sqrt2 \approx 2.83\)까지 안정합니다. 그래도 크기가 유한하다는 점은 같습니다. <b>명시적</b> 방법(다음 값을 이미 아는 값으로만 계산하는 방법)의 \(R(z)\)는 다항식이고, 다항식은 \(|z| \to \infty\)에서 커지므로 영역은 언제나 유한합니다.</p>
+
+    <div class="sim" id="sim-nu-stability">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>안정성 영역 지도: z = hλ를 끌어 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nu-two">
+          <div><canvas id="nu-st-cv"></canvas><span class="nu-cap">복소평면 z = hλ: 칠한 곳이 |R(z)| ≤ 1</span></div>
+          <div><canvas id="nu-st-ch"></canvas><span class="nu-cap">Re yₙ = Re R(z)ⁿ (점) vs 참 해 Re e^(zn) (선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="nu-st-m"><button data-value="euler" class="on">오일러</button><button data-value="heun">호인</button><button data-value="rk4">RK4</button><button data-value="impl">음적 오일러</button></div></div>
+          <label class="check"><input type="checkbox" id="nu-st-snap"> 실수축에 붙이기 (감쇠만, 진동 없음)</label>
+          <div class="btn-row"><button class="btn" id="nu-st-p1">z = −2.5</button><button class="btn" id="nu-st-p2">z = 1.5i</button><button class="btn" id="nu-st-p3">z = −0.5 + 0.5i</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">z = hλ</span><span class="v" id="nu-st-z">—</span></div>
+        <div class="stat"><span class="k">|R(z)|</span><span class="v" id="nu-st-r">—</span></div>
+        <div class="stat"><span class="k">참 해 인자 |e<sup>z</sup>|</span><span class="v" id="nu-st-e">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="nu-st-v">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 오일러에서 z = −2.5로 두면 참 해는 줄어드는데 수치 해는 부호를 바꾸며 커집니다. 호인으로 바꿔도 불안정, RK4는 안정합니다(경계 −2.785). ② z = 1.5i(감쇠 없는 진동)에서 오일러·호인은 진폭이 커지고, RK4는 거의 유지, 음적 오일러는 줄어듭니다. ③ 음적 오일러는 왼쪽 반평면 전체가 칠해져 있습니다. 모델: y₀ = 1, n = 0 … 30.</div>
+    </div>
+
+    <p>이제 문제 상자의 회로를 이해할 수 있습니다. 다음 방정식은 해가 \(\cos t\)를 따라가는 느린 성분과 \(e^{-\lambda t}\)로 사라지는 빠른 과도 성분을 함께 가집니다.</p>
+    <div class="formula">$$y' = -\lambda\,(y - \cos t) - \sin t,\quad y(0) = 0 \quad\Longrightarrow\quad y(t) = \cos t - e^{-\lambda t}.$$
+      <div class="where">대입 확인: \(y' = -\sin t + \lambda e^{-\lambda t}\)이고 \(-\lambda(y - \cos t) - \sin t = \lambda e^{-\lambda t} - \sin t\). 같다.</div></div>
+    <p>\(\lambda = 50\)이면 과도 성분은 \(t = 0.1\) 무렵 이미 \(e^{-5} \approx 0.007\)로 사라지고, 그 뒤의 해는 \(\cos t\)처럼 매끄럽습니다. 정확도만 보면 \(h = 0.1\)이면 충분합니다. 그러나 오일러 방법의 오차는 매 걸음 \(1 - h\lambda = -4\)배로 증폭되므로 \(h \le 2/50 = 0.04\)를 지켜야 합니다. 해의 모양이 아니라 <b>이미 사라진 성분의 빠르기</b>가 걸음 폭을 묶는 것, 이것이 강성입니다.</p>
+    <div class="callout deep"><strong>정의 5.12 (강성)</strong> 해의 관심 있는 부분은 천천히 변하는데, 방정식(의 야코비안)에 실수부가 크게 음수인 고유값이 있어서 명시적 방법의 걸음 폭이 정확도가 아니라 안정성 때문에 제한되는 문제를 <span class="term">강성</span><span class="en">(stiff)</span> 문제라 한다. 시상수의 비가 클수록(예: 1 μs와 1 ms) 강성이 심하다.</div>
+    <p>처방은 오른쪽 끝의 기울기를 쓰는 것입니다. \(y_{n+1} = y_n + hf(t_{n+1}, y_{n+1})\)은 구하려는 \(y_{n+1}\)이 양변에 있는 <b>방정식</b>이라 매 걸음 그것을 풀어야 합니다(선형이면 나눗셈 한 번, 비선형이면 뉴턴 반복). 대신 시험 방정식에서 \(y_{n+1} = y_n + hλy_{n+1}\), 곧 \(R(z) = 1/(1 - z)\)이고, \(\operatorname{Re}z \lt 0\)이면 \(|1 - z| > 1\)이라 언제나 \(|R| \lt 1\)입니다.</p>
+    <div class="callout deep"><strong>정리 5.13 (음적 오일러는 A-안정)</strong> <span class="term">음적 오일러 방법</span><span class="en">(backward Euler)</span> \(y_{n+1} = y_n + h f(t_{n+1}, y_{n+1})\)의 절대 안정 영역은 왼쪽 반평면 \(\operatorname{Re} z \le 0\)을 모두 포함한다. 이런 방법을 <span class="term">A-안정</span><span class="en">(A-stable)</span>이라 한다. 따라서 감쇠하는 성분이 아무리 빨라도 \(h\)는 정확도만으로 고를 수 있다. 정확도는 오일러와 같은 1차다.</div>
+    <div class="callout"><strong>예제 5.5 (강성 방정식, λ = 50)</strong> 위 방정식을 \(t = 2\)까지 풀어 참값 \(y(2) = \cos 2 - e^{-100} = -0.41615\)와 비교하라.
+      <ol>
+        <li>음적 오일러를 선형 방정식에 쓰면 \(y_{n+1} = y_n + h\bigl(-\lambda(y_{n+1} - \cos t_{n+1}) - \sin t_{n+1}\bigr)\)를 \(y_{n+1}\)에 대해 풀어 \(y_{n+1} = \dfrac{y_n + h(\lambda\cos t_{n+1} - \sin t_{n+1})}{1 + h\lambda}\).</li>
+        <li>오일러 \(h = 0.03\) (\(h\lambda = 1.5\)): \(y(2) \approx -0.4253\). 안정하다.</li>
+        <li>오일러 \(h = 0.041\) (\(h\lambda = 2.05\)): \(y(2) \approx 10.5\). 경계를 조금 넘자 오차가 걸음마다 1.05배씩 자랐다.</li>
+        <li>오일러 \(h = 0.05\) (\(h\lambda = 2.5\)): \(y(2) \approx -1.1\times10^{7}\). 증폭률 1.5의 40제곱이다.</li>
+        <li>음적 오일러 \(h = 0.1\) (\(h\lambda = 5\)): \(y(2) \approx -0.4158\). 걸음 20번으로 소수 셋째 자리까지 맞다. \(\lambda = 1000\)으로 바꿔도 \(h = 0.1\)에서 \(-0.41613\)이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-nu-stiff">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>강성 방정식: 명시적 오일러의 폭발 vs 음적 오일러</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="nu-sf-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>빠른 성분 λ <output id="nu-sf-l-out"></output></span><input type="range" id="nu-sf-l"></label>
+          <label class="ctrl"><span>걸음 폭 h <output id="nu-sf-h-out"></output></span><input type="range" id="nu-sf-h"></label>
+          <label class="check"><input type="checkbox" id="nu-sf-e" checked> 명시적 오일러</label>
+          <label class="check"><input type="checkbox" id="nu-sf-i" checked> 음적 오일러</label>
+          <label class="check"><input type="checkbox" id="nu-sf-r"> RK4</label>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--text)"></i>참 해 cos t − e<sup>−λt</sup></span><span><i style="background:var(--bad)"></i>명시적 오일러</span><span><i style="background:var(--accent-2)"></i>음적 오일러</span><span><i style="background:var(--blue)"></i>RK4</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">hλ</span><span class="v" id="nu-sf-z">—</span></div>
+        <div class="stat"><span class="k">증폭률 |1 − hλ| · 1/(1 + hλ)</span><span class="v" id="nu-sf-amp">—</span></div>
+        <div class="stat"><span class="k">최대 오차 (t ≥ 0.5) 명시적</span><span class="v" id="nu-sf-ee">—</span></div>
+        <div class="stat"><span class="k">음적</span><span class="v" id="nu-sf-ei">—</span></div>
+      </div>
+      <div class="nu-msg" id="nu-sf-msg"></div>
+      <div class="sim-note">해볼 것: ① λ = 50에서 h를 0.03 → 0.04 → 0.05로 올리며 hλ = 2를 넘는 순간 명시적 오일러가 지그재그로 터지는 것을 보세요. ② λ를 1000으로 올리면 명시적 오일러는 h = 0.002 이하가 필요하지만, 음적 오일러는 h = 0.2에서도 cos t를 따라갑니다. ③ RK4를 켜면 경계가 hλ ≈ 2.79로 조금 늘 뿐입니다. 모델: y(0) = 0, t ∈ [0, 3]. 화면 밖으로 나간 값은 잘립니다.</div>
+    </div>
+    <p>회로 시뮬레이터 SPICE가 사다리꼴 공식이나 후방 차분 공식(BDF) 같은 음적 방법을 쓰는 것, MATLAB이 강성 문제용으로 <code>ode15s</code>를 따로 두는 것이 이 때문입니다. 화학 반응(빠른 반응과 느린 반응이 섞인 계), 열 방정식을 격자로 나눈 연립 방정식(<a href="pde.html">16장</a>의 \(r \le 1/2\) 조건)도 대표적인 강성 문제입니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="symplectic">
+    <h2>에너지 보존: 심플렉틱 오일러와 궤도 계산</h2>
+    <div class="problem"><strong>행성이 태양에서 멀어진다</strong>
+      <p>원 궤도를 도는 행성을 오일러 방법으로 \(h = 0.05\)(한 바퀴에 약 126걸음)로 계산하면 열 바퀴 뒤 궤도 반지름이 1에서 3.09로 커집니다. 걸음을 줄이면 늦출 수는 있지만, 오래 돌리면 결국 행성은 날아가 버립니다. 물리 법칙은 에너지를 보존하는데 왜 수치 해는 그러지 않을까요?</p></div>
+    <p>용수철 \(x'' = -x\)(위상 평면의 원 운동)에서 정확히 계산해 볼 수 있습니다. 오일러 방법은 \(x_{n+1} = x_n + hv_n\), \(v_{n+1} = v_n - hx_n\)이고, 에너지 \(x^2 + v^2\)를 계산하면</p>
+    <div class="formula">$$x_{n+1}^2 + v_{n+1}^2 = (x_n + hv_n)^2 + (v_n - hx_n)^2 = (1 + h^2)\,(x_n^2 + v_n^2).$$
+      <div class="where">교차항 \(2hx_nv_n\)이 서로 지워진다. 매 걸음 에너지가 정확히 \(1 + h^2\)배가 된다. 정리 5.11의 순허수 경우 \(|1 + ih|^2 = 1 + h^2\)와 같은 이야기다.</div></div>
+    <p>\(h = 0.1\)로 100걸음(\(t = 10\), 1.6바퀴)이면 \(1.01^{100} = 2.70\)배, 에너지가 거의 세 배가 됩니다. 이제 아주 작은 수정을 해 봅시다. 속도를 먼저 갱신하고, <b>새 속도로</b> 위치를 갱신합니다.</p>
+    <div class="callout deep"><strong>정의 5.14 (심플렉틱 오일러)</strong> \(x'' = a(x)\)(가속도가 위치에만 의존)에 대해
+      <div class="formula">$$v_{n+1} = v_n + h\,a(x_n),\qquad x_{n+1} = x_n + h\,v_{n+1}$$</div>
+      로 걷는 방법을 <span class="term">심플렉틱 오일러</span><span class="en">(symplectic Euler)</span> 또는 반음적 오일러라 한다. 계산량은 오일러와 똑같고 차수도 1차다.</div>
+    <p>\(x'' = -x\)에서 한 걸음은 행렬 \(\begin{bmatrix}x_{n+1}\\v_{n+1}\end{bmatrix} = \begin{bmatrix}1 - h^2 & h\\ -h & 1\end{bmatrix}\begin{bmatrix}x_n\\v_n\end{bmatrix}\)이고 행렬식은 \((1 - h^2) + h^2 = 1\)입니다. 오일러 행렬 \(\begin{bmatrix}1 & h\\ -h & 1\end{bmatrix}\)의 행렬식은 \(1 + h^2\)입니다. 행렬식이 1이라는 것은 위상 평면의 <b>넓이를 보존</b>한다는 뜻이고(<a href="../../linear/chapters/determinants.html">LinearBook: 행렬식</a>), 이것이 2차원에서 "심플렉틱"의 의미입니다. 참 해의 흐름도 넓이를 보존하는데(해밀턴 계의 리우빌 정리), 오일러는 이 성질을 깨고 심플렉틱 오일러는 지킵니다.</p>
+    <div class="callout deep"><strong>정리 5.15 (심플렉틱 오일러의 보존량)</strong> \(x'' = -x\)에 심플렉틱 오일러를 쓰면 \(|h| \lt 2\)일 때 수정된 에너지
+      <div class="formula">$$\tilde E = x_n^2 + v_n^2 - h\,x_nv_n$$</div>
+      가 모든 \(n\)에서 정확히 일정하다. 따라서 참 에너지 \(x^2 + v^2\)는 \(h\)에 비례하는 폭으로 진동할 뿐 한 방향으로 새지 않는다.
+      <p style="margin:8px 0 0"><b>확인.</b> \(x' = (1 - h^2)x + hv\), \(v' = -hx + v\)를 \(x'^2 + v'^2 - hx'v'\)에 넣어 전개하면 \(x^2\)의 계수는 \((1 - h^2)^2 + h^2 + h(1 - h^2)h = 1\), \(v^2\)의 계수는 \(h^2 + 1 - h^2 = 1\), \(xv\)의 계수는 \(2h(1 - h^2) - 2h - h(1 - h^2) + h^3 = -h\)이다. ∎</p></div>
+    <p>RK4는 어떨까요? 정확도가 높아 에너지 오차가 매우 작지만 심플렉틱은 아닙니다. \(x'' = -x\)에서 \(|R(ih)|^2 = 1 - h^6/72 + h^8/576\)이라 에너지가 매 걸음 아주 조금씩 <b>줄어듭니다</b>(\(h = 0.1\)이면 걸음당 \(1.4\times10^{-8}\)). 짧은 계산에서는 RK4가 압도적으로 낫지만, 수억 걸음을 도는 태양계 장기 적분이나 분자 동역학에서는 이 꾸준한 표류가 문제가 되어 심플렉틱 방법(속도 베를레 등)을 씁니다. 게임 물리 엔진이 흔히 반음적 오일러를 쓰는 것도 같은 이유입니다.</p>
+
+    <div class="sim" id="sim-nu-orbit">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>행성 궤도의 에너지 표류: 오일러 vs 심플렉틱 오일러 vs RK4</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view nu-two">
+          <div><canvas id="nu-or-cv"></canvas><span class="nu-cap">궤도 (태양 = 원점, GM = 1)</span></div>
+          <div><canvas id="nu-or-ch"></canvas><span class="nu-cap">에너지 E(t) = v²/2 − 1/r</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>걸음 폭 h <output id="nu-or-h-out"></output></span><input type="range" id="nu-or-h"></label>
+          <label class="ctrl"><span>처음 속력 v₀ <output id="nu-or-v-out"></output></span><input type="range" id="nu-or-v" min="0.8" max="1.2" step="0.05" value="1"></label>
+          <div class="ctrl"><span>에너지 축</span><div class="seg" id="nu-or-zoom"><button data-value="full" class="on">전체</button><button data-value="zoom">확대 ±2%</button></div></div>
+          <label class="check"><input type="checkbox" id="nu-or-e" checked> 오일러</label>
+          <label class="check"><input type="checkbox" id="nu-or-s" checked> 심플렉틱 오일러</label>
+          <label class="check"><input type="checkbox" id="nu-or-r" checked> RK4</label>
+          <div class="btn-row"><button class="btn primary" id="nu-or-play">▶ 돌리기</button><button class="btn" id="nu-or-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="nu-legend"><span><i style="background:var(--bad)"></i>오일러</span><span><i style="background:var(--ok)"></i>심플렉틱 오일러</span><span><i style="background:var(--blue)"></i>RK4</span><span><i style="background:var(--text-faint)"></i>참 궤도 / 처음 에너지</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">시간 (바퀴 수)</span><span class="v" id="nu-or-t">—</span></div>
+        <div class="stat"><span class="k">ΔE/|E₀| 오일러</span><span class="v" id="nu-or-d0">—</span></div>
+        <div class="stat"><span class="k">심플렉틱</span><span class="v" id="nu-or-d1">—</span></div>
+        <div class="stat"><span class="k">RK4</span><span class="v" id="nu-or-d2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶로 돌리면 오일러 궤도는 바깥으로 나선을 그리며 에너지가 0(탈출)을 향해 오릅니다. ② 심플렉틱 오일러는 궤도가 조금 기울어진 타원으로 돌아가지만(세차) 에너지는 띠 안에서만 오르내립니다. '확대'로 보세요. ③ h = 0.2로 키우면 RK4의 에너지가 서서히 한쪽으로 미끄러지는 것이 보입니다. 같은 h에서 심플렉틱 오일러는 오르내릴 뿐입니다. 모델: 2체 문제 x″ = −x/r³, 처음 위치 (1, 0), 속도 (0, v₀).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>교과서의 방정식은 대부분 손으로 풀리지만, 실제 공학의 방정식은 대부분 수치로만 풀립니다. 그래서 어떤 방법이 어떤 문제에 맞는지 고르는 눈이 중요합니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>문제의 성격</th><th>알맞은 방법</th><th>대표 도구</th></tr></thead>
+      <tbody>
+        <tr><td>매끄럽고 강성이 없는 일반 문제</td><td>적응 간격 RK45</td><td><code>ode45</code>, <code>solve_ivp(method="RK45")</code></td></tr>
+        <tr><td>강성(회로, 화학 반응, 격자로 나눈 열 방정식)</td><td>음적 방법(BDF, 사다리꼴), 뉴턴 반복</td><td>SPICE, <code>ode15s</code>, <code>solve_ivp(method="BDF")</code></td></tr>
+        <tr><td>오래 도는 보존계(궤도, 분자 동역학, 게임 물리)</td><td>심플렉틱(속도 베를레, 반음적 오일러)</td><td>N체 적분기, 분자 동역학 패키지, 물리 엔진</td></tr>
+        <tr><td>실시간 제어·임베디드(고정 주기)</td><td>고정 간격 RK4 또는 오일러</td><td>마이크로컨트롤러의 상태 추정 루프</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="autonomous.html"><small>4장 · 해의 존재와 자율 방정식</small>존재·유일성과 폭발<br><span>수치 해법이 믿을 수 있으려면 먼저 해가 있고 하나여야 한다. y′ = y²의 폭발 시각은 작은 h로만 따라간다.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>고유값과 강성<br><span>x′ = Ax의 강성은 A의 고유값 크기 비다. 안정성 영역에 hλ가 모두 들어와야 한다.</span></a>
+      <a href="chaos.html"><small>13장 · 분기와 혼돈</small>로렌즈 끌개<br><span>혼돈계에서는 어떤 방법도 오래 맞출 수 없다. 오차 e^{Lt} 인자의 극단적 판.</span></a>
+      <a href="pde.html"><small>16장 · 편미분방정식 입문</small>유한 차분과 r ≤ 1/2<br><span>열 방정식을 격자로 나누면 강성 연립 방정식이 되고, 명시적 방법의 안정 조건이 그대로 나온다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식 개관<br><span>오일러와 RK4를 처음 만나는 곳. 이 장은 그 오차와 안정성을 정량화했다.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK</small>수치 선형대수<br><span>음적 방법은 매 걸음 연립 일차방정식을 푼다. 조건수와 LU 분해가 여기서 쓰인다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>오일러 방법 \(y_{n+1} = y_n + hf(t_n, y_n)\)은 테일러 전개를 1차에서 자른 것이다. 국소 절단 오차는 \(O(h^2)\), 걸음 \(1/h\)개가 쌓인 전역 오차는 \(O(h)\)이고, 상한에 \(e^{L(t - t_0)}\) 인자가 붙는다.</li>
+      <li>전역 오차가 \(Ch^p\)이면 p차 방법이다. 오차–간격 로그–로그 그래프의 기울기가 p이고, \(\log_2(E_h/E_{h/2})\)로 추정한다. 너무 작은 h에서는 반올림 오차의 바닥이 나타난다.</li>
+      <li>호인(예측–수정, 사다리꼴)과 중점법은 기울기 두 개로 2차, RK4는 기울기 네 개 \((k_1 + 2k_2 + 2k_3 + k_4)/6\)로 4차다. \(y' = f(t)\)이면 RK4는 심프슨 공식이다.</li>
+      <li>고계 방정식은 상태 벡터 \((y, y', \dots)\)의 1계 연립으로 바꾸면 같은 공식이 벡터에 그대로 적용된다.</li>
+      <li>적응 간격은 내장 쌍(4차·5차)의 차이로 국소 오차를 추정하고 \(h \leftarrow 0.9h(\mathrm{tol}/\mathrm{err})^{1/5}\)로 걸음을 조절한다. 어려운 구간에서만 촘촘히 걷는다.</li>
+      <li>시험 방정식 \(y' = \lambda y\)에서 \(y_{n+1} = R(h\lambda)y_n\). 오일러는 \(|1 + h\lambda| \le 1\), 실수 \(\lambda \lt 0\)이면 \(h \le 2/|\lambda|\). 명시적 방법의 안정 영역은 유한하다.</li>
+      <li>강성 문제는 사라진 빠른 성분이 걸음 폭을 묶는 문제다. 음적 오일러 \(R = 1/(1 - z)\)는 A-안정이라 h를 정확도만으로 고를 수 있다.</li>
+      <li>오일러는 용수철의 에너지를 매 걸음 \(1 + h^2\)배로 키운다. 심플렉틱 오일러는 위상 평면의 넓이를 보존하고 수정된 에너지를 정확히 지켜, 장기 궤도 계산에서 에너지가 새지 않는다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 오일러 방법으로 \(h = 0.02\)일 때 \(y(1)\)의 오차가 \(0.008\)이었다. \(h = 0.005\)로 줄이면 오차는 대략?</p><div class="opts">
+        <button class="opt">0.0005</button>
+        <button class="opt" data-correct>0.002</button>
+        <button class="opt">0.004</button>
+        <button class="opt">0.00003</button>
+      </div><div class="quiz-exp">오일러는 1차라 전역 오차가 h에 비례한다. h가 1/4이 되면 오차도 약 1/4, 0.008/4 = 0.002. 0.0005는 2차 방법(1/16)일 때의 답이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 어떤 방법의 오차를 로그–로그 그래프에 그렸더니 \(h = 0.1\)에서 \(3.2\times10^{-5}\), \(h = 0.05\)에서 \(2.0\times10^{-6}\)이었다. 이 방법의 차수는?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2</button>
+        <button class="opt">3</button>
+        <button class="opt" data-correct>4</button>
+      </div><div class="quiz-exp">비율 3.2×10⁻⁵ / 2.0×10⁻⁶ = 16 = 2⁴. h를 반으로 줄여 오차가 16분의 1이 되었으므로 4차다. RK4가 이렇게 행동한다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(y' = 2y\), \(y(0) = 1\)에 호인 방법을 \(h = 0.5\)로 한 걸음 쓰면 \(y_1\)은?</p><div class="opts">
+        <button class="opt">2</button>
+        <button class="opt" data-correct>2.5</button>
+        <button class="opt">2.667</button>
+        <button class="opt">2.718</button>
+      </div><div class="quiz-exp">\(k_1 = 2\), 예측점 \(y = 1 + 0.5\cdot 2 = 2\)에서 \(k_2 = 4\). \(y_1 = 1 + 0.25(2 + 4) = 2.5\). \(R(z) = 1 + z + z^2/2\)에 \(z = 1\)을 넣은 값과 같다. 참값은 \(e^1 = 2.718\).</div></div>
+
+      <div class="quiz-q"><p>Q4. RK4가 \(y' = f(t)\)(우변이 \(y\)에 무관)에 적용되면 어떤 적분 공식과 같아지는가?</p><div class="opts">
+        <button class="opt">왼쪽 직사각형 공식</button>
+        <button class="opt">사다리꼴 공식</button>
+        <button class="opt" data-correct>심프슨 공식</button>
+        <button class="opt">중점 공식</button>
+      </div><div class="quiz-exp">\(k_2 = k_3 = f(t_n + h/2)\)이므로 \(\frac h6(f_n + 4f_{n+1/2} + f_{n+1})\), 심프슨 공식이다. 호인은 사다리꼴, 중점법은 중점 공식, 오일러는 왼쪽 직사각형에 대응한다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(y' = -200y\)를 명시적 오일러로 안정하게 풀 수 있는 가장 큰 걸음 폭은?</p><div class="opts">
+        <button class="opt">0.005</button>
+        <button class="opt" data-correct>0.01</button>
+        <button class="opt">0.02</button>
+        <button class="opt">제한 없음</button>
+      </div><div class="quiz-exp">\(|1 + h\lambda| \le 1\), \(\lambda = -200\)이면 \(0 \le 200h \le 2\), 곧 \(h \le 0.01\). h = 0.005는 진동 없이 줄어드는 조건 \(h\lambda \ge -1\)이다. 음적 오일러를 쓰면 제한이 없다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 강성 문제에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">해가 빠르게 진동해서 걸음 폭을 작게 해야 하는 문제</button>
+        <button class="opt" data-correct>이미 사라진 빠른 감쇠 성분 때문에 명시적 방법의 걸음 폭이 안정성으로 묶이는 문제</button>
+        <button class="opt">해가 유한 시간에 폭발하는 문제</button>
+        <button class="opt">반올림 오차가 절단 오차보다 큰 문제</button>
+      </div><div class="quiz-exp">강성은 정확도 때문이 아니라 안정성 때문에 h가 작아야 하는 상황이다. 해 자체는 매끄러운데, 큰 음의 고유값이 명시적 방법의 안정 영역 밖으로 hλ를 밀어낸다. 처방은 음적(A-안정) 방법이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(x'' = -x\)를 오일러 방법 \(h = 0.2\)로 50걸음 계산하면 에너지 \(x^2 + v^2\)는 처음의 몇 배가 되는가?</p><div class="opts">
+        <button class="opt">1 (보존)</button>
+        <button class="opt">\(1.2^{50}\)</button>
+        <button class="opt" data-correct>\(1.04^{50} \approx 7.1\)</button>
+        <button class="opt">\(0.96^{50} \approx 0.13\)</button>
+      </div><div class="quiz-exp">매 걸음 정확히 \(1 + h^2 = 1.04\)배가 된다. \(1.04^{50} = 7.11\). 심플렉틱 오일러를 쓰면 \(x^2 + v^2 - hxv\)가 정확히 보존되어 에너지는 일정한 띠 안에 머문다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 적응 간격 4(5)차 쌍에서 오차 추정이 허용 오차의 32배였다. 안전 계수를 빼면 다음 시도의 걸음 폭은 지금의 몇 배인가?</p><div class="opts">
+        <button class="opt">1/32</button>
+        <button class="opt">1/4</button>
+        <button class="opt" data-correct>1/2</button>
+        <button class="opt">1/√32</button>
+      </div><div class="quiz-exp">국소 오차가 \(h^5\)에 비례하므로 \(h_{\text{new}} = h(\mathrm{tol}/\mathrm{err})^{1/5} = h\cdot(1/32)^{1/5} = h/2\). 오차가 32배 크면 걸음을 반으로 줄이면 된다. 이 걸음은 버리고 다시 계산한다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const NU = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v) || Math.abs(v) > 1e12) return "발산";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  /* 스칼라 한 걸음 */
+  S: {
+    euler: (f, t, y, h) => y + h * f(t, y),
+    heun: (f, t, y, h) => { const k1 = f(t, y), k2 = f(t + h, y + h * k1); return y + (h / 2) * (k1 + k2); },
+    mid: (f, t, y, h) => { const k1 = f(t, y), k2 = f(t + h / 2, y + (h / 2) * k1); return y + h * k2; },
+    rk4: (f, t, y, h) => { const k1 = f(t, y), k2 = f(t + h / 2, y + (h / 2) * k1), k3 = f(t + h / 2, y + (h / 2) * k2), k4 = f(t + h, y + h * k3); return y + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4); },
+  },
+  EV: { euler: 1, heun: 2, mid: 2, rk4: 4 },
+  /** 방법 m으로 t0부터 N걸음: [[t,y],...] (발산하면 멈춤) */
+  run(m, f, t0, y0, h, N) {
+    const out = [[t0, y0]]; let t = t0, y = y0;
+    for (let n = 0; n < N; n++) { y = NU.S[m](f, t, y, h); t = t0 + (n + 1) * h; out.push([t, y]); if (!isFinite(y) || Math.abs(y) > 1e9) break; }
+    return out;
+  },
+  /** 방향장: 픽셀 간격 gap마다 짧은 기울기 선분 */
+  field(P, f, o = {}) {
+    const ctx = P.ctx, gap = o.gap || 30, L = o.len || 9, sx = P.X(1) - P.X(0), sy = P.Y(0) - P.Y(1);
+    ctx.save(); ctx.strokeStyle = o.color || P.P.faint; ctx.globalAlpha = o.alpha || 0.55; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let px = gap / 2; px < P.w; px += gap) for (let py = gap / 2; py < P.h; py += gap) {
+      const t = P.ix(px), y = P.iy(py), m = f(t, y); if (!isFinite(m)) continue;
+      let dx = sx, dy = -m * sy; const n = Math.hypot(dx, dy) || 1; dx = (dx / n) * L; dy = (dy / n) * L;
+      ctx.moveTo(px - dx, py - dy); ctx.lineTo(px + dx, py + dy);
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  cols(C) { return { euler: C.bad, heun: C.warn, mid: C.ok, rk4: C.blue }; },
+};
+
+/* ================================================================ 1. 국소·전역 오차 */
+(function () {
+  const PRE = {
+    exp: { f: (t, y) => y, flow: (a, b, t) => b * Math.exp(t - a), y0: 1, y: [-0.6, 8.4] },
+    gauss: { f: (t, y) => -2 * t * y, flow: (a, b, t) => b * Math.exp(a * a - t * t), y0: 1, y: [-0.3, 1.3] },
+    relax: { f: (t, y) => t - y, flow: (a, b, t) => t - 1 + (b - a + 1) * Math.exp(a - t), y0: 2, y: [-0.3, 2.3] },
+  };
+  const T = 2, HS = [0.5, 0.4, 0.25, 0.2, 0.1, 0.05, 0.025];
+  let pre = PRE.exp, h = 0.5, local = true, field = true, prev = null;
+  const msg = document.getElementById("nu-ee-msg");
+  const calc = () => {
+    const N = Math.round(T / h); let t = 0, y = pre.y0, le = 0; const pts = [[0, y]], segs = [];
+    for (let n = 0; n < N; n++) { const y1 = y + h * pre.f(t, y), t1 = t + h, yl = pre.flow(t, y, t1); segs.push([t, y, t1, y1, yl]); le += Math.abs(yl - y1); t = t1; y = y1; pts.push([t, y]); }
+    const ex = pre.flow(0, pre.y0, T);
+    return { N, pts, segs, le, y, ex, ge: ex - y };
+  };
+  let R = calc();
+  const pl = MB.plane("#nu-ee-cv", {
+    x: [-0.15, 2.2], y: pre.y, aspect: 0.62, minHeight: 260,
+    draw(P) {
+      const C = P.P;
+      if (field) NU.field(P, pre.f);
+      P.curve((t) => pre.flow(0, pre.y0, t), { color: C.text, width: 2.4, from: 0, to: T });
+      R.segs.forEach(([t, y, t1, y1, yl]) => {
+        if (local) P.curve((s) => pre.flow(t, y, s), { color: C.dim, width: 1.4, dash: [4, 3], from: t, to: Math.min(T + 0.1, t1 + h * 0.4), n: 50 });
+        P.line(t1, y1, t1, yl, { color: C.warn, width: 3.5 });
+      });
+      P.poly(R.pts, { color: C.bad, width: 2.4, close: false });
+      R.pts.forEach(([t, y]) => P.dot(t, y, { r: 3.5, color: C.bad }));
+      P.line(T + 0.07, R.y, T + 0.07, R.ex, { color: C.accent2, width: 4.5 });
+    },
+  });
+  const update = () => {
+    R = calc(); pl.redraw();
+    MB.stat("nu-ee-n", String(R.N));
+    MB.stat("nu-ee-y", NU.num(R.y, 4) + " / " + NU.num(R.ex, 4));
+    MB.stat("nu-ee-ge", NU.sci(R.ge, 3));
+    MB.stat("nu-ee-le", NU.sci(R.le, 3));
+    MB.stat("nu-ee-ratio", NU.num(Math.abs(R.ge) / h, 3));
+  };
+  update();
+  const say = () => {
+    if (prev && prev.pre === pre && prev.h !== h) {
+      const r = Math.abs(prev.ge / R.ge), k = prev.h / h;
+      msg.className = "nu-msg"; msg.innerHTML = `h를 ${NU.num(prev.h, 3)} → ${NU.num(h, 3)}(<b>${NU.num(k, 2)}배</b> 작게)로 바꾸자 전역 오차가 <b>${NU.num(r, 2)}배</b> 작아졌습니다. 1차 방법이므로 두 비율이 비슷해야 합니다.`;
+    } else { msg.className = "nu-msg"; msg.innerHTML = `노란 막대(국소 오차)는 각 걸음에서 새로 생긴 오차, 청록 막대는 t = 2에서의 전역 오차입니다. h를 바꾸면 오차 비율을 알려 줍니다.`; }
+    prev = { pre, h, ge: R.ge };
+  };
+  say();
+  MB.steps("nu-ee-h", HS, (v) => String(v), 0.5, (v) => { h = v; update(); say(); });
+  MB.check("nu-ee-local", (v) => { local = v; pl.redraw(); });
+  MB.check("nu-ee-field", (v) => { field = v; pl.redraw(); });
+  document.getElementById("nu-ee-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; prev = null; pl.view({ y: pre.y }); update(); say(); });
+})();
+
+/* ================================================================ 2. 로그–로그 차수 */
+(function () {
+  const PRE = {
+    exp: { f: (t, y) => y, y0: 1, T: 1, ex: Math.E },
+    rat: { f: (t, y) => -2 * t * y * y, y0: 1, T: 2, ex: 1 / 5 },
+    esin: { f: (t, y) => y * Math.cos(t), y0: 1, T: 3, ex: Math.exp(Math.sin(3)) },
+  };
+  const M = ["euler", "heun", "mid", "rk4"], HS = []; for (let k = 1; k <= 13; k++) HS.push(Math.pow(2, -k));
+  let pre = PRE.exp, axis = "h", ref = true, data = null;
+  const msg = document.getElementById("nu-ll-msg");
+  const compute = () => {
+    data = M.map((m) => HS.map((h) => {
+      const N = Math.round(pre.T / h); let y = pre.y0;
+      for (let n = 0; n < N; n++) y = NU.S[m](pre.f, n * h, y, h);
+      return { h, ev: N * NU.EV[m], e: Math.max(Math.abs(y - pre.ex), 1e-17) };
+    }));
+  };
+  const slope = (arr) => {
+    const pts = arr.filter((p) => p.h <= 0.26 && p.e > 1e-11 && p.e < 1);
+    if (pts.length < 2) return NaN;
+    const xs = pts.map((p) => Math.log(p.h)), ys = pts.map((p) => Math.log(p.e)), mx = MB.mean(xs), my = MB.mean(ys);
+    let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; });
+    return a / b;
+  };
+  compute();
+  const cv = MB.canvas("#nu-ll-cv", (ctx, w, h) => {
+    const C = MB.palette(), col = NU.cols(C), byEv = axis === "ev";
+    const series = [], points = [];
+    if (ref && !byEv) {
+      const e0 = data[3][0].e;
+      [[1, data[0][3]], [2, data[1][3]], [4, data[3][1]]].forEach(([p, anchor]) => {
+        const c = anchor.e / Math.pow(anchor.h, p) * 2.2;
+        series.push({ data: [[1e-4, c * Math.pow(1e-4, p)], [0.5, c * Math.pow(0.5, p)]], color: C.faint, width: 1.2, dash: [5, 4] });
+      });
+    }
+    M.forEach((m, i) => {
+      const d = data[i].map((p) => [byEv ? p.ev : p.h, p.e]);
+      series.push({ data: d, color: col[m], width: 2.2, dash: m === "mid" ? [6, 3] : [] });
+      d.forEach(([x, y]) => points.push({ x, y, color: col[m], r: 3 }));
+    });
+    const ch = MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: byEv ? [1, 1e5] : [1e-4, 1], y: [1e-17, 10], logX: true, logY: true,
+      xLabel: byEv ? "f 계산 횟수 (비용)" : "걸음 폭 h", yLabel: "|오차|",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series, points,
+    });
+    if (ref && !byEv) {
+      ctx.save(); ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "left";
+      [[1, "기울기 1"], [2, "기울기 2"], [4, "기울기 4"]].forEach(([p, s], i) => {
+        const anchor = [data[0][3], data[1][3], data[3][1]][i], c = anchor.e / Math.pow(anchor.h, p) * 2.2, x = [3e-4, 3e-4, 2e-3][i], y = c * Math.pow(x, p);
+        if (y > 1e-16 && y < 10) ctx.fillText(s, ch.X(x) + 4, ch.Y(y) - 10);
+      });
+      ctx.restore();
+    }
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 460 });
+  const update = () => {
+    compute(); cv.redraw();
+    const s = M.map((m, i) => slope(data[i]));
+    s.forEach((v, i) => MB.stat("nu-ll-s" + i, NU.num(v, 2)));
+    const need = M.map((m, i) => { const p = data[i].find((q) => q.e <= 1e-6); return p ? p.ev : null; });
+    msg.innerHTML = `오차 10<sup>−6</sup> 이하를 처음 얻는 데 필요한 f 계산 횟수: 오일러 <b>${need[0] ? need[0].toLocaleString() : "> " + (pre.T * 8192).toLocaleString()}</b>, 호인 <b>${need[1] ? need[1].toLocaleString() : "—"}</b>, 중점법 <b>${need[2] ? need[2].toLocaleString() : "—"}</b>, RK4 <b>${need[3] ? need[3].toLocaleString() : "—"}</b> (h = 2<sup>−k</sup> 중에서).`;
+  };
+  update();
+  document.getElementById("nu-ll-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  MB.seg("nu-ll-axis", (v) => { axis = v; cv.redraw(); });
+  MB.check("nu-ll-ref", (v) => { ref = v; cv.redraw(); });
+})();
+
+/* ================================================================ 3. 세 방법 나란히 */
+(function () {
+  const PRE = {
+    tsq: { f: (t, y) => t - y * y, y0: 0.2, y: [-1.6, 3], lo: -0.7, hi: 2.6 },
+    sin: { f: (t, y) => Math.sin(t * y), y0: 1.5, y: [-0.4, 3.6], lo: 0, hi: 3.3 },
+    fast: { f: (t, y) => -4 * (y - Math.sin(2 * t)), y0: 1.5, y: [-2, 2.2], lo: -1.6, hi: 1.9 },
+  };
+  const T = 4, HS = [1, 0.8, 0.5, 0.4, 0.25, 0.1, 0.05];
+  const M = ["euler", "heun", "mid", "rk4"], on = { euler: true, heun: true, mid: true, rk4: false };
+  let pre = PRE.tsq, h = 0.5;
+  const pt = { x: 0, y: pre.y0, lock: "x", r: 8, constrain(p) { p.y = MB.clamp(p.y, pre.lo, pre.hi); } };
+  const pl = MB.plane("#nu-cm-cv", {
+    x: [-0.25, 4.25], y: pre.y, aspect: 0.62, minHeight: 260, points: [pt],
+    draw(P) {
+      const C = P.P, col = NU.cols(C);
+      NU.field(P, pre.f);
+      const ref = NU.run("rk4", pre.f, 0, pt.y, 0.002, 2000);
+      P.poly(ref.filter((_, i) => i % 4 === 0).map(([t, y]) => [t, y]), { color: C.dim, width: 4, close: false, alpha: 0.6 });
+      const yT = ref[ref.length - 1][1], N = Math.round(T / h);
+      M.forEach((m, i) => {
+        const r = NU.run(m, pre.f, 0, pt.y, h, N), last = r[r.length - 1][1];
+        const ok = r.length === N + 1 && isFinite(last);
+        MB.stat("nu-cm-o" + i, (ok ? NU.sci(Math.abs(last - yT), 2) : "발산") + ` <small>(${N * NU.EV[m]}회)</small>`);
+        if (!on[m]) return;
+        const pts = r.map(([t, y]) => [t, MB.clamp(y, P.y0 - 5, P.y1 + 5)]);
+        P.poly(pts, { color: col[m], width: 2.2, close: false, dash: m === "mid" ? [6, 3] : [] });
+        pts.forEach(([t, y]) => P.dot(t, y, { r: 3.2, color: col[m] }));
+      });
+      pt.color = C.text;
+    },
+  });
+  MB.steps("nu-cm-h", HS, (v) => String(v), 0.5, (v) => { h = v; pl.redraw(); });
+  [["nu-cm-e", "euler"], ["nu-cm-hn", "heun"], ["nu-cm-m", "mid"], ["nu-cm-r", "rk4"]].forEach(([id, m]) => MB.check(id, (v) => { on[m] = v; pl.redraw(); }));
+  document.getElementById("nu-cm-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; pt.y = pre.y0; pl.view({ y: pre.y }); });
+})();
+
+/* ================================================================ 4. RK4 기울기 네 개 */
+(function () {
+  const PRE = {
+    lin: { f: (t, y) => t + y, y: [-0.6, 4.6], s: [0, 1] },
+    tan: { f: (t, y) => 1 + y * y, y: [-2, 3.5], s: [0, -0.5] },
+    osc: { f: (t, y) => 2 * y * Math.cos(3 * t), y: [-0.3, 4.2], s: [0.2, 1] },
+  };
+  let pre = PRE.lin, h = 0.8, stage = 5;
+  const pt = { x: pre.s[0], y: pre.s[1], r: 8, constrain(p) { p.x = MB.clamp(p.x, -0.2, 1.6); } };
+  const pl = MB.plane("#nu-rk-cv", {
+    x: [-0.3, 2.4], y: pre.y, aspect: 0.66, minHeight: 280, points: [pt],
+    draw(P) {
+      const C = P.P, f = pre.f, t = pt.x, y = pt.y, col = NU.cols(C);
+      NU.field(P, f, { alpha: 0.4 });
+      const ref = NU.run("rk4", f, t, y, h / 200, 230).filter(([, v]) => isFinite(v));
+      P.poly(ref, { color: C.dim, width: 3.5, close: false, alpha: 0.7 });
+      const k1 = f(t, y), A = [t + h / 2, y + (h / 2) * k1], k2 = f(A[0], A[1]);
+      const B = [t + h / 2, y + (h / 2) * k2], k3 = f(B[0], B[1]);
+      const Cc = [t + h, y + h * k3], k4 = f(Cc[0], Cc[1]);
+      const avg = (k1 + 2 * k2 + 2 * k3 + k4) / 6, y1 = y + h * avg, yE = y + h * k1;
+      const slope = (x0, y0, m, color) => { const sx = P.X(1) - P.X(0), sy = P.Y(0) - P.Y(1), L = 26; let dx = sx, dy = m * sy; const n = Math.hypot(dx, dy); dx = (dx / n) * L; dy = (dy / n) * L; P.line(P.ix(P.X(x0) - dx), P.iy(P.Y(y0) + dy), P.ix(P.X(x0) + dx), P.iy(P.Y(y0) - dy), { color, width: 4 }); };
+      const kc = [C.bad, C.warn, C.ok, C.accent];
+      P.line(t + h, P.y0, t + h, P.y1, { color: C.faint, width: 1, dash: [3, 4] });
+      P.line(t + h / 2, P.y0, t + h / 2, P.y1, { color: C.faint, width: 1, dash: [3, 4] });
+      slope(t, y, k1, kc[0]);
+      if (stage >= 2) { P.line(t, y, A[0], A[1], { color: kc[0], width: 1.6, dash: [5, 3] }); P.dot(A[0], A[1], { r: 5, color: C.bg, stroke: kc[1] }); slope(A[0], A[1], k2, kc[1]); }
+      if (stage >= 3) { P.line(t, y, B[0], B[1], { color: kc[1], width: 1.6, dash: [5, 3] }); P.dot(B[0], B[1], { r: 5, color: C.bg, stroke: kc[2] }); slope(B[0], B[1], k3, kc[2]); }
+      if (stage >= 4) { P.line(t, y, Cc[0], Cc[1], { color: kc[2], width: 1.6, dash: [5, 3] }); P.dot(Cc[0], Cc[1], { r: 5, color: C.bg, stroke: kc[3] }); slope(Cc[0], Cc[1], k4, kc[3]); }
+      if (stage >= 5) {
+        P.line(t, y, t + h, yE, { color: C.bad, width: 1.4, alpha: 0.5 }); P.dot(t + h, yE, { r: 3.5, color: C.bad, alpha: 0.6 });
+        P.line(t, y, t + h, y1, { color: col.rk4, width: 3 }); P.dot(t + h, y1, { r: 5.5, color: col.rk4 });
+      }
+      P.text("tₙ", t, P.y0, { color: C.dim, dy: -10, align: "center", size: 12 });
+      P.text("tₙ + h/2", t + h / 2, P.y0, { color: C.dim, dy: -10, align: "center", size: 12 });
+      P.text("tₙ + h", t + h, P.y0, { color: C.dim, dy: -10, align: "center", size: 12 });
+      pt.color = C.text;
+      const yex = ref.length > 200 ? ref[200][1] : NaN;
+      const ks = [k1, k2, k3, k4].map((k) => NU.num(k, 3));
+      MB.stat("nu-rk-k", ks.slice(0, Math.min(stage, 4)).join(", ") + (stage < 4 ? ", …" : ""));
+      MB.stat("nu-rk-avg", stage >= 5 ? NU.num(avg, 4) : "—");
+      MB.stat("nu-rk-y", NU.num(y1, 4) + " / " + NU.num(yex, 4));
+      MB.stat("nu-rk-err", NU.sci(Math.abs(y1 - yex), 2) + " · " + NU.sci(Math.abs(yE - yex), 2));
+    },
+  });
+  MB.range("nu-rk-h", (v) => v.toFixed(2), (v) => { h = v; pl.redraw(); });
+  MB.seg("nu-rk-stage", (v) => { stage = Number(v); pl.redraw(); });
+  document.getElementById("nu-rk-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; pt.x = pre.s[0]; pt.y = pre.s[1]; pl.view({ y: pre.y }); });
+})();
+
+/* ================================================================ 5. 적응 간격 (도르만드–프린스 5(4)) */
+(function () {
+  const A = [[], [1 / 5], [3 / 40, 9 / 40], [44 / 45, -56 / 15, 32 / 9], [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729], [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656], [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]];
+  const CC = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1];
+  const B5 = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0];
+  const B4 = [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40];
+  const f = (t, s) => { const r3 = Math.pow(s[0] * s[0] + s[1] * s[1], 1.5); return [s[2], s[3], -s[0] / r3, -s[1] / r3]; };
+  const TOLS = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9];
+  const T = 2 * Math.PI;
+  let e = 0.8, tol = 1e-6, R = null;
+  const y0 = () => [1 - e, 0, 0, Math.sqrt((1 + e) / (1 - e))];
+  const dp = () => {
+    let t = 0, y = y0(), h = 0.01, acc = 0, rej = 0; const steps = [{ t: 0, y: y.slice(), h: 0 }];
+    while (t < T - 1e-12 && acc + rej < 20000) {
+      if (t + h > T) h = T - t;
+      const k = [];
+      for (let s = 0; s < 7; s++) { const ys = y.map((v, i) => v + h * A[s].reduce((a, c, j) => a + c * k[j][i], 0)); k.push(f(t + CC[s] * h, ys)); }
+      const y5 = y.map((v, i) => v + h * B5.reduce((a, c, j) => a + c * k[j][i], 0)), y4 = y.map((v, i) => v + h * B4.reduce((a, c, j) => a + c * k[j][i], 0));
+      let err = 0; for (let i = 0; i < 4; i++) { const sc = tol * (1 + Math.max(Math.abs(y[i]), Math.abs(y5[i]))); err = Math.max(err, Math.abs(y5[i] - y4[i]) / sc); }
+      if (err <= 1) { t += h; y = y5; acc++; steps.push({ t, y: y.slice(), h }); } else rej++;
+      h = h * Math.min(5, Math.max(0.2, 0.9 * Math.pow(err || 1e-10, -1 / 5)));
+    }
+    const s0 = y0(), err = Math.hypot(y[0] - s0[0], y[1] - s0[1]);
+    return { steps, acc, rej, err };
+  };
+  const rk4err = (N) => {
+    let y = y0(); const h = T / N, ad = (s, k, c) => s.map((v, i) => v + c * k[i]);
+    for (let n = 0; n < N; n++) { const t = n * h, k1 = f(t, y), k2 = f(t + h / 2, ad(y, k1, h / 2)), k3 = f(t + h / 2, ad(y, k2, h / 2)), k4 = f(t + h, ad(y, k3, h)); y = y.map((v, i) => v + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])); }
+    const s0 = y0(); return Math.hypot(y[0] - s0[0], y[1] - s0[1]);
+  };
+  const fixedN = (target) => { for (let N = 25; N <= 204800; N *= 2) { if (rk4err(N) <= target) return N; } return null; };
+  R = dp(); let fixN = fixedN(R.err);
+  const hcol = (h) => MB.rgb(MB.colormap(MB.clamp((Math.log10(h) + 4) / 4, 0, 1), "viridis"));
+  const pl = MB.plane("#nu-ad-cv", {
+    x: [-e - 1.25, -e + 1.25], y: null, aspect: 0.72, minHeight: 240, maxHeight: 420, gridStep: 0.5,
+    draw(P) {
+      const C = P.P, a = 1, b = Math.sqrt(1 - e * e);
+      P.param((s) => [-e + a * Math.cos(s), b * Math.sin(s)], 0, 2 * Math.PI, { color: C.faint, width: 1.2, dash: [4, 4] });
+      P.dot(0, 0, { r: 7, color: C.warn });
+      const st = R.steps;
+      for (let i = 1; i < st.length; i++) P.line(st[i - 1].y[0], st[i - 1].y[1], st[i].y[0], st[i].y[1], { color: C.dim, width: 1, alpha: 0.6 });
+      for (let i = 1; i < st.length; i++) P.dot(st[i].y[0], st[i].y[1], { r: 3.6, color: hcol(st[i].h) });
+      P.text("태양", 0, 0, { color: C.dim, dy: 16, align: "center", size: 11 });
+    },
+  });
+  const ch = MB.canvas("#nu-ad-ch", (ctx, w, hh) => {
+    const C = MB.palette();
+    const pts = R.steps.slice(1).map((s) => ({ x: s.t, y: s.h, r: 3, color: hcol(s.h) }));
+    MB.chart(ctx, { x: 56, y: 26, w: w - 56 - 16, h: hh - 26 - 40 }, {
+      x: [0, T], y: [1e-4, 2], logY: true, xLabel: "t", yLabel: "h",
+      xTicks: [0, Math.PI / 2, Math.PI, 1.5 * Math.PI, 2 * Math.PI], xFmt: (v) => ["0", "π/2", "π", "3π/2", "2π"][Math.round(v / (Math.PI / 2))],
+      series: [{ data: R.steps.slice(1).map((s) => [s.t, s.h]), color: C.faint, width: 1 }], points: pts,
+      vlines: [{ x: Math.PI, color: C.faint, label: "원일점" }],
+    });
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 240 });
+  const update = () => {
+    R = dp(); fixN = fixedN(R.err);
+    pl.view({ x: [-e - 1.25, -e + 1.25] }); ch.redraw();
+    const hs = R.steps.slice(1).map((s) => s.h);
+    MB.stat("nu-ad-n", R.acc + " / " + R.rej);
+    MB.stat("nu-ad-h", NU.sci(Math.min(...hs), 2) + " · " + NU.num(Math.max(...hs), 3));
+    MB.stat("nu-ad-err", NU.sci(R.err, 2));
+    MB.stat("nu-ad-fix", fixN ? "≈ " + fixN.toLocaleString() + "걸음" : "> 204,800걸음");
+    const evA = (R.acc + R.rej) * 7;
+    document.getElementById("nu-ad-msg").innerHTML = `적응 간격: 시도 ${R.acc + R.rej}번 × 7회 = f 계산 <b>${evA.toLocaleString()}</b>회. 같은 위치 오차의 고정 간격 RK4: ${fixN ? fixN.toLocaleString() + "걸음 × 4회 = <b>" + (4 * fixN).toLocaleString() + "</b>회" : "20만 걸음 이상"}. 최소 h와 최대 h의 비는 <b>${NU.num(Math.max(...hs) / Math.min(...hs), 0)}배</b>입니다.`;
+  };
+  update();
+  MB.range("nu-ad-e", (v) => v.toFixed(2), MB.throttle(() => { e = Number(document.getElementById("nu-ad-e").value); update(); }));
+  MB.steps("nu-ad-tol", TOLS, (v) => "10" + "⁻" + "⁰¹²³⁴⁵⁶⁷⁸⁹"[-Math.round(Math.log10(v))], 1e-6, (v) => { tol = v; update(); });
+})();
+
+/* ================================================================ 6. 안정성 영역 */
+(function () {
+  const cx = MB.cx;
+  const RF = {
+    euler: (z) => cx.add([1, 0], z),
+    heun: (z) => cx.add(cx.add([1, 0], z), cx.scale(cx.mul(z, z), 0.5)),
+    rk4: (z) => { const z2 = cx.mul(z, z), z3 = cx.mul(z2, z), z4 = cx.mul(z3, z); return cx.add(cx.add(cx.add([1, 0], z), cx.scale(z2, 0.5)), cx.add(cx.scale(z3, 1 / 6), cx.scale(z4, 1 / 24))); },
+    impl: (z) => cx.div([1, 0], cx.sub([1, 0], z)),
+  };
+  const NAME = { euler: "오일러", heun: "호인", rk4: "RK4", impl: "음적 오일러" };
+  let m = "euler", snap = false, chart = null;
+  const pz = { x: -1.5, y: 0.6, r: 8, constrain(p) { if (snap) p.y = 0; } };
+  const pl = MB.plane("#nu-st-cv", {
+    x: [-5, 2.6], y: null, aspect: 0.62, minHeight: 240, maxHeight: 420, points: [pz],
+    onDrag() { readout(); },
+    draw(P) {
+      const C = P.P, ctx = P.ctx, cell = 2, Rf = RF[m];
+      ctx.save(); ctx.fillStyle = C.accent; ctx.globalAlpha = 0.24;
+      for (let px = 0; px < P.w; px += cell) for (let py = 0; py < P.h; py += cell) {
+        const z = [P.ix(px + cell / 2), P.iy(py + cell / 2)];
+        if (cx.abs(Rf(z)) <= 1) ctx.fillRect(px, py, cell, cell);
+      }
+      ctx.restore();
+      P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1.6 });
+      P.text("Re z", P.x1, 0, { color: C.dim, dx: -34, dy: -10, size: 12 });
+      P.text("Im z", 0, P.y1, { color: C.dim, dx: 6, dy: 12, size: 12 });
+      P.text("안정 (" + NAME[m] + ")", m === "impl" ? -4.6 : -2.2, m === "impl" ? 1.7 : 0, { color: C.accent, bold: true, size: 13, dy: m === "impl" ? 0 : -1, align: m === "impl" ? "left" : "center" });
+      pz.color = C.text;
+      if (chart) chart.redraw();
+    },
+  });
+  chart = MB.canvas("#nu-st-ch", (ctx, w, h) => {
+    const C = MB.palette(), z = [pz.x, pz.y], Rz = RF[m](z);
+    let y = [1, 0]; const num = [], ex = [];
+    for (let n = 0; n <= 30; n++) { num.push({ x: n, y: MB.clamp(y[0], -1e3, 1e3), color: C.accent, r: 3.2 }); y = cx.mul(y, Rz); }
+    for (let i = 0; i <= 300; i++) { const s = i / 10, e = cx.exp(cx.scale(z, s)); ex.push([s, e[0]]); }
+    MB.chart(ctx, { x: 46, y: 26, w: w - 46 - 14, h: h - 26 - 34 }, {
+      x: [0, 30], y: [-2.2, 2.2], xLabel: "", series: [{ data: ex, color: C.dim, width: 1.8 }, { data: num.map((p) => [p.x, p.y]), color: C.accent, width: 1, dash: [3, 3] }], points: num, hlines: [{ y: 0, color: C.axis, dash: [] }],
+    });
+  }, { aspect: 0.3, minHeight: 150, maxHeight: 210 });
+  const update = () => { pl.redraw(); readout(); };
+  function readout() {
+    const z = [pz.x, pz.y], r = cx.abs(RF[m](z)), ez = Math.exp(pz.x);
+    MB.stat("nu-st-z", NU.num(pz.x, 2) + (pz.y >= 0 ? " + " : " − ") + NU.num(Math.abs(pz.y), 2) + "i");
+    MB.stat("nu-st-r", NU.num(r, 4));
+    MB.stat("nu-st-e", NU.num(ez, 4));
+    const v = r <= 1 ? (ez <= 1 ? "<span style='color:var(--ok)'>안정: 수치 해도 줄어듦</span>" : "안정이지만 참 해는 커짐") : (ez <= 1 ? "<span style='color:var(--bad)'>불안정: 참 해는 줄어드는데 수치 해가 폭발</span>" : "둘 다 커짐 (불안정한 문제)");
+    MB.stat("nu-st-v", v);
+  }
+  update();
+  MB.seg("nu-st-m", (v) => { m = v; update(); });
+  MB.check("nu-st-snap", (v) => { snap = v; if (v) pz.y = 0; update(); });
+  [["nu-st-p1", -2.5, 0], ["nu-st-p2", 0, 1.5], ["nu-st-p3", -0.5, 0.5]].forEach(([id, a, b]) => document.getElementById(id).addEventListener("click", () => { pz.x = a; pz.y = snap ? 0 : b; update(); }));
+})();
+
+/* ================================================================ 7. 강성 */
+(function () {
+  const LS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  const HS = [0.001, 0.002, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.08, 0.1, 0.2];
+  const T = 3;
+  let lam = 50, h = 0.05, on = { e: true, i: true, r: false };
+  const msg = document.getElementById("nu-sf-msg");
+  const exact = (t) => Math.cos(t) - Math.exp(-lam * t);
+  const runs = () => {
+    const f = (t, y) => -lam * (y - Math.cos(t)) - Math.sin(t), N = Math.round(T / h);
+    const E = [[0, 0]], I = [[0, 0]], Rk = [[0, 0]]; let ye = 0, yi = 0, yr = 0, me = 0, mi = 0;
+    for (let n = 0; n < N; n++) {
+      const t = n * h, t1 = t + h;
+      ye = Math.abs(ye) > 1e8 ? ye : ye + h * f(t, ye);
+      yi = (yi + h * (lam * Math.cos(t1) - Math.sin(t1))) / (1 + h * lam);
+      yr = Math.abs(yr) > 1e8 ? yr : NU.S.rk4(f, t, yr, h);
+      E.push([t1, ye]); I.push([t1, yi]); Rk.push([t1, yr]);
+      if (t1 >= 0.5) { me = Math.max(me, Math.abs(ye - exact(t1))); mi = Math.max(mi, Math.abs(yi - exact(t1))); }
+    }
+    return { E, I, Rk, me, mi };
+  };
+  const cv = MB.canvas("#nu-sf-cv", (ctx, w, hh) => {
+    const C = MB.palette(), r = runs(), clip = (d) => d.map(([t, y]) => [t, MB.clamp(y, -5, 5)]);
+    const ex = []; for (let i = 0; i <= 600; i++) { const t = (T * i) / 600; ex.push([t, exact(t)]); }
+    const series = [{ data: ex, color: C.text, width: 2.6 }];
+    if (on.e) series.push({ data: clip(r.E), color: C.bad, width: 1.8 });
+    if (on.r) series.push({ data: clip(r.Rk), color: C.blue, width: 1.8, dash: [6, 3] });
+    if (on.i) series.push({ data: clip(r.I), color: C.accent2, width: 2.2 });
+    const pts = []; if (on.i && r.I.length < 80) r.I.forEach(([t, y]) => pts.push({ x: t, y, color: C.accent2, r: 3 }));
+    MB.chart(ctx, { x: 50, y: 14, w: w - 50 - 16, h: hh - 14 - 46 }, { x: [0, T], y: [-1.8, 1.8], xLabel: "t", yLabel: "y", series, points: pts });
+    MB.stat("nu-sf-ee", Math.abs(r.me) > 1e6 ? "발산" : NU.sci(r.me, 2));
+    MB.stat("nu-sf-ei", NU.sci(r.mi, 2));
+  }, { aspect: 0.56, minHeight: 260, maxHeight: 420 });
+  const update = () => {
+    cv.redraw();
+    const z = h * lam;
+    MB.stat("nu-sf-z", NU.num(z, 3));
+    MB.stat("nu-sf-amp", NU.num(Math.abs(1 - z), 3) + " · " + NU.num(1 / (1 + z), 3));
+    if (z > 2) { msg.className = "nu-msg bad"; msg.innerHTML = `hλ = ${NU.num(z, 2)} > 2: 명시적 오일러는 매 걸음 오차를 ${NU.num(Math.abs(1 - z), 2)}배로 키웁니다. 안정하려면 h ≤ 2/λ = ${NU.num(2 / lam, 4)}. 음적 오일러는 증폭률 ${NU.num(1 / (1 + z), 3)}로 언제나 안정합니다.`; }
+    else if (z > 1) { msg.className = "nu-msg"; msg.innerHTML = `1 &lt; hλ ≤ 2: 명시적 오일러는 안정하지만 1 − hλ &lt; 0이라 과도 구간에서 부호를 바꾸며 지그재그로 줄어듭니다.`; }
+    else { msg.className = "nu-msg ok"; msg.innerHTML = `hλ = ${NU.num(z, 3)} ≤ 1: 두 방법 모두 안정하고 단조롭게 따라갑니다. 걸음 수는 ${Math.round(T / h)}개입니다.`; }
+  };
+  update();
+  MB.steps("nu-sf-l", LS, (v) => String(v), 50, (v) => { lam = v; update(); });
+  MB.steps("nu-sf-h", HS, (v) => String(v), 0.05, (v) => { h = v; update(); });
+  MB.check("nu-sf-e", (v) => { on.e = v; update(); });
+  MB.check("nu-sf-i", (v) => { on.i = v; update(); });
+  MB.check("nu-sf-r", (v) => { on.r = v; update(); });
+})();
+
+/* ================================================================ 8. 궤도와 에너지 */
+(function () {
+  const HS = [0.01, 0.02, 0.05, 0.1, 0.2];
+  const KEYS = ["euler", "symp", "rk4"];
+  let h = 0.05, v0 = 1, zoom = "full", playing = false, acc = 0, t = 0;
+  const show = { euler: true, symp: true, rk4: true };
+  let S = null, E0 = 0;
+  const accel = (x, y) => { const r3 = Math.pow(x * x + y * y, 1.5); return [-x / r3, -y / r3]; };
+  const energy = (s) => (s[2] * s[2] + s[3] * s[3]) / 2 - 1 / Math.hypot(s[0], s[1]);
+  const reset = () => {
+    t = 0; acc = 0; E0 = v0 * v0 / 2 - 1;
+    S = {}; KEYS.forEach((k) => { S[k] = { s: [1, 0, 0, v0], trail: [[1, 0]], E: [[0, E0]], dead: false }; });
+  };
+  const step = (k, s) => {
+    if (k === "euler") { const [a, b] = accel(s[0], s[1]); return [s[0] + h * s[2], s[1] + h * s[3], s[2] + h * a, s[3] + h * b]; }
+    if (k === "symp") { const [a, b] = accel(s[0], s[1]); const vx = s[2] + h * a, vy = s[3] + h * b; return [s[0] + h * vx, s[1] + h * vy, vx, vy]; }
+    const F = (u) => { const [a, b] = accel(u[0], u[1]); return [u[2], u[3], a, b]; }, ad = (u, q, c) => u.map((v, i) => v + c * q[i]);
+    const k1 = F(s), k2 = F(ad(s, k1, h / 2)), k3 = F(ad(s, k2, h / 2)), k4 = F(ad(s, k3, h));
+    return s.map((v, i) => v + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+  };
+  reset();
+  const COL = (C) => ({ euler: C.bad, symp: C.ok, rk4: C.blue });
+  let chart = null;
+  const pl = MB.plane("#nu-or-cv", {
+    x: [-3.3, 1.9], y: null, aspect: 0.8, minHeight: 240, maxHeight: 440,
+    draw(P) {
+      const C = P.P, col = COL(C), a = 1 / (2 - v0 * v0), ecc = Math.abs(v0 * v0 - 1);
+      if (v0 * v0 < 2) { const c = a * ecc, b = a * Math.sqrt(1 - ecc * ecc), cx0 = v0 >= 1 ? -c : c; P.param((s) => [cx0 + a * Math.cos(s), b * Math.sin(s)], 0, 2 * Math.PI, { color: C.faint, width: 1.4, dash: [4, 4] }); }
+      P.dot(0, 0, { r: 7, color: C.warn });
+      KEYS.forEach((k) => {
+        if (!show[k]) return; const tr = S[k].trail;
+        P.poly(tr, { color: col[k], width: 1.6, close: false, alpha: 0.85 });
+        const s = S[k].s; P.dot(s[0], s[1], { r: 5.5, color: col[k] });
+      });
+      if (chart) chart.redraw();
+    },
+  });
+  chart = MB.canvas("#nu-or-ch", (ctx, w, hh) => {
+    const C = MB.palette(), col = COL(C), tmax = Math.max(4 * Math.PI, t);
+    const span = zoom === "zoom" ? 0.02 * Math.abs(E0) : Math.max(0.12, Math.abs(E0) * 1.1);
+    const lo = zoom === "zoom" ? E0 - span : E0 - span * 0.25, hi = zoom === "zoom" ? E0 + span : Math.min(E0 + span, 0.3);
+    const series = [];
+    KEYS.forEach((k) => { if (show[k]) series.push({ data: S[k].E.map(([a, b]) => [a, MB.clamp(b, lo - 1, hi + 1)]), color: col[k], width: 1.8 }); });
+    MB.chart(ctx, { x: 64, y: 26, w: w - 64 - 16, h: hh - 26 - 40 }, {
+      x: [0, tmax], y: [lo, hi], xLabel: "t", series,
+      hlines: [{ y: E0, color: C.faint, label: "E₀" }].concat(zoom === "full" && hi > 0 ? [{ y: 0, color: C.dim, label: "탈출 (E = 0)" }] : []),
+      yFmt: (v) => v.toFixed(zoom === "zoom" ? 3 : 2),
+    });
+  }, { aspect: 0.4, minHeight: 170, maxHeight: 260 });
+  const stats = () => {
+    MB.stat("nu-or-t", NU.num(t, 1) + " (" + NU.num(t / (2 * Math.PI * Math.pow(1 / (2 - v0 * v0), 1.5)), 1) + "바퀴)");
+    KEYS.forEach((k, i) => { const s = S[k]; MB.stat("nu-or-d" + i, s.dead ? "탈출/충돌" : NU.sci((energy(s.s) - E0) / Math.abs(E0), 2)); });
+  };
+  const advance = (dtSim) => {
+    acc += dtSim; let n = 0;
+    while (acc >= h && n < 4000) {
+      acc -= h; n++; t += h;
+      KEYS.forEach((k) => {
+        const o = S[k]; if (o.dead) return;
+        o.s = step(k, o.s); const r = Math.hypot(o.s[0], o.s[1]);
+        if (!(r < 40 && r > 0.02)) { o.dead = true; return; }
+        const last = o.trail[o.trail.length - 1];
+        if (Math.hypot(o.s[0] - last[0], o.s[1] - last[1]) > 0.02) { o.trail.push([o.s[0], o.s[1]]); if (o.trail.length > 3000) o.trail.shift(); }
+        const le = o.E[o.E.length - 1];
+        if (t - le[0] > 0.04) { o.E.push([t, energy(o.s)]); if (o.E.length > 6000) o.E.shift(); }
+      });
+    }
+  };
+  stats();
+  const btn = MB.playButton("nu-or-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 돌리기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-nu-orbit"), (dt) => {
+    if (!playing) return;
+    advance(dt * 3); pl.redraw(); stats();
+    if (t > 2 * Math.PI * 60) { playing = false; btn.set(false); }
+  });
+  const restart = () => { reset(); pl.redraw(); stats(); };
+  MB.steps("nu-or-h", HS, (v) => String(v), 0.05, (v) => { h = v; restart(); });
+  MB.range("nu-or-v", (v) => v.toFixed(2), (v) => { v0 = v; restart(); });
+  MB.seg("nu-or-zoom", (v) => { zoom = v; chart.redraw(); });
+  MB.check("nu-or-e", (v) => { show.euler = v; pl.redraw(); });
+  MB.check("nu-or-s", (v) => { show.symp = v; pl.redraw(); });
+  MB.check("nu-or-r", (v) => { show.rk4 = v; pl.redraw(); });
+  document.getElementById("nu-or-reset").addEventListener("click", restart);
+  /* 처음 화면: 미리 세 바퀴 돌려 둔다 */
+  advance(2 * Math.PI * 3); pl.redraw(); stats();
+})();
+</script>
+</body>
+</html>

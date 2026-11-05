@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>미분방정식과 모델링 · ODEBook</title>
+<meta name="description" content="미분방정식은 지금 상태가 다음 순간을 정하는 규칙이다. 낙하·인구·냉각·붕괴 법칙을 식으로 세우고, 계수와 선형성, 일반해와 특수해, 초기값 문제, 방향장과 등경사선, 오일러 방법, 데이터로 모델을 맞추고 검증하는 순서까지 그리고 만지며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .md-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .md-two > div { position: relative; min-width: 0; }
+  .md-two > div + div { border-top: 1px solid var(--border); }
+  .md-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .md-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .md-msg b { color: var(--text); }
+  .md-msg.ok { color: var(--ok); font-weight: 600; }
+  .md-msg.bad { color: var(--bad); font-weight: 600; }
+  .md-cands { display: flex; flex-wrap: wrap; gap: 6px; }
+  .md-cands button { font: 13px var(--mono); padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); cursor: pointer; }
+  .md-cands button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); font-weight: 700; }
+  .md-tbl td { font-family: var(--mono); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="modeling">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 01</div>
+    <h1 data-no-glossary>미분방정식과 모델링</h1>
+    <p class="lead">떨어지는 돌, 식어 가는 커피, 불어나는 세균, 줄어드는 방사성 원자. 이들에 대해 우리가 아는 법칙은 "몇 초 뒤에 어디 있다"가 아니라 "<b>지금 이 상태라면 지금 이만큼 변한다</b>"는 꼴입니다. 속도는 지금 받는 힘이 정하고, 식는 빠르기는 지금의 온도 차가 정합니다. 이렇게 미지의 함수와 그 도함수 사이의 관계로 쓴 법칙이 <span class="term">미분방정식</span>입니다. 미분방정식은 <b>지금 상태가 다음 순간을 정하는 규칙</b>이고, 그 해는 규칙을 한 순간 한 순간 따라가며 그린 곡선입니다. 이 장에서는 법칙에서 방정식을 세우고, 풀기 전에 그림(방향장)으로 해를 보고, 접선을 따라 걸어서(오일러 방법) 해를 숫자로 만들고, 데이터와 맞춰 모델을 검증하는 미분방정식의 한 바퀴를 돕니다.</p>
+    <ul class="objectives">
+      <li>낙하, 인구, 냉각, 방사성 붕괴의 법칙을 "변화율 = 지금 상태의 함수"로 써서 미분방정식을 세운다.</li>
+      <li>상미분방정식과 편미분방정식, 계수, 선형과 비선형을 구별한다.</li>
+      <li>해, 일반해와 특수해, 해곡선 족을 설명하고, 후보 함수를 대입해 해인지 확인한다.</li>
+      <li>초기값 문제를 세우고 적분 상수를 초기 조건으로 정한다.</li>
+      <li>방향장과 등경사선을 그려, 식을 풀지 않고도 해곡선의 모양을 읽는다.</li>
+      <li>오일러 방법으로 접선을 따라 걸어 근사해를 만들고, 간격 h와 오차의 관계를 관찰한다.</li>
+      <li>가정 → 방정식 → 해 → 검증의 모델링 순서를 따라 데이터에 모델을 맞추고 한계를 판단한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>계산으로 찾은 행성, 해왕성</b></div>
+      <div class="o-body"><p>뉴턴의 운동 법칙 \(m\,\mathbf{x}'' = \mathbf{F}\)는 행성이 "어디에 있다"고 말하지 않습니다. 지금의 위치가 힘을 정하고, 힘이 가속도를, 가속도가 다음 순간의 속도와 위치를 정한다고 말할 뿐입니다. 그래서 지금 위치와 속도를 알면 이 규칙을 따라 미래의 궤도를 계산할 수 있습니다.</p>
+        <p>19세기 천문학자들은 천왕성이 이 계산에서 조금씩 벗어난다는 것을 알았습니다. 프랑스의 르베리에<span class="en">(Urbain Le Verrier)</span>는 이 어긋남을 바깥에 있는 미지의 행성이 끌어당긴 결과로 보고, 운동 방정식을 거꾸로 따져 그 행성의 위치를 계산했습니다. 1846년 9월 베를린 천문대의 갈레<span class="en">(Johann Galle)</span>가 예측된 위치 가까이에서 해왕성을 찾아냈습니다. 망원경보다 먼저 미분방정식이 행성을 본 셈입니다.</p>
+        <div class="o-chain"><span>지금의 위치·속도</span><i>→</i><span>법칙: 변화율 = f(지금 상태)</span><i>→</i><span class="tool">미분방정식</span><i>→</i><span>미래의 궤도</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="laws">
+    <h2>변화율로 쓰는 법칙</h2>
+    <div class="problem"><strong>3초 뒤의 속도는 공식에 없다</strong>
+      <p>스카이다이버가 비행기에서 뛰어내립니다. 공기 저항이 없다면 \(v = gt\)로 끝이지만, 실제로는 빨라질수록 공기가 세게 막아서 속도가 어느 값 이상 늘지 않습니다. 물리학이 주는 것은 \(v(t)\)의 공식이 아니라 "<b>지금 속도가 \(v\)이면 지금 받는 힘은 \(mg - cv^2\)</b>"이라는 사실뿐입니다. 이 한 줄에서 어떻게 3초 뒤, 10초 뒤의 속도를 알아낼 수 있을까요?</p></div>
+    <p>뉴턴의 제2법칙 \(F = ma\)에서 가속도 \(a\)는 속도의 변화율 \(dv/dt\)입니다. 아래로 향하는 방향을 양수로 잡으면 다이버가 받는 힘은 중력 \(mg\)와 위로 미는 공기 저항입니다. 사람처럼 큰 물체가 빠르게 움직일 때 공기 저항은 속도의 제곱에 비례한다고 보는 것이 좋은 근사입니다. 그러면</p>
+    <div class="formula">$$m\frac{dv}{dt} = mg - cv^2.$$
+      <div class="where">\(m\): 질량(kg), \(g = 9.8\) m/s², \(c\): 공기 저항 계수(kg/m, 몸의 크기·자세·공기 밀도에 따라 정해지는 상수).</div></div>
+    <p>이 식은 \(v\)를 직접 주지 않습니다. 대신 <b>어느 순간이든</b> 그때의 \(v\)를 넣으면 그때의 \(dv/dt\)를 알려 줍니다. 이 관점이 이 책 전체의 줄기입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="지금 상태가 규칙을 통해 다음 순간의 상태를 정하는 그림">
+        <defs><marker id="md-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g transform="translate(40,80)"><rect width="170" height="90" rx="12" class="f-elev" style="stroke:var(--border)"/><text x="85" y="36" text-anchor="middle" class="t" style="font-weight:700">지금 상태 y(t)</text><text x="85" y="62" text-anchor="middle" class="t-dim">속도, 온도, 개체 수…</text></g>
+        <g transform="translate(295,80)"><rect width="170" height="90" rx="12" class="f-acc-soft" style="stroke:var(--accent)"/><text x="85" y="36" text-anchor="middle" class="t-acc">규칙 f</text><text x="85" y="62" text-anchor="middle" class="t-mono">y′ = f(t, y)</text></g>
+        <g transform="translate(550,80)"><rect width="170" height="90" rx="12" class="f-elev" style="stroke:var(--border)"/><text x="85" y="36" text-anchor="middle" class="t" style="font-weight:700">다음 순간 y(t + Δt)</text><text x="85" y="62" text-anchor="middle" class="t-mono">≈ y + f·Δt</text></g>
+        <path d="M212 125 H290" class="s-acc" style="stroke-width:2" marker-end="url(#md-ar)"/>
+        <path d="M467 125 H545" class="s-acc" style="stroke-width:2" marker-end="url(#md-ar)"/>
+        <path d="M635 175 C635 235 125 235 125 175" fill="none" class="s-line" style="stroke-dasharray:5 4" marker-end="url(#md-ar)"/>
+        <text x="380" y="248" text-anchor="middle" class="t-dim">다음 순간이 다시 "지금"이 되어 규칙을 반복한다 → 해곡선</text>
+        <text x="250" y="112" text-anchor="middle" class="t-dim">대입</text><text x="506" y="112" text-anchor="middle" class="t-dim">변화율</text>
+        <text x="380" y="50" text-anchor="middle" class="t" style="font-weight:700">미분방정식 = 지금 상태가 다음 순간을 정하는 규칙</text>
+      </svg>
+      <figcaption><b>그림 1-1.</b> 미분방정식의 관점. 상태를 규칙 f에 넣으면 변화율이 나오고, 변화율이 아주 짧은 시간 뒤의 상태를 정한다. 이 고리를 끝없이 촘촘하게 돌린 결과가 해 y(t)다.</figcaption>
+    </figure>
+    <p>다른 분야의 법칙도 같은 꼴로 쓰입니다. 모두 "변화율이 지금의 양에 따라 정해진다"는 한 문장입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>현상</th><th>법칙(말)</th><th>미분방정식</th><th>상수의 뜻</th></tr></thead>
+      <tbody>
+        <tr><td>공기 저항 낙하</td><td>알짜힘 = 질량 × 가속도</td><td>\(mv' = mg - cv^2\)</td><td>\(c\): 저항 계수</td></tr>
+        <tr><td>인구(세균) 성장</td><td>증가율은 지금 개체 수에 비례</td><td>\(P' = kP\)</td><td>\(k\): 1인당 순증가율(1/시간)</td></tr>
+        <tr><td>뉴턴 냉각</td><td>식는 빠르기는 주변과의 온도 차에 비례</td><td>\(T' = -k(T - T_a)\)</td><td>\(T_a\): 주변 온도, \(k\): 열전달 상수</td></tr>
+        <tr><td>방사성 붕괴</td><td>단위 시간에 붕괴하는 원자 수는 남은 원자 수에 비례</td><td>\(N' = -\lambda N\)</td><td>\(\lambda\): 붕괴 상수</td></tr>
+        <tr><td>용수철–질량</td><td>복원력은 늘어난 길이에 비례(훅)</td><td>\(mx'' = -kx\)</td><td>\(k\): 용수철 상수</td></tr>
+      </tbody></table></div>
+    <p>표의 식들은 우변이 "지금의 양"으로만 이루어져 있다는 점에서 닮았습니다. 인구 식과 붕괴 식은 부호만 다른 같은 방정식이고, 냉각 식도 \(u = T - T_a\)로 놓으면 \(u' = -ku\)로 붕괴 식과 같아집니다. <b>서로 다른 현상이 같은 방정식을 공유한다</b>는 것이 미분방정식을 배우는 가장 큰 이득입니다. 한 번 풀면 여러 분야에서 씁니다. 이 식들을 실제로 푸는 것은 <a href="separable.html">2장</a>에서 하고, 이 장에서는 식을 세우고 읽는 법에 집중합니다.</p>
+    <div class="callout"><strong>예제 1.1 (법칙에서 식 세우기)</strong> 다음 상황을 미분방정식으로 써라.
+      <ol>
+        <li>(가) 어느 약물은 혈중 농도 \(C\)에 비례하는 빠르기로 간에서 분해된다. → \(C' = -kC\) (\(k > 0\)). "줄어든다"는 말이 음의 부호가 된다.</li>
+        <li>(나) 연못의 물고기 수 \(P\)는 \(kP\)의 빠르기로 늘고, 낚시로 하루 \(h\)마리씩 빠져나간다. → \(P' = kP - h\). 들어오고 나가는 양을 더하고 뺀다. 이런 "들어옴 − 나감" 장부는 혼합 탱크(<a href="linear-first.html">3장</a>)와 수확 모델(<a href="autonomous.html">4장</a>)에서 다시 나온다.</li>
+        <li>(다) 소문은 이미 아는 사람 수 \(y\)와 아직 모르는 사람 수 \(N - y\)의 곱에 비례해 퍼진다. → \(y' = ky(N - y)\). 만남이 일어나려면 두 무리가 모두 있어야 하므로 곱이 된다. 2장의 로지스틱 방정식이다.</li>
+      </ol></div>
+    <p>이제 위의 낙하 방정식이 실제로 무엇을 예측하는지 봅시다. 다이버가 빨라질수록 \(cv^2\)가 커지고, 마침내 \(mg = cv^2\)가 되면 알짜힘이 0이라 더 빨라지지 않습니다. 이 속도가 <span class="term">종단 속도</span><span class="en">(terminal velocity)</span>입니다.</p>
+    <div class="formula">$$v' = 0 \iff mg = cv_T^2 \iff v_T = \sqrt{\frac{mg}{c}}.$$
+      <div class="where">\(m = 80\) kg, \(c = 0.25\) kg/m이면 \(v_T = \sqrt{80\cdot 9.8/0.25} = \sqrt{3136} = 56\) m/s(약 200 km/h).</div></div>
+    <p>식을 풀지 않고도 종단 속도를 얻었습니다. "변화율이 0인 상태"를 찾는 이 방법은 4장의 <b>평형점</b>으로 이어집니다. 2장에서 변수를 분리해 풀면 해는 \(v(t) = v_T\tanh(gt/v_T)\)이고, \(v_T\)의 95%에 닿는 데 \(t = \tanh^{-1}(0.95)\cdot v_T/g \approx 10.5\) s가 걸립니다. 아래 시뮬레이터로 확인해 보세요.</p>
+
+    <div class="sim" id="sim-md-drag">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>스카이다이빙: 힘의 균형과 종단 속도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view md-two">
+          <div><canvas id="md-cv-drag-scene"></canvas><span class="md-cap">힘: 중력 mg(아래) · 저항 cv²(위)</span></div>
+          <div><canvas id="md-cv-drag-chart"></canvas><span class="md-cap">v(t) (m/s)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>질량 m <output id="md-d-m-out"></output></span><input type="range" id="md-d-m" min="50" max="120" step="1" value="80"></label>
+          <label class="ctrl"><span>저항 계수 c (자세) <output id="md-d-c-out"></output></span><input type="range" id="md-d-c" min="0.1" max="0.6" step="0.01" value="0.25"></label>
+          <label class="check"><input type="checkbox" id="md-d-lin"> 비교: 선형 저항 모형(같은 v<sub>T</sub>)</label>
+          <div class="btn-row"><button class="btn primary" id="md-d-play">▶ 뛰어내리기</button><button class="btn" id="md-d-chute">낙하산 펴기</button><button class="btn" id="md-d-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="md-d-t">—</span></div>
+        <div class="stat"><span class="k">v</span><span class="v" id="md-d-v">—</span></div>
+        <div class="stat"><span class="k">v<sub>T</sub> = √(mg/c)</span><span class="v" id="md-d-vt">—</span></div>
+        <div class="stat"><span class="k">가속도 a = g − cv²/m</span><span class="v" id="md-d-a">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶를 누르고 위·아래 화살표의 길이가 같아지는 순간을 보세요. 그때 가속도가 0이 되고 v가 v<sub>T</sub>에 멈춥니다. ② 질량을 늘리면 v<sub>T</sub>가 √m에 비례해 커집니다. 무거운 사람이 더 빨리 떨어집니다(공기 저항이 있을 때만). ③ 종단 속도에 닿은 뒤 '낙하산 펴기'를 누르면 c가 3초에 걸쳐 30 kg/m로 커지고 v가 새 종단 속도 약 5 m/s로 떨어집니다. 모델: mv′ = mg − cv², 아래 방향이 양수, RK4 적분. 선형 모형은 v′ = g(1 − v/v<sub>T</sub>)입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="classification">
+    <h2>미분방정식의 분류: 상미분·편미분, 계수, 선형성</h2>
+    <p>풀이법은 방정식의 꼴에 따라 달라지므로, 먼저 이름을 붙이는 법을 익힙니다.</p>
+    <div class="callout deep"><strong>정의 1.1 (미분방정식)</strong> 미지 함수와 그 도함수(들) 사이의 관계식을 <span class="term">미분방정식</span><span class="en">(differential equation)</span>이라 한다. 미지 함수가 변수 하나의 함수이면 <span class="term">상미분방정식</span><span class="en">(ordinary differential equation, ODE)</span>, 변수 여럿의 함수이고 편도함수가 들어 있으면 <span class="term">편미분방정식</span><span class="en">(partial differential equation, PDE)</span>이라 한다.</div>
+    <p>떨어지는 다이버의 속도는 시간만의 함수이므로 상미분방정식입니다. 반면 쇠막대의 온도 \(u(x, t)\)는 위치와 시간에 따라 다르고, 열 방정식 \(u_t = \alpha u_{xx}\)는 편미분방정식입니다. 이 책의 1–15장은 상미분방정식을, <a href="pde.html">16장</a>은 편미분방정식을 다룹니다. 편미분방정식도 결국 변수분리로 상미분방정식 여러 개로 쪼개어 풉니다.</p>
+    <div class="callout deep"><strong>정의 1.2 (계수)</strong> 방정식에 들어 있는 도함수 가운데 가장 높은 것의 차수를 방정식의 <span class="term">계수</span><span class="en">(order)</span>라 한다. \(n\)계 상미분방정식의 일반형은
+      <div class="formula">$$F\bigl(t, y, y', \ldots, y^{(n)}\bigr) = 0,\qquad\text{정규형: } y^{(n)} = f\bigl(t, y, y', \ldots, y^{(n-1)}\bigr).$$</div></div>
+    <p>낙하 방정식 \(mv' = mg - cv^2\)는 1계, 용수철 \(mx'' = -kx\)는 2계입니다. 낙하를 속도 대신 위치 \(x\)로 쓰면 \(mx'' = mg - c(x')^2\)로 2계가 됩니다. 같은 현상이라도 무엇을 미지 함수로 잡느냐에 따라 계수가 바뀝니다. 2계 방정식을 1계 방정식 두 개로 바꾸는 방법은 <a href="systems.html">11장</a>에서 체계적으로 다룹니다.</p>
+    <div class="callout deep"><strong>정의 1.3 (선형과 비선형)</strong> \(n\)계 방정식이
+      <div class="formula">$$a_n(t)\,y^{(n)} + a_{n-1}(t)\,y^{(n-1)} + \cdots + a_1(t)\,y' + a_0(t)\,y = g(t)$$</div>
+      꼴로 쓰이면 <span class="term">선형 미분방정식</span><span class="en">(linear ODE)</span>, 아니면 <span class="term">비선형</span><span class="en">(nonlinear)</span>이라 한다. 즉 \(y\)와 그 도함수가 모두 1차로만, 서로 곱해지지 않고, 함수 안에 들어가지 않은 채 나타나야 한다. 계수 \(a_k(t)\)는 \(t\)에 대해서는 아무 함수여도 된다. \(g \equiv 0\)이면 <b>동차</b>, 아니면 <b>비동차</b>라 한다.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방정식</th><th>종류</th><th>계수</th><th>선형?</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>\(y' = -2ty\)</td><td>ODE</td><td>1</td><td>선형(동차)</td><td>계수 \(-2t\)는 \(t\)만의 함수라 괜찮다</td></tr>
+        <tr><td>\(mv' = mg - cv^2\)</td><td>ODE</td><td>1</td><td>비선형</td><td>\(v^2\)</td></tr>
+        <tr><td>\(y'' + 4y = \cos 3t\)</td><td>ODE</td><td>2</td><td>선형(비동차)</td><td>우변 \(g(t) = \cos 3t\)</td></tr>
+        <tr><td>\(\theta'' + \frac{g}{L}\sin\theta = 0\)</td><td>ODE</td><td>2</td><td>비선형</td><td>\(\sin\theta\) (진자, <a href="nonlinear.html">12장</a>)</td></tr>
+        <tr><td>\(yy' = t\)</td><td>ODE</td><td>1</td><td>비선형</td><td>\(y\)와 \(y'\)의 곱</td></tr>
+        <tr><td>\(t^2y''' - e^ty' + y = \ln t\)</td><td>ODE</td><td>3</td><td>선형</td><td>모든 계수가 \(t\)만의 함수</td></tr>
+        <tr><td>\(u_t = \alpha u_{xx}\)</td><td>PDE</td><td>2</td><td>선형</td><td>열 방정식(<a href="pde.html">16장</a>)</td></tr>
+      </tbody></table></div>
+    <p>선형이 특별한 이유는 <b>중첩</b>입니다. 동차 선형 방정식의 두 해를 더하거나 상수배해도 다시 해가 됩니다. 이 성질 하나가 2계 선형 방정식(<a href="second-order.html">6장</a>), 라플라스 변환(<a href="laplace.html">9장</a>), 푸리에 급수(<a href="boundary.html">15장</a>)의 바탕입니다. 비선형 방정식은 중첩이 깨지는 대신 평형점, 한계 순환, 혼돈 같은 훨씬 풍부한 행동을 보입니다(<a href="nonlinear.html">12</a>·<a href="chaos.html">13장</a>). 진자의 \(\sin\theta\)를 작은 각에서 \(\theta\)로 바꾸는 것처럼, 공학에서는 비선형 방정식을 평형점 근처에서 <b>선형화</b>해 쓰는 일이 많습니다.</p>
+    <div class="callout warn"><strong>선형성은 \(y\)에 대한 말이다</strong> \(y' = t^2y + \sin t\)는 \(t^2\)과 \(\sin t\)가 있어도 선형입니다. 거꾸로 \(y' = \sin y\)는 \(t\)가 없어도 비선형입니다. 판정할 때는 \(t\)는 잊고 \(y, y', y'', \ldots\)만 봅니다. 이들을 \(Y_0, Y_1, Y_2, \ldots\)로 바꿔 쓴 식이 그 변수들의 1차식이면 선형입니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="solutions">
+    <h2>해, 일반해와 특수해, 해곡선 족</h2>
+    <div class="problem"><strong>답이 하나가 아니다</strong>
+      <p>\(y' = y - t\)의 해를 하나 찾아 보면 \(y = t + 1\)이 됩니다(\(y' = 1\), \(y - t = 1\)). 그런데 \(y = t + 1 + e^t\)도 해이고, \(y = t + 1 - 3e^t\)도 해입니다. 답이 무수히 많다면 "방정식을 푼다"는 것은 무엇을 찾는 일일까요?</p></div>
+    <div class="callout deep"><strong>정의 1.4 (해)</strong> 구간 \(I\)에서 \(n\)번 미분 가능한 함수 \(\phi\)가 \(I\)의 모든 \(t\)에서 \(F\bigl(t, \phi, \phi', \ldots, \phi^{(n)}\bigr) = 0\)을 만족하면 \(\phi\)를 구간 \(I\)에서 방정식의 <span class="term">해</span><span class="en">(solution)</span>라 한다. \(I\)를 해의 <b>정의 구간</b>이라 한다. 해의 그래프를 <span class="term">해곡선</span><span class="en">(solution curve, integral curve)</span>이라 한다.</div>
+    <p>정의에서 구간 \(I\)를 빠뜨리면 안 됩니다. \(y = 1/(1 - t)\)는 \(y' = y^2\)를 만족하지만 \(t = 1\)에서 정의되지 않으므로, 해로서는 \((-\infty, 1)\)과 \((1, \infty)\) 둘 중 하나에서만 산다고 봅니다. 이 이야기는 <a href="separable.html#implicit">2장</a>과 <a href="autonomous.html">4장</a>에서 이어집니다.</p>
+    <p>1계 방정식은 보통 임의 상수 하나를 포함한 해의 모임을 가집니다. \(y' = y - t\)의 경우</p>
+    <div class="formula">$$y = t + 1 + c\,e^{t}\qquad (c\text{는 임의의 상수})$$
+      <div class="where">검산: \(y' = 1 + ce^t\), \(y - t = 1 + ce^t\). 모든 \(c\)와 모든 \(t\)에서 같다.</div></div>
+    <div class="callout deep"><strong>정의 1.5 (일반해와 특수해)</strong> 임의 상수 \(c_1, \ldots, c_n\)을 포함해 (거의) 모든 해를 나타내는 식을 <span class="term">일반해</span><span class="en">(general solution)</span>, 상수에 특정한 값을 넣어 얻은 하나의 해를 <span class="term">특수해</span><span class="en">(particular solution)</span>라 한다. 일반해의 상수를 바꿔 가며 그린 해곡선들의 모임을 <span class="term">해곡선 족</span><span class="en">(family of solution curves)</span>이라 한다. \(n\)계 방정식의 일반해는 보통 상수 \(n\)개를 갖는다.</div>
+    <p>1계 방정식에 상수가 하나인 이유는 1계 미분을 한 번 "되돌리려면" 적분을 한 번 해야 하고, 적분할 때마다 상수가 하나 생기기 때문입니다. 가장 단순한 예 \(y' = f(t)\)의 일반해 \(y = \int f\,dt + C\)가 이것을 보여 줍니다(CalculusBook <a href="../../calculus/chapters/fundamental.html">미적분의 기본 정리</a>). 2계 방정식 \(y'' = -g\)는 두 번 적분해 \(y = -\tfrac12 gt^2 + c_1t + c_2\), 상수가 두 개입니다.</p>
+    <div class="callout warn"><strong>일반해가 모든 해는 아닐 수 있다</strong> \(y' = y^2\)의 해곡선 족은 \(y = \dfrac{1}{c - t}\)입니다. 그런데 \(y \equiv 0\)도 해이고(\(0' = 0 = 0^2\)), 이것은 어떤 \(c\)로도 얻어지지 않습니다. 이처럼 일반해 공식에서 빠지는 해가 있을 수 있어서, 정의 1.5에 "(거의)"를 붙였습니다. 2장에서 변수를 분리할 때 \(y^2\)으로 나누는 순간 이런 해를 잃는다는 것을 보게 됩니다. 아래 시뮬레이터의 '\(y' = y^2\)'에서 확인하세요.</div>
+
+    <div class="sim" id="sim-md-family">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>해곡선 족과 매개변수 c: 한 점을 지나는 해 고르기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-fam"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="md-f-pre">
+            <option value="lin">y′ = y − t   (y = t + 1 + ce^t)</option>
+            <option value="gauss">y′ = −2ty   (y = ce^(−t²))</option>
+            <option value="pow">ty′ = 2y   (y = ct²)</option>
+            <option value="sq">y′ = y²   (y = 1/(c − t))</option>
+          </select></label>
+          <label class="ctrl"><span>매개변수 c <output id="md-f-c-out"></output></span><input type="range" id="md-f-c" min="-3" max="3" step="0.01" value="1"></label>
+          <label class="check"><input type="checkbox" id="md-f-fam" checked> 다른 c의 곡선들(회색)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고른 해</span><span class="v" id="md-f-eq">—</span></div>
+        <div class="stat"><span class="k">지나는 점 (t₀, y₀)</span><span class="v" id="md-f-pt">—</span></div>
+        <div class="stat"><span class="k">그 점의 기울기 f(t₀, y₀)</span><span class="v" id="md-f-sl">—</span></div>
+      </div>
+      <div class="md-msg" id="md-f-msg"></div>
+      <div class="sim-note">해볼 것: ① 분홍 점을 끌면 그 점을 지나는 해곡선 하나와 그 c가 정해집니다. 곡선끼리 서로 만나지 않는 것을 보세요. ② 'y′ = y − t'에서 c = 0이면 직선 y = t + 1입니다. c &gt; 0이면 위로, c &lt; 0이면 아래로 떠나 버립니다. ③ 'ty′ = 2y'에서는 모든 곡선이 원점을 지납니다. t = 0에서 방정식이 y′을 정해 주지 못하기 때문입니다(4장의 존재·유일성 정리가 깨지는 경우). ④ 'y′ = y²'에서 점을 y = 0 위에 놓아 보세요. 모델: 각 방정식의 정확한 일반해.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="verify">
+    <h2>해를 대입해 확인하기</h2>
+    <p>미분방정식을 푸는 일은 어렵지만, 주어진 함수가 해인지 <b>확인하는</b> 일은 언제나 쉽습니다. 미분해서 대입해 보면 됩니다. 손으로 푼 답, 교재의 답, 컴퓨터가 준 답을 믿기 전에 항상 이 검산을 하는 습관이 중요합니다.</p>
+    <div class="callout"><strong>예제 1.2 (대입으로 확인)</strong>
+      <ol>
+        <li>(가) \(y = 3e^{-t^2}\)이 \(y' = -2ty\)의 해인가? \(y' = 3e^{-t^2}\cdot(-2t) = -2t\cdot 3e^{-t^2} = -2ty\). 모든 \(t\)에서 성립하므로 \((-\infty, \infty)\)에서 해다.</li>
+        <li>(나) \(y = c_1\cos 2t + c_2\sin 2t\)가 \(y'' + 4y = 0\)의 해인가? \(y'' = -4c_1\cos 2t - 4c_2\sin 2t = -4y\). 따라서 \(y'' + 4y = 0\), 모든 \(c_1, c_2\)에 대해 해다. 2계 방정식이라 상수가 두 개다.</li>
+        <li>(다) \(y = \cos 4t\)는 \(y'' + 4y = 0\)의 해인가? \(y'' + 4y = -16\cos 4t + 4\cos 4t = -12\cos 4t\). 이것은 항등적으로 0이 아니므로(예: \(t = 0\)에서 \(-12\)) <b>해가 아니다</b>. 몇몇 점(\(\cos 4t = 0\)인 곳)에서 우연히 0이 되는 것은 해가 될 이유가 못 된다. 정의 1.4는 구간 전체에서의 성립을 요구한다.</li>
+        <li>(라) \(y = 5t^2\)은 \(ty' = 2y\)의 해인가? \(ty' = t\cdot 10t = 10t^2 = 2\cdot 5t^2\). 해다.</li>
+      </ol></div>
+    <p>대입 검산을 그래프로 하면 이렇습니다. 방정식의 좌변(예: \(y'\))과 우변(예: \(f(t, y)\))을 후보 함수로 계산해 두 곡선으로 그립니다. 해라면 두 곡선이 완전히 겹치고, 둘의 차이인 <b>잔차</b> \(R(t) = \text{좌변} - \text{우변}\)이 구간 전체에서 0입니다.</p>
+
+    <div class="sim" id="sim-md-check">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>대입 검산기: 좌변과 우변이 겹치는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-chk"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="md-k-eq">
+            <option value="0">y′ = −2ty</option>
+            <option value="1">y″ + 4y = 0</option>
+            <option value="2">y′ = y²</option>
+            <option value="3">ty′ = 2y</option>
+          </select></label>
+          <div class="ctrl"><span>후보 함수</span><div class="md-cands" id="md-k-cands"></div></div>
+          <label class="check"><input type="checkbox" id="md-k-res" checked> 잔차 R(t) 칠하기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">좌변</span><span class="v" id="md-k-l">—</span></div>
+        <div class="stat"><span class="k">우변</span><span class="v" id="md-k-r">—</span></div>
+        <div class="stat"><span class="k">max |R(t)|</span><span class="v" id="md-k-max">—</span></div>
+      </div>
+      <div class="md-msg" id="md-k-msg"></div>
+      <div class="sim-note">해볼 것: ① y″ + 4y = 0에서 cos 4t를 고르면 두 곡선이 몇 점에서만 만납니다. 그 점들에서 잔차가 0이어도 해가 아닙니다. ② y′ = y²의 1/(1 − t)는 t = 1에서 끊깁니다. 해의 정의 구간은 t &lt; 1 쪽 한 조각입니다. ③ ty′ = 2y의 t² + 1은 잔차가 상수 −2입니다. 모델: 후보 함수와 그 도함수의 정확한 식으로 좌변·우변을 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="ivp">
+    <h2>초기값 문제: 지금 상태 하나로 미래가 정해진다</h2>
+    <div class="problem"><strong>해곡선 족에서 하나를 고르는 정보</strong>
+      <p>다이버가 비행기 문을 나설 때 속도는 0입니다. 커피는 처음 90°C에서 식기 시작합니다. 세균 배양은 100마리로 시작합니다. 법칙(미분방정식)은 같아도 출발점이 다르면 이야기가 다릅니다. 출발점 하나만 알면 해가 정해질까요?</p></div>
+    <div class="callout deep"><strong>정의 1.6 (초기값 문제)</strong> 1계 방정식과 한 시각에서의 값을 함께 준 문제
+      <div class="formula">$$y' = f(t, y),\qquad y(t_0) = y_0$$</div>
+      를 <span class="term">초기값 문제</span><span class="en">(initial value problem, IVP)</span>라 하고, \(y(t_0) = y_0\)을 <b>초기 조건</b>이라 한다. \(n\)계 방정식에서는 \(y(t_0), y'(t_0), \ldots, y^{(n-1)}(t_0)\)의 \(n\)개 값을 준다.</div>
+    <p>해곡선 족 그림에서 초기 조건은 "점 \((t_0, y_0)\)을 지나는 곡선을 골라라"입니다. 일반해에 대입하면 상수가 정해집니다.</p>
+    <div class="callout"><strong>예제 1.3 (초기 조건으로 상수 정하기)</strong> (가) \(y' = y - t\), \(y(0) = 2\). (나) \(y'' + 4y = 0\), \(y(0) = 1\), \(y'(0) = 6\).
+      <ol>
+        <li>(가) 일반해 \(y = t + 1 + ce^t\)에 \(t = 0\)을 넣으면 \(2 = 0 + 1 + c\), \(c = 1\). 해는 \(y = t + 1 + e^t\). 예를 들어 \(y(1) = 2 + e \approx 4.718\). RK4 수치 적분으로도 4.71828이 나온다.</li>
+        <li>(나) 일반해 \(y = c_1\cos 2t + c_2\sin 2t\), \(y' = -2c_1\sin 2t + 2c_2\cos 2t\). \(y(0) = c_1 = 1\), \(y'(0) = 2c_2 = 6\)이므로 \(c_2 = 3\). 해는 \(y = \cos 2t + 3\sin 2t\). 2계에는 조건이 두 개(위치와 속도) 필요하다. 용수철을 당긴 거리만으로는 운동이 정해지지 않고, 놓을 때 얼마나 세게 밀었는지도 알아야 한다.</li>
+      </ol></div>
+    <p>물리적으로 1계 방정식 \(y' = f(t, y)\)는 "지금의 \(y\) 하나가 지금의 변화율을 정한다"고 말하므로, 처음 \(y\) 하나만 알면 그다음 순간, 또 그다음 순간이 차례로 정해집니다. 그래서 초기값 문제의 해는 하나뿐일 것으로 기대합니다. 이 기대는 \(f\)가 충분히 매끄러우면 실제로 성립하며, 그것이 <a href="autonomous.html">4장</a>의 <b>존재·유일성 정리</b>입니다. 미리 결론만 적어 두면:</p>
+    <div class="callout deep"><strong>정리 1.7 (존재와 유일성, 미리 보기)</strong> \(f\)와 \(\partial f/\partial y\)가 점 \((t_0, y_0)\)을 품은 직사각형에서 연속이면, \(t_0\)을 품은 어떤 구간에서 초기값 문제 \(y' = f(t, y)\), \(y(t_0) = y_0\)의 해가 존재하고 오직 하나뿐이다. 따라서 그 영역에서 서로 다른 해곡선은 만나거나 교차하지 않는다. 증명은 피카르 반복으로 4장에서 한다.</div>
+    <p>해곡선 족 시뮬레이터에서 곡선들이 서로 만나지 않았던 것이 이 정리의 그림입니다. 한편 '\(ty' = 2y\)'에서는 모든 곡선이 원점에서 만났습니다. 정규형으로 쓰면 \(f(t, y) = 2y/t\)이고, 이 \(f\)는 \(t = 0\)에서 정의조차 되지 않으므로 정리의 가정이 깨집니다. 원점을 지나는 해가 무수히 많고, \(t = 0\), \(y_0 \ne 0\)을 지나는 해는 하나도 없습니다.</p>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="direction-field">
+    <h2>방향장: 풀지 않고 해를 보기</h2>
+    <div class="problem"><strong>공식으로 풀리지 않는 방정식</strong>
+      <p>\(y' = t - y^2\)처럼 단순해 보이는 방정식도 기본 함수로 쓴 해가 없습니다(리카티 방정식이라 부르는 꼴입니다). 공학에서 만나는 방정식 대부분이 이렇습니다. 그래도 해가 어떻게 생겼는지, 결국 어디로 가는지는 알고 싶습니다. 공식 없이 해를 볼 수 있을까요?</p></div>
+    <p>방정식 \(y' = f(t, y)\)는 평면의 모든 점 \((t, y)\)에서 "이 점을 지나는 해곡선의 기울기는 \(f(t, y)\)다"라고 알려 줍니다. 그러니 평면의 격자점마다 그 기울기를 가진 짧은 선분을 그려 두면, 해곡선은 이 선분들에 <b>접하며 흘러가는</b> 곡선입니다. 바람에 날리는 깃털이 그 자리의 바람 방향을 따라가는 것과 같습니다.</p>
+    <div class="callout deep"><strong>정의 1.8 (방향장)</strong> 영역 \(R\)의 점들 \((t, y)\)에 기울기 \(f(t, y)\)인 짧은 선분을 붙인 그림을 \(y' = f(t, y)\)의 <span class="term">방향장</span><span class="en">(direction field, slope field)</span> 또는 기울기 장이라 한다. 미분 가능한 함수 \(y = \phi(t)\)가 해일 필요충분조건은 그 그래프가 모든 점에서 방향장의 선분에 접하는 것이다.</div>
+    <p>방향장을 그리는 데에는 미분도 적분도 필요 없고, \(f\)를 계산하기만 하면 됩니다. 아래 시뮬레이터에서 빈 곳을 클릭하면 그 점을 초기값으로 하는 해곡선이 앞뒤로 그려지고, 분홍 점을 끌면 굵은 해곡선이 따라 움직입니다.</p>
+
+    <div class="sim" id="sim-md-field">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>방향장 위에 초기값 놓기: 해곡선이 흐름을 따라간다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-field"></canvas><span class="tag-tl" id="md-fd-tag">y′ = y − t</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="md-fd-pre">
+            <option value="lin">y′ = y − t</option>
+            <option value="ric">y′ = t − y²</option>
+            <option value="logi">y′ = y(1 − y)</option>
+            <option value="circ">y′ = −t / y</option>
+            <option value="wave">y′ = sin t − y/2</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="md-fd-tint"> 기울기 부호로 색칠(오르막·내리막)</label>
+          <label class="check"><input type="checkbox" id="md-fd-many"> 왼쪽 끝에서 여러 해곡선 뿌리기</label>
+          <div class="btn-row"><button class="btn" id="md-fd-clear">클릭한 곡선 지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">초기값 (t₀, y₀)</span><span class="v" id="md-fd-pt">—</span></div>
+        <div class="stat"><span class="k">기울기 f(t₀, y₀)</span><span class="v" id="md-fd-sl">—</span></div>
+        <div class="stat"><span class="k">y(t₀ + 1)</span><span class="v" id="md-fd-y1">—</span></div>
+      </div>
+      <div class="md-msg" id="md-fd-msg"></div>
+      <div class="sim-note">해볼 것: ① 'y′ = y − t'에서 직선 y = t + 1 근처에 점을 놓아 보세요. 조금만 위면 위로, 조금만 아래면 아래로 벌어집니다. 불안정한 해입니다. ② 'y′ = t − y²'에서 왼쪽 끝에서 뿌리면, 위쪽 곡선들이 오른쪽에서 한 줄기(대략 y ≈ √t)로 모입니다. 공식 없이도 장기 거동이 보입니다. ③ 'y′ = −t/y'의 해곡선은 원이고, y = 0에서 기울기가 무한대가 되어 끊깁니다. 모델: 해곡선은 RK4로 앞뒤로 적분하고, 화면을 벗어나거나 기울기가 발산하면 멈춥니다.</div>
+    </div>
+    <p>방향장에서 읽을 수 있는 정보를 정리하면 다음과 같습니다.</p>
+    <ul>
+      <li><b>평형해</b>: \(f(t, y) = 0\)이 \(t\)와 무관하게 \(y = c\)에서 성립하면 수평선 \(y = c\)가 해다. \(y' = y(1 - y)\)의 \(y = 0\)과 \(y = 1\).</li>
+      <li><b>모이는 곳과 흩어지는 곳</b>: 근처의 해들이 다가오는 곡선(안정)과 멀어지는 곡선(불안정). \(y' = y(1 - y)\)에서는 \(y = 1\)로 모이고 \(y = 0\)에서 흩어진다.</li>
+      <li><b>대칭</b>: \(f(-t, y) = -f(t, y)\)이면 방향장이 \(y\)축에 대해 거울 대칭이고, 해곡선도 그렇다(\(y' = -t/y\)의 원).</li>
+      <li><b>끊김</b>: 기울기가 무한대가 되는 곳에서 해가 끝날 수 있다.</li>
+    </ul>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="isoclines">
+    <h2>등경사선: 손으로 방향장 그리기</h2>
+    <p>컴퓨터가 없다면 격자점 수백 개에서 \(f\)를 계산하기는 고됩니다. 손으로 그릴 때는 순서를 뒤집습니다. 점마다 기울기를 구하는 대신, <b>기울기가 같은 점들</b>을 한꺼번에 찾습니다.</p>
+    <div class="callout deep"><strong>정의 1.9 (등경사선)</strong> 상수 \(m\)에 대해 곡선 \(f(t, y) = m\)을 \(y' = f(t, y)\)의 <span class="term">등경사선</span><span class="en">(isocline)</span>이라 한다. 등경사선 위의 모든 점에서 방향장의 선분은 같은 기울기 \(m\)을 가진다. 특히 \(m = 0\)인 등경사선 \(f = 0\)은 해곡선이 수평이 되는 곳, 즉 해의 극대·극소가 놓이는 곳이다.</div>
+    <div class="callout"><strong>예제 1.4 (등경사선으로 그리기)</strong> \(y' = t - y\)의 방향장을 등경사선으로 그려라.
+      <ol>
+        <li>등경사선 \(t - y = m\), 즉 \(y = t - m\). 모두 기울기 1인 평행선이다.</li>
+        <li>\(m = 0\): 직선 \(y = t\) 위에는 수평 선분. \(m = 1\): 직선 \(y = t - 1\) 위에는 기울기 1인 선분. \(m = -1\): 직선 \(y = t + 1\) 위에는 기울기 −1인 선분.</li>
+        <li>\(m = 1\)인 등경사선 \(y = t - 1\)의 기울기가 1이고, 그 위의 선분 기울기도 1이다. 선분이 등경사선 자신을 따라 놓이므로 <b>이 직선 자체가 해곡선</b>이다. 검산: \(y = t - 1\)이면 \(y' = 1\), \(t - y = 1\). ✓</li>
+        <li>\(y = t - 1\)보다 위(\(m \lt 1\))에서는 해가 그 직선보다 완만하게, 아래(\(m > 1\))에서는 가파르게 움직여 양쪽 모두 이 직선으로 다가간다. 실제 일반해는 \(y = t - 1 + ce^{-t}\)이고, \(t \to \infty\)이면 모든 해가 \(t - 1\)에 붙는다.</li>
+      </ol></div>
+    <p>예제 1.4와 1절의 \(y' = y - t\)를 비교해 보세요. 그쪽의 특별한 직선 \(y = t + 1\)은 해들을 <b>밀어내고</b>, 이쪽의 \(y = t - 1\)은 <b>끌어당깁니다</b>. 부호 하나 차이가 안정과 불안정을 가릅니다. 아래 시뮬레이터에서 \(m\)을 바꾸며 등경사선을 하나씩 그려 보세요.</p>
+
+    <div class="sim" id="sim-md-isocline">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>등경사선 f(t, y) = m: 같은 기울기끼리 모으기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-iso"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="md-i-pre">
+            <option value="lin">y′ = t − y   (직선)</option>
+            <option value="circ">y′ = t² + y²   (원)</option>
+            <option value="para">y′ = y² − t   (포물선)</option>
+            <option value="hyp">y′ = ty   (쌍곡선)</option>
+          </select></label>
+          <label class="ctrl"><span>기울기 m <output id="md-i-m-out"></output></span><input type="range" id="md-i-m" min="-3" max="3" step="0.25" value="0"></label>
+          <label class="check"><input type="checkbox" id="md-i-all" checked> m = −2, −1, 0, 1, 2 모두 그리기</label>
+          <label class="check"><input type="checkbox" id="md-i-field"> 전체 방향장 겹쳐 보기</label>
+          <label class="check"><input type="checkbox" id="md-i-sol" checked> 분홍 점을 지나는 해곡선</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">등경사선</span><span class="v" id="md-i-eq">—</span></div>
+        <div class="stat"><span class="k">해곡선 시작점</span><span class="v" id="md-i-pt">—</span></div>
+      </div>
+      <div class="md-msg" id="md-i-msg"></div>
+      <div class="sim-note">해볼 것: ① 'y′ = t − y'에서 m = 1로 두면 등경사선 위의 짧은 선분이 그 직선과 겹칩니다. 그 직선이 곧 해입니다. ② 'y′ = t² + y²'에서는 m &lt; 0인 등경사선이 없습니다. 기울기가 음수인 곳이 없으니 모든 해는 늘 증가합니다. ③ 해곡선이 m = 0 등경사선을 지나는 곳이 해의 꼭대기나 바닥인지 확인하세요. 모델: 등경사선은 f − m의 영점을 격자에서 찾아(마칭 스퀘어) 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="euler">
+    <h2>오일러 방법: 접선을 따라 걷기</h2>
+    <div class="problem"><strong>방향장을 숫자로</strong>
+      <p>방향장은 해의 모양을 보여 주지만, "\(t = 1\)에서 \(y\)는 정확히 얼마인가"에는 답하지 못합니다. 그림 1-1의 고리, "지금 상태로 변화율을 구하고, 조금 나아가고, 다시 반복"을 그대로 계산하면 숫자를 얻을 수 있지 않을까요?</p></div>
+    <p>지금 점 \((t_n, y_n)\)에서 해곡선의 기울기는 \(f(t_n, y_n)\)입니다. 짧은 시간 \(h\) 동안 기울기가 거의 변하지 않는다고 보고 <b>접선을 따라</b> \(h\)만큼 걸어가면</p>
+    <div class="formula">$$t_{n+1} = t_n + h,\qquad y_{n+1} = y_n + h\,f(t_n, y_n).$$
+      <div class="where">\(h\): 걸음 크기(간격). 이것이 <span class="term">오일러 방법</span><span class="en">(Euler's method)</span>이다. 미분의 정의 \(y' \approx \frac{y(t + h) - y(t)}{h}\)를 거꾸로 읽은 것과 같다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="오일러 방법이 접선을 따라 걸으며 참 해곡선에서 벗어나는 그림">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="60" y1="240" x2="520" y2="240" class="s-axis"/><line x1="70" y1="250" x2="70" y2="30" class="s-axis"/>
+        <path d="M90 200 C190 185 300 140 360 100 C400 72 440 48 480 36" fill="none" class="s-line" style="stroke-width:2.4"/>
+        <polyline points="90,200 190,180 290,148 390,104" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+        <g style="fill:var(--accent)"><circle cx="90" cy="200" r="5"/><circle cx="190" cy="180" r="5"/><circle cx="290" cy="148" r="5"/><circle cx="390" cy="104" r="5"/></g>
+        <g style="stroke:var(--text-faint);stroke-dasharray:3 4"><line x1="90" y1="200" x2="90" y2="240"/><line x1="190" y1="180" x2="190" y2="240"/><line x1="290" y1="148" x2="290" y2="240"/><line x1="390" y1="104" x2="390" y2="240"/></g>
+        <text x="90" y="258" text-anchor="middle" class="t-mono">t₀</text><text x="190" y="258" text-anchor="middle" class="t-mono">t₁</text><text x="290" y="258" text-anchor="middle" class="t-mono">t₂</text><text x="390" y="258" text-anchor="middle" class="t-mono">t₃</text>
+        <text x="140" y="272" text-anchor="middle" class="t-dim">h</text>
+        <text x="100" y="218" class="t-acc">y₀</text><text x="196" y="198" class="t-acc">y₁</text><text x="296" y="166" class="t-acc">y₂</text><text x="398" y="122" class="t-acc">y₃</text>
+        <text x="470" y="62" class="t-dim">참 해 y(t)</text>
+        <line x1="390" y1="104" x2="390" y2="83" style="stroke:var(--bad);stroke-width:2"/>
+        <text x="400" y="88" class="t" style="fill:var(--bad)">전역 오차</text>
+        <g transform="translate(540,40)">
+          <text x="0" y="12" class="t" style="font-weight:700">한 걸음</text>
+          <text x="0" y="44" class="t-mono">기울기  sₙ = f(tₙ, yₙ)</text>
+          <text x="0" y="70" class="t-mono">yₙ₊₁ = yₙ + h·sₙ</text>
+          <text x="0" y="104" class="t-dim">접선은 곡선이 휘는</text>
+          <text x="0" y="124" class="t-dim">것을 모른다 → 걸음마다</text>
+          <text x="0" y="144" class="t-dim">조금씩 벗어나고,</text>
+          <text x="0" y="164" class="t-dim">벗어난 곳의 기울기로</text>
+          <text x="0" y="184" class="t-dim">다음 걸음을 걷는다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 1-2.</b> 오일러 방법. 각 점에서 그 점의 기울기로 h만큼 직선을 긋는다. 참 해가 위로 휘면 접선은 늘 아래로 처지고, 오차가 쌓인다. h를 줄이면 꺾은선이 참 해에 가까워진다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 1.5 (손으로 오일러 방법)</strong> \(y' = y\), \(y(0) = 1\)의 \(y(1)\)을 \(h = 0.5\), \(0.25\)로 근사하라. 참값은 \(e \approx 2.71828\)이다.
+      <ol>
+        <li>\(h = 0.5\): \(y_1 = 1 + 0.5\cdot 1 = 1.5\), \(y_2 = 1.5 + 0.5\cdot 1.5 = 2.25\). 오차 \(e - 2.25 \approx 0.468\).</li>
+        <li>\(h = 0.25\): 걸음마다 \(1.25\)배가 되므로 \(y_4 = 1.25^4 = 2.44140625\). 오차 \(\approx 0.277\).</li>
+        <li>일반적으로 \(y_n = (1 + h)^n\), \(n = 1/h\). \(h = 0.1\)이면 \(1.1^{10} \approx 2.59374\)(오차 0.125), \(h = 0.01\)이면 \(\approx 2.70481\)(오차 0.0135). \(h \to 0\)이면 \((1 + h)^{1/h} \to e\). 오일러 방법이 \(e\)의 정의를 다시 만든다.</li>
+        <li>관찰: \(h\)를 1/10로 줄이면 오차도 거의 1/10이 된다(0.125 → 0.0135). 오차가 \(h\)에 비례한다. 이것을 "오일러 방법은 1차 방법"이라 한다.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="md-tbl">
+      <thead><tr><th>h</th><th>걸음 수</th><th>오일러 y(1)</th><th>오차 e − y</th><th>오차 / h</th></tr></thead>
+      <tbody>
+        <tr><td>0.5</td><td>2</td><td>2.25000</td><td>0.46828</td><td>0.937</td></tr>
+        <tr><td>0.25</td><td>4</td><td>2.44141</td><td>0.27688</td><td>1.108</td></tr>
+        <tr><td>0.1</td><td>10</td><td>2.59374</td><td>0.12454</td><td>1.245</td></tr>
+        <tr><td>0.01</td><td>100</td><td>2.70481</td><td>0.01347</td><td>1.347</td></tr>
+      </tbody></table></div>
+    <p>오차/\(h\)가 \(h \to 0\)에서 일정한 값(이 문제에서는 \(e/2 \approx 1.36\))으로 다가갑니다. 걸음 하나마다 생기는 오차는 \(h^2\) 정도이고 걸음 수가 \(1/h\)이므로 쌓인 오차가 \(h\) 정도가 되는 것입니다. 정확도를 한 자리 올리려면 계산을 10배 해야 하니 효율이 나쁩니다. 그래서 실제로는 기울기를 여러 번 재어 평균하는 룽게–쿠타 4차 방법(RK4)을 씁니다. 이 책의 시뮬레이터 해곡선도 RK4로 그립니다. 오차 분석, 개선된 방법, 강성 문제는 <a href="numerical.html">5장</a>의 주제입니다.</p>
+
+    <div class="sim" id="sim-md-euler">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오일러 걸음: h를 바꾸면 꺾은선이 해에 붙는다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-eul"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>초기값 문제</span><select id="md-e-pre">
+            <option value="exp">y′ = y, y(0) = 1, t ∈ [0, 1]</option>
+            <option value="lin">y′ = y − t, y(0) = 2, t ∈ [0, 1]</option>
+            <option value="gauss">y′ = −2ty, y(0) = 1, t ∈ [0, 2]</option>
+            <option value="logi">y′ = y(1 − y), y(0) = 0.1, t ∈ [0, 6]</option>
+          </select></label>
+          <label class="ctrl"><span>걸음 크기 h <output id="md-e-h-out"></output></span><input type="range" id="md-e-h"></label>
+          <label class="check"><input type="checkbox" id="md-e-tan" checked> 걸음마다 접선 연장선</label>
+          <div class="btn-row"><button class="btn primary" id="md-e-play">▶ 걷기</button><button class="btn" id="md-e-step">한 걸음</button><button class="btn" id="md-e-all">끝까지</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 n / N</span><span class="v" id="md-e-n">—</span></div>
+        <div class="stat"><span class="k">오일러 yₙ</span><span class="v" id="md-e-y">—</span></div>
+        <div class="stat"><span class="k">참값 y(tₙ)</span><span class="v" id="md-e-ex">—</span></div>
+        <div class="stat"><span class="k">오차 / h (끝점)</span><span class="v" id="md-e-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'y′ = y'에서 h = 0.5, 0.25, 0.1을 차례로 고르고 끝점 오차를 위의 표와 비교하세요. ② 'y′ = y − t'의 오차가 'y′ = y'와 똑같습니다. y − t − 1 = w로 놓으면 w′ = w가 되기 때문입니다. ③ 'y′ = −2ty'에서 h = 1이면 첫 걸음은 기울기 0이라 수평으로 가고, 두 번째 걸음에서 y가 0 아래로 내려갑니다. 큰 걸음은 질적으로 틀린 답을 줄 수 있습니다. 모델: yₙ₊₁ = yₙ + h·f(tₙ, yₙ), 참값은 정확한 해.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="modeling-cycle">
+    <h2>모델링의 순서: 가정 → 방정식 → 해 → 검증</h2>
+    <div class="problem"><strong>세균은 정말 지수적으로 늘까</strong>
+      <p>배양기에 세균 20마리를 넣고 한 시간마다 수를 셉니다. "증가율은 지금 수에 비례한다"고 가정하면 \(P' = kP\)이고 해는 \(P = 20e^{kt}\)입니다. 처음 몇 시간의 측정값은 이 곡선에 잘 맞습니다. 그렇다면 하루 뒤에는 \(20e^{24k}\)마리가 있을까요?</p></div>
+    <p>미분방정식은 현실 그 자체가 아니라 현실에 대한 <b>가정</b>을 식으로 쓴 것입니다. 그래서 수학적 모델링은 한 번에 끝나지 않는 고리입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="가정, 방정식, 해, 검증으로 이어지는 모델링의 순환">
+        <defs><marker id="md-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="md-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--bad)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <g transform="translate(30,40)"><rect width="160" height="96" rx="12" class="f-elev" style="stroke:var(--border)"/><text x="80" y="28" text-anchor="middle" class="t" style="font-weight:700">① 가정</text><text x="80" y="54" text-anchor="middle" class="t-dim">무엇을 상태로?</text><text x="80" y="76" text-anchor="middle" class="t-dim">무엇을 무시?</text></g>
+        <g transform="translate(215,40)"><rect width="160" height="96" rx="12" class="f-elev" style="stroke:var(--border)"/><text x="80" y="28" text-anchor="middle" class="t" style="font-weight:700">② 방정식</text><text x="80" y="54" text-anchor="middle" class="t-mono">P′ = kP</text><text x="80" y="76" text-anchor="middle" class="t-dim">단위·부호 확인</text></g>
+        <g transform="translate(400,40)"><rect width="160" height="96" rx="12" class="f-elev" style="stroke:var(--border)"/><text x="80" y="28" text-anchor="middle" class="t" style="font-weight:700">③ 해</text><text x="80" y="54" text-anchor="middle" class="t-mono">P = P₀e^(kt)</text><text x="80" y="76" text-anchor="middle" class="t-dim">손·그림·수치</text></g>
+        <g transform="translate(585,40)"><rect width="150" height="96" rx="12" class="f-acc-soft" style="stroke:var(--accent)"/><text x="75" y="28" text-anchor="middle" class="t-acc">④ 검증</text><text x="75" y="54" text-anchor="middle" class="t-dim">데이터와 비교</text><text x="75" y="76" text-anchor="middle" class="t-dim">예측이 맞나?</text></g>
+        <path d="M192 88 H210" class="s-acc" style="stroke-width:2" marker-end="url(#md-ar2)"/>
+        <path d="M377 88 H395" class="s-acc" style="stroke-width:2" marker-end="url(#md-ar2)"/>
+        <path d="M562 88 H580" class="s-acc" style="stroke-width:2" marker-end="url(#md-ar2)"/>
+        <path d="M660 140 C660 230 110 230 110 140" fill="none" style="stroke:var(--bad);stroke-width:2;stroke-dasharray:6 4" marker-end="url(#md-ar3)"/>
+        <text x="385" y="222" text-anchor="middle" class="t" style="fill:var(--bad);font-weight:700">안 맞으면 가정을 고친다: P′ = kP → P′ = rP(1 − P/K)</text>
+        <text x="385" y="262" text-anchor="middle" class="t-dim">맞으면: 모델의 범위(어떤 조건에서 믿을 수 있는지)를 적어 두고 쓴다</text>
+      </svg>
+      <figcaption><b>그림 1-3.</b> 모델링의 고리. 가정이 방정식을, 방정식이 해를, 해가 예측을 낳는다. 예측을 데이터와 비교해 어긋나면 가정으로 돌아간다. 좋은 모델은 정확한 모델이 아니라 쓰려는 범위에서 충분히 맞는 모델이다.</figcaption>
+    </figure>
+    <ol>
+      <li><b>가정</b>: 무엇을 상태 변수로 잡을지(개체 수 \(P\)), 무엇에 비례한다고 볼지(증가율 ∝ \(P\)), 무엇을 무시할지(먹이 부족, 온도 변화)를 정한다. 무시한 것이 모델의 한계가 된다.</li>
+      <li><b>방정식</b>: 가정을 식으로 쓴다. 양변의 단위를 맞춰 본다. \(P'\)의 단위가 마리/시간이면 \(k\)는 1/시간이다. 부호(늘어나는가, 줄어드는가)를 확인한다.</li>
+      <li><b>해</b>: 손으로 풀거나(2·3장), 방향장으로 보거나, 수치로 계산한다. 매개변수(\(k\))는 데이터에서 추정한다.</li>
+      <li><b>검증</b>: 맞춤에 쓰지 않은 데이터로 예측을 확인한다. 특히 <b>극단적인 경우</b>를 묻는다. \(P = 20e^{kt}\)는 영원히 늘어나는데, 배양기는 유한하다.</li>
+    </ol>
+    <p>아래 시뮬레이터의 측정값은 실제 세균 실험의 기록이 아니라, 이런 실험에서 흔히 보이는 모양을 흉내 내어 만든 자료입니다. 처음에는 지수 모형으로 맞춰 보고, 맞춤에 쓴 시간 범위를 넓히며 어디서 모형이 무너지는지 찾아보세요.</p>
+
+    <div class="sim" id="sim-md-fit">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>모델 맞추기: 데이터에 k를 맞추고 예측을 검증하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="md-cv-fit"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>모형</span><div class="seg" id="md-m-model"><button data-value="exp" class="on">지수 P′ = kP</button><button data-value="logi">로지스틱</button></div></div>
+          <label class="ctrl"><span>증가율 k (1/h) <output id="md-m-k-out"></output></span><input type="range" id="md-m-k" min="0.1" max="1.6" step="0.005" value="0.5"></label>
+          <label class="ctrl"><span>수용력 K (로지스틱) <output id="md-m-K-out"></output></span><input type="range" id="md-m-K" min="200" max="2000" step="10" value="1500"></label>
+          <label class="ctrl"><span>맞춤에 쓸 데이터: 처음 <output id="md-m-n-out"></output></span><input type="range" id="md-m-n" min="3" max="13" step="1" value="5"></label>
+          <label class="check"><input type="checkbox" id="md-m-log"> 세로축 로그 눈금</label>
+          <div class="btn-row"><button class="btn primary" id="md-m-auto">자동 맞춤</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">맞춤 데이터 오차(RMS)</span><span class="v" id="md-m-e1">—</span></div>
+        <div class="stat"><span class="k">검증 데이터 오차(RMS)</span><span class="v" id="md-m-e2">—</span></div>
+        <div class="stat"><span class="k">12시간 예측</span><span class="v" id="md-m-p">—</span></div>
+      </div>
+      <div class="md-msg" id="md-m-msg"></div>
+      <div class="sim-note">해볼 것: ① 지수 모형, 처음 5개 데이터로 '자동 맞춤'을 누르면 맞춤 오차는 작지만, 속이 빈 점(검증 데이터)에서는 예측이 크게 빗나갑니다. ② '로그 눈금'을 켜면 지수 함수는 직선이 됩니다. 데이터가 직선에서 휘어 눕는 곳이 지수 가정이 깨지는 곳입니다. ③ 로지스틱으로 바꾸고 13개 모두로 맞추면 전 구간이 맞습니다. 모델: P(0) = 20 고정, 오차는 상대 오차의 RMS(%), 자동 맞춤은 로그 오차 제곱합을 최소로 하는 격자 탐색입니다. 데이터는 교육용으로 만든 가상 자료입니다.</div>
+    </div>
+    <p>시뮬레이터가 보여 주는 교훈은 두 가지입니다. 첫째, <b>맞춤이 잘 된다고 모델이 옳은 것은 아닙니다</b>. 지수 모형은 처음 몇 시간 동안 로지스틱과 구별이 안 되므로, 그 구간의 데이터만으로는 어느 쪽이 맞는지 알 수 없습니다. 둘째, 검증은 <b>맞춤에 쓰지 않은 데이터</b>로 해야 합니다. 로지스틱 방정식 \(P' = rP(1 - P/K)\)는 "개체 수가 많아지면 1인당 증가율이 줄어든다"는 가정 하나를 더한 것이고, 2장에서 손으로 풉니다.</p>
+    <div class="callout tip"><strong>모델의 정확도는 목적이 정한다</strong> 낙하 방정식은 공기 밀도가 고도에 따라 변하는 것을 무시했고, 냉각 법칙은 커피 안의 온도가 고르다고 가정했습니다. 그런데도 이 모델들은 낙하산 설계와 식품 냉장의 첫 계산에 쓰입니다. 질문에 답할 만큼 맞으면 단순한 모델이 좋은 모델입니다. 반대로 모델이 무시한 효과가 질문의 핵심이라면(예: 고고도 낙하에서의 공기 밀도) 모델을 고쳐야 합니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"상태와 그 변화율의 규칙"이라는 틀은 공학 시뮬레이션의 공통 언어입니다. 회로 시뮬레이터, 차량 동역학, 화학 반응기, 전염병 예측, 기상 모델이 모두 상태 벡터 \(\mathbf{y}\)와 규칙 \(\mathbf{y}' = \mathbf{f}(t, \mathbf{y})\)를 정의하고 수치 적분기로 시간을 앞으로 밀어 갑니다.</p>
+    <div class="callout"><strong>게임 물리 엔진: 매 프레임이 오일러 걸음</strong> 게임이나 애니메이션의 물리 엔진은 화면 한 프레임(예: 1/60초)마다 "지금 위치·속도 → 힘 → 가속도 → 다음 프레임의 속도·위치"를 계산합니다. 이것은 이 장의 오일러 방법(또는 그 변형)을 h = 1/60 s로 돌리는 것과 같습니다. 프레임 간격이 너무 크면 빠른 물체가 벽을 뚫고 지나가거나 용수철이 폭발하듯 흔들리는 문제가 생기는데, 이것이 5장에서 다룰 수치 안정성 문제입니다.</div>
+    <div class="uses">
+      <a href="separable.html"><small>2장 · 변수분리형</small>지수 붕괴·냉각·로지스틱을 손으로 풀기<br><span>이 장에서 세운 방정식들의 닫힌 꼴 해.</span></a>
+      <a href="autonomous.html"><small>4장 · 존재와 자율 방정식</small>존재·유일성 정리와 위상선<br><span>해곡선이 왜 만나지 않는지, 평형점이 왜 끌어당기는지.</span></a>
+      <a href="numerical.html"><small>5장 · 수치 해법</small>오일러에서 RK4까지<br><span>걸음 크기와 오차 차수, 강성과 음적 방법.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>상태 벡터와 위상 평면<br><span>고계 방정식을 1계 연립으로 바꾸어 같은 그림으로 본다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식 개관<br><span>y′ = f(t, y)와 수치 적분을 한 장으로 훑는다.</span></a>
+      <a href="../../calculus/chapters/fundamental.html"><small>CALCULUSBOOK</small>미적분의 기본 정리<br><span>y′ = f(t)는 적분 문제이고 C는 초기 조건이 정한다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>미분방정식은 미지 함수와 도함수의 관계식이고, 물리적으로는 <b>지금 상태가 지금의 변화율을 정하는 규칙</b>이다. 낙하 \(mv' = mg - cv^2\), 성장 \(P' = kP\), 냉각 \(T' = -k(T - T_a)\), 붕괴 \(N' = -\lambda N\).</li>
+      <li>변수가 하나면 상미분, 여럿이면 편미분방정식. 가장 높은 도함수의 차수가 계수. \(y\)와 도함수들에 대해 1차식이면 선형이고, 선형이면 중첩이 성립한다.</li>
+      <li>해는 구간 위에서 방정식을 만족하는 함수다. 1계 방정식의 일반해는 상수 하나를 가진 해곡선 족이며, 일반해에 들지 않는 해(\(y' = y^2\)의 \(y = 0\))가 있을 수 있다.</li>
+      <li>해인지 확인하려면 미분해 대입한다. 좌변 − 우변(잔차)이 구간 전체에서 0이어야 한다. 몇 점에서만 0인 것은 해가 아니다.</li>
+      <li>초기값 문제 \(y' = f(t, y)\), \(y(t_0) = y_0\)은 해곡선 족에서 한 점을 지나는 곡선을 고른다. \(f\)와 \(f_y\)가 연속이면 해가 하나뿐이고 해곡선은 교차하지 않는다(4장).</li>
+      <li>방향장은 점마다 기울기 \(f(t, y)\)인 선분을 그린 그림이고, 해곡선은 선분에 접해 흐른다. 등경사선 \(f = m\)으로 손쉽게 그리며, \(f = 0\)은 극값이 놓이는 곳이다.</li>
+      <li>오일러 방법 \(y_{n+1} = y_n + hf(t_n, y_n)\)은 접선을 따라 걷는다. 전역 오차는 \(h\)에 비례한다(1차 방법).</li>
+      <li>모델링은 가정 → 방정식 → 해 → 검증의 고리다. 맞춤에 쓰지 않은 데이터로 검증하고, 어긋나면 가정을 고친다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 다음 중 <b>선형</b> 미분방정식은?</p><div class="opts">
+        <button class="opt">\(y' = y^2 + t\)</button>
+        <button class="opt">\(y'' + \sin y = 0\)</button>
+        <button class="opt" data-correct>\(t^2y'' + e^t y' - y = \cos t\)</button>
+        <button class="opt">\(yy' = 1\)</button>
+      </div><div class="quiz-exp">선형성은 \(y\)와 그 도함수에 대해서만 따진다. \(t^2\), \(e^t\), \(\cos t\)는 \(t\)의 함수이므로 상관없다. 나머지는 각각 \(y^2\), \(\sin y\), \(yy'\) 때문에 비선형이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 방정식 \(x'' + 3(x')^2 - x = 0\)의 계수와 선형성은?</p><div class="opts">
+        <button class="opt">1계, 선형</button>
+        <button class="opt">2계, 선형</button>
+        <button class="opt" data-correct>2계, 비선형</button>
+        <button class="opt">3계, 비선형</button>
+      </div><div class="quiz-exp">가장 높은 도함수가 \(x''\)이므로 2계다. \((x')^2\)은 도함수의 제곱이라 비선형이다. 제곱 기호의 2와 도함수의 차수를 헷갈리지 말자.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(y = c\,e^{3t}\)이 일반해인 1계 방정식에서 \(y(0) = 4\)인 해의 \(y(1)\)은?</p><div class="opts">
+        <button class="opt">\(4 + e^3\)</button>
+        <button class="opt" data-correct>\(4e^3 \approx 80.3\)</button>
+        <button class="opt">\(e^{12}\)</button>
+        <button class="opt">\(12\)</button>
+      </div><div class="quiz-exp">\(t = 0\)을 넣으면 \(c = 4\). 따라서 \(y = 4e^{3t}\), \(y(1) = 4e^3 \approx 4 \times 20.09 = 80.3\).</div></div>
+
+      <div class="quiz-q"><p>Q4. 다음 중 \(y'' + 9y = 0\)의 해가 <b>아닌</b> 것은?</p><div class="opts">
+        <button class="opt">\(y = 2\sin 3t\)</button>
+        <button class="opt">\(y = \cos 3t - 5\sin 3t\)</button>
+        <button class="opt" data-correct>\(y = \cos 9t\)</button>
+        <button class="opt">\(y = 0\)</button>
+      </div><div class="quiz-exp">\(y = \cos 9t\)이면 \(y'' + 9y = -81\cos 9t + 9\cos 9t = -72\cos 9t \ne 0\). 나머지는 모두 \(y'' = -9y\)를 만족한다. \(y = 0\)도 (자명한) 해다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(y' = y - t\)의 방향장에서 점 \((2, 1)\)에 그려지는 선분의 기울기는?</p><div class="opts">
+        <button class="opt">\(1\)</button>
+        <button class="opt" data-correct>\(-1\)</button>
+        <button class="opt">\(3\)</button>
+        <button class="opt">\(1/2\)</button>
+      </div><div class="quiz-exp">\(f(t, y) = y - t\)에 \(t = 2\), \(y = 1\)을 넣으면 \(1 - 2 = -1\). 방향장은 \(f\)를 계산하기만 하면 그릴 수 있다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(y' = t^2 + y^2\)의 등경사선은 어떤 모양이고, 해곡선에 대해 무엇을 알려 주는가?</p><div class="opts">
+        <button class="opt">직선; 해는 주기적이다</button>
+        <button class="opt" data-correct>원점 중심의 원; 기울기가 음수인 곳이 없어 모든 해는 증가한다</button>
+        <button class="opt">포물선; 해는 모두 감소한다</button>
+        <button class="opt">쌍곡선; 해곡선은 원점을 지난다</button>
+      </div><div class="quiz-exp">\(t^2 + y^2 = m\)은 반지름 \(\sqrt m\)인 원이고 \(m \ge 0\)일 때만 있다. \(y' \ge 0\)이므로 해는 결코 감소하지 않으며, 원점에서 멀어질수록 가팔라진다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(y' = 2y\), \(y(0) = 1\)에 오일러 방법을 \(h = 0.25\)로 두 걸음 쓰면 \(y(0.5)\)의 근삿값은?</p><div class="opts">
+        <button class="opt">\(1.5\)</button>
+        <button class="opt" data-correct>\(2.25\)</button>
+        <button class="opt">\(2.5\)</button>
+        <button class="opt">\(e \approx 2.718\)</button>
+      </div><div class="quiz-exp">걸음마다 \(y \leftarrow y + 0.25\cdot 2y = 1.5y\). 두 걸음이면 \(1.5^2 = 2.25\). 참값은 \(e^{1} \approx 2.718\)이며, 해가 위로 휘므로 오일러 근삿값은 참값보다 작다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 처음 5시간의 세균 수 데이터에 \(P = P_0e^{kt}\)가 아주 잘 맞았다. 가장 올바른 결론은?</p><div class="opts">
+        <button class="opt">이제 하루 뒤의 개체 수도 이 식으로 정확히 예측할 수 있다</button>
+        <button class="opt">지수 모형이 참이고 로지스틱 모형은 틀렸다</button>
+        <button class="opt" data-correct>그 구간에서는 지수 가정이 맞지만, 범위 밖 예측은 맞춤에 쓰지 않은 데이터로 따로 검증해야 한다</button>
+        <button class="opt">데이터가 잘 맞으므로 k의 단위는 상관없다</button>
+      </div><div class="quiz-exp">로지스틱 성장의 초기는 지수 성장과 구별되지 않는다. 맞춤이 잘 되는 것은 모델이 그 구간을 설명한다는 뜻일 뿐, 수용력 같은 무시된 효과가 나타나는 범위에서의 예측을 보장하지 않는다. 모델링 고리의 ④ 검증 단계다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const MD = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  /** 방향장: 화면 격자마다 기울기 선분 */
+  field(P, f, o = {}) {
+    const C = P.P, ctx = P.ctx, step = o.px || 28;
+    const cols = Math.floor(P.w / step), rows = Math.floor(P.h / step);
+    const ox = (P.w - (cols - 1) * step) / 2, oy = (P.h - (rows - 1) * step) / 2;
+    const sx = P.w / (P.x1 - P.x0), sy = P.h / (P.y1 - P.y0), half = step * 0.36;
+    ctx.save(); ctx.lineWidth = o.width || 1.3; ctx.lineCap = "round"; ctx.globalAlpha = o.alpha != null ? o.alpha : 1;
+    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+      const px = ox + i * step, py = oy + j * step, s = f(P.ix(px), P.iy(py));
+      let dx = sx, dy = -s * sy;
+      if (!isFinite(s)) { dx = 0; dy = 1; }
+      const L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      ctx.strokeStyle = o.tint ? (Math.abs(s) < 0.05 ? C.dim : s > 0 ? C.accent : C.accent2) : o.color || C.faint;
+      ctx.beginPath(); ctx.moveTo(px - ux * half, py - uy * half); ctx.lineTo(px + ux * half, py + uy * half); ctx.stroke();
+    }
+    ctx.restore();
+  },
+  /** 한 점에서 앞뒤로 RK4. 화면 밖(여유 포함)이나 발산하면 멈춤. 반환 [[t,y]...] t 오름차순 */
+  traj(f, t0, y0, P, o = {}) {
+    const span = P.y1 - P.y0, ylo = P.y0 - span * 0.5, yhi = P.y1 + span * 0.5;
+    const h = o.h || (P.x1 - P.x0) / 500, tlo = o.from != null ? o.from : P.x0, thi = o.to != null ? o.to : P.x1;
+    const run = (dir) => {
+      const out = []; let t = t0, y = y0;
+      for (let k = 0; k < 4000; k++) {
+        const d = dir * h;
+        const k1 = f(t, y), k2 = f(t + d / 2, y + (d / 2) * k1), k3 = f(t + d / 2, y + (d / 2) * k2), k4 = f(t + d, y + d * k3);
+        if (![k1, k2, k3, k4].every((v) => isFinite(v) && Math.abs(v) < 1e4)) break;
+        const yn = y + (d / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+        if (o.stopSign && Math.sign(yn) !== Math.sign(y)) break;
+        t += d; y = yn; out.push([t, y]);
+        if (y < ylo || y > yhi || t < tlo || t > thi) break;
+      }
+      return out;
+    };
+    const back = run(-1).reverse();
+    return back.concat([[t0, y0]], run(1));
+  },
+  /** 폭주(점근선)에서 끊어 그리는 y = fn(t) */
+  curve(P, fn, o = {}) {
+    const a = o.from != null ? o.from : P.x0, b = o.to != null ? o.to : P.x1, N = o.n || 500, span = P.y1 - P.y0;
+    let seg = [];
+    const flush = () => { if (seg.length > 1) P.poly(seg, { ...o, close: false }); seg = []; };
+    let prev = null; const mid = (P.y0 + P.y1) / 2;
+    for (let i = 0; i <= N; i++) {
+      const t = a + ((b - a) * i) / N, y = fn(t);
+      if (!isFinite(y) || Math.abs(y - mid) > span * 3) { flush(); prev = null; continue; }
+      if (prev != null && Math.abs(y - prev) > span) flush();
+      seg.push([t, y]); prev = y;
+    }
+    flush();
+  },
+};
+
+/* ================================================================ 1. 스카이다이빙 */
+(function () {
+  const g = 9.8, C_CHUTE = 30, T_OPEN = 3, TMAX = 60;
+  let m = 80, c0 = 0.25, lin = false, playing = false;
+  let S = null;
+  const reset = () => { S = { t: 0, v: 0, x: 0, chute: false, tc: 0, hist: [[0, 0]] }; };
+  reset();
+  const cNow = () => (S.chute ? c0 + (C_CHUTE - c0) * Math.min(1, (S.t - S.tc) / T_OPEN) : c0);
+  const acc = (v, c) => g - (c / m) * v * Math.abs(v);
+  const stepTo = (dt) => {
+    const n = 8, h = dt / n;
+    for (let i = 0; i < n; i++) {
+      const c = cNow(), v = S.v;
+      const k1 = acc(v, c), k2 = acc(v + (h / 2) * k1, c), k3 = acc(v + (h / 2) * k2, c), k4 = acc(v + h * k3, c);
+      S.v = v + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4); S.x += S.v * h; S.t += h;
+    }
+    S.hist.push([S.t, S.v]);
+  };
+  const scene = MB.canvas(document.getElementById("md-cv-drag-scene"), (ctx, w, h) => {
+    const C = MB.palette(), cx = w / 2, cy = h * 0.5, c = cNow(), v = S.v;
+    // 움직이는 배경 눈금(위로 흘러감)
+    ctx.save(); ctx.strokeStyle = C.grid; ctx.lineWidth = 1.2;
+    const sp = 46, off = ((S.x * 6) % sp + sp) % sp;
+    for (let y = -sp; y < h + sp; y += sp) { const yy = y - off; ctx.beginPath(); ctx.moveTo(18, yy); ctx.lineTo(48, yy); ctx.moveTo(w - 48, yy); ctx.lineTo(w - 18, yy); ctx.stroke(); }
+    ctx.restore();
+    // 낙하산
+    if (S.chute) {
+      const k = Math.min(1, (S.t - S.tc) / T_OPEN), R = 18 + 52 * k;
+      ctx.save(); ctx.fillStyle = C.accent2; ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.ellipse(cx, cy - 70, R, R * 0.45, 0, Math.PI, 0); ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = C.accent2; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, cy - 70, R, R * 0.45, 0, Math.PI, 0); ctx.stroke();
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx - R, cy - 70); ctx.lineTo(cx - 6, cy - 16); ctx.moveTo(cx + R, cy - 70); ctx.lineTo(cx + 6, cy - 16); ctx.stroke(); ctx.restore();
+    }
+    // 사람
+    ctx.save(); ctx.fillStyle = C.text; ctx.strokeStyle = C.text; ctx.lineWidth = 4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(cx, cy - 22, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 13); ctx.lineTo(cx, cy + 14);
+    ctx.moveTo(cx, cy - 6); ctx.lineTo(cx - 20, cy - 18); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 20, cy - 18);
+    ctx.moveTo(cx, cy + 14); ctx.lineTo(cx - 12, cy + 32); ctx.moveTo(cx, cy + 14); ctx.lineTo(cx + 12, cy + 32); ctx.stroke(); ctx.restore();
+    // 힘 화살표 (mg 기준 길이)
+    const unit = Math.min(70, h * 0.22), Wt = unit, D = Math.min(unit * 3.2, (unit * c * v * v) / (m * g));
+    const arrow = (x, y0, y1, col, lab) => {
+      if (Math.abs(y1 - y0) < 2) return;
+      ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3.5;
+      const dir = Math.sign(y1 - y0); ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1 - dir * 9); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x - 7, y1 - dir * 12); ctx.lineTo(x + 7, y1 - dir * 12); ctx.closePath(); ctx.fill();
+      ctx.font = "600 12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(lab, x + 10, (y0 + y1) / 2); ctx.restore();
+    };
+    arrow(cx + 36, cy, cy + Wt, C.accent, "mg");
+    arrow(cx - 46, cy, cy - D, C.accent2, "cv²");
+    ctx.save(); ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center";
+    ctx.fillText(`낙하 거리 ${Math.round(S.x)} m`, cx, h - 14); ctx.restore();
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 320 });
+  const chart = MB.canvas(document.getElementById("md-cv-drag-chart"), (ctx, w, h) => {
+    const C = MB.palette(), vT = Math.sqrt((m * g) / c0), tx = Math.max(20, Math.ceil(S.t / 10) * 10);
+    const series = [];
+    const th = []; for (let i = 0; i <= 200; i++) { const t = (tx * i) / 200; th.push([t, vT * Math.tanh((g * t) / vT)]); }
+    series.push({ data: th, color: C.dim, width: 1.2, dash: [5, 4] });
+    if (lin) { const tl = []; for (let i = 0; i <= 200; i++) { const t = (tx * i) / 200; tl.push([t, vT * (1 - Math.exp((-g * t) / vT))]); } series.push({ data: tl, color: C.warn, width: 1.6, dash: [2, 3] }); }
+    series.push({ data: S.hist, color: C.accent, width: 2.6 });
+    MB.chart(ctx, { x: 46, y: 26, w: w - 64, h: h - 62 }, {
+      x: [0, tx], y: [0, Math.max(30, vT * 1.18)], xLabel: "t (s)", series,
+      hlines: [{ y: vT, color: C.accent2, label: "종단 속도 " + vT.toFixed(1) }],
+      points: [{ x: S.t, y: S.v, color: C.accent, r: 4.5 }],
+    });
+  }, { aspect: 0.62, minHeight: 230, maxHeight: 320 });
+  const show = () => {
+    const c = cNow(), vT = Math.sqrt((m * g) / c), a = acc(S.v, c);
+    MB.stat("md-d-t", S.t.toFixed(1) + " s");
+    MB.stat("md-d-v", `${S.v.toFixed(1)} m/s (${Math.round(S.v * 3.6)} km/h)`);
+    MB.stat("md-d-vt", vT.toFixed(1) + " m/s");
+    MB.stat("md-d-a", `${MD.num(a, 2)} m/s² (${MD.num(a / g, 2)} g)`);
+    scene.redraw(); chart.redraw();
+  };
+  MB.range("md-d-m", (v) => v + " kg", (v) => { m = v; show(); });
+  MB.range("md-d-c", (v) => v.toFixed(2) + " kg/m", (v) => { c0 = v; show(); });
+  MB.check("md-d-lin", (v) => { lin = v; show(); });
+  const btn = MB.playButton("md-d-play", () => { if (S.t >= TMAX) reset(); playing = true; loop.start(); }, () => { playing = false; }, ["▶ 뛰어내리기", "■ 멈춤"]);
+  document.getElementById("md-d-chute").addEventListener("click", () => { if (!S.chute) { S.chute = true; S.tc = S.t; if (!playing) { playing = true; btn.set(true); loop.start(); } } });
+  document.getElementById("md-d-reset").addEventListener("click", () => { reset(); playing = false; btn.set(false); show(); });
+  const loop = MB.loop(document.getElementById("sim-md-drag"), (dt) => {
+    if (!playing) return;
+    stepTo(dt * 1.5);
+    if (S.t >= TMAX) { playing = false; btn.set(false); }
+    show();
+  });
+  show();
+})();
+
+/* ================================================================ 2. 해곡선 족 */
+(function () {
+  const PRE = {
+    lin: { Y: (t, c) => t + 1 + c * Math.exp(t), cOf: (t, y) => (y - t - 1) * Math.exp(-t), f: (t, y) => y - t, x: [-3, 3], y: [-3, 4.5], eq: (c) => `y = t + 1 ${MD.num(c, 2).startsWith("−") ? "− " + MD.num(-c, 2) : "+ " + MD.num(c, 2)}e<sup>t</sup>`, fam: [-2, -1.5, -1, -0.5, -0.2, 0, 0.2, 0.5, 1, 1.5, 2] },
+    gauss: { Y: (t, c) => c * Math.exp(-t * t), cOf: (t, y) => y * Math.exp(t * t), f: (t, y) => -2 * t * y, x: [-3, 3], y: [-3.2, 3.2], eq: (c) => `y = ${MD.num(c, 2)}e<sup>−t²</sup>`, fam: [-3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3] },
+    pow: { Y: (t, c) => c * t * t, cOf: (t, y) => (Math.abs(t) < 1e-3 ? NaN : y / (t * t)), f: (t, y) => (Math.abs(t) < 1e-9 ? NaN : (2 * y) / t), x: [-3, 3], y: [-3.2, 3.2], eq: (c) => `y = ${MD.num(c, 2)}t²`, fam: [-2, -1, -0.5, -0.25, 0, 0.25, 0.5, 1, 2] },
+    sq: { Y: (t, c) => 1 / (c - t), cOf: (t, y) => (Math.abs(y) < 1e-6 ? NaN : t + 1 / y), f: (t, y) => y * y, x: [-3, 3], y: [-3.2, 3.2], eq: (c) => `y = 1/(${MD.num(c, 2)} − t)`, fam: [-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3] },
+  };
+  let pre = PRE.lin, fam = true, c = 1;
+  const msg = document.getElementById("md-f-msg");
+  const pt = { x: 0, y: 2, r: 9, label: "(t₀, y₀)" };
+  const pl = MB.plane("#md-cv-fam", {
+    x: pre.x, y: pre.y, aspect: 0.7, minHeight: 280, maxHeight: 460, points: [pt],
+    draw(P) {
+      const C = P.P; pt.color = C.accent;
+      MD.field(P, pre.f, { px: 30, alpha: 0.7 });
+      if (fam) pre.fam.forEach((k) => MD.curve(P, (t) => pre.Y(t, k), { color: C.dim, width: 1.1, alpha: 0.55 }));
+      const sing = pre === PRE.sq && Math.abs(pt.y) < 0.06;
+      if (pre === PRE.sq) P.line(P.x0, 0, P.x1, 0, { color: sing ? C.accent : C.ok, width: sing ? 3 : 2, dash: sing ? [] : [6, 4] });
+      if (!sing && isFinite(c)) MD.curve(P, (t) => pre.Y(t, c), { color: C.accent, width: 3 });
+      const s = pre.f(pt.x, pt.y);
+      if (isFinite(s)) { const d = 0.5 / Math.sqrt(1 + s * s); P.line(pt.x - d, pt.y - s * d, pt.x + d, pt.y + s * d, { color: C.accent2, width: 2.4 }); }
+      MB.stat("md-f-pt", `(${MD.num(pt.x, 2)}, ${MD.num(pt.y, 2)})`);
+      MB.stat("md-f-sl", isFinite(s) ? MD.num(s, 3) : "정의 안 됨");
+      if (sing) { MB.stat("md-f-eq", "y = 0"); msg.className = "md-msg bad"; msg.innerHTML = "y ≡ 0도 y′ = y²의 해입니다(0′ = 0 = 0²). 그런데 y = 1/(c − t)에서는 어떤 c로도 얻을 수 없습니다. 일반해 공식이 놓치는 해입니다."; }
+      else if (pre === PRE.pow && Math.abs(pt.x) < 0.05) { MB.stat("md-f-eq", "—"); msg.className = "md-msg bad"; msg.innerHTML = `t = 0에서는 방정식이 0·y′ = 2y가 되어 ${Math.abs(pt.y) < 0.06 ? "원점을 지나는 해가 무수히 많습니다(모든 ct²)." : "y₀ ≠ 0을 지나는 해가 하나도 없습니다."}`; }
+      else { MB.stat("md-f-eq", pre.eq(c)); msg.className = "md-msg"; msg.innerHTML = `점 (t₀, y₀)를 지나는 해곡선은 <b>c = ${MD.num(c, 3)}</b>인 것 하나입니다. 분홍 선분(그 점의 기울기)이 곡선에 접합니다.`; }
+    },
+    onDrag() { const k = pre.cOf(pt.x, pt.y); if (isFinite(k)) { c = k; cR.set(MB.clamp(k, -3, 3), false); } },
+  });
+  const cR = MB.range("md-f-c", (v) => MD.num(v, 2), (v) => {
+    c = v; let y = pre.Y(pt.x, c);
+    if (!(isFinite(y) && y > pl.P.y0 && y < pl.P.y1)) {
+      if (pre === PRE.sq) pt.x = c - 1 > -2.8 ? c - 1 : c + 1; else pt.x = pre === PRE.pow ? 1 : 0;
+      y = pre.Y(pt.x, c);
+    }
+    pt.y = y; pl.redraw();
+  });
+  MB.check("md-f-fam", (v) => { fam = v; pl.redraw(); });
+  document.getElementById("md-f-pre").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; pt.x = pre === PRE.pow ? 1 : 0; pt.y = pre === PRE.pow ? 1 : pre === PRE.sq ? 1 : 2;
+    c = pre.cOf(pt.x, pt.y); cR.set(MB.clamp(c, -3, 3), false); pl.view({ x: pre.x, y: pre.y });
+  });
+})();
+
+/* ================================================================ 3. 대입 검산기 */
+(function () {
+  const EQ = [
+    { lab: ["y′", "−2ty"], L: (q, t) => q.d(t), R: (q, t) => -2 * t * q.y(t), x: [-2.5, 2.5],
+      cands: [
+        { n: "3e^(−t²)", y: (t) => 3 * Math.exp(-t * t), d: (t) => -6 * t * Math.exp(-t * t), why: "y′ = −6te<sup>−t²</sup> = −2t·3e<sup>−t²</sup>. 모든 t에서 같습니다." },
+        { n: "e^(−2t)", y: (t) => Math.exp(-2 * t), d: (t) => -2 * Math.exp(-2 * t), dom: [-0.8, 2.5], why: "y′ = −2e<sup>−2t</sup>이지만 −2ty = −2te<sup>−2t</sup>. t = 1에서만 우연히 같습니다." },
+        { n: "1 − t²", y: (t) => 1 - t * t, d: (t) => -2 * t, why: "y′ = −2t, −2ty = −2t + 2t³. 잔차 R = −2t³." },
+      ] },
+    { lab: ["y″", "−4y"], L: (q, t) => q.dd(t), R: (q, t) => -4 * q.y(t), x: [-3.2, 3.2],
+      cands: [
+        { n: "cos 2t", y: (t) => Math.cos(2 * t), dd: (t) => -4 * Math.cos(2 * t), why: "y″ = −4cos 2t = −4y. 해입니다." },
+        { n: "sin 2t − 3cos 2t", y: (t) => Math.sin(2 * t) - 3 * Math.cos(2 * t), dd: (t) => -4 * Math.sin(2 * t) + 12 * Math.cos(2 * t), why: "두 해의 일차결합도 해입니다(선형 동차 방정식의 중첩)." },
+        { n: "cos 4t", y: (t) => Math.cos(4 * t), dd: (t) => -16 * Math.cos(4 * t), why: "y″ + 4y = −12cos 4t. 몇 점에서만 0이므로 해가 아닙니다." },
+        { n: "e^(−2t)", y: (t) => Math.exp(-2 * t), dd: (t) => 4 * Math.exp(-2 * t), dom: [-0.8, 3.2], why: "y″ = 4e<sup>−2t</sup>, −4y = −4e<sup>−2t</sup>. 부호가 반대입니다. e<sup>−2t</sup>는 y″ − 4y = 0의 해입니다." },
+      ] },
+    { lab: ["y′", "y²"], L: (q, t) => q.d(t), R: (q, t) => q.y(t) ** 2, x: [-2, 3],
+      cands: [
+        { n: "1/(1 − t)", y: (t) => 1 / (1 - t), d: (t) => 1 / (1 - t) ** 2, dom: [-2, 0.8], why: "y′ = 1/(1 − t)² = y². 단, 정의 구간은 t &lt; 1 한 조각입니다(t = 1에서 폭발)." },
+        { n: "−1/t", y: (t) => -1 / t, d: (t) => 1 / (t * t), dom: [0.33, 3], why: "y′ = 1/t² = y². t &gt; 0 구간에서 해입니다(c = 0인 1/(c − t))." },
+        { n: "1 + t", y: (t) => 1 + t, d: () => 1, why: "y′ = 1이지만 y² = (1 + t)². t = 0, −2에서만 같습니다." },
+      ] },
+    { lab: ["ty′", "2y"], L: (q, t) => t * q.d(t), R: (q, t) => 2 * q.y(t), x: [-2, 2],
+      cands: [
+        { n: "5t²", y: (t) => 5 * t * t, d: (t) => 10 * t, why: "ty′ = 10t² = 2·5t². 해입니다. 모든 ct²가 해입니다." },
+        { n: "t³", y: (t) => t ** 3, d: (t) => 3 * t * t, why: "ty′ = 3t³, 2y = 2t³. 잔차 R = t³." },
+        { n: "t² + 1", y: (t) => t * t + 1, d: (t) => 2 * t, why: "ty′ = 2t², 2y = 2t² + 2. 잔차가 상수 −2입니다." },
+      ] },
+  ];
+  let eq = EQ[0], cand = eq.cands[0], res = true;
+  const box = document.getElementById("md-k-cands"), msg = document.getElementById("md-k-msg");
+  const build = () => {
+    box.innerHTML = "";
+    eq.cands.forEach((q, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = "y = " + q.n; if (q === cand) b.className = "on";
+      b.addEventListener("click", () => { cand = q; [...box.children].forEach((x, j) => x.classList.toggle("on", j === i)); update(); });
+      box.appendChild(b);
+    });
+  };
+  let pl = null;
+  const range = () => {
+    const [a, b] = cand.dom || eq.x, v = [];
+    for (let i = 0; i <= 200; i++) { const t = a + ((b - a) * i) / 200; v.push(eq.L(cand, t), eq.R(cand, t)); }
+    let lo = Math.min(...v, 0), hi = Math.max(...v, 0); const s = Math.max(hi - lo, 1); return [lo - 0.12 * s, hi + 0.12 * s];
+  };
+  pl = MB.plane("#md-cv-chk", {
+    x: eq.x, y: range(), aspect: 0.62, minHeight: 260, maxHeight: 420, gridStep: 1,
+    draw(P) {
+      const C = P.P, [a, b] = cand.dom || eq.x, N = 300; let mx = 0;
+      const ctx = P.ctx;
+      if (res) {
+        ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = C.bad; ctx.beginPath();
+        for (let i = 0; i <= N; i++) { const t = a + ((b - a) * i) / N; const y = eq.L(cand, t); i ? ctx.lineTo(P.X(t), P.Y(y)) : ctx.moveTo(P.X(t), P.Y(y)); }
+        for (let i = N; i >= 0; i--) { const t = a + ((b - a) * i) / N; ctx.lineTo(P.X(t), P.Y(eq.R(cand, t))); }
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      for (let i = 0; i <= N; i++) { const t = a + ((b - a) * i) / N; mx = Math.max(mx, Math.abs(eq.L(cand, t) - eq.R(cand, t))); }
+      MD.curve(P, (t) => eq.R(cand, t), { color: C.accent2, width: 5, alpha: 0.45, from: a, to: b });
+      MD.curve(P, (t) => eq.L(cand, t), { color: C.accent, width: 2.2, from: a, to: b });
+      if (cand.dom) { P.line(a, P.y0, a, P.y1, { color: C.faint, dash: [3, 4], width: 1 }); P.line(b, P.y0, b, P.y1, { color: C.faint, dash: [3, 4], width: 1 }); }
+      P.text("좌변 " + eq.lab[0], P.x0, P.y1, { color: C.accent, dx: 10, dy: 16, bold: true });
+      P.text("우변 " + eq.lab[1], P.x0, P.y1, { color: C.accent2, dx: 10, dy: 34, bold: true });
+      const ok = mx < 1e-9;
+      MB.stat("md-k-l", eq.lab[0]); MB.stat("md-k-r", eq.lab[1]);
+      MB.stat("md-k-max", ok ? "0 (반올림 오차 수준)" : MD.num(mx, 3));
+      msg.className = "md-msg " + (ok ? "ok" : "bad");
+      msg.innerHTML = (ok ? "✓ 해입니다. " : "✗ 해가 아닙니다. ") + cand.why;
+    },
+  });
+  const update = () => pl.view({ x: cand.dom ? [eq.x[0], eq.x[1]] : eq.x, y: range() });
+  build();
+  MB.check("md-k-res", (v) => { res = v; pl.redraw(); });
+  document.getElementById("md-k-eq").addEventListener("change", (e) => { eq = EQ[+e.target.value]; cand = eq.cands[0]; build(); update(); });
+})();
+
+/* ================================================================ 4. 방향장 + 클릭 */
+(function () {
+  const PRE = {
+    lin: { f: (t, y) => y - t, tag: "y′ = y − t", x: [-3, 3], y: [-3, 3], p: [-1, 0.5] },
+    ric: { f: (t, y) => t - y * y, tag: "y′ = t − y²", x: [-2, 5], y: [-3, 3], p: [-1, 1] },
+    logi: { f: (t, y) => y * (1 - y), tag: "y′ = y(1 − y)", x: [-4, 4], y: [-1.5, 2.5], p: [-3, 0.1] },
+    circ: { f: (t, y) => -t / y, tag: "y′ = −t / y", x: [-3, 3], y: [-3, 3], p: [0, 2], stop: true },
+    wave: { f: (t, y) => Math.sin(t) - y / 2, tag: "y′ = sin t − y/2", x: [-2, 10], y: [-3, 3], p: [0, 2.5] },
+  };
+  let pre = PRE.lin, tint = false, many = false, pins = [];
+  const msg = document.getElementById("md-fd-msg"), tag = document.getElementById("md-fd-tag");
+  const p0 = { x: pre.p[0], y: pre.p[1], r: 9, label: "(t₀, y₀)" };
+  const pl = MB.plane("#md-cv-field", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 280, maxHeight: 480, points: [p0],
+    draw(P) {
+      const C = P.P, f = pre.f, o = { stopSign: pre.stop }; p0.color = C.accent;
+      MD.field(P, f, { tint });
+      if (many) { const n = 13; for (let i = 0; i < n; i++) { const y = P.y0 + ((P.y1 - P.y0) * (i + 0.5)) / n; P.poly(MD.traj(f, P.x0 + 0.01, y, P, o), { color: C.dim, width: 1.2, close: false, alpha: 0.7 }); } }
+      pins.forEach(([t, y]) => { P.poly(MD.traj(f, t, y, P, o), { color: C.accent2, width: 1.9, close: false }); P.dot(t, y, { r: 3.5, color: C.accent2 }); });
+      const tr = MD.traj(f, p0.x, p0.y, P, o);
+      P.poly(tr, { color: C.accent, width: 3, close: false });
+      const s = f(p0.x, p0.y);
+      let y1 = NaN; for (let i = 0; i < tr.length - 1; i++) if (tr[i][0] <= p0.x + 1 && tr[i + 1][0] >= p0.x + 1) { const u = (p0.x + 1 - tr[i][0]) / (tr[i + 1][0] - tr[i][0]); y1 = tr[i][1] + u * (tr[i + 1][1] - tr[i][1]); }
+      MB.stat("md-fd-pt", `(${MD.num(p0.x, 2)}, ${MD.num(p0.y, 2)})`);
+      MB.stat("md-fd-sl", isFinite(s) ? MD.num(s, 3) : "∞");
+      MB.stat("md-fd-y1", isFinite(y1) ? MD.num(y1, 3) : "화면 밖/끊김");
+      let m = "빈 곳을 클릭하면 그 점에서 시작하는 해곡선(파랑)이 추가됩니다.";
+      if (pre === PRE.lin) { const d = p0.y - p0.x - 1; m = Math.abs(d) < 0.05 ? "<b>y = t + 1</b> 위입니다. 이 직선 자체가 해이지만, 조금만 벗어나도 e<sup>t</sup>배로 멀어집니다." : `y − (t + 1) = ${MD.num(d, 2)}. 이 차이가 e<sup>t</sup>배로 자라 해가 ${d > 0 ? "위로" : "아래로"} 떠납니다.`; }
+      else if (pre === PRE.circ) m = `해곡선은 원 t² + y² = ${MD.num(p0.x ** 2 + p0.y ** 2, 2)}의 ${p0.y > 0 ? "위" : "아래"} 반쪽입니다. y = 0에서 기울기가 무한대라 해가 끝납니다.`;
+      else if (pre === PRE.logi) m = p0.y > 0 ? "y &gt; 0에서 출발한 해는 모두 y = 1로 모입니다(안정 평형). y = 0과 y = 1은 수평선 해입니다." : "y &lt; 0에서 출발하면 아래로 떠나 버립니다. y = 0은 불안정 평형입니다.";
+      else if (pre === PRE.ric) m = "오른쪽으로 갈수록 위쪽의 해들이 한 줄기로 모입니다. 공식 없이 장기 거동이 보입니다.";
+      else if (pre === PRE.wave) m = "출발점과 무관하게 모든 해가 같은 진동으로 수렴합니다. 초기값의 영향은 e<sup>−t/2</sup>로 사라집니다(3장의 과도 응답과 정상 상태).";
+      msg.innerHTML = m;
+    },
+    onPointer(x, y, type) { if (type === "down") { pins.push([x, y]); if (pins.length > 12) pins.shift(); pl.redraw(); } },
+  });
+  MB.check("md-fd-tint", (v) => { tint = v; pl.redraw(); });
+  MB.check("md-fd-many", (v) => { many = v; pl.redraw(); });
+  document.getElementById("md-fd-clear").addEventListener("click", () => { pins = []; pl.redraw(); });
+  document.getElementById("md-fd-pre").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; pins = []; p0.x = pre.p[0]; p0.y = pre.p[1]; tag.textContent = pre.tag; pl.view({ x: pre.x, y: pre.y });
+  });
+})();
+
+/* ================================================================ 5. 등경사선 */
+(function () {
+  const PRE = {
+    lin: { f: (t, y) => t - y, eq: (m) => `y = t ${m >= 0 ? "− " + MD.num(m, 2) : "+ " + MD.num(-m, 2)}`, x: [-3, 3], y: [-3, 3] },
+    circ: { f: (t, y) => t * t + y * y, eq: (m) => (m < 0 ? "없음 (t² + y² ≥ 0)" : m === 0 ? "원점 한 점" : `t² + y² = ${MD.num(m, 2)} (반지름 ${MD.num(Math.sqrt(m), 2)})`), x: [-2.5, 2.5], y: [-2, 2] },
+    para: { f: (t, y) => y * y - t, eq: (m) => `t = y² ${m >= 0 ? "− " + MD.num(m, 2) : "+ " + MD.num(-m, 2)}`, x: [-3, 4], y: [-2.5, 2.5] },
+    hyp: { f: (t, y) => t * y, eq: (m) => (m === 0 ? "t = 0 또는 y = 0" : `ty = ${MD.num(m, 2)}`), x: [-3, 3], y: [-3, 3] },
+  };
+  let pre = PRE.lin, m = 0, all = true, field = false, sol = true;
+  const msg = document.getElementById("md-i-msg");
+  const sp = { x: -2.5, y: 2, r: 9 };
+  /** 마칭 스퀘어로 g = 0의 선분 목록(픽셀 좌표) */
+  const contour = (P, g) => {
+    const nx = 110, ny = Math.max(20, Math.round((nx * P.h) / P.w)), V = [];
+    for (let j = 0; j <= ny; j++) { const row = []; for (let i = 0; i <= nx; i++) row.push(g(P.ix((i * P.w) / nx), P.iy((j * P.h) / ny))); V.push(row); }
+    const segs = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const c = [[i, j, V[j][i]], [i + 1, j, V[j][i + 1]], [i + 1, j + 1, V[j + 1][i + 1]], [i, j + 1, V[j + 1][i]]], pts = [];
+      for (let k = 0; k < 4; k++) {
+        const [x1, y1, a] = c[k], [x2, y2, b] = c[(k + 1) % 4];
+        if (!isFinite(a) || !isFinite(b)) continue;
+        if ((a < 0) !== (b < 0)) { const u = a / (a - b); pts.push([((x1 + u * (x2 - x1)) * P.w) / nx, ((y1 + u * (y2 - y1)) * P.h) / ny]); }
+      }
+      if (pts.length >= 2) segs.push([pts[0], pts[1]]);
+      if (pts.length === 4) segs.push([pts[2], pts[3]]);
+    }
+    return segs;
+  };
+  const drawIso = (P, mm, col, w, ticks) => {
+    const ctx = P.ctx, segs = contour(P, (t, y) => pre.f(t, y) - mm);
+    ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash([5, 4]); ctx.beginPath();
+    segs.forEach(([a, b]) => { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }); ctx.stroke(); ctx.setLineDash([]);
+    if (ticks) {
+      const used = new Set(), cell = 30, sx = P.w / (P.x1 - P.x0), sy = P.h / (P.y1 - P.y0);
+      let dx = sx, dy = -mm * sy; const L = Math.hypot(dx, dy); dx /= L; dy /= L;
+      ctx.lineWidth = 2.6; ctx.lineCap = "round";
+      segs.forEach(([a, b]) => {
+        const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, key = Math.floor(mx / cell) + "," + Math.floor(my / cell);
+        if (used.has(key)) return; used.add(key);
+        ctx.beginPath(); ctx.moveTo(mx - dx * 10, my - dy * 10); ctx.lineTo(mx + dx * 10, my + dy * 10); ctx.stroke();
+      });
+    }
+    ctx.restore();
+  };
+  const pl = MB.plane("#md-cv-iso", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 280, maxHeight: 460, points: [sp],
+    draw(P) {
+      const C = P.P; sp.color = C.accent; sp.hidden = !sol;
+      if (field) MD.field(P, pre.f, { alpha: 0.6 });
+      if (all) [-2, -1, 0, 1, 2].forEach((k, i) => { if (k !== m) drawIso(P, k, C.series[[1, 2, 5, 3, 4][i]], 1.3, true); });
+      drawIso(P, m, C.accent, 2.4, true);
+      if (sol) P.poly(MD.traj(pre.f, sp.x, sp.y, P), { color: C.text, width: 2.4, close: false });
+      MB.stat("md-i-eq", pre.eq(m)); MB.stat("md-i-pt", `(${MD.num(sp.x, 2)}, ${MD.num(sp.y, 2)})`);
+      let t = "점선은 등경사선, 그 위의 짧은 굵은 선분은 기울기 m인 방향장 선분입니다. 해곡선(검정)은 각 등경사선을 그 기울기로 가로지릅니다.";
+      if (pre === PRE.lin && m === 1) t = "<b>m = 1</b>: 등경사선 y = t − 1의 기울기가 1이고 선분 기울기도 1입니다. 선분이 직선을 따라 누우므로 이 직선이 해입니다. 다른 해는 모두 여기로 다가옵니다.";
+      else if (pre === PRE.circ && m < 0) t = "t² + y² = m &lt; 0인 점은 없습니다. 이 방정식의 해는 기울기가 음수가 될 수 없어 늘 증가합니다.";
+      else if (m === 0) t = "m = 0 등경사선(f = 0) 위에서 선분은 수평입니다. 해곡선이 여기를 지나는 곳이 극대 또는 극소입니다.";
+      msg.innerHTML = t;
+    },
+  });
+  MB.range("md-i-m", (v) => MD.num(v, 2), (v) => { m = v; pl.redraw(); });
+  MB.check("md-i-all", (v) => { all = v; pl.redraw(); });
+  MB.check("md-i-field", (v) => { field = v; pl.redraw(); });
+  MB.check("md-i-sol", (v) => { sol = v; pl.redraw(); });
+  document.getElementById("md-i-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; sp.x = pre.x[0] + 0.5; sp.y = pre === PRE.circ ? -1.5 : 1.5; pl.view({ x: pre.x, y: pre.y }); });
+})();
+
+/* ================================================================ 6. 오일러 걸음 */
+(function () {
+  const PRE = {
+    exp: { f: (t, y) => y, ex: (t) => Math.exp(t), y0: 1, T: 1, x: [-0.08, 1.12], y: [-0.1, 3] },
+    lin: { f: (t, y) => y - t, ex: (t) => t + 1 + Math.exp(t), y0: 2, T: 1, x: [-0.08, 1.12], y: [1.5, 5] },
+    gauss: { f: (t, y) => -2 * t * y, ex: (t) => Math.exp(-t * t), y0: 1, T: 2, x: [-0.15, 2.15], y: [-0.6, 1.25] },
+    logi: { f: (t, y) => y * (1 - y), ex: (t) => 1 / (1 + 9 * Math.exp(-t)), y0: 0.1, T: 6, x: [-0.3, 6.3], y: [-0.08, 1.2] },
+  };
+  const HS = [1, 0.5, 0.25, 0.2, 0.1, 0.05];
+  let pre = PRE.exp, h = 0.5, shown = 2, tan = true, playing = false, acc = 0;
+  const pts = () => { const out = [[0, pre.y0]]; const N = Math.round(pre.T / h); let t = 0, y = pre.y0; for (let i = 0; i < N; i++) { y += h * pre.f(t, y); t += h; out.push([t, y]); } return out; };
+  let E = pts();
+  const pl = MB.plane("#md-cv-eul", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 260, maxHeight: 440, gridStep: pre.T > 2 ? 1 : 0.5,
+    draw(P) {
+      const C = P.P, N = E.length - 1;
+      MD.field(P, pre.f, { alpha: 0.5, px: 30 });
+      P.curve(pre.ex, { color: C.text, width: 2.2, from: 0, to: pre.T });
+      const vis = E.slice(0, shown + 1);
+      if (tan && shown < N) { const [t, y] = E[shown], s = pre.f(t, y); P.line(t, y, t + h * 1.6, y + s * h * 1.6, { color: C.accent2, width: 1.6, dash: [4, 3] }); }
+      if (tan) for (let i = 0; i < Math.min(shown, N); i++) { const [t, y] = E[i], s = pre.f(t, y); P.line(t, y, t + h, y + s * h, { color: C.accent2, width: 1, alpha: 0.5 }); }
+      P.poly(vis, { color: C.accent, width: 2.6, close: false });
+      vis.forEach(([t, y]) => P.dot(t, y, { r: 4, color: C.accent }));
+      const [tn, yn] = E[shown], ex = pre.ex(tn);
+      P.line(tn, yn, tn, ex, { color: C.bad, width: 2.2 });
+      const [tN, yN] = E[N];
+      MB.stat("md-e-n", `${shown} / ${N}`); MB.stat("md-e-y", MD.num(yn, 5)); MB.stat("md-e-ex", MD.num(ex, 5));
+      MB.stat("md-e-err", shown === N ? `${MD.num(pre.ex(tN) - yN, 5)} / ${h} = ${MD.num((pre.ex(tN) - yN) / h, 3)}` : "끝까지 가면 표시");
+    },
+  });
+  const restart = () => { E = pts(); shown = E.length - 1; pl.redraw(); };
+  MB.steps("md-e-h", HS, (v) => String(v), 0.5, (v) => { h = v; restart(); });
+  MB.check("md-e-tan", (v) => { tan = v; pl.redraw(); });
+  document.getElementById("md-e-step").addEventListener("click", () => { if (shown >= E.length - 1) shown = 0; else shown++; pl.redraw(); });
+  document.getElementById("md-e-all").addEventListener("click", () => { shown = E.length - 1; pl.redraw(); });
+  document.getElementById("md-e-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; E = pts(); shown = E.length - 1; pl.view({ x: pre.x, y: pre.y }); });
+  const btn = MB.playButton("md-e-play", () => { if (shown >= E.length - 1) shown = 0; playing = true; acc = 0; loop.start(); }, () => { playing = false; }, ["▶ 걷기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-md-euler"), (dt) => {
+    if (!playing) return; acc += dt;
+    const every = Math.max(0.06, 0.5 / Math.sqrt(E.length));
+    if (acc > every) { acc = 0; shown++; pl.redraw(); if (shown >= E.length - 1) { playing = false; btn.set(false); } }
+  });
+})();
+
+/* ================================================================ 7. 모델 맞추기 */
+(function () {
+  // 교육용 가상 자료: 로지스틱(r = 0.9/h, K = 1000, P0 = 20)에 6% 곱셈 잡음
+  const rng = MB.rng(20261106), DATA = [];
+  const gauss = () => { const u = Math.max(1e-9, rng()), v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  for (let t = 0; t <= 12; t++) { const p = 1000 / (1 + 49 * Math.exp(-0.9 * t)); DATA.push([t, t === 0 ? 20 : Math.round(p * (1 + 0.06 * gauss()))]); }
+  const P0 = 20;
+  let model = "exp", k = 0.5, K = 1500, nfit = 5, logY = false;
+  const msg = document.getElementById("md-m-msg");
+  const M = (t, kk = k, KK = K) => (model === "exp" ? P0 * Math.exp(kk * t) : KK / (1 + (KK / P0 - 1) * Math.exp(-kk * t)));
+  const rms = (set) => (set.length ? Math.sqrt(set.reduce((s, [t, p]) => s + ((M(t) - p) / p) ** 2, 0) / set.length) * 100 : NaN);
+  const cv = MB.canvas(document.getElementById("md-cv-fit"), (ctx, w, h) => {
+    const C = MB.palette(), fit = DATA.slice(0, nfit), val = DATA.slice(nfit);
+    const curve = []; for (let i = 0; i <= 240; i++) { const t = (12.5 * i) / 240; curve.push([t, M(t)]); }
+    const yr = logY ? [10, 5000] : [0, 1600];
+    const res = MB.chart(ctx, { x: 58, y: 18, w: w - 76, h: h - 62 }, {
+      x: [0, 12.5], y: yr, logY, xLabel: "시간 t (h)", yLabel: "개체 수 P",
+      series: [{ data: curve, color: C.accent, width: 2.6 }],
+      vlines: [{ x: nfit - 0.5, color: C.dim, label: "← 맞춤 | 검증 →" }],
+      yTicks: logY ? [10, 20, 50, 100, 200, 500, 1000, 2000, 5000] : undefined,
+    });
+    ctx.save(); ctx.beginPath(); ctx.rect(res.box.x, res.box.y, res.box.w, res.box.h); ctx.clip();
+    fit.forEach(([t, p]) => { ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(res.X(t), res.Y(p), 5, 0, Math.PI * 2); ctx.fill(); });
+    val.forEach(([t, p]) => { ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(res.X(t), res.Y(p), 5, 0, Math.PI * 2); ctx.stroke();
+      const mv = M(t); if (isFinite(mv)) { ctx.strokeStyle = C.bad; ctx.lineWidth = 1.4; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(res.X(t), res.Y(p)); ctx.lineTo(res.X(t), res.Y(Math.min(mv, yr[1] * 2))); ctx.stroke(); ctx.setLineDash([]); } });
+    ctx.restore();
+    const e1 = rms(fit), e2 = rms(val);
+    MB.stat("md-m-e1", MD.num(e1, 1) + " %"); MB.stat("md-m-e2", val.length ? MD.num(e2, 1) + " %" : "검증 데이터 없음");
+    MB.stat("md-m-p", Math.round(M(12)).toLocaleString() + " (측정 " + DATA[12][1] + ")");
+    if (!val.length) { msg.className = "md-msg"; msg.innerHTML = "모든 데이터를 맞춤에 썼습니다. 남은 검증 데이터가 없으니 이 모형의 예측력은 따로 확인할 수 없습니다."; }
+    else if (e1 < 12 && e2 > 40) { msg.className = "md-msg bad"; msg.innerHTML = `맞춤 구간은 잘 맞지만(${MD.num(e1, 1)}%) 검증 구간에서 크게 빗나갑니다(${MD.num(e2, 1)}%). 가정을 고쳐야 할 신호입니다.`; }
+    else if (e1 < 12 && e2 < 15) { msg.className = "md-msg ok"; msg.innerHTML = `맞춤과 검증 모두 잘 맞습니다. 이 범위에서 쓸 만한 모델입니다.`; }
+    else { msg.className = "md-msg"; msg.innerHTML = `k(또는 K)를 움직이거나 '자동 맞춤'을 눌러 보세요. 검은 점은 맞춤용, 속이 빈 점은 검증용입니다.`; }
+  }, { aspect: 0.62, minHeight: 260, maxHeight: 420 });
+  const kR = MB.range("md-m-k", (v) => v.toFixed(3), (v) => { k = v; cv.redraw(); });
+  const KR = MB.range("md-m-K", (v) => String(v), (v) => { K = v; cv.redraw(); });
+  MB.range("md-m-n", (v) => v + "개 (t ≤ " + (v - 1) + " h)", (v) => { nfit = v; cv.redraw(); });
+  MB.check("md-m-log", (v) => { logY = v; cv.redraw(); });
+  MB.seg("md-m-model", (v) => { model = v; KR.el.disabled = v === "exp"; cv.redraw(); });
+  KR.el.disabled = true;
+  document.getElementById("md-m-auto").addEventListener("click", () => {
+    const fit = DATA.slice(0, nfit); let best = [Infinity, k, K];
+    const sse = (kk, KK) => fit.reduce((s, [t, p]) => { const mv = M(t, kk, KK); return s + (Math.log(mv) - Math.log(p)) ** 2; }, 0);
+    for (let kk = 0.1; kk <= 1.6; kk += 0.005) {
+      if (model === "exp") { const e = sse(kk, K); if (e < best[0]) best = [e, kk, K]; }
+      else for (let KK = 200; KK <= 2000; KK += 10) { const e = sse(kk, KK); if (e < best[0]) best = [e, kk, KK]; }
+    }
+    k = best[1]; K = best[2]; kR.set(k, false); KR.set(K, false); cv.redraw();
+  });
+})();
+</script>
+</body>
+</html>

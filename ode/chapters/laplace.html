@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>라플라스 변환 · ODEBook</title>
+<meta name="description" content="미분을 곱셈으로 바꾸는 적분 변환. 정의와 수렴, 지수 차수, 변환표 유도, 미분의 변환, s-이동과 t-이동, 부분 분수로 역변환, 초기값 문제와 연립 방정식 풀이, 최종값·초기값 정리를 그림과 시뮬레이터로 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .lp-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .lp-two > div { position: relative; min-width: 0; }
+  .lp-two > div + div { border-top: 1px solid var(--border); }
+  .lp-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; max-width: calc(100% - 20px); }
+  .lp-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.75; overflow-wrap: anywhere; }
+  .lp-msg b { color: var(--text); }
+  .lp-msg.ok { color: var(--ok); font-weight: 600; }
+  .lp-msg.bad { color: var(--bad); font-weight: 600; }
+  .lp-msg .lp-term { display: inline-block; white-space: nowrap; margin-right: 4px; }
+  .lp-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+  .lp-flow > div { background: var(--bg-elev); padding: 10px 14px; font-size: 13.5px; line-height: 1.7; color: var(--text-dim); overflow-wrap: anywhere; min-width: 0; }
+  .lp-flow > div b.lp-step { display: block; color: var(--accent); font-size: 12px; letter-spacing: .02em; margin-bottom: 2px; }
+  .lp-flow .lp-eq { color: var(--text); font-family: var(--mono); font-size: 13px; }
+  .lp-tbl td { font-size: 14.5px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="laplace">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 09</div>
+    <h1 data-no-glossary>라플라스 변환</h1>
+    <p class="lead">6~8장에서는 2계 선형 방정식을 특성 방정식으로 풀고, 강제항이 있으면 미정계수법이나 매개변수 변환법으로 특수해를 찾은 다음, 마지막에 초기 조건 두 개로 상수를 맞췄습니다. 세 단계가 따로 놀고, 강제항이 바뀔 때마다 요령도 바뀝니다. 이 장의 <span class="term">라플라스 변환</span>은 이 모든 과정을 하나의 기계적인 절차로 묶습니다. 함수 \(f(t)\)를 새 변수 \(s\)의 함수 \(F(s)\)로 옮기면 <b>미분은 \(s\)를 곱하는 일</b>이 되고, 초기 조건은 처음부터 식에 들어가며, 미분방정식은 \(Y(s)\)에 대한 <b>대수 방정식</b>이 됩니다. 풀고 나서 표를 거꾸로 읽어 \(y(t)\)로 돌아오면 끝입니다.</p>
+    <ul class="objectives">
+      <li>라플라스 변환을 정의하고, 지수 차수 조건에서 변환이 존재함을 보이며, \(e^{-st}f(t)\) 아래 넓이로 \(F(s)\)를 읽는다.</li>
+      <li>\(t^n\), \(e^{at}\), \(\sin\omega t\), \(\cos\omega t\)의 변환을 직접 유도하고 변환표를 만든다.</li>
+      <li>선형성, 미분의 변환 \(\mathcal{L}\{f'\} = sF - f(0)\), 적분의 변환, \(t\) 곱하기의 규칙을 증명하고 쓴다.</li>
+      <li>s-이동(지수 감쇠를 곱하면 \(F\)가 옆으로 이동)과 t-이동(지연은 \(e^{-as}\) 곱하기)을 쓴다.</li>
+      <li>부분 분수로 역변환한다: 서로 다른 실근, 중근, 복소근 각각의 꼴을 안다.</li>
+      <li>초기값 문제와 연립 방정식을 변환 → 대수 → 역변환의 세 단계로 풀고, 최종값·초기값 정리로 답을 검산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>회로를 손으로 해석하는 공학</b></div>
+      <div class="o-body"><p>스위치가 달린 회로, 여러 개의 코일과 축전기가 얽힌 필터, 전신선처럼 길게 늘어진 선로를 해석하려면 연립 미분방정식을 초기 조건과 함께 풀어야 합니다. 방정식마다 특수해의 꼴을 추측하는 방식으로는 손이 금방 모자랍니다. 19세기 말 헤비사이드<span class="en">(Oliver Heaviside)</span>는 전신 문제를 다루며 미분 기호 \(d/dt\)를 그냥 문자 \(p\)처럼 다루어 대수로 계산하는 <span class="term">연산자 계산법</span><span class="en">(operational calculus)</span>을 썼습니다. 답은 잘 맞았지만 왜 맞는지에 대한 근거는 당시 엄밀하지 않았습니다.</p>
+        <p>그 근거가 된 것이 라플라스<span class="en">(Pierre-Simon Laplace)</span>의 이름이 붙은 적분 \(\int_0^\infty e^{-st}f(t)\,dt\)입니다. 이후 수학자들이 헤비사이드의 계산을 이 적분 변환의 성질로 정당화했고, 오늘날 회로 이론과 제어 공학의 \(s\)-영역 언어(임피던스 \(sL\), \(1/(sC)\), 전달 함수)는 모두 여기서 나왔습니다.</p>
+        <div class="o-chain"><span>회로의 미분방정식 + 초기 조건</span><i>→</i><span>미분 = s 곱하기</span><i>→</i><span class="tool">ℒ{f′} = sF − f(0)</span><i>→</i><span>대수 방정식 + 변환표</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="idea">
+    <h2>적분 변환의 아이디어: 미분을 곱셈으로</h2>
+    <div class="problem"><strong>곱셈이 어려우면 로그로 바꾼다</strong>
+      <p>계산기가 없던 시절 큰 수의 곱 \(xy\)는 로그표로 계산했습니다. \(\ln x\)와 \(\ln y\)를 표에서 찾아 <b>더하고</b>, 그 합을 표에서 거꾸로 찾으면 \(xy\)입니다. 어려운 연산(곱셈)을 쉬운 연산(덧셈)으로 바꾸는 변환, 쉬운 세계에서 계산, 그리고 되돌아오기. 미분방정식에도 이런 변환이 있을까요? 미분이라는 어려운 연산을 곱셈으로 바꿔 주는 변환이 있다면, \(y'' + 3y' + 2y = 6\)은 그냥 일차 방정식이 될 것입니다.</p></div>
+    <p>그런 변환의 후보를 찾아봅시다. 함수 \(f(t)\)에 어떤 <span class="term">핵</span><span class="en">(kernel)</span> \(K(s, t)\)를 곱해 \(t\)에 대해 적분하면 \(s\)의 함수가 나옵니다. 이런 것을 <span class="term">적분 변환</span><span class="en">(integral transform)</span>이라 합니다. 미분이 곱셈이 되려면 부분 적분 한 번에 \(f'\)의 적분이 \(f\)의 적분의 상수배로 바뀌어야 하는데, 이것은 \(\partial K/\partial t\)가 \(K\)의 상수배일 때, 즉 핵이 지수 함수 \(e^{-st}\)일 때 일어납니다.</p>
+    <div class="formula">$$\int_0^\infty e^{-st} f'(t)\,dt = \Big[e^{-st}f(t)\Big]_0^\infty + s\int_0^\infty e^{-st}f(t)\,dt = -f(0) + s\,F(s).$$
+      <div class="where">경계항은 \(t \to \infty\)에서 \(e^{-st}f(t) \to 0\)이면 \(-f(0)\)만 남는다. <b>미분이 \(s\) 곱하기로 바뀌었고, 초기값 \(f(0)\)이 저절로 따라 들어왔다.</b></div></div>
+    <p>적분 구간을 \([0, \infty)\)로 잡은 데도 까닭이 있습니다. 초기값 문제는 \(t = 0\)에서 출발해 앞으로만 가므로 과거(\(t \lt 0\))는 필요 없고, 경계항에 남는 것이 정확히 출발점의 값입니다. 이 장 전체의 계획은 그림 9-1의 한 장으로 요약됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="t 영역의 미분방정식을 s 영역의 대수 방정식으로 바꾸어 푸는 흐름">
+        <defs><marker id="lp-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="lp-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="lp-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-faint)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <text x="40" y="40" class="t" style="font-weight:700">t 영역 (시간)</text>
+        <text x="460" y="40" class="t" style="font-weight:700">s 영역 (변환)</text>
+        <line x1="380" y1="28" x2="380" y2="246" style="stroke:var(--border);stroke-dasharray:4 4"/>
+        <g transform="translate(40,62)"><rect width="270" height="62" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="135" y="26" text-anchor="middle" class="t-mono">y″ + 3y′ + 2y = 6</text><text x="135" y="48" text-anchor="middle" class="t-dim">y(0) = 1, y′(0) = 0</text></g>
+        <g transform="translate(450,62)"><rect width="270" height="62" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="135" y="26" text-anchor="middle" class="t-mono">(s² + 3s + 2)Y − s − 3 = 6/s</text><text x="135" y="48" text-anchor="middle" class="t-dim">대수 방정식</text></g>
+        <g transform="translate(40,176)"><rect width="270" height="62" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="135" y="26" text-anchor="middle" class="t-mono">y = 3 − 4e⁻ᵗ + 2e⁻²ᵗ</text><text x="135" y="48" text-anchor="middle" class="t-dim">해</text></g>
+        <g transform="translate(450,176)"><rect width="270" height="62" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="135" y="26" text-anchor="middle" class="t-mono">Y = 3/s − 4/(s+1) + 2/(s+2)</text><text x="135" y="48" text-anchor="middle" class="t-dim">부분 분수</text></g>
+        <path d="M318 93 H442" class="s-acc" style="stroke-width:2" marker-end="url(#lp-ar)"/><text x="380" y="84" text-anchor="middle" class="t-acc">ℒ</text>
+        <path d="M585 132 V168" style="stroke:var(--text-faint);stroke-width:2" marker-end="url(#lp-ar3)"/><text x="595" y="155" class="t-dim">대수로 풀기</text>
+        <path d="M442 207 H318" style="stroke:var(--accent-2);stroke-width:2" marker-end="url(#lp-ar2)"/><text x="380" y="198" text-anchor="middle" class="t" style="fill:var(--accent-2);font-weight:700">ℒ⁻¹</text>
+        <path d="M175 132 V168" style="stroke:var(--text-faint);stroke-width:2;stroke-dasharray:5 4" marker-end="url(#lp-ar3)"/><text x="185" y="155" class="t-dim">직접 풀기 (6~8장)</text>
+      </svg>
+      <figcaption><b>그림 9-1.</b> 라플라스 변환으로 푸는 길. 왼쪽 아래로 곧장 내려가는 길(특성 방정식 + 특수해 + 상수 맞추기) 대신, 오른쪽으로 건너가 대수 방정식을 풀고 표를 거꾸로 읽어 돌아온다. 로그표로 곱셈을 하던 것과 같은 구조다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="definition">
+    <h2>정의와 수렴: 지수 차수</h2>
+    <div class="callout deep"><strong>정의 9.1 (라플라스 변환)</strong> \(t \ge 0\)에서 정의된 함수 \(f(t)\)에 대해
+      <div class="formula">$$F(s) = \mathcal{L}\{f(t)\} = \int_0^\infty e^{-st} f(t)\,dt = \lim_{T\to\infty}\int_0^T e^{-st}f(t)\,dt$$</div>
+      가 수렴하는 \(s\)에서 \(F\)를 \(f\)의 라플라스 변환이라 한다. 관례로 시간 함수는 소문자, 변환은 같은 글자의 대문자로 쓴다(\(y \leftrightarrow Y\), \(g \leftrightarrow G\)). 이 장에서 \(s\)는 우선 실수로 생각하고, 극점을 다룰 때 복소수로 넓힌다.</div>
+    <p>정의를 그림으로 읽으면 이렇습니다. \(s\)를 하나 고르면 \(e^{-st}\)는 \(t = 0\)에서 1이고 시간이 갈수록 줄어드는 <b>가중치</b>입니다. \(F(s)\)는 이 가중치를 곱한 곡선 \(e^{-st}f(t)\) 아래의 넓이입니다. \(s\)가 크면 가중치가 빨리 죽어 \(t = 0\) 근처만 세고, \(s\)가 작으면 먼 미래까지 셉니다. 아래 시뮬레이터에서 \(s\)를 움직이며 넓이를 재면 아래 그래프에 \(F(s)\)가 한 점씩 그려집니다.</p>
+    <div class="callout"><strong>예제 9.1 (첫 변환들)</strong> \(\mathcal{L}\{1\}\), \(\mathcal{L}\{e^{at}\}\), \(\mathcal{L}\{t\}\)를 구하라.
+      <ol>
+        <li>\(\displaystyle\int_0^T e^{-st}\,dt = \frac{1 - e^{-sT}}{s} \to \frac1s\) (\(s > 0\)). \(s \le 0\)이면 적분이 무한대로 발산한다.</li>
+        <li>\(\displaystyle\int_0^\infty e^{-st}e^{at}\,dt = \int_0^\infty e^{-(s-a)t}\,dt = \frac{1}{s - a}\) (\(s > a\)). 1번은 \(a = 0\)인 경우다.</li>
+        <li>부분 적분(\(u = t\), \(dv = e^{-st}dt\)): \(\displaystyle\int_0^\infty te^{-st}\,dt = \Big[-\frac{t e^{-st}}{s}\Big]_0^\infty + \frac1s\int_0^\infty e^{-st}\,dt = 0 + \frac{1}{s^2}\) (\(s > 0\)).</li>
+        <li>수치 확인: \(s = 2\)에서 \(\int_0^\infty te^{-2t}\,dt = 0.25 = 1/2^2\). ✓</li>
+      </ol></div>
+    <p>예제에서 보듯 변환은 보통 어떤 \(s_0\)보다 큰 \(s\)에서만 존재합니다. 어떤 함수가 변환을 가지려면 \(f\)가 \(e^{-st}\)보다 빨리 자라지 않아야 합니다.</p>
+    <div class="callout deep"><strong>정의 9.2 (구간별 연속, 지수 차수)</strong> \(f\)가 모든 유한 구간 \([0, T]\)에서 유한 개의 점을 빼고 연속이고 그 점들에서 좌우 극한이 유한하면 <span class="term">구간별 연속</span><span class="en">(piecewise continuous)</span>이라 한다. 상수 \(M > 0\), \(a\), \(T_0\)가 있어 \(t \ge T_0\)에서 \(|f(t)| \le Me^{at}\)이면 \(f\)는 <span class="term">지수 차수</span><span class="en">(exponential order)</span> \(a\)라 한다.</div>
+    <div class="callout deep"><strong>정리 9.3 (변환의 존재)</strong> \(f\)가 \([0, \infty)\)에서 구간별 연속이고 지수 차수 \(a\)이면 \(\mathcal{L}\{f\}(s)\)는 모든 \(s > a\)에서 존재하고, \(s \to \infty\)일 때 \(F(s) \to 0\)이다.
+      <p style="margin:8px 0 0"><b>증명.</b> \([0, T_0]\)에서는 구간별 연속 함수가 유계라 적분이 유한하다. \(t \ge T_0\)에서는 \(|e^{-st}f(t)| \le Me^{-(s-a)t}\)이고 \(\int_{T_0}^\infty Me^{-(s-a)t}\,dt \lt \infty\)이므로(\(s > a\)) 비교 판정법으로 절대 수렴한다. 같은 부등식으로 \(|F(s)| \le K/s + M/(s - a)\) 꼴의 상계를 얻으니(\(K\)는 \([0,T_0]\)에서 \(|f|\)의 최댓값) \(s \to \infty\)에서 \(F \to 0\)이다. ∎</p></div>
+    <p>다항식, 지수 함수, 사인·코사인과 이들의 곱·합은 모두 지수 차수이므로 공학에서 만나는 입력은 거의 다 변환을 가집니다. 계단처럼 끊어지는 함수도 구간별 연속이면 괜찮습니다. 이것이 10장에서 스위치 입력을 다루는 바탕입니다.</p>
+    <div class="callout warn"><strong>변환이 없는 함수</strong> \(e^{t^2}\)은 어떤 \(e^{at}\)보다도 빨리 자라서 \(e^{-st}e^{t^2} = e^{t(t - s)}\)이 \(t > s\)부터 커지기만 하므로 적분이 발산합니다. \(1/t\)은 \(t = 0\) 근처에서 적분할 수 없어(구간별 연속이 아님) 역시 변환이 없습니다. 반대로 정리 9.3의 조건은 충분조건일 뿐이라, \(t^{-1/2}\)처럼 0에서 무한대지만 적분 가능한 함수는 변환 \(\sqrt{\pi/s}\)를 가집니다.</div>
+    <p>\(F(s) \to 0\)은 쓸모 있는 검산 도구입니다. 계산 끝에 \(\mathcal{L}\{f\} = s/(s+1)\)처럼 \(s \to \infty\)에서 0으로 가지 않는 답이 나오면 보통의 함수의 변환이 아니므로 어디선가 틀린 것입니다(10장의 델타 함수는 예외로, 보통 함수가 아닙니다).</p>
+
+    <div class="sim" id="sim-lp-area">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>e<sup>−st</sup>f(t) 아래 넓이로 F(s) 그리기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-area-t"></canvas><span class="lp-cap">f(t) (회색), 가중치 e^(−st) (점선), 곱 e^(−st)f(t)와 넓이</span></div>
+          <div><canvas id="lp-cv-area-s"></canvas><span class="lp-cap">F(s): 넓이를 s의 함수로</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>f(t)</span><select id="lp-a-pre">
+            <option value="one">1</option>
+            <option value="t">t</option>
+            <option value="exp">e^(0.5t)</option>
+            <option value="dec">e^(−t)</option>
+            <option value="sin">sin 2t</option>
+            <option value="cos">cos 2t</option>
+          </select></label>
+          <label class="ctrl"><span>s <output id="lp-a-s-out"></output></span><input type="range" id="lp-a-s" min="0.1" max="5" step="0.01" value="1"></label>
+          <label class="ctrl"><span>적분 위끝 T <output id="lp-a-T-out"></output></span><input type="range" id="lp-a-T" min="1" max="40" step="0.5" value="40"></label>
+          <div class="btn-row"><button class="btn primary" id="lp-a-play">▶ s 쓸기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫₀ᵀ e^(−st) f dt</span><span class="v" id="lp-a-num">—</span></div>
+        <div class="stat"><span class="k">공식 F(s)</span><span class="v" id="lp-a-F">—</span></div>
+        <div class="stat"><span class="k">수렴 영역</span><span class="v" id="lp-a-roc">—</span></div>
+      </div>
+      <div class="lp-msg" id="lp-a-msg"></div>
+      <div class="sim-note">해볼 것: ① '1'에서 s를 키우면 가중치가 빨리 죽어 넓이 1/s가 작아집니다. s를 0 가까이 내리면 넓이가 한없이 커집니다. ② 'e^(0.5t)'에서 s를 0.5 아래로 내리고 T를 늘려 보세요. 넓이가 T와 함께 끝없이 자랍니다. 수렴 영역 s &gt; 0.5 밖입니다. ③ 'sin 2t'에서는 곱이 양·음을 오가는데 넓이(=2/(s²+4))는 늘 양수입니다. 앞쪽 양의 반 주기가 가중치를 더 크게 받기 때문입니다. 모델: 넓이는 [0, T]의 심프슨 적분, F(s)는 표의 공식입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="table">
+    <h2>기본 변환표 유도</h2>
+    <div class="problem"><strong>매번 적분하지 않으려면</strong>
+      <p>로그표가 쓸모 있는 것은 한 번 만들어 두면 계속 쓰기 때문입니다. 라플라스 변환도 자주 나오는 함수 몇 개의 변환을 한 번 유도해 두면, 나머지는 다음 절의 성질(선형성·이동·미분)로 조립할 수 있습니다. 어떤 함수들을 표에 넣어야 할까요? 6~8장의 해에 나온 것, 즉 \(t^n\), \(e^{at}\), \(\cos\omega t\), \(\sin\omega t\)와 그 곱이면 충분합니다.</p></div>
+    <div class="callout"><strong>예제 9.2 (거듭제곱)</strong> \(\mathcal{L}\{t^n\} = \dfrac{n!}{s^{n+1}}\) (\(s > 0\), \(n = 0, 1, 2, \dots\))임을 보여라.
+      <ol>
+        <li>부분 적분 \(u = t^n\), \(dv = e^{-st}dt\): \(\displaystyle\int_0^\infty t^n e^{-st}\,dt = \Big[-\frac{t^n e^{-st}}{s}\Big]_0^\infty + \frac{n}{s}\int_0^\infty t^{n-1}e^{-st}\,dt\).</li>
+        <li>경계항은 0이다(\(n \ge 1\)이면 \(t = 0\)에서 0, \(t \to \infty\)에서 지수 감쇠가 다항식을 이긴다). 그래서 \(\mathcal{L}\{t^n\} = \frac{n}{s}\mathcal{L}\{t^{n-1}\}\).</li>
+        <li>\(\mathcal{L}\{1\} = 1/s\)에서 시작해 되풀이하면 \(\mathcal{L}\{t^n\} = \frac{n}{s}\cdot\frac{n-1}{s}\cdots\frac{1}{s}\cdot\frac1s = \frac{n!}{s^{n+1}}\).</li>
+        <li>수치 확인: \(s = 2\)에서 \(\int_0^\infty t^3e^{-2t}\,dt = 0.375 = 3!/2^4\). ✓ 정수가 아닌 지수에서는 \(n!\) 대신 감마 함수 \(\Gamma(n+1)\)이 들어간다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.3 (사인과 코사인: 오일러 공식으로 한 번에)</strong> \(\mathcal{L}\{\cos\omega t\}\)와 \(\mathcal{L}\{\sin\omega t\}\)를 구하라.
+      <ol>
+        <li>예제 9.1의 \(\frac{1}{s-a}\)는 \(a\)가 복소수여도 성립한다(\(s > \operatorname{Re}a\)). \(a = i\omega\)를 넣으면 \(\mathcal{L}\{e^{i\omega t}\} = \dfrac{1}{s - i\omega} = \dfrac{s + i\omega}{s^2 + \omega^2}\).</li>
+        <li>\(e^{i\omega t} = \cos\omega t + i\sin\omega t\)이고 변환은 선형이므로 실수부와 허수부를 비교한다.</li>
+        <li>\(\mathcal{L}\{\cos\omega t\} = \dfrac{s}{s^2 + \omega^2}\), \(\mathcal{L}\{\sin\omega t\} = \dfrac{\omega}{s^2 + \omega^2}\) (\(s > 0\)).</li>
+        <li>같은 방법으로 \(\cosh at = \frac12(e^{at} + e^{-at})\)이면 \(\mathcal{L}\{\cosh at\} = \frac12\bigl(\frac{1}{s-a} + \frac{1}{s+a}\bigr) = \frac{s}{s^2 - a^2}\), \(\mathcal{L}\{\sinh at\} = \frac{a}{s^2 - a^2}\) (\(s > |a|\)).</li>
+      </ol></div>
+    <p>복소수를 피하고 싶다면 부분 적분을 두 번 해도 됩니다. 두 번째 부분 적분에서 원래 적분이 다시 나와 방정식을 풀면 같은 답이 나옵니다(<a href="../../calculus/chapters/techniques.html">CalculusBook: 적분 기법</a>의 \(\int e^{x}\sin x\,dx\)와 같은 요령). 지금까지와 다음 절에서 얻을 것을 모으면 표 9-1이 됩니다.</p>
+    <div class="table-wrap"><table class="lp-tbl">
+      <thead><tr><th>\(f(t)\)</th><th>\(F(s) = \mathcal{L}\{f\}\)</th><th>수렴 영역</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>\(1\)</td><td>\(\dfrac1s\)</td><td>\(s > 0\)</td><td>예제 9.1</td></tr>
+        <tr><td>\(t^n\)</td><td>\(\dfrac{n!}{s^{n+1}}\)</td><td>\(s > 0\)</td><td>예제 9.2</td></tr>
+        <tr><td>\(e^{at}\)</td><td>\(\dfrac{1}{s-a}\)</td><td>\(s > a\)</td><td>예제 9.1</td></tr>
+        <tr><td>\(\cos\omega t\)</td><td>\(\dfrac{s}{s^2+\omega^2}\)</td><td>\(s > 0\)</td><td>예제 9.3</td></tr>
+        <tr><td>\(\sin\omega t\)</td><td>\(\dfrac{\omega}{s^2+\omega^2}\)</td><td>\(s > 0\)</td><td>예제 9.3</td></tr>
+        <tr><td>\(\cosh at\), \(\sinh at\)</td><td>\(\dfrac{s}{s^2-a^2}\), \(\dfrac{a}{s^2-a^2}\)</td><td>\(s > |a|\)</td><td>예제 9.3</td></tr>
+        <tr><td>\(t^ne^{at}\)</td><td>\(\dfrac{n!}{(s-a)^{n+1}}\)</td><td>\(s > a\)</td><td>정리 9.8</td></tr>
+        <tr><td>\(e^{at}\cos\omega t\)</td><td>\(\dfrac{s-a}{(s-a)^2+\omega^2}\)</td><td>\(s > a\)</td><td>정리 9.8</td></tr>
+        <tr><td>\(e^{at}\sin\omega t\)</td><td>\(\dfrac{\omega}{(s-a)^2+\omega^2}\)</td><td>\(s > a\)</td><td>정리 9.8</td></tr>
+        <tr><td>\(t\sin\omega t\)</td><td>\(\dfrac{2\omega s}{(s^2+\omega^2)^2}\)</td><td>\(s > 0\)</td><td>정리 9.7</td></tr>
+        <tr><td>\(t\cos\omega t\)</td><td>\(\dfrac{s^2-\omega^2}{(s^2+\omega^2)^2}\)</td><td>\(s > 0\)</td><td>정리 9.7</td></tr>
+        <tr><td>\(u(t-a)\) (단위 계단)</td><td>\(\dfrac{e^{-as}}{s}\)</td><td>\(s > 0\)</td><td><a href="transfer.html">10장</a></td></tr>
+        <tr><td>\(\delta(t-a)\) (델타)</td><td>\(e^{-as}\)</td><td>모든 \(s\)</td><td><a href="transfer.html">10장</a></td></tr>
+      </tbody></table></div>
+    <p>표를 세로로 훑어보면 한 가지 규칙이 눈에 띕니다. \(F(s)\)는 모두 \(s\)의 <b>유리 함수</b>이고, 분모가 0이 되는 점, 즉 <span class="term">극점</span><span class="en">(pole)</span>의 위치가 \(f(t)\)의 모양을 정합니다. \(e^{at}\)의 극점은 \(s = a\) 하나, \(e^{at}\cos\omega t\)의 극점은 \(s = a \pm i\omega\) 한 쌍입니다. <b>극점의 실수부는 성장·감쇠율, 허수부는 진동수</b>입니다. 6장의 특성근이 바로 이 극점이었습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="복소 s 평면에서 극점 위치에 따른 시간 함수의 모양">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <rect x="30" y="24" width="350" height="236" style="fill:var(--ok);opacity:.08"/>
+        <rect x="380" y="24" width="350" height="236" style="fill:var(--bad);opacity:.08"/>
+        <line x1="30" y1="150" x2="730" y2="150" class="s-axis"/><line x1="380" y1="24" x2="380" y2="260" class="s-axis"/>
+        <text x="726" y="166" text-anchor="end" class="t-mono">Re s</text><text x="372" y="38" text-anchor="end" class="t-mono">Im s</text>
+        <text x="205" y="280" text-anchor="middle" class="t-dim">Re s &lt; 0: 사라지는 항</text><text x="380" y="280" text-anchor="middle" class="t-dim">허수축: 지속</text><text x="555" y="280" text-anchor="middle" class="t-dim">Re s &gt; 0: 커지는 항</text>
+        <g style="stroke:var(--accent);stroke-width:2.4"><path d="M194 76 l12 12 M206 76 l-12 12"/><path d="M194 144 l12 12 M206 144 l-12 12"/><path d="M194 212 l12 12 M206 212 l-12 12"/><path d="M374 76 l12 12 M386 76 l-12 12"/><path d="M374 144 l12 12 M386 144 l-12 12"/><path d="M374 212 l12 12 M386 212 l-12 12"/><path d="M554 76 l12 12 M566 76 l-12 12"/><path d="M554 144 l12 12 M566 144 l-12 12"/><path d="M554 212 l12 12 M566 212 l-12 12"/></g>
+        <rect x="216" y="62" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/><rect x="216" y="160" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/><rect x="396" y="62" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/><rect x="396" y="160" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/><rect x="576" y="62" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/><rect x="576" y="160" width="96" height="40" rx="5" class="f-elev" style="stroke:var(--border)"/>
+        <g fill="none" style="stroke:var(--text);stroke-width:1.5"><path d="M220 66 L221 67 L223 70 L224 73 L226 77 L227 81 L229 85 L230 88 L232 90 L233 92 L235 92 L236 92 L238 90 L239 89 L241 86 L242 84 L243 81 L245 79 L246 77 L248 76 L249 76 L251 76 L252 76 L254 77 L255 79 L257 80 L258 82 L260 83 L261 84 L263 85 L264 86 L265 86 L267 86 L268 85 L270 85 L271 84 L273 83 L274 82 L276 81 L277 80 L279 80 L280 80 L282 80 L283 80 L285 80 L286 81 L287 81 L289 82 L290 82 L292 83 L293 83 L295 83 L296 84 L298 83 L299 83 L301 83 L302 83 L304 82 L305 82 L307 82 L308 81"/><path d="M220 164 L224 171 L229 176 L233 180 L238 184 L242 186 L246 188 L251 190 L255 191 L260 192 L264 193 L268 194 L273 194 L277 195 L282 195 L286 195 L290 195 L295 195 L299 196 L304 196 L308 196"/><path d="M400 66 L401 67 L403 69 L404 72 L406 76 L407 81 L409 86 L410 90 L412 94 L413 97 L415 98 L416 98 L418 97 L419 94 L421 90 L422 85 L423 81 L425 76 L426 72 L428 68 L429 66 L431 66 L432 67 L434 69 L435 72 L437 76 L438 81 L440 86 L441 90 L443 94 L444 97 L445 98 L447 98 L448 96 L450 94 L451 90 L453 85 L454 80 L456 76 L457 72 L459 68 L460 66 L462 66 L463 67 L465 69 L466 72 L467 77 L469 81 L470 86 L472 91 L473 94 L475 97 L476 98 L478 98 L479 96 L481 93 L482 89 L484 85 L485 80 L487 75 L488 71"/><path d="M400 164 L404 164 L409 164 L413 164 L418 164 L422 164 L426 164 L431 164 L435 164 L440 164 L444 164 L448 164 L453 164 L457 164 L462 164 L466 164 L470 164 L475 164 L479 164 L484 164 L488 164"/><path d="M580 79 L581 79 L583 79 L584 80 L586 81 L587 82 L589 83 L590 84 L592 85 L593 86 L595 86 L596 87 L598 86 L599 86 L601 85 L602 83 L603 82 L605 80 L606 78 L608 77 L609 76 L611 76 L612 76 L614 77 L615 78 L617 80 L618 82 L620 84 L621 86 L623 88 L624 90 L625 90 L627 91 L628 90 L630 89 L631 87 L633 84 L634 81 L636 78 L637 75 L639 73 L640 71 L642 70 L643 70 L645 72 L646 74 L647 78 L649 81 L650 86 L652 90 L653 93 L655 96 L656 98 L658 98 L659 97 L661 94 L662 90 L664 85 L665 80 L667 74 L668 69"/><path d="M580 193 L584 193 L589 192 L593 192 L598 191 L602 191 L606 190 L611 189 L615 188 L620 187 L624 186 L628 185 L633 184 L637 182 L642 180 L646 178 L650 176 L655 174 L659 171 L664 168 L668 164"/></g>
+        <text x="216" y="118" class="t-dim">e^(at)cos ωt</text><text x="216" y="216" class="t-dim">e^(at)</text>
+        <text x="396" y="118" class="t-dim">cos ωt</text><text x="396" y="216" class="t-dim">상수 1</text>
+        <text x="576" y="118" class="t-dim">발산 진동</text><text x="576" y="216" class="t-dim">e^(at), a &gt; 0</text>
+      </svg>
+      <figcaption><b>그림 9-2.</b> s 평면의 극점 지도(×). 왼쪽 반평면(초록)의 극점은 시간이 지나면 사라지는 항을, 오른쪽 반평면(빨강)은 커지는 항을 만든다. 허수축 위의 극점은 상수나 지속되는 진동이다. 실수축에서 멀어질수록(허수부가 클수록) 빨리 진동한다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-lp-pairs">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>변환 쌍 탐색기: f(t) ↔ F(s)와 극점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-pair-t"></canvas><span class="lp-cap">f(t)</span></div>
+          <div><canvas id="lp-cv-pair-s"></canvas><span class="lp-cap">s 평면: 극점 ×, 영점 ○</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>변환 쌍</span><select id="lp-p-pre">
+            <option value="pow">tⁿ ↔ n!/sⁿ⁺¹</option>
+            <option value="exp">e^(at) ↔ 1/(s − a)</option>
+            <option value="cos">cos ωt ↔ s/(s² + ω²)</option>
+            <option value="sin">sin ωt ↔ ω/(s² + ω²)</option>
+            <option value="texp">t e^(at) ↔ 1/(s − a)²</option>
+            <option value="dcos" selected>e^(at)cos ωt ↔ (s − a)/((s − a)² + ω²)</option>
+            <option value="sinh">sinh at ↔ a/(s² − a²)</option>
+          </select></label>
+          <label class="ctrl" id="lp-p-a-wrap"><span>a <output id="lp-p-a-out"></output></span><input type="range" id="lp-p-a" min="-2" max="1" step="0.05" value="-0.4"></label>
+          <label class="ctrl" id="lp-p-w-wrap"><span>ω <output id="lp-p-w-out"></output></span><input type="range" id="lp-p-w" min="0.5" max="4" step="0.05" value="2.5"></label>
+          <label class="ctrl" id="lp-p-n-wrap"><span>n <output id="lp-p-n-out"></output></span><input type="range" id="lp-p-n" min="0" max="5" step="1" value="2"></label>
+          <label class="ctrl"><span>검산할 s₀ <output id="lp-p-s-out"></output></span><input type="range" id="lp-p-s" min="1.5" max="6" step="0.1" value="3"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">F(s)</span><span class="v" id="lp-p-F">—</span></div>
+        <div class="stat"><span class="k">극점</span><span class="v" id="lp-p-poles">—</span></div>
+        <div class="stat"><span class="k">수치 적분 F(s₀)</span><span class="v" id="lp-p-num">—</span></div>
+        <div class="stat"><span class="k">공식 F(s₀)</span><span class="v" id="lp-p-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'e^(at)cos ωt'에서 a를 음수에서 양수로 밀면 극점 쌍이 허수축을 건너는 순간 감쇠 진동이 발산 진동으로 바뀝니다. ② ω를 키우면 극점이 위아래로 벌어지고 진동이 빨라집니다. ③ 'tⁿ'에서 n을 올리면 원점의 극점이 n + 1중으로 겹칩니다(숫자 표시). 겹친 극점이 t의 거듭제곱을 만듭니다. 모델: 수치 적분은 [0, 60]의 심프슨 공식(s₀가 수렴 영역 안에 있도록 범위를 잡았습니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="derivatives">
+    <h2>선형성과 미분의 변환</h2>
+    <div class="callout deep"><strong>정리 9.4 (선형성)</strong> \(\mathcal{L}\{f\}\), \(\mathcal{L}\{g\}\)가 \(s > a\)에서 존재하면 상수 \(\alpha\), \(\beta\)에 대해 \(\mathcal{L}\{\alpha f + \beta g\} = \alpha F + \beta G\). 역변환도 선형이다. (적분이 선형이므로 바로 나온다.)</div>
+    <div class="callout"><strong>예제 9.4 (선형성으로 조립)</strong> \(\mathcal{L}\{3 - 2e^{-t} + 5\sin 2t\} = \dfrac3s - \dfrac{2}{s+1} + \dfrac{10}{s^2+4}\). 수치 확인: \(s = 2\)에서 양변 모두 \(2.0833\). ✓</div>
+    <p>이제 이 장의 주인공입니다. 1절의 부분 적분을 엄밀하게 쓰고, 한 번 더 써서 2계 도함수까지 갑니다.</p>
+    <div class="callout deep"><strong>정리 9.5 (미분의 변환)</strong> \(f\)가 \([0, \infty)\)에서 연속이고 지수 차수 \(a\)이며 \(f'\)이 구간별 연속이면 \(s > a\)에서
+      <div class="formula">$$\mathcal{L}\{f'\} = sF(s) - f(0).$$</div>
+      같은 조건을 \(f'\)에도 두면
+      <div class="formula">$$\mathcal{L}\{f''\} = s^2F(s) - sf(0) - f'(0),\qquad \mathcal{L}\{f^{(n)}\} = s^nF(s) - s^{n-1}f(0) - \cdots - f^{(n-1)}(0).$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\int_0^T e^{-st}f'(t)\,dt = \big[e^{-st}f(t)\big]_0^T + s\int_0^T e^{-st}f(t)\,dt\)(\(f'\)이 끊어지는 점이 있으면 구간을 나눠 부분 적분하고, \(f\)가 연속이라 중간 경계항이 상쇄된다). \(|e^{-sT}f(T)| \le Me^{-(s-a)T} \to 0\)이므로 \(T \to \infty\)에서 \(-f(0) + sF(s)\). 2계는 \(f'\)에 1계 공식을 쓴 뒤 \(\mathcal{L}\{f'\}\)를 넣는다: \(s(sF - f(0)) - f'(0)\). ∎</p></div>
+    <p>이 공식이 미분방정식을 대수로 바꾸는 엔진입니다. 미분 한 번마다 \(s\)가 하나 곱해지고, 그 대가로 초기값이 하나씩 빠집니다. 6~8장에서는 일반해를 먼저 구하고 나중에 초기 조건으로 상수를 맞췄지만, 여기서는 <b>초기 조건이 변환 단계에서 이미 들어갑니다</b>.</p>
+    <div class="callout"><strong>예제 9.5 (미분 공식으로 변환 얻기)</strong> \(\mathcal{L}\{\cos\omega t\} = \frac{s}{s^2+\omega^2}\)만 알 때 \(\mathcal{L}\{\sin\omega t\}\)를 구하라.
+      <ol>
+        <li>\(f = \cos\omega t\)이면 \(f' = -\omega\sin\omega t\), \(f(0) = 1\).</li>
+        <li>정리 9.5: \(-\omega\,\mathcal{L}\{\sin\omega t\} = s\cdot\frac{s}{s^2+\omega^2} - 1 = \frac{-\omega^2}{s^2+\omega^2}\).</li>
+        <li>따라서 \(\mathcal{L}\{\sin\omega t\} = \frac{\omega}{s^2+\omega^2}\). 예제 9.3과 같다.</li>
+      </ol></div>
+    <p>미분이 \(s\) 곱하기라면 적분은 \(s\)로 나누기여야 자연스럽습니다. 또 \(s\) 쪽에서 미분하면 \(t\) 쪽에서는 무엇이 될까요?</p>
+    <div class="callout deep"><strong>정리 9.6 (적분의 변환)</strong> \(f\)가 구간별 연속이고 지수 차수이면 \(\displaystyle\mathcal{L}\Big\{\int_0^t f(\tau)\,d\tau\Big\} = \frac{F(s)}{s}.\)
+      <p style="margin:8px 0 0"><b>증명.</b> \(g(t) = \int_0^t f\)로 두면 \(g\)는 연속이고 \(g' = f\)(구간별), \(g(0) = 0\)이다. 정리 9.5로 \(F = sG - 0\). ∎</p></div>
+    <div class="callout deep"><strong>정리 9.7 (\(t\) 곱하기 = \(s\)에 대한 미분)</strong> \(\mathcal{L}\{t f(t)\} = -F'(s)\), 일반적으로 \(\mathcal{L}\{t^n f(t)\} = (-1)^n F^{(n)}(s)\).
+      <p style="margin:8px 0 0"><b>증명.</b> \(F(s) = \int_0^\infty e^{-st}f(t)\,dt\)를 적분 기호 안에서 \(s\)로 미분하면(수렴 영역 안에서 균등 수렴으로 정당화된다) \(\frac{\partial}{\partial s}e^{-st} = -te^{-st}\)이므로 \(F'(s) = -\int_0^\infty e^{-st}\,t f(t)\,dt\). ∎</p></div>
+    <div class="callout"><strong>예제 9.6 (공진 항의 변환)</strong> \(\mathcal{L}\{t\sin\omega t\}\)와 \(\mathcal{L}\{t\cos\omega t\}\)를 구하라.
+      <ol>
+        <li>\(-\frac{d}{ds}\frac{\omega}{s^2+\omega^2} = \frac{2\omega s}{(s^2+\omega^2)^2}\), \(-\frac{d}{ds}\frac{s}{s^2+\omega^2} = -\frac{(s^2+\omega^2) - 2s^2}{(s^2+\omega^2)^2} = \frac{s^2-\omega^2}{(s^2+\omega^2)^2}\).</li>
+        <li>수치 확인(\(\omega = 3\), \(s = 2\)): \(\int_0^\infty te^{-2t}\sin 3t\,dt = 0.07101 = 12/169\). ✓</li>
+        <li>두 식을 조합하면 \(\frac{1}{2\omega^3}\bigl(\sin\omega t - \omega t\cos\omega t\bigr) \leftrightarrow \frac{1}{(s^2+\omega^2)^2}\). 8장의 비감쇠 공진에서 나온 \(t\cos\omega t\) 항이 바로 이 <b>겹친 극점</b> \(\pm i\omega\)에서 온다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="shifting">
+    <h2>s-이동과 t-이동</h2>
+    <div class="problem"><strong>감쇠 진동의 변환을 새로 적분해야 할까</strong>
+      <p>7장의 부족 감쇠 진동 \(e^{-2t}\cos 3t\)를 변환하려면 \(\int_0^\infty e^{-st}e^{-2t}\cos 3t\,dt\)를 계산해야 합니다. 그런데 \(e^{-st}e^{-2t} = e^{-(s+2)t}\)이니 이것은 \(\cos 3t\)의 변환에서 \(s\) 자리에 \(s + 2\)를 넣은 것뿐입니다. 지수 함수를 곱하는 일은 \(s\)축 위에서 무엇을 할까요?</p></div>
+    <div class="callout deep"><strong>정리 9.8 (s-이동, 제1 이동 정리)</strong> \(\mathcal{L}\{f\} = F(s)\) (\(s > a_0\))이면
+      <div class="formula">$$\mathcal{L}\{e^{at}f(t)\} = F(s - a)\qquad (s > a_0 + a).$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\int_0^\infty e^{-st}e^{at}f(t)\,dt = \int_0^\infty e^{-(s-a)t}f(t)\,dt = F(s - a)\). ∎</p></div>
+    <p>시간 쪽에서 \(e^{at}\)를 곱하면 \(s\) 쪽에서는 \(F\)의 그래프가 \(a\)만큼 오른쪽으로 옮겨 가고, 극점도 모두 \(a\)만큼 이동합니다. \(a \lt 0\)(감쇠)이면 극점이 왼쪽으로 갑니다. 그림 9-2의 지도에서 왼쪽으로 갈수록 빨리 사라지는 항이 되는 이유가 바로 이것입니다. 표 9-1의 \(t^ne^{at}\), \(e^{at}\cos\omega t\), \(e^{at}\sin\omega t\)는 모두 이 정리로 얻었습니다.</p>
+    <div class="callout"><strong>예제 9.7 (s-이동 앞뒤로)</strong>
+      <ol>
+        <li>\(\mathcal{L}\{e^{-2t}\cos 3t\} = \dfrac{s+2}{(s+2)^2 + 9}\). 극점은 \(-2 \pm 3i\).</li>
+        <li>역변환 \(\mathcal{L}^{-1}\Big\{\dfrac{2s + 3}{s^2 + 4s + 13}\Big\}\): 완전제곱 \(s^2 + 4s + 13 = (s+2)^2 + 9\). 분자를 \(s + 2\)로 맞추면 \(2s + 3 = 2(s+2) - 1\).</li>
+        <li>\(\dfrac{2(s+2)}{(s+2)^2+9} - \dfrac13\cdot\dfrac{3}{(s+2)^2+9}\) \(\Rightarrow\) \(f(t) = e^{-2t}\bigl(2\cos 3t - \tfrac13\sin 3t\bigr)\).</li>
+        <li>검산: \(s = 2\)에서 수치 적분 \(\int_0^\infty e^{-2t}f(t)\,dt = 0.28\)이고 \(F(2) = \frac{2\cdot2+3}{4+8+13} = \frac{7}{25} = 0.28\). ✓</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lp-shift">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>s-이동 = 감쇠 곱하기: e<sup>at</sup>을 곱하면 극점이 a만큼</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-sh-t"></canvas><span class="lp-cap">t 영역: f(t) (회색)와 e^(at)f(t), 포락선 ±e^(at)</span></div>
+          <div class="split"><div><canvas id="lp-cv-sh-F"></canvas><span class="cap">실수 s에서 F(s) (회색), F(s − a)</span></div><div><canvas id="lp-cv-sh-P"></canvas><span class="cap">s 평면: 극점이 a만큼 이동</span></div></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>f(t)</span><select id="lp-sh-pre">
+            <option value="cos">cos ωt</option>
+            <option value="sin">sin ωt</option>
+            <option value="one">1</option>
+            <option value="t">t</option>
+          </select></label>
+          <label class="ctrl"><span>곱하는 지수 e^(at)의 a <output id="lp-sh-a-out"></output></span><input type="range" id="lp-sh-a" min="-2" max="0.6" step="0.02" value="-0.6"></label>
+          <label class="ctrl" id="lp-sh-w-wrap"><span>ω <output id="lp-sh-w-out"></output></span><input type="range" id="lp-sh-w" min="0.5" max="4" step="0.1" value="2"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ℒ{e^(at)f}</span><span class="v" id="lp-sh-F">—</span></div>
+        <div class="stat"><span class="k">극점</span><span class="v" id="lp-sh-p">—</span></div>
+        <div class="stat"><span class="k">시간 쪽</span><span class="v" id="lp-sh-st">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① a를 0에서 −2로 내리면 위 그래프의 진동이 빨리 죽고, 아래 왼쪽 그래프의 F가 통째로 왼쪽으로 미끄러지며 오른쪽 s 평면의 극점도 같은 거리만큼 옮겨 갑니다. ② a를 양수로 올리면 극점이 허수축 오른쪽으로 넘어가고 시간 함수는 커집니다. ③ ω는 극점의 높이만 바꾸고 a와는 독립입니다. 실수부와 허수부가 각각 감쇠와 진동을 맡습니다. 모델: 아래 왼쪽 곡선은 s가 실수일 때의 F(s − a)이고, 점선 세로선은 수렴 영역의 경계(원래 0, 이동 후 a)입니다.</div>
+    </div>
+    <p>시간 쪽에서 <b>미루는</b> 것은 어떨까요? 신호 \(f(t)\)를 \(a\)초 늦게 시작시키면 \(f(t - a)\)인데, \(t \lt a\)에서는 아무것도 없어야 하므로 스위치 함수 \(u(t - a)\)(\(t \lt a\)에서 0, \(t \ge a\)에서 1)를 곱합니다.</p>
+    <div class="callout deep"><strong>정리 9.9 (t-이동, 제2 이동 정리)</strong> \(a \ge 0\)이면 \(\mathcal{L}\{u(t-a)f(t-a)\} = e^{-as}F(s)\).
+      <p style="margin:8px 0 0"><b>증명.</b> 적분은 \(t \ge a\)에서만 남는다. \(\tau = t - a\)로 치환하면 \(\int_a^\infty e^{-st}f(t-a)\,dt = \int_0^\infty e^{-s(\tau+a)}f(\tau)\,d\tau = e^{-as}F(s)\). ∎</p></div>
+    <p>두 이동 정리는 거울상입니다. <b>\(t\) 쪽의 지수 곱하기는 \(s\) 쪽의 이동, \(t\) 쪽의 이동은 \(s\) 쪽의 지수 곱하기.</b> 지연 \(e^{-as}\)는 스위치로 켜고 끄는 입력을 다룰 때 핵심이 되므로 <a href="transfer.html">10장</a>에서 자세히 씁니다.</p>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="partial-fractions">
+    <h2>부분 분수와 역변환</h2>
+    <div class="problem"><strong>표에 없는 꼴로 끝나는 계산</strong>
+      <p>미분방정식을 변환해 \(Y(s)\)를 풀면 보통 \(\dfrac{5s - 1}{s^2 - s - 2}\) 같은 유리 함수가 나옵니다. 이 꼴은 표에 없습니다. 하지만 분모를 \((s+1)(s-2)\)로 인수분해하고 \(\dfrac{A}{s+1} + \dfrac{B}{s-2}\)처럼 쪼갤 수 있다면 각 조각은 표의 \(e^{at}\) 줄입니다. 유리 함수를 표의 조각으로 쪼개는 방법이 <span class="term">부분 분수</span><span class="en">(partial fractions)</span>입니다(<a href="../../calculus/chapters/techniques.html">CalculusBook: 적분 기법</a>에서 적분에 쓴 것과 같은 도구).</p></div>
+    <p>역변환은 "\(\mathcal{L}\{f\} = F\)인 \(f\)"입니다. 이것이 잘 정의되려면 \(F\)가 \(f\)를 하나로 정해야 합니다.</p>
+    <div class="callout deep"><strong>정리 9.10 (역변환의 유일성, 레르흐)</strong> 구간별 연속이고 지수 차수인 두 함수 \(f\), \(g\)의 변환이 어떤 \(s > s_0\)에서 모두 같으면 \(f\)와 \(g\)는 끊어지는 점을 빼고 같다. 따라서 연속 함수의 범위에서 \(\mathcal{L}^{-1}\{F\}\)는 하나로 정해진다. (증명은 이 책의 범위를 넘는다.)</div>
+    <p>분모 \(Q(s)\)의 차수가 분자 \(P(s)\)보다 높은 유리 함수(진분수)를 생각합니다. 분모의 인수 모양에 따라 세 가지 경우가 있습니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분모의 인수</th><th>부분 분수 조각</th><th>역변환</th><th>계수 구하기</th></tr></thead>
+      <tbody>
+        <tr><td>서로 다른 1차 \((s - p)\)</td><td>\(\dfrac{A}{s - p}\)</td><td>\(Ae^{pt}\)</td><td>가리기: \(A = \big[(s-p)F(s)\big]_{s=p}\)</td></tr>
+        <tr><td>겹친 1차 \((s - p)^m\)</td><td>\(\dfrac{A_1}{s-p} + \cdots + \dfrac{A_m}{(s-p)^m}\)</td><td>\(\Big(A_1 + A_2t + \cdots + A_m\dfrac{t^{m-1}}{(m-1)!}\Big)e^{pt}\)</td><td>\(A_m\)은 가리기, 나머지는 미분 또는 대입</td></tr>
+        <tr><td>복소 켤레 \((s-\alpha)^2 + \beta^2\)</td><td>\(\dfrac{B(s - \alpha) + C\beta}{(s-\alpha)^2 + \beta^2}\)</td><td>\(e^{\alpha t}(B\cos\beta t + C\sin\beta t)\)</td><td>완전제곱 후 분자 맞추기</td></tr>
+      </tbody></table></div>
+    <p>서로 다른 근일 때의 계수 공식은 <span class="term">헤비사이드 가리기 방법</span><span class="en">(cover-up method)</span>이라 불립니다. \(F = \frac{A}{s-p} + (\text{나머지})\)의 양변에 \((s - p)\)를 곱하고 \(s = p\)를 넣으면 나머지 항이 모두 0이 되어 \(A\)만 남습니다. 손으로는 "분모에서 \((s - p)\)를 손가락으로 가리고 남은 식에 \(s = p\)를 넣는다"가 됩니다.</p>
+    <div class="callout"><strong>예제 9.8 (서로 다른 실근)</strong> \(\mathcal{L}^{-1}\Big\{\dfrac{5s - 1}{(s+1)(s-2)}\Big\}\)를 구하라.
+      <ol>
+        <li>\(\dfrac{5s-1}{(s+1)(s-2)} = \dfrac{A}{s+1} + \dfrac{B}{s-2}\).</li>
+        <li>\(A\): \((s+1)\)을 가리고 \(s = -1\): \(\frac{-6}{-3} = 2\). \(B\): \((s-2)\)를 가리고 \(s = 2\): \(\frac{9}{3} = 3\).</li>
+        <li>\(f(t) = 2e^{-t} + 3e^{2t}\). 검산: \(s = 3\)에서 \(F(3) = \frac{14}{4\cdot 1} = 3.5\)이고 \(\frac{2}{4} + \frac{3}{1} = 3.5\). ✓</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.9 (중근)</strong> \(\mathcal{L}^{-1}\Big\{\dfrac{s + 3}{(s+1)^2(s+2)}\Big\}\)를 구하라.
+      <ol>
+        <li>\(\dfrac{s+3}{(s+1)^2(s+2)} = \dfrac{A_1}{s+1} + \dfrac{A_2}{(s+1)^2} + \dfrac{C}{s+2}\).</li>
+        <li>가리기로 \(A_2 = \big[\frac{s+3}{s+2}\big]_{s=-1} = 2\), \(C = \big[\frac{s+3}{(s+1)^2}\big]_{s=-2} = 1\).</li>
+        <li>\(A_1\): \(s = 0\)을 넣으면 \(\frac{3}{2} = A_1 + 2 + \frac12\)이므로 \(A_1 = -1\). (또는 \(A_1 = \frac{d}{ds}\big[\frac{s+3}{s+2}\big]_{s=-1} = \big[\frac{-1}{(s+2)^2}\big]_{s=-1} = -1\).)</li>
+        <li>\(f(t) = -e^{-t} + 2te^{-t} + e^{-2t}\). 겹친 극점 \(-1\)이 \(te^{-t}\) 항을 만든다. 검산: \(f(0) = 0\), 그리고 \(s = 2\)에서 \(F(2) = \frac{5}{36} = 0.1389\)가 수치 적분과 같다. ✓</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.10 (복소근)</strong> \(\mathcal{L}^{-1}\Big\{\dfrac{s + 7}{s^2 + 2s + 5}\Big\}\)를 구하라.
+      <ol>
+        <li>판별식이 음수(\(4 - 20 \lt 0\))이므로 완전제곱: \(s^2 + 2s + 5 = (s+1)^2 + 2^2\). 극점은 \(-1 \pm 2i\).</li>
+        <li>분자를 \(s + 1\)과 \(2\)로 나눠 쓴다: \(s + 7 = (s + 1) + 3\cdot 2\).</li>
+        <li>\(\dfrac{s+1}{(s+1)^2+4} + 3\dfrac{2}{(s+1)^2+4}\) \(\Rightarrow\) \(f(t) = e^{-t}(\cos 2t + 3\sin 2t)\).</li>
+      </ol>
+      복소 극점 \(p = -1 + 2i\)에서 가리기를 해도 된다: \(R = \frac{p + 7}{p - \bar p} = \frac{6 + 2i}{4i} = \frac12 - \frac32 i\)이고 \(f = 2\operatorname{Re}(Re^{pt}) = e^{-t}(\cos 2t + 3\sin 2t)\). 같은 답이다.</div>
+    <p>아래 분해기에서 극점을 직접 끌어 \(F(s)\)를 만들면, 각 극점의 계수(가리기 값)와 역변환 \(f(t)\)가 바로 계산됩니다. 각 조각이 \(f(t)\)에 따로 그려지니 어느 극점이 어떤 항을 만드는지 보입니다.</p>
+
+    <div class="sim" id="sim-lp-pf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부분 분수 분해기: 극점을 끌어 F(s)를 만들고 역변환</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-pf-s"></canvas><span class="lp-cap">s 평면: 극점 × 끌기 (영점 ○)</span></div>
+          <div><canvas id="lp-cv-pf-t"></canvas><span class="lp-cap">f(t) = 조각들의 합 (굵은 선), 각 조각 (가는 선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>분모 모양</span><div class="seg" id="lp-pf-mode"><button data-value="real" class="on">실근 3개</button><button data-value="double">중근 + 실근</button><button data-value="cplx">복소쌍 + 실근</button></div></div>
+          <label class="check"><input type="checkbox" id="lp-pf-zero" checked> 분자에 영점 (s − z) 넣기</label>
+          <label class="ctrl"><span>분자 상수 K <output id="lp-pf-K-out"></output></span><input type="range" id="lp-pf-K" min="0.5" max="4" step="0.5" value="2"></label>
+          <div class="btn-row"><button class="btn" id="lp-pf-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">F(s)</span><span class="v" id="lp-pf-F">—</span></div>
+        <div class="stat"><span class="k">검산 F(s₀) vs Σ조각(s₀), s₀ = 3</span><span class="v" id="lp-pf-chk">—</span></div>
+      </div>
+      <div class="lp-msg" id="lp-pf-msg"></div>
+      <div class="sim-note">해볼 것: ① '실근 3개'에서 두 극점을 서로 가까이 끌면 두 계수가 크고 부호가 반대가 됩니다. 아예 겹치면 '중근' 모드의 te^(pt) 항이 됩니다. ② 영점 ○을 한 극점 위에 올려 보세요. 그 극점의 계수가 0이 되어 항이 사라집니다(극점–영점 상쇄). ③ '복소쌍'에서 극점을 오른쪽 반평면으로 옮기면 진동 조각이 커집니다. 모델: 계수는 각 극점을 둘러싼 작은 원 위의 수치 경로 적분으로 계산합니다(유수). 서로 다른 극점에서는 가리기 값과 같습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="ivp">
+    <h2>초기값 문제 풀이 흐름도</h2>
+    <div class="problem"><strong>한 번에 끝내는 2계 초기값 문제</strong>
+      <p>\(y'' + 3y' + 2y = 6\), \(y(0) = 1\), \(y'(0) = 0\). 6·8장 방식으로는 특성근 \(-1, -2\)로 동차해를 쓰고, 상수 특수해 \(y_p = 3\)을 찾고, 일반해에 초기 조건 두 개를 넣어 연립 방정식을 풉니다. 라플라스 변환으로는 이 세 일이 한 줄의 대수가 됩니다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 220" role="img" aria-label="라플라스 변환으로 초기값 문제를 푸는 다섯 단계">
+        <defs><marker id="lp-ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="200" rx="10" class="f-surface"/>
+        <g transform="translate(24,40)"><rect width="128" height="120" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="64" y="26" text-anchor="middle" class="t-acc">① 변환</text><text x="64" y="54" text-anchor="middle" class="t-dim">양변에 ℒ</text><text x="64" y="76" text-anchor="middle" class="t-dim">y″ → s²Y − sy₀ − y₁</text><text x="64" y="98" text-anchor="middle" class="t-dim">g → G(s)</text></g>
+        <g transform="translate(170,40)"><rect width="128" height="120" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="64" y="26" text-anchor="middle" class="t-acc">② 대수</text><text x="64" y="54" text-anchor="middle" class="t-dim">Y에 대해 풀기</text><text x="64" y="76" text-anchor="middle" class="t-dim">Y = (초기값 항</text><text x="64" y="98" text-anchor="middle" class="t-dim">+ G)/특성 다항식</text></g>
+        <g transform="translate(316,40)"><rect width="128" height="120" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="64" y="26" text-anchor="middle" class="t-acc">③ 극점</text><text x="64" y="54" text-anchor="middle" class="t-dim">분모 인수분해</text><text x="64" y="76" text-anchor="middle" class="t-dim">실근·중근·복소근</text><text x="64" y="98" text-anchor="middle" class="t-dim">구분</text></g>
+        <g transform="translate(462,40)"><rect width="128" height="120" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="64" y="26" text-anchor="middle" class="t-acc">④ 부분 분수</text><text x="64" y="54" text-anchor="middle" class="t-dim">가리기, 완전제곱</text><text x="64" y="76" text-anchor="middle" class="t-dim">표의 조각으로</text></g>
+        <g transform="translate(608,40)"><rect width="128" height="120" rx="10" class="f-elev" style="stroke:var(--border)"/><text x="64" y="26" text-anchor="middle" class="t-acc">⑤ 역변환</text><text x="64" y="54" text-anchor="middle" class="t-dim">표를 거꾸로</text><text x="64" y="76" text-anchor="middle" class="t-dim">y(t) = Σ 조각</text><text x="64" y="98" text-anchor="middle" class="t-dim">검산: y(0), y(∞)</text></g>
+        <g class="s-acc" style="stroke-width:2"><path d="M154 100 H166" marker-end="url(#lp-ar4)"/><path d="M300 100 H312" marker-end="url(#lp-ar4)"/><path d="M446 100 H458" marker-end="url(#lp-ar4)"/><path d="M592 100 H604" marker-end="url(#lp-ar4)"/></g>
+        <text x="380" y="192" text-anchor="middle" class="t-dim">초기 조건은 ①에서 들어가고, 특수해를 따로 추측하지 않는다. 동차해와 특수해가 ④에서 한꺼번에 나온다.</text>
+      </svg>
+      <figcaption><b>그림 9-3.</b> 라플라스 변환으로 초기값 문제를 푸는 흐름도. ③의 극점은 특성근(동차해)과 입력의 극점(특수해)을 함께 담고 있다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 9.11 (서로 다른 실근)</strong> \(y'' + 3y' + 2y = 6\), \(y(0) = 1\), \(y'(0) = 0\)을 풀어라.
+      <ol>
+        <li>① 변환: \(\bigl(s^2Y - s\cdot 1 - 0\bigr) + 3\bigl(sY - 1\bigr) + 2Y = \dfrac6s\).</li>
+        <li>② 대수: \((s^2 + 3s + 2)Y = s + 3 + \dfrac6s\)이므로 \(Y = \dfrac{s^2 + 3s + 6}{s(s+1)(s+2)}\).</li>
+        <li>③④ 극점 \(0, -1, -2\). 가리기: \(s = 0\): \(\frac{6}{2} = 3\). \(s = -1\): \(\frac{1 - 3 + 6}{(-1)(1)} = -4\). \(s = -2\): \(\frac{4 - 6 + 6}{(-2)(-1)} = 2\).</li>
+        <li>⑤ \(y(t) = 3 - 4e^{-t} + 2e^{-2t}\). 검산: \(y(0) = 1\), \(y'(0) = 4 - 4 = 0\), \(t \to \infty\)에서 \(3\)(정상 상태 \(6/2\)). RK4로 푼 수치해와 \(10^{-11}\) 안에서 같다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.12 (복소근: 계단 입력에 대한 감쇠 진동)</strong> \(y'' + 2y' + 5y = 5\), \(y(0) = y'(0) = 0\)을 풀어라.
+      <ol>
+        <li>\((s^2 + 2s + 5)Y = \dfrac5s\), \(Y = \dfrac{5}{s\bigl((s+1)^2 + 4\bigr)}\).</li>
+        <li>\(\dfrac{5}{s((s+1)^2+4)} = \dfrac{A}{s} + \dfrac{Bs + C}{(s+1)^2 + 4}\). 가리기로 \(A = 5/5 = 1\). 분자를 비교하면 \(5 = (s^2 + 2s + 5) + Bs^2 + Cs\)에서 \(B = -1\), \(C = -2\).</li>
+        <li>\(\dfrac{-s - 2}{(s+1)^2+4} = -\dfrac{s+1}{(s+1)^2+4} - \dfrac12\cdot\dfrac{2}{(s+1)^2+4}\).</li>
+        <li>\(y(t) = 1 - e^{-t}\bigl(\cos 2t + \tfrac12\sin 2t\bigr)\). 1을 넘었다가(오버슈트) 진동하며 1로 가라앉는다. 수치해와 일치. ✓</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.13 (공진: 겹친 복소 극점)</strong> \(y'' + y = \sin t\), \(y(0) = y'(0) = 0\).
+      <ol>
+        <li>\((s^2 + 1)Y = \dfrac{1}{s^2+1}\), \(Y = \dfrac{1}{(s^2+1)^2}\). 입력의 극점 \(\pm i\)가 특성근과 겹쳐 2중 극점이 되었다.</li>
+        <li>예제 9.6의 쌍(\(\omega = 1\))으로 \(y(t) = \tfrac12(\sin t - t\cos t)\). 진폭이 \(t/2\)로 자라는 8장의 공진이다. 미정계수법의 "겹치면 \(t\)를 곱하라"는 규칙이 여기서는 따로 외울 필요 없이 겹친 극점으로 저절로 나온다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lp-ivp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>IVP 세 단계: 변환 → 대수 → 역변환</h3></div>
+      <div class="lp-flow">
+        <div><b class="lp-step">① 변환</b><span class="lp-eq" id="lp-iv-s1">—</span></div>
+        <div><b class="lp-step">② 대수: Y(s)</b><span class="lp-eq" id="lp-iv-s2">—</span></div>
+        <div><b class="lp-step">③ 부분 분수 → y(t)</b><span class="lp-eq" id="lp-iv-s3">—</span></div>
+      </div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-iv-s"></canvas><span class="lp-cap">Y(s)의 극점: 특성근(주황) + 입력의 극점(청록)</span></div>
+          <div><canvas id="lp-cv-iv-t"></canvas><span class="lp-cap">y(t): 역변환 (선) vs RK4 수치해 (점)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>입력 g(t)</span><select id="lp-iv-g">
+            <option value="zero">0 (자유 응답)</option>
+            <option value="step" selected>계단 1</option>
+            <option value="exp">e^(−t)</option>
+            <option value="sin">sin 2t</option>
+          </select></label>
+          <label class="ctrl"><span>y″ + b y′ + c y 의 b <output id="lp-iv-b-out"></output></span><input type="range" id="lp-iv-b" min="0" max="5" step="0.1" value="3"></label>
+          <label class="ctrl"><span>c <output id="lp-iv-c-out"></output></span><input type="range" id="lp-iv-c" min="0.5" max="10" step="0.1" value="2"></label>
+          <label class="ctrl"><span>y(0) <output id="lp-iv-y0-out"></output></span><input type="range" id="lp-iv-y0" min="-2" max="2" step="0.1" value="1"></label>
+          <label class="ctrl"><span>y′(0) <output id="lp-iv-v0-out"></output></span><input type="range" id="lp-iv-v0" min="-3" max="3" step="0.1" value="0"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">특성근</span><span class="v" id="lp-iv-roots">—</span></div>
+        <div class="stat"><span class="k">최대 오차 |역변환 − RK4|</span><span class="v" id="lp-iv-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 기본 설정(b = 3, c = 2, y(0) = 1, 계단 입력 1)에서 y(t)가 1/c = 0.5로 가라앉는 것을 보세요. 예제 9.11은 입력이 6이라 3으로 갔습니다. ② b = 2, c = 1로 두면 특성근이 겹쳐 te^(−t) 항이 나타납니다. ③ 'sin 2t'에서 b = 0, c = 4로 맞추면 입력 극점 ±2i가 특성근과 겹쳐 공진 t cos 2t가 생깁니다. 모델: 역변환은 극점마다 작은 원 위의 수치 경로 적분(유수)으로 구하고, 점은 독립적인 RK4 적분입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="systems">
+    <h2>연립 방정식에 적용</h2>
+    <div class="problem"><strong>물이 오가는 두 탱크</strong>
+      <p>탱크 A와 B가 바닥의 관으로 이어져 있고, B에는 배수구가 있습니다. 관을 지나는 유량은 수위 차에 비례하고(\(k(x - y)\)), 배수 유량은 B의 수위에 비례합니다(\(dy\)). A만 채워 두고 밸브를 열면 두 수위는 어떻게 변할까요? 미지 함수가 둘이고 서로의 식에 들어 있습니다.</p></div>
+    <p>모델은 \(x' = -k(x - y)\), \(y' = k(x - y) - dy\)입니다. 라플라스 변환은 연립 미분방정식도 연립 <b>일차</b> 방정식으로 바꿉니다. 각 식을 변환하면</p>
+    <div class="formula">$$\begin{aligned}(s + k)X - kY &= x_0,\\ -kX + (s + k + d)Y &= y_0.\end{aligned}$$
+      <div class="where">계수 행렬의 행렬식 \(\Delta(s) = (s+k)(s+k+d) - k^2\)이 특성 다항식이다. 크라메르 공식으로 \(X = \frac{(s+k+d)x_0 + ky_0}{\Delta(s)}\), \(Y = \frac{kx_0 + (s+k)y_0}{\Delta(s)}\).</div></div>
+    <div class="callout"><strong>예제 9.14 (연립 방정식)</strong> \(x' = -2x + y\), \(y' = x - 2y\), \(x(0) = 1\), \(y(0) = 0\)을 풀어라.
+      <ol>
+        <li>변환: \((s + 2)X - Y = 1\), \(-X + (s + 2)Y = 0\).</li>
+        <li>둘째 식에서 \(X = (s+2)Y\). 첫째에 넣으면 \(\bigl((s+2)^2 - 1\bigr)Y = 1\), 즉 \(Y = \dfrac{1}{(s+1)(s+3)}\), \(X = \dfrac{s+2}{(s+1)(s+3)}\).</li>
+        <li>가리기: \(X = \frac{1/2}{s+1} + \frac{1/2}{s+3}\), \(Y = \frac{1/2}{s+1} - \frac{1/2}{s+3}\).</li>
+        <li>\(x = \tfrac12(e^{-t} + e^{-3t})\), \(y = \tfrac12(e^{-t} - e^{-3t})\). 극점 \(-1, -3\)은 행렬 \(\begin{bmatrix}-2&1\\1&-2\end{bmatrix}\)의 고유값이다. \(\Delta(s) = \det(sI - A)\)이기 때문이다(<a href="systems.html">11장</a>).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-lp-tanks">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>연결된 두 탱크: 크라메르 공식으로 푼 수위</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-tk-scene"></canvas><span class="lp-cap">탱크 A → 관 → 탱크 B → 배수</span></div>
+          <div><canvas id="lp-cv-tk-plot"></canvas><span class="lp-cap">x(t) (주황), y(t) (청록): 역변환 곡선</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>관의 유량 계수 k <output id="lp-tk-k-out"></output></span><input type="range" id="lp-tk-k" min="0.1" max="2" step="0.05" value="0.6"></label>
+          <label class="ctrl"><span>배수 계수 d <output id="lp-tk-d-out"></output></span><input type="range" id="lp-tk-d" min="0" max="1.5" step="0.05" value="0.3"></label>
+          <label class="ctrl"><span>x(0) <output id="lp-tk-x0-out"></output></span><input type="range" id="lp-tk-x0" min="0" max="1" step="0.05" value="1"></label>
+          <label class="ctrl"><span>y(0) <output id="lp-tk-y0-out"></output></span><input type="range" id="lp-tk-y0" min="0" max="1" step="0.05" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="lp-tk-play">▶ 밸브 열기</button><button class="btn" id="lp-tk-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="lp-tk-t">—</span></div>
+        <div class="stat"><span class="k">Δ(s)</span><span class="v" id="lp-tk-D">—</span></div>
+        <div class="stat"><span class="k">극점</span><span class="v" id="lp-tk-p">—</span></div>
+      </div>
+      <div class="lp-msg" id="lp-tk-msg"></div>
+      <div class="sim-note">해볼 것: ① d = 0(배수 없음)으로 두면 극점 하나가 0이 되어 두 수위가 평균 (x₀ + y₀)/2로 같아지고 멈춥니다. ② k를 크게 하면 빠른 극점이 더 왼쪽으로 가서 두 수위가 금방 같아지고, 그 뒤로는 느린 극점이 함께 배수되는 속도를 정합니다. ③ 두 극점은 언제나 음의 실수입니다. 물탱크는 진동하지 않습니다. 모델: 선형 유량 가정, 수위 단위는 탱크 높이 기준입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="limit-theorems">
+    <h2>최종값 정리와 초기값 정리</h2>
+    <div class="problem"><strong>역변환하기 전에 답을 검산하기</strong>
+      <p>부분 분수 계산은 실수하기 쉽습니다. 역변환을 다 하기 전에 "이 시스템은 결국 어디로 가라앉는가", "처음 순간의 값은 무엇인가"를 \(Y(s)\)에서 바로 읽을 수 있다면 좋은 검산이 됩니다. 1절에서 \(s\)가 작으면 먼 미래를, \(s\)가 크면 \(t = 0\) 근처를 본다고 했습니다.</p></div>
+    <div class="callout deep"><strong>정리 9.11 (초기값 정리)</strong> \(f\)와 \(f'\)이 지수 차수이고 변환을 가지면 \(\displaystyle f(0^+) = \lim_{s\to\infty} sF(s)\).
+      <p style="margin:8px 0 0"><b>아이디어.</b> 정리 9.5에서 \(sF(s) - f(0^+) = \mathcal{L}\{f'\}\)이고, 정리 9.3에 따라 \(s \to \infty\)에서 \(\mathcal{L}\{f'\} \to 0\). ∎</p></div>
+    <div class="callout deep"><strong>정리 9.12 (최종값 정리)</strong> \(sF(s)\)의 극점이 모두 열린 왼쪽 반평면(\(\operatorname{Re}s \lt 0\))에 있으면 \(\lim_{t\to\infty}f(t)\)가 존재하고
+      <div class="formula">$$\lim_{t\to\infty} f(t) = \lim_{s\to 0} sF(s).$$</div>
+      <p style="margin:8px 0 0"><b>아이디어.</b> 같은 식 \(sF(s) - f(0) = \int_0^\infty e^{-st}f'(t)\,dt\)에서 \(s \to 0\)이면 오른쪽은 \(\int_0^\infty f'\,dt = f(\infty) - f(0)\). 극점 조건은 \(f\)가 실제로 수렴해서 극한을 바꿔 쓸 수 있게 해 주는 조건이다. ∎</p></div>
+    <div class="callout"><strong>예제 9.15 (검산)</strong> 예제 9.11의 \(Y = \frac{s^2+3s+6}{s(s+1)(s+2)}\)에서 \(sY = \frac{s^2+3s+6}{(s+1)(s+2)}\)의 극점은 \(-1, -2\)로 모두 왼쪽이다. \(s \to 0\): \(6/2 = 3 = y(\infty)\). \(s \to \infty\): \(1 = y(0)\). 역변환한 답 \(3 - 4e^{-t} + 2e^{-2t}\)와 맞는다.</div>
+    <div class="callout warn"><strong>조건 없이 쓰면 틀린다</strong> \(F = \frac{1}{s-1}\)(\(f = e^t\))이면 \(\lim_{s\to0}sF = 0\)이지만 \(e^t \to \infty\)입니다. \(F = \frac{\omega}{s^2+\omega^2}\)(\(f = \sin\omega t\))이면 \(\lim sF = 0\)이지만 사인은 수렴하지 않습니다. 앞은 오른쪽 반평면의 극점, 뒤는 허수축 위의 극점 때문에 정리 9.12의 조건이 깨진 경우입니다. 최종값 정리를 쓰기 전에 <b>극점부터 확인</b>하세요.</div>
+
+    <div class="sim" id="sim-lp-fvt">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최종값 정리 확인: s → 0은 먼 미래, s → ∞는 첫 순간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view lp-two">
+          <div><canvas id="lp-cv-fv-t"></canvas><span class="lp-cap">y(t): y″ + b y′ + c y = K, y(0) = y₀, y′(0) = 0</span></div>
+          <div><canvas id="lp-cv-fv-s"></canvas><span class="lp-cap">sY(s), s는 로그 눈금 (왼쪽 끝 → y(∞), 오른쪽 끝 → y(0))</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>b <output id="lp-fv-b-out"></output></span><input type="range" id="lp-fv-b" min="-0.6" max="4" step="0.1" value="1"></label>
+          <label class="ctrl"><span>c <output id="lp-fv-c-out"></output></span><input type="range" id="lp-fv-c" min="-1" max="6" step="0.1" value="2"></label>
+          <label class="ctrl"><span>K <output id="lp-fv-K-out"></output></span><input type="range" id="lp-fv-K" min="0" max="4" step="0.1" value="3"></label>
+          <label class="ctrl"><span>y₀ <output id="lp-fv-y0-out"></output></span><input type="range" id="lp-fv-y0" min="-1" max="2" step="0.1" value="0.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">lim(s→0) sY = K/c</span><span class="v" id="lp-fv-sF0">—</span></div>
+        <div class="stat"><span class="k">y(30) (수치)</span><span class="v" id="lp-fv-yT">—</span></div>
+        <div class="stat"><span class="k">lim(s→∞) sY</span><span class="v" id="lp-fv-sFi">—</span></div>
+        <div class="stat"><span class="k">sY의 극점</span><span class="v" id="lp-fv-p">—</span></div>
+      </div>
+      <div class="lp-msg" id="lp-fv-msg"></div>
+      <div class="sim-note">해볼 것: ① 기본값에서 y(t)가 K/c = 1.5로 가라앉고, 아래 그래프의 왼쪽 끝도 1.5, 오른쪽 끝은 y₀ = 0.5입니다. ② b를 0으로 내리면 극점이 허수축에 놓여 y(t)는 영원히 진동하는데 공식 K/c는 여전히 값을 내놓습니다. 정리의 조건이 깨진 것입니다. ③ c를 음수로 하면 극점 하나가 오른쪽으로 가서 y가 발산합니다. 모델: sY(s) = (K + s(s + b)y₀)/(s² + bs + c), y(t)는 RK4.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>라플라스 변환은 "시간 영역의 미분방정식을 \(s\) 영역의 대수로"라는 생각 하나로 회로·기계·제어를 같은 언어로 묶습니다.</p>
+    <div class="callout"><strong>회로의 s-영역 임피던스</strong> 저항 \(v = Ri\), 코일 \(v = L\,di/dt\), 축전기 \(i = C\,dv/dt\)를 초기 조건 0으로 변환하면 \(V = RI\), \(V = sL\,I\), \(V = \frac{1}{sC}I\)입니다. 모든 소자가 "임피던스 × 전류"의 옴의 법칙 꼴이 되어, 미분방정식을 세우지 않고 직렬·병렬 합성만으로 회로를 풉니다. 초기 조건이 있으면 코일에는 전압원 \(Li(0)\), 축전기에는 \(v(0)/s\)가 하나씩 더 붙습니다. 정리 9.5의 \(-f(0)\) 항이 회로도 위에 전원으로 나타난 것입니다.</div>
+    <div class="uses">
+      <a href="transfer.html"><small>10장 · 불연속 입력과 전달 함수</small>계단·델타·합성곱·전달 함수<br><span>t-이동으로 스위치 입력을 다루고, 극점으로 시스템을 읽는다.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>det(sI − A)와 고유값<br><span>변환한 연립 방정식의 행렬식이 특성 다항식이다.</span></a>
+      <a href="forced.html"><small>8장 · 강제 진동과 공진</small>겹친 극점과 공진<br><span>미정계수법의 "t 곱하기"가 2중 극점에서 저절로 나온다.</span></a>
+      <a href="../../linear/chapters/dynamics.html"><small>LINEARBOOK</small>행렬 지수와 동역학<br><span>ℒ{e^(At)} = (sI − A)⁻¹: 행렬 지수를 변환으로 계산한다.</span></a>
+      <a href="../../calculus/chapters/techniques.html"><small>CALCULUSBOOK</small>부분 분수와 이상 적분<br><span>변환의 정의는 이상 적분이고, 역변환의 도구는 부분 분수다.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 변환<br><span>s = iω로 두면 라플라스 변환은 푸리에 변환의 친척이 된다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(\mathcal{L}\{f\} = F(s) = \int_0^\infty e^{-st}f(t)\,dt\)는 가중치 \(e^{-st}\)를 곱한 곡선 아래 넓이다. 구간별 연속이고 지수 차수 \(a\)인 함수는 \(s > a\)에서 변환을 가지며 \(F(s) \to 0\)이다.</li>
+      <li>기본표: \(1 \to 1/s\), \(t^n \to n!/s^{n+1}\), \(e^{at} \to 1/(s-a)\), \(\cos\omega t \to s/(s^2+\omega^2)\), \(\sin\omega t \to \omega/(s^2+\omega^2)\). 극점의 실수부는 성장·감쇠, 허수부는 진동수다.</li>
+      <li>미분의 변환 \(\mathcal{L}\{f'\} = sF - f(0)\), \(\mathcal{L}\{f''\} = s^2F - sf(0) - f'(0)\): 미분은 \(s\) 곱하기이고 초기값이 저절로 들어간다. 적분은 \(F/s\), \(t\) 곱하기는 \(-F'(s)\).</li>
+      <li>s-이동 \(\mathcal{L}\{e^{at}f\} = F(s-a)\)는 극점을 \(a\)만큼 옮긴다. t-이동 \(\mathcal{L}\{u(t-a)f(t-a)\} = e^{-as}F(s)\)는 지연을 곱셈으로 바꾼다.</li>
+      <li>역변환은 부분 분수: 서로 다른 극점은 가리기로 \(Ae^{pt}\), 겹친 극점은 \(t^ke^{pt}\), 복소 극점은 완전제곱으로 \(e^{\alpha t}(B\cos\beta t + C\sin\beta t)\).</li>
+      <li>초기값 문제: 변환 → \(Y(s)\)에 대한 대수 → 부분 분수 → 역변환. 연립 방정식은 연립 일차 방정식이 되고, 그 행렬식이 특성 다항식이다.</li>
+      <li>초기값 정리 \(f(0^+) = \lim_{s\to\infty}sF\), 최종값 정리 \(f(\infty) = \lim_{s\to0}sF\)(\(sF\)의 극점이 모두 왼쪽 반평면에 있을 때만).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\mathcal{L}\{t^2e^{3t}\}\)은?</p><div class="opts">
+        <button class="opt">\(\dfrac{2}{s^3}\)</button>
+        <button class="opt" data-correct>\(\dfrac{2}{(s-3)^3}\)</button>
+        <button class="opt">\(\dfrac{2}{(s+3)^3}\)</button>
+        <button class="opt">\(\dfrac{1}{(s-3)^2}\)</button>
+      </div><div class="quiz-exp">\(\mathcal{L}\{t^2\} = 2!/s^3\)에 s-이동(정리 9.8)으로 \(s \to s - 3\). \(e^{3t}\)는 극점을 오른쪽으로 3만큼 옮긴다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(y'' - y = 0\), \(y(0) = 2\), \(y'(0) = 0\)을 변환하면 \(Y(s)\)는?</p><div class="opts">
+        <button class="opt">\(\dfrac{2}{s^2 - 1}\)</button>
+        <button class="opt" data-correct>\(\dfrac{2s}{s^2 - 1}\)</button>
+        <button class="opt">\(\dfrac{2s}{s^2 + 1}\)</button>
+        <button class="opt">\(\dfrac{2}{s(s^2-1)}\)</button>
+      </div><div class="quiz-exp">\(s^2Y - 2s - 0 - Y = 0\)이므로 \(Y = 2s/(s^2-1)\), 즉 \(y = 2\cosh t\). 초기값 정리로 검산: \(\lim_{s\to\infty} sY = 2 = y(0)\).</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\mathcal{L}^{-1}\Big\{\dfrac{3}{s(s+3)}\Big\}\)은?</p><div class="opts">
+        <button class="opt">\(3 - 3e^{-3t}\)</button>
+        <button class="opt" data-correct>\(1 - e^{-3t}\)</button>
+        <button class="opt">\(e^{-3t} - 1\)</button>
+        <button class="opt">\(3te^{-3t}\)</button>
+      </div><div class="quiz-exp">가리기: \(s = 0\)에서 \(3/3 = 1\), \(s = -3\)에서 \(3/(-3) = -1\). 따라서 \(1/s - 1/(s+3)\), \(f = 1 - e^{-3t}\). 정리 9.6으로 보면 \(e^{-3t}\)의 변환 \(1/(s+3)\)을 \(s\)로 나눈 것의 3배이므로 \(3\int_0^te^{-3\tau}d\tau\)와 같다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(F(s) = \dfrac{s + 1}{(s+1)^2 + 16}\)의 역변환과 극점은?</p><div class="opts">
+        <button class="opt">\(e^{t}\cos 4t\), 극점 \(1 \pm 4i\)</button>
+        <button class="opt">\(e^{-t}\sin 4t\), 극점 \(-1 \pm 4i\)</button>
+        <button class="opt" data-correct>\(e^{-t}\cos 4t\), 극점 \(-1 \pm 4i\)</button>
+        <button class="opt">\(e^{-t}\cos 16t\), 극점 \(-1 \pm 16i\)</button>
+      </div><div class="quiz-exp">\(\cos 4t \leftrightarrow s/(s^2+16)\)에 \(s \to s + 1\)(\(e^{-t}\) 곱하기). 극점은 \((s+1)^2 = -16\), 즉 \(s = -1 \pm 4i\). 실수부 \(-1\)이 감쇠율, 허수부 4가 각진동수다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\dfrac{1}{(s-2)^3}\)의 역변환에 나오는 항은?</p><div class="opts">
+        <button class="opt">\(e^{2t}\), \(te^{2t}\), \(t^2e^{2t}\)를 모두 같은 계수로</button>
+        <button class="opt" data-correct>\(\tfrac12 t^2e^{2t}\) 하나</button>
+        <button class="opt">\(t^3e^{2t}\)</button>
+        <button class="opt">\(e^{2t}\cos 3t\)</button>
+      </div><div class="quiz-exp">\(t^n e^{at} \leftrightarrow n!/(s-a)^{n+1}\)에서 \(n = 2\): \(t^2e^{2t} \leftrightarrow 2/(s-2)^3\). 따라서 \(\frac12t^2e^{2t}\). 이미 표의 꼴이라 부분 분수가 필요 없다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(Y(s) = \dfrac{4}{s(s^2 + 2s + 2)}\)일 때 \(\lim_{t\to\infty}y(t)\)는?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt" data-correct>2</button>
+        <button class="opt">4</button>
+        <button class="opt">극한이 없다</button>
+      </div><div class="quiz-exp">\(sY = 4/(s^2+2s+2)\)의 극점은 \(-1 \pm i\)로 왼쪽 반평면에 있으므로 최종값 정리를 쓸 수 있다. \(s \to 0\): \(4/2 = 2\).</div></div>
+
+      <div class="quiz-q"><p>Q7. \(Y(s) = \dfrac{1}{s(s^2 + 4)}\)에 최종값 정리를 쓰면 \(\lim_{s\to 0}sY = 1/4\)이다. 실제 \(y(t)\)는?</p><div class="opts">
+        <button class="opt">\(1/4\)로 수렴한다</button>
+        <button class="opt">0으로 수렴한다</button>
+        <button class="opt" data-correct>\(\frac14(1 - \cos 2t)\)로 영원히 진동해 극한이 없다</button>
+        <button class="opt">무한대로 발산한다</button>
+      </div><div class="quiz-exp">\(sY = 1/(s^2+4)\)의 극점 \(\pm 2i\)가 허수축 위에 있어 정리 9.12의 조건이 깨진다. 부분 분수로 \(\frac14\cdot\frac1s - \frac14\cdot\frac{s}{s^2+4}\), 즉 \(y = \frac14(1 - \cos 2t)\)는 0과 1/2 사이를 오간다. 1/4은 진동의 평균일 뿐이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 연립 방정식 \(x' = y\), \(y' = -x\)를 라플라스 변환으로 풀 때 \(X(s)\), \(Y(s)\)의 공통 분모는?</p><div class="opts">
+        <button class="opt">\(s^2 - 1\)</button>
+        <button class="opt" data-correct>\(s^2 + 1\)</button>
+        <button class="opt">\(s(s + 1)\)</button>
+        <button class="opt">\((s + 1)^2\)</button>
+      </div><div class="quiz-exp">\(sX - Y = x_0\), \(X + sY = y_0\)의 행렬식은 \(s^2 + 1 = \det(sI - A)\), \(A = \begin{bmatrix}0&1\\-1&0\end{bmatrix}\). 극점 \(\pm i\)이므로 해는 단진동(원 궤도)이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const LP = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  /** 뒤쪽 0을 지운 짧은 수 */
+  n(v, d = 3) { let s = LP.num(v, d); if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, ""); return s === "−0" ? "0" : s; },
+  simpson(f, a, b, n = 2000) {
+    if (a === b) return 0;
+    n += n % 2; const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2);
+    return (s * h) / 3;
+  },
+  yRange(vals, pad = 0.15, incl0 = true, cap = 1e9) {
+    vals = vals.filter((v) => isFinite(v)).map((v) => MB.clamp(v, -cap, cap));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (incl0) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    const span = Math.max(hi - lo, 0.5); return [lo - span * pad, hi + span * (pad + 0.14)];
+  },
+  /* 복소수 [re, im] */
+  cadd: (a, b) => [a[0] + b[0], a[1] + b[1]],
+  csub: (a, b) => [a[0] - b[0], a[1] - b[1]],
+  cmul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+  cdiv: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+  cexp: (a) => { const e = Math.exp(a[0]); return [e * Math.cos(a[1]), e * Math.sin(a[1])]; },
+  /* 다항식: 오름차순 실계수 [a0, a1, ...] */
+  pmul(a, b) { const r = new Array(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => (r[i + j] += x * y))); return r; },
+  padd(a, b) { const r = new Array(Math.max(a.length, b.length)).fill(0); a.forEach((x, i) => (r[i] += x)); b.forEach((x, i) => (r[i] += x)); return r; },
+  peval(a, z) { let r = [0, 0]; for (let i = a.length - 1; i >= 0; i--) r = LP.cadd(LP.cmul(r, z), [a[i], 0]); return r; },
+  deg(a) { let n = a.length - 1; while (n > 0 && Math.abs(a[n]) < 1e-13) n--; return n; },
+  /** 근(뒤랑–케르너, 2차는 근의 공식) */
+  roots(a) {
+    const n = LP.deg(a); if (n < 1) return [];
+    const c = a.slice(0, n + 1).map((v) => v / a[n]);
+    const out = []; let z0 = 0;
+    while (z0 < n && Math.abs(c[z0]) < 1e-13) { out.push([0, 0]); z0++; }
+    const q = c.slice(z0), m = q.length - 1;
+    if (m === 1) out.push([-q[0], 0]);
+    else if (m === 2) {
+      const B = q[1], C = q[0], D = B * B - 4 * C;
+      if (D >= 0) { const r = Math.sqrt(D); out.push([(-B + r) / 2, 0], [(-B - r) / 2, 0]); }
+      else { const r = Math.sqrt(-D) / 2; out.push([-B / 2, r], [-B / 2, -r]); }
+    } else if (m > 2) {
+      let z = []; for (let k = 0; k < m; k++) z.push(LP.cexp([Math.log(1.2), 0.4 + (2 * Math.PI * k) / m]));
+      for (let it = 0; it < 600; it++) {
+        z = z.map((zk, k) => { let den = [1, 0]; z.forEach((zj, j) => { if (j !== k) den = LP.cmul(den, LP.csub(zk, zj)); }); return LP.csub(zk, LP.cdiv(LP.peval(q, zk), den)); });
+      }
+      z.forEach((r) => out.push([r[0], Math.abs(r[1]) < 1e-7 ? 0 : r[1]]));
+    }
+    return out;
+  },
+  /** 가까운 근을 묶어 {p, m} 목록으로 */
+  cluster(rs, tol = 1e-3) {
+    const cl = [];
+    rs.forEach((r) => {
+      const c = cl.find((c) => Math.hypot(c.sum[0] / c.m - r[0], c.sum[1] / c.m - r[1]) < tol);
+      if (c) { c.sum = LP.cadd(c.sum, r); c.m++; } else cl.push({ sum: r.slice(), m: 1 });
+    });
+    return cl.map((c) => { const p = [c.sum[0] / c.m, c.sum[1] / c.m]; if (Math.abs(p[1]) < 1e-7) p[1] = 0; return { p, m: c.m }; });
+  },
+  /** 로랑 계수: 각 극점 p의 1/(s−p)^k 계수 c_k (작은 원 위의 경로 적분) */
+  laurent(F, cl) {
+    return cl.map((c, i) => {
+      let dmin = 1; cl.forEach((d, j) => { if (j !== i) dmin = Math.min(dmin, Math.hypot(d.p[0] - c.p[0], d.p[1] - c.p[1])); });
+      const r = Math.min(0.5, 0.35 * dmin), N = 96, cs = [];
+      for (let k = 1; k <= c.m; k++) cs.push([0, 0]);
+      for (let j = 0; j < N; j++) {
+        const th = (2 * Math.PI * (j + 0.5)) / N, d = [r * Math.cos(th), r * Math.sin(th)], s = LP.cadd(c.p, d), Fv = F(s);
+        let pw = d.slice();
+        for (let k = 0; k < c.m; k++) { cs[k] = LP.cadd(cs[k], LP.cmul(Fv, pw)); pw = LP.cmul(pw, d); }
+      }
+      return { p: c.p, m: c.m, c: cs.map((v) => [v[0] / N, v[1] / N]) };
+    });
+  },
+  /** 유리 함수 num/den의 부분 분수 */
+  pf(num, den) {
+    const F = (s) => LP.cdiv(LP.peval(num, s), LP.peval(den, s));
+    const cl = LP.cluster(LP.roots(den));
+    cl.forEach((c) => {
+      /* m중근은 (m−1)계 도함수의 단순근: 뉴턴으로 다듬는다 */
+      let q = den.slice(); for (let k = 1; k < c.m; k++) q = q.slice(1).map((v, i) => v * (i + 1));
+      const dq = q.slice(1).map((v, i) => v * (i + 1));
+      let z = c.p.slice();
+      for (let it = 0; it < 30; it++) { const d = LP.peval(dq, z); if (Math.hypot(d[0], d[1]) < 1e-300) break; const st = LP.cdiv(LP.peval(q, z), d); z = LP.csub(z, st); if (Math.hypot(st[0], st[1]) < 1e-15) break; }
+      if (Math.hypot(z[0] - c.p[0], z[1] - c.p[1]) < 1e-2) c.p = z;
+      if (Math.abs(c.p[1]) < 1e-9) c.p[1] = 0;
+      if (Math.abs(c.p[0]) < 1e-9) c.p[0] = 0;
+    });
+    return LP.laurent(F, cl);
+  },
+  /** 부분 분수 항으로 f(t) 계산 */
+  inv(terms) {
+    return (t) => {
+      let sum = 0;
+      terms.forEach((T) => {
+        const e = LP.cexp([T.p[0] * t, T.p[1] * t]); let acc = [0, 0], tk = 1, fact = 1;
+        T.c.forEach((ck, k) => { if (k > 0) { tk *= t; fact *= k; } acc = LP.cadd(acc, [(ck[0] * tk) / fact, (ck[1] * tk) / fact]); });
+        sum += LP.cmul(acc, e)[0];
+      });
+      return sum;
+    };
+  },
+  /** 한 항만의 시간 함수(켤레 쌍은 2Re로) */
+  invOne(T) { const one = LP.inv([T]); return T.p[1] > 0 ? (t) => 2 * one(t) : one; },
+  /* ---------- 문자열 */
+  sv(p) { return p === 0 ? "s" : p > 0 ? `(s − ${LP.n(p, 2)})` : `(s + ${LP.n(-p, 2)})`; },
+  svb(p) { return p === 0 ? "s" : p > 0 ? `s − ${LP.n(p, 2)}` : `s + ${LP.n(-p, 2)}`; },
+  ev(p) { const m = LP.n(Math.abs(p), 2); return m === "0" ? "" : `e<sup>${p < 0 ? "−" : ""}${m === "1" ? "" : m}t</sup>`; },
+  cfac(al, be) { return al === 0 ? `(s² + ${LP.n(be * be, 2)})` : `((${LP.svb(al)})² + ${LP.n(be * be, 2)})`; },
+  pole(p) { return p[1] === 0 ? LP.n(p[0], 3) : `${LP.n(p[0], 3)} ± ${LP.n(Math.abs(p[1]), 3)}i`; },
+  poles(cl) { return cl.filter((c) => c.p[1] >= 0).map((c) => LP.pole(c.p) + (c.m > 1 ? ` (${c.m}중)` : "")).join(", ") || "없음"; },
+  coef(v, first) { const a = LP.n(Math.abs(v), 3); return (first ? (v < 0 ? "−" : "") : v < 0 ? " − " : " + ") + a; },
+  /** 다항식 HTML (오름차순 계수) */
+  poly(a, v = "s") {
+    const n = LP.deg(a); let s = "";
+    for (let k = n; k >= 0; k--) {
+      const c = a[k]; if (Math.abs(c) < 1e-9 && !(k === 0 && s === "")) continue;
+      const mag = Math.abs(c), sign = c < 0 ? (s ? " − " : "−") : s ? " + " : "";
+      const cs = k > 0 && Math.abs(mag - 1) < 1e-9 ? "" : LP.n(mag, 2);
+      s += sign + cs + (k > 1 ? `${v}<sup>${k}</sup>` : k === 1 ? v : "");
+    }
+    return s || "0";
+  },
+  /** 부분 분수 항을 시간 함수 HTML로: 'A e^{pt}', 켤레 쌍은 e^{αt}(B cos βt + C sin βt) */
+  timeTerms(terms, tol = 1e-7) {
+    const out = [];
+    terms.forEach((T) => {
+      if (T.p[1] < 0) return;
+      const a = T.p[0], b = T.p[1];
+      T.c.forEach((ck, k) => {
+        const fk = [1, 1, 2, 6, 24, 120][k], tp = k === 0 ? "" : k === 1 ? "t" : `t<sup>${k}</sup>`;
+        if (b === 0) {
+          const A = ck[0] / fk; if (Math.abs(A) < tol) return;
+          const mag = LP.n(Math.abs(A), 3), body = tp + LP.ev(a);
+          out.push({ v: A, s: (body && mag === "1" ? "" : mag) + body });
+        } else {
+          const B = (2 * ck[0]) / fk, C = (-2 * ck[1]) / fk; if (Math.abs(B) < tol && Math.abs(C) < tol) return;
+          const w = LP.n(b, 2), env = LP.ev(a), inner = [];
+          const mg = (v) => { const m = LP.n(Math.abs(v), 3); return m === "1" ? "" : m + " "; }, wt = w === "1" ? "t" : w + "t";
+          if (Math.abs(B) >= tol) inner.push((B < 0 ? "−" : "") + mg(B) + `cos ${wt}`);
+          if (Math.abs(C) >= tol) inner.push((inner.length ? (C < 0 ? " − " : " + ") : C < 0 ? "−" : "") + mg(C) + `sin ${wt}`);
+          out.push({ v: 1, s: `${tp}${env}(${inner.join("")})` });
+        }
+      });
+    });
+    return out;
+  },
+  joinTerms(list) {
+    if (!list.length) return "0";
+    return list.map((x, i) => (i === 0 ? (x.v < 0 ? "−" : "") : x.v < 0 ? " − " : " + ") + `<span class="lp-term">${x.s}</span>`).join("");
+  },
+  /** s 평면 위 극점 ×와 영점 ○ */
+  mark(P, x, y, o = {}) {
+    const c = P.ctx, X = P.X(x), Y = P.Y(y), r = o.r || 6;
+    c.save(); c.strokeStyle = o.color || P.P.accent; c.lineWidth = o.width || 2.6;
+    if (o.zero) { c.beginPath(); c.arc(X, Y, r, 0, Math.PI * 2); c.stroke(); }
+    else { c.beginPath(); c.moveTo(X - r, Y - r); c.lineTo(X + r, Y + r); c.moveTo(X + r, Y - r); c.lineTo(X - r, Y + r); c.stroke(); }
+    if (o.label) { c.fillStyle = o.color || P.P.accent; c.font = "600 11px " + getComputedStyle(document.body).getPropertyValue("--mono"); c.textAlign = "left"; c.textBaseline = "bottom"; c.fillText(o.label, X + r + 2, Y - r); }
+    c.restore();
+  },
+  halfPlanes(P) {
+    const c = P.ctx; c.save();
+    c.globalAlpha = 0.07; c.fillStyle = P.P.ok; c.fillRect(0, 0, P.X(0), P.h);
+    c.fillStyle = P.P.bad; c.fillRect(P.X(0), 0, P.w - P.X(0), P.h); c.restore();
+  },
+  /** 곡선과 축 사이 칠하기 */
+  area(P, f, a, b, col, alpha = 0.28) {
+    if (b - a < 1e-9) return;
+    const ctx = P.ctx, N = 300; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(P.X(a), P.Y(0));
+    for (let i = 0; i <= N; i++) { const x = a + ((b - a) * i) / N; ctx.lineTo(P.X(x), P.Y(MB.clamp(f(x), P.y0 - 1, P.y1 + 1))); }
+    ctx.lineTo(P.X(b), P.Y(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  wrap(id, on) { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; },
+};
+
+/* ================================================================ 1. 넓이로 F(s) */
+(function () {
+  const PRE = {
+    one: { f: () => 1, F: (s) => 1 / s, roc: 0, Fs: "1/s" },
+    t: { f: (t) => t, F: (s) => 1 / (s * s), roc: 0, Fs: "1/s²" },
+    exp: { f: (t) => Math.exp(0.5 * t), F: (s) => 1 / (s - 0.5), roc: 0.5, Fs: "1/(s − 0.5)" },
+    dec: { f: (t) => Math.exp(-t), F: (s) => 1 / (s + 1), roc: -1, Fs: "1/(s + 1)" },
+    sin: { f: (t) => Math.sin(2 * t), F: (s) => 2 / (s * s + 4), roc: 0, Fs: "2/(s² + 4)" },
+    cos: { f: (t) => Math.cos(2 * t), F: (s) => s / (s * s + 4), roc: 0, Fs: "s/(s² + 4)" },
+  };
+  let pre = PRE.one, s = 1, T = 40, trail = [], playing = false, plS = null;
+  const msg = document.getElementById("lp-a-msg");
+  const partial = () => LP.simpson((t) => Math.exp(-s * t) * pre.f(t), 0, T, 4000);
+  const plT = MB.plane("#lp-cv-area-t", {
+    x: [-0.3, 10.3], y: [-1.25, 2.4], aspect: 0.4, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P, g = (t) => Math.exp(-s * t) * pre.f(t);
+      LP.area(P, (t) => Math.max(0, g(t)), 0, Math.min(T, 10.3), C.accent, 0.3);
+      LP.area(P, (t) => Math.min(0, g(t)), 0, Math.min(T, 10.3), C.accent2, 0.3);
+      P.curve(pre.f, { color: C.dim, width: 1.6, from: 0, to: 10.3 });
+      P.curve((t) => Math.exp(-s * t), { color: C.accent2, width: 1.6, dash: [5, 4], from: 0, to: 10.3 });
+      P.curve(g, { color: C.accent, width: 2.6, from: 0, to: 10.3 });
+      if (T < 10.3) { P.line(T, P.y0, T, P.y1, { color: C.text, width: 1.2, dash: [3, 3] }); P.text("T", T, P.y1, { dx: 4, dy: 12, color: C.text, bold: true }); }
+      const A = partial(), roc = s > pre.roc;
+      MB.stat("lp-a-num", LP.num(A, 4)); MB.stat("lp-a-F", roc ? LP.num(pre.F(s), 4) + ` = ${pre.Fs}` : "정의되지 않음");
+      MB.stat("lp-a-roc", `s &gt; ${LP.n(pre.roc, 2)}`);
+      if (!roc) { msg.className = "lp-msg bad"; msg.innerHTML = `s = ${LP.n(s, 2)}는 수렴 영역 s &gt; ${LP.n(pre.roc, 2)} 밖입니다. 가중치가 f의 성장을 못 이겨 ∫₀ᵀ가 T와 함께 끝없이 자랍니다.`; }
+      else if (Math.abs(A - pre.F(s)) > 2e-3) { msg.className = "lp-msg"; msg.innerHTML = `T = ${LP.n(T, 1)}에서 꼬리가 잘렸습니다. 남은 넓이 ${LP.num(pre.F(s) - A, 4)}. T를 늘리면 F(s)로 갑니다.`; }
+      else { msg.className = "lp-msg ok"; msg.innerHTML = `넓이 ${LP.num(A, 4)} = F(${LP.n(s, 2)}). 가중치 e^(−st)가 꼬리를 충분히 눌러 적분이 수렴했습니다.`; }
+      if (plS) plS.redraw();
+    },
+  });
+  plS = MB.plane("#lp-cv-area-s", {
+    x: [-0.15, 5.2], y: [-0.35, 3], aspect: 0.4, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P;
+      if (pre.roc > 0.3) { const c = P.ctx; c.save(); c.globalAlpha = 0.09; c.fillStyle = C.bad; c.fillRect(0, 0, P.X(pre.roc), P.h); c.restore(); P.text("발산", Math.max(P.x0, pre.roc) - 0.06, P.y1, { align: "right", dy: 14, color: C.bad, size: 12 }); }
+      P.curve(pre.F, { color: C.accent, width: 2.4, from: Math.max(pre.roc + 0.005, 0.02), to: 5.2 });
+      trail.forEach(([x, y]) => P.dot(x, MB.clamp(y, P.y0, P.y1), { r: 2.6, color: C.accent2, alpha: 0.8 }));
+      const A = partial();
+      P.line(s, 0, s, MB.clamp(A, P.y0, P.y1), { color: C.accent2, width: 1.4, dash: [3, 3] });
+      if (A > P.y1) P.arrow(s, P.y1 - 0.5, s, P.y1 - 0.05, { color: C.bad, width: 2 });
+      else P.dot(s, A, { r: 5.5, color: C.accent2 });
+      P.text("s", s, 0, { dy: 12, align: "center", color: C.text, bold: true });
+    },
+  });
+  const push = () => { trail.push([s, partial()]); if (trail.length > 400) trail.shift(); };
+  MB.range("lp-a-s", (v) => v.toFixed(2), (v) => { s = v; push(); plT.redraw(); });
+  MB.range("lp-a-T", (v) => v.toFixed(1), (v) => { T = v; trail = []; plT.redraw(); });
+  document.getElementById("lp-a-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; trail = []; plT.redraw(); });
+  const sEl = document.getElementById("lp-a-s");
+  const btn = MB.playButton("lp-a-play", () => { s = 0.1; trail = []; playing = true; loop.start(); }, () => { playing = false; }, ["▶ s 쓸기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-lp-area"), (d) => {
+    if (!playing) return;
+    s = Math.min(5, s + d * 1.1); sEl.value = s; sEl.dispatchEvent(new Event("input"));
+    if (s >= 5) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 2. 변환 쌍 탐색기 */
+(function () {
+  const fact = (n) => (n <= 1 ? 1 : n * fact(n - 1));
+  const PRE = {
+    pow: { use: ["n"], f: (q) => (t) => Math.pow(t, q.n), F: (q) => (s) => fact(q.n) / Math.pow(s, q.n + 1), Fs: (q) => `${fact(q.n)}/s<sup>${q.n + 1}</sup>`, poles: (q) => [{ p: [0, 0], m: q.n + 1 }], zeros: () => [] },
+    exp: { use: ["a"], f: (q) => (t) => Math.exp(q.a * t), F: (q) => (s) => 1 / (s - q.a), Fs: (q) => `1/${LP.sv(q.a)}`, poles: (q) => [{ p: [q.a, 0], m: 1 }], zeros: () => [] },
+    cos: { use: ["w"], f: (q) => (t) => Math.cos(q.w * t), F: (q) => (s) => s / (s * s + q.w * q.w), Fs: (q) => `s/(s² + ${LP.n(q.w * q.w, 3)})`, poles: (q) => [{ p: [0, q.w], m: 1 }, { p: [0, -q.w], m: 1 }], zeros: () => [0] },
+    sin: { use: ["w"], f: (q) => (t) => Math.sin(q.w * t), F: (q) => (s) => q.w / (s * s + q.w * q.w), Fs: (q) => `${LP.n(q.w, 2)}/(s² + ${LP.n(q.w * q.w, 3)})`, poles: (q) => [{ p: [0, q.w], m: 1 }, { p: [0, -q.w], m: 1 }], zeros: () => [] },
+    texp: { use: ["a"], f: (q) => (t) => t * Math.exp(q.a * t), F: (q) => (s) => 1 / ((s - q.a) * (s - q.a)), Fs: (q) => `1/${LP.sv(q.a)}²`, poles: (q) => [{ p: [q.a, 0], m: 2 }], zeros: () => [] },
+    dcos: { use: ["a", "w"], f: (q) => (t) => Math.exp(q.a * t) * Math.cos(q.w * t), F: (q) => (s) => (s - q.a) / ((s - q.a) ** 2 + q.w * q.w), Fs: (q) => `${LP.sv(q.a)}/(${LP.sv(q.a)}² + ${LP.n(q.w * q.w, 3)})`, poles: (q) => [{ p: [q.a, q.w], m: 1 }, { p: [q.a, -q.w], m: 1 }], zeros: (q) => [q.a] },
+    sinh: { use: ["a"], f: (q) => (t) => Math.sinh(q.a * t), F: (q) => (s) => q.a / (s * s - q.a * q.a), Fs: (q) => `${LP.n(q.a, 2)}/(s² − ${LP.n(q.a * q.a, 3)})`, poles: (q) => (Math.abs(q.a) < 1e-9 ? [] : [{ p: [Math.abs(q.a), 0], m: 1 }, { p: [-Math.abs(q.a), 0], m: 1 }]), zeros: () => [] },
+  };
+  const q = { a: -0.4, w: 2.5, n: 2 }; let key = "dcos", s0 = 3, plS = null;
+  const plT = MB.plane("#lp-cv-pair-t", {
+    x: [-0.3, 8.3], y: [-1.2, 1.2], aspect: 0.4, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P, pr = PRE[key], f = pr.f(q);
+      P.curve(f, { color: C.accent, width: 2.6, from: 0, to: 8.3 });
+      if (key === "dcos") { P.curve((t) => Math.exp(q.a * t), { color: C.dim, width: 1.2, dash: [4, 4], from: 0, to: 8.3 }); P.curve((t) => -Math.exp(q.a * t), { color: C.dim, width: 1.2, dash: [4, 4], from: 0, to: 8.3 }); }
+      if (plS) plS.redraw();
+    },
+  });
+  plS = MB.plane("#lp-cv-pair-s", {
+    x: [-3.2, 6.4], y: [-4.6, 4.6], aspect: 0.48, minHeight: 200, maxHeight: 300,
+    draw(P) {
+      const C = P.P, pr = PRE[key], poles = pr.poles(q), roc = poles.length ? Math.max(...poles.map((c) => c.p[0])) : -Infinity;
+      const c = P.ctx; c.save(); c.globalAlpha = 0.1; c.fillStyle = C.accent; c.fillRect(P.X(Math.max(roc, P.x0)), 0, P.w, P.h); c.restore();
+      P.text("수렴 영역 Re s > " + LP.n(roc, 2), Math.max(roc, P.x0) + 0.12, P.y1, { dy: 14, color: C.accent, size: 12, bold: true });
+      poles.forEach((pc) => LP.mark(P, pc.p[0], pc.p[1], { color: C.accent, label: pc.m > 1 ? `${pc.m}중` : "" }));
+      pr.zeros(q).forEach((z) => LP.mark(P, z, 0, { zero: true, color: C.accent2 }));
+      P.dot(s0, 0, { r: 5, color: C.text }); P.text("s₀", s0, 0, { dy: 14, align: "center", color: C.text, bold: true });
+      const F = pr.F(q), ok = s0 > roc + 0.02;
+      const num = ok ? LP.simpson((t) => Math.exp(-s0 * t) * pr.f(q)(t), 0, 60, 8000) : NaN;
+      MB.stat("lp-p-F", pr.Fs(q)); MB.stat("lp-p-poles", LP.poles(poles));
+      MB.stat("lp-p-num", ok ? LP.num(num, 5) : "발산 (s₀가 수렴 영역 밖)"); MB.stat("lp-p-ex", ok ? LP.num(F(s0), 5) : "—");
+    },
+  });
+  const refit = () => {
+    const f = PRE[key].f(q), v = []; for (let i = 0; i <= 160; i++) v.push(f((8 * i) / 160));
+    plT.view({ y: LP.yRange(v, 0.12, true, 40) });
+  };
+  const show = () => { const u = PRE[key].use; LP.wrap("lp-p-a-wrap", u.includes("a")); LP.wrap("lp-p-w-wrap", u.includes("w")); LP.wrap("lp-p-n-wrap", u.includes("n")); };
+  MB.range("lp-p-a", (v) => v.toFixed(2), (v) => { q.a = v; refit(); });
+  MB.range("lp-p-w", (v) => v.toFixed(2), (v) => { q.w = v; refit(); });
+  MB.range("lp-p-n", (v) => String(v), (v) => { q.n = v; refit(); });
+  MB.range("lp-p-s", (v) => v.toFixed(1), (v) => { s0 = v; plS.redraw(); });
+  document.getElementById("lp-p-pre").addEventListener("change", (e) => { key = e.target.value; show(); refit(); });
+  show(); refit();
+})();
+
+/* ================================================================ 3. s-이동 */
+(function () {
+  const PRE = {
+    cos: { f: (w) => (t) => Math.cos(w * t), F: (w) => (s) => s / (s * s + w * w), poles: (w) => [[0, w], [0, -w]], name: (w) => `cos ${LP.n(w, 1)}t`, Fs: (a, w) => `${LP.sv(a)}/(${LP.sv(a)}² + ${LP.n(w * w, 2)})` },
+    sin: { f: (w) => (t) => Math.sin(w * t), F: (w) => (s) => w / (s * s + w * w), poles: (w) => [[0, w], [0, -w]], name: (w) => `sin ${LP.n(w, 1)}t`, Fs: (a, w) => `${LP.n(w, 1)}/(${LP.sv(a)}² + ${LP.n(w * w, 2)})` },
+    one: { f: () => () => 1, F: () => (s) => 1 / s, poles: () => [[0, 0]], name: () => "1", Fs: (a) => `1/${LP.sv(a)}` },
+    t: { f: () => (t) => t, F: () => (s) => 1 / (s * s), poles: () => [[0, 0]], name: () => "t", Fs: (a) => `1/${LP.sv(a)}²` },
+  };
+  let key = "cos", a = -0.6, w = 2, plF = null, plP = null, fyr = [-0.3, 1];
+  const fRange = () => { const F = PRE[key].F(w), v = []; for (let i = 1; i <= 160; i++) { const s = -2.6 + (6.8 * i) / 160; if (s > 0.15) v.push(F(s)); if (s - a > 0.15) v.push(F(s - a)); } return LP.yRange(v.map((x) => MB.clamp(x, -3, 3)), 0.12, true); };
+  const plT = MB.plane("#lp-cv-sh-t", {
+    x: [-0.3, 10.3], y: [-2.2, 2.2], aspect: 0.36, minHeight: 170, maxHeight: 260,
+    draw(P) {
+      const C = P.P, pr = PRE[key], f = pr.f(w);
+      P.curve(f, { color: C.dim, width: 1.5, from: 0, to: 10.3 });
+      if (key === "cos" || key === "sin") { P.curve((t) => Math.exp(a * t), { color: C.accent2, width: 1.2, dash: [4, 4], from: 0, to: 10.3 }); P.curve((t) => -Math.exp(a * t), { color: C.accent2, width: 1.2, dash: [4, 4], from: 0, to: 10.3 }); }
+      P.curve((t) => Math.exp(a * t) * f(t), { color: C.accent, width: 2.6, from: 0, to: 10.3 });
+      MB.stat("lp-sh-F", pr.Fs(a, w));
+      MB.stat("lp-sh-p", pr.poles(w).filter((p) => p[1] >= 0).map((p) => LP.pole([p[0] + a, p[1]])).join(", ") + (key === "t" ? " (2중)" : ""));
+      MB.stat("lp-sh-st", a < -1e-9 ? `감쇠 e<sup>${LP.n(a, 2)}t</sup>` : a > 1e-9 ? `성장 e<sup>${LP.n(a, 2)}t</sup>` : "그대로");
+      if (plF) plF.view({ y: fRange() }); if (plP) plP.redraw();
+    },
+  });
+  plF = MB.plane("#lp-cv-sh-F", {
+    x: [-2.6, 4.2], y: fRange(), aspect: 0.62, minHeight: 190, maxHeight: 280,
+    draw(P) {
+      const C = P.P, pr = PRE[key], F = pr.F(w), r0 = 0;
+      P.curve(F, { color: C.dim, width: 1.6, from: r0 + 0.01, to: P.x1 });
+      P.curve((s) => F(s - a), { color: C.accent, width: 2.6, from: r0 + a + 0.01, to: P.x1 });
+      P.line(0, P.y0, 0, P.y1, { color: C.dim, width: 1, dash: [3, 4] }); P.line(a, P.y0, a, P.y1, { color: C.accent, width: 1.2, dash: [3, 4] });
+      const ya = P.y0 + (P.y1 - P.y0) * 0.72;
+      if (Math.abs(a) > 0.08) P.arrow(0, ya, a, ya, { color: C.accent2, width: 2, head: 9 });
+      P.text(`a = ${LP.n(a, 2)}`, Math.max(a, 0) + 0.08, ya, { color: C.accent2, size: 12, bold: true });
+    },
+  });
+  plP = MB.plane("#lp-cv-sh-P", {
+    x: [-3, 1.6], y: [-4.4, 4.4], aspect: 0.62, minHeight: 190, maxHeight: 280,
+    draw(P) {
+      const C = P.P, pr = PRE[key];
+      LP.halfPlanes(P);
+      pr.poles(w).forEach((p) => { LP.mark(P, p[0], p[1], { color: C.dim, width: 1.6, r: 5 }); if (Math.abs(a) > 0.08) P.arrow(p[0], p[1], p[0] + a, p[1], { color: C.accent2, width: 1.6, head: 8 }); LP.mark(P, p[0] + a, p[1], { color: C.accent }); });
+    },
+  });
+  MB.range("lp-sh-a", (v) => v.toFixed(2), (v) => { a = v; plT.redraw(); });
+  MB.range("lp-sh-w", (v) => v.toFixed(1), (v) => { w = v; plT.redraw(); });
+  document.getElementById("lp-sh-pre").addEventListener("change", (e) => { key = e.target.value; LP.wrap("lp-sh-w-wrap", key === "cos" || key === "sin"); plT.redraw(); });
+})();
+
+/* ================================================================ 4. 부분 분수 분해기 */
+(function () {
+  const DEF = {
+    real: [{ x: -0.4, y: 0 }, { x: -1.2, y: 0 }, { x: -2.5, y: 0 }],
+    double: [{ x: -1, y: 0 }, { x: -2.5, y: 0 }],
+    cplx: [{ x: -0.5, y: 2 }, { x: -1.5, y: 0 }],
+  };
+  let mode = "real", useZero = true, K = 2, plT = null, terms = [], clusters = [], tyr = [-1, 1];
+  const msg = document.getElementById("lp-pf-msg");
+  const zp = { x: -2, y: 0, lock: "y", r: 10, snap: 0.1, color: "rgba(0,0,0,0)", constrain(p) { p.y = 0; } };
+  const mk = (list) => list.map((d) => ({ x: d.x, y: d.y, r: 10, snap: 0.1, color: "rgba(0,0,0,0)", lock: d.y === 0 ? "y" : undefined, constrain(p) { if (d.y === 0) p.y = 0; else p.y = MB.clamp(p.y, 0.2, 3.6); } }));
+  let pts = mk(DEF[mode]);
+  const poleList = () => {
+    const out = [];
+    if (mode === "real") pts.forEach((p) => out.push([p.x, 0]));
+    if (mode === "double") { out.push([pts[0].x, 0], [pts[0].x, 0], [pts[1].x, 0]); }
+    if (mode === "cplx") { out.push([pts[0].x, pts[0].y], [pts[0].x, -pts[0].y], [pts[1].x, 0]); }
+    return out;
+  };
+  const compute = () => {
+    const pl = poleList(); clusters = LP.cluster(pl, 1e-6);
+    const num = (s) => (useZero ? LP.cmul([K, 0], LP.csub(s, [zp.x, 0])) : [K, 0]);
+    const F = (s) => { let d = [1, 0]; pl.forEach((p) => (d = LP.cmul(d, LP.csub(s, p)))); return LP.cdiv(num(s), d); };
+    terms = LP.laurent(F, clusters);
+    return F;
+  };
+  const factorHTML = () => {
+    const fs = clusters.filter((c) => c.p[1] >= 0).map((c) => (c.p[1] > 0 ? LP.cfac(c.p[0], c.p[1]) : (c.p[0] === 0 && c.m === 1 ? "s" : LP.sv(c.p[0])) + (c.m > 1 ? `<sup>${c.m}</sup>` : "")));
+    return `${useZero ? `${LP.n(K, 1)}${LP.sv(zp.x)}` : LP.n(K, 1)} / [${fs.join("")}]`;
+  };
+  const sTerms = () => {
+    const out = [];
+    terms.forEach((T) => {
+      if (T.p[1] < 0) return;
+      if (T.p[1] === 0) T.c.forEach((ck, k) => { if (Math.abs(ck[0]) < 1e-7) return; out.push({ v: ck[0], s: `${LP.n(Math.abs(ck[0]), 3)}/${LP.sv(T.p[0])}${k ? `<sup>${k + 1}</sup>` : ""}` }); });
+      else { const B = 2 * T.c[0][0], Cc = (-2 * T.c[0][1]), al = T.p[0], be = T.p[1]; out.push({ v: 1, s: `[${LP.n(B, 3)}(${LP.svb(al)}) ${Cc * be < 0 ? "−" : "+"} ${LP.n(Math.abs(Cc * be), 3)}]/${LP.cfac(al, be)}` }); }
+    });
+    return out;
+  };
+  const plS = MB.plane("#lp-cv-pf-s", {
+    x: [-4, 2], y: [-3.8, 3.8], aspect: 0.5, minHeight: 210, maxHeight: 300, points: pts.concat([zp]),
+    draw(P, api) {
+      const C = P.P; LP.halfPlanes(P);
+      const F = compute(), cols = C.series;
+      clusters.forEach((c, i) => LP.mark(P, c.p[0], c.p[1], { color: c.p[1] < 0 ? C.dim : C.accent, label: c.m > 1 ? `${c.m}중` : "", r: 7 }));
+      if (useZero) LP.mark(P, zp.x, 0, { zero: true, color: C.accent2, r: 7 });
+      zp.hidden = !useZero;
+      const s0 = [3, 0], Fv = F(s0)[0];
+      let sum = 0; terms.forEach((T) => T.c.forEach((ck, k) => { let d = [1, 0]; for (let j = 0; j <= k; j++) d = LP.cmul(d, LP.csub(s0, T.p)); sum += LP.cdiv(ck, d)[0]; }));
+      MB.stat("lp-pf-F", factorHTML()); MB.stat("lp-pf-chk", `${LP.num(Fv, 5)} vs ${LP.num(sum, 5)}`);
+      const st = sTerms(), tt = LP.timeTerms(terms);
+      msg.className = "lp-msg";
+      msg.innerHTML = `<b>F(s)</b> = ${LP.joinTerms(st)}<br><b>f(t)</b> = ${LP.joinTerms(tt)}`;
+      const f = LP.inv(terms), v = [];
+      for (let i = 0; i <= 100; i++) v.push(f((8 * i) / 100));
+      tyr = LP.yRange(v, 0.15, true, 30);
+      if (plT) plT.view({ y: tyr });
+    },
+  });
+  plT = MB.plane("#lp-cv-pf-t", {
+    x: [-0.2, 8.2], y: tyr, aspect: 0.42, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P, f = LP.inv(terms);
+      let ci = 0;
+      terms.forEach((T) => { if (T.p[1] < 0) return; const g = LP.invOne(T); P.curve(g, { color: C.series[(ci++ + 1) % C.series.length], width: 1.4, dash: [5, 3], from: 0, to: 8.2 }); });
+      P.curve(f, { color: C.accent, width: 2.8, from: 0, to: 8.2 });
+    },
+  });
+  MB.seg("lp-pf-mode", (v) => { mode = v; pts = mk(DEF[mode]); plS.points.length = 0; pts.concat([zp]).forEach((p) => plS.points.push(p)); plS.redraw(); });
+  MB.check("lp-pf-zero", (v) => { useZero = v; plS.redraw(); });
+  MB.range("lp-pf-K", (v) => v.toFixed(1), (v) => { K = v; plS.redraw(); });
+  document.getElementById("lp-pf-reset").addEventListener("click", () => { pts = mk(DEF[mode]); zp.x = -2; plS.points.length = 0; pts.concat([zp]).forEach((p) => plS.points.push(p)); plS.redraw(); });
+})();
+
+/* ================================================================ 5. IVP 세 단계 */
+(function () {
+  const G = {
+    zero: { num: [0], den: [1], html: "0", g: () => 0 },
+    step: { num: [1], den: [0, 1], html: "1/s", g: () => 1 },
+    exp: { num: [1], den: [1, 1], html: "1/(s + 1)", g: (t) => Math.exp(-t) },
+    sin: { num: [2], den: [4, 0, 1], html: "2/(s² + 4)", g: (t) => Math.sin(2 * t) },
+  };
+  let gk = "step", b = 3, c = 2, y0 = 1, v0 = 0, plT = null, yf = null, rk = [], tyr = [-1, 1];
+  const solve = () => {
+    const g = G[gk], ch = [c, b, 1];
+    const num = LP.padd(LP.pmul([b * y0 + v0, y0], g.den), g.num), den = LP.pmul(ch, g.den);
+    const terms = LP.pf(num, den); yf = LP.inv(terms);
+    const r = MB.rk4((t, y) => [y[1], g.g(t) - b * y[1] - c * y[0]], [y0, v0], 0, 0.01, 1200);
+    rk = r.filter((_, i) => i % 30 === 0).map(([t, y]) => [t, y[0]]);
+    let err = 0; rk.forEach(([t, y]) => (err = Math.max(err, Math.abs(y - yf(t)))));
+    const tm = (v, suf) => (Math.abs(v) < 1e-9 ? "" : (v < 0 ? " − " : " + ") + (Math.abs(Math.abs(v) - 1) < 1e-9 && suf ? "" : LP.n(Math.abs(v), 2)) + suf);
+    MB.stat("lp-iv-s1", `(s²Y${tm(-y0, "s")}${tm(-v0, "")})${b ? ` + ${LP.n(b, 1)}(sY${tm(-y0, "")})` : ""} + ${LP.n(c, 1)}Y = ${g.html}`);
+    tyr = LP.yRange(rk.map((p) => p[1]), 0.15, true, 50);
+    MB.stat("lp-iv-s2", `Y(s) = [${LP.poly(num)}] / [${LP.poly(den)}]`);
+    MB.stat("lp-iv-s3", `y(t) = ${LP.joinTerms(LP.timeTerms(terms, 1e-6))}`);
+    const cr = LP.cluster(LP.roots(ch));
+    MB.stat("lp-iv-roots", LP.poles(cr)); MB.stat("lp-iv-err", MB.fmt(err, 2));
+    return { cr, gr: LP.cluster(LP.roots(g.den)) };
+  };
+  let info = solve();
+  const plS = MB.plane("#lp-cv-iv-s", {
+    x: [-5.2, 1.2], y: [-3.4, 3.4], aspect: 0.42, minHeight: 180, maxHeight: 260,
+    draw(P) {
+      const C = P.P; LP.halfPlanes(P);
+      info.gr.forEach((q) => LP.mark(P, q.p[0], q.p[1], { color: C.accent2, r: 8, width: 2, label: q.m > 1 ? `${q.m}중` : "" }));
+      info.cr.forEach((q) => LP.mark(P, q.p[0], q.p[1], { color: C.accent, label: q.m > 1 ? `${q.m}중` : "" }));
+    },
+  });
+  plT = MB.plane("#lp-cv-iv-t", {
+    x: [-0.3, 12.3], y: tyr, aspect: 0.42, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P;
+      if (gk === "step") P.line(P.x0, 1 / c, P.x1, 1 / c, { color: C.dim, width: 1, dash: [4, 4] });
+      P.curve(yf, { color: C.accent, width: 2.6, from: 0, to: 12.3 });
+      rk.forEach(([t, y]) => P.dot(t, y, { r: 3, color: C.accent2 }));
+    },
+  });
+  const upd = () => { info = solve(); plS.redraw(); plT.view({ y: tyr }); };
+  MB.range("lp-iv-b", (v) => v.toFixed(1), (v) => { b = v; upd(); });
+  MB.range("lp-iv-c", (v) => v.toFixed(1), (v) => { c = v; upd(); });
+  MB.range("lp-iv-y0", (v) => v.toFixed(1), (v) => { y0 = v; upd(); });
+  MB.range("lp-iv-v0", (v) => v.toFixed(1), (v) => { v0 = v; upd(); });
+  document.getElementById("lp-iv-g").addEventListener("change", (e) => { gk = e.target.value; upd(); });
+})();
+
+/* ================================================================ 6. 두 탱크 */
+(function () {
+  let k = 0.6, d = 0.3, x0 = 1, y0 = 0, t = 0, playing = false, xf = null, yf = null, Tend = 20, plP = null;
+  const msg = document.getElementById("lp-tk-msg");
+  const solve = () => {
+    const D = [k * d, 2 * k + d, 1];
+    const tx = LP.pf([(k + d) * x0 + k * y0, x0], D), ty = LP.pf([k * x0 + k * y0, y0], D);
+    xf = LP.inv(tx); yf = LP.inv(ty);
+    MB.stat("lp-tk-D", LP.poly(D)); MB.stat("lp-tk-p", LP.poles(LP.cluster(LP.roots(D))));
+    msg.className = "lp-msg";
+    msg.innerHTML = `<b>X(s)</b> = [${LP.poly([(k + d) * x0 + k * y0, x0])}] / Δ(s) &nbsp;⇒&nbsp; <b>x(t)</b> = ${LP.joinTerms(LP.timeTerms(tx, 1e-6))}<br><b>Y(s)</b> = [${LP.poly([k * x0 + k * y0, y0])}] / Δ(s) &nbsp;⇒&nbsp; <b>y(t)</b> = ${LP.joinTerms(LP.timeTerms(ty, 1e-6))}`;
+  };
+  solve();
+  const scene = MB.canvas("#lp-cv-tk-scene", (ctx, w, h) => {
+    const C = MB.palette(), x = MB.clamp(xf(t), 0, 1.2), y = MB.clamp(yf(t), 0, 1.2);
+    const tw = Math.min(150, w * 0.26), th = h - 96, base = h - 30, ax = w * 0.16, bx = w * 0.56;
+    const tank = (X, lvl, name, col) => {
+      ctx.fillStyle = col; ctx.globalAlpha = 0.55; ctx.fillRect(X, base - th * lvl, tw, th * lvl); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X, base - th - 6); ctx.lineTo(X, base); ctx.lineTo(X + tw, base); ctx.lineTo(X + tw, base - th - 6); ctx.stroke();
+      ctx.fillStyle = C.text; ctx.font = "700 13px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText(`${name} = ${LP.num(lvl, 2)}`, X + tw / 2, base - th - 10);
+    };
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(ax + tw, base - 6); ctx.lineTo(bx, base - 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx + tw, base - 6); ctx.lineTo(Math.min(w - 8, bx + tw + 50), base - 6); ctx.lineTo(Math.min(w - 8, bx + tw + 50), base + 14); ctx.stroke();
+    tank(ax, x, "x", C.accent); tank(bx, y, "y", C.accent2);
+    const q = k * (x - y), dr = d * y;
+    ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(`k(x − y) = ${LP.num(q, 3)}`, (ax + tw + bx) / 2, base);
+    ctx.textAlign = "right"; ctx.fillText(`dy = ${LP.num(dr, 3)}`, w - 10, base + 16 > h - 14 ? h - 14 : base + 16);
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 240 });
+  plP = MB.plane("#lp-cv-tk-plot", {
+    x: [-0.4, 20.4], y: [-0.08, 1.1], aspect: 0.36, minHeight: 170, maxHeight: 260,
+    draw(P) {
+      const C = P.P;
+      P.curve(xf, { color: C.accent, width: 1.4, alpha: 0.35, from: 0, to: 20.4 }); P.curve(yf, { color: C.accent2, width: 1.4, alpha: 0.35, from: 0, to: 20.4 });
+      if (t > 0) { P.curve(xf, { color: C.accent, width: 2.8, from: 0, to: t }); P.curve(yf, { color: C.accent2, width: 2.8, from: 0, to: t }); }
+      P.dot(t, xf(t), { r: 5, color: C.accent }); P.dot(t, yf(t), { r: 5, color: C.accent2 });
+      MB.stat("lp-tk-t", LP.num(t, 2));
+    },
+  });
+  const upd = () => { solve(); scene.redraw(); plP.redraw(); };
+  MB.range("lp-tk-k", (v) => v.toFixed(2), (v) => { k = v; upd(); });
+  MB.range("lp-tk-d", (v) => v.toFixed(2), (v) => { d = v; upd(); });
+  MB.range("lp-tk-x0", (v) => v.toFixed(2), (v) => { x0 = v; upd(); });
+  MB.range("lp-tk-y0", (v) => v.toFixed(2), (v) => { y0 = v; upd(); });
+  const btn = MB.playButton("lp-tk-play", () => { if (t >= Tend - 0.01) t = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 밸브 열기", "■ 멈춤"]);
+  document.getElementById("lp-tk-reset").addEventListener("click", () => { t = 0; playing = false; btn.set(false); upd(); });
+  const loop = MB.loop(document.getElementById("sim-lp-tanks"), (dt) => {
+    if (!playing) return;
+    t = Math.min(Tend, t + dt * 2); scene.redraw(); plP.redraw();
+    if (t >= Tend) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 7. 최종값 정리 */
+(function () {
+  let b = 1, c = 2, K = 3, y0 = 0.5, sol = [], tyr = [-1, 3], syr = [-1, 3];
+  const msg = document.getElementById("lp-fv-msg");
+  const sY = (s) => (K + s * (s + b) * y0) / (s * s + b * s + c);
+  const solve = () => {
+    sol = MB.rk4((t, y) => [y[1], K - b * y[1] - c * y[0]], [y0, 0], 0, 0.01, 3000).map(([t, y]) => [t, y[0]]);
+    tyr = LP.yRange(sol.map((p) => p[1]).concat(Math.abs(c) > 1e-9 ? [MB.clamp(K / c, -6, 6)] : []), 0.12, true, 6);
+    const vals = []; for (let i = 0; i <= 120; i++) vals.push(sY(Math.pow(10, -3 + (6 * i) / 120)));
+    syr = LP.yRange(vals.concat([y0]), 0.15, true, 8);
+  };
+  solve();
+  const plT = MB.plane("#lp-cv-fv-t", {
+    x: [-0.6, 30.6], y: tyr, aspect: 0.4, minHeight: 180, maxHeight: 280, gridStep: 5,
+    draw(P) {
+      const C = P.P;
+      if (Math.abs(c) > 1e-9) P.line(P.x0, K / c, P.x1, K / c, { color: C.accent2, width: 1.4, dash: [5, 4] });
+      P.poly(sol.filter((_, i) => i % 3 === 0), { color: C.accent, width: 2.6, close: false });
+      if (Math.abs(c) > 1e-9) P.text("K/c", P.x1, K / c, { align: "right", dx: -6, dy: -10, color: C.accent2, bold: true, size: 12 });
+    },
+  });
+  const plS = MB.plane("#lp-cv-fv-s", {
+    x: [-3.1, 3.1], y: syr, aspect: 0.4, minHeight: 180, maxHeight: 280, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      ctx.save(); ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.fillStyle = C.faint; ctx.font = "10px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      for (let e = -3; e <= 3; e++) { ctx.beginPath(); ctx.moveTo(P.X(e), 0); ctx.lineTo(P.X(e), P.h); ctx.stroke(); ctx.fillText(e === 0 ? "s = 1" : `10${e < 0 ? "⁻" : ""}${"⁰¹²³"[Math.abs(e)]}`, P.X(e), P.h - 2); }
+      ctx.restore();
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 });
+      P.curve((x) => sY(Math.pow(10, x)), { color: C.accent, width: 2.6 });
+      if (Math.abs(c) > 1e-9) { P.dot(-3, sY(1e-3), { r: 5, color: C.accent2 }); P.text("K/c", -3, sY(1e-3), { dx: 10, dy: 14, color: C.accent2, bold: true, size: 12 }); }
+      P.dot(3, sY(1e3), { r: 5, color: C.text }); P.text("y₀ ←", 3, sY(1e3), { dx: -8, dy: -12, align: "right", color: C.text, bold: true, size: 12 });
+    },
+  });
+  const upd = (redraw = true) => {
+    if (redraw) { solve(); plT.view({ y: tyr }); plS.view({ y: syr }); }
+    const cl = LP.cluster(LP.roots([c, b, 1])), mx = Math.max(...cl.map((q) => q.p[0])), yT = sol[sol.length - 1][1];
+    MB.stat("lp-fv-sF0", Math.abs(c) > 1e-9 ? LP.num(K / c, 4) : "∞ (c = 0)");
+    MB.stat("lp-fv-yT", LP.num(yT, 4)); MB.stat("lp-fv-sFi", LP.num(y0, 4) + " = y₀"); MB.stat("lp-fv-p", LP.poles(cl));
+    if (mx < -1e-9) { msg.className = "lp-msg ok"; msg.innerHTML = `극점이 모두 왼쪽 반평면에 있습니다. 최종값 정리가 맞습니다: y(30) ≈ ${LP.num(yT, 3)} → K/c = ${LP.num(K / c, 3)}.`; }
+    else if (mx < 1e-9) { msg.className = "lp-msg bad"; msg.innerHTML = cl.some((q) => q.p[1] !== 0) ? `극점이 허수축 위(${LP.poles(cl)})에 있어 y(t)가 영원히 진동합니다. lim sY = ${LP.num(K / c, 3)}은 진동의 중심일 뿐 극한이 아닙니다.` : `극점이 s = 0에 있어 y(t)가 한 값으로 가라앉지 않습니다(K ≠ 0이면 한없이 자랍니다). 최종값 정리를 쓸 수 없습니다.`; }
+    else { msg.className = "lp-msg bad"; msg.innerHTML = `오른쪽 반평면에 극점(실수부 ${LP.num(mx, 3)})이 있어 y(t)가 발산합니다. 공식 K/c = ${Math.abs(c) > 1e-9 ? LP.num(K / c, 3) : "∞"}은 아무 의미가 없습니다.`; }
+  };
+  MB.range("lp-fv-b", (v) => v.toFixed(1), (v) => { b = v; upd(); });
+  MB.range("lp-fv-c", (v) => v.toFixed(1), (v) => { c = v; upd(); });
+  MB.range("lp-fv-K", (v) => v.toFixed(1), (v) => { K = v; upd(); });
+  MB.range("lp-fv-y0", (v) => v.toFixed(1), (v) => { y0 = v; upd(); });
+  upd(false);
+})();
+</script>
+</body>
+</html>

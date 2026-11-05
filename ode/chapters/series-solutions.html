@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>급수해와 특수 함수 · ODEBook</title>
+<meta name="description" content="계수가 변하는 방정식을 거듭제곱 급수로 푼다. 점화식, 에어리 방정식, 수렴 반지름과 복소 특이점, 정칙 특이점과 지표 방정식, 프로베니우스 방법, 르장드르 다항식의 직교성, 베셀 함수와 영점, 원형 북의 진동 모드까지 항을 늘리고 모드를 울리며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ss-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--border); }
+  .ss-two > div { position: relative; min-width: 0; background: var(--canvas-bg); }
+  .ss-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; max-width: calc(100% - 20px); }
+  .ss-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ss-msg b { color: var(--text); }
+  .ss-msg.ok { color: var(--ok); font-weight: 600; }
+  .ss-msg.bad { color: var(--bad); font-weight: 600; }
+  .ss-tbl td { font-family: var(--mono); }
+  .ss-coef { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--border); border-top: 1px solid var(--border); font: 13px var(--mono); }
+  .ss-coef > div { background: var(--bg-elev); padding: 6px 10px; color: var(--text); overflow-wrap: anywhere; }
+  .ss-coef > div i { font-style: normal; color: var(--text-dim); margin-right: 6px; }
+  .ss-coef > div.ss-zero { color: var(--text-faint); }
+  .ss-formula { padding: 8px 18px; font: 13px var(--mono); color: var(--text-dim); border-top: 1px solid var(--border); background: var(--bg-elev); overflow-wrap: anywhere; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="series-solutions">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 14</div>
+    <h1 data-no-glossary>급수해와 특수 함수</h1>
+    <p class="lead">6장의 상수계수 방정식은 \(e^{rt}\)를 넣으면 특성 방정식이 나와 깔끔하게 풀렸습니다. 그런데 원형 막, 구형 물체 둘레의 퍼텐셜, 선형 퍼텐셜 속의 양자 입자를 다루면 계수가 \(x\)에 따라 변하는 방정식 \(y'' + p(x)y' + q(x)y = 0\)이 나오고, 지수 함수는 더 이상 해가 아닙니다. 이 장의 생각은 단순합니다. 해를 모르면 <b>해를 거듭제곱 급수 \(\sum a_nx^n\)로 두고 계수를 하나씩 정하자</b>. 방정식이 계수 사이의 <span class="term">점화식</span>으로 바뀌고, 그 점화식이 낳은 급수가 에어리 함수, 르장드르 다항식, 베셀 함수 같은 <span class="term">특수 함수</span>가 됩니다.</p>
+    <ul class="objectives">
+      <li>보통점에서 거듭제곱 급수를 대입하고 첨자를 맞춰 점화식을 세우고, 첫 몇 항으로 해를 쓴다.</li>
+      <li>에어리 방정식 \(y'' = xy\)를 급수로 풀고, \(x > 0\)의 지수적 행동과 \(x \lt 0\)의 진동을 설명한다.</li>
+      <li>급수해의 수렴 반지름이 복소평면에서 가장 가까운 특이점까지의 거리 이상임을 쓰고, 실수축에 특이점이 없는데도 수렴이 멈추는 이유를 말한다.</li>
+      <li>정칙 특이점을 판별하고 지표 방정식으로 프로베니우스 해 \(x^r\sum a_nx^n\)의 지수 \(r\)을 구하며, 근의 차가 정수일 때 로그 항이 생길 수 있음을 안다.</li>
+      <li>르장드르 방정식에서 다항식 해 \(P_\ell\)이 나오는 이유와 직교성 \(\int_{-1}^1 P_mP_n\,dx = \frac{2}{2n+1}\delta_{mn}\)을 확인한다.</li>
+      <li>베셀 함수 \(J_\nu\)의 급수와 영점을 구하고, 원형 북의 고유 진동수 \(\omega_{nm} = c\,j_{nm}/a\)로 잇는다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>원형 진동판의 설계</b></div>
+      <div class="o-body"><p>스피커 콘, 마이크와 압력 센서의 원형 진동판, 팀파니와 북은 모두 가장자리가 고정된 원형 막입니다. 어떤 진동수로 울리는지, 진동판의 어디가 가만히 있는지(마디선)를 알아야 소리와 감도를 설계할 수 있습니다. 직사각형 막이라면 사인 함수로 끝나지만, 원형 막을 극좌표로 변수분리하면 반지름 방향에서 \(r^2R'' + rR' + (k^2r^2 - n^2)R = 0\)이라는, 계수가 \(r\)에 따라 변하는 방정식이 나옵니다.</p>
+        <p>이 방정식의 해는 사인·지수 같은 기본 함수로 쓸 수 없습니다. 급수로 풀어 얻은 함수에 베셀<span class="en">(Friedrich Wilhelm Bessel)</span>의 이름이 붙었습니다. 베셀은 천문학자로서 행성 운동의 섭동 계산에서 이 함수들을 체계적으로 연구했습니다. 원형 막의 고유 진동수는 베셀 함수의 영점으로 정해지고, 그 비가 정수가 아니어서 북은 현악기처럼 또렷한 음높이를 내지 않습니다.</p>
+        <div class="o-chain"><span>원형 막의 파동 방정식</span><i>→</i><span>변하는 계수의 2계 방정식</span><i>→</i><span class="tool">거듭제곱 급수 해 · 베셀 함수</span><i>→</i><span>영점 = 고유 진동수</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="power-series">
+    <h2>보통점에서의 거듭제곱 급수 해</h2>
+    <div class="problem"><strong>특성 방정식이 통하지 않는 방정식</strong>
+      <p>\(y'' - xy' - y = 0\)에 \(y = e^{rx}\)를 넣으면 \(r^2 - xr - 1 = 0\)이 됩니다. \(r\)이 \(x\)에 따라 달라져야 하니 \(e^{rx}\)는 해가 아닙니다. 6장의 방법은 계수가 상수라서 통했던 것입니다. 그래도 해는 있습니다(4장의 존재 정리). 그 해를 어떻게 손에 쥘까요?</p></div>
+    <p>12장 미적분의 테일러 전개(<a href="../../calculus/chapters/taylor.html">CalculusBook 테일러 전개</a>)를 떠올립시다. 매끄러운 함수는 한 점 근처에서 \(y = \sum_{n\ge0} a_n(x - x_0)^n\)으로 쓸 수 있고, \(a_n = y^{(n)}(x_0)/n!\)입니다. 해가 이런 급수라고 가정하고 방정식에 넣어 \(a_n\)을 정하는 것이 급수해법입니다. 먼저 이 방법이 언제 통하는지 정합니다.</p>
+    <div class="callout deep"><strong>정의 14.1 (보통점과 특이점)</strong> \(P(x)y'' + Q(x)y' + R(x)y = 0\)을 \(y'' + p(x)y' + q(x)y = 0\)(\(p = Q/P,\ q = R/P\))으로 쓴다. \(p\)와 \(q\)가 \(x_0\)에서 <span class="term">해석적</span>이면(\(x_0\) 근처에서 수렴하는 거듭제곱 급수로 쓸 수 있으면) \(x_0\)을 <span class="term">보통점</span><span class="en">(ordinary point)</span>, 그렇지 않으면 <span class="term">특이점</span><span class="en">(singular point)</span>이라 한다. 다항식 계수이면 \(P(x_0) \ne 0\)인 점이 보통점이다.</div>
+    <p>보통점 \(x_0 = 0\)에서의 계산 순서는 늘 같습니다.</p>
+    <ol>
+      <li>\(y = \sum a_nx^n\), \(y' = \sum na_nx^{n-1}\), \(y'' = \sum n(n-1)a_nx^{n-2}\)을 넣는다.</li>
+      <li>각 합의 첨자를 옮겨 모든 항을 \(x^n\)의 계수로 맞춘다(\(y''\)의 합은 \(n \to n + 2\)).</li>
+      <li>모든 \(n\)에 대해 \(x^n\)의 계수가 0이어야 한다(거듭제곱 급수의 유일성). 이것이 점화식이다.</li>
+      <li>\(a_0 = y(0)\), \(a_1 = y'(0)\)는 자유롭고, 나머지는 점화식이 정한다. 2계 방정식의 일반해에 상수가 둘인 것과 맞는다.</li>
+    </ol>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 250" role="img" aria-label="첨자 옮기기: 세 급수를 같은 x의 거듭제곱으로 맞추기">
+        <rect x="8" y="8" width="764" height="234" rx="10" class="f-surface"/>
+        <text x="24" y="36" class="t" style="font-weight:700">y″ − xy′ − y = 0에서 xⁿ의 계수 모으기</text>
+        <g class="t-mono">
+          <text x="24" y="76">y″  = 2a₂ + 6a₃x + 12a₄x² + … = Σ (n+2)(n+1)aₙ₊₂ xⁿ</text>
+          <text x="24" y="108">xy′ =       a₁x + 2a₂x² + …   = Σ n aₙ xⁿ</text>
+          <text x="24" y="140">y   = a₀ +  a₁x +  a₂x² + …   = Σ aₙ xⁿ</text>
+        </g>
+        <line x1="24" y1="156" x2="560" y2="156" class="s-line"/>
+        <rect x="150" y="56" width="64" height="96" rx="6" fill="none" style="stroke:var(--accent);stroke-width:2;stroke-dasharray:5 4"/>
+        <text x="182" y="176" text-anchor="middle" class="t-acc">x¹ 열</text>
+        <text x="24" y="206" class="t-mono">x¹: 6a₃ − a₁ − a₁ = 0  →  a₃ = a₁/3</text>
+        <text x="24" y="230" class="t-mono">xⁿ: (n+2)(n+1)aₙ₊₂ − (n+1)aₙ = 0  →  aₙ₊₂ = aₙ/(n+2)</text>
+        <g transform="translate(590,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">요령</text>
+          <text x="0" y="28" class="t-dim">y″의 첨자를 n → n + 2로</text>
+          <text x="0" y="50" class="t-dim">옮겨 세 합 모두 xⁿ으로.</text>
+          <text x="0" y="80" class="t-dim">세로 한 열의 합이 0이어야</text>
+          <text x="0" y="102" class="t-dim">한다(급수의 유일성).</text>
+          <text x="0" y="132" class="t-dim">x⁰ 열은 따로 확인:</text>
+          <text x="0" y="154" class="t-mono">2a₂ − a₀ = 0</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 14-1.</b> 급수를 넣은 뒤 같은 거듭제곱끼리 세로로 맞추면 한 열마다 식 하나가 나온다. 일반항이 점화식이다. 첫 몇 열(여기서는 x⁰)은 일반항과 모양이 다를 수 있으니 따로 확인한다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 14.1 (상수계수 방정식을 급수로: \(y'' + y = 0\))</strong> 급수로 풀어 이미 아는 답과 맞는지 확인하라.
+      <ol>
+        <li>\(y'' = \sum_{n\ge0}(n+2)(n+1)a_{n+2}x^n\)이므로 \(\sum\bigl[(n+2)(n+1)a_{n+2} + a_n\bigr]x^n = 0\).</li>
+        <li>점화식: \(a_{n+2} = -\dfrac{a_n}{(n+2)(n+1)}\). 짝수 첨자는 \(a_0\)에서, 홀수 첨자는 \(a_1\)에서만 나온다.</li>
+        <li>\(a_2 = -\frac{a_0}{2!}\), \(a_4 = \frac{a_0}{4!}\), …, \(a_3 = -\frac{a_1}{3!}\), \(a_5 = \frac{a_1}{5!}\), …</li>
+        <li>\(y = a_0\bigl(1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \cdots\bigr) + a_1\bigl(x - \frac{x^3}{3!} + \cdots\bigr) = a_0\cos x + a_1\sin x\). 특성 방정식과 같은 답이다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 14.2 (\(y'' - xy' - y = 0\))</strong> 문제의 방정식을 풀어라.
+      <ol>
+        <li>\(xy' = \sum na_nx^n\)은 첨자를 옮길 필요가 없다. 따라서 \(\sum\bigl[(n+2)(n+1)a_{n+2} - na_n - a_n\bigr]x^n = 0\).</li>
+        <li>점화식: \((n+2)(n+1)a_{n+2} = (n+1)a_n\), 즉 \(a_{n+2} = \dfrac{a_n}{n+2}\).</li>
+        <li>짝수: \(a_2 = \frac{a_0}{2}\), \(a_4 = \frac{a_0}{2\cdot4}\), \(a_{2k} = \frac{a_0}{2^k k!}\). 따라서 \(y_1 = \sum\frac{(x^2/2)^k}{k!} = e^{x^2/2}\). 대입해 보면 \(y_1' = xy_1\), \(y_1'' = (1 + x^2)y_1\)이고 \(y_1'' - xy_1' - y_1 = 0\)이 맞다.</li>
+        <li>홀수: \(a_3 = \frac{a_1}{3}\), \(a_5 = \frac{a_1}{15}\), \(a_7 = \frac{a_1}{105}\), … 이므로 \(y_2 = x + \frac{x^3}{3} + \frac{x^5}{15} + \frac{x^7}{105} + \cdots\). 이 급수는 기본 함수로 깔끔히 쓰이지 않지만(오차 함수와 관련), 급수 자체가 해다.</li>
+        <li>수치 확인: \(y(0) = 1,\ y'(0) = 0\)으로 RK4를 \(x = 1.5\)까지 적분하면 3.080217, \(e^{1.125} = 3.080217\).</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 항의 개수 \(N\)을 늘려 가며 부분합이 참 해(수치 적분)에 붙어 가는 모습을 보세요. 부분합은 \(x = 0\) 근처에서 먼저 맞고, 항이 늘수록 맞는 구간이 바깥으로 넓어집니다. 다만 마지막 예인 \((1 - x)y' = y\)에서는 아무리 늘려도 \(|x| \lt 1\) 밖으로 나가지 못합니다. 그 이유가 3절의 주제입니다.</p>
+
+    <div class="sim" id="sim-ss-partial">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>급수해의 부분합: 항을 늘리면 맞는 구간이 넓어진다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ss-cv-part"></canvas><span class="tag-tl" id="ss-pa-tag">—</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="ss-pa-eq">
+            <option value="cos">y″ + y = 0, y(0) = 1, y′(0) = 0</option>
+            <option value="gauss">y″ − xy′ − y = 0, y(0) = 1, y′(0) = 0</option>
+            <option value="airy">y″ = xy, y(0) = 1, y′(0) = 0</option>
+            <option value="geo">(1 − x)y′ = y, y(0) = 1</option>
+          </select></label>
+          <label class="ctrl"><span>항의 개수 N <output id="ss-pa-n-out"></output></span><input type="range" id="ss-pa-n" min="1" max="40" step="1" value="6"></label>
+          <label class="ctrl"><span>비교할 점 x* <output id="ss-pa-x-out"></output></span><input type="range" id="ss-pa-x" min="-1" max="1" step="0.01" value="0.6"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">부분합 S<sub>N</sub>(x*)</span><span class="v" id="ss-pa-s">—</span></div>
+        <div class="stat"><span class="k">참 해 y(x*)</span><span class="v" id="ss-pa-y">—</span></div>
+        <div class="stat"><span class="k">오차</span><span class="v" id="ss-pa-e">—</span></div>
+        <div class="stat"><span class="k">오차 &lt; 0.01인 구간</span><span class="v" id="ss-pa-int">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① cos에서 N을 2, 4, 8, 16으로 늘리며 녹색 구간(오차 &lt; 0.01)이 넓어지는 것을 보세요. 항 하나가 늘 때마다 맞는 범위가 대략 일정하게 늘어납니다. ② 에어리에서는 x &lt; 0쪽 진동을 따라잡으려면 항이 많이 필요합니다. ③ (1 − x)y′ = y에서는 N = 40이어도 x = 1 너머에서 부분합이 해(1/(1 − x))를 따라가지 못합니다. 모델: 부분합은 점화식으로 구한 계수, 참 해는 RK4(Δx = 0.005) 또는 닫힌 꼴입니다.</div>
+    </div>
+
+    <p>점화식은 방정식마다 모양이 다르고, 그 모양이 해의 성격을 말해 줍니다. 점화식이 두 칸씩 건너뛰면 짝·홀 해가 나뉘고, 세 칸씩 건너뛰면(에어리) 해가 세 갈래 무늬를 가지며, 어느 \(n\)에서 분자가 0이 되면 급수가 끝나 <b>다항식 해</b>가 됩니다. 계수의 크기가 줄어드는 속도는 수렴 반지름을 알려 줍니다. 비 판정법에 따라 \(\lim|a_n/a_{n+2}|^{1/2}\)이 두 칸 점화식의 수렴 반지름입니다.</p>
+
+    <div class="sim" id="sim-ss-recurrence">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점화식 계수표: 급수가 끝나는 순간과 계수가 줄어드는 속도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ss-cv-rec"></canvas><span class="tag-tl">log₁₀|aₙ| (n = 0 … 30)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방정식</span><select id="ss-rc-eq">
+            <option value="herm">에르미트 y″ − 2xy′ + 2λy = 0</option>
+            <option value="leg">르장드르 (1 − x²)y″ − 2xy′ + λ(λ + 1)y = 0</option>
+            <option value="airy">에어리 y″ = xy</option>
+            <option value="cos">y″ + y = 0</option>
+          </select></label>
+          <label class="ctrl"><span>매개변수 λ <output id="ss-rc-l-out"></output></span><input type="range" id="ss-rc-l" min="0" max="6" step="0.25" value="4"></label>
+          <div class="ctrl"><span>초기값</span><div class="seg" id="ss-rc-ic"><button data-value="even" class="on">a₀ = 1, a₁ = 0</button><button data-value="odd">a₀ = 0, a₁ = 1</button></div></div>
+        </div>
+      </div>
+      <div class="ss-formula" id="ss-rc-f">—</div>
+      <div class="ss-coef" id="ss-rc-tab"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">급수</span><span class="v" id="ss-rc-end">—</span></div>
+        <div class="stat"><span class="k">수렴 반지름 어림</span><span class="v" id="ss-rc-R">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 에르미트에서 λ = 4, 짝수 초기값이면 a₆부터 0이 되어 다항식 1 − 4x² + (4/3)x⁴가 남습니다. λ = 4.25로 바꾸면 끝나지 않습니다. ② 르장드르에서 λ가 정수가 아니면 계수가 거의 일정한 크기로 남아 수렴 반지름이 1이 됩니다(x = ±1이 특이점). ③ 에어리와 cos은 계수가 계승처럼 빨리 줄어 반지름이 무한대입니다. 모델: 점화식을 정확히 계산하고, 반지름은 마지막 0이 아닌 두 계수의 비로 어림합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="airy">
+    <h2>에어리 방정식: 진동과 감쇠가 만나는 곳</h2>
+    <div class="problem"><strong>무지개 가장자리의 밝기</strong>
+      <p>기하 광학은 무지개 각도에서 빛이 무한히 밝다고 예측합니다. 광선이 모이는 경계(꼭짓점, 코스틱)에서 광선 수가 갑자기 바뀌기 때문입니다. 실제 무지개는 유한하게 밝고, 안쪽에 희미한 띠(과잉 무지개)가 줄지어 있습니다. 1838년 에어리<span class="en">(George Biddell Airy)</span>는 코스틱 근처 빛의 세기를 파동으로 계산하며 지금 그의 이름이 붙은 적분을 다루었습니다. 같은 방정식이 기울어진 퍼텐셜 속의 양자 입자에도 나옵니다.</p></div>
+    <div class="formula">$$y'' = xy.$$
+      <div class="where">\(x > 0\)이면 \(y''\)이 \(y\)와 같은 부호라 해가 지수처럼 휘어 나가고, \(x \lt 0\)이면 반대 부호라 \(y'' + |x|y = 0\)인 진동이 된다. 한 방정식 안에 두 성격이 \(x = 0\)을 경계로 붙어 있다.</div></div>
+    <p>\(x = 0\)은 보통점입니다(계수가 다항식). 급수를 넣으면 \(y'' = \sum(n+2)(n+1)a_{n+2}x^n\), \(xy = \sum a_{n-1}x^n\)(\(n \ge 1\))이므로 \(x^0\)의 계수에서 \(2a_2 = 0\), 나머지에서</p>
+    <div class="formula">$$a_{n+2} = \frac{a_{n-1}}{(n+2)(n+1)} \quad (n \ge 1), \qquad a_2 = 0.$$
+      <div class="where">세 칸 점화식: \(a_0 \to a_3 \to a_6 \to \cdots\), \(a_1 \to a_4 \to a_7 \to \cdots\), \(a_2 = a_5 = a_8 = \cdots = 0\).</div></div>
+    <div class="callout"><strong>예제 14.3 (에어리 방정식의 두 기본해)</strong> 두 기본해의 첫 세 항을 구하라.
+      <ol>
+        <li>\(a_0 = 1,\ a_1 = 0\): \(a_3 = \frac{1}{3\cdot2} = \frac16\), \(a_6 = \frac{a_3}{6\cdot5} = \frac{1}{180}\), \(a_9 = \frac{a_6}{9\cdot8} = \frac{1}{12960}\). \(y_1 = 1 + \frac{x^3}{6} + \frac{x^6}{180} + \frac{x^9}{12960} + \cdots\).</li>
+        <li>\(a_0 = 0,\ a_1 = 1\): \(a_4 = \frac{1}{4\cdot3} = \frac1{12}\), \(a_7 = \frac{a_4}{7\cdot6} = \frac1{504}\). \(y_2 = x + \frac{x^4}{12} + \frac{x^7}{504} + \cdots\).</li>
+        <li>분모가 \(n^2\)처럼 자라므로 계수는 계승보다 빨리 줄고, 두 급수는 모든 \(x\)에서 수렴한다.</li>
+        <li>물리에서 쓰는 표준 해는 \(x \to +\infty\)에서 0으로 가는 <span class="term">에어리 함수</span> \(\mathrm{Ai}(x) = c_1y_1 - c_2y_2\)와, 커지는 \(\mathrm{Bi}(x)\)이다. 여기서 \(c_1 = \mathrm{Ai}(0) \approx 0.35503\), \(c_2 = -\mathrm{Ai}'(0) \approx 0.25882\). 급수로 계산한 \(\mathrm{Ai}(1) = 0.135292\)는 표의 값과 여섯 자리까지 같다.</li>
+      </ol></div>
+    <p>\(x \lt 0\)에서 진동의 "국소 진동수"는 \(\sqrt{|x|}\)입니다. \(y'' + |x|y = 0\)에서 \(|x|\)를 잠시 상수로 보면 \(\cos(\sqrt{|x|}\,x)\) 꼴이기 때문입니다. 그래서 왼쪽으로 갈수록 진동이 빨라지고, 진폭은 에너지 보존 비슷한 논리로 \(|x|^{-1/4}\)처럼 줄어듭니다. 정밀한 근사(WKB)는 \(\mathrm{Ai}(x) \approx \pi^{-1/2}|x|^{-1/4}\sin\bigl(\tfrac23|x|^{3/2} + \tfrac\pi4\bigr)\)입니다. \(\mathrm{Ai}\)의 영점은 \(-2.338,\ -4.088,\ -5.521, \dots\)으로 점점 촘촘해집니다.</p>
+
+    <div class="sim" id="sim-ss-airy">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>에어리 함수: 왼쪽은 진동, 오른쪽은 지수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ss-cv-airy"></canvas><span class="tag-tl">Ai(x)(주황), Bi(x)(청록)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>살펴볼 점 x₀ <output id="ss-ai-x-out"></output></span><input type="range" id="ss-ai-x" min="-12" max="2" step="0.02" value="-4"></label>
+          <label class="check"><input type="checkbox" id="ss-ai-wkb" checked> 근사 포락선 ±π<sup>−1/2</sup>|x|<sup>−1/4</sup></label>
+          <label class="check"><input type="checkbox" id="ss-ai-bi" checked> Bi(x)도 그리기</label>
+          <label class="check"><input type="checkbox" id="ss-ai-loc"> x₀에서 국소 진동 cos 겹치기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Ai(x₀)</span><span class="v" id="ss-ai-v">—</span></div>
+        <div class="stat"><span class="k">y″/y = x₀</span><span class="v" id="ss-ai-k">—</span></div>
+        <div class="stat"><span class="k">국소 파장 2π/√|x₀|</span><span class="v" id="ss-ai-lam">—</span></div>
+        <div class="stat"><span class="k">x₀보다 오른쪽 영점</span><span class="v" id="ss-ai-z">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x₀을 −2에서 −12로 옮기며 국소 파장이 짧아지는 것을 보세요. ② 포락선이 진폭을 잘 따라가지만 x = 0 근처에서는 맞지 않습니다(근사가 깨지는 전환점). ③ x₀ &gt; 0이면 y″/y &gt; 0이라 해가 축에서 멀어지는 쪽으로 휩니다. Ai는 그중 0으로 가는 단 하나의 해입니다. 모델: Ai(0) = 0.355028, Ai′(0) = −0.258819(Bi는 0.614927, 0.448288)에서 양쪽으로 RK4(Δx = 0.005).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2b -->
+  <section id="hermite">
+    <h2>급수가 끝나야 한다: 에르미트 방정식과 양자화</h2>
+    <div class="problem"><strong>원자 속 용수철의 에너지는 왜 띄엄띄엄한가</strong>
+      <p>분자의 결합은 작은 진동에서 용수철처럼 행동합니다. 양자역학에서 이 진동자의 파동 함수는 슈뢰딩거 방정식을 따르고, 무차원 변수로 쓰면 \(\psi'' + (\varepsilon - x^2)\psi = 0\)이 됩니다. 파동 함수는 \(x \to \pm\infty\)에서 0으로 가야 확률로 해석할 수 있습니다. 이 조건 하나가 에너지 \(\varepsilon\)를 띄엄띄엄한 값으로 묶습니다. 급수해가 그 이유를 가장 직접적으로 보여 줍니다.</p></div>
+    <p>큰 \(|x|\)에서 \(\psi'' \approx x^2\psi\)이므로 \(\psi \approx e^{-x^2/2}\)처럼 줄어드는 해를 기대하고 \(\psi = y(x)e^{-x^2/2}\)로 두면, \(y\)는 <span class="term">에르미트 방정식</span>을 만족합니다.</p>
+    <div class="formula">$$y'' - 2xy' + 2\lambda y = 0, \qquad \varepsilon = 2\lambda + 1.$$
+      <div class="where">점화식: \(a_{n+2} = \dfrac{2(n - \lambda)}{(n+2)(n+1)}\,a_n\).</div></div>
+    <p>급수가 끝나지 않으면 큰 \(n\)에서 \(a_{n+2}/a_n \approx 2/n\)인데, 이것은 \(e^{x^2} = \sum\frac{x^{2k}}{k!}\)의 계수 비와 같습니다. 그러면 \(y \sim e^{x^2}\)이 되어 \(\psi = ye^{-x^2/2} \sim e^{x^2/2}\)가 무한대로 커집니다. 파동 함수가 0으로 가려면 <b>급수가 다항식으로 끝나야</b> 하고, 그러려면 \(\lambda = n\)이 0 이상의 정수여야 합니다. 따라서 \(\varepsilon = 2n + 1\), 즉 진동자의 에너지는 \(\hbar\omega\bigl(n + \tfrac12\bigr)\)로 양자화됩니다.</p>
+    <div class="callout"><strong>예제 14.4 (λ = 4의 다항식 해)</strong> \(\lambda = 4\)일 때 짝수 해를 구하라.
+      <ol>
+        <li>\(a_0 = 1\): \(a_2 = \frac{2(0 - 4)}{2\cdot1} = -4\), \(a_4 = \frac{2(2 - 4)}{4\cdot3}a_2 = -\frac13\cdot(-4) = \frac43\), \(a_6 = \frac{2(4 - 4)}{6\cdot5}a_4 = 0\).</li>
+        <li>\(y = 1 - 4x^2 + \frac43x^4\). 최고차 계수를 \(2^4 = 16\)으로 맞추면 물리학에서 쓰는 에르미트 다항식 \(H_4 = 16x^4 - 48x^2 + 12\)이다(\(12y\)).</li>
+        <li>검산: \(y'' - 2xy' + 8y = (-8 + 16x^2) - 2x(-8x + \frac{16}{3}x^3) + 8 - 32x^2 + \frac{32}{3}x^4 = 0\).</li>
+      </ol></div>
+    <p>르장드르 방정식에서 "극에서 유한"이라는 조건이 \(\lambda\)를 정수로 묶은 것과 똑같은 구조입니다. 경계 조건이 매개변수를 고유값으로 바꾸는 이 현상은 15장의 고유값 문제에서 일반 이론이 됩니다. 앞 절의 점화식 계수표 시뮬레이터에서 에르미트를 골라 λ를 정수와 비정수로 바꿔 보세요.</p>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="radius">
+    <h2>수렴 반지름과 특이점까지의 거리</h2>
+    <div class="problem"><strong>실수축에 아무 문제가 없는데 수렴이 멈춘다</strong>
+      <p>\((1 + x^2)y'' + 2xy' = 0\)은 모든 실수 \(x\)에서 \(1 + x^2 \ne 0\)이라 특이점이 없어 보입니다. 그런데 \(x = 0\)에서 급수로 풀면 그 급수는 \(|x| \lt 1\)에서만 수렴합니다. 1이라는 숫자는 어디서 왔을까요?</p></div>
+    <p>답은 복소평면에 있습니다. \(1 + x^2 = 0\)은 \(x = \pm i\)에서 성립하고, 원점에서 \(\pm i\)까지의 거리가 1입니다. 거듭제곱 급수는 원판 위에서 수렴하므로, 실수축 위의 구간이 아니라 <b>복소평면의 원</b>이 수렴 범위를 정합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="복소평면의 특이점과 수렴 원">
+        <rect x="8" y="8" width="744" height="254" rx="10" class="f-surface"/>
+        <line x1="40" y1="140" x2="470" y2="140" class="s-axis"/><line x1="200" y1="24" x2="200" y2="256" class="s-axis"/>
+        <circle cx="200" cy="140" r="80" style="fill:var(--accent);opacity:.12"/>
+        <circle cx="200" cy="140" r="80" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+        <circle cx="320" cy="140" r="144" fill="none" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:6 5"/>
+        <g style="stroke:var(--bad);stroke-width:2.6"><path d="M193 53 L207 67 M207 53 L193 67"/><path d="M193 213 L207 227 M207 213 L193 227"/></g>
+        <text x="212" y="52" class="t" style="fill:var(--bad);font-weight:700">+i</text><text x="212" y="236" class="t" style="fill:var(--bad);font-weight:700">−i</text>
+        <circle cx="200" cy="140" r="4.5" style="fill:var(--accent)"/><circle cx="320" cy="140" r="4.5" style="fill:var(--accent-2)"/>
+        <text x="186" y="158" class="t-mono" text-anchor="end">0</text><text x="320" y="160" class="t-mono" text-anchor="middle">x₀ = 1.5</text>
+        <line x1="320" y1="140" x2="200" y2="60" style="stroke:var(--accent-2);stroke-width:1.4"/>
+        <text x="270" y="92" class="t-mono" style="fill:var(--accent-2)">√(1 + x₀²)</text>
+        <text x="460" y="132" class="t-mono" text-anchor="end">Re</text><text x="208" y="34" class="t-mono">Im</text>
+        <g transform="translate(500,50)">
+          <text x="0" y="0" class="t" style="font-weight:700">(1 + x²)y″ + 2xy′ = 0</text>
+          <text x="0" y="30" class="t-dim">특이점: 1 + x² = 0 → x = ±i</text>
+          <text x="0" y="58" class="t-dim">x₀ = 0 둘레: 반지름 1</text>
+          <text x="0" y="80" class="t-dim">  (실수축에서 −1 &lt; x &lt; 1)</text>
+          <text x="0" y="108" class="t-dim">x₀ = 1.5 둘레: 반지름 √3.25</text>
+          <text x="0" y="130" class="t-dim">  ≈ 1.80</text>
+          <text x="0" y="164" class="t-dim">원은 가장 가까운 특이점에</text>
+          <text x="0" y="186" class="t-dim">닿을 때까지 커질 수 있다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 14-2.</b> 거듭제곱 급수는 복소평면의 원판에서 수렴한다. 실수축만 보면 막힘이 없어도, 원이 ±i에 닿는 순간 더 커질 수 없다. 전개 중심을 옮기면 특이점까지의 거리, 곧 반지름이 바뀐다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 14.2 (급수해의 존재와 수렴 반지름)</strong> \(x_0\)이 \(y'' + p(x)y' + q(x)y = 0\)의 보통점이고 \(p, q\)의 \(x_0\) 둘레 급수가 \(|x - x_0| \lt R\)에서 수렴하면, 임의의 \(a_0, a_1\)에 대해 해 \(y = \sum a_n(x - x_0)^n\)이 유일하게 존재하고 이 급수도 \(|x - x_0| \lt R\)에서 수렴한다. 특히 \(p, q\)가 다항식의 비이면 수렴 반지름은 <b>\(x_0\)에서 복소평면의 가장 가까운 특이점까지의 거리</b> 이상이다.</div>
+    <div class="callout"><strong>예제 14.5 (아크탄젠트를 낳는 방정식)</strong> \((1 + x^2)y'' + 2xy' = 0,\ y(0) = 0,\ y'(0) = 1\)을 풀고 \(x_0\)에서의 수렴 반지름을 구하라.
+      <ol>
+        <li>왼쪽은 \(\bigl((1 + x^2)y'\bigr)'\)이다. 따라서 \((1 + x^2)y' = C\), \(y' = \frac{C}{1 + x^2}\), \(y = C\arctan x + D\). 초기 조건으로 \(y = \arctan x\).</li>
+        <li>급수: \(\arctan x = x - \frac{x^3}{3} + \frac{x^5}{5} - \cdots\). 계수의 크기가 \(1/n\)이므로 반지름은 1이고, 실제로 \(x = 1.2\)에서 부분합은 진동하며 발산한다.</li>
+        <li>정리 14.2: 특이점은 \(\pm i\). \(x_0\) 둘레 급수의 반지름은 \(|x_0 - i| = \sqrt{1 + x_0^2}\) 이상이고, \(\arctan\)이 \(\pm i\)에서 실제로 발산하므로 정확히 \(\sqrt{1 + x_0^2}\)이다. \(x_0 = 1\)이면 \(\sqrt2 \approx 1.414\).</li>
+        <li>수치 확인: \(x_0 = 1\) 둘레 급수 40항을 \(x = 1.5\)에서 더하면 0.9827937, \(\arctan 1.5 = 0.9827937\).</li>
+      </ol></div>
+    <p>같은 이유로 르장드르 방정식 \((1 - x^2)y'' - 2xy' + \lambda(\lambda + 1)y = 0\)의 원점 둘레 급수는 특이점 \(x = \pm1\) 때문에 반지름이 1이고, 에어리·에르미트처럼 계수가 다항식이고 \(P(x) = 1\)인 방정식은 특이점이 없어 반지름이 무한대입니다. 아래 시뮬레이터에서 전개 중심 \(x_0\)을 끌어 수렴 원이 커지고 작아지는 것을 보세요.</p>
+
+    <div class="sim" id="sim-ss-radius">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>수렴 원: 전개 중심을 옮기면 반지름이 바뀐다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ss-two">
+          <div><canvas id="ss-cv-cplx"></canvas><span class="ss-cap">복소평면: 특이점 ±i와 수렴 원 (x₀ 끌기)</span></div>
+          <div><canvas id="ss-cv-atan"></canvas><span class="ss-cap">arctan x(검정)와 x₀ 둘레 부분합</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>전개 중심 x₀ <output id="ss-ra-x-out"></output></span><input type="range" id="ss-ra-x" min="-2.5" max="2.5" step="0.01" value="0"></label>
+          <label class="ctrl"><span>항의 개수 N <output id="ss-ra-n-out"></output></span><input type="range" id="ss-ra-n" min="2" max="60" step="1" value="20"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">특이점까지 거리 √(1 + x₀²)</span><span class="v" id="ss-ra-R">—</span></div>
+        <div class="stat"><span class="k">수렴 구간(실수축)</span><span class="v" id="ss-ra-int">—</span></div>
+        <div class="stat"><span class="k">계수 비로 어림한 반지름</span><span class="v" id="ss-ra-est">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x₀ = 0에서 N을 60까지 늘려도 부분합이 |x| &gt; 1에서 위아래로 튀는 것을 보세요. ② x₀을 2로 옮기면 반지름이 √5 ≈ 2.24로 커져 같은 N으로 더 넓게 맞습니다. ③ 계수 비로 어림한 반지름이 √(1 + x₀²)과 맞는지 확인하세요. 모델: 방정식에서 직접 얻은 점화식 b<sub>n+1</sub> = −(2x₀b<sub>n</sub> + b<sub>n−1</sub>)/(1 + x₀²)로 y′의 계수 b<sub>n</sub>을 구하고, a<sub>n+1</sub> = b<sub>n</sub>/(n + 1)입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="regular-singular">
+    <h2>정칙 특이점과 지표 방정식</h2>
+    <div class="problem"><strong>원판의 중심에서</strong>
+      <p>원형 막의 반지름 방정식 \(r^2R'' + rR' + (k^2r^2 - n^2)R = 0\)을 \(R''\)의 계수로 나누면 \(p = 1/r\), \(q = k^2 - n^2/r^2\)이라 중심 \(r = 0\)이 특이점입니다. 그런데 우리가 가장 알고 싶은 곳이 바로 막의 중심입니다. 특이점에서는 거듭제곱 급수 해가 없을 수도 있습니다. 해가 \(r^{-n}\)처럼 터지거나 \(\ln r\)을 품을 수 있기 때문입니다.</p></div>
+    <p>모든 특이점이 다루기 어려운 것은 아닙니다. 6장의 코시–오일러 방정식 \(x^2y'' + p_0xy' + q_0y = 0\)은 \(x = 0\)이 특이점이지만 \(y = x^r\)을 넣으면 \(r(r - 1) + p_0r + q_0 = 0\)이 되어 바로 풀렸습니다. 특이점 근처에서 방정식이 코시–오일러 방정식처럼 생겼다면, 해도 \(x^r\) 곱하기 급수처럼 생겼으리라 기대할 수 있습니다.</p>
+    <div class="callout deep"><strong>정의 14.3 (정칙 특이점과 지표 방정식)</strong> \(x_0 = 0\)이 \(y'' + p(x)y' + q(x)y = 0\)의 특이점이고, \(xp(x)\)와 \(x^2q(x)\)가 0에서 해석적이면 0을 <span class="term">정칙 특이점</span><span class="en">(regular singular point)</span>이라 한다. 그렇지 않은 특이점은 비정칙(irregular) 특이점이다. \(p_0 = \lim_{x\to0}xp(x)\), \(q_0 = \lim_{x\to0}x^2q(x)\)로 놓은
+      <div class="formula">$$r(r - 1) + p_0r + q_0 = 0$$</div>
+      을 <span class="term">지표 방정식</span><span class="en">(indicial equation)</span>, 그 근 \(r_1 \ge r_2\)(실수일 때)를 지표라 한다.</div>
+    <div class="callout"><strong>예제 14.6 (\(2xy'' + y' + y = 0\))</strong> 0이 정칙 특이점임을 보이고 두 해를 구하라.
+      <ol>
+        <li>\(p = \frac{1}{2x}\), \(q = \frac{1}{2x}\). \(xp = \frac12\), \(x^2q = \frac x2\)는 해석적이므로 정칙 특이점이다. \(p_0 = \frac12,\ q_0 = 0\).</li>
+        <li>지표 방정식: \(r(r - 1) + \frac r2 = 0\), \(r\bigl(r - \frac12\bigr) = 0\). 지표 \(r_1 = \frac12,\ r_2 = 0\). 차가 정수가 아니다.</li>
+        <li>\(y = \sum a_nx^{n+r}\)을 넣고 \(x^{n+r-1}\)의 계수를 모으면 \(2(n+r)(n+r-1)a_n + (n+r)a_n + a_{n-1} = 0\), 즉 \((n + r)(2n + 2r - 1)a_n = -a_{n-1}\).</li>
+        <li>\(r = 0\): \(a_n = -\frac{a_{n-1}}{n(2n-1)}\). \(a_0 = 1\)이면 \(1,\ -1,\ \frac16,\ -\frac1{90}, \dots\), 즉 \(y_1 = 1 - x + \frac{x^2}{6} - \frac{x^3}{90} + \cdots = \cos\sqrt{2x}\).</li>
+        <li>\(r = \frac12\): \(a_n = -\frac{a_{n-1}}{n(2n+1)}\). \(1,\ -\frac13,\ \frac1{30}, \dots\), 즉 \(y_2 = x^{1/2}\bigl(1 - \frac x3 + \frac{x^2}{30} - \cdots\bigr) = \frac{\sin\sqrt{2x}}{\sqrt2}\).</li>
+        <li>수치 확인: \(x = 0.5\)에서 \(y_1\)의 값과 기울기로 출발해 RK4로 \(x = 3\)까지 적분하면 \(-0.769906\), \(\cos\sqrt6 = -0.769906\).</li>
+      </ol></div>
+    <p>지표의 모양은 해가 특이점 근처에서 어떻게 생겼는지를 말해 줍니다. 아래 시뮬레이터는 가장 단순한 경우인 코시–오일러 방정식 \(x^2y'' + p_0xy' + q_0y = 0\)으로 이것을 보여 줍니다. \(p_0, q_0\)을 바꾸면 지표 방정식의 포물선이 움직이고, 근의 종류에 따라 해의 모양이 바뀝니다.</p>
+
+    <div class="sim" id="sim-ss-frobenius">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>지표 방정식: 근의 종류가 특이점 근처 해의 모양을 정한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ss-two">
+          <div><canvas id="ss-cv-ind"></canvas><span class="ss-cap">지표 다항식 r(r − 1) + p₀r + q₀</span></div>
+          <div><canvas id="ss-cv-eul"></canvas><span class="ss-cap">두 기본해, 0 &lt; x ≤ 2</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>p₀ <output id="ss-fr-p-out"></output></span><input type="range" id="ss-fr-p" min="-3" max="4" step="0.05" value="1"></label>
+          <label class="ctrl"><span>q₀ <output id="ss-fr-q-out"></output></span><input type="range" id="ss-fr-q" min="-3" max="4" step="0.05" value="-0.25"></label>
+          <div class="ctrl"><span>예</span><div class="seg" id="ss-fr-pre"><button data-value="ex">예제 14.6</button><button data-value="b0">베셀 ν = 0</button><button data-value="b1">베셀 ν = 1</button><button data-value="cx">복소근</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지표 r₁, r₂</span><span class="v" id="ss-fr-r">—</span></div>
+        <div class="stat"><span class="k">r₁ − r₂</span><span class="v" id="ss-fr-d">—</span></div>
+        <div class="stat"><span class="k">두 번째 해</span><span class="v" id="ss-fr-case">—</span></div>
+      </div>
+      <div class="ss-msg" id="ss-fr-msg"></div>
+      <div class="sim-note">해볼 것: ① '베셀 ν = 0'(p₀ = 1, q₀ = 0)을 누르면 중근 r = 0이 되어 두 번째 해가 ln x를 가집니다. x → 0에서 하나는 유한, 하나는 −∞로 갑니다. ② '복소근'에서는 x<sup>α</sup>cos(β ln x)가 0 근처에서 무한히 빨리 진동합니다. ③ q₀를 줄여 근을 벌리면 r₂ &lt; 0인 해가 0에서 터집니다. 물리 문제(막의 중심)에서는 이런 해를 버립니다. 모델: 코시–오일러 방정식의 정확한 해(근이 차가 정수인 일반 방정식에서는 로그가 생길 수도, 생기지 않을 수도 있습니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="frobenius">
+    <h2>프로베니우스 방법</h2>
+    <p>정칙 특이점에서 해를 \(y = x^r\sum_{n\ge0}a_nx^n\ (a_0 \ne 0)\)으로 두고 계수를 정하는 방법을 <span class="term">프로베니우스 방법</span><span class="en">(Frobenius method)</span>이라 합니다. 1870년대 프로베니우스<span class="en">(Ferdinand Georg Frobenius)</span>가 이 방법을 체계화했습니다. 가장 낮은 차수의 계수를 모으면 지표 방정식이 나오고, 그다음 차수부터는 점화식이 나옵니다. 문제는 두 번째 해입니다.</p>
+    <div class="callout deep"><strong>정리 14.4 (프로베니우스)</strong> 0이 정칙 특이점이고 \(xp(x),\ x^2q(x)\)의 급수가 \(|x| \lt R\)에서 수렴하며, 지표 \(r_1 \ge r_2\)가 실수라 하자. \(0 \lt x \lt R\)에서
+      <ol>
+        <li>\(y_1 = x^{r_1}\sum_{n\ge0}a_nx^n\)(\(a_0 = 1\)) 꼴의 해가 늘 있다.</li>
+        <li>\(r_1 - r_2\)가 <b>정수가 아니면</b> \(y_2 = x^{r_2}\sum b_nx^n\)도 해이고 \(y_1, y_2\)는 독립이다.</li>
+        <li>\(r_1 = r_2\)이면 \(y_2 = y_1\ln x + x^{r_1}\sum_{n\ge1}b_nx^n\).</li>
+        <li>\(r_1 - r_2\)가 <b>양의 정수</b>이면 \(y_2 = C\,y_1\ln x + x^{r_2}\sum_{n\ge0}b_nx^n\)이고, 상수 \(C\)는 0일 수도 있다.</li>
+      </ol>
+      모든 급수는 \(|x| \lt R\)에서 수렴한다.</div>
+    <p>근의 차가 정수일 때 문제가 생기는 이유는 점화식을 보면 알 수 있습니다. 일반적으로 점화식은 \(F(n + r)a_n = (\text{앞 계수들의 식})\)의 꼴이고, \(F(r)\)이 지표 다항식입니다. \(r = r_2\)로 계산하다 \(n = r_1 - r_2\)에 이르면 \(F(r_2 + n) = F(r_1) = 0\)이 되어 그 계수를 정할 수 없습니다. 오른쪽도 우연히 0이면 \(a_n\)을 아무 값으로나 두고 넘어가면 되고(\(C = 0\)), 0이 아니면 거듭제곱 급수만으로는 해를 만들 수 없어 \(\ln x\)가 끼어듭니다. 중근이면 아예 두 번째 지표가 없으니 로그가 반드시 필요합니다. 로그 해를 실제로 구하는 데는 6장의 계수 내리기(\(y_2 = y_1\int\frac{e^{-\int p}}{y_1^2}dx\))를 쓸 수 있습니다.</p>
+    <div class="callout"><strong>예제 14.7 (차가 정수인데 로그가 없는 경우: 베셀 \(\nu = \tfrac12\))</strong> \(x^2y'' + xy' + (x^2 - \frac14)y = 0\)의 두 해를 구하라.
+      <ol>
+        <li>\(p_0 = 1,\ q_0 = -\frac14\). 지표 방정식 \(r^2 - \frac14 = 0\), \(r = \pm\frac12\). 차가 1(정수)이다.</li>
+        <li>점화식은 \(\bigl((n + r)^2 - \frac14\bigr)a_n = -a_{n-2}\)(\(x^2\cdot y\) 항이 두 칸 옮김). \(r = -\frac12\)에서 \(n = 1\)이면 왼쪽 계수 \(\frac14 - \frac14 = 0\)인데 오른쪽 \(a_{-1} = 0\)이라 문제없다. 로그가 필요 없다(\(C = 0\)).</li>
+        <li>\(r = -\frac12,\ a_0 = 1,\ a_1 = 0\): \(a_n = -\frac{a_{n-2}}{n(n-1)}\)이므로 \(a_2 = -\frac12\), \(a_4 = \frac1{24}\), … 즉 \(y = x^{-1/2}\cos x\). 같은 방식으로 \(r = \frac12\)에서 \(x^{-1/2}\sin x\).</li>
+        <li>표준 정규화로 \(J_{1/2}(x) = \sqrt{\frac{2}{\pi x}}\sin x\), \(J_{-1/2}(x) = \sqrt{\frac{2}{\pi x}}\cos x\). 다음 절의 일반 급수에 \(x = 2\)를 넣어 계산한 값 0.513016, \(-0.234786\)이 이 닫힌 꼴과 같다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>주의: 비정칙 특이점</strong> \(x^3y'' + y = 0\)의 \(x = 0\)처럼 \(x^2q(x) = 1/x\)가 해석적이지 않으면 프로베니우스 급수가 존재한다는 보장이 없습니다. 이런 점에서는 해가 \(e^{c/x}\)처럼 본질적으로 특이한 모양을 가질 수 있습니다. 공학에서 만나는 베셀·르장드르·초기하 방정식은 다행히 모두 정칙 특이점만 가집니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="legendre">
+    <h2>르장드르 방정식과 다항식</h2>
+    <div class="problem"><strong>구 둘레의 퍼텐셜</strong>
+      <p>대전된 구나 행성 둘레의 퍼텐셜, 구 둘레의 정상 상태 온도는 라플라스 방정식을 따릅니다. 구면 좌표에서 축대칭인 해를 \(u = R(\rho)\Theta(\theta)\)로 변수분리하고 \(x = \cos\theta\)로 바꾸면, 각도 부분이 다음 방정식을 만족해야 합니다. 그리고 북극(\(x = 1\))과 남극(\(x = -1\))에서 해가 유한해야 합니다.</p></div>
+    <div class="formula">$$(1 - x^2)y'' - 2xy' + \lambda(\lambda + 1)y = 0, \qquad -1 \le x \le 1.$$
+      <div class="where">\(x = \pm1\)은 정칙 특이점, \(x = 0\)은 보통점. 르장드르<span class="en">(Adrien-Marie Legendre)</span>가 18세기 후반 행성의 중력 인력을 연구하며 이 다항식들을 도입했다.</div></div>
+    <p>원점 둘레 급수를 넣으면 \(y'' - x^2y'' - 2xy' + \lambda(\lambda+1)y\)에서 \(x^n\)의 계수가 \((n+2)(n+1)a_{n+2} - n(n-1)a_n - 2na_n + \lambda(\lambda+1)a_n\)이므로</p>
+    <div class="formula">$$a_{n+2} = \frac{n(n+1) - \lambda(\lambda + 1)}{(n+2)(n+1)}\,a_n = \frac{(n - \lambda)(n + \lambda + 1)}{(n+2)(n+1)}\,a_n.$$</div>
+    <p>분자에 \((n - \lambda)\)가 있습니다. \(\lambda = \ell\)이 0 이상의 정수이면 \(a_{\ell+2} = a_{\ell+4} = \cdots = 0\)이 되어, \(\ell\)과 같은 홀짝의 급수가 <b>\(\ell\)차 다항식으로 끝납니다</b>. 끝나지 않는 급수는 \(n\)이 커질 때 \(a_{n+2}/a_n \to 1\)이라 \(x = \pm1\)에서 발산합니다(로그처럼 천천히). 그래서 양 끝에서 유한한 해는 \(\lambda\)가 정수일 때의 다항식뿐입니다. 이 다항식을 \(P_\ell(1) = 1\)로 정규화한 것이 <span class="term">르장드르 다항식</span>입니다.</p>
+    <div class="table-wrap"><table class="ss-tbl">
+      <thead><tr><th>\(\ell\)</th><th>\(P_\ell(x)\)</th><th>\(\ell\)</th><th>\(P_\ell(x)\)</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>\(1\)</td><td>3</td><td>\(\tfrac12(5x^3 - 3x)\)</td></tr>
+        <tr><td>1</td><td>\(x\)</td><td>4</td><td>\(\tfrac18(35x^4 - 30x^2 + 3)\)</td></tr>
+        <tr><td>2</td><td>\(\tfrac12(3x^2 - 1)\)</td><td>5</td><td>\(\tfrac18(63x^5 - 70x^3 + 15x)\)</td></tr>
+      </tbody></table></div>
+    <div class="callout"><strong>예제 14.8 (점화식에서 \(P_3\) 만들기)</strong> \(\lambda = 3\)일 때 다항식 해를 구하고 정규화하라.
+      <ol>
+        <li>\(\ell = 3\)은 홀수이므로 홀수 급수(\(a_0 = 0\))가 끝난다. \(a_3 = \frac{(1 - 3)(1 + 4)}{3\cdot2}a_1 = -\frac{10}{6}a_1 = -\frac53a_1\).</li>
+        <li>\(a_5 = \frac{(3 - 3)(3 + 4)}{5\cdot4}a_3 = 0\), 그 뒤도 모두 0. 해는 \(a_1\bigl(x - \frac53x^3\bigr)\).</li>
+        <li>\(x = 1\)에서 1이 되게: \(a_1(1 - \frac53) = -\frac23a_1 = 1\), \(a_1 = -\frac32\). \(P_3 = -\frac32x + \frac52x^3 = \frac12(5x^3 - 3x)\).</li>
+        <li>검산: 보네 점화식 \((n + 1)P_{n+1} = (2n + 1)xP_n - nP_{n-1}\)에 \(n = 2\)를 넣으면 \(3P_3 = 5x\cdot\frac12(3x^2 - 1) - 2x = \frac{15x^3 - 9x}{2}\). 같다.</li>
+      </ol></div>
+    <p>르장드르 다항식은 로드리게스 공식 \(P_\ell(x) = \frac{1}{2^\ell\,\ell!}\frac{d^\ell}{dx^\ell}(x^2 - 1)^\ell\)으로도 쓸 수 있고, 무엇보다 서로 <b>직교</b>합니다.</p>
+    <div class="callout deep"><strong>정리 14.5 (르장드르 다항식의 직교성)</strong>
+      <div class="formula">$$\int_{-1}^{1}P_m(x)P_n(x)\,dx = \begin{cases} 0 & m \ne n \\[2pt] \dfrac{2}{2n + 1} & m = n \end{cases}$$</div>
+      <p style="margin:8px 0 0"><b>증명 (\(m \ne n\)).</b> 방정식은 \(\bigl((1 - x^2)P_n'\bigr)' = -n(n+1)P_n\)으로 쓸 수 있다(스튀름–리우빌 꼴). 이 식에 \(P_m\)을, \(m\)에 대한 같은 식에 \(P_n\)을 곱해 빼고 \([-1, 1]\)에서 적분하면 왼쪽은 부분 적분으로 \(\bigl[(1 - x^2)(P_mP_n' - P_nP_m')\bigr]_{-1}^1 = 0\)(양 끝에서 \(1 - x^2 = 0\))이 되고, 오른쪽은 \(\bigl(m(m+1) - n(n+1)\bigr)\int P_mP_n\,dx\)이다. \(m \ne n\)이면 괄호가 0이 아니므로 적분이 0이다. ∎</p></div>
+    <p>직교성 덕분에 \([-1, 1]\)의 함수를 \(f = \sum c_\ell P_\ell\)로 전개할 수 있고, 계수는 \(c_\ell = \frac{2\ell + 1}{2}\int_{-1}^1 fP_\ell\,dx\)로 하나씩 읽힙니다. 15장의 푸리에 급수와 같은 구조입니다(<a href="boundary.html">15장</a>). 행성의 중력장과 안테나 복사 패턴을 이런 전개로 나타냅니다.</p>
+
+    <div class="sim" id="sim-ss-legendre">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>르장드르 다항식: 곱의 넓이로 보는 직교성</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ss-cv-leg"></canvas><span class="tag-tl">P<sub>m</sub>(주황), P<sub>n</sub>(청록), 곱 P<sub>m</sub>P<sub>n</sub>의 넓이</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>m <output id="ss-lg-m-out"></output></span><input type="range" id="ss-lg-m" min="0" max="8" step="1" value="3"></label>
+          <label class="ctrl"><span>n <output id="ss-lg-n-out"></output></span><input type="range" id="ss-lg-n" min="0" max="8" step="1" value="5"></label>
+          <label class="ctrl"><span>m을 비정수로: λ = m + δ, δ <output id="ss-lg-d-out"></output></span><input type="range" id="ss-lg-d" min="0" max="0.9" step="0.05" value="0"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫ P<sub>m</sub>P<sub>n</sub> dx</span><span class="v" id="ss-lg-int">—</span></div>
+        <div class="stat"><span class="k">이론값</span><span class="v" id="ss-lg-th">—</span></div>
+        <div class="stat"><span class="k">P<sub>m</sub>의 영점 수</span><span class="v" id="ss-lg-z">—</span></div>
+      </div>
+      <div class="ss-msg" id="ss-lg-msg"></div>
+      <div class="sim-note">해볼 것: ① m ≠ n이면 곱의 양(+)과 음(−) 넓이가 정확히 상쇄되어 적분이 0입니다. ② m = n이면 넓이가 2/(2n + 1)입니다. ③ δ를 0.05만 올려도 급수가 끝나지 않아 x = ±1 근처에서 곡선이 다항식에서 벗어나 발산합니다. 정수일 때만 양 끝에서 유한한 해가 있다는 뜻입니다. 모델: P<sub>n</sub>은 보네 점화식, 비정수 λ는 원점 둘레 급수 20000항(|x| ≤ 0.999), 적분은 심프슨 공식.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="bessel">
+    <h2>베셀 방정식과 베셀 함수</h2>
+    <p>원형 막의 반지름 방정식에서 \(x = kr\)로 바꾸면 <span class="term">베셀 방정식</span>이 됩니다.</p>
+    <div class="formula">$$x^2y'' + xy' + (x^2 - \nu^2)y = 0.$$
+      <div class="where">\(\nu \ge 0\)을 차수라 한다. 원형 막에서는 각도 방향의 마디 수 \(n\)이 차수다.</div></div>
+    <p>\(x = 0\)은 정칙 특이점이고 \(p_0 = 1,\ q_0 = -\nu^2\)이므로 지표 방정식은 \(r^2 - \nu^2 = 0\), \(r = \pm\nu\)입니다. \(r = \nu\)로 \(y = \sum a_nx^{n+\nu}\)를 넣으면 \(x^2y\) 항이 두 칸 옮겨져 \(\bigl((n + \nu)^2 - \nu^2\bigr)a_n = n(n + 2\nu)a_n = -a_{n-2}\)이고, \(a_1 = 0\)이므로 홀수 계수는 모두 0입니다. 짝수 계수를 정리하고 \(a_0 = \frac{1}{2^\nu\Gamma(\nu + 1)}\)로 정규화하면</p>
+    <div class="callout deep"><strong>정의 14.6 (제1종 베셀 함수)</strong>
+      <div class="formula">$$J_\nu(x) = \sum_{k=0}^{\infty}\frac{(-1)^k}{k!\,\Gamma(k + \nu + 1)}\left(\frac x2\right)^{2k + \nu}.$$</div>
+      이 급수는 모든 \(x\)에서 수렴한다. \(\nu\)가 정수가 아니면 \(J_{-\nu}\)가 두 번째 독립해이고, \(\nu = n\)이 정수이면 \(J_{-n} = (-1)^nJ_n\)이라 독립이 아니어서 로그 항을 가진 <b>제2종 베셀 함수</b> \(Y_n\)이 두 번째 해가 된다. \(Y_n\)은 \(x \to 0\)에서 \(-\infty\)(또는 \(x^{-n}\)처럼)로 발산한다.</div>
+    <div class="callout"><strong>예제 14.9 (\(J_0\)의 첫 항과 값)</strong> \(J_0\)의 급수를 쓰고 \(J_0(1)\)을 소수 넷째 자리까지 구하라.
+      <ol>
+        <li>\(\nu = 0\)이면 \(\Gamma(k + 1) = k!\)이므로 \(J_0(x) = 1 - \frac{x^2}{4} + \frac{x^4}{64} - \frac{x^6}{2304} + \cdots\)(분모는 \((k!)^24^k\)).</li>
+        <li>\(x = 1\): \(1 - 0.25 + 0.015625 - 0.000434 + 0.0000068 \approx 0.76520\). 교대 급수라 오차는 다음 항(약 \(7\times10^{-8}\)) 이하다. 참값 \(J_0(1) = 0.765198\).</li>
+        <li>\(J_0(0) = 1\), \(J_n(0) = 0\ (n \ge 1)\). 원형 막의 중심이 움직이는 것은 \(n = 0\) 모드뿐이다.</li>
+      </ol></div>
+    <p>큰 \(x\)에서 베셀 함수는 감쇠하는 코사인처럼 보입니다.</p>
+    <div class="formula">$$J_\nu(x) \approx \sqrt{\frac{2}{\pi x}}\cos\!\left(x - \frac{\nu\pi}{2} - \frac\pi4\right) \quad (x \to \infty).$$
+      <div class="where">진폭이 \(x^{-1/2}\)로 줄고, 이웃한 영점의 간격은 \(\pi\)로 다가간다. 원형 파동이 퍼지며 에너지가 둘레 \(2\pi r\)에 나뉘기 때문에 진폭이 \(r^{-1/2}\)로 줄어든다고 볼 수 있다.</div></div>
+    <p>영점 \(j_{\nu,m}\)(\(J_\nu\)의 \(m\)번째 양의 영점)은 닫힌 꼴이 없어 수치로 구합니다. 공학에서 자주 쓰는 값은 다음과 같습니다.</p>
+    <div class="table-wrap"><table class="ss-tbl">
+      <thead><tr><th></th><th>\(m = 1\)</th><th>\(m = 2\)</th><th>\(m = 3\)</th><th>\(m = 4\)</th></tr></thead>
+      <tbody>
+        <tr><td>\(J_0\)</td><td>2.4048</td><td>5.5201</td><td>8.6537</td><td>11.7915</td></tr>
+        <tr><td>\(J_1\)</td><td>3.8317</td><td>7.0156</td><td>10.1735</td><td>13.3237</td></tr>
+        <tr><td>\(J_2\)</td><td>5.1356</td><td>8.4172</td><td>11.6198</td><td>14.7960</td></tr>
+        <tr><td>\(J_3\)</td><td>6.3802</td><td>9.7610</td><td>13.0152</td><td>16.2235</td></tr>
+      </tbody></table></div>
+
+    <div class="sim" id="sim-ss-bessel">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>베셀 함수와 영점: 차수 ν를 바꿔 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ss-cv-bes"></canvas><span class="tag-tl" id="ss-bs-tag">J<sub>ν</sub>(x)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>차수 ν <output id="ss-bs-nu-out"></output></span><input type="range" id="ss-bs-nu" min="0" max="5" step="0.1" value="0"></label>
+          <label class="check"><input type="checkbox" id="ss-bs-asy"> 큰 x 근사 √(2/πx) cos(x − νπ/2 − π/4)</label>
+          <label class="check"><input type="checkbox" id="ss-bs-env" checked> 포락선 ±√(2/πx)</label>
+          <label class="check"><input type="checkbox" id="ss-bs-sum"> 급수 부분합 10항 겹치기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">영점 j<sub>ν,1</sub>, j<sub>ν,2</sub>, j<sub>ν,3</sub></span><span class="v" id="ss-bs-z">—</span></div>
+        <div class="stat"><span class="k">영점 간격</span><span class="v" id="ss-bs-gap">—</span></div>
+        <div class="stat"><span class="k">x → 0의 모양</span><span class="v" id="ss-bs-0">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ν = 0에서 영점 간격이 3.115, 3.134, 3.138, …로 π에 다가가는 것을 보세요. ② ν를 키우면 첫 영점이 오른쪽으로 밀리고 0 근처가 x<sup>ν</sup>처럼 납작해집니다. 높은 모드는 막의 중심 근처를 거의 움직이지 않습니다. ③ 급수 10항은 x ≈ 7까지만 맞고, 큰 x 근사는 x가 클수록 맞습니다. 두 근사는 서로 반대쪽을 맡습니다. 모델: J<sub>ν</sub>는 정의 14.6의 급수 80항(감마 함수는 란초스 근사).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="drum">
+    <h2>원형 북의 진동 모드</h2>
+    <div class="problem"><strong>북은 왜 기타처럼 음이 또렷하지 않을까</strong>
+      <p>기타 줄의 고유 진동수는 기본음의 1, 2, 3, … 배라서 귀는 이를 하나의 음높이로 듣습니다. 원형 북의 진동수도 이렇게 정수비일까요? 막의 파동 방정식을 원판에서 풀어 확인합시다.</p></div>
+    <p>반지름 \(a\)인 막의 변위 \(u(r, \theta, t)\)는 파동 방정식 \(u_{tt} = c^2\nabla^2u\)를 따르고, 가장자리에서 \(u(a, \theta, t) = 0\)입니다(<a href="pde.html">16장</a>에서 유도). \(u = R(r)\cos(n\theta)\cos(\omega t)\)로 변수분리하면 \(\nabla^2u = -(\omega/c)^2u\)에서</p>
+    <div class="formula">$$r^2R'' + rR' + (k^2r^2 - n^2)R = 0, \qquad k = \frac{\omega}{c}.$$
+      <div class="where">\(\cos(n\theta)\)가 한 바퀴 돌아 제자리에 오려면 \(n\)은 정수다. \(x = kr\)로 바꾸면 차수 \(n\)인 베셀 방정식이다.</div></div>
+    <p>중심 \(r = 0\)에서 유한해야 하므로 \(Y_n\)은 버리고 \(R = J_n(kr)\)만 남습니다. 가장자리 조건 \(J_n(ka) = 0\)에서 \(ka\)는 \(J_n\)의 영점이어야 하므로</p>
+    <div class="callout deep"><strong>정리 14.7 (원형 막의 고유 진동수)</strong> 가장자리가 고정된 반지름 \(a\)인 원형 막의 고유 모드는
+      <div class="formula">$$u_{nm} = J_n\!\left(\frac{j_{nm}\,r}{a}\right)\cos(n\theta)\cos(\omega_{nm}t), \qquad \omega_{nm} = \frac{c\,j_{nm}}{a}$$</div>
+      이다(\(n = 0, 1, 2, \dots\), \(m = 1, 2, \dots\)). 모드 \((n, m)\)에는 지름 방향의 마디선이 \(n\)개, 가장자리를 뺀 원형 마디선이 \(m - 1\)개 있다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 780 230" role="img" aria-label="원형 막의 처음 여섯 모드의 마디선">
+        <rect x="8" y="8" width="764" height="214" rx="10" class="f-surface"/>
+        <g transform="translate(70,100)"><circle r="48" class="f-acc-soft" style="stroke:var(--text);stroke-width:2"/><text y="76" text-anchor="middle" class="t-mono">(0,1) 1.000</text></g>
+        <g transform="translate(195,100)"><circle r="48" style="fill:var(--accent);opacity:.25"/><path d="M0 -48 A48 48 0 0 1 0 48 Z" style="fill:var(--accent-2);opacity:.35"/><circle r="48" fill="none" style="stroke:var(--text);stroke-width:2"/><line x1="0" y1="-48" x2="0" y2="48" style="stroke:var(--text);stroke-dasharray:4 3"/><text y="76" text-anchor="middle" class="t-mono">(1,1) 1.593</text></g>
+        <g transform="translate(320,100)"><circle r="48" style="fill:var(--accent);opacity:.25"/><path d="M0 0 L34 -34 A48 48 0 0 1 34 34 Z M0 0 L-34 34 A48 48 0 0 1 -34 -34 Z" style="fill:var(--accent-2);opacity:.35"/><circle r="48" fill="none" style="stroke:var(--text);stroke-width:2"/><line x1="-34" y1="-34" x2="34" y2="34" style="stroke:var(--text);stroke-dasharray:4 3"/><line x1="-34" y1="34" x2="34" y2="-34" style="stroke:var(--text);stroke-dasharray:4 3"/><text y="76" text-anchor="middle" class="t-mono">(2,1) 2.136</text></g>
+        <g transform="translate(445,100)"><circle r="48" style="fill:var(--accent-2);opacity:.35"/><circle r="21" style="fill:var(--accent);opacity:.4"/><circle r="21" fill="none" style="stroke:var(--text);stroke-dasharray:4 3"/><circle r="48" fill="none" style="stroke:var(--text);stroke-width:2"/><text y="76" text-anchor="middle" class="t-mono">(0,2) 2.295</text></g>
+        <g transform="translate(570,100)"><circle r="48" style="fill:var(--accent);opacity:.25"/><path d="M0 0 L48 0 A48 48 0 0 0 -24 -41.6 Z M0 0 L-24 41.6 A48 48 0 0 0 48 0 Z" style="fill:none"/><path d="M0 0 L41.6 -24 A48 48 0 0 0 -41.6 -24 Z M0 0 L0 48 A48 48 0 0 0 41.6 24 Z M0 0 L-41.6 24 A48 48 0 0 1 -41.6 -24 Z" style="fill:var(--accent-2);opacity:0"/><g style="stroke:var(--text);stroke-dasharray:4 3"><line x1="0" y1="-48" x2="0" y2="48"/><line x1="-41.6" y1="-24" x2="41.6" y2="24"/><line x1="-41.6" y1="24" x2="41.6" y2="-24"/></g><circle r="48" fill="none" style="stroke:var(--text);stroke-width:2"/><text y="76" text-anchor="middle" class="t-mono">(3,1) 2.653</text></g>
+        <g transform="translate(700,100)"><circle r="48" style="fill:var(--accent);opacity:.25"/><path d="M0 -48 A48 48 0 0 1 0 48 Z" style="fill:var(--accent-2);opacity:.35"/><circle r="26" fill="none" style="stroke:var(--text);stroke-dasharray:4 3"/><line x1="0" y1="-48" x2="0" y2="48" style="stroke:var(--text);stroke-dasharray:4 3"/><circle r="48" fill="none" style="stroke:var(--text);stroke-width:2"/><text y="76" text-anchor="middle" class="t-mono">(1,2) 2.917</text></g>
+        <text x="390" y="32" text-anchor="middle" class="t-dim">점선 = 마디선(움직이지 않는 곳), 숫자 = ω/ω₀₁ = j<tspan baseline-shift="sub" font-size="9">nm</tspan>/j<tspan baseline-shift="sub" font-size="9">01</tspan></text>
+      </svg>
+      <figcaption><b>그림 14-3.</b> 원형 막의 처음 여섯 모드를 진동수 순으로 놓았다. n은 지름 마디선의 수, m − 1은 원형 마디선의 수다. (0, 2)의 안쪽 원은 반지름 j₀₁/j₀₂ ≈ 0.436a, (1, 2)의 원은 j₁₁/j₁₂ ≈ 0.546a에 있다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 14.10 (진동수의 비)</strong> 기본 모드 \((0, 1)\)에 대한 다른 모드의 진동수 비를 구하라.
+      <ol>
+        <li>\(\omega_{nm}/\omega_{01} = j_{nm}/j_{01}\)이고 \(j_{01} = 2.4048\).</li>
+        <li>\((1, 1)\): \(3.8317/2.4048 = 1.593\). \((2, 1)\): \(5.1356/2.4048 = 2.136\). \((0, 2)\): \(5.5201/2.4048 = 2.295\). \((3, 1)\): 2.653. \((1, 2)\): 2.917.</li>
+        <li>비가 정수가 아니어서 여러 모드가 함께 울리면 귀는 하나의 또렷한 음높이를 듣지 못한다. 팀파니는 공기의 부하와 막을 치는 위치로 특정 모드를 강조해 음높이를 만든다고 알려져 있다.</li>
+        <li>설계 예: \(c = 100\ \text{m/s}\), \(a = 0.2\ \text{m}\)인 막의 기본 진동수는 \(f_{01} = \frac{c\,j_{01}}{2\pi a} = \frac{100\times2.4048}{2\pi\times0.2} \approx 191\ \text{Hz}\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ss-drum">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>원형 북의 모드: J<sub>n</sub>의 영점이 정하는 마디선과 진동수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ss-two">
+          <div><canvas id="ss-cv-drum"></canvas><span class="ss-cap">막의 변위 (빨강 위, 파랑 아래)</span></div>
+          <div><canvas id="ss-cv-prof"></canvas><span class="ss-cap">반지름 방향 J<sub>n</sub>(j<sub>nm</sub> r/a)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>각도 마디 n <output id="ss-dr-n-out"></output></span><input type="range" id="ss-dr-n" min="0" max="4" step="1" value="0"></label>
+          <label class="ctrl"><span>반지름 번호 m <output id="ss-dr-m-out"></output></span><input type="range" id="ss-dr-m" min="1" max="3" step="1" value="1"></label>
+          <label class="check"><input type="checkbox" id="ss-dr-nodes" checked> 마디선 표시</label>
+          <div class="btn-row"><button class="btn primary" id="ss-dr-play">■ 멈춤</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">j<sub>nm</sub></span><span class="v" id="ss-dr-j">—</span></div>
+        <div class="stat"><span class="k">ω<sub>nm</sub>/ω<sub>01</sub></span><span class="v" id="ss-dr-ratio">—</span></div>
+        <div class="stat"><span class="k">마디선</span><span class="v" id="ss-dr-nl">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① (0, 1)은 막 전체가 한꺼번에 오르내리는 기본 모드입니다. (0, 2)에서는 반지름 j₀₁/j₀₂ ≈ 0.436a인 원이 가만히 있습니다. ② n = 1로 올리면 지름 하나가 마디선이 되어 한쪽이 오를 때 반대쪽이 내려갑니다. ③ 진동수 비 1.593, 2.136, 2.295…가 정수가 아님을 확인하세요. 애니메이션 속도도 비에 맞춰 바뀝니다. 모델: 이상적인 막(장력 균일, 감쇠·공기 부하 없음), 영점은 이분법으로 구합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>특수 함수는 원통·구·포물선처럼 대칭이 있는 모양에서 변수분리를 하면 어김없이 나타납니다. 표와 라이브러리로 값을 얻는 지금도, 어디서 0이 되고 어떻게 감쇠하는지 아는 것이 설계의 감각을 줍니다.</p>
+    <div class="callout"><strong>망원경과 카메라의 분해능: 1.22 λ/D</strong> 원형 구멍(지름 \(D\))을 지난 빛의 회절 무늬(에어리 원반)의 세기는 \(\bigl(2J_1(u)/u\bigr)^2\)에 비례하고, 첫 어두운 고리는 \(J_1\)의 첫 영점 \(u = 3.8317\)에 있습니다. 이것을 각도로 바꾸면 \(\sin\theta = 3.8317/\pi\cdot\lambda/D \approx 1.22\,\lambda/D\)입니다. 렌즈와 안테나의 분해능 한계를 말할 때 쓰는 1.22가 바로 \(j_{1,1}/\pi\)입니다.</div>
+    <div class="uses">
+      <a href="pde.html"><small>16장 · 편미분방정식 입문</small>변수분리법과 고유함수 전개<br><span>원판과 원통에서 변수분리를 하면 베셀 함수가 나온다.</span></a>
+      <a href="boundary.html"><small>15장 · 경계값 문제와 푸리에 급수</small>스튀름–리우빌 문제와 직교성<br><span>르장드르·베셀 함수의 직교성은 스튀름–리우빌 이론의 한 예다.</span></a>
+      <a href="second-order.html"><small>6장 · 2계 선형 방정식</small>코시–오일러 방정식과 계수 내리기<br><span>정칙 특이점의 원형이자, 로그 해를 구하는 도구.</span></a>
+      <a href="../../calculus/chapters/taylor.html"><small>CALCULUSBOOK</small>테일러 전개와 수렴 반지름<br><span>급수해의 바탕. 비 판정법과 수렴 구간.</span></a>
+      <a href="../../calculus/chapters/series.html"><small>CALCULUSBOOK</small>무한급수<br><span>교대 급수의 오차 한계, 비 판정법.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 해석<br><span>FM 신호의 측파대 진폭이 베셀 함수 J<sub>n</sub>(β)다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>보통점(\(p, q\)가 해석적인 점)에서는 \(y = \sum a_n(x - x_0)^n\)을 넣고 첨자를 맞춰 점화식을 얻는다. \(a_0, a_1\)이 두 개의 자유 상수다.</li>
+      <li>점화식의 모양이 해의 성격을 말한다: 두 칸이면 짝·홀 해, 분자가 0이 되면 다항식 해(에르미트, 르장드르), 계수 비가 수렴 반지름.</li>
+      <li>에어리 방정식 \(y'' = xy\)는 세 칸 점화식 \(a_{n+2} = a_{n-1}/((n+2)(n+1))\)을 가지며, \(x \lt 0\)에서 국소 진동수 \(\sqrt{|x|}\)로 진동하고 \(x > 0\)에서 지수처럼 행동한다.</li>
+      <li>급수해의 수렴 반지름은 복소평면에서 가장 가까운 특이점까지의 거리 이상이다. \((1 + x^2)y'' + 2xy' = 0\)의 해 \(\arctan x\)는 \(\pm i\) 때문에 원점 둘레 반지름이 1이다.</li>
+      <li>\(xp,\ x^2q\)가 해석적이면 정칙 특이점. 지표 방정식 \(r(r-1) + p_0r + q_0 = 0\)이 해 \(x^r\sum a_nx^n\)의 지수를 준다.</li>
+      <li>프로베니우스: 지표의 차가 정수가 아니면 급수해 둘, 중근이면 \(\ln x\) 항이 반드시, 차가 양의 정수이면 \(\ln x\) 항이 생길 수도 있다(베셀 \(\nu = \frac12\)에서는 생기지 않는다).</li>
+      <li>르장드르 방정식은 \(\lambda = \ell\)이 정수일 때만 \([-1, 1]\)에서 유한한 해(다항식 \(P_\ell\))를 가지고, \(\int_{-1}^1P_mP_n\,dx = \frac{2}{2n+1}\delta_{mn}\).</li>
+      <li>베셀 함수 \(J_\nu = \sum\frac{(-1)^k}{k!\Gamma(k+\nu+1)}(x/2)^{2k+\nu}\)는 큰 \(x\)에서 \(\sqrt{2/(\pi x)}\cos(x - \nu\pi/2 - \pi/4)\). 원형 막의 고유 진동수는 \(\omega_{nm} = c\,j_{nm}/a\)이고 그 비(1, 1.593, 2.136, 2.295, …)는 정수가 아니다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(y'' + y = 0\)에 \(y = \sum a_nx^n\)을 넣어 얻는 점화식은?</p><div class="opts">
+        <button class="opt">\(a_{n+1} = -a_n/(n+1)\)</button>
+        <button class="opt" data-correct>\(a_{n+2} = -a_n/((n+2)(n+1))\)</button>
+        <button class="opt">\(a_{n+2} = a_n/(n+2)\)</button>
+        <button class="opt">\(a_{n+2} = -a_{n-1}/((n+2)(n+1))\)</button>
+      </div><div class="quiz-exp">\(y''\)의 \(x^n\) 계수는 \((n+2)(n+1)a_{n+2}\)이고 이것이 \(-a_n\)과 같아야 한다. 이 점화식이 cos, sin의 테일러 계수를 준다. 넷째는 에어리 방정식(부호 반대)의 꼴이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \((x^2 + 4)y'' + xy' + y = 0\)의 \(x_0 = 1\) 둘레 급수해의 수렴 반지름으로 보장되는 최솟값은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>\(\sqrt5\)</button>
+        <button class="opt">무한대</button>
+      </div><div class="quiz-exp">특이점은 \(x^2 + 4 = 0\)인 \(\pm2i\). \(1\)에서 \(2i\)까지 거리는 \(\sqrt{1 + 4} = \sqrt5\). 실수축에 특이점이 없어도 복소 특이점이 반지름을 제한한다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 에어리 방정식 \(y'' = xy\)의 해가 \(x \lt 0\)에서 진동하는 이유로 가장 알맞은 것은?</p><div class="opts">
+        <button class="opt">급수가 \(x \lt 0\)에서 수렴하지 않기 때문</button>
+        <button class="opt" data-correct>\(y''\)과 \(y\)의 부호가 반대라 \(y'' + |x|y = 0\) 꼴의 복원력이 작용하기 때문</button>
+        <button class="opt">\(x = 0\)이 특이점이기 때문</button>
+        <button class="opt">감쇠 항 \(y'\)이 있기 때문</button>
+      </div><div class="quiz-exp">\(x \lt 0\)이면 \(y'' = -|x|y\)로 용수철 같은 복원력이 생기고, 그 "강성" \(|x|\)이 커질수록 빨리 진동한다. 급수는 모든 \(x\)에서 수렴하고, 0은 보통점이며, \(y'\) 항은 없다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(x^2y'' + 3xy' + y = 0\)의 지표 방정식의 근과 두 번째 해의 모양은?</p><div class="opts">
+        <button class="opt">\(r = 1, -1\), 두 거듭제곱</button>
+        <button class="opt" data-correct>\(r = -1\)(중근), 두 번째 해에 \(\ln x\)</button>
+        <button class="opt">\(r = 0, -2\), 반드시 \(\ln x\)</button>
+        <button class="opt">복소근, \(x^{-1}\cos(\ln x)\)</button>
+      </div><div class="quiz-exp">\(p_0 = 3,\ q_0 = 1\): \(r(r-1) + 3r + 1 = r^2 + 2r + 1 = (r + 1)^2\). 중근 \(r = -1\)이므로 해는 \(x^{-1}\)과 \(x^{-1}\ln x\).</div></div>
+
+      <div class="quiz-q"><p>Q5. 르장드르 방정식 \((1 - x^2)y'' - 2xy' + \lambda(\lambda+1)y = 0\)에서 \([-1, 1]\) 전체에서 유한한 해가 있으려면?</p><div class="opts">
+        <button class="opt">\(\lambda\)는 아무 실수나 된다</button>
+        <button class="opt">\(\lambda \lt 1\)이어야 한다</button>
+        <button class="opt" data-correct>\(\lambda\)가 0 이상의 정수여서 급수가 다항식으로 끝나야 한다</button>
+        <button class="opt">\(\lambda\)가 반정수여야 한다</button>
+      </div><div class="quiz-exp">점화식 분자 \((n - \lambda)(n + \lambda + 1)\)이 0이 되어야 급수가 끝난다. 끝나지 않으면 계수 비가 1로 가서 \(x = \pm1\)에서 발산한다. 구의 극에서 퍼텐셜이 유한해야 하므로 물리적으로 다항식만 남는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\int_{-1}^{1}P_2(x)^2\,dx\)의 값은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">\(2/3\)</button>
+        <button class="opt" data-correct>\(2/5\)</button>
+        <button class="opt">1</button>
+      </div><div class="quiz-exp">정리 14.5에서 \(n = 2\): \(\frac{2}{2\cdot2 + 1} = \frac25\). 직접 계산해도 \(\int_{-1}^1\frac14(3x^2 - 1)^2dx = \frac14\left(\frac{18}{5} - 4 + 2\right) = \frac25\).</div></div>
+
+      <div class="quiz-q"><p>Q7. 원형 막의 반지름 방향 해로 \(J_n(kr)\)만 쓰고 \(Y_n(kr)\)을 버리는 이유는?</p><div class="opts">
+        <button class="opt">\(Y_n\)은 베셀 방정식의 해가 아니다</button>
+        <button class="opt" data-correct>\(Y_n\)은 \(r \to 0\)에서 발산해 막의 중심에서 변위가 유한하다는 조건을 어긴다</button>
+        <button class="opt">\(Y_n\)은 가장자리 조건을 만족할 수 없다</button>
+        <button class="opt">\(Y_n\)은 진동하지 않는다</button>
+      </div><div class="quiz-exp">\(Y_n\)도 해이고 진동하며 영점도 있다. 하지만 지표 방정식의 로그·음의 거듭제곱 해라서 중심에서 무한대가 된다. 막(구멍 없음)에서는 버리고, 가운데가 뚫린 고리 모양 막에서는 \(J_n\)과 \(Y_n\)을 함께 쓴다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 기본 진동수가 200 Hz인 이상적인 원형 막에서 모드 (1, 1)의 진동수는 대략?</p><div class="opts">
+        <button class="opt">400 Hz</button>
+        <button class="opt" data-correct>319 Hz</button>
+        <button class="opt">459 Hz</button>
+        <button class="opt">300 Hz</button>
+      </div><div class="quiz-exp">\(\omega_{11}/\omega_{01} = j_{11}/j_{01} = 3.8317/2.4048 = 1.593\)이므로 \(200\times1.593 \approx 319\) Hz. 459 Hz는 (0, 2) 모드(비 2.295)다. 기타 줄처럼 정수배가 아니다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+/* ================================================================ 이 장의 도우미 */
+const SS = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v) {
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 1e-3 && a < 1e4) return (+v.toPrecision(4)).toString().replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(2).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  gamma(z) {
+    if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * SS.gamma(1 - z));
+    z -= 1; const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    let x = p[0]; for (let i = 1; i < 9; i++) x += p[i] / (z + i);
+    const t = z + 7.5; return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+  },
+  /** 제1종 베셀 함수 (급수 K항) */
+  J(nu, x, K = 80) {
+    if (x === 0) return nu === 0 ? 1 : 0;
+    let s = 0, t = Math.pow(x / 2, nu) / SS.gamma(nu + 1);
+    for (let k = 0; k < K; k++) { s += t; t *= -(x * x / 4) / ((k + 1) * (k + 1 + nu)); }
+    return s;
+  },
+  /** J_ν의 양의 영점 count개 */
+  zeros(nu, count, xmax = 40) {
+    const out = []; let a = 0.05, fa = SS.J(nu, a);
+    for (let x = 0.05 + 0.02; x < xmax && out.length < count; x += 0.02) {
+      const fx = SS.J(nu, x);
+      if (fa * fx < 0) { let lo = x - 0.02, hi = x; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; SS.J(nu, lo) * SS.J(nu, m) <= 0 ? (hi = m) : (lo = m); } out.push((lo + hi) / 2); }
+      fa = fx;
+    }
+    return out;
+  },
+  /** 르장드르 다항식 (보네 점화식) */
+  P(l, x) { if (l === 0) return 1; let p0 = 1, p1 = x; for (let k = 1; k < l; k++) { const p2 = ((2 * k + 1) * x * p1 - k * p0) / (k + 1); p0 = p1; p1 = p2; } return p1; },
+  simpson(f, a, b, n = 2000) { const h = (b - a) / n; let s = f(a) + f(b); for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2); return (s * h) / 3; },
+  rk4grid(F, y0, x0, x1, h) {
+    const out = [[x0, y0[0], y0[1]]]; let y = y0.slice(), x = x0; const n = Math.round(Math.abs(x1 - x0) / h), d = Math.sign(x1 - x0) * h;
+    for (let i = 0; i < n; i++) {
+      const k1 = F(x, y), a = [y[0] + d / 2 * k1[0], y[1] + d / 2 * k1[1]], k2 = F(x + d / 2, a), b = [y[0] + d / 2 * k2[0], y[1] + d / 2 * k2[1]], k3 = F(x + d / 2, b), c = [y[0] + d * k3[0], y[1] + d * k3[1]], k4 = F(x + d, c);
+      y = [y[0] + d / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y[1] + d / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])]; x += d; out.push([x, y[0], y[1]]);
+    }
+    return out;
+  },
+  box(w, h) { return { x: 50, y: 30, w: w - 64, h: h - 76 }; },
+};
+
+/* ================================================================ 1. 부분합 */
+(function () {
+  const airyG = (() => { const F = (x, y) => [y[1], x * y[0]]; const L = SS.rk4grid(F, [1, 0], 0, -10, 0.005).reverse(), R = SS.rk4grid(F, [1, 0], 0, 3, 0.005); return L.concat(R.slice(1)); })();
+  const airyAt = (x) => { const i = Math.round((x + 10) / 0.005); const q = airyG[MB.clamp(i, 0, airyG.length - 1)]; return q[1]; };
+  const EQ = {
+    cos: { X: [-10, 10], Y: [-3, 3], rec(a, n) { return n >= 2 ? -a[n - 2] / (n * (n - 1)) : n === 0 ? 1 : 0; }, exact: Math.cos, name: "참 해 cos x" },
+    gauss: { X: [-3, 3], Y: [-1, 10], rec(a, n) { return n >= 2 ? a[n - 2] / n : n === 0 ? 1 : 0; }, exact: (x) => Math.exp(x * x / 2), name: "참 해 e^(x²/2)" },
+    airy: { X: [-10, 3], Y: [-3, 6], rec(a, n) { return n === 0 ? 1 : n === 1 || n === 2 ? 0 : a[n - 3] / (n * (n - 1)); }, exact: airyAt, name: "참 해(RK4)" },
+    geo: { X: [-1.5, 1.5], Y: [-5, 8], rec() { return 1; }, exact: (x) => 1 / (1 - x), name: "참 해 1/(1 − x)" },
+  };
+  let eq = "cos", N = 6, t = 0.6;
+  const coeffs = () => { const m = EQ[eq], a = []; for (let n = 0; n < 200; n++) a.push(m.rec(a, n)); const idx = []; a.forEach((v, n) => { if (v !== 0 && idx.length < N) idx.push(n); }); return { a, idx }; };
+  const xs = () => { const [a, b] = EQ[eq].X; return (a + b) / 2 + t * (b - a) / 2; };
+  let C = coeffs();
+  const S = (x) => C.idx.reduce((s, n) => s + C.a[n] * Math.pow(x, n), 0);
+  const interval = () => {
+    const m = EQ[eq], [a, b] = m.X, h = (b - a) / 2000; let lo = 0, hi = 0;
+    for (let x = 0; x <= b; x += h) { if (Math.abs(S(x) - m.exact(x)) < 0.01 && !(eq === "geo" && x >= 1)) hi = x; else break; }
+    for (let x = 0; x >= a; x -= h) { if (Math.abs(S(x) - m.exact(x)) < 0.01) lo = x; else break; }
+    return [lo, hi];
+  };
+  const cv = MB.canvas("#ss-cv-part", (ctx, w, h) => {
+    const P = MB.palette(), m = EQ[eq], [a, b] = m.X, n = 600, ex = [], ps = [];
+    for (let i = 0; i <= n; i++) { const x = a + ((b - a) * i) / n; if (!(eq === "geo" && Math.abs(x - 1) < 0.01)) ex.push([x, m.exact(x)]); else ex.push([x, NaN]); ps.push([x, S(x)]); }
+    const [lo, hi] = interval(), x0 = xs();
+    MB.chart(ctx, SS.box(w, h), { x: m.X, y: m.Y, xLabel: "x", series: [{ data: ex, color: P.text, width: 2.4 }, { data: ps, color: P.accent, width: 2.2 }], bands: [{ x0: lo, x1: hi, color: "color-mix(in srgb, " + P.ok + " 14%, transparent)" }], vlines: [{ x: x0, color: P.accent2, label: "x*" }].concat(eq === "geo" ? [{ x: 1, color: P.bad, label: "x = 1" }] : []), hlines: [{ y: 0, color: P.faint, dash: [] }] });
+    MB.stat("ss-pa-tag", `${m.name}(검정), 부분합 S<sub>${N}</sub>(주황): 0이 아닌 항 ${N}개, 최고차 x<sup>${C.idx[C.idx.length - 1]}</sup>`);
+    const sv = S(x0), yv = m.exact(x0);
+    MB.stat("ss-pa-s", SS.sci(sv)); MB.stat("ss-pa-y", SS.sci(yv)); MB.stat("ss-pa-e", SS.sci(Math.abs(sv - yv)));
+    MB.stat("ss-pa-int", `[${SS.num(lo, 2)}, ${SS.num(hi, 2)}]`);
+  }, { aspect: 0.55, minHeight: 260, maxHeight: 420 });
+  const xr = MB.range("ss-pa-x", (v) => SS.num((EQ[eq].X[0] + EQ[eq].X[1]) / 2 + v * (EQ[eq].X[1] - EQ[eq].X[0]) / 2, 2), (v) => { t = v; cv.redraw(); });
+  MB.range("ss-pa-n", (v) => String(v), (v) => { N = v; C = coeffs(); cv.redraw(); });
+  document.getElementById("ss-pa-eq").addEventListener("change", (e) => { eq = e.target.value; C = coeffs(); xr.set(t, false); cv.redraw(); });
+})();
+
+/* ================================================================ 2. 점화식 계수표 */
+(function () {
+  const EQ = {
+    herm: { f: "a<sub>n+2</sub> = 2(n − λ) a<sub>n</sub> / ((n + 2)(n + 1))", rec: (a, n, L) => (2 * (n - 2 - L) * a[n - 2]) / (n * (n - 1)), step: 2, useL: true },
+    leg: { f: "a<sub>n+2</sub> = (n − λ)(n + λ + 1) a<sub>n</sub> / ((n + 2)(n + 1))", rec: (a, n, L) => (((n - 2 - L) * (n - 1 + L)) * a[n - 2]) / (n * (n - 1)), step: 2, useL: true },
+    airy: { f: "a<sub>2</sub> = 0,  a<sub>n+2</sub> = a<sub>n−1</sub> / ((n + 2)(n + 1))  (λ 쓰지 않음)", rec: (a, n) => (n === 2 ? 0 : a[n - 3] / (n * (n - 1))), step: 3, useL: false },
+    cos: { f: "a<sub>n+2</sub> = −a<sub>n</sub> / ((n + 2)(n + 1))  (λ 쓰지 않음)", rec: (a, n) => -a[n - 2] / (n * (n - 1)), step: 2, useL: false },
+  };
+  let eq = "herm", L = 4, ic = "even", a = [];
+  const tab = document.getElementById("ss-rc-tab");
+  const compute = () => {
+    const m = EQ[eq]; a = [ic === "even" ? 1 : 0, ic === "even" ? 0 : 1];
+    for (let n = 2; n <= 40; n++) { let v = m.rec(a, n, L); if (Math.abs(v) < 1e-300) v = 0; a.push(v); }
+  };
+  compute();
+  const cv = MB.canvas("#ss-cv-rec", (ctx, w, h) => {
+    const P = MB.palette(), b = SS.box(w, h), nz = [];
+    for (let n = 0; n <= 30; n++) if (a[n] !== 0) nz.push([n, Math.log10(Math.abs(a[n]))]);
+    const lo = Math.min(-2, ...nz.map((q) => q[1])) - 1, hi = Math.max(1, ...nz.map((q) => q[1])) + 0.5;
+    const r = MB.chart(ctx, b, { x: [-0.8, 30.8], y: [lo, hi], xLabel: "n", yLabel: "log₁₀|aₙ|", series: [] });
+    const z = r.Y(Math.max(lo, Math.min(hi, 0)));
+    nz.forEach(([n, v]) => { ctx.fillStyle = a[n] > 0 ? P.accent : P.accent2; const x = r.X(n), y = r.Y(v); ctx.fillRect(x - 4, Math.min(y, z), 8, Math.max(1.5, Math.abs(y - z))); });
+    for (let n = 0; n <= 30; n++) if (a[n] === 0) { ctx.fillStyle = P.faint; ctx.fillRect(r.X(n) - 2, z - 1, 4, 2); }
+    ctx.fillStyle = P.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "right";
+    ctx.fillText("막대 색: 주황 aₙ > 0, 청록 aₙ < 0, 점선 높이 0 = 0인 계수", b.x + b.w - 4, b.y - 10);
+  }, { aspect: 0.42, minHeight: 220, maxHeight: 320 });
+  const out = () => {
+    const m = EQ[eq];
+    MB.stat("ss-rc-f", m.f);
+    tab.innerHTML = a.slice(0, 16).map((v, n) => `<div class="${v === 0 ? "ss-zero" : ""}"><i>a<sub>${n}</sub></i>${SS.sci(v)}</div>`).join("");
+    let last = -1; a.forEach((v, n) => { if (v !== 0) last = n; });
+    if (last <= 30) MB.stat("ss-rc-end", `다항식, 차수 ${last}`);
+    else MB.stat("ss-rc-end", "끝나지 않는 무한 급수");
+    const est = (n) => { while (n > m.step && (a[n] === 0 || a[n - m.step] === 0)) n--; return a[n] && a[n - m.step] ? Math.pow(Math.abs(a[n - m.step] / a[n]), 1 / m.step) : NaN; };
+    if (last <= 30) MB.stat("ss-rc-R", "∞ (다항식)");
+    else { const e1 = est(24), e2 = est(40); MB.stat("ss-rc-R", e2 > e1 * 1.1 ? `${SS.num(e1, 2)} → ${SS.num(e2, 2)}, 계속 커짐 → ∞` : `≈ ${SS.num(e2, 3)}`); }
+    cv.redraw();
+  };
+  MB.range("ss-rc-l", (v) => v.toFixed(2), (v) => { L = v; compute(); out(); });
+  MB.seg("ss-rc-ic", (v) => { ic = v; compute(); out(); });
+  document.getElementById("ss-rc-eq").addEventListener("change", (e) => { eq = e.target.value; compute(); out(); });
+  out();
+})();
+
+/* ================================================================ 3. 에어리 함수 */
+(function () {
+  const F = (x, y) => [y[1], x * y[0]];
+  const mk = (v, d) => { const L = SS.rk4grid(F, [v, d], 0, -12, 0.005).reverse(), R = SS.rk4grid(F, [v, d], 0, 2.5, 0.005); return L.concat(R.slice(1)); };
+  const AI = mk(0.355028053887817, -0.258819403792807), BI = mk(0.614926627446001, 0.448288357353826);
+  const at = (G, x) => G[MB.clamp(Math.round((x + 12) / 0.005), 0, G.length - 1)];
+  const zeros = []; for (let i = 1; i < AI.length; i++) if (AI[i - 1][1] * AI[i][1] < 0) { const a = AI[i - 1], b = AI[i]; zeros.push(a[0] + (a[1] / (a[1] - b[1])) * (b[0] - a[0])); }
+  let x0 = -4, wkb = true, bi = true, loc = false;
+  const cv = MB.canvas("#ss-cv-airy", (ctx, w, h) => {
+    const P = MB.palette(), s1 = [], s2 = [], e1 = [], e2 = [];
+    for (let i = 0; i < AI.length; i += 4) { s1.push([AI[i][0], AI[i][1]]); s2.push([BI[i][0], BI[i][1]]); const x = AI[i][0]; if (x < -0.3) { const A = Math.pow(Math.PI, -0.5) * Math.pow(-x, -0.25); e1.push([x, A]); e2.push([x, -A]); } }
+    const series = [];
+    if (wkb) series.push({ data: e1, color: P.faint, width: 1.4, dash: [5, 4] }, { data: e2, color: P.faint, width: 1.4, dash: [5, 4] });
+    if (bi) series.push({ data: s2, color: P.accent2, width: 2 });
+    series.push({ data: s1, color: P.accent, width: 2.4 });
+    if (loc && x0 < -0.2) {
+      const k = Math.sqrt(-x0), q = at(AI, x0), L = (2 * Math.PI) / k, d = [];
+      for (let i = 0; i <= 120; i++) { const x = x0 - L + (2 * L * i) / 120; d.push([x, q[1] * Math.cos(k * (x - x0)) + (q[2] / k) * Math.sin(k * (x - x0))]); }
+      series.push({ data: d, color: P.text, width: 1.8, dash: [3, 3] });
+    }
+    const q = at(AI, x0);
+    MB.chart(ctx, SS.box(w, h), { x: [-12, 2.5], y: [-0.6, 1.2], xLabel: "x", series, vlines: [{ x: x0, color: P.dim, label: "x₀" }], hlines: [{ y: 0, color: P.faint, dash: [] }], points: zeros.filter((z) => z > -12).map((z) => ({ x: z, y: 0, r: 3, color: P.text })).concat([{ x: x0, y: q[1], r: 5, color: P.accent }]) });
+    MB.stat("ss-ai-v", SS.num(q[1], 4)); MB.stat("ss-ai-k", SS.num(x0, 2) + (x0 < 0 ? " (진동)" : " (지수)"));
+    MB.stat("ss-ai-lam", x0 < -0.05 ? SS.num((2 * Math.PI) / Math.sqrt(-x0), 3) : "— (x₀ ≥ 0)");
+    const zr = zeros.filter((z) => z > x0).sort((a, b) => a - b); MB.stat("ss-ai-z", zr.length ? SS.num(zr[0], 3) : "없음 (x₀ > −2.338)");
+  }, { aspect: 0.5, minHeight: 260, maxHeight: 420 });
+  MB.range("ss-ai-x", (v) => v.toFixed(2).replace("-", "−"), (v) => { x0 = v; cv.redraw(); });
+  MB.check("ss-ai-wkb", (v) => { wkb = v; cv.redraw(); });
+  MB.check("ss-ai-bi", (v) => { bi = v; cv.redraw(); });
+  MB.check("ss-ai-loc", (v) => { loc = v; cv.redraw(); });
+})();
+
+/* ================================================================ 4. 수렴 원 */
+(function () {
+  let N = 20, plA = null;
+  const c0 = { x: 0, y: 0, lock: "y", r: 8, label: "x₀", constrain(p) { p.x = MB.clamp(p.x, -2.5, 2.5); } };
+  const coef = (x0) => {
+    const c = 1 + x0 * x0, b = [1 / c, (-2 * x0 * (1 / c)) / c];
+    for (let n = 1; n < 80; n++) b.push(-(2 * x0 * b[n] + b[n - 1]) / c);
+    const a = [Math.atan(x0)]; for (let n = 0; n < 80; n++) a.push(b[n] / (n + 1));
+    return { a, b };
+  };
+  const pl = MB.plane("#ss-cv-cplx", {
+    x: [-3, 3], y: null, aspect: 0.9, minHeight: 240, maxHeight: 400, gridStep: 1, points: [c0],
+    draw(P) {
+      const C = P.P, R = Math.sqrt(1 + c0.x * c0.x); c0.color = C.accent;
+      P.circle(c0.x, 0, R, { color: C.accent, width: 2, fill: "color-mix(in srgb, " + C.accent + " 12%, transparent)" });
+      P.line(c0.x - R, 0, c0.x + R, 0, { color: C.ok, width: 5, alpha: 0.7 });
+      [1, -1].forEach((s) => { const px = P.X(0), py = P.Y(s); P.ctx.strokeStyle = C.bad; P.ctx.lineWidth = 2.5; P.ctx.beginPath(); P.ctx.moveTo(px - 6, py - 6); P.ctx.lineTo(px + 6, py + 6); P.ctx.moveTo(px + 6, py - 6); P.ctx.lineTo(px - 6, py + 6); P.ctx.stroke(); P.text(s > 0 ? "i" : "−i", 0, s, { color: C.bad, dx: 10, bold: true }); });
+      P.line(c0.x, 0, 0, 1, { color: C.dim, width: 1.2, dash: [4, 4] });
+      P.text("Re", P.x1, 0, { color: C.dim, dx: -8, dy: -10, align: "right" }); P.text("Im", 0, P.y1, { color: C.dim, dx: 6, dy: 12 });
+      if (plA) plA.redraw();
+    },
+    onDrag(p) { xs.set(+p.x.toFixed(2), false); },
+  });
+  plA = MB.canvas("#ss-cv-atan", (ctx, w, h) => {
+    const P = MB.palette(), x0 = c0.x, R = Math.sqrt(1 + x0 * x0), { a, b } = coef(x0), ex = [], ps = [];
+    for (let i = 0; i <= 400; i++) { const x = -4 + (8 * i) / 400; ex.push([x, Math.atan(x)]); let s = 0; for (let n = N; n >= 0; n--) s = s * (x - x0) + a[n]; ps.push([x, s]); }
+    MB.chart(ctx, { x: 40, y: 30, w: w - 52, h: h - 76 }, { x: [-4, 4], y: [-2.4, 2.4], xLabel: "x", series: [{ data: ex, color: P.text, width: 2.4 }, { data: ps, color: P.accent, width: 2 }], bands: [{ x0: Math.max(-4, x0 - R), x1: Math.min(4, x0 + R), color: "color-mix(in srgb, " + P.ok + " 14%, transparent)" }], vlines: [{ x: x0, color: P.accent2 }], hlines: [{ y: 0, color: P.faint, dash: [] }] });
+    MB.stat("ss-ra-R", SS.num(R, 3)); MB.stat("ss-ra-int", `(${SS.num(x0 - R, 2)}, ${SS.num(x0 + R, 2)})`);
+    let mx = 0; for (let n = Math.floor(N / 2); n < N; n++) mx = Math.max(mx, Math.pow(Math.abs(b[n]), 1 / n));
+    MB.stat("ss-ra-est", mx > 0 ? SS.num(1 / mx, 3) : "—");
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 400 });
+  const xs = MB.range("ss-ra-x", (v) => v.toFixed(2).replace("-", "−"), (v) => { c0.x = v; pl.redraw(); });
+  MB.range("ss-ra-n", (v) => String(v), (v) => { N = v; plA.redraw(); });
+})();
+
+/* ================================================================ 5. 지표 방정식 */
+(function () {
+  let p0 = 1, q0 = -0.25, plE = null;
+  const msg = document.getElementById("ss-fr-msg");
+  const roots = () => { const B = p0 - 1, D = B * B - 4 * q0; if (D >= 0) { const s = Math.sqrt(D); return { real: true, r1: (-B + s) / 2, r2: (-B - s) / 2 }; } return { real: false, al: -B / 2, be: Math.sqrt(-D) / 2 }; };
+  const pl = MB.plane("#ss-cv-ind", {
+    x: [-3, 3], y: [-4, 5], aspect: 0.9, minHeight: 240, maxHeight: 400, gridStep: 1,
+    draw(P) {
+      const C = P.P, R = roots();
+      P.curve((r) => r * (r - 1) + p0 * r + q0, { color: C.text, width: 2.4 });
+      if (R.real) { [R.r1, R.r2].forEach((r, i) => P.dot(r, 0, { r: 6, color: i ? C.accent2 : C.accent, label: i ? "r₂" : "r₁" })); }
+      else { P.dot(R.al, R.al * (R.al - 1) + p0 * R.al + q0, { r: 5, color: C.bad }); P.text(`근 ${SS.num(R.al, 2)} ± ${SS.num(R.be, 2)}i`, R.al, -1, { color: C.bad, align: "center", bold: true }); }
+      P.text("r", P.x1, 0, { color: C.dim, dx: -8, dy: -10, align: "right" });
+      if (plE) plE.redraw();
+    },
+  });
+  plE = MB.canvas("#ss-cv-eul", (ctx, w, h) => {
+    const P = MB.palette(), R = roots(), y1 = [], y2 = [];
+    let f1, f2, l1, l2;
+    if (R.real && Math.abs(R.r1 - R.r2) > 1e-6) { f1 = (x) => Math.pow(x, R.r1); f2 = (x) => Math.pow(x, R.r2); l1 = `x^${SS.num(R.r1, 2)}`; l2 = `x^${SS.num(R.r2, 2)}`; }
+    else if (R.real) { const r = (R.r1 + R.r2) / 2; f1 = (x) => Math.pow(x, r); f2 = (x) => Math.pow(x, r) * Math.log(x); l1 = `x^${SS.num(r, 2)}`; l2 = `x^${SS.num(r, 2)} ln x`; }
+    else { f1 = (x) => Math.pow(x, R.al) * Math.cos(R.be * Math.log(x)); f2 = (x) => Math.pow(x, R.al) * Math.sin(R.be * Math.log(x)); l1 = `x^${SS.num(R.al, 2)} cos(${SS.num(R.be, 2)} ln x)`; l2 = "… sin(…)"; }
+    for (let i = 1; i <= 800; i++) { const x = Math.pow(i / 800, 2) * 2; y1.push([x, f1(x)]); y2.push([x, f2(x)]); }
+    MB.chart(ctx, { x: 40, y: 30, w: w - 52, h: h - 76 }, { x: [0, 2], y: [-3, 3], xLabel: "x", series: [{ data: y1, color: P.accent, width: 2.4 }, { data: y2, color: P.accent2, width: 2.2 }], hlines: [{ y: 0, color: P.faint, dash: [] }] });
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "right";
+    ctx.fillStyle = P.accent; ctx.fillText("y₁ = " + l1.replace(/\^([−\-\d.]+)/g, "^($1)"), w - 14, 48); ctx.fillStyle = P.accent2; ctx.fillText("y₂ = " + l2.replace(/\^([−\-\d.]+)/g, "^($1)"), w - 14, 66);
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 400 });
+  const out = () => {
+    const R = roots();
+    if (R.real) {
+      const d = R.r1 - R.r2, isInt = Math.abs(d - Math.round(d)) < 1e-6;
+      MB.stat("ss-fr-r", `${SS.num(R.r1, 3)}, ${SS.num(R.r2, 3)}`); MB.stat("ss-fr-d", SS.num(d, 3));
+      MB.stat("ss-fr-case", d < 1e-6 ? "중근 → y₁ ln x 항이 반드시" : isInt ? "양의 정수 차 → ln 항이 생길 수도" : "정수가 아님 → 급수해 둘");
+      msg.className = "ss-msg";
+      msg.innerHTML = d < 1e-6 ? `중근 r = ${SS.num(R.r1, 3)}: 두 번째 지표가 없으므로 두 번째 해에 <b>ln x</b>가 들어갑니다. 베셀 ν = 0이 이 경우라 Y₀는 0에서 로그로 발산합니다.`
+        : isInt ? `r₁ − r₂ = ${Math.round(d)}(정수): 코시–오일러 방정식에서는 x<sup>r₂</sup>가 그대로 해지만, 일반 방정식에서는 점화식이 n = ${Math.round(d)}에서 0으로 나누게 되어 ln 항이 생길 수 있습니다(베셀 ν = 1은 생기고, ν = 1/2는 생기지 않습니다).`
+        : `지표의 차가 정수가 아니므로 x<sup>r₁</sup>Σaₙxⁿ, x<sup>r₂</sup>Σbₙxⁿ 두 프로베니우스 급수가 독립인 해입니다.` + (R.r2 < 0 ? ` r₂ &lt; 0인 해는 x → 0에서 터집니다.` : "");
+    } else {
+      MB.stat("ss-fr-r", `${SS.num(R.al, 3)} ± ${SS.num(R.be, 3)}i`); MB.stat("ss-fr-d", "복소수"); MB.stat("ss-fr-case", "x^α cos, sin(β ln x)");
+      msg.className = "ss-msg"; msg.innerHTML = `복소 지표: x<sup>α ± iβ</sup> = x<sup>α</sup>e<sup>±iβ ln x</sup>이므로 실수해는 x<sup>α</sup>cos(β ln x), x<sup>α</sup>sin(β ln x). ln x → −∞이므로 0 근처에서 무한히 많이 진동합니다.`;
+    }
+    pl.redraw();
+  };
+  const ps = MB.range("ss-fr-p", (v) => v.toFixed(2).replace("-", "−"), (v) => { p0 = v; out(); });
+  const qs = MB.range("ss-fr-q", (v) => v.toFixed(2).replace("-", "−"), (v) => { q0 = v; out(); });
+  const PRE = { ex: [0.5, 0], b0: [1, 0], b1: [1, -1], cx: [1, 1] };
+  MB.seg("ss-fr-pre", (v) => { [p0, q0] = PRE[v]; ps.set(p0, false); qs.set(q0, false); out(); });
+  out();
+})();
+
+/* ================================================================ 6. 르장드르 */
+(function () {
+  let m = 3, n = 5, d = 0;
+  const msg = document.getElementById("ss-lg-msg");
+  const series = (lam, par, x) => { let s = 0, c = 1, p = par ? x : 1; for (let k = par; k < 20000; k += 2) { s += c * p; c *= ((k - lam) * (k + lam + 1)) / ((k + 2) * (k + 1)); p *= x * x; if (Math.abs(c * p) < 1e-14 && k > 40) break; } return s; };
+  const fm = () => {
+    if (d === 0) return (x) => SS.P(m, x);
+    const par = m % 2, lam = m + d;
+    const scale = par ? (SS.P(m, 1e-4) - SS.P(m, -1e-4)) / 2e-4 : SS.P(m, 0);
+    return (x) => scale * series(lam, par, x);
+  };
+  const cv = MB.canvas("#ss-cv-leg", (ctx, w, h) => {
+    const P = MB.palette(), f = fm(), g = (x) => SS.P(n, x), A = [], B = [], Q = [], lim = d ? 0.999 : 1;
+    for (let i = 0; i <= 500; i++) { const x = -lim + (2 * lim * i) / 500; A.push([x, f(x)]); B.push([x, g(x)]); Q.push([x, f(x) * g(x)]); }
+    const r = MB.chart(ctx, SS.box(w, h), { x: [-1, 1], y: [-1.6, 1.6], xLabel: "x", series: [{ data: B, color: P.accent2, width: 2 }, { data: A, color: P.accent, width: 2.4 }], hlines: [{ y: 0, color: P.faint, dash: [] }] });
+    ctx.save(); ctx.beginPath(); ctx.rect(r.box.x, r.box.y, r.box.w, r.box.h); ctx.clip();
+    [[1, P.ok], [-1, P.bad]].forEach(([sg, col]) => { ctx.globalAlpha = 0.3; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(r.X(Q[0][0]), r.Y(0)); Q.forEach(([x, y]) => ctx.lineTo(r.X(x), r.Y(sg > 0 ? Math.max(0, y) : Math.min(0, y)))); ctx.lineTo(r.X(Q[Q.length - 1][0]), r.Y(0)); ctx.closePath(); ctx.fill(); });
+    ctx.restore();
+    const I = SS.simpson((x) => f(x) * g(x), -lim, lim, 2000);
+    MB.stat("ss-lg-int", SS.num(I, 5));
+    MB.stat("ss-lg-th", d ? "— (λ가 정수가 아님)" : m === n ? `2/(2n + 1) = ${SS.num(2 / (2 * n + 1), 5)}` : "0");
+    let z = 0; for (let i = 1; i < A.length; i++) if (A[i - 1][1] * A[i][1] < 0) z++;
+    MB.stat("ss-lg-z", String(z));
+    msg.className = "ss-msg" + (d ? " bad" : "");
+    msg.innerHTML = d ? `λ = ${SS.num(m + d, 2)}: 급수가 끝나지 않습니다. x = ±0.999에서 값이 ${SS.num(f(0.999), 3)}, ${SS.num(f(-0.999), 3)}로 다항식에서 벗어나고, x → ±1에서 로그처럼 발산합니다.`
+      : m === n ? `같은 다항식의 곱 P<sub>${n}</sub>²는 음이 아니므로 넓이가 양수 2/(2n + 1)입니다.` : `초록(+)과 빨강(−) 넓이가 정확히 상쇄됩니다: ∫ P<sub>${m}</sub>P<sub>${n}</sub> dx = 0. 직교성입니다.`;
+  }, { aspect: 0.5, minHeight: 260, maxHeight: 420 });
+  MB.range("ss-lg-m", (v) => String(v), (v) => { m = v; cv.redraw(); });
+  MB.range("ss-lg-n", (v) => String(v), (v) => { n = v; cv.redraw(); });
+  MB.range("ss-lg-d", (v) => v.toFixed(2), (v) => { d = v; cv.redraw(); });
+})();
+
+/* ================================================================ 7. 베셀 함수 */
+(function () {
+  let nu = 0, asy = false, env = true, part = false, Z = SS.zeros(0, 8, 31);
+  const cv = MB.canvas("#ss-cv-bes", (ctx, w, h) => {
+    const P = MB.palette(), J = [], A = [], E1 = [], E2 = [], S = [];
+    for (let i = 0; i <= 900; i++) {
+      const x = (30 * i) / 900; J.push([x, SS.J(nu, x)]);
+      if (x > 0.6) { const e = Math.sqrt(2 / (Math.PI * x)); E1.push([x, e]); E2.push([x, -e]); A.push([x, e * Math.cos(x - (nu * Math.PI) / 2 - Math.PI / 4)]); }
+      S.push([x, SS.J(nu, x, 10)]);
+    }
+    const series = [];
+    if (env) series.push({ data: E1, color: P.faint, width: 1.3, dash: [5, 4] }, { data: E2, color: P.faint, width: 1.3, dash: [5, 4] });
+    if (part) series.push({ data: S, color: P.accent2, width: 2 });
+    if (asy) series.push({ data: A, color: P.text, width: 1.6, dash: [3, 3] });
+    series.push({ data: J, color: P.accent, width: 2.4 });
+    MB.chart(ctx, SS.box(w, h), { x: [0, 30], y: [-0.6, 1.05], xLabel: "x", series, hlines: [{ y: 0, color: P.faint, dash: [] }], points: Z.map((z, i) => ({ x: z, y: 0, r: 4, color: P.text, label: i < 3 ? SS.num(z, 3) : "" })) });
+  }, { aspect: 0.5, minHeight: 260, maxHeight: 420 });
+  const out = () => {
+    Z = SS.zeros(nu, 9, 31);
+    MB.stat("ss-bs-tag", `J<sub>${SS.num(nu, 1)}</sub>(x)`);
+    MB.stat("ss-bs-z", Z.slice(0, 3).map((z) => SS.num(z, 4)).join(", "));
+    MB.stat("ss-bs-gap", Z.slice(1, 5).map((z, i) => SS.num(z - Z[i], 3)).join(", ") + " → π");
+    MB.stat("ss-bs-0", nu === 0 ? "J₀(0) = 1" : `≈ (x/2)<sup>${SS.num(nu, 1)}</sup>/Γ(${SS.num(nu + 1, 1)})`);
+    cv.redraw();
+  };
+  MB.range("ss-bs-nu", (v) => v.toFixed(1), (v) => { nu = v; out(); });
+  MB.check("ss-bs-asy", (v) => { asy = v; cv.redraw(); });
+  MB.check("ss-bs-env", (v) => { env = v; cv.redraw(); });
+  MB.check("ss-bs-sum", (v) => { part = v; cv.redraw(); });
+  out();
+})();
+
+/* ================================================================ 8. 원형 북 */
+(function () {
+  const G = 120, j01 = SS.zeros(0, 1)[0];
+  let n = 0, m = 1, nodes = true, running = true, t = 0, field = null, jnm = j01, inner = [], img = null, off = null, prof = null;
+  const build = () => {
+    const zs = SS.zeros(n, m); jnm = zs[m - 1]; inner = zs.slice(0, m - 1).map((z) => z / jnm);
+    let mx = 0; const raw = new Float64Array(G * G);
+    for (let i = 0; i < G; i++) for (let k = 0; k < G; k++) {
+      const x = (2 * (k + 0.5)) / G - 1, y = 1 - (2 * (i + 0.5)) / G, r = Math.hypot(x, y);
+      const v = r <= 1 ? SS.J(n, jnm * r, 60) * Math.cos(n * Math.atan2(y, x)) : NaN; raw[i * G + k] = v; if (isFinite(v)) mx = Math.max(mx, Math.abs(v));
+    }
+    for (let i = 0; i < raw.length; i++) raw[i] /= mx || 1;
+    field = raw;
+    MB.stat("ss-dr-j", SS.num(jnm, 4)); MB.stat("ss-dr-ratio", SS.num(jnm / j01, 3));
+    MB.stat("ss-dr-nl", `지름 ${n}개, 원 ${m - 1}개`);
+  };
+  build();
+  const cv = MB.canvas("#ss-cv-drum", (ctx, w, h) => {
+    const P = MB.palette(), s = Math.min(w, h) - 24, ox = (w - s) / 2, oy = (h - s) / 2;
+    if (!off) { off = document.createElement("canvas"); off.width = G; off.height = G; img = off.getContext("2d").createImageData(G, G); }
+    const amp = Math.cos(t);
+    for (let i = 0; i < G * G; i++) {
+      const v = field[i];
+      if (!isFinite(v)) { img.data[i * 4 + 3] = 0; continue; }
+      const c = MB.colormap(0.5 + 0.5 * v * amp, "diverge"); img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2]; img.data[i * 4 + 3] = 255;
+    }
+    off.getContext("2d").putImageData(img, 0, 0);
+    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.beginPath(); ctx.arc(ox + s / 2, oy + s / 2, s / 2, 0, 7); ctx.clip(); ctx.drawImage(off, ox, oy, s, s); ctx.restore();
+    const cx = ox + s / 2, cy = oy + s / 2, R = s / 2;
+    ctx.strokeStyle = P.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+    if (nodes) {
+      ctx.strokeStyle = P.text; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+      inner.forEach((q) => { ctx.beginPath(); ctx.arc(cx, cy, q * R, 0, 7); ctx.stroke(); });
+      for (let k = 0; k < n; k++) { const th = ((2 * k + 1) * Math.PI) / (2 * n); ctx.beginPath(); ctx.moveTo(cx - R * Math.cos(th), cy + R * Math.sin(th)); ctx.lineTo(cx + R * Math.cos(th), cy - R * Math.sin(th)); ctx.stroke(); }
+      ctx.setLineDash([]);
+    }
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 360 });
+  prof = MB.canvas("#ss-cv-prof", (ctx, w, h) => {
+    const P = MB.palette(), d = [], e = []; let mx = 0;
+    for (let i = 0; i <= 300; i++) { const r = i / 300, v = SS.J(n, jnm * r, 60); d.push([r, v]); mx = Math.max(mx, Math.abs(v)); }
+    d.forEach((q) => (q[1] /= mx)); d.forEach((q) => e.push([q[0], q[1] * Math.cos(t)]));
+    MB.chart(ctx, { x: 46, y: 30, w: w - 58, h: h - 76 }, { x: [0, 1], y: [-1.1, 1.1], xLabel: "r / a", series: [{ data: d, color: P.accent, width: 2.4 }, { data: e, color: P.accent2, width: 1.6, dash: [4, 3] }], hlines: [{ y: 0, color: P.faint, dash: [] }], points: inner.map((q) => ({ x: q, y: 0, r: 4, color: P.text, label: SS.num(q, 3) })).concat([{ x: 1, y: 0, r: 4, color: P.bad }]) });
+  }, { aspect: 0.9, minHeight: 240, maxHeight: 360 });
+  MB.range("ss-dr-n", (v) => String(v), (v) => { n = v; build(); cv.redraw(); prof.redraw(); });
+  MB.range("ss-dr-m", (v) => String(v), (v) => { m = v; build(); cv.redraw(); prof.redraw(); });
+  MB.check("ss-dr-nodes", (v) => { nodes = v; cv.redraw(); });
+  MB.playButton("ss-dr-play", () => (running = false), () => (running = true), ["■ 멈춤", "▶ 재생"]);
+  MB.loop(document.getElementById("sim-ss-drum"), (dt) => { if (!running) return; t += dt * 2.2 * (jnm / j01); cv.redraw(); prof.redraw(); });
+})();
+</script>
+</body>
+</html>

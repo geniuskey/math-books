@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>불연속 입력과 전달 함수 · ODEBook</title>
+<meta name="description" content="스위치를 켜고 끄는 단위 계단, 망치로 치는 디랙 델타, 충격 응답과 합성곱 정리, 전달 함수의 극점과 영점, s-평면에서 읽는 안정성, 보드 선도, 2차 시스템의 오버슈트와 정착 시간, PID 제어 맛보기까지.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .tf-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .tf-two > div { position: relative; min-width: 0; }
+  .tf-two > div + div { border-top: 1px solid var(--border); }
+  .tf-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; max-width: calc(100% - 20px); }
+  .tf-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.75; overflow-wrap: anywhere; }
+  .tf-msg b { color: var(--text); }
+  .tf-msg.ok { color: var(--ok); font-weight: 600; }
+  .tf-msg.bad { color: var(--bad); font-weight: 600; }
+  .tf-msg .tf-term { display: inline-block; white-space: nowrap; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="ode"></script>
+</head>
+<body data-chapter="transfer">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 10</div>
+    <h1 data-no-glossary>불연속 입력과 전달 함수</h1>
+    <p class="lead">실제 기계와 회로의 입력은 매끄러운 사인파만이 아닙니다. 스위치를 켜는 순간 전압이 뛰어오르고, 망치가 쇠를 때리는 순간 힘이 아주 짧게 치솟습니다. 미정계수법은 이런 입력 앞에서 무력하지만, <a href="laplace.html">9장</a>의 라플라스 변환은 오히려 이런 입력에서 빛납니다. 이 장에서는 끊어지는 입력을 <span class="term">단위 계단 함수</span>와 <span class="term">디랙 델타</span>로 쓰고, 시스템을 "충격을 주었을 때의 반응" 하나로 요약하는 <span class="term">충격 응답</span>, 그 반응으로 임의의 입력에 대한 출력을 쌓아 올리는 <span class="term">합성곱</span>, 그리고 이 모든 것을 \(s\)의 유리 함수 하나에 담는 <span class="term">전달 함수</span>를 다룹니다. 끝에서는 극점의 위치만 보고 오버슈트와 안정성을 읽고, 제어기의 첫걸음인 PID를 만져 봅니다.</p>
+    <ul class="objectives">
+      <li>단위 계단 \(u(t-a)\)로 구간별 입력을 쓰고, t-이동 정리로 변환하여 스위치 회로와 구간별 강제항 문제를 푼다.</li>
+      <li>디랙 델타를 좁은 펄스의 극한으로 이해하고, 거르기 성질과 \(\mathcal{L}\{\delta(t-a)\} = e^{-as}\)를 쓴다.</li>
+      <li>충격 응답 \(h(t)\)와 합성곱 \((h*g)(t)\)으로 영상태 응답을 쓰고, 합성곱 정리 \(\mathcal{L}\{f*g\} = FG\)를 증명한다.</li>
+      <li>전달 함수 \(H(s)\)의 극점과 영점을 구하고, s-평면의 극점 위치로 응답 모양과 BIBO 안정성을 판정한다.</li>
+      <li>주파수 응답 \(H(i\omega)\)로 정상 상태 사인 응답을 구하고 보드 선도의 점근선을 그린다.</li>
+      <li>1차·2차 시스템의 계단 응답 지표(시상수, 오버슈트, 첨두 시간, 정착 시간)를 극점에서 계산하고, P·I·D 항의 역할을 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>자동 제어 장치</b></div>
+      <div class="o-body"><p>자동차의 크루즈 컨트롤, 드론의 자세 안정, 엘리베이터가 층에 부드럽게 서는 일, 보일러의 온도 유지. 모두 센서로 출력을 재고 오차를 줄이도록 입력을 고치는 <b>되먹임 제어</b>입니다. 설계자가 미리 알아야 하는 것은 "목표값을 계단처럼 바꾸면 얼마나 넘치고 언제 가라앉는가", "어떤 진동수의 흔들림을 얼마나 키우는가"입니다. 장치마다 미분방정식을 처음부터 풀어서는 설계를 반복할 수 없습니다.</p>
+        <p>20세기 전반 벨 연구소의 블랙<span class="en">(Harold S. Black)</span>이 음되먹임 증폭기를 만들고 보드<span class="en">(Hendrik W. Bode)</span>가 주파수 응답으로 증폭기의 안정성을 분석하면서, 시스템을 <b>전달 함수</b>라는 \(s\)의 함수 하나로 다루는 방법이 자리 잡았습니다. 블록을 곱하고 되먹임 식 하나로 묶은 다음, 극점의 위치와 보드 선도로 설계합니다. 미분방정식은 그 뒤에 숨어 있습니다.</p>
+        <div class="o-chain"><span>스위치·충격·임의의 입력</span><i>→</i><span>계단·델타·합성곱</span><i>→</i><span class="tool">H(s) = Y(s)/G(s)</span><i>→</i><span>극점과 보드 선도로 설계</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="step">
+    <h2>단위 계단 함수와 스위치</h2>
+    <div class="problem"><strong>스위치를 켜는 순간</strong>
+      <p>RC 회로가 \(t = 1\) s에 전원에 연결되고, \(t = 9\) s에 다시 끊긴다고 합시다. 입력 전압은 "0 → \(V\) → 0"으로 두 번 뛰는 함수입니다. 3장의 적분 인자로 풀려면 세 구간을 따로 풀고 경계에서 축전기 전압이 이어지도록 상수를 맞춰야 합니다. 스위치가 열 번 켜졌다 꺼지면 스무 구간입니다. 끊어지는 입력을 <b>식 하나</b>로 쓰는 방법이 필요합니다.</p></div>
+    <div class="callout deep"><strong>정의 10.1 (단위 계단 함수)</strong> \(a \ge 0\)에 대해
+      <div class="formula">$$u(t - a) = \begin{cases} 0 & t \lt a \\ 1 & t \ge a \end{cases}$$</div>
+      를 \(t = a\)에서 켜지는 <span class="term">단위 계단 함수</span><span class="en">(unit step function, Heaviside function)</span>라 한다. \(u_a(t)\)나 \(H(t - a)\)로도 쓴다. 정의 9.2의 뜻에서 구간별 연속이고 지수 차수 0이다.</div>
+    <p>계단 함수는 스위치입니다. 어떤 함수에 \(u(t-a)\)를 곱하면 \(t = a\)부터 켜지고, \(1 - u(t-a)\)를 곱하면 \(t = a\)에서 꺼집니다. 두 계단의 차 \(u(t-a) - u(t-b)\)는 \([a, b)\)에서만 1인 <b>창 함수</b>입니다. 변환은 정의에서 바로 나옵니다.</p>
+    <div class="formula">$$\mathcal{L}\{u(t-a)\} = \int_a^\infty e^{-st}\,dt = \frac{e^{-as}}{s},\qquad \mathcal{L}\{u(t-a) - u(t-b)\} = \frac{e^{-as} - e^{-bs}}{s}\quad (s > 0).$$</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="단위 계단, 창 함수, 계단을 곱해 켜진 사인">
+        <rect x="10" y="10" width="740" height="190" rx="10" class="f-surface"/>
+        <g transform="translate(30,30)">
+          <line x1="0" y1="110" x2="210" y2="110" class="s-axis"/><line x1="10" y1="10" x2="10" y2="120" class="s-axis"/>
+          <path d="M10 110 H80 V40 H200" fill="none" class="s-acc" style="stroke-width:2.6"/>
+          <circle cx="80" cy="110" r="3.5" style="fill:none;stroke:var(--accent);stroke-width:1.6"/><circle cx="80" cy="40" r="3.5" style="fill:var(--accent)"/>
+          <text x="80" y="132" text-anchor="middle" class="t-mono">a</text><text x="0" y="44" text-anchor="end" class="t-mono">1</text>
+          <text x="105" y="150" text-anchor="middle" class="t">u(t − a)</text>
+        </g>
+        <g transform="translate(275,30)">
+          <line x1="0" y1="110" x2="210" y2="110" class="s-axis"/><line x1="10" y1="10" x2="10" y2="120" class="s-axis"/>
+          <path d="M10 110 H60 V40 H150 V110 H200" fill="none" style="stroke:var(--accent-2);stroke-width:2.6"/>
+          <text x="60" y="132" text-anchor="middle" class="t-mono">a</text><text x="150" y="132" text-anchor="middle" class="t-mono">b</text>
+          <text x="105" y="150" text-anchor="middle" class="t">u(t − a) − u(t − b)</text>
+        </g>
+        <g transform="translate(520,30)">
+          <line x1="0" y1="75" x2="210" y2="75" class="s-axis"/><line x1="10" y1="10" x2="10" y2="120" class="s-axis"/>
+          <path d="M10 75 H70" fill="none" class="s-acc" style="stroke-width:2.6"/>
+          <path d="M70 75 C80 40 92 40 102 75 C112 110 124 110 134 75 C144 40 156 40 166 75 C176 110 188 110 198 75" fill="none" class="s-acc" style="stroke-width:2.6"/>
+          <text x="70" y="132" text-anchor="middle" class="t-mono">a</text>
+          <text x="105" y="150" text-anchor="middle" class="t">u(t − a) sin(ω(t − a))</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 10-1.</b> 스위치로서의 계단 함수. 왼쪽: t = a에서 켜지는 계단. 가운데: 두 계단의 차는 [a, b)에서만 켜진 창. 오른쪽: 신호 전체를 a만큼 늦추고 그때 켜면 u(t − a)f(t − a), 9장 정리 9.9의 꼴이다.</figcaption>
+    </figure>
+    <p>스위치 문제를 다시 봅시다. RC 회로의 축전기 전압 \(v\)는 \(\tau v' + v = V_{\text{in}}(t)\)(\(\tau = RC\))를 따르고, \(V_{\text{in}} = V\bigl[u(t-1) - u(t-9)\bigr]\)입니다. 변환하면(\(v(0) = 0\))</p>
+    <div class="formula">$$(\tau s + 1)V(s) = V\frac{e^{-s} - e^{-9s}}{s}\quad\Rightarrow\quad V(s) = V\Big(e^{-s} - e^{-9s}\Big)\frac{1}{s(\tau s + 1)}.$$
+      <div class="where">\(\frac{1}{s(\tau s+1)} = \frac1s - \frac{1}{s + 1/\tau}\)의 역변환은 \(q(t) = 1 - e^{-t/\tau}\)(계단 응답). \(e^{-as}\)는 그것을 \(a\)만큼 늦춘다(정리 9.9).</div></div>
+    <p>그래서 \(v(t) = V\bigl[q(t-1)u(t-1) - q(t-9)u(t-9)\bigr]\)입니다. 경계에서 상수를 맞추는 일이 사라졌습니다. 스위치를 몇 번 켜고 끄든 \(v(t)\)는 <b>늦춰진 계단 응답들의 합</b>이고, 이것이 선형성(중첩)과 t-이동의 힘입니다. 아래 시뮬레이터에서 직접 스위치를 눌러 보세요. 누를 때마다 식에 항이 하나씩 붙습니다.</p>
+
+    <div class="sim" id="sim-tf-switch">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>스위치 켜고 끄기: 늦춰진 계단 응답의 합</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-sw-circ"></canvas><span class="tf-cap">RC 회로: 전원 V = 1, 스위치, 저항, 축전기</span></div>
+          <div><canvas id="tf-cv-sw-plot"></canvas><span class="tf-cap">입력 V_in(t) (청록)과 축전기 전압 v(t) (주황)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>시상수 τ = RC (s) <output id="tf-sw-tau-out"></output></span><input type="range" id="tf-sw-tau" min="0.3" max="4" step="0.1" value="1.5"></label>
+          <div class="btn-row"><button class="btn primary" id="tf-sw-play">▶ 실시간 시작</button><button class="btn" id="tf-sw-toggle">스위치 ⏻</button></div>
+          <div class="btn-row"><button class="btn" id="tf-sw-win">예: 창 입력 [1, 9)</button><button class="btn" id="tf-sw-pwm">예: 펄스열</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="tf-sw-t">—</span></div>
+        <div class="stat"><span class="k">스위치</span><span class="v" id="tf-sw-state">—</span></div>
+        <div class="stat"><span class="k">v(t)</span><span class="v" id="tf-sw-v">—</span></div>
+      </div>
+      <div class="tf-msg" id="tf-sw-msg"></div>
+      <div class="sim-note">해볼 것: ① '▶ 실시간 시작'을 누르고 '스위치'를 아무 때나 눌러 보세요. 아래 식에 ±u(t − a)(1 − e^(−(t−a)/τ)) 항이 하나씩 붙고, 곡선은 그 합입니다. ② τ를 키우면 축전기가 미처 다 차기 전에 스위치가 꺼집니다. ③ '펄스열'에서 τ가 펄스 간격보다 크면 v가 평균값 근처에서 출렁이는 저역 통과 필터가 됩니다. 모델: τv′ + v = V_in, v(0) = 0. 곡선은 RK4가 아니라 위 식(늦춰진 계단 응답의 합)을 그대로 그린 것입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="piecewise">
+    <h2>구간별 입력과 t-이동</h2>
+    <p>9장의 정리 9.9는 "늦춰서 켠 신호" \(u(t-a)f(t-a)\)의 변환이었습니다. 실제 입력은 보통 \(u(t-a)g(t)\)처럼 <b>늦추지 않은</b> 함수를 \(t = a\)에서 켜는 꼴로 주어집니다. 이때는 \(g(t) = g((t - a) + a)\)로 다시 쓰면 됩니다.</p>
+    <div class="callout deep"><strong>정리 10.2 (t-이동의 두 꼴)</strong> \(a \ge 0\)일 때
+      <div class="formula">$$\mathcal{L}\{u(t-a)f(t-a)\} = e^{-as}F(s),\qquad \mathcal{L}\{u(t-a)g(t)\} = e^{-as}\,\mathcal{L}\{g(t + a)\}.$$</div>
+      역으로 \(\mathcal{L}^{-1}\{e^{-as}F(s)\} = u(t-a)f(t-a)\).
+      <p style="margin:8px 0 0"><b>증명.</b> 첫 식은 정리 9.9. 둘째 식은 \(f(t) = g(t+a)\)로 두면 \(f(t - a) = g(t)\)이므로 첫 식이 된다. ∎</p></div>
+    <p>구간별 함수를 계단으로 쓰는 요령은 "왼쪽에서부터 바뀌는 만큼 켜기"입니다. \(f(t) = f_1\)(\(t \lt a\)), \(f_2\)(\(a \le t \lt b\)), \(f_3\)(\(t \ge b\))이면</p>
+    <div class="formula">$$f(t) = f_1 + (f_2 - f_1)\,u(t-a) + (f_3 - f_2)\,u(t-b).$$</div>
+    <div class="callout"><strong>예제 10.1 (구간별 함수의 변환)</strong> \(f(t) = 2\)(\(0 \le t \lt 1\)), \(t\)(\(1 \le t \lt 3\)), \(0\)(\(t \ge 3\))의 변환을 구하라.
+      <ol>
+        <li>계단으로: \(f = 2 + (t - 2)u(t-1) + (0 - t)u(t-3)\).</li>
+        <li>정리 10.2의 둘째 꼴: \(\mathcal{L}\{(t-2)u(t-1)\} = e^{-s}\mathcal{L}\{(t+1) - 2\} = e^{-s}\Big(\frac{1}{s^2} - \frac1s\Big)\).</li>
+        <li>\(\mathcal{L}\{t\,u(t-3)\} = e^{-3s}\mathcal{L}\{t + 3\} = e^{-3s}\Big(\frac{1}{s^2} + \frac3s\Big)\).</li>
+        <li>\(F(s) = \dfrac2s + e^{-s}\Big(\dfrac{1}{s^2} - \dfrac1s\Big) - e^{-3s}\Big(\dfrac{1}{s^2} + \dfrac3s\Big)\). 검산: \(s = 1.5\)에서 수치 적분과 공식 모두 \(1.2566\). ✓</li>
+      </ol></div>
+    <div class="callout"><strong>예제 10.2 (잠깐 미는 힘)</strong> 질량 1, 용수철 상수 1인 진동자를 \(t \in [0, \pi)\) 동안만 힘 1로 민다. \(y'' + y = 1 - u(t - \pi)\), \(y(0) = y'(0) = 0\).
+      <ol>
+        <li>\((s^2 + 1)Y = \dfrac{1 - e^{-\pi s}}{s}\), \(Y = \bigl(1 - e^{-\pi s}\bigr)\dfrac{1}{s(s^2+1)}\).</li>
+        <li>\(\dfrac{1}{s(s^2+1)} = \dfrac1s - \dfrac{s}{s^2+1}\)이므로 \(\mathcal{L}^{-1} = 1 - \cos t\).</li>
+        <li>\(y(t) = (1 - \cos t) - \bigl(1 - \cos(t - \pi)\bigr)u(t - \pi) = (1 - \cos t) - (1 + \cos t)u(t-\pi)\).</li>
+        <li>\(t \ge \pi\)에서 \(y = -2\cos t\): 힘을 뗀 뒤 진폭 2로 자유 진동한다. 반 주기 동안 같은 방향으로 밀어 에너지를 최대로 넣은 결과다. \(y\)와 \(y'\)은 \(t = \pi\)에서 연속이고(\(y(\pi) = 2\), \(y'(\pi) = 0\)), \(y''\)만 점프한다. RK4 수치해와 일치. ✓</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="delta">
+    <h2>디랙 델타: 망치로 치기</h2>
+    <div class="problem"><strong>아주 짧고 아주 센 힘</strong>
+      <p>망치로 용수철에 달린 질량을 칩니다. 접촉 시간은 수 밀리초, 힘은 수백 뉴턴입니다. 힘의 정확한 모양은 모르고 알 필요도 없습니다. 운동량을 바꾸는 것은 힘을 시간에 대해 쌓은 <span class="term">충격량</span><span class="en">(impulse)</span> \(I = \int F\,dt\)뿐이기 때문입니다. "넓이는 \(I\)이고 폭은 0인 힘"을 식으로 어떻게 쓸까요?</p></div>
+    <p>폭 \(\varepsilon\), 높이 \(1/\varepsilon\)인 직사각형 펄스 \(d_\varepsilon(t - a) = \frac1\varepsilon\bigl[u(t-a) - u(t-a-\varepsilon)\bigr]\)는 넓이가 늘 1입니다. \(\varepsilon \to 0\)이면 높이는 무한대로 가고 폭은 0으로 가지만 넓이는 1로 남습니다. 이 극한을 <span class="term">디랙 델타</span><span class="en">(Dirac delta)</span> \(\delta(t - a)\)라 부릅니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 220" role="img" aria-label="넓이 1인 직사각형 펄스가 좁아지며 델타로 가는 그림">
+        <rect x="10" y="10" width="740" height="200" rx="10" class="f-surface"/>
+        <line x1="40" y1="180" x2="470" y2="180" class="s-axis"/>
+        <rect x="120" y="155" width="100" height="25" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+        <rect x="120" y="130" width="50" height="50" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5;opacity:.8"/>
+        <rect x="120" y="80" width="20" height="100" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <rect x="120" y="30" width="8" height="150" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="120" y="198" text-anchor="middle" class="t-mono">a</text>
+        <text x="228" y="170" class="t-dim">ε = 4, 높이 1/4</text><text x="178" y="140" class="t-dim">ε = 2</text><text x="148" y="92" class="t-dim">ε = 1</text><text x="136" y="40" class="t-dim">ε = 0.4</text>
+        <text x="330" y="60" class="t-dim">모든 펄스의 넓이 = 1</text>
+        <defs><marker id="tf-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <line x1="580" y1="180" x2="730" y2="180" class="s-axis"/>
+        <line x1="640" y1="180" x2="640" y2="40" class="s-acc" style="stroke-width:3" marker-end="url(#tf-ar)"/>
+        <text x="652" y="60" class="t-acc">δ(t − a)</text><text x="652" y="84" class="t-dim">넓이 1</text><text x="640" y="198" text-anchor="middle" class="t-mono">a</text>
+        <path d="M490 110 H560" class="s-acc" style="stroke-width:2" marker-end="url(#tf-ar)"/><text x="525" y="100" text-anchor="middle" class="t-acc">ε → 0</text>
+      </svg>
+      <figcaption><b>그림 10-2.</b> 넓이 1인 펄스를 점점 좁히면 높이가 한없이 커진다. 극한 δ(t − a)는 보통의 함수가 아니라 화살표로 그리고, 화살표의 '크기'는 넓이를 뜻한다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 10.3 (디랙 델타)</strong> \(\delta(t - a)\)는 연속 함수 \(\varphi\)와 함께 적분할 때
+      <div class="formula">$$\int_0^\infty \varphi(t)\,\delta(t - a)\,dt = \lim_{\varepsilon\to 0^+}\int_0^\infty \varphi(t)\,d_\varepsilon(t - a)\,dt = \varphi(a)\qquad (a \gt 0)$$</div>
+      가 되는 대상으로 정의한다. 이것을 <span class="term">거르기 성질</span><span class="en">(sifting property)</span>이라 한다. \(\delta\)는 어떤 보통 함수로도 쓸 수 없고, 적분 안에서의 작용으로만 뜻을 가진다.</div>
+    <p>극한이 \(\varphi(a)\)인 까닭은 적분의 평균값 정리입니다. \(\int \varphi\,d_\varepsilon = \frac1\varepsilon\int_a^{a+\varepsilon}\varphi\,dt = \varphi(c_\varepsilon)\)이고 \(c_\varepsilon \in [a, a+\varepsilon]\)이 \(a\)로 가기 때문입니다. 델타는 디랙<span class="en">(Paul Dirac)</span>이 양자역학에서 널리 쓰이게 했고, 엄밀한 이론은 훗날 슈바르츠<span class="en">(Laurent Schwartz)</span>의 분포<span class="en">(distribution)</span> 이론으로 세워졌습니다. 공학에서는 위 거르기 성질 하나만 쓰면 충분합니다.</p>
+    <div class="callout deep"><strong>정리 10.4 (델타의 변환)</strong> \(a \ge 0\)이면 \(\mathcal{L}\{\delta(t - a)\} = e^{-as}\), 특히 \(\mathcal{L}\{\delta(t)\} = 1\).
+      <p style="margin:8px 0 0"><b>증명.</b> 거르기 성질에 \(\varphi = e^{-st}\)를 넣는다. (\(a = 0\)은 펄스 \(d_\varepsilon(t)\)의 변환 \(\frac{1 - e^{-\varepsilon s}}{\varepsilon s} \to 1\)로 정의한다.) ∎</p></div>
+    <p>\(\mathcal{L}\{\delta\} = 1\)은 \(s \to \infty\)에서 0으로 가지 않으므로, 정리 9.3에 비추어 보면 델타가 보통 함수가 아님을 다시 확인할 수 있습니다. 또 \(u(t-a)\)의 "도함수"가 \(\delta(t-a)\)라는 것도 변환에서 보입니다: \(s\cdot\frac{e^{-as}}{s} - u(0^-)\cdot 0 = e^{-as}\).</p>
+    <div class="callout"><strong>예제 10.3 (망치로 친 감쇠 진동자)</strong> \(x'' + 2x' + 5x = \delta(t)\), \(x(0) = x'(0) = 0\).
+      <ol>
+        <li>\((s^2 + 2s + 5)X = 1\), \(X = \dfrac{1}{(s+1)^2 + 4}\).</li>
+        <li>\(x(t) = \tfrac12 e^{-t}\sin 2t\).</li>
+        <li>해석: \(x(0^+) = 0\)이지만 \(x'(0^+) = 1\)이다. 단위 충격량이 질량 1에 <b>속도 1</b>을 순간적으로 준 것이다. 즉 \(x'' + 2x' + 5x = \delta(t)\)(정지 상태에서 출발)는 동차 방정식에 \(x(0) = 0\), \(x'(0) = 1\)을 준 것과 같다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 10.4 (진동을 한 번에 멈추는 망치)</strong> \(x'' + x = \delta(t - \pi/2)\), \(x(0) = 1\), \(x'(0) = 0\).
+      <ol>
+        <li>\(s^2X - s + X = e^{-\pi s/2}\), \(X = \dfrac{s}{s^2+1} + e^{-\pi s/2}\dfrac{1}{s^2+1}\).</li>
+        <li>\(x(t) = \cos t + \sin(t - \tfrac\pi2)\,u(t - \tfrac\pi2) = \cos t - \cos t\cdot u(t - \tfrac\pi2)\).</li>
+        <li>\(t \ge \pi/2\)에서 \(x \equiv 0\). 질량이 평형점을 속도 \(-1\)로 지나는 순간 크기 1의 충격량으로 쳐서 속도를 정확히 0으로 만들었다. 같은 망치로 \(t = \pi\)(가장 멀리 간 순간)에 치면 진폭은 \(\sqrt2\)가 된다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-tf-impulse">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>충격의 크기와 폭: 좁은 펄스가 델타가 될 때</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-im-scene"></canvas><span class="tf-cap">용수철–질량 (m = 1, k = 4)</span></div>
+          <div><canvas id="tf-cv-im-f"></canvas><span class="tf-cap">힘 f(t): 넓이 I, 폭 ε인 펄스 (t = 1에서 시작)</span></div>
+          <div><canvas id="tf-cv-im-x"></canvas><span class="tf-cap">x(t): 펄스 응답 (주황) vs 이상적 충격 응답 I·h(t − 1) (점선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>펄스 폭 ε (s) <output id="tf-im-eps-out"></output></span><input type="range" id="tf-im-eps"></label>
+          <label class="ctrl"><span>충격량 I = 넓이 <output id="tf-im-I-out"></output></span><input type="range" id="tf-im-I" min="0.2" max="2" step="0.1" value="1"></label>
+          <label class="ctrl"><span>감쇠 c <output id="tf-im-c-out"></output></span><input type="range" id="tf-im-c" min="0" max="2" step="0.05" value="0.4"></label>
+          <div class="btn-row"><button class="btn primary" id="tf-im-play">▶ 망치로 치기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">펄스 높이 I/ε</span><span class="v" id="tf-im-h">—</span></div>
+        <div class="stat"><span class="k">펄스 직후 속도 x′</span><span class="v" id="tf-im-v">—</span></div>
+        <div class="stat"><span class="k">최대 |x|: 펄스 / 델타</span><span class="v" id="tf-im-max">—</span></div>
+        <div class="stat"><span class="k">두 응답의 최대 차이</span><span class="v" id="tf-im-diff">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ε를 2 s에서 0.01 s로 줄이면 펄스는 높고 좁아지지만, 응답은 점선(델타 응답)으로 수렴합니다. 펄스 직후 속도는 I/m = I로 갑니다. ② ε = 2 s 정도로 넓으면 펄스가 진동 반 주기(π/2 ≈ 1.6 s)와 맞먹어 응답이 작아집니다. 델타로 근사해도 되는 조건은 "ε가 시스템의 시간 척도보다 훨씬 짧다"입니다. ③ I를 두 배로 하면 응답도 정확히 두 배입니다(선형성). 모델: x″ + cx′ + 4x = f(t), RK4(dt = 0.002), h(t) = e^(−ct/2) sin(ω_d t)/ω_d.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="impulse-response">
+    <h2>충격 응답</h2>
+    <p>예제 10.3에서 \(\delta(t)\)에 대한 응답은 \(X(s) = \frac{1}{s^2 + 2s + 5}\), 즉 특성 다항식의 역수의 역변환이었습니다. 이 함수는 시스템 자체의 성질입니다. 입력이 무엇이든 시스템이 "한 번 맞았을 때 어떻게 우는가"를 기록한 지문과 같습니다.</p>
+    <div class="callout deep"><strong>정의 10.5 (충격 응답)</strong> 상수계수 선형 방정식 \(ay'' + by' + cy = g(t)\)에서 초기 조건이 모두 0이고 \(g = \delta(t)\)일 때의 해를 <span class="term">충격 응답</span><span class="en">(impulse response)</span> \(h(t)\)라 한다. 변환하면
+      <div class="formula">$$h(t) = \mathcal{L}^{-1}\Big\{\frac{1}{as^2 + bs + c}\Big\},$$</div>
+      이것은 동차 방정식 \(ah'' + bh' + ch = 0\)에 \(h(0) = 0\), \(h'(0) = 1/a\)를 준 해와 같다.</div>
+    <p>질량–용수철에서 \(a = m\)이므로 충격량 1은 속도 \(1/m\)를 줍니다. 무거운 물체일수록 같은 망치에 덜 움직입니다. 충격 응답의 모양은 특성근, 즉 \(1/(as^2+bs+c)\)의 극점이 정합니다(그림 9-2). 이 사실을 5절 이후에 전달 함수의 언어로 다시 씁니다.</p>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="convolution">
+    <h2>합성곱과 합성곱 정리: 과거 입력의 메아리</h2>
+    <div class="problem"><strong>임의의 입력에 대한 응답을 충격 응답으로</strong>
+      <p>충격 응답 \(h(t)\)를 실험으로 한 번 쟀다고 합시다(망치로 한 번 치고 기록). 이제 임의의 입력 \(g(t)\)를 넣었을 때의 출력을 다시 실험하지 않고 알 수 있을까요? 입력을 아주 짧은 펄스들의 열로 잘게 쪼개 보면 답이 보입니다.</p></div>
+    <p>시각 \(\tau\) 근처의 폭 \(\Delta\tau\)짜리 조각은 넓이 \(g(\tau)\Delta\tau\)인 충격입니다. 선형·시불변 시스템은 이 충격에 \(g(\tau)\Delta\tau\cdot h(t - \tau)\)로 반응합니다(크기만큼 곱하고 \(\tau\)만큼 늦춤). 모든 조각의 반응을 더하면</p>
+    <div class="formula">$$y(t) \approx \sum_{\tau_k \lt t} g(\tau_k)\,h(t - \tau_k)\,\Delta\tau \;\longrightarrow\; \int_0^t g(\tau)\,h(t - \tau)\,d\tau.$$
+      <div class="where">지금의 출력은 <b>과거의 모든 입력이 남긴 메아리의 합</b>이다. \(h(t - \tau)\)는 \(\tau\)초 전의 입력이 지금까지 얼마나 남아 있는지를 말하는 "기억의 무게"다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 240" role="img" aria-label="입력을 충격의 열로 쪼개고 각 충격의 응답을 더해 출력을 만드는 그림">
+        <rect x="10" y="10" width="740" height="220" rx="10" class="f-surface"/>
+        <line x1="40" y1="200" x2="720" y2="200" class="s-axis"/>
+        <g style="fill:var(--accent-2);opacity:.55"><rect x="90" y="150" width="16" height="50"/><rect x="150" y="120" width="16" height="80"/><rect x="210" y="135" width="16" height="65"/></g>
+        <g fill="none" style="stroke-width:1.6">
+          <path d="M98 200 C110 150 130 140 160 165 C190 188 230 196 300 199 L700 200" style="stroke:var(--accent-2);stroke-dasharray:5 4"/>
+          <path d="M158 200 C172 130 196 118 230 155 C266 188 320 196 400 199 L700 200" style="stroke:var(--accent-2);stroke-dasharray:5 4"/>
+          <path d="M218 200 C230 145 252 135 285 165 C318 190 370 197 460 199 L700 200" style="stroke:var(--accent-2);stroke-dasharray:5 4"/>
+        </g>
+        <path d="M98 200 C115 150 140 110 190 100 C240 92 270 110 300 140 C340 175 420 194 560 199 L700 200" fill="none" class="s-acc" style="stroke-width:2.8"/>
+        <text x="98" y="218" text-anchor="middle" class="t-mono">τ₁</text><text x="158" y="218" text-anchor="middle" class="t-mono">τ₂</text><text x="218" y="218" text-anchor="middle" class="t-mono">τ₃</text>
+        <text x="330" y="80" class="t-acc">y(t) = Σ g(τₖ)Δτ · h(t − τₖ)</text>
+        <text x="330" y="104" class="t-dim">점선: 각 충격의 늦춰진 응답, 굵은 선: 그 합</text>
+      </svg>
+      <figcaption><b>그림 10-3.</b> 합성곱의 그림. 입력(청록 막대)을 짧은 충격의 열로 보고, 각 충격이 만든 늦춰진 충격 응답(점선)을 모두 더하면 출력(주황)이다. 막대를 무한히 가늘게 하면 합이 적분이 된다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 10.6 (합성곱)</strong> \(t \ge 0\)에서 구간별 연속인 \(f\), \(g\)의 <span class="term">합성곱</span><span class="en">(convolution)</span>은
+      <div class="formula">$$(f * g)(t) = \int_0^t f(\tau)\,g(t - \tau)\,d\tau.$$</div>
+      \(\tau\)를 \(t - \tau\)로 치환하면 \(f * g = g * f\)(교환 법칙)이고, 결합·분배 법칙도 성립한다. 그러나 \(1 * f \ne f\)이다(예: \(1 * 1 = t\)).</div>
+    <div class="callout deep"><strong>정리 10.7 (합성곱 정리)</strong> \(f\), \(g\)가 구간별 연속이고 지수 차수이면
+      <div class="formula">$$\mathcal{L}\{f * g\} = F(s)\,G(s).$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(F(s)G(s) = \int_0^\infty e^{-s\tau}f(\tau)\,d\tau\int_0^\infty e^{-s\sigma}g(\sigma)\,d\sigma\). 안쪽에서 \(\sigma = t - \tau\)(\(\tau\) 고정)로 치환하면 \(\int_\tau^\infty e^{-st}g(t-\tau)\,dt\)이므로 \(FG = \int_0^\infty\!\int_\tau^\infty e^{-st}f(\tau)g(t-\tau)\,dt\,d\tau\). 적분 영역 \(0 \le \tau \le t \lt \infty\)에서 적분 순서를 바꾸면(절대 수렴으로 정당화) \(\int_0^\infty e^{-st}\Big[\int_0^t f(\tau)g(t-\tau)\,d\tau\Big]dt = \mathcal{L}\{f*g\}\). ∎</p></div>
+    <p>시간 쪽의 복잡한 적분이 \(s\) 쪽에서는 그냥 곱셈입니다. 이 정리 덕분에 "곱의 역변환"을 부분 분수 없이 쓸 수도 있습니다.</p>
+    <div class="callout"><strong>예제 10.5 (합성곱으로 역변환)</strong>
+      <ol>
+        <li>\(\mathcal{L}^{-1}\Big\{\dfrac{1}{(s+1)(s+2)}\Big\} = e^{-t} * e^{-2t} = \displaystyle\int_0^t e^{-\tau}e^{-2(t-\tau)}\,d\tau = e^{-2t}\big(e^{t} - 1\big) = e^{-t} - e^{-2t}\). 부분 분수의 답과 같다. 수치 확인(\(t = 1.7\)): 두 값 모두 \(0.14931\). ✓</li>
+        <li>\(\mathcal{L}^{-1}\Big\{\dfrac{1}{s(s^2+1)}\Big\} = 1 * \sin t = \displaystyle\int_0^t \sin\tau\,d\tau = 1 - \cos t\). 정리 9.6(\(F/s\)는 적분)과 같은 이야기다.</li>
+      </ol></div>
+    <div class="callout deep"><strong>정리 10.8 (영상태 응답, 뒤아멜 원리)</strong> \(ay'' + by' + cy = g(t)\)의 해는
+      <div class="formula">$$y(t) = \underbrace{y_{\text{zi}}(t)}_{\text{영입력 응답}} + \underbrace{(h * g)(t)}_{\text{영상태 응답}} = y_{\text{zi}}(t) + \int_0^t h(t-\tau)\,g(\tau)\,d\tau.$$</div>
+      여기서 \(y_{\text{zi}}\)는 입력 없이 초기 조건만으로 생기는 응답, \(h * g\)는 초기 조건 0에서 입력만으로 생기는 응답이다.
+      <p style="margin:8px 0 0"><b>증명.</b> 변환하면 \(Y = \frac{(as + b)y(0) + ay'(0)}{as^2+bs+c} + \frac{1}{as^2+bs+c}G(s)\). 첫 항의 역변환이 \(y_{\text{zi}}\), 둘째 항은 \(H(s)G(s)\)이므로 정리 10.7로 \(h * g\). ∎</p></div>
+    <p>예를 들어 \(y'' + y = g(t)\)(정지 상태 출발)의 해는 어떤 \(g\)에 대해서도 \(y(t) = \int_0^t \sin(t - \tau)\,g(\tau)\,d\tau\)입니다. 8장의 매개변수 변환법이 같은 공식을 다른 길로 얻었던 것입니다.</p>
+
+    <div class="sim" id="sim-tf-conv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>합성곱 슬라이딩: h(t − τ)를 끌며 넓이 쌓기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-cv-top"></canvas><span class="tf-cap">τ 축: 입력 g(τ) (청록), 뒤집어 민 h(t − τ) (주황), 곱 (칠한 넓이)</span></div>
+          <div><canvas id="tf-cv-cv-bot"></canvas><span class="tf-cap">y(t) = ∫₀ᵗ g(τ)h(t − τ)dτ: 지금까지 쌓인 값 (점은 RK4)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>입력 g</span><select id="tf-cv-g">
+            <option value="step">계단 1</option>
+            <option value="pulse" selected>펄스 [0, 2)</option>
+            <option value="ramp">경사 0.25t</option>
+            <option value="sin">sin 2t</option>
+          </select></label>
+          <label class="ctrl"><span>시스템 h</span><select id="tf-cv-h">
+            <option value="first">1차: e^(−t) (y′ + y = g)</option>
+            <option value="osc">2차: e^(−0.3t) sin 2t / 2</option>
+          </select></label>
+          <label class="ctrl"><span>t <output id="tf-cv-t-out"></output></span><input type="range" id="tf-cv-t" min="0" max="12" step="0.02" value="3"></label>
+          <div class="btn-row"><button class="btn primary" id="tf-cv-play">▶ 밀기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">(g * h)(t)</span><span class="v" id="tf-cv-y">—</span></div>
+        <div class="stat"><span class="k">RK4로 푼 y(t)</span><span class="v" id="tf-cv-rk">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '펄스'와 '1차'에서 t를 밀면, 펄스가 끝난 뒤(t &gt; 2)에도 h(t − τ)의 꼬리가 펄스와 겹쳐 y가 천천히 줄어듭니다. 시스템이 과거 입력을 기억하는 것입니다. ② '2차'로 바꾸면 겹치는 부분의 곱이 양·음을 오가며 y가 진동합니다. ③ '2차' + 'sin 2t'에서는 입력 진동수가 고유 진동수에 가까워 y가 크게 자랍니다(감쇠 있는 공진). 모델: 적분은 심프슨 공식, 점은 같은 방정식을 RK4로 푼 값입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="transfer-function">
+    <h2>전달 함수 H(s): 극점과 영점</h2>
+    <p>정리 10.8의 영상태 응답을 \(s\) 쪽에서 쓰면 \(Y(s) = H(s)G(s)\)입니다. 시스템은 입력의 변환에 \(H(s)\)를 곱하는 장치가 됩니다.</p>
+    <div class="callout deep"><strong>정의 10.9 (전달 함수)</strong> 초기 조건이 모두 0인 선형 시불변 시스템에서 출력과 입력의 변환의 비
+      <div class="formula">$$H(s) = \frac{Y(s)}{G(s)} = \mathcal{L}\{h(t)\}$$</div>
+      를 <span class="term">전달 함수</span><span class="en">(transfer function)</span>라 한다. \(a_ny^{(n)} + \cdots + a_0y = b_mg^{(m)} + \cdots + b_0g\)이면 \(H(s) = \dfrac{b_ms^m + \cdots + b_0}{a_ns^n + \cdots + a_0}\). 분자의 근을 <span class="term">영점</span><span class="en">(zero)</span>, 분모의 근을 극점이라 한다.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>시스템</th><th>방정식</th><th>전달 함수</th><th>극점</th></tr></thead>
+      <tbody>
+        <tr><td>RC 저역 통과 (입력 전압 → 축전기 전압)</td><td>\(RCv' + v = v_{\text{in}}\)</td><td>\(\dfrac{1}{RCs + 1}\)</td><td>\(-1/(RC)\)</td></tr>
+        <tr><td>질량–용수철–감쇠기 (힘 → 변위)</td><td>\(mx'' + cx' + kx = f\)</td><td>\(\dfrac{1}{ms^2 + cs + k}\)</td><td>특성근</td></tr>
+        <tr><td>표준 2차 시스템</td><td>\(y'' + 2\zeta\omega_n y' + \omega_n^2 y = \omega_n^2 g\)</td><td>\(\dfrac{\omega_n^2}{s^2 + 2\zeta\omega_n s + \omega_n^2}\)</td><td>\(-\zeta\omega_n \pm \omega_n\sqrt{\zeta^2 - 1}\)</td></tr>
+        <tr><td>RC 고역 통과 (입력 → 저항 전압)</td><td>\(RCv' + v = RC\,v_{\text{in}}'\)</td><td>\(\dfrac{RCs}{RCs + 1}\)</td><td>\(-1/(RC)\), 영점 0</td></tr>
+        <tr><td>순수 지연 \(T\)</td><td>\(y(t) = g(t - T)\)</td><td>\(e^{-Ts}\)</td><td>유리 함수 아님</td></tr>
+      </tbody></table></div>
+    <p>전달 함수의 진짜 힘은 <b>조립</b>입니다. 두 시스템을 직렬로 이으면 \(Y = H_2(H_1G)\)이므로 전달 함수는 곱 \(H_1H_2\)입니다. 시간 쪽에서는 두 합성곱을 겹쳐야 하는 일입니다. 출력을 재서 입력으로 되돌리는 되먹임 회로도 대수 한 줄로 끝납니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="직렬 연결과 되먹임 연결의 블록 선도">
+        <defs><marker id="tf-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="190" rx="10" class="f-surface"/>
+        <g style="stroke:var(--text-dim);stroke-width:1.6" fill="none">
+          <path d="M30 60 H62" marker-end="url(#tf-ar2)"/><path d="M132 60 H164" marker-end="url(#tf-ar2)"/><path d="M234 60 H266" marker-end="url(#tf-ar2)"/>
+          <path d="M370 110 H398" marker-end="url(#tf-ar2)"/><path d="M426 110 H462" marker-end="url(#tf-ar2)"/><path d="M542 110 H600 H640" marker-end="url(#tf-ar2)"/>
+          <path d="M600 110 V170 H412 V126" marker-end="url(#tf-ar2)"/>
+        </g>
+        <rect x="64" y="40" width="68" height="40" rx="8" class="f-elev" style="stroke:var(--accent)"/><text x="98" y="65" text-anchor="middle" class="t-mono">H₁(s)</text>
+        <rect x="166" y="40" width="68" height="40" rx="8" class="f-elev" style="stroke:var(--accent)"/><text x="200" y="65" text-anchor="middle" class="t-mono">H₂(s)</text>
+        <text x="30" y="50" class="t-mono">G</text><text x="250" y="50" class="t-mono">Y</text>
+        <text x="150" y="110" text-anchor="middle" class="t-acc">Y = H₁H₂ · G</text>
+        <text x="150" y="134" text-anchor="middle" class="t-dim">직렬: 전달 함수를 곱한다</text>
+        <circle cx="412" cy="110" r="13" class="f-elev" style="stroke:var(--text-dim);stroke-width:1.6"/><text x="412" y="115" text-anchor="middle" class="t-mono">Σ</text>
+        <text x="398" y="140" text-anchor="end" class="t-mono">−</text><text x="388" y="100" class="t-mono">+</text>
+        <rect x="464" y="90" width="78" height="40" rx="8" class="f-elev" style="stroke:var(--accent)"/><text x="503" y="115" text-anchor="middle" class="t-mono">C(s)G(s)</text>
+        <text x="352" y="100" text-anchor="end" class="t-mono">R</text><text x="656" y="115" class="t-mono">Y</text><text x="436" y="100" class="t-mono">E</text>
+        <text x="560" y="50" text-anchor="middle" class="t-acc">Y/R = CG / (1 + CG)</text>
+        <text x="560" y="72" text-anchor="middle" class="t-dim">되먹임: E = R − Y, Y = CG·E</text>
+      </svg>
+      <figcaption><b>그림 10-4.</b> 블록 선도. 왼쪽: 직렬로 이은 시스템의 전달 함수는 곱이다. 오른쪽: 단위 되먹임. 목표 R과 출력 Y의 차(오차 E)를 제어기 C와 플랜트 G에 넣으면, Y = CG(R − Y)를 풀어 닫힌 루프 전달 함수 CG/(1 + CG)를 얻는다. 10절의 PID가 이 C다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 10.6 (전달 함수와 극점·영점)</strong> \(y'' + 3y' + 2y = g' + 3g\)의 전달 함수, 극점, 영점, 충격 응답을 구하라.
+      <ol>
+        <li>초기 조건 0으로 변환: \((s^2 + 3s + 2)Y = (s + 3)G\)이므로 \(H(s) = \dfrac{s+3}{(s+1)(s+2)}\).</li>
+        <li>극점 \(-1, -2\), 영점 \(-3\).</li>
+        <li>가리기: \(H = \frac{2}{s+1} - \frac{1}{s+2}\), \(h(t) = 2e^{-t} - e^{-2t}\). 영점은 극점이 만드는 두 항의 <b>비율</b>을 정한다. 극점은 "어떤 모양의 항이 나오는가", 영점은 "그 항들이 얼마씩 섞이는가"를 맡는다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="poles">
+    <h2>s-평면의 극점 위치와 응답 모양, 안정성</h2>
+    <div class="problem"><strong>방정식을 풀지 않고 거동을 알기</strong>
+      <p>설계자가 받은 것은 전달 함수 \(H(s) = \frac{10}{s^2 + 2s + 10}\) 하나입니다. 충격을 주면 진동할까, 얼마나 빨리 가라앉을까, 혹시 발산하지는 않을까? 부분 분수를 끝까지 하지 않아도 극점 위치만으로 답할 수 있습니다.</p></div>
+    <p>\(H\)가 진분수 유리 함수이면 부분 분수로 \(h(t)\)는 극점 \(p_k\)마다 \(t^je^{p_kt}\) 꼴의 항들의 합입니다. 극점 \(p = \sigma + i\omega\)가 만드는 항의 크기는 \(|e^{pt}| = e^{\sigma t}\)이므로</p>
+    <ul>
+      <li>\(\sigma \lt 0\)(왼쪽 반평면): 항이 \(e^{\sigma t}\)로 사라진다. \(1/|\sigma|\)이 그 항의 시상수다.</li>
+      <li>\(\sigma > 0\)(오른쪽 반평면): 항이 지수적으로 커진다.</li>
+      <li>\(\sigma = 0\)(허수축): 단순 극점이면 상수나 지속 진동, 겹친 극점이면 \(t\cos\omega t\)처럼 커진다(9장의 공진).</li>
+      <li>\(\omega \ne 0\)이면 진동하고, \(|\omega|\)가 각진동수다. 원점에서의 거리 \(|p|\)는 고유 진동수 \(\omega_n\), 음의 실수축과 이루는 각 \(\theta\)는 감쇠비 \(\zeta = \cos\theta\)를 준다.</li>
+    </ul>
+    <div class="callout deep"><strong>정리 10.10 (BIBO 안정성)</strong> 유계인 모든 입력에 대해 출력이 유계일 때 시스템이 <span class="term">BIBO 안정</span><span class="en">(bounded-input bounded-output stable)</span>이라 한다. 전달 함수가 진분수 유리 함수(약분 후)일 때, 시스템이 BIBO 안정일 필요충분조건은 <b>모든 극점이 열린 왼쪽 반평면 \(\operatorname{Re}s \lt 0\)에 있는 것</b>이다. 이는 \(\int_0^\infty |h(t)|\,dt \lt \infty\)와 같다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> \(|g| \le M\)이면 \(|y(t)| = \big|\int_0^t h(\tau)g(t-\tau)\,d\tau\big| \le M\int_0^\infty|h|\). 극점이 모두 왼쪽이면 \(h\)는 지수적으로 감쇠해 이 적분이 유한하다. 거꾸로 허수축 위의 극점 \(i\omega\)가 있으면 유계 입력 \(\sin\omega t\)가 공진으로 무한히 커지는 출력을 만들고, 오른쪽 극점이 있으면 \(h\) 자체가 발산한다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="s 평면에서 극점의 각도와 거리가 감쇠비와 고유 진동수를 정하는 그림">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <line x1="40" y1="200" x2="420" y2="200" class="s-axis"/><line x1="340" y1="30" x2="340" y2="225" class="s-axis"/>
+        <path d="M340 200 L200 60" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <path d="M340 200 m-58 0 a58 58 0 0 1 17 -41" fill="none" style="stroke:var(--accent-2);stroke-width:1.6"/>
+        <text x="265" y="182" class="t" style="fill:var(--accent-2);font-weight:700">θ</text>
+        <g style="stroke:var(--accent);stroke-width:2.6"><path d="M194 54 l12 12 M206 54 l-12 12"/></g>
+        <line x1="200" y1="60" x2="200" y2="200" style="stroke:var(--text-faint);stroke-dasharray:3 4"/><line x1="200" y1="60" x2="340" y2="60" style="stroke:var(--text-faint);stroke-dasharray:3 4"/>
+        <text x="200" y="218" text-anchor="middle" class="t-mono">−ζωₙ</text><text x="348" y="64" class="t-mono">ω_d = ωₙ√(1 − ζ²)</text>
+        <text x="250" y="118" class="t-mono" transform="rotate(45 250 118)">|p| = ωₙ</text>
+        <text x="412" y="190" text-anchor="end" class="t-mono">Re</text><text x="346" y="40" class="t-mono">Im</text>
+        <g transform="translate(450,40)">
+          <text x="0" y="12" class="t" style="font-weight:700">극점 p = −ζωₙ ± iω_d 가 정하는 것</text>
+          <text x="0" y="44" class="t-dim">• 감쇠비 ζ = cos θ (각도만의 함수)</text>
+          <text x="0" y="68" class="t-dim">• 고유 진동수 ωₙ = |p| (원점까지 거리)</text>
+          <text x="0" y="92" class="t-dim">• 포락선 e^(−ζωₙt): 실수부가 정착 시간</text>
+          <text x="0" y="116" class="t-dim">• 진동 주기 2π/ω_d: 허수부</text>
+          <text x="0" y="148" class="t-acc">같은 각도의 직선 위 = 같은 오버슈트</text>
+          <text x="0" y="172" class="t-acc">같은 세로선 위 = 같은 정착 시간</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 10-5.</b> 2차 시스템 극점의 기하. 극점의 각도 θ가 감쇠비 ζ = cos θ를, 원점까지의 거리가 고유 진동수 ωₙ을 정한다. 허수축에 가까울수록(θ → 90°) 감쇠가 약하고 오래 진동한다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-tf-poles">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>s-평면 극점 끌기 ↔ 충격 응답</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-po-s"></canvas><span class="tf-cap">s 평면: 극점 ×를 끌기 (켤레는 자동), 영점 ○</span></div>
+          <div><canvas id="tf-cv-po-t"></canvas><span class="tf-cap">충격 응답 h(t) (주황)와 포락선 ±e^(σt) (점선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>극점</span><div class="seg" id="tf-po-mode"><button data-value="cplx" class="on">복소 켤레쌍</button><button data-value="real">실극 두 개</button></div></div>
+          <label class="check"><input type="checkbox" id="tf-po-zero"> 영점 넣기 (실수축)</label>
+          <label class="check"><input type="checkbox" id="tf-po-step"> 계단 응답도 보기</label>
+          <div class="btn-row"><button class="btn" id="tf-po-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">H(s)</span><span class="v" id="tf-po-H">—</span></div>
+        <div class="stat"><span class="k">ωₙ, ζ</span><span class="v" id="tf-po-z">—</span></div>
+        <div class="stat"><span class="k">시상수 1/|σ|</span><span class="v" id="tf-po-tau">—</span></div>
+        <div class="stat"><span class="k">안정성</span><span class="v" id="tf-po-st">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 극점을 허수축 쪽으로 끌면 포락선이 느려지고 진동이 오래 갑니다. 허수축을 넘으면 발산합니다. ② 극점을 위로 올리면(같은 실수부) 진동만 빨라지고 포락선은 그대로입니다. ③ '실극 두 개'에서 한 극점을 원점 가까이 두면 그 느린 극점이 응답 전체의 꼬리를 지배합니다(지배 극점). 영점을 그 극점 위에 올리면 꼬리가 사라집니다. 모델: H(s) = K(1 − s/z)/((s − p₁)(s − p₂)), K = p₁p₂로 정상 상태 이득 H(0) = 1. h(t)는 유수 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="bode">
+    <h2>주파수 응답 H(iω)와 보드 선도</h2>
+    <div class="problem"><strong>사인 입력에 대한 정상 상태</strong>
+      <p>스피커, 서스펜션, 건물의 진동 차단 장치를 평가할 때는 "주파수마다 입력을 몇 배로 키우고 얼마나 늦추는가"를 봅니다. 8장에서 강제 진동의 진폭과 위상을 미정계수로 구했습니다. 전달 함수가 있으면 \(s\) 자리에 \(i\omega\)를 넣는 것으로 끝납니다.</p></div>
+    <div class="callout deep"><strong>정리 10.11 (주파수 응답)</strong> \(H\)가 BIBO 안정이면 입력 \(g = \sin\omega t\)에 대한 출력은 과도 항이 사라진 뒤
+      <div class="formula">$$y_{\text{ss}}(t) = |H(i\omega)|\,\sin\bigl(\omega t + \arg H(i\omega)\bigr)$$</div>
+      가 된다. \(H(i\omega)\)를 <span class="term">주파수 응답</span><span class="en">(frequency response)</span>, \(|H(i\omega)|\)를 이득, \(\arg H(i\omega)\)를 위상이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(\sin\omega t = \operatorname{Im}e^{i\omega t}\)이고 \(\mathcal{L}\{e^{i\omega t}\} = \frac{1}{s - i\omega}\). \(Y = \frac{H(s)}{s - i\omega}\)의 부분 분수에서 극점 \(i\omega\)의 가리기 계수가 \(H(i\omega)\)이므로 \(y = H(i\omega)e^{i\omega t} + (\text{H의 극점에서 오는 감쇠 항})\). 허수부를 취하면 된다(계수가 실수인 \(H\)에서). ∎</p></div>
+    <p>이득은 보통 데시벨 \(20\log_{10}|H(i\omega)|\)로, 진동수는 로그 눈금으로 그립니다. 이 두 그래프(이득·위상)를 <span class="term">보드 선도</span><span class="en">(Bode plot)</span>라 합니다. 로그를 쓰면 곱이 합이 되어, 직렬 시스템의 보드 선도는 각 블록의 선도를 그냥 <b>더한</b> 것입니다.</p>
+    <ul>
+      <li>1차 \(H = \frac{1}{\tau s + 1}\): \(\omega \ll 1/\tau\)에서 0 dB, \(\omega \gg 1/\tau\)에서 기울기 \(-20\) dB/decade. 두 점근선이 만나는 <span class="term">꺾임 진동수</span><span class="en">(corner frequency)</span> \(\omega_c = 1/\tau\)에서 실제 이득은 \(-3.01\) dB, 위상은 \(-45°\).</li>
+      <li>2차 표준형: \(\omega \ll \omega_n\)에서 0 dB, \(\omega \gg \omega_n\)에서 \(-40\) dB/decade, \(\omega = \omega_n\)에서 위상 \(-90°\). \(\zeta \lt 1/\sqrt2\)이면 공진 봉우리가 \(\omega_r = \omega_n\sqrt{1 - 2\zeta^2}\)에 생기고 높이는 \(\frac{1}{2\zeta\sqrt{1-\zeta^2}}\)이다.</li>
+    </ul>
+    <div class="callout"><strong>예제 10.7 (보드 선도 읽기)</strong>
+      <ol>
+        <li>\(H = \frac{1}{s+1}\): \(\omega = 1\)에서 \(|H| = 1/\sqrt2\), \(-3.01\) dB, 위상 \(-45°\). \(\omega = 10\)에서 \(|H| = 1/\sqrt{101}\), \(-20.04\) dB, 위상 \(-84.3°\). 점근선 \(-20\log_{10}10 = -20\) dB와 0.04 dB 차이다.</li>
+        <li>\(\zeta = 0.2\), \(\omega_n = 1\): \(\omega_r = \sqrt{0.92} \approx 0.959\), 봉우리 높이 \(\frac{1}{0.4\sqrt{0.96}} \approx 2.55\), 즉 \(+8.14\) dB. 8장의 공진 곡선과 Q 인자가 바로 이 봉우리다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-tf-bode">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>보드 선도: 이득·위상과 사인 입력의 정상 응답</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-bd-mag"></canvas><span class="tf-cap">이득 20 log₁₀|H(iω)| (dB), 점근선 (점선)</span></div>
+          <div><canvas id="tf-cv-bd-ph"></canvas><span class="tf-cap">위상 ∠H(iω) (도)</span></div>
+          <div><canvas id="tf-cv-bd-t"></canvas><span class="tf-cap">입력 sin ωt (청록)와 정상 출력 |H| sin(ωt + φ) (주황)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>시스템</span><div class="seg" id="tf-bd-kind"><button data-value="1">1차 1/(τs + 1)</button><button data-value="2" class="on">2차 표준형</button></div></div>
+          <label class="ctrl" id="tf-bd-tau-wrap"><span>τ <output id="tf-bd-tau-out"></output></span><input type="range" id="tf-bd-tau" min="0.1" max="5" step="0.05" value="1"></label>
+          <label class="ctrl" id="tf-bd-wn-wrap"><span>ωₙ <output id="tf-bd-wn-out"></output></span><input type="range" id="tf-bd-wn" min="0.3" max="5" step="0.05" value="1"></label>
+          <label class="ctrl" id="tf-bd-z-wrap"><span>ζ <output id="tf-bd-z-out"></output></span><input type="range" id="tf-bd-z" min="0.05" max="1.5" step="0.01" value="0.2"></label>
+          <label class="ctrl"><span>입력 진동수 ω <output id="tf-bd-w-out"></output></span><input type="range" id="tf-bd-w" min="-2" max="2" step="0.01" value="0"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">|H(iω)|</span><span class="v" id="tf-bd-g">—</span></div>
+        <div class="stat"><span class="k">이득 (dB)</span><span class="v" id="tf-bd-db">—</span></div>
+        <div class="stat"><span class="k">위상</span><span class="v" id="tf-bd-ph">—</span></div>
+        <div class="stat"><span class="k">봉우리 / 꺾임</span><span class="v" id="tf-bd-pk">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '2차'에서 ζ를 0.05까지 내리면 ωₙ 근처의 봉우리가 높고 좁아집니다. ω를 봉우리에 맞추면 아래 출력이 입력보다 훨씬 큽니다. ζ ≥ 0.707이면 봉우리가 없습니다. ② ω를 ωₙ보다 크게 하면 출력이 작아지고 위상이 −180°에 가까워져 입력과 거의 반대로 움직입니다. ③ '1차'에서 ω = 1/τ에 맞추면 정확히 −3 dB, −45°입니다. 모델: H(iω)를 복소수로 직접 계산, 아래 그래프는 과도 항이 사라진 정상 상태입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="step-response">
+    <h2>1차·2차 시스템의 계단 응답</h2>
+    <div class="problem"><strong>설계 사양은 시간 영역에서 주어진다</strong>
+      <p>"목표 속도를 바꾸면 10% 넘게 넘치지 말고, 4초 안에 2% 이내로 가라앉을 것." 제어 사양은 보통 이렇게 계단 응답의 모양으로 주어집니다. 이 숫자들을 극점 위치로 옮길 수 있다면, 사양은 s-평면의 허용 영역이 됩니다.</p></div>
+    <p><b>1차 시스템</b> \(H = \frac{1}{\tau s + 1}\)의 계단 응답은 \(\mathcal{L}^{-1}\{\frac{1}{s(\tau s+1)}\} = 1 - e^{-t/\tau}\)입니다. \(t = \tau\)에서 최종값의 \(1 - e^{-1} \approx 63.2\%\), 2% 이내로 들어오는 시각은 \(\tau\ln 50 \approx 3.91\tau\)(흔히 \(4\tau\)), 10%에서 90%까지의 상승 시간은 \(\tau\ln 9 \approx 2.20\tau\)입니다. 오버슈트는 없습니다.</p>
+    <p><b>2차 시스템</b> \(H = \frac{\omega_n^2}{s^2 + 2\zeta\omega_ns + \omega_n^2}\)에서 \(0 \lt \zeta \lt 1\)(부족 감쇠)이면 계단 응답은</p>
+    <div class="formula">$$y(t) = 1 - \frac{e^{-\zeta\omega_nt}}{\sqrt{1-\zeta^2}}\sin\bigl(\omega_dt + \varphi\bigr),\qquad \omega_d = \omega_n\sqrt{1-\zeta^2},\quad \cos\varphi = \zeta.$$</div>
+    <div class="callout deep"><strong>정리 10.12 (2차 계단 응답의 지표)</strong> \(0 \lt \zeta \lt 1\)일 때
+      <div class="formula">$$t_p = \frac{\pi}{\omega_d},\qquad M_p = e^{-\pi\zeta/\sqrt{1-\zeta^2}},\qquad t_s \approx \frac{4}{\zeta\omega_n}\ (2\%\ \text{기준}).$$</div>
+      <span class="term">첨두 시간</span> \(t_p\)는 첫 최댓값의 시각, <span class="term">오버슈트</span><span class="en">(overshoot)</span> \(M_p\)는 그때 최종값을 넘는 비율, <span class="term">정착 시간</span><span class="en">(settling time)</span> \(t_s\)는 응답이 최종값의 ±2% 안에 머물기 시작하는 시각이다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(y'(t) = \frac{\omega_n}{\sqrt{1-\zeta^2}}e^{-\zeta\omega_nt}\sin\omega_dt\)(충격 응답 \(h\)와 같다)이 처음 0이 되는 \(t > 0\)은 \(\omega_dt = \pi\). 그때 \(\sin(\pi + \varphi) = -\sin\varphi = -\sqrt{1-\zeta^2}\)이므로 \(y(t_p) = 1 + e^{-\zeta\omega_n\pi/\omega_d}\). 정착 시간은 포락선 \(e^{-\zeta\omega_nt}/\sqrt{1-\zeta^2}\)이 0.02가 되는 시각을 근사한 것이다(\(\ln 50 \approx 3.9\)). ∎</p></div>
+    <p>오버슈트는 \(\zeta\)만의 함수이므로 그림 10-5의 <b>각도</b>가 정하고, 정착 시간은 실수부 \(\zeta\omega_n\)이 정합니다. 위 사양 "10% 이하, 4초 이내"는 \(\zeta \ge 0.59\)(\(\theta \le 53.8°\))이고 \(\zeta\omega_n \ge 1\)인 영역, 즉 쐐기와 세로선으로 둘러싼 s-평면의 왼쪽 부분이 됩니다.</p>
+    <div class="callout"><strong>예제 10.8 (지표 계산)</strong> \(\zeta = 0.5\), \(\omega_n = 1\)이면 \(\omega_d = \sqrt{0.75} = 0.866\), \(t_p = \pi/0.866 = 3.63\), \(M_p = e^{-\pi\cdot0.5/0.866} = e^{-1.814} = 0.163\)(16.3%), \(t_s \approx 4/0.5 = 8\). RK4로 재면 첨두 시간 3.63, 오버슈트 16.3%, 2% 정착 시각 8.08이다. 공식 \(t_s\)는 포락선을 쓴 근사라 실제와 조금 다르다.</div>
+
+    <div class="sim" id="sim-tf-step2">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2차 계단 응답: 오버슈트와 정착 시간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-st-t"></canvas><span class="tf-cap">계단 응답 y(t), ±2% 띠, 포락선, 첨두점</span></div>
+          <div><canvas id="tf-cv-st-s"></canvas><span class="tf-cap">s 평면: 극점, 같은 ζ의 직선</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>감쇠비 ζ <output id="tf-st-z-out"></output></span><input type="range" id="tf-st-z" min="0.05" max="2" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span>고유 진동수 ωₙ <output id="tf-st-wn-out"></output></span><input type="range" id="tf-st-wn" min="0.5" max="4" step="0.05" value="1"></label>
+          <label class="check"><input type="checkbox" id="tf-st-first"> 1차 시스템 비교 (τ = 1/(ζωₙ))</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">오버슈트: 공식 / 측정</span><span class="v" id="tf-st-mp">—</span></div>
+        <div class="stat"><span class="k">첨두 시간: 공식 / 측정</span><span class="v" id="tf-st-tp">—</span></div>
+        <div class="stat"><span class="k">정착 시간: 4/(ζωₙ) / 측정</span><span class="v" id="tf-st-ts">—</span></div>
+        <div class="stat"><span class="k">극점</span><span class="v" id="tf-st-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ζ를 0.5에서 0.1로 내리면 오버슈트가 73%까지 커지고, 극점이 허수축 쪽으로 기웁니다. ② ωₙ만 두 배로 하면 모양은 그대로이고 시간 축만 절반으로 줄어듭니다. 오버슈트는 ζ만의 함수입니다. ③ ζ = 1(임계 감쇠)에서 오버슈트가 사라지고, ζ &gt; 1이면 극점이 실수축에서 갈라져 느린 극점이 응답을 끕니다. 정착이 가장 빠른 것은 ζ ≈ 0.7 근처입니다. 모델: y″ + 2ζωₙy′ + ωₙ²y = ωₙ², 측정값은 RK4(dt = 0.002).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="pid">
+    <h2>PID 맛보기: 되먹임으로 극점 옮기기</h2>
+    <div class="problem"><strong>느리고 덜 가는 모터</strong>
+      <p>플랜트 \(G(s) = \frac{1}{(s+1)^2}\)(예: 관성과 마찰이 있는 모터의 속도)에 계단 입력을 그냥 넣으면 시상수 1인 극점 두 개 때문에 느리게 올라갑니다. 출력을 재서 오차 \(e = r - y\)에 비례하는 입력을 넣으면 빨라질까요? 남는 오차는 어떻게 없앨까요?</p></div>
+    <p><span class="term">PID 제어기</span><span class="en">(proportional–integral–derivative controller)</span>는 오차의 현재 값(P), 누적(I), 변화율(D)을 섞어 입력을 만듭니다.</p>
+    <div class="formula">$$u(t) = K_p\,e(t) + K_i\int_0^t e(\tau)\,d\tau + K_d\,e'(t),\qquad C(s) = K_p + \frac{K_i}{s} + K_ds.$$</div>
+    <p>그림 10-4의 되먹임 식으로 닫힌 루프는 \(T(s) = \frac{CG}{1 + CG}\)이고, 극점은 \(1 + C(s)G(s) = 0\)의 근입니다. 여기서는</p>
+    <div class="formula">$$s(s+1)^2 + K_ds^2 + K_ps + K_i = s^3 + (2 + K_d)s^2 + (1 + K_p)s + K_i = 0.$$
+      <div class="where">이득을 바꾸면 닫힌 루프 극점이 움직인다. 제어 설계란 결국 <b>극점을 원하는 자리로 옮기는 일</b>이다.</div></div>
+    <ul>
+      <li><b>P만</b>(\(K_i = K_d = 0\)): 최종값 정리로 \(y(\infty) = \lim_{s\to0}T(s) = \frac{K_p}{1 + K_p}\). 정상 상태 오차 \(\frac{1}{1+K_p}\)가 남는다. \(K_p\)를 키우면 오차는 줄지만 극점이 \(-1 \pm i\sqrt{K_p}\)로 위아래로 벌어져 오버슈트가 커진다.</li>
+      <li><b>I 추가</b>: \(T(0) = 1\)이 되어 정상 상태 오차가 0이 된다(\(C\)의 \(1/s\)가 오차를 끝없이 쌓아 0이 될 때까지 입력을 민다). 대신 극점이 하나 늘어 너무 크면 불안정해진다.</li>
+      <li><b>D 추가</b>: 분모의 \(s^2\) 계수 \(2 + K_d\)를 키워 감쇠를 더한다. 오버슈트를 누르는 브레이크다.</li>
+    </ul>
+    <div class="callout"><strong>예제 10.9 (P 제어의 한계)</strong> \(K_p = 9\)이면 닫힌 루프 \(T = \frac{9}{s^2 + 2s + 10}\), 극점 \(-1 \pm 3i\), \(\omega_n = \sqrt{10}\), \(\zeta = 1/\sqrt{10} \approx 0.316\). 최종값 \(9/10 = 0.9\)(오차 10%), 오버슈트 \(e^{-\pi\zeta/\sqrt{1-\zeta^2}} \approx 35.1\%\)(최종값 기준). RK4로 잰 최댓값 1.216 = 0.9 × 1.351로 맞는다. 오차를 1%로 줄이려고 \(K_p = 99\)로 올리면 \(\zeta \approx 0.1\)이 되어 심하게 출렁인다. P만으로는 둘 다 잡을 수 없고, 그래서 I와 D가 필요하다.</div>
+    <p>PID는 단순하지만 산업 현장의 제어 루프 대부분이 이 꼴이라고 알려져 있습니다. 아래에서 세 손잡이를 돌려 보세요. 닫힌 루프 극점이 함께 움직이는 것이 보입니다.</p>
+
+    <div class="sim" id="sim-tf-pid">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>PID 맛보기: G(s) = 1/(s + 1)²의 계단 추종</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tf-two">
+          <div><canvas id="tf-cv-pid-y"></canvas><span class="tf-cap">출력 y(t) (주황), 목표 r = 1 (점선), 제어 없이 (회색)</span></div>
+          <div class="split"><div><canvas id="tf-cv-pid-u"></canvas><span class="cap">제어 입력 u(t)</span></div><div><canvas id="tf-cv-pid-s"></canvas><span class="cap">닫힌 루프 극점</span></div></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span><span>K<sub>p</sub> (비례)</span> <output id="tf-pid-p-out"></output></span><input type="range" id="tf-pid-p" min="0" max="30" step="0.5" value="9"></label>
+          <label class="ctrl"><span><span>K<sub>i</sub> (적분)</span> <output id="tf-pid-i-out"></output></span><input type="range" id="tf-pid-i" min="0" max="20" step="0.25" value="0"></label>
+          <label class="ctrl"><span><span>K<sub>d</sub> (미분)</span> <output id="tf-pid-d-out"></output></span><input type="range" id="tf-pid-d" min="0" max="10" step="0.1" value="0"></label>
+          <div class="btn-row"><button class="btn" id="tf-pid-P">P만</button><button class="btn" id="tf-pid-PI">PI</button><button class="btn" id="tf-pid-PID">PID</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">y(20)</span><span class="v" id="tf-pid-yf">—</span></div>
+        <div class="stat"><span class="k">최대 y (오버슈트)</span><span class="v" id="tf-pid-os">—</span></div>
+        <div class="stat"><span class="k">2% 정착 시간</span><span class="v" id="tf-pid-ts">—</span></div>
+        <div class="stat"><span class="k">닫힌 루프 극점</span><span class="v" id="tf-pid-poles">—</span></div>
+      </div>
+      <div class="tf-msg" id="tf-pid-msg"></div>
+      <div class="sim-note">해볼 것: ① 'P만'(K<sub>p</sub> = 9)에서 출력이 0.9에 멈추는 것을 보세요. 최종값 정리의 K<sub>p</sub>/(1 + K<sub>p</sub>)입니다. ② K<sub>i</sub>를 올리면 오차가 0으로 사라지지만 출렁임이 커지고, K<sub>i</sub>를 많이 올리면 극점이 오른쪽으로 넘어가 발산합니다(이 플랜트에서 K<sub>p</sub> = 9이면 K<sub>i</sub> &gt; 20에서). ③ 'PID'에서 K<sub>d</sub>를 올리면 오버슈트가 줄어듭니다. 모델: y″ + 2y′ + y = u, u = K<sub>p</sub>e + K<sub>i</sub>∫e − K<sub>d</sub>y′(미분은 측정값에 걸어 계단 순간의 충격을 피함), RK4.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>계단·충격·합성곱·전달 함수는 "선형 시불변 시스템"을 다루는 모든 분야의 공용어입니다.</p>
+    <div class="callout"><strong>건물과 다리의 충격 시험</strong> 구조물의 고유 진동수와 감쇠를 재는 표준 방법의 하나는 망치(힘 센서가 달린 충격 해머)로 한 점을 치고 다른 점의 가속도를 기록하는 것입니다. 힘이 델타에 가까우면 기록은 곧 충격 응답이고, 그 변환이 전달 함수입니다. 측정한 \(H(i\omega)\)의 봉우리 위치가 고유 진동수, 봉우리 폭이 감쇠비를 줍니다(8장의 반치폭). 정리 10.7에 따라 임의의 하중(지진, 바람, 보행)에 대한 응답은 이 \(h\)와 하중의 합성곱입니다.</div>
+    <div class="uses">
+      <a href="laplace.html"><small>9장 · 라플라스 변환</small>변환표와 부분 분수<br><span>이 장의 모든 계산 도구. t-이동과 최종값 정리.</span></a>
+      <a href="forced.html"><small>8장 · 강제 진동과 공진</small>공진 곡선과 Q 인자<br><span>보드 선도의 2차 봉우리가 8장의 주파수 응답 곡선이다.</span></a>
+      <a href="systems.html"><small>11장 · 연립 선형 방정식</small>상태 공간과 고유값<br><span>여러 입출력의 시스템은 x′ = Ax + Bu, 극점은 A의 고유값.</span></a>
+      <a href="nonlinear.html"><small>12장 · 비선형 시스템과 안정성</small>선형화와 안정성<br><span>평형점 근처를 선형화하면 극점(고유값) 판정을 그대로 쓴다.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 변환과 필터<br><span>H(iω)는 시스템이 각 주파수 성분을 얼마나 통과시키는지를 말한다.</span></a>
+      <a href="../../linear/chapters/dynamics.html"><small>LINEARBOOK</small>행렬 지수와 동역학<br><span>상태 공간 표현에서 H(s) = C(sI − A)⁻¹B.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>단위 계단 \(u(t-a)\)는 스위치다. 구간별 입력은 \(f_1 + (f_2 - f_1)u(t-a) + \cdots\)로 쓰고, \(\mathcal{L}\{u(t-a)f(t-a)\} = e^{-as}F(s)\), \(\mathcal{L}\{u(t-a)g(t)\} = e^{-as}\mathcal{L}\{g(t+a)\}\)로 변환한다. 응답은 늦춰진 계단 응답들의 합이다.</li>
+      <li>디랙 델타는 넓이 1인 펄스의 극한이고 \(\int\varphi(t)\delta(t-a)dt = \varphi(a)\), \(\mathcal{L}\{\delta(t-a)\} = e^{-as}\). 충격량 \(I\)는 질량 \(m\)에 속도 \(I/m\)를 순간적으로 준다.</li>
+      <li>충격 응답 \(h = \mathcal{L}^{-1}\{H\}\)는 시스템의 지문이다. 영상태 응답은 합성곱 \(y = h * g = \int_0^t h(t-\tau)g(\tau)d\tau\)이고, 합성곱 정리 \(\mathcal{L}\{f*g\} = FG\).</li>
+      <li>전달 함수 \(H(s) = Y/G\)(초기 조건 0). 직렬은 곱, 단위 되먹임은 \(CG/(1+CG)\). 극점은 응답에 나오는 항의 모양을, 영점은 그 섞임을 정한다.</li>
+      <li>BIBO 안정 ⇔ 모든 극점이 \(\operatorname{Re}s \lt 0\). 극점의 실수부는 감쇠 속도, 허수부는 진동수, 각도는 감쇠비 \(\zeta = \cos\theta\), 거리는 \(\omega_n\).</li>
+      <li>안정한 시스템의 사인 정상 응답은 \(|H(i\omega)|\sin(\omega t + \arg H(i\omega))\). 보드 선도에서 1차는 \(-20\) dB/decade와 꺾임점 \(-3\) dB, 2차는 \(-40\) dB/decade와 \(\zeta \lt 0.707\)일 때의 공진 봉우리.</li>
+      <li>2차 계단 응답: \(t_p = \pi/\omega_d\), \(M_p = e^{-\pi\zeta/\sqrt{1-\zeta^2}}\), \(t_s \approx 4/(\zeta\omega_n)\). PID는 되먹임으로 닫힌 루프 극점을 옮긴다: P는 빠르게, I는 정상 오차 0, D는 감쇠.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(f(t) = 3\)(\(0 \le t \lt 2\)), \(0\)(\(t \ge 2\))의 라플라스 변환은?</p><div class="opts">
+        <button class="opt">\(\dfrac{3e^{-2s}}{s}\)</button>
+        <button class="opt" data-correct>\(\dfrac{3(1 - e^{-2s})}{s}\)</button>
+        <button class="opt">\(\dfrac{3}{s} - e^{-2s}\)</button>
+        <button class="opt">\(\dfrac{3(1 - e^{-2s})}{s^2}\)</button>
+      </div><div class="quiz-exp">\(f = 3 - 3u(t-2)\)이고 \(\mathcal{L}\{u(t-2)\} = e^{-2s}/s\). 검산: \(\int_0^2 3e^{-st}dt = 3(1 - e^{-2s})/s\).</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\mathcal{L}^{-1}\Big\{\dfrac{e^{-3s}}{s^2}\Big\}\)은?</p><div class="opts">
+        <button class="opt">\(t\,u(t-3)\)</button>
+        <button class="opt" data-correct>\((t-3)\,u(t-3)\)</button>
+        <button class="opt">\((t+3)\,u(t-3)\)</button>
+        <button class="opt">\(e^{-3t}\,t\)</button>
+      </div><div class="quiz-exp">\(1/s^2 \leftrightarrow t\)이고 \(e^{-3s}\)는 3만큼 늦춰 켠다: \(u(t-3)f(t-3) = (t-3)u(t-3)\). \(t = 3\)에서 0부터 기울기 1로 오르는 경사다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\displaystyle\int_0^\infty \cos(t)\,\delta(t - \pi)\,dt\)의 값은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">1</button>
+        <button class="opt" data-correct>−1</button>
+        <button class="opt">정의되지 않는다</button>
+      </div><div class="quiz-exp">거르기 성질: 연속 함수에 델타를 곱해 적분하면 그 점의 값이 나온다. \(\cos\pi = -1\).</div></div>
+
+      <div class="quiz-q"><p>Q4. 정지해 있던 질량 2 kg인 용수철–질량계(\(2x'' + 8x = 6\delta(t)\))를 쳤을 때 \(x(t)\)는?</p><div class="opts">
+        <button class="opt">\(3\sin 2t\)</button>
+        <button class="opt" data-correct>\(\tfrac32\sin 2t\)</button>
+        <button class="opt">\(6\sin 2t\)</button>
+        <button class="opt">\(3\cos 2t\)</button>
+      </div><div class="quiz-exp">\((2s^2 + 8)X = 6\), \(X = \frac{3}{s^2 + 4} = \frac32\cdot\frac{2}{s^2+4}\). 충격량 6이 질량 2에 속도 3을 주고, \(\omega = 2\)이므로 진폭 \(3/2\).</div></div>
+
+      <div class="quiz-q"><p>Q5. \((1 * t)(t)\), 즉 \(\int_0^t 1\cdot(t - \tau)\,d\tau\)는?</p><div class="opts">
+        <button class="opt">\(t\)</button>
+        <button class="opt" data-correct>\(t^2/2\)</button>
+        <button class="opt">\(t^2\)</button>
+        <button class="opt">1</button>
+      </div><div class="quiz-exp">직접 적분하면 \(t^2 - t^2/2 = t^2/2\). 합성곱 정리로도 \(\frac1s\cdot\frac{1}{s^2} = \frac{1}{s^3} \leftrightarrow t^2/2\). \(1 * f \ne f\)인 예다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 전달 함수 \(H(s) = \dfrac{s - 1}{s^2 + s - 2}\)인 시스템에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">극점 \(1, -2\)가 있으므로 불안정하다</button>
+        <button class="opt" data-correct>약분하면 \(1/(s+2)\)이므로 입출력 관점에서 BIBO 안정이다</button>
+        <button class="opt">영점이 오른쪽에 있으므로 불안정하다</button>
+        <button class="opt">극점이 없으므로 판정할 수 없다</button>
+      </div><div class="quiz-exp">\(s^2 + s - 2 = (s-1)(s+2)\)이고 분자 \(s - 1\)과 약분된다. 정리 10.10은 약분 후의 극점으로 판정한다. 다만 내부에 숨은 불안정 모드가 초기 조건에서 커질 수 있어, 실제 설계에서는 불안정 극점–영점 상쇄를 피한다(11장의 상태 공간 관점).</div></div>
+
+      <div class="quiz-q"><p>Q7. \(H(s) = \dfrac{1}{s + 10}\)에 \(\sin 10t\)를 넣었을 때 정상 출력의 진폭과 위상은?</p><div class="opts">
+        <button class="opt">진폭 \(1/10\), 위상 \(0°\)</button>
+        <button class="opt" data-correct>진폭 \(\dfrac{1}{10\sqrt2} \approx 0.0707\), 위상 \(-45°\)</button>
+        <button class="opt">진폭 \(1/20\), 위상 \(-90°\)</button>
+        <button class="opt">진폭 \(1/\sqrt2\), 위상 \(-45°\)</button>
+      </div><div class="quiz-exp">\(H(10i) = \frac{1}{10 + 10i}\), \(|H| = \frac{1}{10\sqrt2}\), \(\arg H = -45°\). 꺾임 진동수 \(\omega_c = 10\)에서 직류 이득 \(1/10\)보다 3 dB 낮다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 2차 시스템의 계단 응답 오버슈트를 5% 이하로 하려면 대략 어떤 조건이 필요한가?</p><div class="opts">
+        <button class="opt">\(\omega_n \ge 5\)</button>
+        <button class="opt">\(\zeta \le 0.3\)</button>
+        <button class="opt" data-correct>\(\zeta \ge 0.69\)</button>
+        <button class="opt">\(\zeta\omega_n \ge 4\)</button>
+      </div><div class="quiz-exp">\(M_p = e^{-\pi\zeta/\sqrt{1-\zeta^2}} = 0.05\)를 풀면 \(\zeta \approx 0.690\). 오버슈트는 \(\zeta\)(극점의 각도)만의 함수이고 \(\omega_n\)과는 무관하다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const TF = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  /** 뒤쪽 0을 지운 짧은 수 */
+  n(v, d = 3) { let s = TF.num(v, d); if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, ""); return s === "−0" ? "0" : s; },
+  simpson(f, a, b, n = 2000) {
+    if (a === b) return 0;
+    n += n % 2; const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2);
+    return (s * h) / 3;
+  },
+  yRange(vals, pad = 0.15, incl0 = true, cap = 1e9) {
+    vals = vals.filter((v) => isFinite(v)).map((v) => MB.clamp(v, -cap, cap));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (incl0) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    const span = Math.max(hi - lo, 0.5); return [lo - span * pad, hi + span * (pad + 0.14)];
+  },
+  /* 복소수 [re, im] */
+  cadd: (a, b) => [a[0] + b[0], a[1] + b[1]],
+  csub: (a, b) => [a[0] - b[0], a[1] - b[1]],
+  cmul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+  cdiv: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+  cexp: (a) => { const e = Math.exp(a[0]); return [e * Math.cos(a[1]), e * Math.sin(a[1])]; },
+  /* 다항식: 오름차순 실계수 [a0, a1, ...] */
+  pmul(a, b) { const r = new Array(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => (r[i + j] += x * y))); return r; },
+  padd(a, b) { const r = new Array(Math.max(a.length, b.length)).fill(0); a.forEach((x, i) => (r[i] += x)); b.forEach((x, i) => (r[i] += x)); return r; },
+  peval(a, z) { let r = [0, 0]; for (let i = a.length - 1; i >= 0; i--) r = TF.cadd(TF.cmul(r, z), [a[i], 0]); return r; },
+  deg(a) { let n = a.length - 1; while (n > 0 && Math.abs(a[n]) < 1e-13) n--; return n; },
+  /** 근(뒤랑–케르너, 2차는 근의 공식) */
+  roots(a) {
+    const n = TF.deg(a); if (n < 1) return [];
+    const c = a.slice(0, n + 1).map((v) => v / a[n]);
+    const out = []; let z0 = 0;
+    while (z0 < n && Math.abs(c[z0]) < 1e-13) { out.push([0, 0]); z0++; }
+    const q = c.slice(z0), m = q.length - 1;
+    if (m === 1) out.push([-q[0], 0]);
+    else if (m === 2) {
+      const B = q[1], C = q[0], D = B * B - 4 * C;
+      if (D >= 0) { const r = Math.sqrt(D); out.push([(-B + r) / 2, 0], [(-B - r) / 2, 0]); }
+      else { const r = Math.sqrt(-D) / 2; out.push([-B / 2, r], [-B / 2, -r]); }
+    } else if (m > 2) {
+      let z = []; for (let k = 0; k < m; k++) z.push(TF.cexp([Math.log(1.2), 0.4 + (2 * Math.PI * k) / m]));
+      for (let it = 0; it < 600; it++) {
+        z = z.map((zk, k) => { let den = [1, 0]; z.forEach((zj, j) => { if (j !== k) den = TF.cmul(den, TF.csub(zk, zj)); }); return TF.csub(zk, TF.cdiv(TF.peval(q, zk), den)); });
+      }
+      z.forEach((r) => out.push([r[0], Math.abs(r[1]) < 1e-7 ? 0 : r[1]]));
+    }
+    return out;
+  },
+  /** 가까운 근을 묶어 {p, m} 목록으로 */
+  cluster(rs, tol = 1e-3) {
+    const cl = [];
+    rs.forEach((r) => {
+      const c = cl.find((c) => Math.hypot(c.sum[0] / c.m - r[0], c.sum[1] / c.m - r[1]) < tol);
+      if (c) { c.sum = TF.cadd(c.sum, r); c.m++; } else cl.push({ sum: r.slice(), m: 1 });
+    });
+    return cl.map((c) => { const p = [c.sum[0] / c.m, c.sum[1] / c.m]; if (Math.abs(p[1]) < 1e-7) p[1] = 0; return { p, m: c.m }; });
+  },
+  /** 로랑 계수: 각 극점 p의 1/(s−p)^k 계수 c_k (작은 원 위의 경로 적분) */
+  laurent(F, cl) {
+    return cl.map((c, i) => {
+      let dmin = 1; cl.forEach((d, j) => { if (j !== i) dmin = Math.min(dmin, Math.hypot(d.p[0] - c.p[0], d.p[1] - c.p[1])); });
+      const r = Math.min(0.5, 0.35 * dmin), N = 96, cs = [];
+      for (let k = 1; k <= c.m; k++) cs.push([0, 0]);
+      for (let j = 0; j < N; j++) {
+        const th = (2 * Math.PI * (j + 0.5)) / N, d = [r * Math.cos(th), r * Math.sin(th)], s = TF.cadd(c.p, d), Fv = F(s);
+        let pw = d.slice();
+        for (let k = 0; k < c.m; k++) { cs[k] = TF.cadd(cs[k], TF.cmul(Fv, pw)); pw = TF.cmul(pw, d); }
+      }
+      return { p: c.p, m: c.m, c: cs.map((v) => [v[0] / N, v[1] / N]) };
+    });
+  },
+  /** 유리 함수 num/den의 부분 분수 */
+  pf(num, den) {
+    const F = (s) => TF.cdiv(TF.peval(num, s), TF.peval(den, s));
+    const cl = TF.cluster(TF.roots(den));
+    cl.forEach((c) => {
+      /* m중근은 (m−1)계 도함수의 단순근: 뉴턴으로 다듬는다 */
+      let q = den.slice(); for (let k = 1; k < c.m; k++) q = q.slice(1).map((v, i) => v * (i + 1));
+      const dq = q.slice(1).map((v, i) => v * (i + 1));
+      let z = c.p.slice();
+      for (let it = 0; it < 30; it++) { const d = TF.peval(dq, z); if (Math.hypot(d[0], d[1]) < 1e-300) break; const st = TF.cdiv(TF.peval(q, z), d); z = TF.csub(z, st); if (Math.hypot(st[0], st[1]) < 1e-15) break; }
+      if (Math.hypot(z[0] - c.p[0], z[1] - c.p[1]) < 1e-2) c.p = z;
+      if (Math.abs(c.p[1]) < 1e-9) c.p[1] = 0;
+      if (Math.abs(c.p[0]) < 1e-9) c.p[0] = 0;
+    });
+    return TF.laurent(F, cl);
+  },
+  /** 부분 분수 항으로 f(t) 계산 */
+  inv(terms) {
+    return (t) => {
+      let sum = 0;
+      terms.forEach((T) => {
+        const e = TF.cexp([T.p[0] * t, T.p[1] * t]); let acc = [0, 0], tk = 1, fact = 1;
+        T.c.forEach((ck, k) => { if (k > 0) { tk *= t; fact *= k; } acc = TF.cadd(acc, [(ck[0] * tk) / fact, (ck[1] * tk) / fact]); });
+        sum += TF.cmul(acc, e)[0];
+      });
+      return sum;
+    };
+  },
+  /** 한 항만의 시간 함수(켤레 쌍은 2Re로) */
+  invOne(T) { const one = TF.inv([T]); return T.p[1] > 0 ? (t) => 2 * one(t) : one; },
+  /* ---------- 문자열 */
+  sv(p) { return p === 0 ? "s" : p > 0 ? `(s − ${TF.n(p, 2)})` : `(s + ${TF.n(-p, 2)})`; },
+  svb(p) { return p === 0 ? "s" : p > 0 ? `s − ${TF.n(p, 2)}` : `s + ${TF.n(-p, 2)}`; },
+  ev(p) { const m = TF.n(Math.abs(p), 2); return m === "0" ? "" : `e<sup>${p < 0 ? "−" : ""}${m === "1" ? "" : m}t</sup>`; },
+  cfac(al, be) { return al === 0 ? `(s² + ${TF.n(be * be, 2)})` : `((${TF.svb(al)})² + ${TF.n(be * be, 2)})`; },
+  pole(p) { return p[1] === 0 ? TF.n(p[0], 3) : `${TF.n(p[0], 3)} ± ${TF.n(Math.abs(p[1]), 3)}i`; },
+  poles(cl) { return cl.filter((c) => c.p[1] >= 0).map((c) => TF.pole(c.p) + (c.m > 1 ? ` (${c.m}중)` : "")).join(", ") || "없음"; },
+  coef(v, first) { const a = TF.n(Math.abs(v), 3); return (first ? (v < 0 ? "−" : "") : v < 0 ? " − " : " + ") + a; },
+  /** 다항식 HTML (오름차순 계수) */
+  poly(a, v = "s") {
+    const n = TF.deg(a); let s = "";
+    for (let k = n; k >= 0; k--) {
+      const c = a[k]; if (Math.abs(c) < 1e-9 && !(k === 0 && s === "")) continue;
+      const mag = Math.abs(c), sign = c < 0 ? (s ? " − " : "−") : s ? " + " : "";
+      const cs = k > 0 && Math.abs(mag - 1) < 1e-9 ? "" : TF.n(mag, 2);
+      s += sign + cs + (k > 1 ? `${v}<sup>${k}</sup>` : k === 1 ? v : "");
+    }
+    return s || "0";
+  },
+  /** 부분 분수 항을 시간 함수 HTML로: 'A e^{pt}', 켤레 쌍은 e^{αt}(B cos βt + C sin βt) */
+  timeTerms(terms, tol = 1e-7) {
+    const out = [];
+    terms.forEach((T) => {
+      if (T.p[1] < 0) return;
+      const a = T.p[0], b = T.p[1];
+      T.c.forEach((ck, k) => {
+        const fk = [1, 1, 2, 6, 24, 120][k], tp = k === 0 ? "" : k === 1 ? "t" : `t<sup>${k}</sup>`;
+        if (b === 0) {
+          const A = ck[0] / fk; if (Math.abs(A) < tol) return;
+          const mag = TF.n(Math.abs(A), 3), body = tp + TF.ev(a);
+          out.push({ v: A, s: (body && mag === "1" ? "" : mag) + body });
+        } else {
+          const B = (2 * ck[0]) / fk, C = (-2 * ck[1]) / fk; if (Math.abs(B) < tol && Math.abs(C) < tol) return;
+          const w = TF.n(b, 2), env = TF.ev(a), inner = [];
+          const mg = (v) => { const m = TF.n(Math.abs(v), 3); return m === "1" ? "" : m + " "; }, wt = w === "1" ? "t" : w + "t";
+          if (Math.abs(B) >= tol) inner.push((B < 0 ? "−" : "") + mg(B) + `cos ${wt}`);
+          if (Math.abs(C) >= tol) inner.push((inner.length ? (C < 0 ? " − " : " + ") : C < 0 ? "−" : "") + mg(C) + `sin ${wt}`);
+          out.push({ v: 1, s: `${tp}${env}(${inner.join("")})` });
+        }
+      });
+    });
+    return out;
+  },
+  joinTerms(list) {
+    if (!list.length) return "0";
+    return list.map((x, i) => (i === 0 ? (x.v < 0 ? "−" : "") : x.v < 0 ? " − " : " + ") + `<span class="tf-term">${x.s}</span>`).join("");
+  },
+  /** s 평면 위 극점 ×와 영점 ○ */
+  mark(P, x, y, o = {}) {
+    const c = P.ctx, X = P.X(x), Y = P.Y(y), r = o.r || 6;
+    c.save(); c.strokeStyle = o.color || P.P.accent; c.lineWidth = o.width || 2.6;
+    if (o.zero) { c.beginPath(); c.arc(X, Y, r, 0, Math.PI * 2); c.stroke(); }
+    else { c.beginPath(); c.moveTo(X - r, Y - r); c.lineTo(X + r, Y + r); c.moveTo(X + r, Y - r); c.lineTo(X - r, Y + r); c.stroke(); }
+    if (o.label) { c.fillStyle = o.color || P.P.accent; c.font = "600 11px " + getComputedStyle(document.body).getPropertyValue("--mono"); c.textAlign = "left"; c.textBaseline = "bottom"; c.fillText(o.label, X + r + 2, Y - r); }
+    c.restore();
+  },
+  halfPlanes(P) {
+    const c = P.ctx; c.save();
+    c.globalAlpha = 0.07; c.fillStyle = P.P.ok; c.fillRect(0, 0, P.X(0), P.h);
+    c.fillStyle = P.P.bad; c.fillRect(P.X(0), 0, P.w - P.X(0), P.h); c.restore();
+  },
+  /** 곡선과 축 사이 칠하기 */
+  area(P, f, a, b, col, alpha = 0.28) {
+    if (b - a < 1e-9) return;
+    const ctx = P.ctx, N = 300; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(P.X(a), P.Y(0));
+    for (let i = 0; i <= N; i++) { const x = a + ((b - a) * i) / N; ctx.lineTo(P.X(x), P.Y(MB.clamp(f(x), P.y0 - 1, P.y1 + 1))); }
+    ctx.lineTo(P.X(b), P.Y(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  wrap(id, on) { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; },
+};
+
+/* 로그 진동수 축 눈금 (x = log10 ω) */
+TF.logAxis = function (P, lo, hi) {
+  const ctx = P.ctx, C = P.P; ctx.save(); ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.fillStyle = C.faint;
+  ctx.font = "10px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  for (let e = Math.ceil(lo); e <= hi; e++) { ctx.beginPath(); ctx.moveTo(P.X(e), 0); ctx.lineTo(P.X(e), P.h); ctx.stroke(); ctx.fillText(String(Math.pow(10, e)), P.X(e), P.h - 2); }
+  ctx.globalAlpha = 0.45;
+  for (let e = Math.floor(lo); e <= hi; e++) for (let k = 2; k <= 9; k++) { const x = e + Math.log10(k); if (x < lo || x > hi) continue; ctx.beginPath(); ctx.moveTo(P.X(x), 0); ctx.lineTo(P.X(x), P.h); ctx.stroke(); }
+  ctx.restore();
+};
+/** 극점 목록(중복 포함)으로 F의 역변환 */
+TF.invPoles = function (F, poleList) { const T = TF.laurent(F, TF.cluster(poleList, 1e-6)); return { f: TF.inv(T), terms: T }; };
+
+/* ================================================================ 1. 스위치 */
+(function () {
+  let tau = 1.5, ev = [1, 9], t = 20, live = false;
+  const msg = document.getElementById("tf-sw-msg");
+  const isOn = (tt) => ev.filter((a) => a <= tt).length % 2 === 1;
+  const vin = (tt) => (isOn(tt) ? 1 : 0);
+  const v = (tt) => { let s = 0; ev.forEach((a, k) => { if (tt >= a) s += (k % 2 ? -1 : 1) * (1 - Math.exp(-(tt - a) / tau)); }); return s; };
+  const circ = MB.canvas("#tf-cv-sw-circ", (ctx, w, h) => {
+    const C = MB.palette(), on = isOn(t), vc = MB.clamp(v(t), 0, 1);
+    const L = Math.max(30, w * 0.12), R = w - Math.max(30, w * 0.12), T = 46, B = h - 22;
+    ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.lineCap = "round";
+    const ln = (a, b, c, d) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); };
+    // 전지 (왼쪽)
+    const my = (T + B) / 2; ln(L, T, L, my - 10); ln(L, my + 10, L, B);
+    ctx.lineWidth = 3; ln(L - 14, my - 10, L + 14, my - 10); ctx.lineWidth = 2; ln(L - 8, my + 6, L + 8, my + 6); ln(L, my + 6, L, my + 10);
+    ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText("V", L - 18, my);
+    // 스위치
+    const s0 = L + (R - L) * 0.18, s1 = s0 + 40; ln(L, T, s0, T);
+    ctx.strokeStyle = on ? C.ok : C.bad; ctx.lineWidth = 3; ln(s0, T, on ? s1 : s1 - 6, on ? T : T - 22); ctx.lineWidth = 2; ctx.strokeStyle = C.text;
+    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(s0, T, 3.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(s1, T, 3.5, 0, 7); ctx.fill();
+    // 저항
+    const r0 = s1 + (R - s1) * 0.2, r1 = r0 + Math.min(110, (R - s1) * 0.4); ln(s1, T, r0, T);
+    ctx.beginPath(); ctx.moveTo(r0, T); for (let i = 1; i <= 8; i++) ctx.lineTo(r0 + ((r1 - r0) * i) / 8 - ((r1 - r0) / 16), T + (i % 2 ? -8 : 8)); ctx.lineTo(r1, T); ctx.stroke();
+    ln(r1, T, R, T);
+    // 축전기 (오른쪽)
+    ln(R, T, R, my - 8); ln(R, my + 8, R, B); ctx.lineWidth = 3; ln(R - 18, my - 8, R + 18, my - 8); ln(R - 18, my + 8, R + 18, my + 8); ctx.lineWidth = 2;
+    ln(L, B, R, B);
+    ctx.fillStyle = C.accent; ctx.globalAlpha = 0.25 + 0.75 * vc; ctx.fillRect(R - 18, my - 6, 36, 12); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.text; ctx.textAlign = "right"; ctx.fillText(`v = ${TF.num(v(t), 2)}`, R - 24, my + 26);
+    ctx.textAlign = "center"; ctx.fillStyle = C.dim; ctx.fillText(on ? "닫힘" : "열림", (s0 + s1) / 2, T + 18); ctx.fillText("R", (r0 + r1) / 2, T + 20);
+    if (on && vc < 0.98) { ctx.fillStyle = C.accent; const ph = (t * 1.5) % 1; for (let i = 0; i < 4; i++) { const x = s1 + ((R - s1) * ((i + ph) / 4)); ctx.beginPath(); ctx.arc(x, T, 3, 0, 7); ctx.fill(); } }
+  }, { aspect: 0.3, minHeight: 150, maxHeight: 210 });
+  const plot = MB.plane("#tf-cv-sw-plot", {
+    x: [-0.4, 20.4], y: [-0.15, 1.35], aspect: 0.38, minHeight: 180, maxHeight: 270, gridStep: 2,
+    draw(P) {
+      const C = P.P;
+      P.curve(vin, { color: C.accent2, width: 2, from: 0, to: t, n: 2000 });
+      P.curve(v, { color: C.accent, width: 2.8, from: 0, to: t, n: 800 });
+      ev.forEach((a) => { if (a <= t) P.line(a, P.y0, a, P.y1, { color: C.faint, width: 1, dash: [3, 4] }); });
+      if (t < 20) P.dot(t, v(t), { r: 5, color: C.accent });
+      MB.stat("tf-sw-t", TF.num(t, 2) + " s"); MB.stat("tf-sw-state", isOn(t) ? "켜짐 (V_in = 1)" : "꺼짐 (V_in = 0)"); MB.stat("tf-sw-v", TF.num(v(t), 3));
+      const used = ev.filter((a) => a <= t), T = TF.n(tau, 1);
+      const terms = used.slice(0, 6).map((a, k) => `<span class="tf-term">${k ? (k % 2 ? " − " : " + ") : ""}u(t − ${TF.n(a, 2)})(1 − e<sup>−(t−${TF.n(a, 2)})/${T}</sup>)</span>`).join("");
+      msg.innerHTML = used.length ? `<b>v(t)</b> = ${terms}${used.length > 6 ? ` … (${used.length}항)` : ""}` : "아직 스위치를 켜지 않았습니다: v(t) = 0";
+    },
+  });
+  const redraw = () => { circ.redraw(); plot.redraw(); };
+  MB.range("tf-sw-tau", (x) => x.toFixed(1), (x) => { tau = x; redraw(); });
+  const btn = MB.playButton("tf-sw-play", () => { ev = []; t = 0; live = true; loop.start(); redraw(); }, () => { live = false; }, ["▶ 실시간 시작", "■ 멈춤"]);
+  document.getElementById("tf-sw-toggle").addEventListener("click", () => { if (!live) { ev = []; t = 0; live = true; btn.set(true); loop.start(); } ev.push(t); redraw(); });
+  document.getElementById("tf-sw-win").addEventListener("click", () => { live = false; btn.set(false); ev = [1, 9]; t = 20; redraw(); });
+  document.getElementById("tf-sw-pwm").addEventListener("click", () => { live = false; btn.set(false); ev = []; for (let a = 1; a < 20; a += 1) ev.push(a); t = 20; redraw(); });
+  const loop = MB.loop(document.getElementById("sim-tf-switch"), (dt) => {
+    if (!live) return;
+    t = Math.min(20, t + dt * 1.6); redraw();
+    if (t >= 20) { live = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 2. 충격 */
+(function () {
+  const EPS = [2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
+  let eps = 0.5, I = 1, c = 0.4, sol = [], tp = 10, playing = false, plF = null, plX = null;
+  const k = 4, t0 = 1;
+  const force = (t) => (t >= t0 && t < t0 + eps ? I / eps : 0);
+  const wd = () => Math.sqrt(Math.max(1e-9, k - (c * c) / 4));
+  const hIdeal = (t) => (t < t0 ? 0 : (I * Math.exp((-c * (t - t0)) / 2) * Math.sin(wd() * (t - t0))) / wd());
+  const solve = () => { sol = MB.rk4((t, y) => [y[1], force(t) - c * y[1] - k * y[0]], [0, 0], 0, 0.002, 5000); };
+  const xAt = (t) => { const i = MB.clamp(Math.round(t / 0.002), 0, sol.length - 1); return sol[i][1][0]; };
+  solve();
+  const scene = MB.canvas("#tf-cv-im-scene", (ctx, w, h) => {
+    const C = MB.palette(), x = xAt(tp), mid = h / 2 + 8, wall = 24, eq = w * 0.55, sc = Math.min(w * 0.28, 160) / 0.6;
+    const mx = eq + MB.clamp(x, -0.7, 0.7) * sc, bw = 46;
+    ctx.fillStyle = C.faint; ctx.fillRect(wall - 8, mid - 34, 8, 68);
+    ctx.strokeStyle = C.text; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(wall, mid);
+    const n = 12, L = mx - bw / 2 - wall; for (let i = 1; i < n; i++) ctx.lineTo(wall + (L * i) / n, mid + (i % 2 ? -10 : 10)); ctx.lineTo(mx - bw / 2, mid); ctx.stroke();
+    ctx.fillStyle = C.accent; ctx.fillRect(mx - bw / 2, mid - 22, bw, 44);
+    ctx.strokeStyle = C.dim; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(eq, mid - 32); ctx.lineTo(eq, mid + 32); ctx.stroke(); ctx.setLineDash([]);
+    const hit = tp >= t0 && tp < t0 + Math.max(eps, 0.15);
+    const hx = mx + bw / 2 + (hit ? 4 : 40);
+    ctx.fillStyle = hit ? C.bad : C.dim; ctx.fillRect(hx, mid - 12, 30, 24); ctx.fillRect(hx + 30, mid - 3, 40, 6);
+    ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillText(`t = ${TF.num(tp, 2)}  x = ${TF.num(x, 3)}`, 10, h - 18);
+  }, { aspect: 0.22, minHeight: 110, maxHeight: 150 });
+  plF = MB.plane("#tf-cv-im-f", {
+    x: [-0.3, 10.3], y: [-0.3, 3.3], aspect: 0.26, minHeight: 130, maxHeight: 200, gridStep: 1,
+    draw(P) {
+      const C = P.P, hgt = I / eps, shown = Math.min(hgt, P.y1 - 0.1);
+      P.poly([[t0, 0], [t0, shown], [t0 + eps, shown], [t0 + eps, 0]], { color: C.accent2, width: 2, fill: C.accent2, alpha: 0.5 });
+      if (hgt > P.y1 - 0.1) { P.arrow(t0 + eps / 2, shown - 0.6, t0 + eps / 2, P.y1 - 0.05, { color: C.accent2, width: 2, head: 8 }); }
+      P.text(`높이 ${TF.n(hgt, 1)}, 넓이 ${TF.n(I, 1)}`, t0 + eps + 0.15, Math.min(shown, P.y1 - 0.5), { color: C.accent2, size: 12, bold: true });
+    },
+  });
+  plX = MB.plane("#tf-cv-im-x", {
+    x: [-0.3, 10.3], y: [-0.7, 0.7], aspect: 0.34, minHeight: 160, maxHeight: 240, gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      P.curve(hIdeal, { color: C.text, width: 1.6, dash: [5, 4], from: 0, to: 10.3 });
+      P.poly(sol.filter((_, i) => i % 10 === 0).map(([t, y]) => [t, y[0]]), { color: C.accent, width: 2.6, close: false });
+      P.line(tp, P.y0, tp, P.y1, { color: C.faint, width: 1, dash: [3, 3] });
+    },
+  });
+  const upd = () => {
+    solve();
+    const ym = Math.max(0.2, ...sol.map((s) => Math.abs(s[1][0])), I / wd()) * 1.25; plX.view({ y: [-ym, ym * 1.15] });
+    plF.redraw(); scene.redraw();
+    let mxP = 0, mxD = 0, df = 0; sol.forEach(([t, y], i) => { if (i % 5) return; const hi = hIdeal(t); mxP = Math.max(mxP, Math.abs(y[0])); mxD = Math.max(mxD, Math.abs(hi)); df = Math.max(df, Math.abs(y[0] - hi)); });
+    const vi = sol[Math.min(sol.length - 1, Math.round((t0 + eps) / 0.002))][1][1];
+    MB.stat("tf-im-h", TF.n(I / eps, 2)); MB.stat("tf-im-v", `${TF.num(vi, 3)} (I/m = ${TF.n(I, 2)})`);
+    MB.stat("tf-im-max", `${TF.num(mxP, 3)} / ${TF.num(mxD, 3)}`); MB.stat("tf-im-diff", TF.num(df, 4));
+  };
+  MB.steps("tf-im-eps", EPS, (v) => String(v), 0.5, (v) => { eps = v; upd(); });
+  MB.range("tf-im-I", (v) => v.toFixed(1), (v) => { I = v; upd(); });
+  MB.range("tf-im-c", (v) => v.toFixed(2), (v) => { c = v; upd(); });
+  const btn = MB.playButton("tf-im-play", () => { tp = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 망치로 치기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-tf-impulse"), (dt) => {
+    if (!playing) return;
+    tp = Math.min(10, tp + dt * (tp > t0 - 0.2 && tp < t0 + 0.5 ? 0.35 : 1.2)); scene.redraw(); plX.redraw();
+    if (tp >= 10) { playing = false; btn.set(false); }
+  });
+  upd();
+})();
+
+/* ================================================================ 3. 합성곱 */
+(function () {
+  const G = { step: () => 1, pulse: (t) => (t < 2 ? 1 : 0), ramp: (t) => 0.25 * t, sin: (t) => Math.sin(2 * t) };
+  const H = {
+    first: { h: (t) => Math.exp(-t), ode: (g) => (t, y) => [-y[0] + g(t), 0] },
+    osc: { h: (t) => (Math.exp(-0.3 * t) * Math.sin(2 * t)) / 2, ode: (g) => (t, y) => [y[1], g(t) - 0.6 * y[1] - 4.09 * y[0]] },
+  };
+  let gk = "pulse", hk = "first", t = 3, grid = [], rk = [], playing = false, plB = null;
+  const gf = (x) => (x < 0 ? 0 : G[gk](x)), hf = (x) => (x < 0 ? 0 : H[hk].h(x));
+  const conv = (tt) => { const f = (x) => gf(x) * hf(tt - x); if (gk === "pulse" && tt > 2) return TF.simpson(f, 0, 2, 300) + TF.simpson(f, 2, tt, 300); return TF.simpson(f, 0, tt, 300); };
+  const pre = () => {
+    grid = []; for (let i = 0; i <= 240; i++) { const tt = i * 0.05; grid.push([tt, conv(tt)]); }
+    const r = MB.rk4(H[hk].ode(gf), [0, 0], 0, 0.005, 2400); rk = r.filter((_, i) => i % 100 === 0).map(([tt, y]) => [tt, y[0]]);
+  };
+  pre();
+  const yr = () => TF.yRange(grid.map((p) => p[1]), 0.12);
+  const plT = MB.plane("#tf-cv-cv-top", {
+    x: [-0.5, 12.5], y: [-1.2, 1.5], aspect: 0.36, minHeight: 170, maxHeight: 260, gridStep: 1,
+    draw(P) {
+      const C = P.P, prod = (x) => gf(x) * hf(t - x);
+      TF.area(P, (x) => Math.max(0, prod(x)), 0, t, C.accent, 0.35); TF.area(P, (x) => Math.min(0, prod(x)), 0, t, C.bad, 0.35);
+      P.curve(gf, { color: C.accent2, width: 2.4, from: 0, to: 12.5, n: 1200 });
+      P.curve((x) => hf(t - x), { color: C.accent, width: 2.2, from: -0.5, to: t, n: 600 });
+      P.line(t, P.y0, t, P.y1, { color: C.text, width: 1.2, dash: [3, 3] }); P.text("τ = t", t, P.y0, { dx: 5, dy: -10, color: C.text, bold: true, size: 12 });
+      if (plB) plB.redraw();
+    },
+  });
+  plB = MB.plane("#tf-cv-cv-bot", {
+    x: [-0.5, 12.5], y: yr(), aspect: 0.34, minHeight: 160, maxHeight: 250, gridStep: 1,
+    draw(P) {
+      const C = P.P, y = conv(t);
+      P.poly(grid, { color: C.accent, width: 1.4, alpha: 0.3, close: false });
+      P.poly(grid.filter((p) => p[0] <= t).concat([[t, y]]), { color: C.accent, width: 2.8, close: false });
+      rk.forEach(([tt, v]) => P.dot(tt, v, { r: 3, color: C.accent2 }));
+      P.dot(t, y, { r: 5.5, color: C.accent });
+      const r = MB.rk4(H[hk].ode(gf), [0, 0], 0, t / Math.max(1, Math.ceil(t / 0.005)), Math.max(1, Math.ceil(t / 0.005)));
+      MB.stat("tf-cv-y", TF.num(y, 4)); MB.stat("tf-cv-rk", TF.num(t === 0 ? 0 : r[r.length - 1][1][0], 4));
+    },
+  });
+  const upd = () => { pre(); plB.view({ y: yr() }); plT.redraw(); };
+  const tEl = document.getElementById("tf-cv-t");
+  MB.range("tf-cv-t", (v) => v.toFixed(2), (v) => { t = v; plT.redraw(); });
+  document.getElementById("tf-cv-g").addEventListener("change", (e) => { gk = e.target.value; upd(); });
+  document.getElementById("tf-cv-h").addEventListener("change", (e) => { hk = e.target.value; upd(); });
+  const btn = MB.playButton("tf-cv-play", () => { if (t >= 11.9) t = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 밀기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-tf-conv"), (dt) => {
+    if (!playing) return;
+    t = Math.min(12, t + dt * 1.5); tEl.value = t; tEl.dispatchEvent(new Event("input"));
+    if (t >= 12) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 4. 극점 끌기 */
+(function () {
+  let mode = "cplx", useZero = false, showStep = false, h = null, st = null, env = null, plT = null;
+  const pc = { x: -0.5, y: 2, r: 10, color: "rgba(0,0,0,0)", constrain(p) { p.y = MB.clamp(p.y, 0.1, 3.8); } };
+  const r1 = { x: -0.5, y: 0, r: 10, lock: "y", color: "rgba(0,0,0,0)", constrain(p) { p.y = 0; } };
+  const r2 = { x: -2, y: 0, r: 10, lock: "y", color: "rgba(0,0,0,0)", constrain(p) { p.y = 0; } };
+  const zp = { x: -1.5, y: 0, r: 10, lock: "y", color: "rgba(0,0,0,0)", hidden: true, constrain(p) { p.y = 0; if (Math.abs(p.x) < 0.2) p.x = p.x < 0 ? -0.2 : 0.2; } };
+  const poles = () => (mode === "cplx" ? [[pc.x, pc.y], [pc.x, -pc.y]] : [[r1.x, 0], [r2.x, 0]]);
+  const compute = () => {
+    const pl = poles(); let K = 1; { let d = [1, 0]; pl.forEach((p) => (d = TF.cmul(d, [-p[0], -p[1]]))); K = Math.abs(d[0]) > 1e-3 ? d[0] : 1; }
+    const H = (s) => { let d = [1, 0]; pl.forEach((p) => (d = TF.cmul(d, TF.csub(s, p)))); const n = useZero ? TF.csub([1, 0], TF.cdiv(s, [zp.x, 0])) : [1, 0]; return TF.cdiv(TF.cmul([K, 0], n), d); };
+    const a = TF.invPoles(H, pl); h = a.f;
+    st = showStep ? TF.invPoles((s) => TF.cdiv(H(s), s), pl.concat([[0, 0]])).f : null;
+    if (mode === "cplx") { const T = a.terms.find((q) => q.p[1] > 0); const A = 2 * Math.hypot(T.c[0][0], T.c[0][1]); env = (t) => A * Math.exp(pc.x * t); } else env = null;
+    const sig = Math.max(...pl.map((p) => p[0]));
+    const zs = useZero ? `(1 − s/${TF.n(zp.x, 2).replace("−", "(−") + (zp.x < 0 ? ")" : "")})` : "";
+    MB.stat("tf-po-H", `${TF.n(K, 2)}${zs} / ${mode === "cplx" ? TF.cfac(pc.x, pc.y) : TF.sv(r1.x) + TF.sv(r2.x)}`);
+    if (mode === "cplx") { const wn = Math.hypot(pc.x, pc.y); MB.stat("tf-po-z", `${TF.num(wn, 3)}, ${TF.num(-pc.x / wn, 3)}`); }
+    else { const wn = Math.sqrt(Math.abs(r1.x * r2.x)); MB.stat("tf-po-z", r1.x * r2.x > 0 ? `${TF.num(wn, 3)}, ${TF.num(-(r1.x + r2.x) / (2 * wn), 3)}` : "—"); }
+    MB.stat("tf-po-tau", Math.abs(sig) < 1e-9 ? "∞" : sig < 0 ? TF.num(-1 / sig, 3) : "— (성장)");
+    MB.stat("tf-po-st", sig < -1e-9 ? '<span style="color:var(--ok)">안정</span>' : Math.abs(sig) < 1e-9 ? '<span style="color:var(--warn)">경계 (허수축)</span>' : '<span style="color:var(--bad)">불안정</span>');
+  };
+  const range = () => { const v = []; for (let i = 0; i <= 200; i++) { const t = (10 * i) / 200; v.push(h(t)); if (st) v.push(st(t)); } return TF.yRange(v, 0.12, true, 8); };
+  const plS = MB.plane("#tf-cv-po-s", {
+    x: [-4, 1.6], y: [-4, 4], aspect: 0.5, minHeight: 210, maxHeight: 300, points: [pc, r1, r2, zp],
+    draw(P) {
+      const C = P.P; TF.halfPlanes(P);
+      pc.hidden = mode !== "cplx"; r1.hidden = r2.hidden = mode === "cplx"; zp.hidden = !useZero;
+      compute();
+      if (mode === "cplx") {
+        const wn = Math.hypot(pc.x, pc.y); P.circle(0, 0, wn, { color: C.faint, width: 1, dash: [3, 4] });
+        P.line(0, 0, pc.x, pc.y, { color: C.faint, width: 1, dash: [3, 4] }); P.line(0, 0, pc.x, -pc.y, { color: C.faint, width: 1, dash: [3, 4] });
+      }
+      poles().forEach((p, i) => TF.mark(P, p[0], p[1], { color: mode === "cplx" && i === 1 ? C.dim : C.accent, r: 7 }));
+      if (useZero) TF.mark(P, zp.x, 0, { zero: true, color: C.accent2, r: 7 });
+      if (plT) plT.view({ y: range() });
+    },
+  });
+  plT = MB.plane("#tf-cv-po-t", {
+    x: [-0.2, 10.2], y: range(), aspect: 0.42, minHeight: 180, maxHeight: 280,
+    draw(P) {
+      const C = P.P;
+      if (env) { P.curve(env, { color: C.dim, width: 1.2, dash: [4, 4], from: 0, to: 10.2 }); P.curve((t) => -env(t), { color: C.dim, width: 1.2, dash: [4, 4], from: 0, to: 10.2 }); }
+      if (st) { P.line(P.x0, 1, P.x1, 1, { color: C.faint, width: 1, dash: [3, 3] }); P.curve(st, { color: C.accent2, width: 2.2, from: 0, to: 10.2 }); }
+      P.curve(h, { color: C.accent, width: 2.8, from: 0, to: 10.2 });
+    },
+  });
+  MB.seg("tf-po-mode", (v) => { mode = v; plS.redraw(); });
+  MB.check("tf-po-zero", (v) => { useZero = v; plS.redraw(); });
+  MB.check("tf-po-step", (v) => { showStep = v; plS.redraw(); });
+  document.getElementById("tf-po-reset").addEventListener("click", () => { Object.assign(pc, { x: -0.5, y: 2 }); r1.x = -0.5; r2.x = -2; zp.x = -1.5; plS.redraw(); });
+})();
+
+/* ================================================================ 5. 보드 선도 */
+(function () {
+  let kind = "2", tau = 1, wn = 1, z = 0.2, lw = 0, plP = null, plT = null;
+  const Hj = (w) => (kind === "1" ? TF.cdiv([1, 0], [1, tau * w]) : TF.cdiv([wn * wn, 0], [wn * wn - w * w, 2 * z * wn * w]));
+  const mag = (w) => 20 * Math.log10(Math.hypot(...Hj(w)));
+  const phs = (w) => { const v = Hj(w); let a = (Math.atan2(v[1], v[0]) * 180) / Math.PI; if (a > 1) a -= 360; return a; };
+  const plM = MB.plane("#tf-cv-bd-mag", {
+    x: [-2, 2], y: [-62, 26], aspect: 0.34, minHeight: 160, maxHeight: 240, grid: false, axes: false,
+    draw(P) {
+      const C = P.P; TF.logAxis(P, -2, 2);
+      for (let d = -60; d <= 20; d += 20) { P.line(-2, d, 2, d, { color: C.grid, width: 1 }); P.text(`${d} dB`, -2, d, { dx: 4, dy: -7, color: C.faint, size: 10 }); }
+      const wc = kind === "1" ? 1 / tau : wn, lc = Math.log10(wc), slope = kind === "1" ? -20 : -40;
+      P.line(-2, 0, lc, 0, { color: C.dim, width: 1.4, dash: [5, 4] }); P.line(lc, 0, 2, slope * (2 - lc), { color: C.dim, width: 1.4, dash: [5, 4] });
+      P.curve((x) => mag(Math.pow(10, x)), { color: C.accent, width: 2.6 });
+      P.line(lw, P.y0, lw, P.y1, { color: C.accent2, width: 1.2, dash: [3, 3] }); P.dot(lw, mag(Math.pow(10, lw)), { r: 5, color: C.accent2 });
+      if (plP) plP.redraw(); if (plT) plT.redraw();
+    },
+  });
+  plP = MB.plane("#tf-cv-bd-ph", {
+    x: [-2, 2], y: [-195, 15], aspect: 0.26, minHeight: 130, maxHeight: 200, grid: false, axes: false,
+    draw(P) {
+      const C = P.P; TF.logAxis(P, -2, 2);
+      [0, -45, -90, -135, -180].forEach((d) => { P.line(-2, d, 2, d, { color: C.grid, width: 1 }); P.text(`${d}°`, -2, d, { dx: 4, dy: -7, color: C.faint, size: 10 }); });
+      P.curve((x) => phs(Math.pow(10, x)), { color: C.accent, width: 2.6 });
+      P.line(lw, P.y0, lw, P.y1, { color: C.accent2, width: 1.2, dash: [3, 3] }); P.dot(lw, phs(Math.pow(10, lw)), { r: 5, color: C.accent2 });
+    },
+  });
+  plT = MB.plane("#tf-cv-bd-t", {
+    x: [0, 4], y: [-3, 3], aspect: 0.26, minHeight: 130, maxHeight: 200, grid: false,
+    draw(P) {
+      const C = P.P, w = Math.pow(10, lw), v = Hj(w), G = Math.hypot(...v), ph = Math.atan2(v[1], v[0]);
+      const per = (2 * Math.PI) / w, T = 3 * per, k = 4 / T;
+      const ym = Math.max(1.2, G * 1.2); if (Math.abs(P.y1 - ym) > 1e-6) { plT.view({ y: [-ym, ym] }); return; }
+      P.curve((x) => Math.sin(w * (x / k)), { color: C.accent2, width: 2 });
+      P.curve((x) => G * Math.sin(w * (x / k) + ph), { color: C.accent, width: 2.6 });
+      P.text(`3주기 = ${TF.n(T, 3)} s`, 4, P.y0, { align: "right", dx: -6, dy: -10, color: C.faint, size: 11 });
+      MB.stat("tf-bd-g", TF.num(G, 4)); MB.stat("tf-bd-db", TF.num(20 * Math.log10(G), 2) + " dB"); MB.stat("tf-bd-ph", TF.num(phs(w), 1) + "°");
+      if (kind === "1") MB.stat("tf-bd-pk", `꺾임 ω<sub>c</sub> = ${TF.num(1 / tau, 3)}`);
+      else MB.stat("tf-bd-pk", z < Math.SQRT1_2 ? `ω<sub>r</sub> = ${TF.num(wn * Math.sqrt(1 - 2 * z * z), 3)}, +${TF.num(20 * Math.log10(1 / (2 * z * Math.sqrt(1 - z * z))), 2)} dB` : "봉우리 없음 (ζ ≥ 0.707)");
+    },
+  });
+  const show = () => { TF.wrap("tf-bd-tau-wrap", kind === "1"); TF.wrap("tf-bd-wn-wrap", kind === "2"); TF.wrap("tf-bd-z-wrap", kind === "2"); };
+  MB.seg("tf-bd-kind", (v) => { kind = v; show(); plM.redraw(); });
+  MB.range("tf-bd-tau", (v) => v.toFixed(2), (v) => { tau = v; plM.redraw(); });
+  MB.range("tf-bd-wn", (v) => v.toFixed(2), (v) => { wn = v; plM.redraw(); });
+  MB.range("tf-bd-z", (v) => v.toFixed(2), (v) => { z = v; plM.redraw(); });
+  MB.range("tf-bd-w", (v) => TF.num(Math.pow(10, v), 3), (v) => { lw = v; plM.redraw(); });
+  show(); plM.redraw();
+})();
+
+/* ================================================================ 6. 2차 계단 응답 */
+(function () {
+  let z = 0.5, wn = 1, first = false, sol = [], T = 12, m = {};
+  const solve = () => {
+    const sig = z < 1 ? z * wn : wn * (z - Math.sqrt(z * z - 1));
+    T = MB.clamp(7 / sig, 6, 60);
+    const dt = T / 6000; sol = MB.rk4((t, y) => [y[1], wn * wn * (1 - y[0]) - 2 * z * wn * y[1]], [0, 0], 0, dt, 6000).map(([t, y]) => [t, y[0]]);
+    let mx = -1, tp = NaN, ts = 0; sol.forEach(([t, y]) => { if (y > mx + 1e-12) { mx = y; tp = t; } if (Math.abs(y - 1) > 0.02) ts = t; });
+    m = { mx, tp: mx > 1.0005 ? tp : NaN, ts, sig };
+  };
+  solve();
+  const plT = MB.plane("#tf-cv-st-t", {
+    x: [-0.02 * T, T * 1.02], y: [-0.08, 1.95], aspect: 0.42, minHeight: 190, maxHeight: 290, gridStep: 1,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = C.ok; ctx.fillRect(0, P.Y(1.02), P.w, P.Y(0.98) - P.Y(1.02)); ctx.restore();
+      P.line(P.x0, 1, P.x1, 1, { color: C.dim, width: 1, dash: [4, 4] });
+      if (z < 1) { const k = 1 / Math.sqrt(1 - z * z); P.curve((t) => 1 + k * Math.exp(-z * wn * t), { color: C.faint, width: 1.2, dash: [4, 4], from: 0, to: P.x1 }); P.curve((t) => 1 - k * Math.exp(-z * wn * t), { color: C.faint, width: 1.2, dash: [4, 4], from: 0, to: P.x1 }); }
+      if (first) P.curve((t) => 1 - Math.exp(-m.sig * t), { color: C.accent2, width: 2, from: 0, to: P.x1 });
+      P.poly(sol.filter((_, i) => i % 10 === 0), { color: C.accent, width: 2.8, close: false });
+      if (isFinite(m.tp)) { P.line(m.tp, 0, m.tp, m.mx, { color: C.accent, width: 1, dash: [3, 3] }); P.dot(m.tp, m.mx, { r: 5, color: C.accent }); P.text(`M_p = ${TF.n((m.mx - 1) * 100, 1)}%`, m.tp, m.mx, { dx: 8, dy: -10, color: C.accent, bold: true, size: 12 }); }
+      P.line(m.ts, P.y0, m.ts, P.y1, { color: C.ok, width: 1.4, dash: [5, 3] }); P.text("t_s", m.ts, P.y0, { dx: 4, dy: -10, color: C.ok, bold: true, size: 12 });
+    },
+  });
+  const plS = MB.plane("#tf-cv-st-s", {
+    x: [-6, 1.5], y: [-4.5, 4.5], aspect: 0.4, minHeight: 170, maxHeight: 250,
+    draw(P) {
+      const C = P.P; TF.halfPlanes(P);
+      P.circle(0, 0, wn, { color: C.faint, width: 1, dash: [3, 4] });
+      let ps;
+      if (z < 1) { const wd = wn * Math.sqrt(1 - z * z); ps = [[-z * wn, wd], [-z * wn, -wd]]; const L = 12; P.line(0, 0, -z * L, Math.sqrt(1 - z * z) * L, { color: C.accent2, width: 1.2, dash: [5, 4] }); P.line(0, 0, -z * L, -Math.sqrt(1 - z * z) * L, { color: C.accent2, width: 1.2, dash: [5, 4] }); }
+      else { const r = wn * Math.sqrt(z * z - 1); ps = [[-z * wn + r, 0], [-z * wn - r, 0]]; }
+      ps.forEach((p) => TF.mark(P, p[0], p[1], { color: C.accent }));
+      MB.stat("tf-st-p", ps[0][1] ? `${TF.n(ps[0][0], 3)} ± ${TF.n(ps[0][1], 3)}i` : `${TF.n(ps[0][0], 3)}, ${TF.n(ps[1][0], 3)}`);
+    },
+  });
+  const upd = () => {
+    solve(); plT.view({ x: [-0.02 * T, T * 1.02], y: [-0.08, Math.max(1.3, m.mx + 0.32)] }); plS.redraw();
+    const Mp = z < 1 ? Math.exp((-Math.PI * z) / Math.sqrt(1 - z * z)) : 0;
+    MB.stat("tf-st-mp", `${TF.n(Mp * 100, 1)}% / ${TF.n(Math.max(0, m.mx - 1) * 100, 1)}%`);
+    MB.stat("tf-st-tp", z < 1 ? `${TF.num(Math.PI / (wn * Math.sqrt(1 - z * z)), 2)} / ${isFinite(m.tp) ? TF.num(m.tp, 2) : "—"}` : "— (오버슈트 없음)");
+    MB.stat("tf-st-ts", `${TF.num(4 / (z * wn), 2)} / ${TF.num(m.ts, 2)}`);
+  };
+  MB.range("tf-st-z", (v) => v.toFixed(2), (v) => { z = v; upd(); });
+  MB.range("tf-st-wn", (v) => v.toFixed(2), (v) => { wn = v; upd(); });
+  MB.check("tf-st-first", (v) => { first = v; plT.redraw(); });
+  upd();
+})();
+
+/* ================================================================ 7. PID */
+(function () {
+  let Kp = 9, Ki = 0, Kd = 0, sol = [], open = [], info = {};
+  const msg = document.getElementById("tf-pid-msg");
+  const solve = () => {
+    const r = MB.rk4((t, y) => { const e = 1 - y[0], u = Kp * e + Ki * y[2] - Kd * y[1]; return [y[1], u - 2 * y[1] - y[0], e]; }, [0, 0, 0], 0, 0.01, 2000);
+    sol = r.map(([t, y]) => { const u = Kp * (1 - y[0]) + Ki * y[2] - Kd * y[1]; return [t, y[0], u]; });
+    open = r.map(([t]) => [t, 1 - Math.exp(-t) * (1 + t)]);
+    const cl = TF.cluster(TF.roots(Ki > 0 ? [Ki, 1 + Kp, 2 + Kd, 1] : [1 + Kp, 2 + Kd, 1]));
+    const yf = sol[sol.length - 1][1], ymax = Math.max(...sol.map((p) => p[1])), stable = Math.max(...cl.map((c) => c.p[0])) < -1e-9;
+    const fin = Ki > 0 ? 1 : Kp / (1 + Kp); let ts = NaN;
+    if (stable) { ts = 0; sol.forEach(([t, y]) => { if (Math.abs(y - fin) > 0.02 * fin) ts = t; }); }
+    info = { cl, yf, ymax, stable, fin, ts };
+  };
+  solve();
+  const yr = () => TF.yRange(sol.map((p) => p[1]).concat([1.05]), 0.1, true, 3);
+  const ur = () => TF.yRange(sol.map((p) => p[2]), 0.1, true, 60);
+  const plY = MB.plane("#tf-cv-pid-y", {
+    x: [-0.3, 20.3], y: yr(), aspect: 0.4, minHeight: 180, maxHeight: 280, gridStep: 2,
+    draw(P) {
+      const C = P.P;
+      P.line(P.x0, 1, P.x1, 1, { color: C.text, width: 1.2, dash: [5, 4] });
+      P.poly(open.filter((_, i) => i % 5 === 0).map((p) => [p[0], p[1]]), { color: C.dim, width: 1.6, close: false });
+      P.poly(sol.filter((_, i) => i % 5 === 0).map((p) => [p[0], p[1]]), { color: C.accent, width: 2.8, close: false });
+    },
+  });
+  const plU = MB.plane("#tf-cv-pid-u", {
+    x: [-0.3, 20.3], y: ur(), aspect: 0.55, minHeight: 150, maxHeight: 220, gridStep: 5,
+    draw(P) { P.poly(sol.filter((_, i) => i % 5 === 0).map((p) => [p[0], p[2]]), { color: P.P.accent2, width: 2.2, close: false }); },
+  });
+  const plS = MB.plane("#tf-cv-pid-s", {
+    x: [-6, 2], y: [-6, 6], aspect: 0.55, minHeight: 150, maxHeight: 220, gridStep: 2,
+    draw(P) { TF.halfPlanes(P); info.cl.forEach((c) => TF.mark(P, c.p[0], MB.clamp(c.p[1], -5.8, 5.8), { color: P.P.accent })); },
+  });
+  const upd = () => {
+    solve(); plY.view({ y: yr() }); plU.view({ y: ur() }); plS.redraw();
+    MB.stat("tf-pid-yf", TF.num(info.yf, 4)); MB.stat("tf-pid-os", `${TF.num(info.ymax, 3)}${info.stable && info.ymax > info.fin ? ` (+${TF.n(((info.ymax - info.fin) / info.fin) * 100, 1)}%)` : ""}`);
+    MB.stat("tf-pid-ts", info.stable && info.ts < 19.9 ? TF.num(info.ts, 2) + " s" : "—"); MB.stat("tf-pid-poles", TF.poles(info.cl));
+    if (!info.stable) { msg.className = "tf-msg bad"; msg.innerHTML = `닫힌 루프 극점이 오른쪽 반평면(또는 허수축)에 있습니다. 되먹임이 시스템을 불안정하게 만들었습니다. K<sub>i</sub>를 줄이거나 K<sub>d</sub>를 올려 보세요.`; }
+    else if (Ki === 0) { msg.className = "tf-msg"; msg.innerHTML = `P${Kd ? "D" : ""} 제어: 최종값 K<sub>p</sub>/(1 + K<sub>p</sub>) = ${TF.num(info.fin, 3)}, 정상 상태 오차 ${TF.n((1 - info.fin) * 100, 1)}%. 적분 항이 없으면 오차가 남습니다.`; }
+    else { msg.className = "tf-msg ok"; msg.innerHTML = `적분 항 덕분에 최종값이 목표 1에 정확히 갑니다(T(0) = 1). y(20) = ${TF.num(info.yf, 4)}.`; }
+  };
+  const set = (p, i, d) => { [["tf-pid-p", p], ["tf-pid-i", i], ["tf-pid-d", d]].forEach(([id, v]) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input")); }); };
+  MB.range("tf-pid-p", (v) => v.toFixed(1), (v) => { Kp = v; upd(); });
+  MB.range("tf-pid-i", (v) => v.toFixed(2), (v) => { Ki = v; upd(); });
+  MB.range("tf-pid-d", (v) => v.toFixed(1), (v) => { Kd = v; upd(); });
+  document.getElementById("tf-pid-P").addEventListener("click", () => set(9, 0, 0));
+  document.getElementById("tf-pid-PI").addEventListener("click", () => set(9, 6, 0));
+  document.getElementById("tf-pid-PID").addEventListener("click", () => set(9, 6, 4));
+  upd();
+})();
+</script>
+</body>
+</html>
