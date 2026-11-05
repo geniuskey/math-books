@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>연속성 · CalculusBook</title>
+<meta name="description" content="끊기지 않는 함수. 연속의 세 조건, 제거 가능·점프·무한 불연속, 연속 함수의 대수와 합성, 중간값 정리와 이분법, 최대·최소 정리, sin x / x → 1과 복리에서 나오는 e까지 직접 고치고 자르고 쌓아 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ct-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ct-msg b { color: var(--text); }
+  .ct-msg.ok { color: var(--ok); font-weight: 600; }
+  .ct-msg.bad { color: var(--bad); font-weight: 600; }
+  .ct-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ct-two > div { position: relative; min-width: 0; }
+  .ct-two > div + div { border-top: 1px solid var(--border); }
+  .ct-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; }
+  .ct-tbl { max-height: 260px; overflow: auto; border-top: 1px solid var(--border); }
+  .ct-tbl table { font-size: 13px; }
+  .ct-tbl td, .ct-tbl th { font-family: var(--mono); padding: 4px 8px; text-align: right; white-space: nowrap; }
+  .ct-tbl tr:last-child td { color: var(--accent); font-weight: 700; }
+  .ct-num td, .ct-num th { font-family: var(--mono); }
+  .ct-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 18px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-dim); }
+  .ct-checks span.on { color: var(--ok); font-weight: 700; }
+  .ct-checks span.off { color: var(--bad); font-weight: 700; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="continuity">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 02</div>
+    <h1 data-no-glossary>연속성</h1>
+    <p class="lead">연필을 종이에서 떼지 않고 그릴 수 있는 그래프. 이 소박한 그림이 미적분에서 가장 많이 쓰이는 가정인 <span class="term">연속</span><span class="en">(continuity)</span>입니다. 1장의 극한으로 이 그림을 정확한 정의로 바꾸면 놀랄 만큼 강한 결과가 따라옵니다. 부호가 바뀌는 연속 함수에는 반드시 근이 있고(중간값 정리), 그 근은 구간을 반씩 잘라 언제나 찾을 수 있으며(이분법), 닫힌 구간의 연속 함수는 반드시 가장 큰 값과 가장 작은 값을 가집니다(최대·최소 정리). 이 장의 끝에서는 미분에 꼭 필요한 두 극한 \(\frac{\sin x}{x} \to 1\)과 \((1 + \frac1n)^n \to e\)를 연속성과 조임 정리로 손에 넣습니다.</p>
+    <ul class="objectives">
+      <li>한 점에서의 연속을 세 조건(정의됨, 극한 존재, 둘이 같음)으로 판정하고, 한쪽 연속과 구간에서의 연속을 정의한다.</li>
+      <li>불연속을 제거 가능·점프·무한(과 진동)으로 분류하고, 조각 함수가 연속이 되도록 상수를 정한다.</li>
+      <li>연속 함수의 합·곱·몫·합성이 연속임을 쓰고, 기본 함수가 정의역에서 연속임을 이용해 극한을 대입으로 구한다.</li>
+      <li>중간값 정리로 방정식의 근이 있음을 보이고, 이분법으로 근을 원하는 정확도까지 구하며 필요한 단계 수를 미리 계산한다.</li>
+      <li>최대·최소 정리의 가정(닫힌 구간, 연속)이 왜 하나도 빠질 수 없는지 반례로 설명한다.</li>
+      <li>부채꼴 넓이와 조임 정리로 \(\lim_{x\to 0}\frac{\sin x}{x} = 1\)을 증명하고, 복리 계산에서 \(e\)와 \(e^r\)이 나오는 과정을 계산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>근이 '있다'는 보장</b></div>
+      <div class="o-body"><p>공학의 방정식은 대부분 손으로 풀리지 않습니다. 5차 이상의 일반 다항 방정식에는 근의 공식이 없다는 것이 19세기 초에 증명되었고, 배관 설계에서 마찰 계수를 정하는 콜브룩 식처럼 미지수를 한쪽으로 모아 쓸 수조차 없는 식도 흔합니다. 그래서 컴퓨터가 근을 찾습니다. 그런데 찾기 전에 먼저 물어야 할 것이 있습니다. 근이 정말 <b>있기는</b> 한가? 없는 근을 찾느라 프로그램이 영원히 돌 수도 있습니다.</p>
+        <p>1817년 보헤미아(지금의 체코) 프라하의 수학자 베르나르트 볼차노는 "연속 함수가 음수에서 양수로 바뀌면 그 사이 어딘가에서 반드시 0이 된다"는, 너무 당연해 보여서 아무도 증명하려 하지 않던 사실을 그림에 기대지 않고 증명했습니다. 오늘날 중간값 정리라고 부르는 이 결과 덕분에, 구간 양 끝에서 부호만 확인하면 근의 존재가 보장되고 구간을 반씩 잘라 가는 이분법이 <b>반드시</b> 수렴합니다. 많은 수치 라이브러리의 근 찾기 함수가 빠른 방법을 쓰다가도 이분법을 안전장치로 남겨 두는 이유입니다.</p>
+        <div class="o-chain"><span>풀 수 없는 방정식</span><i>→</i><span>근이 있기는 한가?</span><i>→</i><span class="tool">연속 + 부호 변화 ⇒ 근 존재</span><i>→</i><span>이분법: 반드시 수렴하는 근 찾기</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="definition">
+    <h2>연속의 세 조건</h2>
+    <div class="problem"><strong>"연필을 떼지 않고"를 식으로</strong>
+      <p>온도 센서가 1초마다 값을 보냅니다. 기록 그래프에 갑자기 끊긴 곳이 있다면 센서가 고장 났거나 무언가가 순간적으로 바뀐 것입니다. "끊기지 않았다"를 판정하는 프로그램을 짜려면 그림 대신 검사할 수 있는 조건이 필요합니다. 한 점 \(x = a\)에서 그래프가 끊기지 않았다는 것은 정확히 무슨 뜻일까요?</p></div>
+    <p>1장에서 극한은 \(a\) <b>근처</b>의 값만 보고 \(f(a)\)는 보지 않는다고 했습니다. 연속은 바로 그 둘을 잇는 조건입니다. 근처에서 다가가는 값과 그 점의 값이 같으면 그래프에 틈이 없습니다.</p>
+    <div class="callout deep"><strong>정의 2.1 (한 점에서의 연속)</strong> 함수 \(f\)가 다음 세 조건을 모두 만족하면 \(f\)는 \(x = a\)에서 <span class="term">연속</span>이라 한다.
+      <ol style="margin:6px 0 0">
+        <li>\(f(a)\)가 정의되어 있다.</li>
+        <li>\(\lim_{x\to a}f(x)\)가 존재한다.</li>
+        <li>\(\lim_{x\to a}f(x) = f(a)\).</li>
+      </ol>
+      셋 중 하나라도 실패하면 \(f\)는 \(a\)에서 <span class="term">불연속</span><span class="en">(discontinuous)</span>이다. 세 조건을 한 줄로 쓰면 \(\lim_{x\to a}f(x) = f(a)\)이고, \(x = a + h\)로 바꾸면 \(\lim_{h\to 0}f(a + h) = f(a)\)다.
+      <div class="where">ε–δ로 쓰면: 모든 \(\varepsilon > 0\)에 대해 \(\delta > 0\)이 있어 \(|x - a| \lt \delta \Rightarrow |f(x) - f(a)| \lt \varepsilon\). 1장 정의 1.12에서 \(L\)을 \(f(a)\)로 바꾸고 \(0 \lt\)를 뺀 것이다(\(x = a\)에서는 저절로 성립).</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="연속의 세 조건이 하나씩 실패하는 그래프 세 개와 연속인 그래프">
+        <g transform="translate(10,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">① f(a)가 없다</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M15 170 Q90 60 165 120" class="s-acc" style="stroke-width:3"/>
+          <circle cx="90" cy="102.5" r="6" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.5"/><line x1="90" y1="200" x2="90" y2="110" style="stroke:var(--text-faint);stroke-dasharray:3 4"/><text x="86" y="214" class="t-mono">a</text></g>
+        <g transform="translate(197,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">② 극한이 없다</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M15 165 L90 135" class="s-acc" style="stroke-width:3"/><path d="M90 85 L165 60" class="s-acc" style="stroke-width:3"/>
+          <circle cx="90" cy="135" r="6" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.5"/><circle cx="90" cy="85" r="6" style="fill:var(--accent)"/><line x1="90" y1="200" x2="90" y2="142" style="stroke:var(--text-faint);stroke-dasharray:3 4"/><text x="86" y="214" class="t-mono">a</text></g>
+        <g transform="translate(384,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">③ 극한 ≠ f(a)</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M15 170 Q90 60 165 120" class="s-acc" style="stroke-width:3"/>
+          <circle cx="90" cy="102.5" r="6" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.5"/><circle cx="90" cy="50" r="6" style="fill:var(--accent)"/><line x1="90" y1="200" x2="90" y2="110" style="stroke:var(--text-faint);stroke-dasharray:3 4"/><text x="86" y="214" class="t-mono">a</text></g>
+        <g transform="translate(571,0)"><rect y="30" width="179" height="190" rx="10" class="f-acc2-soft" style="opacity:.9"/><text x="8" y="20" class="t" style="font-weight:700">④ 연속</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M15 170 Q90 60 165 120" class="s-acc" style="stroke-width:3"/>
+          <circle cx="90" cy="102.5" r="6" style="fill:var(--accent)"/><line x1="90" y1="200" x2="90" y2="110" style="stroke:var(--text-faint);stroke-dasharray:3 4"/><text x="86" y="214" class="t-mono">a</text></g>
+        <text x="380" y="244" text-anchor="middle" class="t-dim">빈 동그라미 = 극한(다가가는 값), 채운 점 = 함숫값 f(a)</text>
+      </svg>
+      <figcaption><b>그림 2-1.</b> 연속의 세 조건이 차례로 실패하는 모습. ① 구멍만 있고 함숫값이 없다. ② 좌극한과 우극한이 달라 극한이 없다. ③ 극한도 함숫값도 있지만 서로 다르다. ④ 세 조건이 모두 성립해 빈 동그라미와 채운 점이 겹친다.</figcaption>
+    </figure>
+    <p>구간 끝에서는 한쪽에서만 다가갈 수 있으므로 한쪽 극한으로 연속을 정의합니다.</p>
+    <div class="callout deep"><strong>정의 2.2 (한쪽 연속과 구간에서의 연속)</strong> \(\lim_{x\to a^+}f(x) = f(a)\)이면 \(f\)는 \(a\)에서 <span class="term">우연속</span><span class="en">(right-continuous)</span>, \(\lim_{x\to a^-}f(x) = f(a)\)이면 <span class="term">좌연속</span><span class="en">(left-continuous)</span>이다. \(f\)가 열린 구간 \((a, b)\)의 모든 점에서 연속이면 \((a, b)\)에서 연속, 여기에 더해 \(a\)에서 우연속이고 \(b\)에서 좌연속이면 닫힌 구간 \([a, b]\)에서 연속이라 한다.</div>
+    <p>예를 들어 \(\sqrt x\)는 \(x \lt 0\)에서 정의되지 않으므로 0에서 (양쪽) 연속을 말할 수 없지만, \(\lim_{x\to 0^+}\sqrt x = 0 = \sqrt 0\)이라 우연속이고 \([0, \infty)\)에서 연속입니다. 바닥 함수 \(\lfloor x\rfloor\)는 정수 \(n\)에서 \(\lim_{x\to n^+}\lfloor x\rfloor = n = \lfloor n\rfloor\)이라 우연속이지만, 좌극한이 \(n - 1\)이라 좌연속은 아닙니다.</p>
+    <div class="callout"><strong>예제 2.1 (세 조건 점검)</strong> \(f(x) = \dfrac{x^2 - 4}{x - 2}\) (\(x \ne 2\)), \(f(2) = 3\)은 \(x = 2\)에서 연속인가?
+      <ol>
+        <li>조건 1: \(f(2) = 3\)으로 정의되어 있다.</li>
+        <li>조건 2: \(x \ne 2\)에서 \(f(x) = x + 2\)이므로 \(\lim_{x\to 2}f(x) = 4\). 존재한다.</li>
+        <li>조건 3: \(4 \ne 3\). 실패. 따라서 불연속이다. 그러나 \(f(2)\)를 4로 <b>다시 정의하면</b> 연속이 된다. 이런 불연속을 다음 절에서 "제거 가능"이라 부른다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="discontinuity">
+    <h2>불연속의 종류</h2>
+    <p>불연속이 어떻게 생겼는지에 따라 고칠 수 있는지가 갈립니다. 좌극한과 우극한을 먼저 구하면 분류가 바로 됩니다.</p>
+    <div class="callout deep"><strong>정의 2.3 (불연속의 분류)</strong> \(f\)가 \(a\)에서 불연속일 때
+      <ul style="margin:6px 0 0">
+        <li><span class="term">제거 가능 불연속</span><span class="en">(removable discontinuity)</span>: \(\lim_{x\to a}f(x) = L\)이 존재하지만 \(f(a)\)가 없거나 \(L\)과 다르다. \(f(a) = L\)로 정의하면(다시 정의하면) 연속이 된다. 이렇게 얻은 함수를 \(f\)의 <span class="term">연속 확장</span><span class="en">(continuous extension)</span>이라 한다.</li>
+        <li><span class="term">점프 불연속</span><span class="en">(jump discontinuity)</span>: 좌극한과 우극한이 모두 존재하지만 서로 다르다. 그 차이가 점프의 크기다.</li>
+        <li><span class="term">무한 불연속</span><span class="en">(infinite discontinuity)</span>: 한쪽 극한 중 적어도 하나가 \(\pm\infty\)다. 그래프에 수직 점근선이 있다.</li>
+        <li>그 밖의 경우, 예를 들어 \(\sin(1/x)\)의 0처럼 한쪽 극한이 아예 존재하지 않는 <b>진동 불연속</b>도 있다.</li>
+      </ul></div>
+    <p>제거 가능 불연속만 \(f(a)\) 하나를 바꿔서 고칠 수 있습니다. 점프는 어떤 값을 넣어도 한쪽과는 어긋나고, 무한 불연속과 진동 불연속은 넣을 값 자체가 없습니다. 아래 시뮬레이터에서 점 \((a, f(a))\)를 위아래로 끌어 직접 고쳐 보세요.</p>
+
+    <div class="sim" id="sim-ct-fix">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>불연속 고치기: f(a)를 옮겨서 틈을 메울 수 있나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ct-cv-fix"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ct-f-fn">
+            <option value="rem">(x² − 4)/(x − 2), f(2) = 1</option>
+            <option value="sinc">sin x / x, f(0) = 0</option>
+            <option value="jump">x + 1 (x &lt; 1), x − 1 (x ≥ 1)</option>
+            <option value="inf">1/(x − 1)²</option>
+            <option value="osc">sin(1/x)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="ct-f-auto">극한값으로 옮기기</button></div>
+          <p class="t-dim" style="margin:0;font-size:13px">채운 점(함숫값)을 위아래로 끌어 보세요.</p>
+        </div>
+      </div>
+      <div class="ct-checks" id="ct-f-checks"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">좌극한</span><span class="v" id="ct-f-l">—</span></div>
+        <div class="stat"><span class="k">우극한</span><span class="v" id="ct-f-r">—</span></div>
+        <div class="stat"><span class="k">f(a)</span><span class="v" id="ct-f-fa">—</span></div>
+        <div class="stat"><span class="k">종류</span><span class="v" id="ct-f-kind">—</span></div>
+      </div>
+      <div class="ct-msg" id="ct-f-msg"></div>
+      <div class="sim-note">해볼 것: ① 첫 함수에서 점을 4로 끌어 올리면 세 조건이 모두 초록으로 바뀝니다. ② sin x / x는 점을 1로 옮기면 연속이 됩니다. 이 값 1이 7절의 주인공입니다. ③ 점프 함수에서는 점을 2(좌극한)나 0(우극한)에 맞춰도 한쪽만 맞습니다. 우극한에 맞추면 '우연속'이라는 표시가 뜹니다. 모델: 극한값은 함수식에서 구한 정확한 값이고, 점은 극한값 근처 0.06 안에 들어오면 그 값에 달라붙습니다.</div>
+    </div>
+
+    <p>공학에서 더 흔한 문제는 반대 방향입니다. 구간마다 다른 식으로 주어진 함수(조각 함수)를 이음매에서 끊기지 않게 하려면 계수를 어떻게 정해야 할까요? 이음매에서 좌극한, 우극한, 함숫값을 같게 놓으면 계수에 대한 방정식이 나옵니다.</p>
+    <div class="callout"><strong>예제 2.2 (이음매 맞추기)</strong> \(f(x) = cx + 1\) (\(x \lt 2\)), \(f(x) = x^2 - c\) (\(x \ge 2\))가 모든 실수에서 연속이 되는 \(c\)를 구하라.
+      <ol>
+        <li>각 조각은 다항식이라 자기 구간 안에서는 연속이다. 문제는 이음매 \(x = 2\)뿐이다.</li>
+        <li>좌극한: \(\lim_{x\to 2^-}(cx + 1) = 2c + 1\). 우극한과 함숫값: \(\lim_{x\to 2^+}(x^2 - c) = 4 - c = f(2)\).</li>
+        <li>\(2c + 1 = 4 - c\)에서 \(3c = 3\), \(c = 1\). 확인: 양쪽 모두 3.</li>
+        <li>\(c \ne 1\)이면 점프의 크기는 \((4 - c) - (2c + 1) = 3 - 3c\)다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ct-glue">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>조각 함수 이음매 맞추기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ct-cv-glue"></canvas><span class="tag-tl" id="ct-g-tag"></span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>함수 계열</span><div class="seg" id="ct-g-fam"><button data-value="a" class="on">예제 2.2</button><button data-value="b">x² 다음 직선</button></div></div>
+          <label class="ctrl" id="ct-g-c-row"><span>c <output id="ct-g-c-out"></output></span><input type="range" id="ct-g-c" min="-2" max="3" step="0.05" value="0"></label>
+          <label class="ctrl" id="ct-g-m-row"><span>직선의 기울기 m <output id="ct-g-m-out"></output></span><input type="range" id="ct-g-m" min="-2" max="4" step="0.05" value="1"></label>
+          <label class="ctrl" id="ct-g-b-row"><span>직선의 절편 b <output id="ct-g-b-out"></output></span><input type="range" id="ct-g-b" min="-3" max="3" step="0.05" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="ct-g-auto">연속이 되게 맞추기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">좌극한</span><span class="v" id="ct-g-l">—</span></div>
+        <div class="stat"><span class="k">우극한 = f(이음매)</span><span class="v" id="ct-g-r">—</span></div>
+        <div class="stat"><span class="k">점프 크기</span><span class="v" id="ct-g-gap">—</span></div>
+      </div>
+      <div class="ct-msg" id="ct-g-msg"></div>
+      <div class="sim-note">해볼 것: ① 예제 2.2에서 c를 움직여 점프 크기 3 − 3c가 0이 되는 c = 1을 찾으세요. ② 'x² 다음 직선'은 x ≤ 1에서 x², x &gt; 1에서 mx + b입니다. 연속 조건 m + b = 1을 만족하는 (m, b)는 무수히 많습니다. ③ 그중 m = 2일 때만 이음매가 꺾이지 않고 매끄럽습니다. 이것이 3장의 '미분 가능'입니다. 모델: 이음매에서의 극한을 식으로 계산합니다.</div>
+    </div>
+    <div class="callout tip"><strong>점프가 일부러 들어간 함수</strong> 불연속이 늘 나쁜 것은 아닙니다. 이산 확률 변수의 누적 분포 함수 \(F(x) = P(X \le x)\)는 값이 나올 수 있는 점마다 그 확률만큼 점프하고, 정의에 따라 언제나 <b>우연속</b>입니다(<a href="../../probability/chapters/discrete.html">확률과 통계 · 이산 확률 변수</a>). 디지털 신호의 계단 파형, 계단식 요금표도 점프 불연속입니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="algebra">
+    <h2>연속 함수의 대수와 합성</h2>
+    <div class="problem"><strong>점마다 세 조건을 확인해야 하나</strong>
+      <p>\(\sqrt{x^3 + 1}\,\cos x\)가 \(x = 2\)에서 연속인지 정의 2.1로 확인하려면 극한부터 구해야 합니다. 모든 함수, 모든 점에서 이렇게 할 수는 없습니다. 작은 연속 함수들로 큰 함수를 조립하면 연속성이 저절로 따라오면 좋겠습니다.</p></div>
+    <div class="callout deep"><strong>정리 2.4 (연속 함수의 대수)</strong> \(f\)와 \(g\)가 \(a\)에서 연속이면 \(f \pm g\), \(cf\), \(fg\)도 \(a\)에서 연속이고, \(g(a) \ne 0\)이면 \(f/g\)도 연속이다.
+      <p style="margin:6px 0 0"><b>증명.</b> 1장 정리 1.5(극한 법칙)에 연속의 정의를 넣으면 된다. 예: \(\lim_{x\to a}[f(x)g(x)] = \lim f\cdot\lim g = f(a)g(a)\). ∎</p></div>
+    <div class="callout deep"><strong>정리 2.5 (기본 함수의 연속성)</strong> 다음 함수는 <b>정의역의 모든 점</b>에서 연속이다: 다항식, 유리 함수, 거듭제곱근, 삼각 함수, 역삼각 함수, 지수 함수, 로그 함수. 또 구간에서 연속이고 단조인 함수의 역함수도 연속이다.
+      <p style="margin:6px 0 0"><b>증명의 예(sin).</b> 합을 곱으로 바꾸는 공식과 \(|\sin t| \le |t|\), \(|\cos t| \le 1\)을 쓰면
+        \(|\sin x - \sin a| = 2\left|\cos\tfrac{x + a}{2}\right|\left|\sin\tfrac{x - a}{2}\right| \le 2\cdot\tfrac{|x - a|}{2} = |x - a|\).
+        따라서 \(\delta = \varepsilon\)이면 \(|x - a| \lt \delta \Rightarrow |\sin x - \sin a| \lt \varepsilon\). cos도 같은 방법이다. 다항식·유리 함수는 정리 2.4와 1장 정리 1.6에서 바로 나온다. 지수·로그의 연속성은 이 함수들을 엄밀히 정의하는 4장·8장의 몫으로 남긴다. ∎</p></div>
+    <p>마지막 조각은 합성입니다. 바깥 함수가 연속이면 극한 기호를 함수 안으로 들여보낼 수 있습니다.</p>
+    <div class="callout deep"><strong>정리 2.6 (합성과 극한)</strong> \(\lim_{x\to a}g(x) = b\)이고 \(f\)가 \(b\)에서 연속이면
+      <div class="formula">$$\lim_{x\to a}f\bigl(g(x)\bigr) = f\Bigl(\lim_{x\to a}g(x)\Bigr) = f(b).$$</div>
+      특히 \(g\)가 \(a\)에서 연속이고 \(f\)가 \(g(a)\)에서 연속이면 합성 \(f\circ g\)는 \(a\)에서 연속이다.
+      <p style="margin:6px 0 0"><b>증명.</b> \(\varepsilon > 0\)을 주자. \(f\)가 \(b\)에서 연속이므로 \(|y - b| \lt \eta \Rightarrow |f(y) - f(b)| \lt \varepsilon\)인 \(\eta > 0\)이 있다. 또 \(g(x) \to b\)이므로 이 \(\eta\)에 대해 \(0 \lt |x - a| \lt \delta \Rightarrow |g(x) - b| \lt \eta\)인 \(\delta\)가 있다. 두 화살표를 이으면 \(0 \lt |x - a| \lt \delta \Rightarrow |f(g(x)) - f(b)| \lt \varepsilon\). ∎</p></div>
+    <div class="callout"><strong>예제 2.3 (연속성으로 극한 구하기)</strong>
+      <ol>
+        <li>\(\lim_{x\to 2}\sqrt{x^3 + 1}\): 안쪽 \(x^3 + 1 \to 9\), 바깥 \(\sqrt{\ }\)은 9에서 연속이므로 \(\sqrt 9 = 3\).</li>
+        <li>\(\lim_{x\to\pi}\sin(x + \sin x)\): 안쪽 \(x + \sin x \to \pi + 0 = \pi\)이므로 \(\sin\pi = 0\).</li>
+        <li>\(h(x) = \dfrac{\ln(4 - x^2)}{x - 1}\)이 연속인 곳: 로그는 \(4 - x^2 > 0\), 즉 \(-2 \lt x \lt 2\)에서 정의되고 연속이다. 분모가 0인 \(x = 1\)을 빼면 \((-2, 1)\cup(1, 2)\)에서 연속이다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>바깥 함수가 연속이 아니면</strong> \(\lim_{x\to 0}\lfloor 1 - x^2\rfloor\)를 생각해 봅시다. 안쪽 \(1 - x^2 \to 1\)이지만, \(x \ne 0\)이면 \(1 - x^2\)은 1보다 <b>조금 작으므로</b> \(\lfloor 1 - x^2\rfloor = 0\)입니다. 극한은 0인데 \(\lfloor\lim(1 - x^2)\rfloor = \lfloor 1\rfloor = 1\)입니다. 바닥 함수가 1에서 연속이 아니라서(좌극한 0) 정리 2.6을 쓸 수 없습니다.</div>
+    <p>정리 2.4–2.6을 합치면 실전 규칙이 나옵니다. <b>기본 함수를 사칙 연산과 합성으로 조립한 함수는 정의되는 모든 점에서 연속이고, 그런 점에서의 극한은 대입으로 구한다.</b> 극한을 따로 계산해야 하는 것은 대입이 막히는 점(0/0, 정의역의 경계, 조각 함수의 이음매)뿐입니다. 행렬식이 성분의 다항식이라 연속이라는 사실도 이 규칙에서 나옵니다. 그래서 가역 행렬을 조금 흔들어도 행렬식이 0이 되지 않아 여전히 가역입니다(<a href="../../linear/chapters/determinants.html">LinearBook · 행렬식</a>).</p>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="ivt">
+    <h2>중간값 정리</h2>
+    <div class="problem"><strong>x³ + x − 1 = 0의 근은 어디에?</strong>
+      <p>3차 방정식에는 근의 공식이 있지만 복잡하고, 더 높은 차수나 \(\cos x = x\) 같은 방정식에는 공식이 없습니다. 그래도 값을 몇 개 넣어 보면 실마리가 보입니다. \(f(x) = x^3 + x - 1\)은 \(f(0) = -1 \lt 0\), \(f(1) = 1 > 0\)입니다. 0과 1 사이 어딘가에서 0을 지나야 할 것 같습니다. 정말 그럴까요? 반드시?</p></div>
+    <div class="callout deep"><strong>정리 2.7 (<span class="term">중간값 정리</span><span class="en">(intermediate value theorem, IVT)</span>)</strong> \(f\)가 닫힌 구간 \([a, b]\)에서 연속이고 \(N\)이 \(f(a)\)와 \(f(b)\) 사이의 수이면(\(f(a) \ne f(b)\)), \(f(c) = N\)인 \(c \in (a, b)\)가 적어도 하나 있다.
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> \(f(a) \lt N \lt f(b)\)라 하고 \(S = \{x \in [a, b] : f(x) \lt N\}\)을 생각한다. \(S\)는 \(a\)를 포함하고 \(b\)로 위가 막혀 있으므로, 실수의 <b>완비성</b>(위로 유계인 집합에는 최소 상계가 있다)에 의해 \(c = \sup S\)가 있다. \(f(c) \lt N\)이면 연속성 때문에 \(c\) 조금 오른쪽에서도 \(f \lt N\)이라 \(c\)가 상계라는 데 모순이고, \(f(c) > N\)이면 \(c\) 조금 왼쪽 전체에서 \(f > N\)이라 \(c\)보다 작은 상계가 생겨 모순이다. 따라서 \(f(c) = N\). ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="연속 함수의 그래프가 수평선 y = N을 세 번 지나는 모습">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="50" y1="260" x2="560" y2="260" class="s-axis"/><line x1="60" y1="276" x2="60" y2="24" class="s-axis"/>
+        <rect x="60" y="78.8" width="500" height="163.2" class="f-acc2-soft" style="opacity:.35;stroke:none"/>
+        <path d="M80.0 242.0L85.5 233.3L91.0 225.1L96.5 217.5L102.0 210.4L107.5 203.8L113.0 197.7L118.5 192.1L124.0 187.0L129.5 182.3L135.0 178.0L140.5 174.2L146.0 170.8L151.5 167.7L157.0 165.1L162.5 162.8L168.0 160.8L173.5 159.2L179.0 157.9L184.5 156.9L190.0 156.2L195.5 155.8L201.0 155.6L206.5 155.7L212.0 155.9L217.5 156.5L223.0 157.2L228.5 158.0L234.0 159.1L239.5 160.3L245.0 161.7L250.5 163.2L256.0 164.7L261.5 166.4L267.0 168.2L272.5 170.0L278.0 171.9L283.5 173.8L289.0 175.7L294.5 177.7L300.0 179.6L305.5 181.5L311.0 183.4L316.5 185.2L322.0 186.9L327.5 188.6L333.0 190.2L338.5 191.6L344.0 192.9L349.5 194.1L355.0 195.1L360.5 196.0L366.0 196.6L371.5 197.1L377.0 197.3L382.5 197.3L388.0 197.1L393.5 196.6L399.0 195.8L404.5 194.8L410.0 193.4L415.5 191.7L421.0 189.7L426.5 187.3L432.0 184.6L437.5 181.4L443.0 177.9L448.5 174.0L454.0 169.6L459.5 164.8L465.0 159.6L470.5 153.9L476.0 147.7L481.5 140.9L487.0 133.7L492.5 126.0L498.0 117.7L503.5 108.8L509.0 99.4L514.5 89.4L520.0 78.8" class="s-acc" style="stroke-width:3"/>
+        <line x1="60" y1="176" x2="560" y2="176" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:7 5"/>
+        <line x1="80" y1="260" x2="80" y2="242" style="stroke:var(--text-faint);stroke-dasharray:3 3"/><line x1="520" y1="260" x2="520" y2="78.8" style="stroke:var(--text-faint);stroke-dasharray:3 3"/>
+        <circle cx="80" cy="242" r="5" style="fill:var(--accent)"/><circle cx="520" cy="78.8" r="5" style="fill:var(--accent)"/>
+        <circle cx="137.8" cy="176" r="5.5" style="fill:var(--ok)"/><circle cx="289.7" cy="176" r="5.5" style="fill:var(--ok)"/><circle cx="445.7" cy="176" r="5.5" style="fill:var(--ok)"/>
+        <line x1="137.8" y1="176" x2="137.8" y2="260" style="stroke:var(--ok);stroke-dasharray:3 3"/><line x1="289.7" y1="176" x2="289.7" y2="260" style="stroke:var(--ok);stroke-dasharray:3 3"/><line x1="445.7" y1="176" x2="445.7" y2="260" style="stroke:var(--ok);stroke-dasharray:3 3"/>
+        <text x="76" y="278" class="t-mono">a</text><text x="516" y="278" class="t-mono">b</text>
+        <text x="130" y="278" class="t-mono">c₁</text><text x="282" y="278" class="t-mono">c₂</text><text x="438" y="278" class="t-mono">c₃</text>
+        <text x="30" y="180" class="t" style="fill:var(--accent-2);font-weight:700">N</text>
+        <text x="26" y="246" class="t-mono">f(a)</text><text x="26" y="83" class="t-mono">f(b)</text>
+        <g transform="translate(580,50)">
+          <text x="0" y="0" class="t" style="font-weight:700">정리가 말하는 것</text>
+          <text x="0" y="26" class="t-dim">f(a)와 f(b) 사이의 높이 N</text>
+          <text x="0" y="46" class="t-dim">어디에 수평선을 그어도</text>
+          <text x="0" y="66" class="t-dim">곡선과 적어도 한 번 만난다.</text>
+          <text x="0" y="100" class="t" style="font-weight:700">말하지 않는 것</text>
+          <text x="0" y="126" class="t-dim">c가 몇 개인지,</text>
+          <text x="0" y="146" class="t-dim">어디에 있는지,</text>
+          <text x="0" y="166" class="t-dim">구간 밖은 어떤지.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 2-2.</b> 중간값 정리. 연속 함수가 높이 \(f(a)\)에서 \(f(b)\)로 가려면 그 사이의 모든 높이를 지나야 한다(파란 띠). 수평선 \(y = N\)과의 교점은 하나 이상이며 여기서는 셋이다. 정리는 존재만 보장하고 위치는 알려 주지 않는다. 위치는 다음 절의 이분법이 찾는다.</figcaption>
+    </figure>
+    <p>가장 자주 쓰는 형태는 \(N = 0\)인 경우입니다. 볼차노가 1817년에 증명한 것이 바로 이 형태입니다.</p>
+    <div class="callout deep"><strong>따름정리 2.8 (부호 변화 ⇒ 근)</strong> \(f\)가 \([a, b]\)에서 연속이고 \(f(a)\)와 \(f(b)\)의 부호가 반대이면(\(f(a)f(b) \lt 0\)) \(f(c) = 0\)인 \(c \in (a, b)\)가 있다.</div>
+    <div class="callout"><strong>예제 2.4 (근의 존재)</strong> \(x^3 + x - 1 = 0\)이 \((0, 1)\)에 근을 가짐을 보여라.
+      <ol>
+        <li>\(f(x) = x^3 + x - 1\)은 다항식이라 \([0, 1]\)에서 연속이다(정리 2.5). <b>이 확인을 빼먹으면 안 된다.</b></li>
+        <li>\(f(0) = -1 \lt 0\), \(f(1) = 1 > 0\).</li>
+        <li>따름정리 2.8에 의해 \((0, 1)\)에 근이 있다. 실제 근은 \(c \approx 0.6823\)이다. 또 \(f\)는 증가 함수라 근은 이것 하나뿐이다(증가성은 5장의 도구로 보인다).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 2.5 (고정점)</strong> \(\cos x = x\)인 \(x\)가 \([0, 1]\)에 있음을 보여라.
+      <ol>
+        <li>\(g(x) = \cos x - x\)로 두면 \(g\)는 연속 함수의 차라 연속이다.</li>
+        <li>\(g(0) = 1 > 0\), \(g(1) = \cos 1 - 1 \approx -0.4597 \lt 0\).</li>
+        <li>따라서 \(g(c) = 0\), 즉 \(\cos c = c\)인 \(c \in (0, 1)\)이 있다(\(c \approx 0.7391\)). 계산기에서 cos 단추를 계속 누르면 이 값에 모인다. 이런 \(c\)를 \(\cos\)의 <span class="term">고정점</span><span class="en">(fixed point)</span>이라 한다.</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 높이 \(N\)을 끌어 보세요. 연속 함수에서는 \(f(a)\)와 \(f(b)\) 사이 어느 높이에서도 교점이 생기지만, 점프가 있는 함수에서는 점프가 건너뛴 높이에서 교점이 사라집니다.</p>
+
+    <div class="sim" id="sim-ct-ivt">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>중간값 정리: 어느 높이든 지나간다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ct-cv-ivt"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 (구간 [0, 4])</span><select id="ct-i-fn">
+            <option value="cubic">연속: 0.3 + 3x − 1.9x² + 0.33x³</option>
+            <option value="wave">연속: 1.5 + x/2 + sin(2.5x)</option>
+            <option value="jump">점프: x/2 (x &lt; 2), x/2 + 1.5 (x ≥ 2)</option>
+            <option value="pole">무한 불연속: 1/(x − 2)</option>
+          </select></label>
+          <p class="t-dim" style="margin:0;font-size:13px">왼쪽의 분홍 점을 위아래로 끌어 높이 N을 바꾸세요.</p>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">N</span><span class="v" id="ct-i-N">—</span></div>
+        <div class="stat"><span class="k">f(a), f(b)</span><span class="v" id="ct-i-ends">—</span></div>
+        <div class="stat"><span class="k">f(c) = N인 c</span><span class="v" id="ct-i-c">—</span></div>
+      </div>
+      <div class="ct-msg" id="ct-i-msg"></div>
+      <div class="sim-note">해볼 것: ① 첫 함수에서 N을 1.0과 1.7 사이에 두면 교점이 세 개입니다. 정리는 '적어도 하나'만 약속합니다. ② 점프 함수에서 N을 1과 2.5 사이에 두면 f(0) = 0과 f(4) = 3.5 사이인데도 교점이 없습니다. 연속이라는 가정이 빠졌기 때문입니다. ③ 1/(x − 2)는 f(0) = −0.5 &lt; 0 &lt; f(4) = 0.5인데 0이 되는 점이 없습니다. 부호만 보고 근을 믿으면 안 되는 예입니다. 모델: 교점은 2,000개 구간에서 부호 변화를 찾고 이분법으로 다듬어 구합니다. 불연속점을 지나는 부호 변화는 교점으로 세지 않습니다.</div>
+    </div>
+
+    <p>중간값 정리는 계산 없이도 놀라운 결론을 줍니다. 유명한 퍼즐 하나: 등산객이 아침 6시에 산 아래에서 출발해 저녁 6시에 정상에 도착했고, 다음 날 아침 6시에 정상에서 출발해 같은 길로 저녁 6시에 산 아래에 도착했습니다. 쉬기도 하고 빨리 걷기도 했습니다. 이틀 동안 <b>같은 시각에 같은 지점</b>을 지난 순간이 반드시 있을까요?</p>
+    <p>있습니다. 첫날 고도를 \(u(t)\), 둘째 날 고도를 \(d(t)\)라 하고 \(h(t) = u(t) - d(t)\)를 보면, \(h(6시) = 0 - H \lt 0\), \(h(18시) = H - 0 > 0\)이고 \(h\)는 연속이므로 \(h(c) = 0\)인 시각 \(c\)가 있습니다. 두 사람이 같은 날 출발했다고 상상하면 당연합니다. 올라가는 사람과 내려가는 사람은 어딘가에서 반드시 마주칩니다. 같은 논리로, 지구 적도 위에는 정반대 편의 기온과 기온이 정확히 같은 두 지점이 언제나 있습니다(기온이 위치에 따라 연속이라면). \(g(\theta) = T(\theta) - T(\theta + \pi)\)는 \(g(\theta + \pi) = -g(\theta)\)라 부호가 바뀌기 때문입니다.</p>
+
+    <div class="sim" id="sim-ct-hiker">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>등산로 문제: 올라간 날과 내려온 날</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ct-two">
+          <div><canvas id="ct-cv-hike"></canvas><span class="ct-cap">고도 (m) vs 시각: 분홍 = 첫날(오름), 파랑 = 둘째 날(내림)</span></div>
+          <div><canvas id="ct-cv-hdiff"></canvas><span class="ct-cap">h(t) = u(t) − d(t)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="ct-h-pre">
+            <option value="steady">고르게 걷기</option>
+            <option value="rest">첫날 오래 쉬기</option>
+            <option value="sprint">둘째 날 서둘러 내려오기</option>
+            <option value="wander">오르락내리락</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="ct-h-play">▶ 시각 흘려보내기</button></div>
+          <p class="t-dim" style="margin:0;font-size:13px">두 경로의 중간 점(각 3개)을 끌어 걷는 방식을 바꿀 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">시각</span><span class="v" id="ct-h-t">—</span></div>
+        <div class="stat"><span class="k">첫날 / 둘째 날 고도</span><span class="v" id="ct-h-ud">—</span></div>
+        <div class="stat"><span class="k">만나는 시각</span><span class="v" id="ct-h-meet">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 점을 아무리 끌어도 분홍과 파랑이 적어도 한 번은 만납니다. 아래 h(t)가 −1000에서 +1000으로 가며 0을 지나기 때문입니다. ② '오르락내리락'처럼 경로를 꼬불꼬불하게 만들면 만나는 시각이 여러 번일 수 있습니다. ③ ▶로 시각을 흘려보내며 두 사람의 위치를 같은 시계로 비교하세요. 모델: 산의 높이 1,000 m, 06:00–18:00. 경로는 점들을 잇는 꺾은선(연속 함수)이고, 점의 고도는 0–1,000 m로 제한합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="bisection">
+    <h2>이분법: 근을 반드시 찾는 방법</h2>
+    <p>중간값 정리는 근이 <b>있다</b>고만 말합니다. 그런데 증명 아이디어를 거꾸로 돌리면 근을 <b>찾는</b> 방법이 됩니다. 부호가 바뀌는 구간의 가운데를 확인하고, 부호가 바뀌는 쪽 절반만 남깁니다. 남은 절반에도 부호 변화가 있으니 근이 있고, 이것을 되풀이하면 근을 가둔 구간이 매번 반으로 줄어듭니다.</p>
+    <div class="callout deep"><strong>알고리즘 2.9 (<span class="term">이분법</span><span class="en">(bisection method)</span>)</strong> \(f\)가 \([a_0, b_0]\)에서 연속이고 \(f(a_0)f(b_0) \lt 0\)이라 하자. \(n = 0, 1, 2, \dots\)에 대해
+      <ol style="margin:6px 0 0">
+        <li>가운데 점 \(m_n = (a_n + b_n)/2\)를 구한다.</li>
+        <li>\(f(m_n) = 0\)이면 끝. \(f(a_n)f(m_n) \lt 0\)이면 \([a_{n+1}, b_{n+1}] = [a_n, m_n]\), 아니면 \([m_n, b_n]\).</li>
+      </ol>
+      <p style="margin:6px 0 0"><b>정리 (오차 한계).</b> \(n\)번 자른 뒤 구간의 길이는 \((b_0 - a_0)/2^n\)이고 근 \(c\)는 그 안에 있으므로, 그 구간의 가운데 점은 \(|c - m_n| \le (b_0 - a_0)/2^{n+1}\)를 만족한다. 따라서 구간 길이를 허용 오차 \(\tau\) 이하로 줄이는 데 필요한 단계 수는</p>
+      <div class="formula">$$n \ge \log_2\frac{b_0 - a_0}{\tau}.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> 각 단계에서 구간 길이가 정확히 절반이 되고, 남긴 구간의 양 끝에서 부호가 반대이므로 따름정리 2.8에 의해 근이 그 안에 있다. ∎</p></div>
+    <div class="callout"><strong>예제 2.6 (√2를 이분법으로)</strong> \(f(x) = x^2 - 2\), \([1, 2]\)에서 시작한다(\(f(1) = -1\), \(f(2) = 2\)).
+      <div class="table-wrap"><table class="ct-num">
+        <thead><tr><th>n</th><th>구간 [aₙ, bₙ]</th><th>mₙ</th><th>f(mₙ)</th><th>남는 쪽</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>[1, 2]</td><td>1.5</td><td>0.25</td><td>왼쪽</td></tr>
+          <tr><td>1</td><td>[1, 1.5]</td><td>1.25</td><td>−0.4375</td><td>오른쪽</td></tr>
+          <tr><td>2</td><td>[1.25, 1.5]</td><td>1.375</td><td>−0.109375</td><td>오른쪽</td></tr>
+          <tr><td>3</td><td>[1.375, 1.5]</td><td>1.4375</td><td>0.06640625</td><td>왼쪽</td></tr>
+          <tr><td>4</td><td>[1.375, 1.4375]</td><td>1.40625</td><td>−0.0224609375</td><td>오른쪽</td></tr>
+          <tr><td>5</td><td>[1.40625, 1.4375]</td><td>1.421875</td><td>0.021728515625</td><td>왼쪽</td></tr>
+          <tr><td>6</td><td>[1.40625, 1.421875]</td><td>—</td><td>—</td><td>길이 1/64</td></tr>
+        </tbody>
+      </table></div>
+      <p style="margin:6px 0 0">여섯 번 자르면 구간 길이가 \(1/64 = 0.015625\)이고, 실제로 \(\sqrt 2 = 1.41421\ldots\)이 그 안에 있다. 길이를 \(10^{-6}\) 이하로 줄이려면 \(2^n \ge 10^6\), 즉 \(n \ge 6\log_2 10 \approx 19.93\)이므로 20번이면 된다(\(2^{20} = 1{,}048{,}576\)). 한 번에 정확한 이진 자릿수가 하나씩 늘어나고, 십진 자릿수 하나에는 약 3.3번이 든다.</p></div>
+
+    <div class="sim" id="sim-ct-bisect">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이분법 한 단계씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ct-cv-bis"></canvas><span class="tag-tl" id="ct-b-tag"></span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="ct-b-fn">
+            <option value="sqrt2">x² − 2 on [1, 2]</option>
+            <option value="cubic">x³ + x − 1 on [0, 1]</option>
+            <option value="cos">cos x − x on [0, 1]</option>
+            <option value="three">x³ − x on [−2, 1.5] (근 셋)</option>
+            <option value="pole">1/x on [−1, 2] (근 없음!)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="ct-b-zoom" checked> 구간에 맞춰 확대</label>
+          <div class="btn-row"><button class="btn primary" id="ct-b-step">다음 단계</button><button class="btn" id="ct-b-ten">10단계</button><button class="btn" id="ct-b-reset">처음부터</button></div>
+        </div>
+      </div>
+      <div class="ct-tbl"><table><thead><tr><th>n</th><th>aₙ</th><th>bₙ</th><th>mₙ</th><th>f(mₙ)</th><th>길이</th></tr></thead><tbody id="ct-b-body"></tbody></table></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 n</span><span class="v" id="ct-b-n">0</span></div>
+        <div class="stat"><span class="k">근의 추정 mₙ</span><span class="v" id="ct-b-m">—</span></div>
+        <div class="stat"><span class="k">오차 한계</span><span class="v" id="ct-b-err">—</span></div>
+        <div class="stat"><span class="k">10⁻⁶까지 필요한 단계</span><span class="v" id="ct-b-need">—</span></div>
+      </div>
+      <div class="ct-msg" id="ct-b-msg"></div>
+      <div class="sim-note">해볼 것: ① x² − 2를 20단계 진행해 오차 한계가 10⁻⁶ 아래로 내려가는지 확인하세요. ② 'x³ − x'에는 근이 −1, 0, 1 셋인데, 이분법은 그중 하나만 찾습니다. 어느 것을 찾을지는 첫 구간이 정합니다. ③ 1/x는 양 끝 부호가 반대인데도 근이 없습니다. 이분법은 '근' 대신 불연속점 0으로 모여들고 |f(m)|은 오히려 커집니다. 연속이라는 가정을 확인해야 하는 이유입니다. 모델: 알고리즘 2.9 그대로. 오차 한계는 (bₙ − aₙ)/2입니다.</div>
+    </div>
+    <div class="callout tip"><strong>느리지만 믿을 수 있다</strong> 이분법은 한 단계에 이진 자릿수 하나씩, 꽤 느리게 수렴합니다. <a href="optimization.html">6장의 뉴턴 방법</a>은 근 근처에서 정확한 자릿수가 매번 대략 두 배가 되지만, 출발점이 나쁘면 엉뚱한 곳으로 튀기도 합니다. 그래서 실무 라이브러리는 빠른 방법을 쓰면서 부호가 바뀌는 구간을 계속 추적하다가, 빠른 방법이 구간을 벗어나려 하면 이분법 한 단계로 되돌아가는 방식을 많이 씁니다. MathBook <a href="../../foundations/chapters/numerics.html">"수치 계산"</a>도 참고하세요.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="extreme">
+    <h2>최대·최소 정리</h2>
+    <div class="problem"><strong>가장 높은 점이 '있기는' 한가</strong>
+      <p>하루 동안 기록한 온도에는 최고 기온이 있습니다. 당연해 보이지만, 함수 \(f(x) = x\)를 열린 구간 \((0, 1)\)에서 보면 값은 1에 얼마든지 가까워지지만 1이 되지는 않아서 "가장 큰 값"이 없습니다. 최적화 문제(6장)에서 최댓값을 찾기 전에, 찾을 것이 존재한다는 보장이 필요합니다.</p></div>
+    <div class="callout deep"><strong>정리 2.10 (<span class="term">최대·최소 정리</span><span class="en">(extreme value theorem, EVT)</span>)</strong> \(f\)가 <b>닫힌 구간</b> \([a, b]\)에서 <b>연속</b>이면, \(f\)는 \([a, b]\)에서 최댓값과 최솟값을 가진다. 즉 모든 \(x \in [a, b]\)에 대해 \(f(c) \le f(x) \le f(d)\)인 \(c, d \in [a, b]\)가 있다.
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 먼저 \(f\)가 유계임을 보인다(그렇지 않으면 \(|f(x_n)| > n\)인 점들을 고를 수 있고, 닫힌 구간의 수열은 수렴하는 부분 수열을 가지므로 그 극한점에서 연속성이 깨진다). 유계이므로 완비성에 의해 상한 \(M = \sup f\)가 있고, \(f(x_n) \to M\)인 점들의 수렴하는 부분 수열의 극한 \(d\)에서 연속성으로 \(f(d) = M\)이다. 닫힌 구간이어야 극한점 \(d\)가 구간 안에 남는다. ∎</p></div>
+    <p>두 가정은 하나도 뺄 수 없습니다. 그림 2-3의 반례가 그 이유를 보여 줍니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="최대·최소 정리의 가정이 빠진 세 반례와 정리가 성립하는 경우">
+        <g transform="translate(10,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">① 열린 구간 (0, 1)</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><line x1="25" y1="190" x2="155" y2="60" class="s-acc" style="stroke-width:3"/>
+          <circle cx="25" cy="190" r="5.5" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.2"/><circle cx="155" cy="60" r="5.5" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.2"/>
+          <text x="96" y="54" class="t-mono">1에 닿지 않음</text><text x="14" y="214" class="t-dim">f(x) = x: 최대·최소 없음</text></g>
+        <g transform="translate(197,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">② 유계가 아님 (0, 1]</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M34 40 Q40 150 70 172 T160 186" class="s-acc" style="stroke-width:3"/>
+          <circle cx="160" cy="186" r="5.5" style="fill:var(--accent)"/><text x="44" y="56" class="t-mono">↑ ∞</text><text x="14" y="214" class="t-dim">1/x: 최댓값 없음</text></g>
+        <g transform="translate(384,0)"><rect y="30" width="179" height="190" rx="10" class="f-surface"/><text x="8" y="20" class="t" style="font-weight:700">③ 불연속 [0, 2]</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><line x1="20" y1="180" x2="90" y2="70" class="s-acc" style="stroke-width:3"/><line x1="90" y1="180" x2="160" y2="70" class="s-acc" style="stroke-width:3"/>
+          <circle cx="20" cy="180" r="5.5" style="fill:var(--accent)"/><circle cx="90" cy="70" r="5.5" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.2"/><circle cx="90" cy="180" r="5.5" style="fill:var(--accent)"/><circle cx="160" cy="70" r="5.5" style="fill:var(--surface);stroke:var(--accent);stroke-width:2.2"/>
+          <text x="14" y="214" class="t-dim">x − ⌊x⌋: 위 끝 1에 못 닿음</text></g>
+        <g transform="translate(571,0)"><rect y="30" width="179" height="190" rx="10" class="f-acc2-soft" style="opacity:.9"/><text x="8" y="20" class="t" style="font-weight:700">④ 닫힌 구간 + 연속</text>
+          <line x1="10" y1="200" x2="170" y2="200" class="s-axis"/><path d="M20 150 C55 40 95 60 115 140 S150 190 160 110" class="s-acc" style="stroke-width:3"/>
+          <circle cx="20" cy="150" r="5" style="fill:var(--accent)"/><circle cx="160" cy="110" r="5" style="fill:var(--accent)"/>
+          <circle cx="66" cy="76" r="6" style="fill:var(--ok)"/><circle cx="135" cy="164" r="6" style="fill:var(--ok)"/>
+          <text x="74" y="70" class="t-mono">최대</text><text x="118" y="186" class="t-mono">최소</text><text x="14" y="214" class="t-dim">반드시 둘 다 있다</text></g>
+      </svg>
+      <figcaption><b>그림 2-3.</b> 가정이 하나라도 빠지면 정리가 깨진다. ① 연속이지만 구간이 열려 있어 끝 값에 닿지 못한다. ② 연속이지만 왼쪽 끝이 열려 있어 값이 한없이 커진다. ③ 닫힌 구간이지만 \(x = 1\)에서 점프해 상한 1에 도달하지 못한다(최솟값 0은 있다). ④ 두 가정이 다 있으면 최대와 최소가 구간 안의 점에서 실제로 나온다(끝점일 수도 있다).</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 2.7 (끝점을 넣느냐 빼느냐)</strong> \(f(x) = x^3 - 3x\)의 최댓값과 최솟값을 \([0, 2]\)와 \((0, 2)\)에서 비교하라.
+      <ol>
+        <li>\(f(0) = 0\), \(f(1) = -2\), \(f(2) = 8 - 6 = 2\). 그래프는 0에서 내려가 \(x = 1\)에서 바닥을 찍고 2까지 올라간다(바닥이 \(x = 1\)인 이유는 6장의 도함수로 확인한다).</li>
+        <li>\([0, 2]\): 정리 2.10이 존재를 보장한다. 최댓값 2 (\(x = 2\)), 최솟값 −2 (\(x = 1\)).</li>
+        <li>\((0, 2)\): 최솟값 −2는 내부 점 1에서 그대로 있다. 그러나 값은 2에 얼마든지 가까워질 뿐 2가 되지 않으므로 <b>최댓값이 없다</b>. 정리의 가정이 빠지면 결론이 성립할 수도(최솟값), 안 할 수도(최댓값) 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ct-extreme">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최댓값은 있는가: 끝점과 불연속 바꿔 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ct-cv-ext"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ct-e-fn">
+            <option value="cubic">x³ − 3x</option>
+            <option value="recip">1/x (x &gt; 0)</option>
+            <option value="saw">x − ⌊x⌋ (톱니)</option>
+          </select></label>
+          <label class="ctrl"><span>왼쪽 끝 a <output id="ct-e-a-out"></output></span><input type="range" id="ct-e-a" min="-2.5" max="2.5" step="0.05" value="0"></label>
+          <label class="ctrl"><span>오른쪽 끝 b <output id="ct-e-b-out"></output></span><input type="range" id="ct-e-b" min="-2.5" max="2.5" step="0.05" value="2"></label>
+          <label class="check"><input type="checkbox" id="ct-e-lc" checked> 왼쪽 끝 포함 [</label>
+          <label class="check"><input type="checkbox" id="ct-e-rc" checked> 오른쪽 끝 포함 ]</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">구간</span><span class="v" id="ct-e-int">—</span></div>
+        <div class="stat"><span class="k">최댓값</span><span class="v" id="ct-e-max">—</span></div>
+        <div class="stat"><span class="k">최솟값</span><span class="v" id="ct-e-min">—</span></div>
+        <div class="stat"><span class="k">정리의 가정</span><span class="v" id="ct-e-hyp">—</span></div>
+      </div>
+      <div class="ct-msg" id="ct-e-msg"></div>
+      <div class="sim-note">해볼 것: ① x³ − 3x, [0, 2]에서 오른쪽 끝을 빼 보세요. 최솟값은 그대로인데 최댓값이 사라집니다(예제 2.7). ② 1/x에서 a를 0까지 내리면 값이 한없이 커져 최댓값이 없습니다. a &gt; 0인 닫힌 구간이면 최댓값은 1/a입니다. ③ 톱니에서 구간이 정수를 품으면 상한 1에 닿지 못합니다. 구간을 [0.2, 0.8]처럼 정수 없이 잡으면 연속이라 최대·최소가 생깁니다. 모델: 최대·최소 후보는 구간 끝, 내부 극값(x = ±1), 불연속점의 좌우 극한이며, 그 값이 구간 안의 점에서 실제로 나오는지 따집니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="special-limits">
+    <h2>두 개의 중요한 극한: sin x / x 와 e</h2>
+    <div class="problem"><strong>대입하면 0/0, 표로는 1</strong>
+      <p>\(\frac{\sin x}{x}\)에 \(x = 0\)을 넣으면 \(0/0\)입니다. 표를 만들면 \(x = 0.1\)에서 0.99833, \(x = 0.01\)에서 0.9999833으로 1에 다가갑니다. 그러나 sin은 다항식이 아니라서 인수분해로 소거할 수 없습니다. 삼각 함수의 미분 공식이 전부 이 극한에 달려 있으니 반드시 증명해야 합니다.</p></div>
+    <div class="callout deep"><strong>정리 2.11</strong> (\(x\)는 라디안)
+      <div class="formula">$$\lim_{x\to 0}\frac{\sin x}{x} = 1.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(0 \lt x \lt \pi/2\)이라 하자. 그림 2-4의 단위원에서 삼각형 OAP, 부채꼴 OAP, 삼각형 OAT의 넓이를 비교하면 차례로 포함 관계에 있으므로</p>
+      <div class="formula">$$\frac12\sin x \;\le\; \frac12 x \;\le\; \frac12\tan x.$$
+        <div class="where">부채꼴의 넓이가 \(\tfrac12 r^2\theta\)인 것은 각을 라디안으로 잴 때다. 도(°)로 재면 극한은 \(\pi/180\)이 된다.</div></div>
+      <p style="margin:6px 0 0">각 변을 \(\tfrac12\sin x > 0\)으로 나누고 역수를 취하면(부등호가 뒤집힌다) \(\cos x \le \dfrac{\sin x}{x} \le 1\). \(\cos\)은 연속이라 \(\cos x \to 1\)이므로 조임 정리(1장 정리 1.8)로 \(x \to 0^+\)일 때 극한은 1이다. \(\frac{\sin x}{x}\)는 짝함수(\(\frac{\sin(-x)}{-x} = \frac{\sin x}{x}\))이므로 좌극한도 1이다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="단위원에서 삼각형 OAP, 부채꼴 OAP, 삼각형 OAT의 넓이 비교">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <path d="M100 260 L300 260 L300 73.7 Z" class="f-acc2-soft" style="opacity:.55"/>
+        <path d="M100 260 L300 260 A200 200 0 0 0 246.3 123.7 Z" class="f-acc-soft" style="opacity:.75"/>
+        <path d="M100 260 L300 260 L246.3 123.7 Z" style="fill:var(--ok);opacity:.35;stroke:var(--ok);stroke-width:1.5"/>
+        <path d="M300 260 A200 200 0 0 0 100 60" style="fill:none;stroke:var(--text-dim);stroke-width:1.5;stroke-dasharray:5 4"/>
+        <line x1="100" y1="260" x2="300" y2="73.7" style="stroke:var(--text);stroke-width:1.5"/>
+        <line x1="246.3" y1="123.7" x2="246.3" y2="260" style="stroke:var(--ok);stroke-width:2;stroke-dasharray:4 3"/>
+        <circle cx="100" cy="260" r="4" style="fill:var(--text)"/><circle cx="300" cy="260" r="4" style="fill:var(--text)"/><circle cx="246.3" cy="123.7" r="5" style="fill:var(--accent)"/><circle cx="300" cy="73.7" r="5" style="fill:var(--accent-2)"/>
+        <text x="84" y="278" class="t-mono">O</text><text x="304" y="278" class="t-mono">A (1, 0)</text><text x="196" y="116" class="t-mono">P</text><text x="308" y="76" class="t-mono">T</text>
+        <path d="M140 260 A40 40 0 0 0 129.3 232.7" style="fill:none;stroke:var(--text);stroke-width:1.5"/><text x="146" y="250" class="t-mono">x</text>
+        <text x="250" y="200" class="t-mono">sin x</text><text x="306" y="170" class="t-mono">tan x</text>
+        <g transform="translate(400,52)">
+          <text x="0" y="0" class="t" style="font-weight:700">넓이 비교 (0 &lt; x &lt; π/2)</text>
+          <rect x="0" y="18" width="14" height="14" style="fill:var(--ok);opacity:.5"/><text x="22" y="30" class="t-dim">삼각형 OAP = ½ · 1 · sin x</text>
+          <rect x="0" y="44" width="14" height="14" class="f-acc-soft"/><text x="22" y="56" class="t-dim">부채꼴 OAP = ½ · 1² · x</text>
+          <rect x="0" y="70" width="14" height="14" class="f-acc2-soft"/><text x="22" y="82" class="t-dim">삼각형 OAT = ½ · 1 · tan x</text>
+          <text x="0" y="120" class="t-mono">sin x ≤ x ≤ tan x</text>
+          <text x="0" y="146" class="t-mono">⇒ cos x ≤ (sin x)/x ≤ 1</text>
+          <text x="0" y="180" class="t-acc">x → 0: 양 끝이 1로 → 가운데도 1</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 2-4.</b> 부채꼴 넓이로 조이기. 초록 삼각형 ⊂ 분홍 부채꼴 ⊂ 파랑 삼각형이므로 \(\sin x \le x \le \tan x\). \(x\)가 0으로 가면 세 도형이 모두 납작해지면서 넓이의 비가 1로 간다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-ct-sector">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부채꼴 넓이로 sin x / x 조이기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ct-two">
+          <div><canvas id="ct-cv-sec"></canvas><span class="ct-cap">점 P를 원 위에서 끌어 보세요</span></div>
+          <div><canvas id="ct-cv-secg"></canvas><span class="ct-cap">cos x ≤ sin x / x ≤ 1</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>각 x (라디안) <output id="ct-s-x-out"></output></span><input type="range" id="ct-s-x" min="0.02" max="1.5" step="0.01" value="0.75"></label>
+          <label class="check"><input type="checkbox" id="ct-s-mag"> 넓이를 같은 높이로 확대해 비교</label>
+          <div class="btn-row"><button class="btn primary" id="ct-s-play">▶ x를 0으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">½ sin x</span><span class="v" id="ct-s-a1">—</span></div>
+        <div class="stat"><span class="k">½ x (부채꼴)</span><span class="v" id="ct-s-a2">—</span></div>
+        <div class="stat"><span class="k">½ tan x</span><span class="v" id="ct-s-a3">—</span></div>
+        <div class="stat"><span class="k">sin x / x</span><span class="v" id="ct-s-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x를 줄이며 세 넓이의 순서(초록 ≤ 분홍 ≤ 파랑)가 언제나 지켜지는지 보세요. ② 아래 그래프에서 sin x / x(분홍)가 cos x(파랑)와 1(점선) 사이에 끼어 1로 가는 것을 확인하세요. ③ '같은 높이로 확대'를 켜면 x가 작아도 세 도형의 모양 차이를 볼 수 있습니다. 모델: 단위원, 0 &lt; x &lt; π/2. 아래 그래프는 −π/2 &lt; x &lt; π/2를 그립니다.</div>
+    </div>
+    <p>정리 2.11에서 삼각 극한이 줄줄이 나옵니다. \(1 - \cos x = \frac{\sin^2 x}{1 + \cos x}\)이므로</p>
+    <div class="formula">$$\lim_{x\to 0}\frac{1 - \cos x}{x} = \lim_{x\to 0}\frac{\sin x}{x}\cdot\frac{\sin x}{1 + \cos x} = 1\cdot\frac{0}{2} = 0, \qquad \lim_{x\to 0}\frac{1 - \cos x}{x^2} = 1\cdot 1\cdot\frac12 = \frac12.$$</div>
+    <div class="callout"><strong>예제 2.8 (sin x / x 꼴로 맞추기)</strong>
+      <ol>
+        <li>\(\displaystyle\lim_{x\to 0}\frac{\sin 3x}{x} = \lim_{x\to 0} 3\cdot\frac{\sin 3x}{3x} = 3\cdot 1 = 3\). (\(u = 3x \to 0\)으로 치환, 정리 2.6)</li>
+        <li>\(\displaystyle\lim_{x\to 0}\frac{\sin 5x}{\sin 2x} = \lim_{x\to 0}\frac{5}{2}\cdot\frac{\sin 5x}{5x}\cdot\frac{2x}{\sin 2x} = \frac52\).</li>
+        <li>\(\displaystyle\lim_{x\to 0}\frac{\tan x}{x} = \lim_{x\to 0}\frac{\sin x}{x}\cdot\frac{1}{\cos x} = 1\).</li>
+      </ol>
+      <p style="margin:6px 0 0">요령은 sin 안의 식과 똑같은 것을 분모에 만들어 주는 것이다. \(\frac{\sin 3x}{x} \to 1\)은 흔한 실수다.</p></div>
+
+    <p>두 번째 극한은 돈 계산에서 나옵니다. 연이율 100%로 1원을 맡기면 1년 뒤 2원입니다. 반년마다 50%씩 두 번 붙이면 \((1 + \frac12)^2 = 2.25\)원, 매달 붙이면 \((1 + \frac{1}{12})^{12} \approx 2.613\)원입니다. 자주 붙일수록 늘어나지만, 한없이 늘어날까요? 17세기 후반 야코프 베르누이가 바로 이 복리 문제를 연구했습니다.</p>
+    <div class="table-wrap"><table class="ct-num">
+      <thead><tr><th>1년에 붙이는 횟수 n</th><th>1</th><th>2</th><th>4</th><th>12</th><th>365</th><th>8,760 (매시간)</th><th>525,600 (매분)</th></tr></thead>
+      <tbody><tr><td>(1 + 1/n)ⁿ</td><td>2</td><td>2.25</td><td>2.4414</td><td>2.6130</td><td>2.7146</td><td>2.71813</td><td>2.718279</td></tr></tbody>
+    </table></div>
+    <div class="callout deep"><strong>정리 2.12 (e의 정의)</strong> 수열 \((1 + \frac1n)^n\)은 증가하고 3보다 작으므로 수렴한다. 그 극한을 \(e\)라 한다.
+      <div class="formula">$$e = \lim_{n\to\infty}\Bigl(1 + \frac1n\Bigr)^n = 2.718281828\ldots, \qquad \lim_{x\to 0}(1 + x)^{1/x} = e, \qquad \lim_{n\to\infty}\Bigl(1 + \frac rn\Bigr)^n = e^r.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 증가하고 위로 유계인 수열이 수렴한다는 것(단조 수렴 정리)은 실수의 완비성에서 나오며 <a href="series.html">11장</a>에서 다룬다. 증가성과 유계성은 이항 전개로 보인다. 셋째 식은 \(\ln\bigl(1 + \frac rn\bigr)^n = n\ln\bigl(1 + \frac rn\bigr) = r\cdot\frac{\ln(1 + u)}{u}\) (\(u = r/n \to 0\))에서 \(\frac{\ln(1+u)}{u} \to 1\)(4장에서 \(\ln\)의 도함수로 보인다)을 쓰고, \(\exp\)가 연속이라 정리 2.6으로 \(e^r\)을 얻는다. ∎</p></div>
+    <p>이자를 매 순간 붙이는 극한이 <span class="term">연속 복리</span><span class="en">(continuous compounding)</span>이고, 원금 \(P\), 연이율 \(r\)로 \(t\)년 뒤 금액은 \(Pe^{rt}\)입니다. 같은 식이 방사성 붕괴, 콘덴서 방전, 인구 성장처럼 "지금 양에 비례해 변하는" 모든 현상에 나옵니다. \(e\)가 특별한 진짜 이유, 즉 \(e^x\)의 기울기가 자기 자신이라는 사실은 <a href="chain-rule.html">4장</a>에서 봅니다.</p>
+    <div class="callout"><strong>예제 2.9 (복리 비교)</strong> 원금 100만 원, 연이율 5%로 1년 맡길 때 이자를 붙이는 방식에 따른 금액을 비교하라.
+      <ol>
+        <li>1년에 한 번: \(10^6(1.05) = 1{,}050{,}000\)원.</li>
+        <li>매달: \(10^6(1 + 0.05/12)^{12} \approx 1{,}051{,}162\)원.</li>
+        <li>매일: \(10^6(1 + 0.05/365)^{365} \approx 1{,}051{,}267\)원.</li>
+        <li>연속 복리: \(10^6e^{0.05} \approx 1{,}051{,}271\)원. 매일과의 차이는 4원뿐이다. 횟수를 늘려 얻는 이득에는 \(e^r\)이라는 천장이 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ct-compound">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>복리에서 e로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ct-two">
+          <div><canvas id="ct-cv-cmp"></canvas><span class="ct-cap">1년 동안 잔액: 계단 = n번 복리, 곡선 = eʳᵗ</span></div>
+          <div><canvas id="ct-cv-cmpn"></canvas><span class="ct-cap">(1 + r/n)ⁿ vs n (로그 눈금) → eʳ</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>1년에 붙이는 횟수 n <output id="ct-c-n-out"></output></span><input type="range" id="ct-c-n"></label>
+          <label class="ctrl"><span>연이율 r <output id="ct-c-r-out"></output></span><input type="range" id="ct-c-r" min="0.01" max="1" step="0.01" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">(1 + r/n)ⁿ</span><span class="v" id="ct-c-v">—</span></div>
+        <div class="stat"><span class="k">eʳ (천장)</span><span class="v" id="ct-c-e">—</span></div>
+        <div class="stat"><span class="k">남은 차</span><span class="v" id="ct-c-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① r = 100%에서 n을 1, 2, 4, 12로 올리며 계단이 곡선 e<sup>t</sup> 아래로 다가가는 것을 보세요. ② n이 커질수록 남은 차가 대략 n에 반비례해 줄어듭니다(n = 365에서 약 0.0037). ③ r을 5%로 낮추면 매일과 연속 복리의 차이가 거의 없어집니다(예제 2.9). 모델: 기간마다 잔액 × (1 + r/n). 아래 그래프의 점선이 e<sup>r</sup>입니다.</div>
+    </div>
+    <div class="callout tip"><strong>이 장에서 다루지 않는 것</strong> 연속성에는 구간 전체에서 하나의 \(\delta\)가 모든 점에 통하는 더 강한 형태(균등 연속)가 있습니다. 정적분의 존재를 엄밀히 증명할 때 쓰이지만, 이 책에서는 다루지 않고 필요한 곳에서 결과만 인용합니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>연속성은 결과를 보장하는 가정으로, 중간값 정리와 최대·최소 정리는 "답이 있다"는 확신으로 공학 곳곳에 쓰입니다.</p>
+    <div class="callout"><strong>회로 시뮬레이터의 동작점 찾기</strong> 다이오드 하나와 저항 하나로 된 회로의 전류는 \(I = I_s\bigl(e^{(V_s - IR)/V_T} - 1\bigr)\)처럼 \(I\)가 양변에 있는 식을 만족해야 해서 손으로 풀리지 않습니다. 하지만 \(g(I) = I - I_s\bigl(e^{(V_s - IR)/V_T} - 1\bigr)\)는 연속이고, \(I = 0\)에서 음수(\(V_s > 0\)이면), \(I = V_s/R\)에서 양수입니다. 중간값 정리로 그 사이에 해가 있고, \(g\)가 증가 함수라 해는 하나뿐입니다. 회로 시뮬레이터는 이런 구간을 잡아 두고 뉴턴 방법과 이분법을 섞어 동작점을 찾습니다.</div>
+    <div class="uses">
+      <a href="derivative.html"><small>3장 · 도함수</small>미분 가능하면 연속<br><span>|x|처럼 연속이지만 꺾인 점에서는 미분할 수 없다. 이음매의 매끄러움.</span></a>
+      <a href="chain-rule.html"><small>4장 · 연쇄 법칙과 초월 함수</small>sin과 e<sup>x</sup>의 도함수<br><span>sin x / x → 1과 (e<sup>h</sup> − 1)/h → 1이 그대로 미분 공식이 된다.</span></a>
+      <a href="optimization.html"><small>6장 · 최적화와 근사</small>닫힌 구간 방법과 뉴턴 방법<br><span>최대·최소 정리가 존재를 보장하고, 도함수가 위치를 찾는다.</span></a>
+      <a href="../../foundations/chapters/limits.html#e-number"><small>MATHBOOK</small>e라는 수<br><span>복리와 e, 그리고 e가 미적분 곳곳에 나오는 이유.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK · 수치 계산</small>근 찾기와 부동소수점<br><span>반복법의 수렴과 컴퓨터 계산의 한계.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>연속 확률 변수<br><span>누적 분포 함수는 연속이고, 중간값 정리로 중앙값·분위수가 존재한다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(f\)가 \(a\)에서 연속 ⇔ \(f(a)\)가 있고, \(\lim_{x\to a}f(x)\)가 있고, 둘이 같다. 구간 끝에서는 한쪽 극한으로 판정한다.</li>
+      <li>불연속은 제거 가능(극한은 있음, 값만 다름: 다시 정의해서 고침), 점프(좌 ≠ 우), 무한(\(\pm\infty\)), 진동으로 나뉜다. 조각 함수는 이음매에서 좌극한 = 우극한 = 함숫값으로 계수를 정한다.</li>
+      <li>연속 함수의 합·차·곱·몫(분모 ≠ 0)·합성은 연속이다. 기본 함수는 정의역에서 연속이므로, 정의되는 점에서의 극한은 대입으로 구한다. 바깥 함수가 연속이면 \(\lim f(g(x)) = f(\lim g(x))\).</li>
+      <li>중간값 정리: \([a, b]\)에서 연속이면 \(f(a)\)와 \(f(b)\) 사이의 모든 값을 취한다. 부호가 바뀌면 근이 있다. 연속이 아니면 성립하지 않는다(1/x).</li>
+      <li>이분법은 부호 변화를 유지하며 구간을 반으로 줄인다. \(n\)단계 뒤 구간 길이 \((b - a)/2^n\), 필요한 단계 수 \(n \ge \log_2\frac{b - a}{\tau}\).</li>
+      <li>최대·최소 정리: 닫힌 구간에서 연속인 함수는 최댓값과 최솟값을 가진다. 열린 구간이나 불연속이면 보장이 없다.</li>
+      <li>\(\lim_{x\to 0}\frac{\sin x}{x} = 1\) (부채꼴 넓이 + 조임 정리, 라디안), \(\lim_{x\to 0}\frac{1 - \cos x}{x^2} = \frac12\), \(\lim_{n\to\infty}(1 + \frac rn)^n = e^r\) (연속 복리).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(f(x) = \dfrac{x^2 - 9}{x - 3}\) (\(x \ne 3\)), \(f(3) = 5\)에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">\(x = 3\)에서 연속이다</button>
+        <button class="opt">점프 불연속이다</button>
+        <button class="opt" data-correct>제거 가능 불연속이고, \(f(3) = 6\)으로 바꾸면 연속이다</button>
+        <button class="opt">무한 불연속이다</button>
+      </div><div class="quiz-exp">\(x \ne 3\)에서 \(f(x) = x + 3\)이므로 극한은 6. 극한은 있지만 \(f(3) = 5\)와 달라 조건 3이 실패한다. 극한이 존재하므로 제거 가능 불연속이고, \(f(3) = 6\)으로 다시 정의하면 연속 확장이 된다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(f(x) = kx^2\) (\(x \le 1\)), \(f(x) = 3x - k\) (\(x > 1\))가 연속이 되는 \(k\)는?</p><div class="opts">
+        <button class="opt">\(k = 1\)</button>
+        <button class="opt" data-correct>\(k = 3/2\)</button>
+        <button class="opt">\(k = 3\)</button>
+        <button class="opt">어떤 \(k\)도 안 된다</button>
+      </div><div class="quiz-exp">\(x = 1\)에서 좌극한 = 함숫값 = \(k\), 우극한 = \(3 - k\). \(k = 3 - k\)에서 \(k = 3/2\). 확인: 양쪽 모두 1.5.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(f(x) = x^5 - 3x + 1\)에 대해 중간값 정리가 근의 존재를 <b>보장하는</b> 구간은?</p><div class="opts">
+        <button class="opt">\([-1, 0]\)</button>
+        <button class="opt" data-correct>\([0, 1]\)</button>
+        <button class="opt">\([2, 3]\)</button>
+        <button class="opt">\([3, 4]\)</button>
+      </div><div class="quiz-exp">\(f(-1) = 3\), \(f(0) = 1\), \(f(1) = -1\), \(f(2) = 27\), \(f(3) = 235\), \(f(4) = 1013\). 부호가 바뀌는 것은 \([0, 1]\)뿐이다. 부호가 같은 구간에도 근이 있을 수는 있지만 정리가 보장하지는 않는다. (실제로 이 함수는 \((-2, -1)\)과 \((1, 2)\)에도 근이 있다.)</div></div>
+
+      <div class="quiz-q"><p>Q4. 길이 1인 구간에서 이분법을 시작해 근을 가둔 구간의 길이를 0.001 이하로 줄이려면 최소 몇 번 잘라야 하나?</p><div class="opts">
+        <button class="opt">3번</button>
+        <button class="opt">9번</button>
+        <button class="opt" data-correct>10번</button>
+        <button class="opt">1,000번</button>
+      </div><div class="quiz-exp">\(n\)번 뒤 길이는 \(1/2^n\). \(2^9 = 512 \lt 1000 \le 1024 = 2^{10}\)이므로 \(n = 10\). 이분법은 십진 자릿수 하나에 약 3.3번이 든다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 최대·최소 정리에 의해 최댓값의 존재가 <b>보장되는</b> 것은?</p><div class="opts">
+        <button class="opt">\(1/x\), 구간 \((0, 1]\)</button>
+        <button class="opt" data-correct>\(x^2\), 구간 \([-1, 2]\)</button>
+        <button class="opt">\(\tan x\), 구간 \([0, \pi/2)\)</button>
+        <button class="opt">\(x - \lfloor x\rfloor\), 구간 \([0, 2]\)</button>
+      </div><div class="quiz-exp">\(x^2\)은 닫힌 구간 \([-1, 2]\)에서 연속이므로 최댓값(4, \(x = 2\))과 최솟값(0, \(x = 0\))이 있다. 나머지는 구간이 닫혀 있지 않거나(1/x, tan) 불연속이라(톱니) 가정이 성립하지 않으며, 실제로 셋 다 최댓값이 없다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\displaystyle\lim_{x\to 0}\frac{\sin 4x}{3x}\)의 값은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">3/4</button>
+        <button class="opt" data-correct>4/3</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">\(\dfrac{\sin 4x}{3x} = \dfrac43\cdot\dfrac{\sin 4x}{4x} \to \dfrac43\cdot 1\). sin 안의 \(4x\)를 분모에 만들어 준다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(\displaystyle\lim_{n\to\infty}\Bigl(1 + \frac2n\Bigr)^n\)의 값은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2e</button>
+        <button class="opt" data-correct>e²</button>
+        <button class="opt">∞</button>
+      </div><div class="quiz-exp">정리 2.12의 \((1 + r/n)^n \to e^r\)에서 \(r = 2\). 연이율 200% 연속 복리와 같다. "1의 무한 제곱이니 1"은 틀린 추론이다. \(1^\infty\)도 부정형이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(\displaystyle\lim_{x\to 0}\cos\Bigl(\pi\cdot\frac{\sin x}{x}\Bigr)\)의 값은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">0</button>
+        <button class="opt" data-correct>−1</button>
+        <button class="opt">존재하지 않는다(0/0)</button>
+      </div><div class="quiz-exp">안쪽 \(\pi\cdot\frac{\sin x}{x} \to \pi\)이고 \(\cos\)은 \(\pi\)에서 연속이므로 정리 2.6에 의해 극한은 \(\cos\pi = -1\). 안쪽에 0/0이 있어도 그 극한이 존재하면 바깥 연속 함수에 넣을 수 있다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const CT = {
+  mono: () => getComputedStyle(document.body).getPropertyValue("--mono") || "monospace",
+  /** 숫자 → 표시 문자열(음수 기호 −, 무한대 처리) */
+  num(v, d = 4) {
+    if (v === null || v === undefined || Number.isNaN(v)) return "정의 안 됨";
+    if (!isFinite(v)) return v > 0 ? "+∞" : "−∞";
+    let r = +v.toFixed(d);
+    if (Math.abs(r) < 0.5 * Math.pow(10, -d)) r = 0;
+    return String(r).replace("-", "−");
+  },
+  /** 유효숫자 표시 */
+  sig(v, s = 6) {
+    if (!isFinite(v)) return CT.num(v);
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a < 1e-4 || a >= 1e7) return CT.sci(v, s - 1);
+    return String(+v.toPrecision(s)).replace("-", "−");
+  },
+  /** 과학 표기 a·10<sup>e</sup> */
+  sci(v, d = 2) {
+    if (v === 0) return "0";
+    if (!isFinite(v)) return CT.num(v);
+    const e = Math.floor(Math.log10(Math.abs(v))), m = v / Math.pow(10, e);
+    const ms = (+m.toFixed(d)).toString().replace("-", "−");
+    return (ms === "1" ? "" : ms + "·") + "10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  nice(span, n) {
+    const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    return [1, 2, 5, 10].map((m) => m * mag).find((s) => span / s <= n + 0.5) || raw;
+  },
+  /** 배율에 맞춰 눈금 간격을 고르는 격자 + 축 + 눈금 숫자 */
+  grid(P, o = {}) {
+    const C = P.P, ctx = P.ctx, narrow = P.w < 520;
+    const sx = o.sx || CT.nice(P.x1 - P.x0, narrow ? 4 : 7), sy = o.sy || CT.nice(P.y1 - P.y0, narrow ? 4 : 6);
+    const dig = (s) => Math.max(0, -Math.floor(Math.log10(s) + 1e-9));
+    const lab = (v, s) => { let t = v.toFixed(dig(s)); if (/^-0(\.0*)?$/.test(t)) t = t.slice(1); return t.replace("-", "−"); };
+    ctx.save();
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = Math.ceil(P.x0 / sx); i * sx <= P.x1; i++) { const X = P.X(i * sx); ctx.moveTo(X, 0); ctx.lineTo(X, P.h); }
+    for (let i = Math.ceil(P.y0 / sy); i * sy <= P.y1; i++) { const Y = P.Y(i * sy); ctx.moveTo(0, Y); ctx.lineTo(P.w, Y); }
+    ctx.stroke();
+    ctx.strokeStyle = C.axis; ctx.lineWidth = 1.3; ctx.beginPath();
+    if (P.y0 < 0 && P.y1 > 0) { ctx.moveTo(0, P.Y(0)); ctx.lineTo(P.w, P.Y(0)); }
+    if (P.x0 < 0 && P.x1 > 0) { ctx.moveTo(P.X(0), 0); ctx.lineTo(P.X(0), P.h); }
+    ctx.stroke();
+    ctx.fillStyle = C.faint; ctx.font = "10px " + CT.mono();
+    const yl = MB.clamp(P.y0 < 0 && P.y1 > 0 ? P.Y(0) + 3 : P.h - 13, 2, P.h - 13);
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let i = Math.ceil(P.x0 / sx); i * sx <= P.x1; i++) { const v = i * sx, X = P.X(v); if (Math.abs(v) < sx * 1e-6 && P.x0 < 0 && P.x1 > 0) continue; if (X < 16 || X > P.w - 16) continue; ctx.fillText(lab(v, sx), X, yl); }
+    const xl = MB.clamp(P.x0 < 0 && P.x1 > 0 ? P.X(0) - 4 : 40, 34, P.w - 4);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (let i = Math.ceil(P.y0 / sy); i * sy <= P.y1; i++) { const v = i * sy, Y = P.Y(v); if (Math.abs(v) < sy * 1e-6 && P.y0 < 0 && P.y1 > 0) continue; if (Y < 8 || Y > P.h - 8) continue; ctx.fillText(lab(v, sy), xl, Y); }
+    ctx.restore();
+  },
+  /** y = f(x) 곡선. 정의되지 않는 점, 화면 밖으로 튀는 점, 지정한 끊김점(breaks)에서 선을 끊는다 */
+  curve(P, f, o = {}) {
+    const ctx = P.ctx, a = o.from != null ? o.from : P.x0, b = o.to != null ? o.to : P.x1;
+    const N = o.n || Math.max(300, Math.round(P.w * 2)), br = o.breaks || [];
+    ctx.save(); ctx.strokeStyle = o.color || P.P.accent; ctx.lineWidth = o.width || 2.6; ctx.setLineDash(o.dash || []);
+    ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.lineJoin = "round"; ctx.beginPath();
+    let on = false, px = null;
+    for (let i = 0; i <= N; i++) {
+      const x = a + ((b - a) * i) / N;
+      if (px !== null && br.some((c) => (px - c) * (x - c) <= 0)) on = false;
+      px = x;
+      const y = f(x);
+      if (!isFinite(y)) { on = false; continue; }
+      const Y = P.Y(y);
+      if (Y < -3 * P.h || Y > 4 * P.h) { on = false; continue; }
+      on ? ctx.lineTo(P.X(x), Y) : ctx.moveTo(P.X(x), Y); on = true;
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  /** 빈 동그라미(구멍) */
+  hole(P, x, y, color) {
+    const ctx = P.ctx; ctx.save(); ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = P.P.bg; ctx.fill(); ctx.lineWidth = 2.4; ctx.strokeStyle = color || P.P.accent; ctx.stroke(); ctx.restore();
+  },
+  vline(P, x, o = {}) { P.ctx.save(); P.ctx.strokeStyle = o.color || P.P.faint; P.ctx.lineWidth = o.width || 1.4; P.ctx.setLineDash(o.dash || [6, 5]); P.ctx.beginPath(); P.ctx.moveTo(P.X(x), 0); P.ctx.lineTo(P.X(x), P.h); P.ctx.stroke(); P.ctx.restore(); },
+  hline(P, y, o = {}) { P.ctx.save(); P.ctx.strokeStyle = o.color || P.P.faint; P.ctx.lineWidth = o.width || 1.4; P.ctx.setLineDash(o.dash || [6, 5]); P.ctx.beginPath(); P.ctx.moveTo(0, P.Y(y)); P.ctx.lineTo(P.w, P.Y(y)); P.ctx.stroke(); P.ctx.restore(); },
+  /** 사각형 띠(수학 좌표) */
+  band(P, x0, x1, y0, y1, color, alpha) {
+    const ctx = P.ctx; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color;
+    const X0 = P.X(Math.max(x0, P.x0)), X1 = P.X(Math.min(x1, P.x1)), Y0 = P.Y(Math.min(y1, P.y1)), Y1 = P.Y(Math.max(y0, P.y0));
+    ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); ctx.restore();
+  },
+  supStr: (n) => String(n).split("").map((c) => "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"["-0123456789".indexOf(c)] || c).join(""),
+  subStr: (n) => String(n).split("").map((c) => "₀₁₂₃₄₅₆₇₈₉"["0123456789".indexOf(c)] || c).join(""),
+  /** 부호 붙은 항: + 1.5 / − 2 */
+  term: (v, d = 2) => (v < 0 ? "− " : "+ ") + CT.num(Math.abs(v), d),
+  msg(id, html, cls) { const el = document.getElementById(id); el.className = "ct-msg" + (cls ? " " + cls : ""); el.innerHTML = html; },
+};
+
+
+/* ================================================================ 1. 불연속 고치기 */
+(function () {
+  const PRE = {
+    rem: { f: (x) => (x * x - 4) / (x - 2), a: 2, L: 4, R: 4, x: [-1, 5], y: [-1, 7], fa: 1, br: [2] },
+    sinc: { f: (x) => Math.sin(x) / x, a: 0, L: 1, R: 1, x: [-7, 7], y: [-0.7, 1.6], fa: 0, br: [0] },
+    jump: { f: (x) => (x < 1 ? x + 1 : x - 1), a: 1, L: 2, R: 0, x: [-2, 4], y: [-2.2, 4], fa: 0.8, br: [1] },
+    inf: { f: (x) => 1 / ((x - 1) * (x - 1)), a: 1, L: Infinity, R: Infinity, x: [-1, 3], y: [-1, 9], fa: 2, br: [1] },
+    osc: { f: (x) => Math.sin(1 / x), a: 0, L: NaN, R: NaN, x: [-1, 1], y: [-1.7, 1.7], fa: 0.5, br: [0] },
+  };
+  let key = "rem";
+  const F0 = () => PRE[key];
+  const pt = { x: 2, y: 1, r: 9, lock: "x", constrain(p) {
+    const F = F0(); p.y = MB.clamp(p.y, F.y[0], F.y[1]);
+    [F.L, F.R].forEach((v) => { if (isFinite(v) && Math.abs(p.y - v) < 0.06 * (F.y[1] - F.y[0]) / 8) p.y = v; });
+  } };
+  const checks = document.getElementById("ct-f-checks");
+  const lim = (v) => (Number.isNaN(v) ? "존재 안 함" : CT.num(v, 3));
+  const pl = MB.plane("#ct-cv-fix", {
+    x: PRE.rem.x, y: PRE.rem.y, grid: false, axes: false, aspect: 0.62, maxHeight: 440, points: [pt],
+    draw(P, api) {
+      const C = P.P, F = F0(), p = api.points[0];
+      p.color = C.accent; p.x = F.a;
+      CT.grid(P);
+      CT.vline(P, F.a, { color: C.faint, dash: [3, 4], width: 1 });
+      CT.curve(P, F.f, { breaks: F.br, color: C.text, width: 2.4, alpha: 0.85, n: key === "osc" ? 5000 : 0 });
+      if (isFinite(F.L)) CT.hole(P, F.a, F.L, C.accent2);
+      if (isFinite(F.R) && F.R !== F.L) CT.hole(P, F.a, F.R, C.accent2);
+      const fa = p.y, hasLim = isFinite(F.L) && F.L === F.R, eq = hasLim && Math.abs(fa - F.L) < 1e-9;
+      checks.innerHTML = `<span class="on">① f(a) 정의됨 ✓</span><span class="${hasLim ? "on" : "off"}">② 극한 존재 ${hasLim ? "✓" : "✗"}</span><span class="${eq ? "on" : "off"}">③ 극한 = f(a) ${eq ? "✓" : "✗"}</span>`;
+      MB.stat("ct-f-l", lim(F.L)); MB.stat("ct-f-r", lim(F.R)); MB.stat("ct-f-fa", CT.num(fa, 3));
+      let kind, m, cls = "";
+      if (eq) { kind = "연속"; m = `세 조건이 모두 성립합니다. f(${F.a}) = ${CT.num(F.L)}로 정의한 이 함수가 원래 함수의 <b>연속 확장</b>입니다.`; cls = "ok"; }
+      else if (hasLim) { kind = "제거 가능"; m = `극한 ${CT.num(F.L)}은 있지만 f(a) = ${CT.num(fa, 3)}와 다릅니다. 점을 ${CT.num(F.L)}로 옮기면 고쳐집니다.`; }
+      else if (isFinite(F.L) && isFinite(F.R)) {
+        kind = "점프"; cls = "bad";
+        const side = Math.abs(fa - F.R) < 1e-9 ? " 지금은 우극한과 같아 <b>우연속</b>입니다." : Math.abs(fa - F.L) < 1e-9 ? " 지금은 좌극한과 같아 <b>좌연속</b>입니다." : "";
+        m = `좌극한 ${CT.num(F.L)} ≠ 우극한 ${CT.num(F.R)}. f(a)를 어디에 두어도 한쪽과는 어긋나므로 고칠 수 없습니다.${side}`;
+      } else if (!Number.isNaN(F.L)) { kind = "무한"; cls = "bad"; m = "x → a에서 값이 +∞로 달아납니다. 옮겨 놓을 유한한 값이 없습니다."; }
+      else { kind = "진동"; cls = "bad"; m = "0 근처에서 −1과 1 사이를 끝없이 오가므로 극한이 없고, 어떤 값으로도 고칠 수 없습니다."; }
+      MB.stat("ct-f-kind", kind);
+      CT.msg("ct-f-msg", m, cls);
+    },
+  });
+  function setKey(k) { key = k; const F = F0(); pt.x = F.a; pt.y = F.fa; pl.view({ x: F.x, y: F.y }); }
+  setKey("rem");
+  document.getElementById("ct-f-fn").addEventListener("change", (e) => setKey(e.target.value));
+  document.getElementById("ct-f-auto").addEventListener("click", () => {
+    const F = F0();
+    if (isFinite(F.L) && F.L === F.R) { pt.y = F.L; pl.redraw(); }
+    else { pl.redraw(); CT.msg("ct-f-msg", "양쪽 극한이 같은 유한한 값이 아니라서 옮길 '극한값'이 없습니다. 이 불연속은 제거할 수 없습니다.", "bad"); }
+  });
+})();
+
+/* ================================================================ 2. 이음매 맞추기 */
+(function () {
+  let fam = "a", c = 0, m = 1, b = 1;
+  const rows = { c: document.getElementById("ct-g-c-row"), m: document.getElementById("ct-g-m-row"), b: document.getElementById("ct-g-b-row") };
+  const S = () => fam === "a"
+    ? { s: 2, left: (x) => c * x + 1, right: (x) => x * x - c, incl: "right", x: [-1, 4], y: [-4, 12], tag: `f = ${CT.num(c, 2)}x + 1 (x < 2),  x² ${CT.term(-c)} (x ≥ 2)` }
+    : { s: 1, left: (x) => x * x, right: (x) => m * x + b, incl: "left", x: [-1.5, 3], y: [-3, 6], tag: `f = x² (x ≤ 1),  ${CT.num(m, 2)}x ${CT.term(b)} (x > 1)` };
+  const pl = MB.plane("#ct-cv-glue", {
+    x: [-1, 4], y: [-4, 12], grid: false, axes: false, aspect: 0.62, maxHeight: 440,
+    draw(P) {
+      const C = P.P, s = S(), L = s.left(s.s), R = s.right(s.s), gap = R - L, ok = Math.abs(gap) < 1e-9;
+      CT.grid(P);
+      CT.vline(P, s.s, { color: C.faint, dash: [3, 4], width: 1 });
+      CT.curve(P, s.left, { to: s.s, color: C.accent2, width: 3 });
+      CT.curve(P, s.right, { from: s.s, color: C.accent, width: 3 });
+      if (ok) P.dot(s.s, L, { r: 6, color: C.ok });
+      else if (s.incl === "right") { CT.hole(P, s.s, L, C.accent2); P.dot(s.s, R, { r: 5.5, color: C.accent }); }
+      else { P.dot(s.s, L, { r: 5.5, color: C.accent2 }); CT.hole(P, s.s, R, C.accent); }
+      if (!ok) P.line(s.s, L, s.s, R, { color: C.bad, width: 3, alpha: 0.5 });
+      document.getElementById("ct-g-tag").textContent = s.tag;
+      MB.stat("ct-g-l", CT.num(L, 3)); MB.stat("ct-g-r", CT.num(R, 3)); MB.stat("ct-g-gap", CT.num(gap, 3));
+      if (!ok) CT.msg("ct-g-msg", fam === "a" ? `이음매 x = 2에서 ${CT.num(L, 2)}와 ${CT.num(R, 2)}가 어긋납니다. 점프 크기 3 − 3c = ${CT.num(gap, 2)}.` : `이음매 x = 1에서 좌극한 1, 우극한 m + b = ${CT.num(R, 2)}. 연속 조건은 m + b = 1입니다.`);
+      else if (fam === "a") CT.msg("ct-g-msg", "c = 1에서 양쪽이 3으로 만납니다. 모든 실수에서 연속입니다.", "ok");
+      else if (Math.abs(m - 2) < 1e-9) CT.msg("ct-g-msg", "연속이고, 이음매에서 꺾이지도 않습니다(기울기 2 = x²의 x = 1에서 기울기). 3장에서 이것을 '미분 가능'이라 부릅니다.", "ok");
+      else CT.msg("ct-g-msg", `연속입니다(m + b = 1). 하지만 이음매가 뾰족하게 꺾였습니다: 왼쪽 기울기 2, 오른쪽 기울기 ${CT.num(m, 2)}. m = 2로 맞춰 보세요.`, "ok");
+    },
+  });
+  const Cc = MB.range("ct-g-c", (v) => CT.num(v, 2), (v) => { c = v; pl.redraw(); });
+  const Bb = MB.range("ct-g-b", (v) => CT.num(v, 2), (v) => { b = v; pl.redraw(); });
+  MB.range("ct-g-m", (v) => CT.num(v, 2), (v) => { m = v; pl.redraw(); });
+  function layout() { rows.c.style.display = fam === "a" ? "" : "none"; rows.m.style.display = rows.b.style.display = fam === "b" ? "" : "none"; const s = S(); pl.view({ x: s.x, y: s.y }); }
+  MB.seg("ct-g-fam", (v) => { fam = v; layout(); });
+  document.getElementById("ct-g-auto").addEventListener("click", () => {
+    if (fam === "a") { Cc.set(1, false); c = 1; } else { b = Math.round((1 - m) * 100) / 100; Bb.set(b, false); b = 1 - m; }
+    pl.redraw();
+  });
+  layout();
+})();
+
+/* ================================================================ 3. 중간값 정리 */
+(function () {
+  const PRE = {
+    cubic: { f: (x) => 0.3 + 3 * x - 1.9 * x * x + 0.33 * x * x * x, y: [-0.4, 3.5], br: [], N: 1.4 },
+    wave: { f: (x) => 1.5 + x / 2 + Math.sin(2.5 * x), y: [-0.2, 4.4], br: [], N: 2.2 },
+    jump: { f: (x) => (x < 2 ? x / 2 : x / 2 + 1.5), y: [-0.5, 4], br: [2], N: 1.8 },
+    pole: { f: (x) => 1 / (x - 2), y: [-3, 3], br: [2], N: 0 },
+  };
+  let key = "cubic";
+  const F0 = () => PRE[key];
+  const pt = { x: -0.15, y: 1.4, r: 9, lock: "x", constrain(p) { p.x = -0.15; p.y = MB.clamp(p.y, F0().y[0], F0().y[1]); } };
+  function roots(N) {
+    const F = F0(), out = [], n = 2000;
+    for (let i = 0; i < n; i++) {
+      let a = (4 * i) / n, b = (4 * (i + 1)) / n;
+      if (F.br.some((c) => c > a - 1e-12 && c <= b + 1e-12)) continue;
+      let fa = F.f(a) - N, fb = F.f(b) - N;
+      if (!isFinite(fa) || !isFinite(fb)) continue;
+      if (fa === 0) { out.push(a); continue; }
+      if (fa * fb < 0) { for (let k = 0; k < 40; k++) { const m = (a + b) / 2, fm = F.f(m) - N; if (fa * fm <= 0) b = m; else { a = m; fa = fm; } } out.push((a + b) / 2); }
+    }
+    const fb = F.f(4) - N; if (fb === 0) out.push(4);
+    return out;
+  }
+  const pl = MB.plane("#ct-cv-ivt", {
+    x: [-0.4, 4.4], y: PRE.cubic.y, grid: false, axes: false, aspect: 0.62, maxHeight: 440, points: [pt],
+    draw(P, api) {
+      const C = P.P, F = F0(), N = api.points[0].y, fa = F.f(0), fb = F.f(4);
+      api.points[0].color = C.accent;
+      CT.grid(P);
+      CT.band(P, 0, 4, Math.min(fa, fb), Math.max(fa, fb), C.accent2, 0.1);
+      CT.vline(P, 0, { color: C.faint, dash: [3, 4], width: 1 }); CT.vline(P, 4, { color: C.faint, dash: [3, 4], width: 1 });
+      CT.curve(P, F.f, { from: 0, to: 4, breaks: F.br, color: C.text, width: 2.6 });
+      if (key === "jump") { CT.hole(P, 2, 1, C.text); P.dot(2, 2.5, { r: 5, color: C.text }); }
+      P.dot(0, fa, { r: 5.5, color: C.accent2 }); P.dot(4, fb, { r: 5.5, color: C.accent2 });
+      CT.hline(P, N, { color: C.accent, width: 2, dash: [7, 5] });
+      const rs = roots(N);
+      rs.forEach((c) => { P.line(c, N, c, Math.max(P.y0, Math.min(0, N)), { color: C.ok, width: 1.4, dash: [3, 3] }); P.dot(c, N, { r: 6, color: C.ok }); });
+      const between = (N - fa) * (N - fb) < 0;
+      MB.stat("ct-i-N", CT.num(N, 3));
+      MB.stat("ct-i-ends", `${CT.num(fa, 3)}, ${CT.num(fb, 3)}`);
+      MB.stat("ct-i-c", rs.length ? rs.map((c) => CT.num(c, 3)).join(", ") : "없음");
+      if (between && rs.length) CT.msg("ct-i-msg", `N이 f(a)와 f(b) 사이에 있고 f가 연속이므로 교점이 반드시 있습니다. 지금 <b>${rs.length}개</b>.`, "ok");
+      else if (between) CT.msg("ct-i-msg", `N이 f(a)와 f(b) 사이에 있는데도 교점이 <b>없습니다</b>. f가 x = 2에서 불연속이라 중간값 정리의 가정이 깨졌습니다.`, "bad");
+      else CT.msg("ct-i-msg", `N이 f(a)와 f(b) 사이에 있지 않습니다. 이때 정리는 아무것도 약속하지 않습니다(교점 ${rs.length}개).`);
+    },
+  });
+  document.getElementById("ct-i-fn").addEventListener("change", (e) => { key = e.target.value; pt.y = F0().N; pl.view({ x: [-0.4, 4.4], y: F0().y }); });
+})();
+
+/* ================================================================ 4. 등산로 문제 */
+(function () {
+  const PRE = {
+    steady: [[[9, 250], [12, 500], [15, 750]], [[9, 750], [12, 500], [15, 250]]],
+    rest: [[[8, 450], [12, 470], [16, 500]], [[9, 750], [12, 500], [15, 250]]],
+    sprint: [[[9, 250], [12, 500], [15, 750]], [[7, 400], [8, 120], [10, 30]]],
+    wander: [[[9, 650], [12, 300], [15, 900]], [[9, 350], [12, 800], [15, 150]]],
+  };
+  const pts = [];
+  for (let k = 0; k < 6; k++) pts.push({ x: 0, y: 0, r: 8, constrain: cons(k) });
+  function cons(k) {
+    return (p) => {
+      const g = k < 3 ? 0 : 3, i = k - g, xs = [6, pts[g].x, pts[g + 1].x, pts[g + 2].x, 18];
+      p.x = MB.clamp(p.x, xs[i] + 0.25, xs[i + 2] - 0.25); p.y = MB.clamp(p.y, 0, 1000);
+    };
+  }
+  function load(name) { const [u, d] = PRE[name]; u.forEach((q, i) => { pts[i].x = q[0]; pts[i].y = q[1]; }); d.forEach((q, i) => { pts[3 + i].x = q[0]; pts[3 + i].y = q[1]; }); }
+  load("steady");
+  const path = (g) => (g === 0 ? [[6, 0]] : [[6, 1000]]).concat(pts.slice(g * 3, g * 3 + 3).map((p) => [p.x, p.y]), g === 0 ? [[18, 1000]] : [[18, 0]]);
+  const ev = (q, t) => { for (let i = 0; i < q.length - 1; i++) if (t <= q[i + 1][0]) return q[i][1] + ((q[i + 1][1] - q[i][1]) * (t - q[i][0])) / (q[i + 1][0] - q[i][0]); return q[q.length - 1][1]; };
+  let tNow = 12, playing = false, hc = null;
+  const hhmm = (t) => { const h = Math.floor(t), m = Math.round((t - h) * 60); return `${String(m === 60 ? h + 1 : h).padStart(2, "0")}:${String(m === 60 ? 0 : m).padStart(2, "0")}`; };
+  function meets() {
+    const U = path(0), D = path(1), out = []; let prev = -1000;
+    for (let i = 1; i <= 2400; i++) { const t = 6 + (12 * i) / 2400, h = ev(U, t) - ev(D, t); if ((prev < 0 && h >= 0) || (prev > 0 && h <= 0)) out.push(t); prev = h; }
+    return out;
+  }
+  const pl = MB.plane("#ct-cv-hike", {
+    x: [5.6, 18.4], y: [-80, 1120], grid: false, axes: false, aspect: 0.5, minHeight: 230, maxHeight: 360, points: pts,
+    onDrag() { if (hc) hc.redraw(); },
+    draw(P, api) {
+      const C = P.P, U = path(0), D = path(1);
+      api.points.forEach((p, i) => (p.color = i < 3 ? C.accent : C.accent2));
+      CT.grid(P, { sx: 2, sy: 250 });
+      P.poly(U, { color: C.accent, width: 3, close: false });
+      P.poly(D, { color: C.accent2, width: 3, close: false });
+      const ms = meets();
+      ms.forEach((t) => { const y = ev(U, t); P.dot(t, y, { r: 7, color: C.ok }); P.text(hhmm(t), t, y, { dx: 8, dy: -12, color: C.ok, bold: true, size: 12 }); });
+      CT.vline(P, tNow, { color: C.faint, dash: [3, 4], width: 1.2 });
+      P.dot(tNow, ev(U, tNow), { r: 5, color: C.accent, stroke: C.bg }); P.dot(tNow, ev(D, tNow), { r: 5, color: C.accent2, stroke: C.bg });
+      MB.stat("ct-h-t", hhmm(tNow));
+      MB.stat("ct-h-ud", `${Math.round(ev(U, tNow))} m / ${Math.round(ev(D, tNow))} m`);
+      MB.stat("ct-h-meet", ms.map(hhmm).join(", ") || "—");
+      if (hc) hc.redraw();
+    },
+  });
+  hc = MB.canvas("#ct-cv-hdiff", (ctx) => {
+    const C = MB.palette(), U = path(0), D = path(1), data = [];
+    for (let i = 0; i <= 600; i++) { const t = 6 + (12 * i) / 600; data.push([t, ev(U, t) - ev(D, t)]); }
+    MB.chart(ctx, null, { x: [6, 18], y: [-1100, 1100], xTicks: [6, 8, 10, 12, 14, 16, 18], yTicks: [-1000, 0, 1000], xLabel: "시각 (h)",
+      series: [{ data, color: C.ok, width: 2.4 }], hlines: [{ y: 0, color: C.text }], vlines: [{ x: tNow, color: C.faint }],
+      points: meets().map((t) => ({ x: t, y: 0, r: 5, color: C.ok })) });
+  }, { aspect: 0.3, minHeight: 150, maxHeight: 200 });
+  document.getElementById("ct-h-pre").addEventListener("change", (e) => { load(e.target.value); pl.redraw(); });
+  const loop = MB.loop(document.getElementById("sim-ct-hiker"), (dt) => {
+    if (!playing) return;
+    tNow += dt * 1.5; if (tNow >= 18) { tNow = 18; playing = false; btn.set(false); }
+    pl.redraw();
+  });
+  const btn = MB.playButton("ct-h-play", () => { if (tNow >= 18) tNow = 6; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 시각 흘려보내기", "■ 멈춤"]);
+})();
+
+/* ================================================================ 5. 이분법 */
+(function () {
+  const PRE = {
+    sqrt2: { f: (x) => x * x - 2, a: 1, b: 2, br: [] },
+    cubic: { f: (x) => x * x * x + x - 1, a: 0, b: 1, br: [] },
+    cos: { f: (x) => Math.cos(x) - x, a: 0, b: 1, br: [] },
+    three: { f: (x) => x * x * x - x, a: -2, b: 1.5, br: [] },
+    pole: { f: (x) => 1 / x, a: -1, b: 2, br: [0] },
+  };
+  let key = "sqrt2", A, B, n, rows, zoom = true, done;
+  const F0 = () => PRE[key];
+  const body = document.getElementById("ct-b-body");
+  function reset() { const F = F0(); A = F.a; B = F.b; n = 0; rows = []; done = false; }
+  function step() {
+    if (done) return;
+    const F = F0(), m = (A + B) / 2, fm = F.f(m);
+    rows.push({ n, a: A, b: B, m, fm, len: B - A });
+    if (fm === 0 || B - A < 1e-15) { done = true; return; }
+    if (F.f(A) * fm < 0) B = m; else A = m;
+    n++;
+  }
+  reset();
+  function view() {
+    const F = F0();
+    let x0, x1;
+    if (zoom && n > 0) { const L = B - A; x0 = A - 0.8 * L; x1 = B + 0.8 * L; } else { const L = F.b - F.a; x0 = F.a - 0.15 * L; x1 = F.b + 0.15 * L; }
+    let lo = 0, hi = 0;
+    for (let i = 0; i <= 300; i++) { const y = F.f(x0 + ((x1 - x0) * i) / 300); if (isFinite(y) && Math.abs(y) < 50) { lo = Math.min(lo, y); hi = Math.max(hi, y); } }
+    const pad = (hi - lo) * 0.15 || 1;
+    return { x: [x0, x1], y: [lo - pad, hi + pad] };
+  }
+  const pl = MB.plane("#ct-cv-bis", {
+    x: [0.85, 2.15], y: [-1.5, 2.5], grid: false, axes: false, aspect: 0.62, maxHeight: 440,
+    draw(P) {
+      const C = P.P, F = F0();
+      CT.grid(P);
+      CT.band(P, A, B, P.y0, P.y1, C.accent2, 0.13);
+      CT.vline(P, A, { color: C.accent2, dash: [], width: 1.4 }); CT.vline(P, B, { color: C.accent2, dash: [], width: 1.4 });
+      CT.curve(P, F.f, { breaks: F.br, color: C.accent, width: 2.6 });
+      const fa = F.f(A), fb = F.f(B), m = (A + B) / 2;
+      [[A, fa], [B, fb]].forEach(([x, y]) => { if (isFinite(y) && y >= P.y0 && y <= P.y1) P.dot(x, y, { r: 5.5, color: y < 0 ? C.accent2 : C.warn }); });
+      P.dot(m, 0, { r: 5, color: C.ok });
+      const last = rows[rows.length - 1];
+      document.getElementById("ct-b-tag").textContent = `[${(+A.toPrecision(8))}, ${(+B.toPrecision(8))}]`.replace(/-/g, "−");
+      MB.stat("ct-b-n", String(n));
+      MB.stat("ct-b-m", (+m.toPrecision(10)).toString().replace("-", "−"));
+      MB.stat("ct-b-err", CT.sig((B - A) / 2, 3));
+      MB.stat("ct-b-need", String(Math.ceil(Math.log2((F.b - F.a) / 1e-6))));
+      if (key === "pole" && n >= 3) CT.msg("ct-b-msg", `구간이 x = 0으로 좁혀지는데 |f(m)| = ${CT.sig(Math.abs(F.f(m)), 3)}로 점점 커집니다. 부호는 바뀌지만 1/x는 0에서 불연속이라 <b>근이 없습니다</b>. 이분법은 근 대신 불연속점을 찾았습니다.`, "bad");
+      else if (done) CT.msg("ct-b-msg", `더 자를 수 없습니다(f(m) = 0 이거나 배정밀도 한계). 근 ≈ ${(+m.toPrecision(15))}.`.replace("-", "−"), "ok");
+      else if (last) CT.msg("ct-b-msg", `f(m${CT.subStr(last.n)}) = ${CT.sig(last.fm, 4)}의 부호가 ${F.f(last.a) * last.fm < 0 ? "왼쪽 끝과 반대 → 왼쪽 절반" : "오른쪽 끝과 반대 → 오른쪽 절반"}을 남겼습니다. 근은 파란 띠 안에 있습니다.`);
+      else CT.msg("ct-b-msg", `f(${CT.num(F.a)}) = ${CT.sig(F.f(F.a), 4)}, f(${CT.num(F.b)}) = ${CT.sig(F.f(F.b), 4)}: 부호가 반대입니다. '다음 단계'를 눌러 보세요.`);
+    },
+  });
+  function render() {
+    body.innerHTML = rows.map((r) => `<tr><td>${r.n}</td><td>${+r.a.toPrecision(10)}</td><td>${+r.b.toPrecision(10)}</td><td>${+r.m.toPrecision(10)}</td><td>${CT.sig(r.fm, 4)}</td><td>${CT.sig(r.len, 3)}</td></tr>`).join("").replace(/-(?=\d)/g, "−");
+    const tb = body.parentElement.parentElement; tb.scrollTop = tb.scrollHeight;
+    const v = view(); pl.view({ x: v.x, y: v.y });
+  }
+  document.getElementById("ct-b-step").addEventListener("click", () => { step(); render(); });
+  document.getElementById("ct-b-ten").addEventListener("click", () => { for (let i = 0; i < 10; i++) step(); render(); });
+  document.getElementById("ct-b-reset").addEventListener("click", () => { reset(); render(); });
+  document.getElementById("ct-b-fn").addEventListener("change", (e) => { key = e.target.value; reset(); render(); });
+  MB.check("ct-b-zoom", (v) => { zoom = v; render(); });
+  render();
+})();
+
+/* ================================================================ 6. 최대·최소 정리 */
+(function () {
+  const isInt = (x) => Math.abs(x - Math.round(x)) < 1e-9;
+  const PRE = {
+    cubic: { f: (x) => x * x * x - 3 * x, lL: (x) => x * x * x - 3 * x, rL: (x) => x * x * x - 3 * x, crit: [-1, 1], jumps: () => [], a: 0, b: 2, x: [-2.7, 2.7] },
+    recip: { f: (x) => (x > 0 ? 1 / x : NaN), lL: (x) => 1 / x, rL: (x) => (x <= 0 ? Infinity : 1 / x), crit: [], jumps: () => [], a: 0.5, b: 2, x: [-0.3, 2.7], pos: true },
+    saw: { f: (x) => x - Math.floor(x + 1e-12), lL: (x) => (isInt(x) ? 1 : x - Math.floor(x)), rL: (x) => (isInt(x) ? 0 : x - Math.floor(x)), crit: [], jumps: (a, b) => { const o = []; for (let k = Math.floor(a) + 1; k < b - 1e-9; k++) o.push(k); return o; }, a: 0, b: 2, x: [-2.7, 2.7] },
+  };
+  let key = "cubic", a = 0, b = 2, lc = true, rc = true;
+  const F0 = () => PRE[key];
+  function analyze() {
+    const F = F0(), ea = F.pos ? Math.max(a, 0) : a, lcl = lc && !(F.pos && ea <= 0);
+    const cand = [];
+    cand.push({ x: ea, v: F.rL(ea), att: lcl && Math.abs(F.f(ea) - F.rL(ea)) < 1e-9 });
+    if (lcl && isFinite(F.f(ea))) cand.push({ x: ea, v: F.f(ea), att: true });
+    cand.push({ x: b, v: F.lL(b), att: rc && Math.abs(F.f(b) - F.lL(b)) < 1e-9 });
+    if (rc) cand.push({ x: b, v: F.f(b), att: true });
+    F.crit.forEach((c) => { if (c > ea && c < b) cand.push({ x: c, v: F.f(c), att: true }); });
+    F.jumps(ea, b).forEach((k) => { cand.push({ x: k, v: F.lL(k), att: false }); cand.push({ x: k, v: F.f(k), att: true }); });
+    const pick = (sgn) => {
+      const best = cand.reduce((m, q) => (sgn * q.v > sgn * m ? q.v : m), -sgn * Infinity);
+      const at = cand.filter((q) => Math.abs(q.v - best) < 1e-9 && q.att);
+      return { v: best, att: at.length > 0, xs: [...new Set(at.map((q) => +q.x.toFixed(6)))] };
+    };
+    const cont = F.jumps(ea, b).length === 0 && !(key === "saw" && rc && isInt(b)) ;
+    return { ea, lcl, max: pick(1), min: pick(-1), closed: lcl && rc, cont };
+  }
+  let R = analyze();
+  const pl = MB.plane("#ct-cv-ext", {
+    x: PRE.cubic.x, y: [-3, 3], grid: false, axes: false, aspect: 0.62, maxHeight: 440,
+    draw(P) {
+      const C = P.P, F = F0(), brk = key === "saw" ? [-2, -1, 0, 1, 2] : key === "recip" ? [0] : [];
+      CT.grid(P);
+      CT.curve(P, F.f, { breaks: brk, color: C.text, width: 1.6, alpha: 0.3 });
+      CT.band(P, R.ea, b, P.y0, P.y1, C.accent2, 0.08);
+      CT.curve(P, F.f, { from: R.ea + 1e-9, to: b - 1e-9, breaks: brk, color: C.accent, width: 3 });
+      // 끝점
+      [[R.ea, F.rL(R.ea), R.lcl, F.f(R.ea)], [b, F.lL(b), rc, F.f(b)]].forEach(([x, lim, inc, val]) => {
+        if (!isFinite(lim)) return;
+        if (inc && Math.abs(val - lim) < 1e-9) P.dot(x, lim, { r: 5.5, color: C.accent });
+        else { CT.hole(P, x, lim, C.accent); if (inc && isFinite(val)) P.dot(x, val, { r: 5.5, color: C.accent }); }
+      });
+      F.jumps(R.ea, b).forEach((k) => { CT.hole(P, k, F.lL(k), C.accent); P.dot(k, F.f(k), { r: 5, color: C.accent }); });
+      [[R.max, "최대"], [R.min, "최소"]].forEach(([e, lab]) => {
+        if (!isFinite(e.v)) return;
+        if (e.att) e.xs.forEach((x) => { P.dot(x, e.v, { r: 7, color: C.ok }); P.text(lab, x, e.v, { dx: 9, dy: lab === "최대" ? -12 : 12, color: C.ok, bold: true, size: 12 }); });
+        else { CT.hline(P, e.v, { color: C.bad, width: 1.4 }); P.text(lab === "최대" ? "상한 (도달 안 함)" : "하한 (도달 안 함)", P.x0, e.v, { dx: 6, dy: lab === "최대" ? -10 : 10, color: C.bad, size: 12 }); }
+      });
+      const fmt = (e) => (!isFinite(e.v) ? (e.v > 0 ? "없음 (+∞로 발산)" : "없음 (−∞)") : e.att ? `${CT.num(e.v, 4)} (x = ${e.xs.map((x) => CT.num(x, 3)).join(", ")})` : `없음 (상·하한 ${CT.num(e.v, 4)}에 못 닿음)`);
+      MB.stat("ct-e-int", `${R.lcl ? "[" : "("}${CT.num(R.ea, 2)}, ${CT.num(b, 2)}${rc ? "]" : ")"}`);
+      MB.stat("ct-e-max", fmt(R.max)); MB.stat("ct-e-min", fmt(R.min));
+      MB.stat("ct-e-hyp", `닫힘 ${R.closed ? "✓" : "✗"} · 연속 ${R.cont ? "✓" : "✗"}`);
+      const ok = R.max.att && R.min.att;
+      if (R.closed && R.cont) CT.msg("ct-e-msg", "닫힌 구간에서 연속이므로 정리 2.10이 최댓값과 최솟값의 존재를 보장합니다. 초록 점이 그 위치입니다.", "ok");
+      else CT.msg("ct-e-msg", `가정이 깨졌습니다(${!R.closed ? "구간이 닫혀 있지 않음" : ""}${!R.closed && !R.cont ? ", " : ""}${!R.cont ? "구간 안에 불연속점" : ""}). ${ok ? "그래도 이번에는 둘 다 있습니다. 정리는 보장하지 않을 뿐 금지하지 않습니다." : "그래서 최댓값이나 최솟값이 없을 수 있고, 실제로 빠졌습니다."}`, ok ? "" : "bad");
+    },
+  });
+  function refit() {
+    R = analyze(); const F = F0();
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= 400; i++) { const x = R.ea + ((b - R.ea) * i) / 400; const y = F.f(x); if (isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, Math.min(y, 12)); } }
+    if (!isFinite(lo)) { lo = -1; hi = 1; }
+    const pad = Math.max(0.4, (hi - lo) * 0.18);
+    pl.view({ x: F.x, y: [lo - pad, hi + pad] });
+  }
+  const Ar = MB.range("ct-e-a", (v) => CT.num(v, 2), (v) => { a = v; if (b < a + 0.1) { b = Math.min(2.5, a + 0.1); Br.set(b, false); } refit(); });
+  const Br = MB.range("ct-e-b", (v) => CT.num(v, 2), (v) => { b = v; if (b < a + 0.1) { a = Math.max(-2.5, b - 0.1); Ar.set(a, false); } refit(); });
+  MB.check("ct-e-lc", (v) => { lc = v; refit(); });
+  MB.check("ct-e-rc", (v) => { rc = v; refit(); });
+  document.getElementById("ct-e-fn").addEventListener("change", (e) => { key = e.target.value; const F = F0(); a = F.a; b = F.b; Ar.set(a, false); Br.set(b, false); refit(); });
+  refit();
+})();
+
+/* ================================================================ 7. 부채꼴 넓이 */
+(function () {
+  let x = 0.75, mag = false, playing = false, gc = null;
+  const pt = { x: Math.cos(x), y: Math.sin(x), r: 8, label: "P", constrain(p) { const t = MB.clamp(Math.atan2(p.y, p.x), 0.02, 1.5); p.x = Math.cos(t); p.y = Math.sin(t); } };
+  const vy = () => (mag ? [-0.08 * Math.tan(x), 1.2 * Math.tan(x)] : [-0.1, 1.15]);
+  const pl = MB.plane("#ct-cv-sec", {
+    x: [-0.12, 1.6], y: vy(), grid: false, axes: false, aspect: 0.66, maxHeight: 400, minHeight: 230, points: [pt],
+    onDrag(p) { x = Math.atan2(p.y, p.x); X.set(+x.toFixed(2), false); if (mag) pl.view({ y: vy() }); },
+    draw(P, api) {
+      const C = P.P, s = Math.sin(x), c = Math.cos(x), t = Math.tan(x), p = api.points[0];
+      p.x = c; p.y = s; p.color = C.accent;
+      CT.grid(P, { sx: 0.5, sy: mag ? CT.nice(P.y1 - P.y0, 4) : 0.5 });
+      P.poly([[0, 0], [1, 0], [1, t]], { fill: C.accent2, color: C.accent2, width: 1.5, alpha: 0.28 });
+      const sec = [[0, 0]]; for (let i = 0; i <= 60; i++) sec.push([Math.cos((x * i) / 60), Math.sin((x * i) / 60)]);
+      P.poly(sec, { fill: C.accent, color: C.accent, width: 1.5, alpha: 0.3 });
+      P.poly([[0, 0], [1, 0], [c, s]], { fill: C.ok, color: C.ok, width: 1.5, alpha: 0.45 });
+      P.param((u) => [Math.cos(u), Math.sin(u)], 0, Math.PI / 2, { color: C.dim, width: 1.2, dash: [4, 4] });
+      P.line(0, 0, 1, t, { color: C.text, width: 1.4 }); P.line(1, P.y0, 1, P.y1, { color: C.faint, width: 1, dash: [3, 4] });
+      P.dot(1, t, { r: 5, color: C.accent2, label: "T" }); P.dot(0, 0, { r: 4, color: C.text, label: "O" }); P.dot(1, 0, { r: 4, color: C.text, label: "A" });
+      MB.stat("ct-s-a1", (s / 2).toFixed(6)); MB.stat("ct-s-a2", (x / 2).toFixed(6)); MB.stat("ct-s-a3", (t / 2).toFixed(6));
+      MB.stat("ct-s-r", (s / x).toFixed(8));
+      if (gc) gc.redraw();
+    },
+  });
+  gc = MB.canvas("#ct-cv-secg", (ctx) => {
+    const C = MB.palette(), A = [], B = [], one = [];
+    for (let i = -300; i <= 300; i++) { const u = (1.5 * i) / 300; if (i) A.push([u, Math.sin(u) / u]); B.push([u, Math.cos(u)]); one.push([u, 1]); }
+    MB.chart(ctx, null, { x: [-1.5, 1.5], y: [0, 1.1], xLabel: "x (라디안)", yTicks: [0, 0.25, 0.5, 0.75, 1],
+      series: [{ data: B, color: C.accent2, width: 2 }, { data: one, color: C.dim, width: 1.4, dash: [5, 4] }, { data: A, color: C.accent, width: 2.6 }],
+      points: [{ x, y: Math.sin(x) / x, r: 5, color: C.accent }, { x, y: Math.cos(x), r: 4, color: C.accent2 }], vlines: [{ x, color: C.faint }] });
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 220 });
+  const X = MB.range("ct-s-x", (v) => v.toFixed(2), (v) => { x = v; if (mag) pl.view({ y: vy() }); else pl.redraw(); });
+  MB.check("ct-s-mag", (v) => { mag = v; pl.view({ y: vy() }); });
+  const loop = MB.loop(document.getElementById("sim-ct-sector"), (dt) => {
+    if (!playing) return;
+    x = Math.max(0.02, x * Math.exp(-dt * 0.8)); X.set(+x.toFixed(2), false);
+    if (mag) pl.view({ y: vy() }); else pl.redraw();
+    if (x <= 0.0201) { playing = false; btn.set(false); }
+  });
+  const btn = MB.playButton("ct-s-play", () => { if (x <= 0.03) x = 1.2; playing = true; loop.start(); }, () => { playing = false; }, ["▶ x를 0으로", "■ 멈춤"]);
+})();
+
+/* ================================================================ 8. 복리 → e */
+(function () {
+  const NS = [1, 2, 3, 4, 6, 12, 24, 52, 100, 365, 1000, 8760, 10000, 100000, 525600, 1000000];
+  let n = 1, r = 1, c2 = null;
+  const lab = { 1: "1 (연 1회)", 2: "2 (반년)", 4: "4 (분기)", 12: "12 (매달)", 52: "52 (매주)", 365: "365 (매일)", 8760: "8,760 (매시간)", 525600: "525,600 (매분)" };
+  const c1 = MB.canvas("#ct-cv-cmp", (ctx) => {
+    const C = MB.palette(), stair = [], cont = [], E = Math.exp(r);
+    for (let i = 0; i <= 1200; i++) { const t = i / 1200; stair.push([t, Math.pow(1 + r / n, Math.floor(n * t + 1e-9))]); cont.push([t, Math.exp(r * t)]); }
+    MB.chart(ctx, null, { x: [0, 1], y: [0.9, Math.max(1.2, E * 1.06)], xLabel: "시간 t (년)", yLabel: "잔액 (원금 = 1)",
+      series: [{ data: cont, color: C.accent2, width: 2, dash: [6, 4] }, { data: stair, color: C.accent, width: 2.6 }],
+      hlines: [{ y: E, color: C.ok, label: "eʳ" }] });
+  }, { aspect: 0.42, minHeight: 200, maxHeight: 300 });
+  c2 = MB.canvas("#ct-cv-cmpn", (ctx) => {
+    const C = MB.palette(), data = [], E = Math.exp(r);
+    for (let i = 0; i <= 240; i++) { const m = Math.pow(10, (6 * i) / 240); data.push([m, Math.pow(1 + r / m, m)]); }
+    const g = E - 1 - r, dg = Math.max(3, Math.ceil(-Math.log10(g)) + 1);
+    MB.chart(ctx, null, { x: [1, 1e6], logX: true, y: [1 + r - 0.3 * g, E + 0.3 * g], xLabel: "n",
+      series: [{ data, color: C.accent, width: 2.4 }], hlines: [{ y: E, color: C.ok, dash: [5, 4] }], points: [{ x: n, y: Math.pow(1 + r / n, n), r: 6, color: C.accent2 }],
+      yFmt: (v) => v.toFixed(dg) });
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 230 });
+  function upd() {
+    const v = Math.pow(1 + r / n, n), E = Math.exp(r);
+    MB.stat("ct-c-v", v.toFixed(8)); MB.stat("ct-c-e", E.toFixed(8)); MB.stat("ct-c-d", CT.sig(E - v, 3));
+    c1.redraw(); c2.redraw();
+  }
+  MB.steps("ct-c-n", NS, (v) => lab[v] || v.toLocaleString(), 1, (v) => { n = v; upd(); });
+  MB.range("ct-c-r", (v) => Math.round(v * 100) + "%", (v) => { r = v; upd(); });
+  upd();
+})();
+</script>
+</body>
+</html>

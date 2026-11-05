@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>정적분: 쌓인 양 · CalculusBook</title>
+<meta name="description" content="속도 그래프 아래 넓이가 이동 거리다. 시그마 표기와 합 공식, 왼쪽·오른쪽·중점 리만 합, 상합과 하합으로 본 정적분의 정의와 적분 가능성, 부호 있는 넓이와 성질, 정적분의 평균값, 수치 적분의 오차 차수까지 직접 쪼개고 쌓으며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .in-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .in-two > div { position: relative; min-width: 0; }
+  .in-two > div + div { border-top: 1px solid var(--border); }
+  .in-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; }
+  .in-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .in-msg b { color: var(--text); }
+  .in-msg.ok { color: var(--ok); font-weight: 600; }
+  .in-msg.bad { color: var(--bad); font-weight: 600; }
+  .in-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .in-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .in-tbl td, .in-tbl th { font-family: var(--mono); text-align: right; }
+  .in-tbl td:first-child, .in-tbl th:first-child { text-align: left; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="integral">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 07</div>
+    <h1 data-no-glossary>정적분: 쌓인 양</h1>
+    <p class="lead">미분은 "지금 얼마나 빨리 변하는가"를 물었습니다. 이 장은 반대 방향의 질문을 던집니다. <b>매 순간의 변화율을 알 때, 그동안 쌓인 양은 얼마인가?</b> 속도계만 보고 달린 거리를, 유량계만 보고 찬 물의 양을, 전류계만 보고 흘러간 전하를 구하는 문제입니다. 답은 그래프 아래의 넓이이고, 그 넓이를 정확히 정의하는 도구가 <span class="term">정적분</span>입니다. 곡선 아래를 가는 직사각형으로 쪼개고, 직사각형을 무한히 가늘게 만드는 극한이 정적분의 정의입니다. 이 장에서는 그 정의를 손으로 계산해 보고, 넓이가 음수가 되는 경우와 넓이의 성질을 정리한 뒤, 컴퓨터가 정적분을 근사할 때 오차가 얼마나 빨리 줄어드는지까지 봅니다.</p>
+    <ul class="objectives">
+      <li>속도–시간 그래프 아래 넓이가 이동 거리라는 것을 직사각형 합으로 설명한다.</li>
+      <li>시그마 표기를 읽고 쓰며, \(\sum k\), \(\sum k^2\), \(\sum k^3\)의 공식을 유도하고 쓴다.</li>
+      <li>왼쪽·오른쪽·중점 리만 합을 계산하고, 분할을 세분할 때 참값에 다가가는 모습을 설명한다.</li>
+      <li>정적분을 리만 합의 극한으로 정의하고, 상합과 하합으로 적분 가능성을 판단한다.</li>
+      <li>부호 있는 넓이로서 정적분을 해석하고, 선형성·구간 가법성·비교 성질로 값을 계산하거나 어림한다.</li>
+      <li>함수의 평균값과 적분의 평균값 정리를 이해하고, 수치 적분의 오차가 \(1/n\), \(1/n^2\)로 줄어드는 차이를 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>속도만 아는 기계가 위치를 아는 법</b></div>
+      <div class="o-body"><p>GPS 신호가 닿지 않는 터널이나 바닷속, 우주에서 비행체는 자기가 어디에 있는지 어떻게 알까요? 관성 항법 장치는 가속도계와 자이로스코프만 가지고 있습니다. 가속도를 시간에 대해 쌓으면 속도가, 속도를 쌓으면 위치가 나옵니다. 스마트폰 걸음 수 계산, 자동차 주행 거리계, 배터리 잔량 표시(전류를 쌓아 전하량을 셈)도 모두 같은 원리입니다. "매 순간의 값 × 아주 짧은 시간"을 끝없이 더하는 계산, 이것이 정적분입니다.</p>
+        <p>곡선 아래 넓이를 가는 조각의 합으로 구하는 생각은 아주 오래되었습니다. 아르키메데스는 기원전 3세기에 포물선과 직선으로 둘러싸인 영역의 넓이가 그 안에 내접한 삼각형 넓이의 4/3배임을, 삼각형을 끝없이 채워 넣는 실진법으로 보였습니다. 이 생각을 "어떤 함수의 넓이든 이렇게 정의한다"는 일반적인 정의로 다듬은 것은 19세기의 일로, 오늘날 쓰는 정의는 리만<span class="en">(Bernhard Riemann)</span>이 1854년 교수 자격 논문에서 제시한 것입니다.</p>
+        <div class="o-chain"><span>매 순간의 변화율</span><i>→</i><span>짧은 구간마다 값 × 폭</span><i>→</i><span class="tool">리만 합의 극한 ∫ f(x) dx</span><i>→</i><span>거리·부피·전하·일</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="distance">
+    <h2>속도 그래프 아래 넓이 = 이동 거리</h2>
+    <div class="problem"><strong>주행 기록계가 고장 났다</strong>
+      <p>자동차의 거리계가 고장 나서 속도계만 남았습니다. 동승자가 2초마다 속도계를 읽어 적었습니다: 0초에 0, 2초에 12, 4초에 18, 6초에 20, 8초에 14, 10초에 0 m/s. 10초 동안 이 차는 몇 m를 달렸을까요? 속도가 계속 바뀌니 "속도 × 시간"을 한 번에 쓸 수는 없습니다.</p></div>
+    <p>속도가 일정하면 거리는 속도 × 시간입니다. 속도–시간 그래프에서 이것은 <b>직사각형의 넓이</b>입니다. 가로가 시간, 세로가 속도이니 넓이의 단위는 (m/s)·s = m, 정확히 거리의 단위입니다. 속도가 바뀌어도 짧은 시간 동안은 거의 일정하다고 볼 수 있으니, 시간을 잘게 나누어 각 조각에서 "그때 읽은 속도 × 조각의 길이"를 더하면 됩니다.</p>
+    <p>위 문제에 이 생각을 적용해 봅시다. 각 2초 구간의 <b>처음</b> 읽은 속도를 그 구간 내내 유지했다고 보면 거리는 \(2(0 + 12 + 18 + 20 + 14) = 128\) m, 각 구간의 <b>끝</b>에 읽은 속도를 쓰면 \(2(12 + 18 + 20 + 14 + 0) = 128\) m입니다. 이 경우 두 값이 같게 나왔지만 일반적으로는 다르고, 참값은 그 근처 어딘가입니다. 속도를 더 자주 읽을수록 추정이 좋아집니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="계단 모양 속도 그래프 아래의 직사각형 넓이">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="60" y1="240" x2="420" y2="240" class="s-axis"/><line x1="60" y1="240" x2="60" y2="30" class="s-axis"/>
+        <text x="410" y="262" class="t-mono">t (s)</text><text x="22" y="40" class="t-mono">v</text>
+        <rect x="60" y="205" width="80" height="35" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <rect x="140" y="100" width="100" height="140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <rect x="240" y="156" width="140" height="84" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <text x="100" y="228" text-anchor="middle" class="t-mono">5×2</text>
+        <text x="190" y="175" text-anchor="middle" class="t-mono">20×2.5</text>
+        <text x="310" y="202" text-anchor="middle" class="t-mono">12×3.5</text>
+        <text x="60" y="258" text-anchor="middle" class="t-dim">0</text><text x="140" y="258" text-anchor="middle" class="t-dim">2</text><text x="240" y="258" text-anchor="middle" class="t-dim">4.5</text><text x="380" y="258" text-anchor="middle" class="t-dim">8</text>
+        <text x="50" y="209" text-anchor="end" class="t-dim">5</text><text x="50" y="160" text-anchor="end" class="t-dim">12</text><text x="50" y="104" text-anchor="end" class="t-dim">20</text>
+        <text x="240" y="285" text-anchor="middle" class="t-dim">거리 = 10 + 50 + 42 = 102 m</text>
+        <line x1="450" y1="240" x2="730" y2="240" class="s-axis"/><line x1="450" y1="240" x2="450" y2="30" class="s-axis"/>
+        <path d="M450 240 C500 230 520 90 580 80 S680 150 730 200 L730 240 Z" class="f-acc2-soft"/>
+        <path d="M450 240 C500 230 520 90 580 80 S680 150 730 200" fill="none" style="stroke:var(--accent-2);stroke-width:2.5"/>
+        <g style="stroke:var(--accent-2);stroke-width:1;opacity:.6">
+          <line x1="478" y1="240" x2="478" y2="224"/><line x1="506" y1="240" x2="506" y2="185"/><line x1="534" y1="240" x2="534" y2="120"/><line x1="562" y1="240" x2="562" y2="86"/><line x1="590" y1="240" x2="590" y2="80"/><line x1="618" y1="240" x2="618" y2="92"/><line x1="646" y1="240" x2="646" y2="115"/><line x1="674" y1="240" x2="674" y2="145"/><line x1="702" y1="240" x2="702" y2="175"/>
+        </g>
+        <text x="590" y="285" text-anchor="middle" class="t-dim">속도가 계속 바뀌면: 가는 조각으로 쪼갠다</text>
+        <text x="600" y="60" class="t" style="fill:var(--accent-2);font-weight:700">v(t)</text>
+      </svg>
+      <figcaption><b>그림 7-1.</b> 왼쪽: 속도가 구간마다 일정하면(5 m/s로 2초, 20 m/s로 2.5초, 12 m/s로 3.5초) 이동 거리는 직사각형 넓이의 합 102 m다. 오른쪽: 속도가 매끄럽게 변하면 시간을 가는 조각으로 쪼개 조각마다 직사각형으로 근사하고, 조각을 무한히 가늘게 하면 곡선 아래 넓이가 된다.</figcaption>
+    </figure>
+    <p>아래 시뮬레이터에서 속도계를 읽는 간격 Δt를 바꿔 보세요. 각 간격의 처음에 읽은 속도로 그 간격을 달렸다고 가정한 추정 거리(분홍 직사각형)와 실제 거리(파란 곡선 아래 넓이)를 비교합니다. 아래 도로에서 실제 차와 "추정 차"가 얼마나 벌어지는지도 볼 수 있습니다.</p>
+
+    <div class="sim" id="sim-in-velocity">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>속도계만 보고 달린 거리 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-vel"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>주행 패턴</span><select id="in-v-pre">
+            <option value="cruise">출발 → 정속 → 정지</option>
+            <option value="stopgo">가다 서다 반복</option>
+            <option value="const">일정 속도 15 m/s</option>
+          </select></label>
+          <div class="ctrl"><span>속도계 읽는 간격 Δt</span><div class="seg" id="in-v-dt"><button data-value="2">2 s</button><button data-value="1" class="on">1 s</button><button data-value="0.5">0.5 s</button><button data-value="0.1">0.1 s</button></div></div>
+          <label class="ctrl"><span>시각 t <output id="in-v-t-out"></output></span><input type="range" id="in-v-t" min="0" max="10" step="0.05" value="5"></label>
+          <div class="btn-row"><button class="btn primary" id="in-v-play">▶ 달리기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지금 속도 v(t)</span><span class="v" id="in-v-now">—</span></div>
+        <div class="stat"><span class="k">추정 거리 Σ v(tₖ)Δt</span><span class="v" id="in-v-est">—</span></div>
+        <div class="stat"><span class="k">실제 거리(넓이)</span><span class="v" id="in-v-true">—</span></div>
+        <div class="stat"><span class="k">오차</span><span class="v" id="in-v-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '출발 → 정속 → 정지'에서 t를 5 s쯤에 두고 Δt를 2 s → 0.1 s로 줄이며 오차가 대략 간격에 비례해 줄어드는 것을 보세요. ② 가속하는 동안은 추정이 늘 모자라고, 감속하는 동안은 늘 넘칩니다. 왜일까요? 그래서 t = 10 s까지 달리면 두 오차가 거의 상쇄되어 작아집니다. ③ '일정 속도'는 Δt와 상관없이 오차가 0입니다. 모델: 직선 도로, 속도 v(t) ≥ 0은 매끄러운 함수. 추정은 각 간격의 처음 속도를 쓰고(왼쪽 끝점), 실제 거리는 아주 잘게 나눈 수치 적분으로 계산합니다.</div>
+    </div>
+    <p>시뮬레이터의 두 번째 관찰은 이 장 전체에 걸쳐 쓸모가 있습니다. 속도가 <b>증가</b>하는 구간에서 처음 값을 쓰면 직사각형이 곡선 아래에 들어가 모자라고, 끝 값을 쓰면 곡선 위로 튀어나와 넘칩니다. 그러니 참값은 두 추정 사이에 갇힙니다. 간격을 줄이면 두 추정의 차이가 줄어들어 참값을 원하는 만큼 정확히 잡을 수 있습니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="sigma">
+    <h2>시그마 표기와 합 공식</h2>
+    <div class="problem"><strong>천 개의 직사각형을 어떻게 적을까</strong>
+      <p>직사각형이 다섯 개면 하나씩 적어 더하면 되지만, 천 개, 백만 개가 되면 "…"만으로는 무엇을 더하는지 분명하지 않습니다. 게다가 직사각형 수 \(n\)을 무한대로 보내는 극한을 계산하려면 합을 \(n\)에 대한 식으로 써야 합니다.</p></div>
+    <div class="callout deep"><strong>정의 7.1 (시그마 표기)</strong> 수열 \(a_m, a_{m+1}, \dots, a_n\)의 합을
+      <div class="formula">$$\sum_{k=m}^{n} a_k = a_m + a_{m+1} + \cdots + a_n$$</div>
+      로 쓴다. \(\Sigma\)는 그리스 대문자 시그마로 '합'<span class="en">(Sum)</span>의 머리글자이고, 이 기호를 <span class="term">시그마 표기</span><span class="en">(sigma notation)</span>라 한다. \(k\)는 <b>첨자</b>로 \(m\)부터 \(n\)까지 1씩 커진다. 첨자 이름은 아무것이나 써도 합이 같다: \(\sum_{k=1}^n k^2 = \sum_{i=1}^n i^2\).</div>
+    <p>합은 덧셈이므로 다음 성질이 바로 나옵니다. 상수 \(c\)에 대해</p>
+    <div class="formula">$$\sum_{k=1}^n c\,a_k = c\sum_{k=1}^n a_k,\qquad \sum_{k=1}^n (a_k + b_k) = \sum_{k=1}^n a_k + \sum_{k=1}^n b_k,\qquad \sum_{k=1}^n c = nc.$$
+      <div class="where">주의: \(\sum a_kb_k \ne \left(\sum a_k\right)\left(\sum b_k\right)\). 곱의 합은 합의 곱이 아니다.</div></div>
+    <p>리만 합을 극한으로 보낼 때는 거듭제곱의 합 공식이 필요합니다. 가장 유명한 것은 1부터 \(n\)까지의 합입니다. 합을 거꾸로 한 번 더 적어 세로로 짝지으면 모든 짝의 합이 \(n + 1\)입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="두 계단을 맞붙여 1부터 n까지의 합을 구하는 그림">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g transform="translate(60,30)">
+          <g style="stroke:var(--accent);stroke-width:1.2">
+            <rect x="0" y="150" width="36" height="30" class="f-acc-soft"/>
+            <rect x="36" y="120" width="36" height="30" class="f-acc-soft"/><rect x="36" y="150" width="36" height="30" class="f-acc-soft"/>
+            <rect x="72" y="90" width="36" height="30" class="f-acc-soft"/><rect x="72" y="120" width="36" height="30" class="f-acc-soft"/><rect x="72" y="150" width="36" height="30" class="f-acc-soft"/>
+            <rect x="108" y="60" width="36" height="30" class="f-acc-soft"/><rect x="108" y="90" width="36" height="30" class="f-acc-soft"/><rect x="108" y="120" width="36" height="30" class="f-acc-soft"/><rect x="108" y="150" width="36" height="30" class="f-acc-soft"/>
+            <rect x="144" y="30" width="36" height="30" class="f-acc-soft"/><rect x="144" y="60" width="36" height="30" class="f-acc-soft"/><rect x="144" y="90" width="36" height="30" class="f-acc-soft"/><rect x="144" y="120" width="36" height="30" class="f-acc-soft"/><rect x="144" y="150" width="36" height="30" class="f-acc-soft"/>
+          </g>
+          <g style="stroke:var(--accent-2);stroke-width:1.2">
+            <rect x="0" y="0" width="36" height="150" class="f-acc2-soft"/>
+            <rect x="36" y="0" width="36" height="120" class="f-acc2-soft"/>
+            <rect x="72" y="0" width="36" height="90" class="f-acc2-soft"/>
+            <rect x="108" y="0" width="36" height="60" class="f-acc2-soft"/>
+            <rect x="144" y="0" width="36" height="30" class="f-acc2-soft"/>
+          </g>
+          <text x="90" y="205" text-anchor="middle" class="t-dim">가로 n = 5</text>
+          <text x="196" y="95" class="t-dim">세로 n + 1 = 6</text>
+          <text x="18" y="172" text-anchor="middle" class="t-mono">1</text><text x="162" y="172" text-anchor="middle" class="t-mono">5</text>
+        </g>
+        <g transform="translate(360,40)">
+          <text x="0" y="10" class="t" style="font-weight:700">두 계단 = 직사각형</text>
+          <text x="0" y="42" class="t-mono">  S = 1 + 2 + 3 + 4 + 5</text>
+          <text x="0" y="66" class="t-mono">  S = 5 + 4 + 3 + 2 + 1</text>
+          <line x1="0" y1="76" x2="300" y2="76" class="s-line"/>
+          <text x="0" y="98" class="t-mono">2S = 6 + 6 + 6 + 6 + 6 = 5·6</text>
+          <text x="0" y="134" class="t-acc">S = n(n + 1)/2 = 15</text>
+          <text x="0" y="170" class="t-dim">분홍 계단(1, 2, …, n) 위에 파랑 계단</text>
+          <text x="0" y="190" class="t-dim">(n, …, 2, 1)을 뒤집어 얹으면 n × (n + 1)</text>
+          <text x="0" y="210" class="t-dim">직사각형이 된다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 7-2.</b> 1 + 2 + ⋯ + n을 두 번 더해 n × (n + 1) 직사각형을 만든다. 같은 합을 거꾸로 적어 짝을 지은 셈이다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 7.2 (거듭제곱의 합)</strong> 양의 정수 \(n\)에 대해
+      <div class="formula">$$\sum_{k=1}^n k = \frac{n(n+1)}{2},\qquad \sum_{k=1}^n k^2 = \frac{n(n+1)(2n+1)}{6},\qquad \sum_{k=1}^n k^3 = \left(\frac{n(n+1)}{2}\right)^2.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> 첫 식은 그림 7-2. 둘째 식은 <b>망원 합</b>을 쓴다. 항등식 \((k+1)^3 - k^3 = 3k^2 + 3k + 1\)을 \(k = 1, \dots, n\)에 대해 더하면 왼쪽은 중간 항이 모두 지워져 \((n+1)^3 - 1\)만 남는다. 따라서 \((n+1)^3 - 1 = 3\sum k^2 + 3\cdot\frac{n(n+1)}{2} + n\)이고, \(\sum k^2\)에 대해 풀어 정리하면 \(\frac{n(n+1)(2n+1)}{6}\)이다. 셋째 식은 \((k+1)^4 - k^4\)로 같은 계산을 하거나 수학적 귀납법으로 보인다. ∎</p></div>
+    <div class="callout"><strong>예제 7.1 (합 공식 쓰기)</strong> \(\displaystyle\sum_{k=1}^{10}(3k^2 - 2k + 1)\)을 구하라.
+      <ol>
+        <li>선형성으로 나눈다: \(3\sum k^2 - 2\sum k + \sum 1\).</li>
+        <li>\(n = 10\): \(\sum k^2 = \frac{10\cdot 11\cdot 21}{6} = 385\), \(\sum k = 55\), \(\sum 1 = 10\).</li>
+        <li>\(3\cdot 385 - 2\cdot 55 + 10 = 1155 - 110 + 10 = 1055\).</li>
+      </ol></div>
+    <p>합 공식에서 정적분으로 가는 다리는 다음 관찰입니다. \(\sum_{k=1}^n k^p\)를 \(n^{p+1}\)로 나누면</p>
+    <div class="formula">$$\frac{1}{n^{p+1}}\sum_{k=1}^n k^p = \sum_{k=1}^n \left(\frac{k}{n}\right)^p\cdot\frac{1}{n}$$
+      <div class="where">이것은 폭 \(1/n\), 높이 \((k/n)^p\)인 직사각형 \(n\)개의 넓이 합, 즉 \([0, 1]\)에서 \(y = x^p\) 아래를 오른쪽 끝점으로 근사한 합이다.</div></div>
+    <p>\(p = 2\)이면 \(\frac{n(n+1)(2n+1)}{6n^3} = \frac{1}{6}\left(1 + \frac1n\right)\left(2 + \frac1n\right) \to \frac{2}{6} = \frac13\)입니다. 시뮬레이터에서 블록과 넓이 두 그림을 오가며 확인해 보세요.</p>
+
+    <div class="sim" id="sim-in-sigma">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>블록 쌓기로 보는 합 공식, 그리고 넓이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-sigma"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>항의 수 n <output id="in-s-n-out"></output></span><input type="range" id="in-s-n" min="1" max="40" step="1" value="5"></label>
+          <div class="ctrl"><span>거듭제곱 p (Σ kᵖ)</span><div class="seg" id="in-s-p"><button data-value="1" class="on">k</button><button data-value="2">k²</button><button data-value="3">k³</button></div></div>
+          <div class="ctrl"><span>보기</span><div class="seg" id="in-s-view"><button data-value="blocks" class="on">블록</button><button data-value="unit">[0, 1] 넓이</button></div></div>
+          <label class="check"><input type="checkbox" id="in-s-pair" checked> 거꾸로 한 계단 얹기 (p = 1, 블록 보기)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">직접 더한 합</span><span class="v" id="in-s-sum">—</span></div>
+        <div class="stat"><span class="k">공식</span><span class="v" id="in-s-form">—</span></div>
+        <div class="stat"><span class="k">합 ÷ n<sup>p+1</sup></span><span class="v" id="in-s-ratio">—</span></div>
+        <div class="stat"><span class="k">n → ∞ 극한</span><span class="v" id="in-s-lim">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① p = 1, 블록 보기에서 두 계단이 n × (n + 1) 직사각형을 채우는 것을 보세요. ② '[0, 1] 넓이' 보기로 바꾸면 같은 합이 곡선 y = xᵖ 아래를 덮는 직사각형이 됩니다. n을 40까지 올리며 '합 ÷ n<sup>p+1</sup>'이 1/(p + 1)로 다가가는 것을 확인하세요. ③ 직사각형이 늘 곡선 위로 조금 튀어나오는 이유는 오른쪽 끝점을 썼기 때문입니다. 모델: 정확한 정수 합. 블록이 너무 작으면 칸 경계선은 생략합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="riemann">
+    <h2>리만 합: 왼쪽·오른쪽·중점</h2>
+    <p>이제 속도 문제와 합 공식을 일반 함수로 옮깁니다. 구간 \([a, b]\)에서 함수 \(f\)의 그래프 아래를 \(n\)개의 같은 폭 직사각형으로 덮습니다.</p>
+    <div class="callout deep"><strong>정의 7.3 (같은 폭 리만 합)</strong> \([a, b]\)를 \(n\)등분해 폭 \(\Delta x = \frac{b-a}{n}\), 분점 \(x_k = a + k\,\Delta x\) (\(k = 0, 1, \dots, n\))을 잡는다. 각 소구간 \([x_{k-1}, x_k]\)에서 점 \(c_k\)를 하나씩 고르면
+      <div class="formula">$$R_n = \sum_{k=1}^n f(c_k)\,\Delta x$$</div>
+      를 <span class="term">리만 합</span><span class="en">(Riemann sum)</span>이라 한다. \(c_k\)를 고르는 대표적인 방법은 셋이다.
+      <ul style="margin:6px 0 0">
+        <li><b>왼쪽 끝점</b> \(c_k = x_{k-1}\) → \(L_n\)</li>
+        <li><b>오른쪽 끝점</b> \(c_k = x_k\) → \(R_n\)</li>
+        <li><b>중점</b> \(c_k = \frac{x_{k-1} + x_k}{2}\) → \(M_n\). 이 방법을 <span class="term">중점 규칙</span><span class="en">(midpoint rule)</span>이라 한다.</li>
+      </ul></div>
+    <div class="callout"><strong>예제 7.2 (세 가지 리만 합을 손으로)</strong> \(f(x) = x^2\), \([0, 2]\), \(n = 4\)일 때 \(L_4\), \(R_4\), \(M_4\)를 구하라.
+      <ol>
+        <li>\(\Delta x = \frac{2 - 0}{4} = 0.5\), 분점 \(0, 0.5, 1, 1.5, 2\).</li>
+        <li>왼쪽: \(f(0) + f(0.5) + f(1) + f(1.5) = 0 + 0.25 + 1 + 2.25 = 3.5\), \(L_4 = 3.5 \times 0.5 = 1.75\).</li>
+        <li>오른쪽: \(0.25 + 1 + 2.25 + 4 = 7.5\), \(R_4 = 7.5 \times 0.5 = 3.75\).</li>
+        <li>중점 \(0.25, 0.75, 1.25, 1.75\): \(0.0625 + 0.5625 + 1.5625 + 3.0625 = 5.25\), \(M_4 = 5.25 \times 0.5 = 2.625\).</li>
+        <li>다음 절에서 구할 참값은 \(8/3 \approx 2.6667\). 오차는 \(L_4\)가 \(-0.917\), \(R_4\)가 \(+1.083\), \(M_4\)가 \(-0.042\). 같은 \(n\)에서 중점이 압도적으로 정확하다.</li>
+      </ol></div>
+    <p>\(f\)가 증가 함수이면 각 소구간에서 왼쪽 끝 값이 가장 작고 오른쪽 끝 값이 가장 크므로 \(L_n \le\) 참값 \(\le R_n\)입니다. 감소 함수이면 부등호가 뒤집힙니다. 중점 규칙이 좋은 이유는 7절에서 봅니다. 직사각형이 곡선 위로 튀어나온 부분과 모자란 부분이 거의 상쇄되기 때문입니다.</p>
+
+    <div class="sim" id="sim-in-riemann">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>리만 합: n을 키우면 직사각형이 곡선이 된다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-riem"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="in-r-pre">
+            <option value="sq">x² (예제 7.2)</option>
+            <option value="sin">sin x</option>
+            <option value="cubic">x³ − 3x (부호가 바뀜)</option>
+            <option value="sqrt">√x</option>
+            <option value="bell">1/(1 + x²)</option>
+          </select></label>
+          <div class="ctrl"><span>표본점 cₖ</span><div class="seg" id="in-r-rule"><button data-value="left">왼쪽</button><button data-value="right">오른쪽</button><button data-value="mid" class="on">중점</button><button data-value="rand">무작위</button></div></div>
+          <label class="ctrl"><span>직사각형 수 n <output id="in-r-n-out"></output></span><input type="range" id="in-r-n" min="1" max="100" step="1" value="4"></label>
+          <div class="btn-row"><button class="btn" id="in-r-dbl">n × 2</button><button class="btn primary" id="in-r-play">▶ 세분하기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Δx</span><span class="v" id="in-r-dx">—</span></div>
+        <div class="stat"><span class="k">리만 합</span><span class="v" id="in-r-sum">—</span></div>
+        <div class="stat"><span class="k">∫ 참값</span><span class="v" id="in-r-ex">—</span></div>
+        <div class="stat"><span class="k">오차 (합 − 참값)</span><span class="v" id="in-r-err">—</span></div>
+      </div>
+      <div class="in-msg" id="in-r-msg"></div>
+      <div class="sim-note">해볼 것: ① x², n = 4에서 왼쪽·오른쪽·중점을 바꿔 가며 예제 7.2의 세 값을 확인하세요. ② 축 위의 점 a, b를 끌어 구간을 바꿔 보세요. b를 a보다 왼쪽으로 끌면 Δx가 음수가 되어 합의 부호가 뒤집힙니다. ③ x³ − 3x에서 x축 아래 직사각형(파랑)은 음수로 더해집니다. ④ '무작위'로 골라도 n이 커지면 같은 값으로 갑니다. 이것이 정적분 정의의 핵심입니다. 모델: 같은 폭 분할. 참값은 역도함수(8장)로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="definition">
+    <h2>정적분의 정의와 적분 가능성</h2>
+    <div class="problem"><strong>"n이 충분히 크면"은 정의가 아니다</strong>
+      <p>시뮬레이터에서는 \(n\)을 키우면 왼쪽·오른쪽·중점·무작위 합이 모두 한 값으로 모였습니다. 그런데 모든 함수가 그럴까요? 표본점을 고르는 방법에 따라 다른 값으로 가는 함수는 없을까요? 넓이를 엄밀하게 정의하려면 "어떻게 쪼개고 어디서 높이를 재든 같은 극한"이라는 조건이 필요합니다.</p></div>
+    <p>일반적으로는 소구간의 폭이 서로 달라도 됩니다. 구간 \([a, b]\)의 <span class="term">분할</span><span class="en">(partition)</span> \(P\)는 \(a = x_0 \lt x_1 \lt \cdots \lt x_n = b\)인 점들의 모임이고, 가장 넓은 소구간의 폭 \(\|P\| = \max_k \Delta x_k\)를 분할의 <span class="term">노름</span><span class="en">(norm, mesh)</span>이라 합니다. 각 소구간에서 고른 점 \(c_k \in [x_{k-1}, x_k]\)를 <span class="term">표본점</span><span class="en">(sample point)</span>이라 합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="분할, 소구간 폭, 표본점의 기호">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <line x1="50" y1="200" x2="720" y2="200" class="s-axis"/>
+        <path d="M70 150 C180 60 300 70 400 110 S600 60 700 40" fill="none" style="stroke:var(--accent-2);stroke-width:2.5"/>
+        <rect x="80" y="125" width="90" height="75" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.2"/>
+        <rect x="170" y="84" width="150" height="116" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.2"/>
+        <rect x="320" y="101" width="110" height="99" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.2"/>
+        <rect x="430" y="100" width="70" height="100" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.2"/>
+        <rect x="500" y="80" width="200" height="120" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.2"/>
+        <g class="t-mono"><text x="80" y="220" text-anchor="middle">a = x₀</text><text x="170" y="220" text-anchor="middle">x₁</text><text x="320" y="220" text-anchor="middle">x₂</text><text x="430" y="220" text-anchor="middle">x₃</text><text x="500" y="220" text-anchor="middle">x₄</text><text x="700" y="220" text-anchor="middle">x₅ = b</text></g>
+        <circle cx="140" cy="200" r="4" style="fill:var(--accent)"/><circle cx="215" cy="200" r="4" style="fill:var(--accent)"/><circle cx="400" cy="200" r="4" style="fill:var(--accent)"/><circle cx="455" cy="200" r="4" style="fill:var(--accent)"/><circle cx="600" cy="200" r="4" style="fill:var(--accent)"/>
+        <line x1="140" y1="200" x2="140" y2="125" style="stroke:var(--accent);stroke-dasharray:3 3"/><line x1="400" y1="200" x2="400" y2="101" style="stroke:var(--accent);stroke-dasharray:3 3"/>
+        <text x="140" y="240" text-anchor="middle" class="t-acc">c₁</text><text x="215" y="240" text-anchor="middle" class="t-acc">c₂</text><text x="400" y="240" text-anchor="middle" class="t-acc">c₃</text><text x="455" y="240" text-anchor="middle" class="t-acc">c₄</text><text x="600" y="240" text-anchor="middle" class="t-acc">c₅</text>
+        <text x="245" y="160" text-anchor="middle" class="t-dim">Δx₂</text>
+        <text x="600" y="150" text-anchor="middle" class="t-dim">Δx₅ = ‖P‖</text>
+        <text x="600" y="170" text-anchor="middle" class="t-dim">(가장 넓은 칸)</text>
+        <text x="132" y="116" class="t-mono">f(c₁)</text>
+      </svg>
+      <figcaption><b>그림 7-3.</b> 폭이 고르지 않은 분할 P와 표본점 cₖ. 직사각형 k의 높이는 f(cₖ), 폭은 Δxₖ = xₖ − xₖ₋₁. 정적분의 정의는 가장 넓은 칸의 폭 ‖P‖가 0으로 갈 때, 분할과 표본점을 어떻게 고르든 합이 한 값으로 가기를 요구한다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 7.4 (정적분)</strong> \(f\)가 \([a, b]\)에서 정의된 함수라 하자. 어떤 수 \(I\)가 있어서, 모든 \(\varepsilon > 0\)에 대해 \(\delta > 0\)이 있어 \(\|P\| \lt \delta\)인 <b>모든</b> 분할 \(P\)와 <b>모든</b> 표본점 선택에 대해
+      <div class="formula">$$\left|\sum_{k=1}^n f(c_k)\,\Delta x_k - I\right| \lt \varepsilon$$</div>
+      이면 \(f\)는 \([a, b]\)에서 <span class="term">적분 가능</span><span class="en">(integrable)</span>하다고 하고, \(I\)를 \(f\)의 \(a\)부터 \(b\)까지의 <b>정적분</b><span class="en">(definite integral)</span>이라 하며
+      <div class="formula">$$I = \int_a^b f(x)\,dx = \lim_{\|P\|\to 0}\sum_{k=1}^n f(c_k)\,\Delta x_k$$</div>
+      로 쓴다. \(f\)를 <span class="term">피적분 함수</span><span class="en">(integrand)</span>, \(a\)와 \(b\)를 아래끝·위끝(적분 구간의 끝)이라 한다.</div>
+    <p>기호를 읽는 법: \(\int\)는 합(Sum)의 S를 길게 늘인 것이고, \(f(x)\,dx\)는 "높이 \(f(x)\) × 아주 작은 폭 \(dx\)"인 직사각형을 떠올리게 합니다. \(x\)는 첨자 \(k\)처럼 이름만 빌린 변수라서 \(\int_a^b f(x)\,dx = \int_a^b f(t)\,dt\)입니다. 이런 변수를 <b>더미 변수</b>라고 부릅니다(8장에서 중요해집니다).</p>
+    <p>이 정의는 1장의 ε–δ 극한(<a href="limits.html">극한</a>)과 같은 모양이지만, "모든 분할과 모든 표본점"이라는 훨씬 강한 요구가 들어 있습니다. 이것을 직접 확인하기는 어렵기 때문에, 상합과 하합이라는 두 극단을 비교하는 방법을 씁니다.</p>
+    <div class="callout deep"><strong>정의 7.5 (상합과 하합)</strong> 유계 함수 \(f\)와 분할 \(P\)에 대해 소구간 \([x_{k-1}, x_k]\)에서의 최소 상계와 최대 하계를 \(M_k = \sup f\), \(m_k = \inf f\)라 하면
+      <div class="formula">$$U(f, P) = \sum_{k=1}^n M_k\,\Delta x_k,\qquad L(f, P) = \sum_{k=1}^n m_k\,\Delta x_k$$</div>
+      를 각각 <span class="term">상합</span><span class="en">(upper sum)</span>, <span class="term">하합</span><span class="en">(lower sum)</span>이라 한다. 어떤 표본점을 골라도 리만 합은 \(L(f, P) \le \sum f(c_k)\Delta x_k \le U(f, P)\) 사이에 있다.</div>
+    <div class="callout deep"><strong>정리 7.6 (적분 가능성)</strong>
+      <ol style="margin:4px 0 0">
+        <li>(판정법) 유계 함수 \(f\)가 \([a, b]\)에서 적분 가능할 필요충분조건은, 모든 \(\varepsilon > 0\)에 대해 \(U(f, P) - L(f, P) \lt \varepsilon\)인 분할 \(P\)가 있는 것이다.</li>
+        <li>\(f\)가 \([a, b]\)에서 <b>연속</b>이면 적분 가능하다.</li>
+        <li>\(f\)가 \([a, b]\)에서 <b>단조</b>이면 적분 가능하다.</li>
+        <li>\(f\)가 유계이고 불연속점이 유한 개이면 적분 가능하다.</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>3의 증명.</b> \(f\)가 증가 함수이고 \(n\)등분한다면 \(M_k = f(x_k)\), \(m_k = f(x_{k-1})\)이므로 \(U - L = \sum_{k=1}^n \bigl(f(x_k) - f(x_{k-1})\bigr)\Delta x = \bigl(f(b) - f(a)\bigr)\frac{b-a}{n}\)(망원 합). \(n\)을 크게 하면 원하는 만큼 작아진다. <b>2의 핵심 아이디어.</b> 닫힌 구간의 연속 함수는 균등 연속이라(이 책에서는 증명하지 않는다), 소구간을 충분히 좁히면 모든 소구간에서 동시에 \(M_k - m_k \lt \varepsilon/(b - a)\)가 되고 \(U - L \lt \varepsilon\)이다. ∎</p></div>
+    <p>적분 가능하지 않은 함수의 대표는 <b>디리클레 함수</b>입니다. 유리수에서 1, 무리수에서 0인 함수는 어느 소구간에나 유리수와 무리수가 모두 있으므로 \(M_k = 1\), \(m_k = 0\)이고, 어떤 분할이든 \(U = b - a\), \(L = 0\)입니다. 표본점을 유리수로만 고르면 리만 합은 \(b - a\), 무리수로만 고르면 0이라 극한이 하나로 정해지지 않습니다. 또 \([0, 1]\)에서 \(1/x\)처럼 <b>유계가 아닌</b> 함수도 이 정의로는 적분 가능하지 않습니다. 그런 적분은 9장의 이상 적분(<a href="techniques.html">적분 기법</a>)으로 따로 다룹니다.</p>
+
+    <div class="sim" id="sim-in-darboux">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>상합과 하합 사이에 참값을 가두기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-darb"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="in-d-pre">
+            <option value="sq">x² on [0, 2] (증가)</option>
+            <option value="sin">sin x on [0, π]</option>
+            <option value="step">계단 함수 (점프 하나)</option>
+            <option value="osc">sin(1/x) on (0, 1]</option>
+            <option value="dir">디리클레 함수</option>
+          </select></label>
+          <div class="ctrl"><span>분할</span><div class="seg" id="in-d-part"><button data-value="even" class="on">같은 폭</button><button data-value="rand">무작위 폭</button></div></div>
+          <label class="ctrl"><span>소구간 수 n <output id="in-d-n-out"></output></span><input type="range" id="in-d-n" min="1" max="64" step="1" value="6"></label>
+          <div class="btn-row"><button class="btn" id="in-d-reroll">무작위 분할 다시</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">상합 U</span><span class="v" id="in-d-U">—</span></div>
+        <div class="stat"><span class="k">하합 L</span><span class="v" id="in-d-L">—</span></div>
+        <div class="stat"><span class="k">U − L</span><span class="v" id="in-d-gap">—</span></div>
+        <div class="stat"><span class="k">‖P‖</span><span class="v" id="in-d-norm">—</span></div>
+      </div>
+      <div class="in-msg" id="in-d-msg"></div>
+      <div class="sim-note">해볼 것: ① x²에서 U − L이 정확히 (f(2) − f(0))·Δx = 8/n인지 확인하세요(정리 7.6의 증명). ② 계단 함수는 점프가 있는 칸 하나만 U − L에 기여해 여전히 0으로 갑니다. ③ sin(1/x)는 0 근처에서 무한히 진동하지만, 그 진동이 갇힌 첫 칸의 폭이 줄면 U − L도 0으로 갑니다. ④ 디리클레 함수는 n을 얼마로 해도 U − L = 2입니다. 모델: sup과 inf는 각 소구간을 촘촘히 표본 추출해 근사합니다(디리클레 함수는 정확한 값).</div>
+    </div>
+
+    <div class="callout"><strong>예제 7.3 (정의로 정적분 계산하기)</strong> \(\displaystyle\int_0^b x^2\,dx = \frac{b^3}{3}\) (\(b > 0\))임을 보여라.
+      <ol>
+        <li>\(x^2\)은 연속이라 적분 가능하다(정리 7.6). 그러면 어떤 분할 열을 써도 극한이 같으므로 가장 계산하기 쉬운 \(n\)등분과 오른쪽 끝점을 쓴다: \(\Delta x = b/n\), \(c_k = kb/n\).</li>
+        <li>\(R_n = \sum_{k=1}^n \left(\frac{kb}{n}\right)^2\frac{b}{n} = \frac{b^3}{n^3}\sum_{k=1}^n k^2 = \frac{b^3}{n^3}\cdot\frac{n(n+1)(2n+1)}{6}\).</li>
+        <li>\(= \frac{b^3}{6}\left(1 + \frac1n\right)\left(2 + \frac1n\right) \to \frac{b^3}{6}\cdot 2 = \frac{b^3}{3}\) (\(n \to \infty\)).</li>
+        <li>\(b = 2\)이면 \(8/3\). 예제 7.2의 참값이다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 7.4 (일차 함수)</strong> \(\displaystyle\int_1^3 (2x + 1)\,dx\)를 정의로 구하고, 사다리꼴 넓이로 검산하라.
+      <ol>
+        <li>\(\Delta x = 2/n\), \(c_k = 1 + 2k/n\), \(f(c_k) = 3 + 4k/n\).</li>
+        <li>\(R_n = \sum_{k=1}^n \left(3 + \frac{4k}{n}\right)\frac2n = \frac{6}{n}\cdot n + \frac{8}{n^2}\cdot\frac{n(n+1)}{2} = 6 + 4\left(1 + \frac1n\right) \to 10\).</li>
+        <li>검산: \(x = 1\)에서 높이 3, \(x = 3\)에서 높이 7, 폭 2인 사다리꼴이므로 \(\frac{(3 + 7)\cdot 2}{2} = 10\). ✓</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="signed-area">
+    <h2>부호 있는 넓이와 정적분의 성질</h2>
+    <div class="problem"><strong>후진한 거리는 빼야 한다</strong>
+      <p>차가 앞으로 30 m 가다가 후진으로 10 m 돌아왔습니다. 속도 그래프에서 후진하는 동안 \(v \lt 0\)이고, 리만 합에서 그 직사각형은 음수로 더해집니다. 그러면 정적분은 "총 이동 거리 40 m"가 아니라 "출발점에서 얼마나 떨어졌는가", 즉 변위 20 m를 줍니다. 넓이가 음수가 된다는 것은 무슨 뜻일까요?</p></div>
+    <p>정의 7.4에서 \(f(c_k) \lt 0\)이면 \(f(c_k)\Delta x_k\)는 음수입니다. 그래서 정적분은 <span class="term">부호 있는 넓이</span><span class="en">(signed area)</span>입니다.</p>
+    <div class="formula">$$\int_a^b f(x)\,dx = (\text{x축 위쪽 넓이}) - (\text{x축 아래쪽 넓이})$$
+      <div class="where">기하학적인 넓이(늘 양수)를 원하면 \(\int_a^b |f(x)|\,dx\)를 계산한다.</div></div>
+    <p>또 \(a > b\)일 때의 정적분과 \(a = b\)일 때를 다음처럼 약속합니다. 리만 합에서 \(\Delta x = (b - a)/n\)을 그대로 쓰면 저절로 나오는 약속입니다.</p>
+    <div class="formula">$$\int_a^a f(x)\,dx = 0,\qquad \int_b^a f(x)\,dx = -\int_a^b f(x)\,dx.$$</div>
+    <div class="callout deep"><strong>정리 7.7 (정적분의 성질)</strong> \(f, g\)가 관련 구간에서 적분 가능하고 \(c\)가 상수일 때
+      <ol style="margin:4px 0 0">
+        <li>(선형성) \(\int_a^b [\alpha f(x) + \beta g(x)]\,dx = \alpha\int_a^b f(x)\,dx + \beta\int_a^b g(x)\,dx\). 특히 \(\int_a^b c\,dx = c(b - a)\).</li>
+        <li>(구간 가법성) \(\int_a^b f(x)\,dx + \int_b^c f(x)\,dx = \int_a^c f(x)\,dx\). \(a, b, c\)의 크기 순서와 무관하다.</li>
+        <li>(비교) \([a, b]\)에서 \(f(x) \le g(x)\)이면 \(\int_a^b f \le \int_a^b g\). 특히 \(f \ge 0\)이면 \(\int_a^b f \ge 0\).</li>
+        <li>(어림) \([a, b]\)에서 \(m \le f(x) \le M\)이면 \(m(b - a) \le \int_a^b f(x)\,dx \le M(b - a)\).</li>
+        <li>(삼각 부등식) \(\left|\int_a^b f(x)\,dx\right| \le \int_a^b |f(x)|\,dx\).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명.</b> 1과 3은 리만 합에서 성립하는 같은 성질(시그마의 선형성, 항별 부등식)을 극한으로 보낸 것이다. 2는 \(a \lt b \lt c\)일 때 \(b\)를 분점에 넣은 분할을 쓰면 리만 합이 두 부분으로 나뉘고, 다른 순서는 방향을 바꾸는 약속으로 따라 나온다. 4는 3을 상수 함수 \(m\), \(M\)과 비교한 것이고, 5는 \(-|f| \le f \le |f|\)에 3을 쓴 것이다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="구간 가법성과 비교 성질">
+        <rect x="10" y="10" width="360" height="230" rx="10" class="f-surface"/>
+        <rect x="390" y="10" width="360" height="230" rx="10" class="f-surface"/>
+        <text x="24" y="32" class="t" style="font-weight:700">구간 가법성</text>
+        <line x1="30" y1="190" x2="350" y2="190" class="s-axis"/>
+        <path d="M60 190 L60 130 C120 80 180 150 200 120 L200 190 Z" class="f-acc-soft"/>
+        <path d="M200 190 L200 120 C230 80 290 110 320 90 L320 190 Z" class="f-acc2-soft"/>
+        <path d="M60 130 C120 80 180 150 200 120 C230 80 290 110 320 90" fill="none" class="s-line" style="stroke-width:2.2"/>
+        <text x="60" y="208" text-anchor="middle" class="t-mono">a</text><text x="200" y="208" text-anchor="middle" class="t-mono">b</text><text x="320" y="208" text-anchor="middle" class="t-mono">c</text>
+        <text x="130" y="170" text-anchor="middle" class="t-mono">∫ₐᵇ</text><text x="260" y="170" text-anchor="middle" class="t-mono">∫ᵇᶜ</text>
+        <text x="190" y="230" text-anchor="middle" class="t-dim">∫ₐᵇ f + ∫ᵇᶜ f = ∫ₐᶜ f</text>
+        <text x="404" y="32" class="t" style="font-weight:700">비교와 어림</text>
+        <line x1="410" y1="190" x2="730" y2="190" class="s-axis"/>
+        <rect x="440" y="70" width="260" height="120" fill="none" style="stroke:var(--accent-2);stroke-dasharray:5 4;stroke-width:1.4"/>
+        <rect x="440" y="150" width="260" height="40" class="f-acc2-soft"/>
+        <path d="M440 120 C500 70 560 150 620 110 S690 80 700 95" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+        <text x="708" y="74" class="t-mono">M</text><text x="708" y="154" class="t-mono">m</text>
+        <text x="570" y="180" text-anchor="middle" class="t-dim">m(b − a)</text>
+        <text x="570" y="230" text-anchor="middle" class="t-dim">m(b − a) ≤ ∫ₐᵇ f ≤ M(b − a)</text>
+      </svg>
+      <figcaption><b>그림 7-4.</b> 왼쪽: [a, b]의 넓이와 [b, c]의 넓이를 이으면 [a, c]의 넓이다. 오른쪽: 곡선이 높이 m과 M 사이에 있으면 넓이는 낮은 직사각형과 높은 직사각형 사이에 있다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 7.5 (성질로 계산하기)</strong> \(\int_0^3 f(x)\,dx = 5\), \(\int_0^1 f(x)\,dx = 2\)일 때 다음을 구하라. (가) \(\int_1^3 f\), (나) \(\int_3^1 f\), (다) \(\int_1^3 (2f(x) - 1)\,dx\).
+      <ol>
+        <li>(가) 구간 가법성: \(\int_0^1 f + \int_1^3 f = \int_0^3 f\)이므로 \(\int_1^3 f = 5 - 2 = 3\).</li>
+        <li>(나) 방향을 바꾸면 부호가 바뀐다: \(-3\).</li>
+        <li>(다) 선형성: \(2\cdot 3 - \int_1^3 1\,dx = 6 - 2 = 4\).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 7.6 (기하로 읽는 정적분)</strong> (가) \(\int_{-1}^2 x\,dx\), (나) \(\int_{-2}^2 \sqrt{4 - x^2}\,dx\), (다) \(\int_0^1 e^{-x^2}\,dx\)의 범위를 구하라.
+      <ol>
+        <li>(가) \([0, 2]\)의 삼각형 넓이 \(\frac12\cdot 2\cdot 2 = 2\)에서 \([-1, 0]\)의 삼각형 넓이 \(\frac12\)를 뺀다: \(1.5\).</li>
+        <li>(나) \(y = \sqrt{4 - x^2}\)는 반지름 2인 원의 위쪽 반이므로 넓이 \(\frac12\pi\cdot 2^2 = 2\pi \approx 6.283\).</li>
+        <li>(다) \(e^{-x^2}\)은 어떤 기본 함수의 도함수도 아니라서 8장의 방법으로도 정확한 값을 식으로 쓸 수 없다. 대신 비교한다. \(e^t \ge 1 + t\)에 \(t = -x^2\)을 넣으면 \(e^{-x^2} \ge 1 - x^2\)이고, \(e^{-x^2} \le 1\)이므로 \(\int_0^1 (1 - x^2)\,dx \le \int_0^1 e^{-x^2}\,dx \le 1\). 왼쪽은 예제 7.3으로 \(1 - \frac13 = \frac23\). 수치 계산으로 구한 값은 약 0.7468이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-in-signed">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>곡선을 끌어 부호 있는 넓이 만들기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-signed"></canvas></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="in-g-bound"> 최솟값·최댓값 상자 (어림)</label>
+          <label class="check"><input type="checkbox" id="in-g-abs"> |f| 겹쳐 보기</label>
+          <div class="btn-row"><button class="btn" id="in-g-swap">a ↔ b 바꾸기</button><button class="btn" id="in-g-sine">사인 한 주기</button><button class="btn" id="in-g-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫ₐᵇ f dx</span><span class="v" id="in-g-int">—</span></div>
+        <div class="stat"><span class="k">위쪽 넓이</span><span class="v" id="in-g-pos">—</span></div>
+        <div class="stat"><span class="k">아래쪽 넓이</span><span class="v" id="in-g-neg">—</span></div>
+        <div class="stat"><span class="k">∫ₐᵇ |f| dx</span><span class="v" id="in-g-abs-v">—</span></div>
+        <div class="stat"><span class="k">m(b − a) ~ M(b − a)</span><span class="v" id="in-g-mm">—</span></div>
+      </div>
+      <div class="in-msg" id="in-g-msg"></div>
+      <div class="sim-note">해볼 것: ① 곡선 위의 점 7개를 위아래로 끌어 위쪽 넓이와 아래쪽 넓이가 같아지게(∫ = 0) 만들어 보세요. ② 'a ↔ b 바꾸기'로 적분 방향을 뒤집으면 부호만 바뀝니다. ③ 어림 상자를 켜고 ∫ 값이 늘 m(b − a)와 M(b − a) 사이에 있는지 확인하세요. ④ |f|를 켜면 아래쪽 넓이가 위로 접혀 ∫|f| ≥ |∫f|가 보입니다. 모델: 점 7개를 지나는 3차 에르미트 스플라인. 적분은 촘촘한 심프슨 공식으로 계산합니다.</div>
+    </div>
+    <div class="callout tip"><strong>대칭으로 계산 줄이기</strong> \(f\)가 기함수(\(f(-x) = -f(x)\))이면 \(\int_{-a}^a f(x)\,dx = 0\)이고, 우함수(\(f(-x) = f(x)\))이면 \(\int_{-a}^a f(x)\,dx = 2\int_0^a f(x)\,dx\)입니다. 그래프가 원점 대칭이면 위쪽과 아래쪽 넓이가 상쇄되고, y축 대칭이면 양쪽 넓이가 같기 때문입니다. 예: \(\int_{-3}^3 (x^3 + 2)\,dx = 0 + 2\cdot 6 = 12\).</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="average">
+    <h2>정적분의 평균값</h2>
+    <div class="problem"><strong>하루 평균 기온은 무엇의 평균인가</strong>
+      <p>기온을 한 시간마다 재면 24개 값의 산술 평균을 낼 수 있습니다. 10분마다 재면 144개, 1초마다 재면 86400개. 측정을 무한히 촘촘하게 하면 이 평균은 무엇으로 갈까요? 연속적으로 변하는 양의 "평균"을 정의하고 싶습니다.</p></div>
+    <p>\([a, b]\)를 \(n\)등분해 각 점의 값 \(f(c_1), \dots, f(c_n)\)을 평균하면 \(\frac1n\sum f(c_k)\)입니다. \(\frac1n = \frac{\Delta x}{b - a}\)이므로 이것은 \(\frac{1}{b - a}\sum f(c_k)\Delta x\), 즉 리만 합을 구간 길이로 나눈 것입니다. \(n \to \infty\)로 보내면 다음 정의가 자연스럽습니다.</p>
+    <div class="callout deep"><strong>정의 7.8 (함수의 평균값)</strong> \([a, b]\)에서 적분 가능한 \(f\)의 <span class="term">평균값</span><span class="en">(average value)</span>은
+      <div class="formula">$$f_{\text{avg}} = \frac{1}{b - a}\int_a^b f(x)\,dx$$</div>
+      이다. 기하학적으로 \(f_{\text{avg}}\)는 같은 구간 위에서 곡선 아래와 <b>넓이가 같은 직사각형의 높이</b>다. 곡선을 물이라 보면 물을 평평하게 고른 수면의 높이다.</div>
+    <div class="callout deep"><strong>정리 7.9 (적분의 평균값 정리)</strong> \(f\)가 \([a, b]\)에서 연속이면 \([a, b]\) 안의 어떤 \(c\)에서
+      <div class="formula">$$f(c) = \frac{1}{b - a}\int_a^b f(x)\,dx,\qquad\text{즉}\qquad \int_a^b f(x)\,dx = f(c)\,(b - a).$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> 닫힌 구간의 연속 함수는 최솟값 \(m\)과 최댓값 \(M\)을 가진다(최대·최소 정리, <a href="continuity.html">2장</a>). 정리 7.7의 어림 성질에서 \(m \le f_{\text{avg}} \le M\). \(f\)는 \(m\)과 \(M\)을 모두 값으로 가지는 연속 함수이므로 중간값 정리에 의해 그 사이의 값 \(f_{\text{avg}}\)도 어떤 \(c\)에서 가진다. ∎</p></div>
+    <p>이 정리는 다음 장에서 미적분의 기본 정리를 증명하는 열쇠가 됩니다. 아주 좁은 구간 \([x, x + h]\)에서는 \(\int_x^{x+h} f = f(c)\,h\)이고 \(c\)가 \(x\)에 갇히기 때문입니다. 불연속 함수에서는 성립하지 않을 수 있습니다. \([0, 2]\)에서 \(x \lt 1\)이면 0, \(x \ge 1\)이면 2인 계단 함수의 평균은 1이지만 \(f(c) = 1\)인 \(c\)는 없습니다.</p>
+    <div class="callout"><strong>예제 7.7 (평균값과 c 찾기)</strong> \(f(x) = x^2\)의 \([0, 2]\)에서의 평균값과 정리 7.9의 \(c\)를 구하라.
+      <ol>
+        <li>예제 7.3에서 \(\int_0^2 x^2\,dx = 8/3\). 평균값 \(f_{\text{avg}} = \frac{1}{2}\cdot\frac83 = \frac43 \approx 1.333\).</li>
+        <li>\(c^2 = 4/3\), \(c \in [0, 2]\)이므로 \(c = 2/\sqrt3 \approx 1.155\). 구간의 가운데(1)보다 오른쪽이다. 함수가 오른쪽에서 빠르게 커지기 때문이다.</li>
+        <li>주의: \(f\)의 평균은 양 끝값의 평균 \((0 + 4)/2 = 2\)가 아니다. 그것은 직선일 때만 맞다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-in-average">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>물을 고르듯이: 평균 높이와 c</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-avg"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="in-a-pre">
+            <option value="sq">x² on [0, 2] (예제 7.7)</option>
+            <option value="sin">sin x on [0, π]</option>
+            <option value="sqrt">√x on [0, 4]</option>
+            <option value="wave">1.4 + sin 1.6x on [0, 4]</option>
+          </select></label>
+          <label class="ctrl"><span>평평하게 고르기 s <output id="in-a-s-out"></output></span><input type="range" id="in-a-s" min="0" max="1" step="0.01" value="0"></label>
+          <label class="check"><input type="checkbox" id="in-a-show"> 평균 높이와 c 보기</label>
+          <div class="btn-row"><button class="btn primary" id="in-a-play">▶ 물 고르기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">내가 고른 높이 h</span><span class="v" id="in-a-h">—</span></div>
+        <div class="stat"><span class="k">h(b − a)</span><span class="v" id="in-a-rect">—</span></div>
+        <div class="stat"><span class="k">∫ₐᵇ f dx</span><span class="v" id="in-a-int">—</span></div>
+        <div class="stat"><span class="k">f<sub>avg</sub> / c</span><span class="v" id="in-a-avg">—</span></div>
+      </div>
+      <div class="in-msg" id="in-a-msg"></div>
+      <div class="sim-note">해볼 것: ① 오른쪽의 분홍 점을 위아래로 끌어 직사각형 넓이 h(b − a)가 곡선 아래 넓이와 같아지는 높이를 찾아보세요. ② s를 0 → 1로 밀면 곡선이 넓이를 지키며 평평해집니다. 마지막 높이가 평균값입니다. ③ '1.4 + sin 1.6x'에서는 f(c) = f<sub>avg</sub>인 c가 여러 개입니다. 정리 7.9는 "적어도 하나"만 보장합니다. 모델: 중간 모양은 (1 − s)f(x) + s·f<sub>avg</sub>로, 넓이가 s와 무관하게 같습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="numerical">
+    <h2>수치 적분 맛보기: 오차는 얼마나 빨리 줄어드나</h2>
+    <div class="problem"><strong>백만 개를 더해야 하나, 삼백 개면 되나</strong>
+      <p>\(\int_0^1 x^2\,dx = 1/3\)을 오차 \(10^{-6}\) 안으로 근사하려 합니다. 왼쪽 끝점 규칙이면 직사각형이 약 50만 개 필요하고, 중점 규칙이면 289개로 충분합니다. 같은 "직사각형 넓이의 합"인데 왜 이렇게 차이가 날까요?</p></div>
+    <p>8장의 기본 정리 덕분에 많은 정적분을 식으로 계산할 수 있지만, \(\int_0^1 e^{-x^2}\,dx\)처럼 역도함수를 기본 함수로 쓸 수 없는 경우나, 함수가 측정 데이터로만 주어진 경우에는 리만 합 같은 <span class="term">수치 적분</span><span class="en">(numerical integration)</span>이 유일한 방법입니다. 이때 중요한 것은 <b>\(n\)을 두 배로 할 때 오차가 몇 분의 일로 줄어드는가</b>입니다.</p>
+    <div class="callout deep"><strong>정리 7.10 (끝점 규칙과 중점 규칙의 오차 한계)</strong> \(E_L = \int_a^b f - L_n\), \(E_M = \int_a^b f - M_n\)이라 하자.
+      <ol style="margin:4px 0 0">
+        <li>\([a, b]\)에서 \(|f'(x)| \le K_1\)이면 \(\displaystyle |E_L| \le \frac{K_1(b - a)^2}{2n}\). (오른쪽 끝점도 같다.)</li>
+        <li>\([a, b]\)에서 \(|f''(x)| \le K_2\)이면 \(\displaystyle |E_M| \le \frac{K_2(b - a)^3}{24n^2}\).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>1의 증명.</b> 소구간 \([x_{k-1}, x_k]\)에서 평균값 정리(<a href="mean-value.html">5장</a>)로 \(|f(x) - f(x_{k-1})| \le K_1(x - x_{k-1})\). 이것을 소구간에서 적분하면 그 칸의 오차는 \(K_1\Delta x^2/2\) 이하이고, \(n\)칸을 더하면 \(nK_1\Delta x^2/2 = K_1(b - a)^2/(2n)\). <b>2의 핵심 아이디어.</b> 중점 \(m_k\)에서 접선을 그으면, 접선 아래 넓이는 직사각형 넓이와 정확히 같다(접선이 중점 양쪽에서 같은 양만큼 오르내리므로). 그래서 오차는 곡선과 접선의 차이, 즉 2차 항 \(\frac12 f''(\xi)(x - m_k)^2\)에서만 나오고 이를 적분하면 \(\Delta x^3/24\)에 비례한다. ∎</p></div>
+    <p>\(1/n\)과 \(1/n^2\)의 차이는 큽니다. \(n\)을 10배로 늘리면 끝점 규칙의 오차는 1/10로, 중점 규칙의 오차는 1/100로 줄어듭니다. 이런 오차의 거동을 <span class="term">오차 차수</span><span class="en">(order of accuracy)</span>라 하고, 끝점 규칙은 1차, 중점 규칙은 2차라고 합니다. 로그–로그 그래프에서 오차 대 \(n\)은 기울기가 −1, −2인 직선으로 보입니다.</p>
+    <div class="callout"><strong>예제 7.8 (오차를 직접 재기)</strong> \(\int_0^1 x^2\,dx = 1/3\)을 \(n = 10\)과 \(n = 20\)의 왼쪽 끝점·중점 규칙으로 근사하고 오차를 비교하라.
+      <ol>
+        <li>\(L_n = \frac{1}{n^3}\sum_{k=0}^{n-1}k^2 = \frac{(n-1)n(2n-1)}{6n^3}\). \(n = 10\): \(\frac{9\cdot 10\cdot 19}{6000} = 0.285\), 오차 \(E_L = 1/3 - 0.285 \approx 0.04833\).</li>
+        <li>정리하면 \(E_L = \frac{1}{2n} - \frac{1}{6n^2}\). \(n = 20\): \(0.025 - 0.000417 \approx 0.02458\). 비율 \(0.04833/0.02458 \approx 1.97\), 거의 절반.</li>
+        <li>\(M_n = \frac{1}{n^3}\sum_{k=1}^n (k - \tfrac12)^2 = \frac{1}{n^3}\left(\sum k^2 - \sum k + \frac n4\right)\). \(n = 10\): \(\frac{385 - 55 + 2.5}{1000} = 0.3325\), 오차 \(E_M = 1/3 - 0.3325 = 1/1200 \approx 0.000833\).</li>
+        <li>\(f'' = 2\)가 상수라 정리 7.10의 한계가 등호로 성립한다: \(E_M = \frac{2\cdot 1^3}{24n^2} = \frac{1}{12n^2}\). \(n = 20\)이면 \(1/4800 \approx 0.000208\), 정확히 1/4.</li>
+        <li>\(10^{-6}\) 안으로 하려면 \(\frac{1}{12n^2} \le 10^{-6}\)에서 \(n \ge 289\)이고, 왼쪽 끝점 규칙은 \(\frac{1}{2n} \approx 10^{-6}\)에서 \(n \approx 500{,}000\)이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-in-error">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차의 로그–로그 그래프: 기울기가 차수다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="in-cv-err"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>적분</span><select id="in-e-pre">
+            <option value="sq">∫₀¹ x² dx = 1/3</option>
+            <option value="exp">∫₀¹ eˣ dx = e − 1</option>
+            <option value="sin">∫₀^π sin x dx = 2</option>
+            <option value="sqrt">∫₀¹ √x dx = 2/3</option>
+          </select></label>
+          <label class="ctrl"><span>표시할 n <output id="in-e-n-out"></output></span><input type="range" id="in-e-n"></label>
+          <label class="check"><input type="checkbox" id="in-e-ref" checked> 기울기 −1, −2 기준선</label>
+        </div>
+      </div>
+      <div class="in-legend"><span><i style="background:var(--accent)"></i>왼쪽 끝점</span><span><i style="background:var(--warn)"></i>오른쪽 끝점</span><span><i style="background:var(--accent-2)"></i>중점</span><span><i style="background:var(--ok)"></i>사다리꼴 (L + R)/2</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">|E<sub>L</sub>|</span><span class="v" id="in-e-L">—</span></div>
+        <div class="stat"><span class="k">|E<sub>M</sub>|</span><span class="v" id="in-e-M">—</span></div>
+        <div class="stat"><span class="k">|E<sub>T</sub>|</span><span class="v" id="in-e-T">—</span></div>
+        <div class="stat"><span class="k">n → 2n 일 때 줄어드는 배율 (L / M)</span><span class="v" id="in-e-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x²에서 왼쪽 끝점(분홍)은 기울기 −1, 중점(파랑)은 기울기 −2 기준선과 나란한 것을 확인하세요. 배율은 2와 4에 가깝습니다. ② sin x on [0, π]에서는 f(0) = f(π) = 0이라 왼쪽·오른쪽·사다리꼴이 같은 값이 되어 겹치고, 2차로 줄어듭니다. 양 끝의 오차가 상쇄되는 특별한 경우입니다. ③ √x는 x = 0에서 f′이 무한대라 정리 7.10의 가정이 깨지고, 중점 규칙도 2차보다 느려집니다(약 1.5차). 모델: n = 1~1024에서 각 규칙의 오차를 정확한 참값과 비교합니다.</div>
+    </div>
+    <p>사다리꼴 공식은 왼쪽과 오른쪽 합의 평균이고, 중점과 마찬가지로 2차입니다. 두 방법의 오차가 부호가 반대라는 점을 이용해 섞으면 4차인 <b>심프슨 공식</b>이 나옵니다. 사다리꼴·심프슨 공식과 그 오차는 <a href="techniques.html">9장 적분 기법</a>에서 자세히 다루고, 컴퓨터가 수를 저장하는 방식 때문에 \(n\)을 한없이 키울 수는 없다는 점은 MathBook의 <a href="../../foundations/chapters/numerics.html">수치 계산</a>을 참고하세요.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>정적분은 "변화율 × 짧은 시간(또는 길이)"을 쌓는 모든 곳에 있습니다. 공학에서 만나는 거의 모든 '총량'이 정적분입니다.</p>
+    <div class="callout"><strong>배터리 잔량: 전류를 쌓아 전하를 센다</strong> 스마트폰 배터리 관리 칩은 전류 \(i(t)\)를 짧은 간격으로 측정해 \(Q = \int i(t)\,dt\)를 더해 갑니다(쿨롱 카운팅). 3000 mAh 배터리에서 평균 0.5 A를 쓴다면 6시간이면 바닥납니다. 측정 간격이 너무 길거나 전류 센서에 작은 치우침(오프셋)이 있으면 그 오차도 계속 쌓이므로, 실제 장치는 전압으로 잔량을 주기적으로 보정합니다. 리만 합의 오차가 시간에 비례해 쌓인다는 이 장의 관찰이 그대로 나타나는 예입니다.</div>
+    <div class="uses">
+      <a href="fundamental.html"><small>8장 · 기본 정리</small>미적분의 기본 정리<br><span>리만 합의 극한을 역도함수의 차 F(b) − F(a)로 계산한다.</span></a>
+      <a href="techniques.html"><small>9장 · 적분 기법</small>사다리꼴·심프슨 공식, 이상 적분<br><span>더 빠른 수치 적분과, 무한 구간·유계가 아닌 함수의 적분.</span></a>
+      <a href="applications.html"><small>10장 · 적분의 응용</small>넓이·부피·일·질량 중심<br><span>"작은 조각 × 개수"를 세는 모든 문제가 정적분이 된다.</span></a>
+      <a href="multiple.html"><small>15장 · 중적분</small>기둥의 리만 합<br><span>평면 영역 위 부피를 직사각형 기둥의 합으로 정의한다.</span></a>
+      <a href="../../foundations/chapters/limits.html#riemann"><small>MATHBOOK</small>무한히 잘게 쪼갠 직사각형의 합<br><span>리만 합을 처음 만나는 입문 데모.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>확률 밀도 함수<br><span>연속 확률 변수의 확률은 밀도 곡선 아래 넓이, 기댓값은 ∫ x f(x) dx.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>수치 계산과 오차<br><span>부동소수점 반올림 오차와 이산화 오차의 줄다리기.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>속도–시간 그래프 아래 넓이는 이동 거리다. 변화율 그래프 아래 넓이는 그동안 쌓인 양이다.</li>
+      <li>시그마 표기 \(\sum_{k=1}^n a_k\)는 선형이다. \(\sum k = \frac{n(n+1)}{2}\), \(\sum k^2 = \frac{n(n+1)(2n+1)}{6}\), \(\sum k^3 = \left(\frac{n(n+1)}{2}\right)^2\).</li>
+      <li>리만 합 \(\sum f(c_k)\Delta x_k\)는 직사각형 넓이의 합이다. 표본점에 따라 왼쪽·오른쪽·중점 합이 있고, 증가 함수에서는 \(L_n \le \int \le R_n\).</li>
+      <li>정적분 \(\int_a^b f(x)\,dx\)는 \(\|P\| \to 0\)일 때 모든 분할·표본점에 대해 리만 합이 다가가는 하나의 극한이다. 연속 함수, 단조 함수, 불연속점이 유한 개인 유계 함수는 적분 가능하고, 디리클레 함수는 그렇지 않다(상합 − 하합이 줄지 않는다).</li>
+      <li>정적분은 부호 있는 넓이다. 선형성, 구간 가법성, 비교, 어림 \(m(b - a) \le \int \le M(b - a)\), \(\int_b^a = -\int_a^b\)가 성립한다.</li>
+      <li>평균값 \(f_{\text{avg}} = \frac{1}{b-a}\int_a^b f\)는 넓이가 같은 직사각형의 높이이고, 연속 함수는 어떤 \(c\)에서 \(f(c) = f_{\text{avg}}\)다.</li>
+      <li>끝점 규칙의 오차는 \(1/n\)(1차), 중점 규칙은 \(1/n^2\)(2차)로 준다. 로그–로그 그래프의 기울기가 차수다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(f(x) = x\)를 \([0, 2]\)에서 \(n = 4\)인 오른쪽 끝점 리만 합으로 근사한 값은?</p><div class="opts">
+        <button class="opt">1.5</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>2.5</button>
+        <button class="opt">5</button>
+      </div><div class="quiz-exp">\(\Delta x = 0.5\), 오른쪽 끝점 0.5, 1, 1.5, 2에서 값의 합 5에 0.5를 곱해 2.5. 참값은 삼각형 넓이 2이고, 증가 함수라 오른쪽 합이 넘친다. 5는 \(\Delta x\)를 곱하지 않은 값이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\displaystyle\sum_{k=1}^{20}(2k - 1)\)의 값은?</p><div class="opts">
+        <button class="opt">380</button>
+        <button class="opt" data-correct>400</button>
+        <button class="opt">420</button>
+        <button class="opt">441</button>
+      </div><div class="quiz-exp">\(2\sum k - \sum 1 = 2\cdot\frac{20\cdot 21}{2} - 20 = 420 - 20 = 400 = 20^2\). 처음 \(n\)개 홀수의 합은 늘 \(n^2\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(f\)가 \([a, b]\)에서 <b>감소</b> 함수일 때 반드시 참인 것은?</p><div class="opts">
+        <button class="opt">\(L_n \le \int_a^b f \le R_n\)</button>
+        <button class="opt" data-correct>\(R_n \le \int_a^b f \le L_n\)</button>
+        <button class="opt">\(M_n = \int_a^b f\)</button>
+        <button class="opt">\(L_n = R_n\)</button>
+      </div><div class="quiz-exp">감소 함수는 각 소구간에서 왼쪽 끝 값이 최대, 오른쪽 끝 값이 최소다. 따라서 왼쪽 합은 상합, 오른쪽 합은 하합이 되어 참값을 위아래에서 가둔다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(\int_0^5 f(x)\,dx = 7\), \(\int_0^2 f(x)\,dx = 10\)일 때 \(\int_2^5 f(x)\,dx\)는?</p><div class="opts">
+        <button class="opt">17</button>
+        <button class="opt">3</button>
+        <button class="opt" data-correct>−3</button>
+        <button class="opt">알 수 없다</button>
+      </div><div class="quiz-exp">구간 가법성 \(\int_0^2 f + \int_2^5 f = \int_0^5 f\)에서 \(\int_2^5 f = 7 - 10 = -3\). \([2, 5]\)에서는 아래쪽 넓이가 더 크다는 뜻이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\displaystyle\int_{-3}^{3}(x^3 + 2)\,dx\)의 값은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">6</button>
+        <button class="opt" data-correct>12</button>
+        <button class="opt">54</button>
+      </div><div class="quiz-exp">\(x^3\)은 기함수라 \([-3, 3]\)에서 위아래 넓이가 상쇄되어 0이다. 상수 2의 적분은 \(2\cdot 6 = 12\). 선형성으로 합치면 12.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(f(x) = 2x + 1\)의 \([0, 4]\)에서의 평균값과, \(f(c) = f_{\text{avg}}\)인 \(c\)는?</p><div class="opts">
+        <button class="opt">평균 4.5, c = 1.75</button>
+        <button class="opt" data-correct>평균 5, c = 2</button>
+        <button class="opt">평균 20, c = 9.5</button>
+        <button class="opt">평균 5, c가 없다</button>
+      </div><div class="quiz-exp">\(\int_0^4 (2x + 1)\,dx\)는 높이 1과 9, 폭 4인 사다리꼴이므로 20. 평균은 \(20/4 = 5\), \(2c + 1 = 5\)에서 \(c = 2\). 직선은 평균값이 구간의 가운데에서 나온다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 매끄러운 함수의 적분을 중점 규칙으로 \(n = 10\)에서 계산했더니 오차가 0.004였다. \(n = 30\)이면 오차는 대략?</p><div class="opts">
+        <button class="opt">0.0013</button>
+        <button class="opt" data-correct>0.00044</button>
+        <button class="opt">0.00015</button>
+        <button class="opt">0.004 (변하지 않는다)</button>
+      </div><div class="quiz-exp">중점 규칙의 오차는 \(1/n^2\)에 비례하므로 \(n\)이 3배면 오차는 1/9: \(0.004/9 \approx 0.00044\). 0.0013은 1차(1/3배) 규칙일 때의 값이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \([0, 1]\)에서 (리만의 의미로) 적분 가능하지 <b>않은</b> 함수는?</p><div class="opts">
+        <button class="opt">\(x = 1/2\)에서만 점프하는 계단 함수</button>
+        <button class="opt">\(\sin(1/x)\) (\(x \ne 0\)), \(f(0) = 0\)</button>
+        <button class="opt" data-correct>유리수에서 1, 무리수에서 0인 함수</button>
+        <button class="opt">\(\sqrt{x}\)</button>
+      </div><div class="quiz-exp">디리클레 함수는 어느 소구간에서나 sup = 1, inf = 0이라 상합 − 하합이 늘 1이다. 계단 함수와 \(\sin(1/x)\)는 유계이고 불연속점이 하나뿐이라 적분 가능하고, \(\sqrt x\)는 연속이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const IN = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sig(v, d = 3) { return isFinite(v) ? MB.fmt(v, d).replace("-", "−") : "—"; },
+  simpson(f, a, b, n = 800) {
+    if (a === b) return 0;
+    n += n % 2; const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2);
+    return (s * h) / 3;
+  },
+  /** 같은 폭 리만 합. rule: left | right | mid | 함수(k)→[0,1] 위치 */
+  riemann(f, a, b, n, rule) {
+    const h = (b - a) / n; let s = 0;
+    for (let k = 0; k < n; k++) s += f(a + (k + IN.tag(rule, k)) * h);
+    return s * h;
+  },
+  tag(rule, k) { return rule === "left" ? 0 : rule === "right" ? 1 : rule === "mid" ? 0.5 : rule(k); },
+  /** 균일 간격 점을 지나는 3차 에르미트 스플라인 y(x) */
+  spline(xs, ys) {
+    const n = xs.length, h = xs[1] - xs[0];
+    const m = ys.map((y, i) => (i === 0 ? (ys[1] - ys[0]) / h : i === n - 1 ? (ys[n - 1] - ys[n - 2]) / h : (ys[i + 1] - ys[i - 1]) / (2 * h)));
+    return (x) => {
+      if (x <= xs[0]) return ys[0];
+      if (x >= xs[n - 1]) return ys[n - 1];
+      const i = Math.min(n - 2, Math.floor((x - xs[0]) / h)), t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+      return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+    };
+  },
+  /** 직사각형 하나(x0~x1, 높이 y)를 칠한다. 음수면 다른 색 */
+  bar(P, x0, x1, y, o = {}) {
+    const C = P.P, neg = y < 0;
+    const col = o.color || (neg ? C.accent2 : C.accent);
+    P.poly([[x0, 0], [x1, 0], [x1, y], [x0, y]], { fill: col, color: col, alpha: o.alpha != null ? o.alpha : 0.28, width: 1 });
+    if (o.edge !== false) P.poly([[x0, 0], [x1, 0], [x1, y], [x0, y]], { color: col, width: o.width || 1.2, alpha: 0.9 });
+  },
+  /** y = f(x) 와 x축 사이를 [a,b]에서 칠한다 (양수/음수 색 구분) */
+  area(P, f, a, b, o = {}) {
+    if (a > b) [a, b] = [b, a];
+    const N = o.n || 240, C = P.P, pts = [];
+    for (let i = 0; i <= N; i++) { const x = a + ((b - a) * i) / N; pts.push([x, f(x)]); }
+    const ctx = P.ctx;
+    [[1, o.pos || C.accent], [-1, o.neg || C.accent2]].forEach(([sg, col]) => {
+      ctx.save(); ctx.globalAlpha = o.alpha != null ? o.alpha : 0.22; ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(P.X(a), P.Y(0));
+      pts.forEach(([x, y]) => ctx.lineTo(P.X(x), P.Y(sg > 0 ? Math.max(0, y) : Math.min(0, y))));
+      ctx.lineTo(P.X(b), P.Y(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+    });
+  },
+};
+
+/* ================================================================ 1. 속도 → 거리 */
+(function () {
+  const PRE = {
+    cruise: (t) => 20 * MB.smooth(0, 3, t) * (1 - MB.smooth(7, 10, t)),
+    stopgo: (t) => 10 * (1 - Math.cos((2 * Math.PI * t) / 5)),
+    const: () => 15,
+  };
+  let v = PRE.cruise, dt = 1, tNow = 5, playing = false, total = IN.simpson(v, 0, 10, 2000);
+  const est = (t) => { let s = 0; for (let tk = 0; tk < t - 1e-9; tk += dt) s += v(tk) * (Math.min(tk + dt, t) - tk); return s; };
+  const cv = MB.canvas("#in-cv-vel", (ctx, w, h) => {
+    const C = MB.palette();
+    const box = { x: 48, y: 14, w: w - 48 - 14, h: Math.max(120, h - 14 - 130) };
+    const curve = []; for (let i = 0; i <= 300; i++) { const t = (i / 300) * 10; curve.push([t, v(t)]); }
+    const ch = MB.chart(ctx, box, { x: [0, 10], y: [0, 25], xLabel: "시간 t (s)", yLabel: "v (m/s)", series: [] });
+    // 실제 넓이 (0 ~ tNow)
+    ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.moveTo(ch.X(0), ch.Y(0));
+    for (let i = 0; i <= 200; i++) { const t = (i / 200) * tNow; ctx.lineTo(ch.X(t), ch.Y(v(t))); }
+    ctx.lineTo(ch.X(tNow), ch.Y(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+    // 추정 직사각형
+    ctx.save(); ctx.strokeStyle = C.accent; ctx.lineWidth = dt < 0.3 ? 0.6 : 1.3;
+    for (let tk = 0; tk < tNow - 1e-9; tk += dt) {
+      const x0 = ch.X(tk), x1 = ch.X(Math.min(tk + dt, tNow)), y = ch.Y(v(tk)), y0 = ch.Y(0);
+      ctx.globalAlpha = 0.25; ctx.fillStyle = C.accent; ctx.fillRect(x0, y, x1 - x0, y0 - y);
+      ctx.globalAlpha = 0.9; ctx.strokeRect(x0, y, x1 - x0, y0 - y);
+    }
+    ctx.restore();
+    // 곡선
+    ctx.save(); ctx.strokeStyle = C.accent2; ctx.lineWidth = 2.4; ctx.beginPath();
+    curve.forEach(([t, y], i) => (i ? ctx.lineTo(ch.X(t), ch.Y(y)) : ctx.moveTo(ch.X(t), ch.Y(y)))); ctx.stroke();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.dim; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ch.X(tNow), box.y); ctx.lineTo(ch.X(tNow), box.y + box.h); ctx.stroke(); ctx.restore();
+    // 도로
+    const e = est(tNow), tr = IN.simpson(v, 0, tNow, 1000), Dmax = Math.max(total, est(10)) * 1.05 || 1;
+    const rx0 = box.x, rx1 = box.x + box.w, ry = h - 44, RX = (d) => rx0 + (d / Dmax) * (rx1 - rx0);
+    ctx.save();
+    ctx.fillStyle = C.elev; ctx.fillRect(rx0, ry - 18, rx1 - rx0, 36);
+    ctx.strokeStyle = C.border; ctx.strokeRect(rx0, ry - 18, rx1 - rx0, 36);
+    ctx.strokeStyle = C.faint; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.moveTo(rx0, ry); ctx.lineTo(rx1, ry); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const step = Dmax > 120 ? 50 : 20;
+    for (let d = 0; d <= Dmax; d += step) { ctx.fillRect(RX(d) - 0.5, ry + 18, 1, 5); ctx.fillText(d + " m", RX(d), ry + 24); }
+    // 실제 차
+    ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(RX(tr) - 22, ry - 14, 22, 12, 3) : ctx.rect(RX(tr) - 22, ry - 14, 22, 12); ctx.fill();
+    // 추정 차
+    ctx.fillStyle = C.accent; ctx.beginPath(); ctx.moveTo(RX(e), ry + 2); ctx.lineTo(RX(e) - 14, ry + 14); ctx.lineTo(RX(e) - 14, ry + 2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    MB.stat("in-v-now", `${IN.num(v(tNow), 2)} m/s`);
+    MB.stat("in-v-est", `${IN.num(e, 2)} m`);
+    MB.stat("in-v-true", `${IN.num(tr, 2)} m`);
+    MB.stat("in-v-err", `${e - tr >= 0 ? "+" : "−"}${IN.num(Math.abs(e - tr), 2)} m`);
+  }, { aspect: 0.66, minHeight: 330, maxHeight: 460 });
+  const tR = MB.range("in-v-t", (x) => x.toFixed(2) + " s", (x) => { tNow = x; cv.redraw(); });
+  MB.seg("in-v-dt", (x) => { dt = Number(x); cv.redraw(); });
+  document.getElementById("in-v-pre").addEventListener("change", (e) => { v = PRE[e.target.value]; total = IN.simpson(v, 0, 10, 2000); cv.redraw(); });
+  const btn = MB.playButton("in-v-play", () => { if (tNow >= 9.99) tNow = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 달리기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-in-velocity"), (d) => {
+    if (!playing) return;
+    tNow = Math.min(10, tNow + d * 1.2); tR.set(tNow, false); cv.redraw();
+    if (tNow >= 10) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 2. 시그마 블록 */
+(function () {
+  let n = 5, p = 1, view = "blocks", pair = true;
+  const sumP = (n, p) => { let s = 0; for (let k = 1; k <= n; k++) s += Math.pow(k, p); return s; };
+  const formula = (n, p) => (p === 1 ? (n * (n + 1)) / 2 : p === 2 ? (n * (n + 1) * (2 * n + 1)) / 6 : Math.pow((n * (n + 1)) / 2, 2));
+  const formTxt = (n, p) => (p === 1 ? `${n}·${n + 1}/2` : p === 2 ? `${n}·${n + 1}·${2 * n + 1}/6` : `(${n}·${n + 1}/2)²`);
+  const cv = MB.canvas("#in-cv-sigma", (ctx, w, h) => {
+    const C = MB.palette(), pad = 30;
+    if (view === "blocks") {
+      const showPair = pair && p === 1, top = showPair ? n + 1 : Math.pow(n, p);
+      const s = Math.min((w - 2 * pad) / n, 44), sy = Math.min((h - 2 * pad) / top, s), ox = (w - s * n) / 2, oy = h - pad;
+      const grid = sy >= 5;
+      for (let k = 1; k <= n; k++) {
+        const hk = Math.pow(k, p), x = ox + (k - 1) * s;
+        ctx.globalAlpha = 0.35; ctx.fillStyle = C.accent; ctx.fillRect(x, oy - hk * sy, s, hk * sy);
+        ctx.globalAlpha = 1; ctx.strokeStyle = C.accent; ctx.lineWidth = 1;
+        if (grid) for (let j = 0; j < hk; j++) ctx.strokeRect(x + 0.5, oy - (j + 1) * sy + 0.5, s - 1, sy - 1);
+        else ctx.strokeRect(x, oy - hk * sy, s, hk * sy);
+        if (showPair) {
+          const hp = n + 1 - k;
+          ctx.globalAlpha = 0.3; ctx.fillStyle = C.accent2; ctx.fillRect(x, oy - (hk + hp) * sy, s, hp * sy);
+          ctx.globalAlpha = 1; ctx.strokeStyle = C.accent2;
+          if (grid) for (let j = 0; j < hp; j++) ctx.strokeRect(x + 0.5, oy - (hk + j + 1) * sy + 0.5, s - 1, sy - 1);
+          else ctx.strokeRect(x, oy - (hk + hp) * sy, s, hp * sy);
+        }
+      }
+      ctx.globalAlpha = 1; ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(showPair ? `두 계단 = ${n} × ${n + 1} 직사각형 = ${n * (n + 1)} 칸` : `Σ k${p === 2 ? "²" : p === 3 ? "³" : ""}: 기둥 k의 높이 = k${p === 2 ? "²" : p === 3 ? "³" : ""}`, w / 2, oy + 6);
+    } else {
+      const sz = Math.min(w - 70, h - 60), ox = (w - sz) / 2 + 10, oy = h - 34;
+      const X = (x) => ox + x * sz, Y = (y) => oy - y * sz;
+      ctx.strokeStyle = C.axis; ctx.lineWidth = 1; ctx.strokeRect(ox, oy - sz, sz, sz);
+      for (let k = 1; k <= n; k++) {
+        const y = Math.pow(k / n, p);
+        ctx.globalAlpha = 0.3; ctx.fillStyle = C.accent; ctx.fillRect(X((k - 1) / n), Y(y), sz / n, y * sz);
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = C.accent; ctx.lineWidth = n > 25 ? 0.5 : 1; ctx.strokeRect(X((k - 1) / n), Y(y), sz / n, y * sz);
+      }
+      ctx.globalAlpha = 1; ctx.strokeStyle = C.accent2; ctx.lineWidth = 2.4; ctx.beginPath();
+      for (let i = 0; i <= 200; i++) { const x = i / 200; i ? ctx.lineTo(X(x), Y(Math.pow(x, p))) : ctx.moveTo(X(x), Y(0)); }
+      ctx.stroke();
+      ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText("0", X(0), oy + 4); ctx.fillText("1", X(1), oy + 4);
+      ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText("1", ox - 4, Y(1));
+      ctx.fillStyle = C.accent2; ctx.textAlign = "left"; ctx.fillText(`y = x${p === 2 ? "²" : p === 3 ? "³" : ""}`, X(0.08), Y(0.85));
+    }
+    const S = sumP(n, p);
+    MB.stat("in-s-sum", S.toLocaleString("en-US"));
+    MB.stat("in-s-form", `${formTxt(n, p)} = ${formula(n, p).toLocaleString("en-US")}`);
+    MB.stat("in-s-ratio", (S / Math.pow(n, p + 1)).toFixed(4));
+    MB.stat("in-s-lim", `1/${p + 1} = ${(1 / (p + 1)).toFixed(4)}`);
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 430 });
+  MB.range("in-s-n", (x) => String(x), (x) => { n = x; cv.redraw(); });
+  MB.seg("in-s-p", (x) => { p = Number(x); cv.redraw(); });
+  MB.seg("in-s-view", (x) => { view = x; cv.redraw(); });
+  MB.check("in-s-pair", (x) => { pair = x; cv.redraw(); });
+})();
+
+/* ================================================================ 3. 리만 합 */
+(function () {
+  const PRE = {
+    sq: { f: (x) => x * x, F: (x) => (x * x * x) / 3, a: 0, b: 2, x: [-0.6, 2.8], y: [-0.7, 4.6], lo: -0.5 },
+    sin: { f: Math.sin, F: (x) => -Math.cos(x), a: 0, b: Math.PI, x: [-0.5, 3.8], y: [-1.3, 1.5] },
+    cubic: { f: (x) => x * x * x - 3 * x, F: (x) => (x ** 4) / 4 - (3 * x * x) / 2, a: -1, b: 2, x: [-2.3, 2.5], y: [-2.8, 2.8] },
+    sqrt: { f: (x) => Math.sqrt(Math.max(0, x)), F: (x) => (2 / 3) * Math.pow(Math.max(0, x), 1.5), a: 0, b: 4, x: [-0.5, 4.6], y: [-0.5, 2.4], lo: 0 },
+    bell: { f: (x) => 1 / (1 + x * x), F: Math.atan, a: 0, b: 1, x: [-2.4, 2.4], y: [-0.25, 1.25] },
+  };
+  let pre = PRE.sq, rule = "mid", n = 4, playing = false, seed = 3;
+  const randTag = () => { const R = MB.rng(seed + n * 17); const arr = []; for (let k = 0; k < n; k++) arr.push(R()); return (k) => arr[k]; };
+  const msg = document.getElementById("in-r-msg");
+  const pts = [{ x: pre.a, y: 0, lock: "y", label: "a", r: 8 }, { x: pre.b, y: 0, lock: "y", label: "b", r: 8 }];
+  const pl = MB.plane("#in-cv-riem", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 260, maxHeight: 460, points: pts,
+    draw(P, api) {
+      const C = P.P, [A, B] = api.points, a = A.x, b = B.x, f = pre.f;
+      A.color = C.dim; B.color = C.dim;
+      const r = rule === "rand" ? randTag() : rule, h = (b - a) / n;
+      for (let k = 0; k < n; k++) {
+        const x0 = a + k * h, x1 = x0 + h, c = x0 + IN.tag(r, k) * h, y = f(c);
+        IN.bar(P, Math.min(x0, x1), Math.max(x0, x1), y, { width: n > 40 ? 0.6 : 1.2 });
+        if (n <= 24) P.dot(c, y, { r: 3, color: C.text });
+      }
+      P.curve(f, { color: C.text, width: 2.2, from: pre.lo != null ? Math.max(pre.lo, P.x0) : P.x0 });
+      const S = IN.riemann(f, a, b, n, r), I = pre.F(b) - pre.F(a);
+      MB.stat("in-r-dx", IN.num(h, 4));
+      MB.stat("in-r-sum", IN.num(S, 5));
+      MB.stat("in-r-ex", IN.num(I, 5));
+      MB.stat("in-r-err", (S - I >= 0 ? "+" : "−") + IN.sig(Math.abs(S - I), 3));
+      if (b < a) { msg.className = "in-msg"; msg.innerHTML = "b &lt; a: Δx가 음수라 리만 합의 부호가 뒤집혔습니다. ∫<sub>b</sub><sup>a</sup> = −∫<sub>a</sub><sup>b</sup>."; }
+      else if (Math.abs(S - I) < 1e-3) { msg.className = "in-msg ok"; msg.innerHTML = `n = ${n}: 오차가 0.001보다 작습니다.`; }
+      else { msg.className = "in-msg"; msg.innerHTML = `직사각형 ${n}개의 넓이 합(부호 포함)이 곡선 아래 부호 있는 넓이보다 <b>${IN.sig(Math.abs(S - I), 2)}</b>만큼 ${S < I ? "작습니다" : "큽니다"}.`; }
+    },
+    onDrag(p) { if (pre.lo != null && p.x < pre.lo) p.x = pre.lo; },
+  });
+  const nR = MB.range("in-r-n", (x) => String(x), (x) => { n = x; pl.redraw(); });
+  MB.seg("in-r-rule", (x) => { rule = x; seed++; pl.redraw(); });
+  document.getElementById("in-r-pre").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; pts[0].x = pre.a; pts[1].x = pre.b; pl.view({ x: pre.x, y: pre.y });
+  });
+  document.getElementById("in-r-dbl").addEventListener("click", () => { n = Math.min(100, n * 2); nR.set(n, false); pl.redraw(); });
+  let acc = 0;
+  const btn = MB.playButton("in-r-play", () => { if (n >= 100) { n = 1; nR.set(1, false); } playing = true; loop.start(); }, () => { playing = false; }, ["▶ 세분하기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-in-riemann"), (d) => {
+    if (!playing) return;
+    acc += d; if (acc < 0.12) return; acc = 0;
+    n = Math.min(100, Math.max(n + 1, Math.round(n * 1.15))); nR.set(n, false); pl.redraw();
+    if (n >= 100) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 4. 상합과 하합 */
+(function () {
+  const PRE = {
+    sq: { f: (x) => x * x, a: 0, b: 2, x: [-0.3, 2.3], y: [-0.5, 4.5] },
+    sin: { f: Math.sin, a: 0, b: Math.PI, x: [-0.3, 3.5], y: [-0.4, 1.3] },
+    step: { f: (x) => (x < 1 ? 0.5 : 2), a: 0, b: 2, x: [-0.3, 2.3], y: [-0.4, 2.6], jump: 1 },
+    osc: { f: (x) => (x <= 0 ? 0 : Math.sin(1 / x)), a: 0, b: 1, x: [-0.08, 1.08], y: [-1.4, 1.4], samples: 500 },
+    dir: { f: null, a: 0, b: 2, x: [-0.3, 2.3], y: [-0.5, 1.6] },
+  };
+  let pre = PRE.sq, part = "even", n = 6, seed = 1;
+  const msg = document.getElementById("in-d-msg");
+  function nodes() {
+    const { a, b } = pre;
+    if (part === "even") return Array.from({ length: n + 1 }, (_, k) => a + ((b - a) * k) / n);
+    const R = MB.rng(seed * 101 + n), w = Array.from({ length: n }, () => 0.25 + R()), s = w.reduce((x, y) => x + y, 0);
+    const out = [a]; let acc = a; w.forEach((wi) => { acc += ((b - a) * wi) / s; out.push(acc); }); out[n] = b; return out;
+  }
+  function supInf(x0, x1) {
+    if (!pre.f) return [1, 0];
+    const N = pre.samples || 60; let M = -Infinity, m = Infinity;
+    for (let i = 0; i <= N; i++) { const v = pre.f(x0 + ((x1 - x0) * i) / N); if (v > M) M = v; if (v < m) m = v; }
+    if (pre.f === Math.sin && x0 <= Math.PI / 2 && x1 >= Math.PI / 2) M = 1;
+    if (pre === PRE.osc && x0 <= 0.0001) { M = 1; m = -1; }
+    if (pre === PRE.osc && x1 - x0 > 0) { // 1/x = π/2 + 2πj (최대), 3π/2 + 2πj (최소) 이 칸에 있는지
+      const lo = 1 / x1, hi = x0 > 0 ? 1 / x0 : Infinity;
+      if (Math.floor((hi - Math.PI / 2) / (2 * Math.PI)) >= Math.ceil((lo - Math.PI / 2) / (2 * Math.PI))) M = 1;
+      if (Math.floor((hi - 1.5 * Math.PI) / (2 * Math.PI)) >= Math.ceil((lo - 1.5 * Math.PI) / (2 * Math.PI))) m = -1;
+    }
+    return [M, m];
+  }
+  const pl = MB.plane("#in-cv-darb", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 260, maxHeight: 450,
+    draw(P) {
+      const C = P.P, xs = nodes(); let U = 0, L = 0, norm = 0;
+      for (let k = 1; k < xs.length; k++) {
+        const x0 = xs[k - 1], x1 = xs[k], [M, m] = supInf(x0, x1), d = x1 - x0;
+        U += M * d; L += m * d; norm = Math.max(norm, d);
+        P.poly([[x0, 0], [x1, 0], [x1, M], [x0, M]], { fill: C.accent2, color: C.accent2, alpha: 0.16, width: 1 });
+        P.poly([[x0, 0], [x1, 0], [x1, M], [x0, M]], { color: C.accent2, width: 1.2, alpha: 0.85 });
+        P.poly([[x0, 0], [x1, 0], [x1, m], [x0, m]], { fill: C.accent, color: C.accent, alpha: 0.32, width: 1 });
+        P.poly([[x0, 0], [x1, 0], [x1, m], [x0, m]], { color: C.accent, width: 1.2, alpha: 0.9 });
+      }
+      if (pre.f) {
+        if (pre.jump != null) { P.curve(pre.f, { color: C.text, width: 2.2, from: pre.a, to: pre.jump - 1e-9 }); P.curve(pre.f, { color: C.text, width: 2.2, from: pre.jump, to: pre.b }); P.dot(pre.jump, pre.f(pre.jump), { r: 4, color: C.text }); P.circle(pre.jump, pre.f(pre.jump - 1e-9), 0.04, { color: C.text, width: 1.5 }); }
+        else P.curve(pre.f, { color: C.text, width: pre === PRE.osc ? 1.2 : 2.2, from: pre.a + 1e-4, to: pre.b, n: pre === PRE.osc ? 4000 : 300 });
+      } else {
+        const ctx = P.ctx; ctx.fillStyle = C.text;
+        for (let i = 0; i <= 160; i++) { const x = pre.a + ((pre.b - pre.a) * i) / 160; ctx.fillRect(P.X(x) - 1, P.Y(i % 2 ? 1 : 0) - 1, 2.2, 2.2); ctx.fillRect(P.X(x + 0.006) - 1, P.Y(i % 2 ? 0 : 1) - 1, 2.2, 2.2); }
+        P.text("유리수: 1", pre.b + 0.04, 1.12, { color: C.dim, size: 12, align: "right" });
+        P.text("무리수: 0", pre.b + 0.04, -0.16, { color: C.dim, size: 12, align: "right" });
+      }
+      MB.stat("in-d-U", IN.num(U, 4)); MB.stat("in-d-L", IN.num(L, 4)); MB.stat("in-d-gap", IN.num(U - L, 4)); MB.stat("in-d-norm", IN.num(norm, 4));
+      if (!pre.f) { msg.className = "in-msg bad"; msg.innerHTML = "어느 칸에나 유리수와 무리수가 다 있어 sup = 1, inf = 0. U − L = 2가 줄지 않으므로 적분 가능하지 않습니다."; }
+      else if (U - L < 0.05) { msg.className = "in-msg ok"; msg.innerHTML = `U − L = ${IN.num(U - L, 4)}: 참값이 폭 ${IN.num(U - L, 3)}인 틈에 갇혔습니다.`; }
+      else { msg.className = "in-msg"; msg.innerHTML = `참값은 하합 <b>${IN.num(L, 3)}</b>과 상합 <b>${IN.num(U, 3)}</b> 사이에 있습니다. n을 늘려 틈을 좁혀 보세요.`; }
+    },
+  });
+  MB.range("in-d-n", (x) => String(x), (x) => { n = x; pl.redraw(); });
+  MB.seg("in-d-part", (x) => { part = x; pl.redraw(); });
+  document.getElementById("in-d-reroll").addEventListener("click", () => { seed++; if (part === "even") { part = "rand"; document.querySelector('#in-d-part button[data-value="rand"]').click(); } else pl.redraw(); });
+  document.getElementById("in-d-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; pl.view({ x: pre.x, y: pre.y }); });
+})();
+
+/* ================================================================ 5. 부호 있는 넓이 */
+(function () {
+  const XS = [0, 1, 2, 3, 4, 5, 6], Y0 = [1, 2, 0.8, -1.5, -1, 1.2, 0.5];
+  let bound = false, showAbs = false;
+  const msg = document.getElementById("in-g-msg");
+  const ctrl = XS.map((x, i) => ({ x, y: Y0[i], lock: "x", r: 8, constrain(p) { p.y = MB.clamp(p.y, -2.8, 2.8); } }));
+  const lim = [{ x: 0.5, y: 0, lock: "y", label: "a", r: 8, constrain(p) { p.x = MB.clamp(p.x, 0, 6); } }, { x: 5.5, y: 0, lock: "y", label: "b", r: 8, constrain(p) { p.x = MB.clamp(p.x, 0, 6); } }];
+  const pts = ctrl.concat(lim);
+  const fOf = () => IN.spline(XS, ctrl.map((p) => p.y));
+  const pl = MB.plane("#in-cv-signed", {
+    x: [-0.4, 6.4], y: [-3, 3.1], aspect: 0.6, minHeight: 260, maxHeight: 440, points: pts,
+    draw(P) {
+      const C = P.P, f = fOf(), a = lim[0].x, b = lim[1].x, lo = Math.min(a, b), hi = Math.max(a, b);
+      ctrl.forEach((p) => (p.color = C.text)); lim.forEach((p) => (p.color = C.dim));
+      IN.area(P, f, lo, hi, { alpha: 0.3 });
+      if (showAbs) P.curve((x) => Math.abs(f(x)), { color: C.accent2, width: 1.6, dash: [5, 4], from: lo, to: hi });
+      let m = Infinity, M = -Infinity; for (let i = 0; i <= 400; i++) { const v = f(lo + ((hi - lo) * i) / 400); m = Math.min(m, v); M = Math.max(M, v); }
+      if (bound && hi > lo) {
+        P.poly([[lo, m], [hi, m], [hi, M], [lo, M]], { color: C.warn, width: 1.4, dash: [6, 4] });
+        P.text("M", hi + 0.08, M, { color: C.warn, size: 12, bold: true }); P.text("m", hi + 0.08, m, { color: C.warn, size: 12, bold: true });
+      }
+      P.curve(f, { color: C.text, width: 2.4, from: 0, to: 6 });
+      P.line(a, -3, a, 3.1, { color: C.dim, width: 1, dash: [3, 4] }); P.line(b, -3, b, 3.1, { color: C.dim, width: 1, dash: [3, 4] });
+      const N = 1200, I = IN.simpson(f, a, b, N), pos = IN.simpson((x) => Math.max(0, f(x)), lo, hi, N), neg = IN.simpson((x) => Math.max(0, -f(x)), lo, hi, N);
+      MB.stat("in-g-int", IN.num(I, 3)); MB.stat("in-g-pos", IN.num(pos, 3)); MB.stat("in-g-neg", IN.num(neg, 3)); MB.stat("in-g-abs-v", IN.num(pos + neg, 3));
+      const sgn = b >= a ? 1 : -1;
+      MB.stat("in-g-mm", hi > lo ? `${IN.num(m * (hi - lo), 2)} ~ ${IN.num(M * (hi - lo), 2)}` : "—");
+      if (b < a) { msg.className = "in-msg"; msg.innerHTML = `b &lt; a: 같은 넓이를 거꾸로 적분하므로 ∫ = −(위쪽 − 아래쪽) = <b>${IN.num(I, 3)}</b>.`; }
+      else if (Math.abs(I) < 0.03 && pos > 0.2) { msg.className = "in-msg ok"; msg.innerHTML = `위쪽과 아래쪽 넓이가 거의 같아 ∫ ≈ 0입니다. 그래도 ∫|f| = ${IN.num(pos + neg, 2)}는 0이 아닙니다.`; }
+      else { msg.className = "in-msg"; msg.innerHTML = `∫ₐᵇ f = 위쪽 ${IN.num(pos, 2)} − 아래쪽 ${IN.num(neg, 2)} = <b>${IN.num(sgn * (pos - neg), 3)}</b>`; }
+    },
+  });
+  MB.check("in-g-bound", (x) => { bound = x; pl.redraw(); });
+  MB.check("in-g-abs", (x) => { showAbs = x; pl.redraw(); });
+  document.getElementById("in-g-swap").addEventListener("click", () => { const t = lim[0].x; lim[0].x = lim[1].x; lim[1].x = t; pl.redraw(); });
+  document.getElementById("in-g-sine").addEventListener("click", () => { ctrl.forEach((p) => (p.y = 2 * Math.sin((Math.PI * p.x) / 3))); lim[0].x = 0; lim[1].x = 6; pl.redraw(); });
+  document.getElementById("in-g-reset").addEventListener("click", () => { ctrl.forEach((p, i) => (p.y = Y0[i])); lim[0].x = 0.5; lim[1].x = 5.5; pl.redraw(); });
+})();
+
+/* ================================================================ 6. 평균값 */
+(function () {
+  const PRE = {
+    sq: { f: (x) => x * x, F: (x) => (x ** 3) / 3, a: 0, b: 2, x: [-0.4, 2.8], y: [-0.5, 4.5] },
+    sin: { f: Math.sin, F: (x) => -Math.cos(x), a: 0, b: Math.PI, x: [-0.4, 3.9], y: [-0.4, 1.5] },
+    sqrt: { f: (x) => Math.sqrt(Math.max(0, x)), F: (x) => (2 / 3) * Math.pow(Math.max(0, x), 1.5), a: 0, b: 4, x: [-0.4, 4.9], y: [-0.4, 2.5] },
+    wave: { f: (x) => 1.4 + Math.sin(1.6 * x), F: (x) => 1.4 * x - Math.cos(1.6 * x) / 1.6, a: 0, b: 4, x: [-0.4, 4.9], y: [-0.4, 2.8] },
+  };
+  let pre = PRE.sq, s = 0, show = false, playing = false;
+  const msg = document.getElementById("in-a-msg");
+  const avgOf = () => (pre.F(pre.b) - pre.F(pre.a)) / (pre.b - pre.a);
+  const hp = [{ x: pre.b + 0.3, y: 2.2, lock: "x", r: 8, label: "h", constrain(p) { p.y = Math.max(0, p.y); } }];
+  const pl = MB.plane("#in-cv-avg", {
+    x: pre.x, y: pre.y, aspect: 0.6, minHeight: 250, maxHeight: 430, points: hp,
+    draw(P, api) {
+      const C = P.P, { f, a, b } = pre, avg = avgOf(), I = avg * (b - a), h = api.points[0];
+      h.color = C.accent; h.x = b + 0.3;
+      const g = (x) => (1 - s) * f(x) + s * avg;
+      IN.area(P, g, a, b, { alpha: 0.28, pos: C.accent2 });
+      P.curve(f, { color: C.text, width: s > 0 ? 1.4 : 2.4, alpha: s > 0 ? 0.5 : 1, from: Math.max(a - 0.3, pre === PRE.sqrt ? 0 : -9), to: b + 0.2 });
+      if (s > 0) P.curve(g, { color: C.accent2, width: 2.4, from: a, to: b });
+      P.poly([[a, 0], [b, 0], [b, h.y], [a, h.y]], { color: C.accent, width: 1.8, dash: [6, 4] });
+      P.line(b, h.y, h.x, h.y, { color: C.accent, width: 1, dash: [2, 3] });
+      const roots = [];
+      for (let i = 0; i < 600; i++) { const x0 = a + ((b - a) * i) / 600, x1 = a + ((b - a) * (i + 1)) / 600, y0 = f(x0) - avg, y1 = f(x1) - avg; if (y0 === 0 || y0 * y1 < 0) roots.push(x0 - (y0 * (x1 - x0)) / (y1 - y0)); }
+      if (show) {
+        P.line(a, avg, b, avg, { color: C.ok, width: 2.2 });
+        roots.forEach((c) => { P.line(c, 0, c, avg, { color: C.ok, width: 1.2, dash: [3, 3] }); P.dot(c, avg, { r: 5, color: C.ok }); P.text("c", c, P.y0 * 0.55, { color: C.ok, align: "center", bold: true }); });
+      }
+      MB.stat("in-a-h", IN.num(h.y, 3));
+      MB.stat("in-a-rect", IN.num(h.y * (b - a), 3));
+      MB.stat("in-a-int", IN.num(I, 3));
+      MB.stat("in-a-avg", show ? `${IN.num(avg, 3)} / ${roots.map((c) => IN.num(c, 3)).join(", ")}` : "(체크하면 표시)");
+      const rel = Math.abs(h.y - avg) / avg;
+      if (rel < 0.015) { msg.className = "in-msg ok"; msg.innerHTML = `찾았습니다! h ≈ f<sub>avg</sub> = ${IN.num(avg, 3)}. 직사각형과 곡선 아래 넓이가 같습니다.`; }
+      else { msg.className = "in-msg"; msg.innerHTML = `직사각형 넓이 ${IN.num(h.y * (b - a), 2)}가 곡선 아래 넓이 ${IN.num(I, 2)}보다 ${h.y > avg ? "큽니다. h를 내려 보세요." : "작습니다. h를 올려 보세요."}`; }
+    },
+  });
+  const sR = MB.range("in-a-s", (x) => x.toFixed(2), (x) => { s = x; pl.redraw(); });
+  MB.check("in-a-show", (x) => { show = x; pl.redraw(); });
+  document.getElementById("in-a-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; hp[0].y = (pre.y[1] * 0.55); pl.view({ x: pre.x, y: pre.y }); });
+  const btn = MB.playButton("in-a-play", () => { if (s >= 1) s = 0; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 물 고르기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-in-average"), (d) => {
+    if (!playing) return;
+    s = Math.min(1, s + d * 0.45); sR.set(s, false); pl.redraw();
+    if (s >= 1) { playing = false; btn.set(false); }
+  });
+})();
+
+/* ================================================================ 7. 오차의 로그–로그 그래프 */
+(function () {
+  const PRE = {
+    sq: { f: (x) => x * x, a: 0, b: 1, I: 1 / 3 },
+    exp: { f: Math.exp, a: 0, b: 1, I: Math.E - 1 },
+    sin: { f: Math.sin, a: 0, b: Math.PI, I: 2 },
+    sqrt: { f: (x) => Math.sqrt(Math.max(0, x)), a: 0, b: 1, I: 2 / 3 },
+  };
+  const NS = []; for (let k = 0; k <= 80; k++) { const v = Math.round(Math.pow(2, k / 8)); if (!NS.includes(v)) NS.push(v); }
+  const STEPS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
+  let key = "sq", ref = true, cache = {};
+  function errs(key) {
+    if (cache[key]) return cache[key];
+    const { f, a, b, I } = PRE[key], out = { L: [], R: [], M: [], T: [] };
+    const E = (n) => { const L = IN.riemann(f, a, b, n, "left"), R = IN.riemann(f, a, b, n, "right"), M = IN.riemann(f, a, b, n, "mid"); return { L: Math.abs(I - L), R: Math.abs(I - R), M: Math.abs(I - M), T: Math.abs(I - (L + R) / 2) }; };
+    NS.forEach((n) => { const e = E(n); ["L", "R", "M", "T"].forEach((k) => out[k].push([n, Math.max(e[k], 1e-16)])); });
+    out.at = E;
+    return (cache[key] = out);
+  }
+  let nSel = 8;
+  const cv = MB.canvas("#in-cv-err", (ctx, w, h) => {
+    const C = MB.palette(), e = errs(key);
+    let lo = Infinity, hi = 0;
+    ["L", "R", "M", "T"].forEach((k) => e[k].forEach(([, v]) => { if (v > 1e-15) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+    const y0 = Math.pow(10, Math.floor(Math.log10(lo))), y1 = Math.pow(10, Math.ceil(Math.log10(hi)));
+    const decs = Math.round(Math.log10(y1 / y0)), st = Math.max(1, Math.ceil(decs / 6)), yT = [];
+    for (let d = 0; d <= decs; d += st) yT.push(y0 * Math.pow(10, d));
+    const series = [
+      { data: e.R, color: C.warn, width: 2, dash: [6, 4] }, { data: e.L, color: C.accent, width: 2.4 },
+      { data: e.T, color: C.ok, width: 2, dash: [2, 3] }, { data: e.M, color: C.accent2, width: 2.4 },
+    ];
+    if (ref) {
+      const e1 = e.at(1);
+      series.push({ data: [[1, e1.L * 3], [1024, (e1.L * 3) / 1024]], color: C.faint, width: 1, dash: [3, 5] });
+      const m0 = Math.max(e1.M, 1e-12) * 0.3;
+      series.push({ data: [[1, m0], [1024, m0 / 1048576]], color: C.faint, width: 1, dash: [3, 5] });
+    }
+    const ch = MB.chart(ctx, null, { x: [1, 1024], y: [y0, y1], logX: true, logY: true, xLabel: "직사각형 수 n (로그 눈금)", yLabel: "|오차|", series, yTicks: yT, xTicks: [1, 4, 16, 64, 256, 1024], xFmt: (v) => String(Math.round(v)), yFmt: (v) => "1e" + Math.round(Math.log10(v)), vlines: [{ x: nSel, color: C.dim, label: "n = " + nSel }] });
+    if (ref) {
+      ctx.save(); ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono");
+      const e1 = e.at(1); ctx.fillText("기울기 −1", ch.X(300), Math.max(ch.box.y + 10, Math.min(ch.box.y + ch.box.h - 6, ch.Y((e1.L * 3) / 300) - 8)));
+      ctx.fillText("기울기 −2", ch.X(28), Math.max(ch.box.y + 10, Math.min(ch.box.y + ch.box.h - 6, ch.Y((Math.max(e1.M, 1e-12) * 0.3) / 784) + 14)));
+      ctx.restore();
+    }
+    const a = e.at(nSel), b2 = e.at(nSel * 2);
+    MB.stat("in-e-L", IN.sig(a.L, 3)); MB.stat("in-e-M", IN.sig(a.M, 3)); MB.stat("in-e-T", IN.sig(a.T, 3));
+    MB.stat("in-e-ratio", `${IN.num(a.L / b2.L, 2)} / ${a.M > 1e-14 ? IN.num(a.M / b2.M, 2) : "—"}`);
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 440 });
+  MB.steps("in-e-n", STEPS, (x) => String(x), 8, (x) => { nSel = x; cv.redraw(); });
+  MB.check("in-e-ref", (x) => { ref = x; cv.redraw(); });
+  document.getElementById("in-e-pre").addEventListener("change", (e) => { key = e.target.value; cv.redraw(); });
+})();
+</script>
+</body>
+</html>

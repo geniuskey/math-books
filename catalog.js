@@ -82,26 +82,29 @@ window.MATH_BOOKS = [
   },
   {
     "id": "calculusbook",
-    "code": "CAL",
     "title": "CalculusBook",
     "subtitle": "미적분 교과서",
     "headline": "변화율과 누적, 두 개의 눈으로 보는 세계",
-    "description": "극한과 연속, 미분과 근사, 적분과 누적, 급수와 테일러 전개, 다변수 함수와 편미분, 기울기와 최적화, 중적분과 벡터 미적분까지 직접 끌며 익히는 미적분 교과서.",
+    "description": "극한과 연속에서 시작해 도함수와 연쇄 법칙, 평균값 정리와 최적화, 정적분과 미적분의 기본 정리, 적분 기법과 응용, 수열과 급수, 테일러 전개, 편미분과 그래디언트, 중적분과 벡터 미적분까지 — 접선을 끌고 직사각형을 쌓으며 1년 미적분을 익히는 교과서.",
     "stage": "core",
-    "status": "planned",
+    "status": "published",
     "color": "#c2255c",
     "colorDark": "#f783ac",
-    "motif": "calculus",
     "topics": [
-      "극한",
-      "미분",
-      "적분",
-      "급수",
-      "다변수",
-      "벡터 미적분"
+      "극한·연속",
+      "미분·최적화",
+      "적분·기본 정리",
+      "급수·테일러",
+      "편미분·그래디언트",
+      "중적분·벡터 미적분"
     ],
+    "motif": "calculus",
+    "code": "CAL",
+    "legacyUrl": null,
     "slug": "calculus",
-    "legacyUrl": null
+    "url": "calculus/",
+    "chapters": 17,
+    "simulators": 125
   },
   {
     "id": "odebook",

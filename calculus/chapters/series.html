@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>수열과 급수 · CalculusBook</title>
+<meta name="description" content="무한히 많은 수를 더하면 언제 유한한 값이 될까. 수열의 극한과 단조 수렴 정리, 부분합과 기하 급수, 발산 판정과 조화 급수, 적분·비교·극한 비교 판정, 교대 급수의 오차 한계, 절대·조건 수렴, 비·근 판정과 판정법 고르기를 시뮬레이터로 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .sr-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .sr-msg b { color: var(--text); }
+  .sr-msg.ok { color: var(--ok); font-weight: 600; }
+  .sr-msg.bad { color: var(--bad); font-weight: 600; }
+  .sr-msg.warn { color: var(--warn); font-weight: 600; }
+  .sr-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .sr-two > div { position: relative; min-width: 0; }
+  .sr-two > div + div { border-top: 1px solid var(--border); }
+  .sr-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; }
+  .sr-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sr-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sr-tests { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .sr-tests .btn { width: 100%; padding-left: 6px; padding-right: 6px; }
+  .sr-tests .btn.on { border-color: var(--accent); color: var(--accent); }
+  .sr-tbl td, .sr-tbl th { vertical-align: top; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="series">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 11</div>
+    <h1 data-no-glossary>수열과 급수</h1>
+    <p class="lead">계산기가 sin 0.3을 내놓을 때, 신호 처리 필터가 지난 입력의 메아리를 끝없이 더할 때, 은행이 매년 받을 돈의 현재 가치를 셈할 때, 모두 <b>무한히 많은 수를 더하는</b> 일을 합니다. 항이 무한히 많은데 합이 유한할 수 있을까요? 항이 0으로 줄어들기만 하면 될까요? 이 장은 "무한 번 더한다"를 <b>부분합의 극한</b>으로 정확히 정의하고, 계산하지 않고도 수렴과 발산을 가려내는 판정법을 하나씩 세웁니다. 더 나아가 "몇 항에서 멈추면 오차가 얼마 이하"라는 <b>보장</b>을 얻는 법을 배웁니다. 다음 장의 테일러 급수는 이 도구 위에 서 있습니다.</p>
+    <ul class="objectives">
+      <li>수열의 극한을 ε–N으로 정의하고, 단조 수렴 정리로 극한값을 몰라도 수렴을 증명한다.</li>
+      <li>급수의 합을 부분합 수열의 극한으로 이해하고, 기하 급수와 망원 급수의 합을 계산한다.</li>
+      <li>발산 판정의 한계를 알고, 항이 0으로 가도 조화 급수가 발산함을 두 가지 방법으로 보인다.</li>
+      <li>적분 판정, p-급수, 비교·극한 비교 판정으로 양항 급수의 수렴을 판정하고 꼬리의 크기를 추정한다.</li>
+      <li>교대 급수 판정과 오차 한계를 쓰고, 절대 수렴과 조건 수렴의 차이(재배열)를 설명한다.</li>
+      <li>비 판정과 근 판정을 쓰고, 주어진 급수에 맞는 판정법을 고르는 순서를 세운다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>무한 번 더한 값을 믿을 수 있을까</b></div>
+      <div class="o-body"><p>1650년 이탈리아의 피에트로 멩골리<span class="en">(Pietro Mengoli)</span>는 제곱수의 역수 합 \(1 + \tfrac14 + \tfrac19 + \tfrac1{16} + \cdots\)이 얼마인지 물었습니다. 이 합이 유한하다는 것은 쉽게 보였지만 값은 수십 년 동안 아무도 구하지 못했고, 베르누이 형제가 살던 도시의 이름을 따 <b>바젤 문제</b>로 불렸습니다. 1730년대 중반 레온하르트 오일러<span class="en">(Leonhard Euler)</span>가 그 값이 \(\pi^2/6\)임을 보였습니다. 그보다 훨씬 앞선 14세기에 프랑스의 니콜 오렘<span class="en">(Nicole Oresme)</span>은 반대로 \(1 + \tfrac12 + \tfrac13 + \cdots\)이 한없이 커진다는 것을 항을 묶는 간단한 논증으로 보였습니다.</p>
+        <p>두 급수는 겉보기에 거의 같습니다. 둘 다 항이 0으로 줄어듭니다. 그런데 하나는 1.6449…에서 멈추고 다른 하나는 끝없이 자랍니다. 이 차이를 가려내는 일은 오늘날 수치 계산의 기본입니다. 계산기·제어기·시뮬레이터 안의 수많은 반복 계산은 "이 합은 수렴하고, 여기서 멈추면 오차는 이만큼 이하"라는 판정 위에서 돌아갑니다.</p>
+        <div class="o-chain"><span>무한히 많은 항</span><i>→</i><span>부분합의 극한</span><i>→</i><span class="tool">판정법과 오차 한계</span><i>→</i><span>유한한 계산으로 보장된 정밀도</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="sequences">
+    <h2>수열의 극한: 결국 어디로 가는가</h2>
+    <div class="problem"><strong>반복 계산은 언제 멈춰도 되나</strong>
+      <p>제곱근을 구하는 고대 바빌로니아의 방법은 \(x_{n+1} = \tfrac12\left(x_n + \tfrac{2}{x_n}\right)\)을 되풀이합니다. \(x_1 = 1\)에서 시작하면 1.5, 1.41667, 1.414216, 1.4142136, …으로 \(\sqrt2\)에 다가갑니다. 컴퓨터가 이런 반복을 "이제 충분하다"고 멈추려면 "다가간다"를 숫자로 말할 수 있어야 합니다.</p></div>
+    <p>숫자를 차례로 늘어놓은 것 \(a_1, a_2, a_3, \dots\)을 <span class="term">수열</span><span class="en">(sequence)</span>이라 하고 \(\{a_n\}\)으로 씁니다. 수학적으로는 자연수 \(n\)마다 실수 \(a_n\)을 하나씩 대응시키는 함수입니다. 1장에서 함수의 극한을 "공차 계약"으로 정의했듯이, 수열의 극한도 같은 계약으로 정의합니다. 차이는 \(x \to a\) 대신 \(n \to \infty\)라는 점뿐입니다.</p>
+    <div class="callout deep"><strong>정의 11.1 (수열의 극한)</strong> 모든 \(\varepsilon > 0\)에 대해 어떤 자연수 \(N\)이 있어서
+      <div class="formula">$$n > N \;\Longrightarrow\; |a_n - L| \lt \varepsilon$$</div>
+      이 성립하면 수열 \(\{a_n\}\)이 \(L\)로 <span class="term">수렴</span><span class="en">(converge)</span>한다고 하고 \(\lim_{n\to\infty} a_n = L\)로 쓴다. 수렴하지 않는 수열은 <span class="term">발산</span><span class="en">(diverge)</span>한다고 한다. 특히 모든 \(M\)에 대해 \(n > N \Rightarrow a_n > M\)인 \(N\)이 있으면 \(a_n \to \infty\)로 쓴다(이것도 발산의 한 종류다).</div>
+    <p>그림으로 읽으면 이렇습니다. \(L\)을 중심으로 폭 \(2\varepsilon\)인 띠를 긋습니다. 아무리 좁은 띠를 그어도 <b>어떤 번호 이후의 항이 모두</b> 띠 안에 들어와야 합니다. 앞쪽의 유한 개 항은 띠 밖에 있어도 상관없습니다. 극한은 수열의 "결국"만 봅니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="ε 띠와 N">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <rect x="50" y="130" width="690" height="40" class="f-acc-soft"/>
+        <line x1="50" y1="150" x2="740" y2="150" style="stroke:var(--accent);stroke-width:1.6;stroke-dasharray:6 4"/>
+        <line x1="50" y1="236" x2="740" y2="236" class="s-axis"/>
+        <line x1="255" y1="20" x2="255" y2="236" style="stroke:var(--warn);stroke-width:1.6;stroke-dasharray:5 4"/>
+        <text x="262" y="34" class="t" style="fill:var(--warn);font-weight:700">N = 6</text>
+        <text x="20" y="154" class="t-acc">L</text>
+        <text x="600" y="124" class="t-mono">L + ε</text><text x="600" y="186" class="t-mono">L − ε</text>
+        <circle cx="90" cy="22" r="4.5" style="fill:var(--accent-2)"/><circle cx="120" cy="214" r="4.5" style="fill:var(--accent-2)"/><circle cx="150" cy="107.3" r="4.5" style="fill:var(--accent-2)"/><circle cx="180" cy="182" r="4.5" style="fill:var(--accent-2)"/><circle cx="210" cy="124.4" r="4.5" style="fill:var(--accent-2)"/><circle cx="240" cy="171.3" r="4.5" style="fill:var(--accent-2)"/><circle cx="270" cy="131.7" r="4.5" style="fill:var(--accent)"/><circle cx="300" cy="166" r="4.5" style="fill:var(--accent)"/><circle cx="330" cy="135.8" r="4.5" style="fill:var(--accent)"/><circle cx="360" cy="162.8" r="4.5" style="fill:var(--accent)"/><circle cx="390" cy="138.4" r="4.5" style="fill:var(--accent)"/><circle cx="420" cy="160.7" r="4.5" style="fill:var(--accent)"/><circle cx="450" cy="140.2" r="4.5" style="fill:var(--accent)"/><circle cx="480" cy="159.1" r="4.5" style="fill:var(--accent)"/><circle cx="510" cy="141.5" r="4.5" style="fill:var(--accent)"/><circle cx="540" cy="158" r="4.5" style="fill:var(--accent)"/><circle cx="570" cy="142.5" r="4.5" style="fill:var(--accent)"/><circle cx="600" cy="157.1" r="4.5" style="fill:var(--accent)"/><circle cx="630" cy="143.3" r="4.5" style="fill:var(--accent)"/><circle cx="660" cy="156.4" r="4.5" style="fill:var(--accent)"/><circle cx="690" cy="143.9" r="4.5" style="fill:var(--accent)"/><circle cx="720" cy="155.8" r="4.5" style="fill:var(--accent)"/>
+        <text x="92" y="252" class="t-dim">n = 1</text><text x="700" y="252" class="t-dim">n = 22</text>
+        <text x="380" y="80" class="t-dim">n &gt; N인 항은 모두 띠 안(진분홍)</text>
+      </svg>
+      <figcaption><b>그림 11-1.</b> 수열 a<sub>n</sub> = L + 1.6(−1)<sup>n+1</sup>/n과 폭 2ε = 0.5인 띠. 6번째 항까지는 띠 밖으로 튀어나가지만 7번째 항부터는 모두 띠 안에 있으므로 이 ε에는 N = 6이면 된다. ε를 줄이면 N이 커진다. 정의는 "모든 ε에 대해 그런 N이 있다"는 약속이다.</figcaption>
+    </figure>
+
+    <div class="callout"><strong>예제 11.1 (ε를 주면 N을 고르기)</strong> \(a_n = \dfrac{2n+1}{n+3}\)이 2로 수렴함을 정의로 보이고, \(\varepsilon = 0.01\)일 때 필요한 \(N\)을 구하라.
+      <ol>
+        <li>거리 계산: \(|a_n - 2| = \left|\dfrac{2n+1 - 2n - 6}{n+3}\right| = \dfrac{5}{n+3}\).</li>
+        <li>조건 풀기: \(\dfrac{5}{n+3} \lt \varepsilon \iff n > \dfrac5\varepsilon - 3\). 그러므로 \(N\)을 \(\dfrac5\varepsilon - 3\) 이상의 자연수로 잡으면 \(n > N\)일 때 늘 \(|a_n - 2| \lt \varepsilon\)이다. 어떤 \(\varepsilon > 0\)에도 이런 \(N\)이 있으니 극한은 2다.</li>
+        <li>숫자: \(\varepsilon = 0.01\)이면 \(5/0.01 - 3 = 497\), 즉 \(N = 497\). 실제로 \(a_{497} = 995/500 = 1.99\)로 거리가 정확히 0.01이라 띠의 경계에 걸리고, \(a_{498}\)부터는 띠 안이다.</li>
+      </ol></div>
+    <p>수열의 극한 계산은 함수의 극한 법칙을 거의 그대로 물려받습니다. 증명도 1장의 ε–δ 증명에서 δ를 N으로 바꾸면 됩니다.</p>
+    <div class="callout deep"><strong>정리 11.2 (수열의 극한 법칙)</strong> \(a_n \to A\), \(b_n \to B\)이면 \(a_n \pm b_n \to A \pm B\), \(ca_n \to cA\), \(a_nb_n \to AB\), \(B \ne 0\)이면 \(a_n/b_n \to A/B\)이다. 또
+      <ul style="margin:6px 0 0">
+        <li><b>함수와의 연결</b>: \(f(x) \to L\) (\(x \to \infty\))이고 \(a_n = f(n)\)이면 \(a_n \to L\). 그래서 \(\frac{\ln n}{n} \to 0\)은 로피탈 정리(<a href="mean-value.html">5장</a>)로 \(\frac{\ln x}{x}\)의 극한을 구해 얻는다.</li>
+        <li><b>연속 함수</b>: \(a_n \to A\)이고 \(g\)가 \(A\)에서 연속이면 \(g(a_n) \to g(A)\).</li>
+        <li><b>조임 정리</b>: \(a_n \le c_n \le b_n\)이고 \(a_n, b_n \to L\)이면 \(c_n \to L\). 예: \(\left|\frac{\sin n}{n}\right| \le \frac1n\)이므로 \(\frac{\sin n}{n} \to 0\).</li>
+      </ul></div>
+    <p>자주 쓰는 극한 몇 가지를 기억해 두면 판정법을 쓸 때 편합니다. \(|r| \lt 1\)이면 \(r^n \to 0\), \(r > 1\)이면 \(r^n \to \infty\), \(r = -1\)이면 \((-1)^n\)은 ±1을 오가며 발산합니다. 또 \(n^{1/n} \to 1\), \(\left(1 + \frac{x}{n}\right)^n \to e^x\)(<a href="continuity.html">2장</a>), 그리고 모든 \(x\)에 대해 \(\frac{x^n}{n!} \to 0\)입니다. 마지막 것은 계승이 어떤 거듭제곱보다도 빨리 자란다는 뜻이고, 다음 장의 테일러 급수가 모든 \(x\)에서 수렴하는 이유입니다.</p>
+
+    <div class="sim" id="sim-sr-seq">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>ε 띠 안으로: N은 얼마인가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sr-cv-seq"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>수열 a<sub>n</sub></span><select id="sr-q-pre">
+            <option value="rat">(2n + 1)/(n + 3) → 2</option>
+            <option value="alt">(−1)<sup>n</sup>·3/n → 0</option>
+            <option value="sin">sin n / n → 0</option>
+            <option value="e">(1 + 1/n)<sup>n</sup> → e</option>
+            <option value="root">n<sup>1/n</sup> → 1</option>
+            <option value="osc">(−1)<sup>n</sup> (발산)</option>
+            <option value="log">ln n (발산)</option>
+          </select></label>
+          <label class="ctrl"><span>띠의 반폭 ε <output id="sr-q-eps-out"></output></span><input type="range" id="sr-q-eps"></label>
+          <label class="check"><input type="checkbox" id="sr-q-zoom" checked> N 근처로 화면 맞추기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">후보 극한 L</span><span class="v" id="sr-q-L">—</span></div>
+        <div class="stat"><span class="k">필요한 N</span><span class="v" id="sr-q-N">—</span></div>
+        <div class="stat"><span class="k">|a<sub>N</sub> − L|</span><span class="v" id="sr-q-gap">—</span></div>
+      </div>
+      <div class="sr-msg" id="sr-q-msg"></div>
+      <div class="sim-note">해볼 것: ① (2n + 1)/(n + 3)에서 ε = 0.01을 골라 예제 11.1의 N = 497을 확인하세요. ε를 10배 줄이면 N도 약 10배 커집니다. ② (1 + 1/n)<sup>n</sup>은 아래에서 올라오기만 하고, (−1)<sup>n</sup>·3/n은 위아래로 오가며 다가갑니다. 둘 다 수렴입니다. ③ (−1)<sup>n</sup>은 어떤 L을 골라도 ε &lt; 1인 띠에 들어가지 않습니다. 모델: N은 n = 20000까지 직접 검사해 마지막으로 띠 밖에 있는 번호로 정합니다(이 수열들은 그 뒤로 더 나가지 않음이 해석적으로 보장됩니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="monotone">
+    <h2>단조 수렴 정리: 극한값을 몰라도 수렴을 안다</h2>
+    <div class="problem"><strong>답을 모르는데 수렴을 어떻게 증명하나</strong>
+      <p>정의 11.1은 극한값 \(L\)을 먼저 알아야 쓸 수 있습니다. 하지만 \(a_{n+1} = \sqrt{2 + a_n}\)처럼 점화식으로 주어진 수열이나 \(\left(1 + \frac1n\right)^n\)처럼 극한이 새로운 수(e)인 경우에는 \(L\)을 미리 알 수 없습니다. 극한값을 모른 채 "수렴한다"는 것만 먼저 보일 방법이 필요합니다.</p></div>
+    <p>답은 실수의 성질에 있습니다. 수열이 계속 커지기만 하는데 넘을 수 없는 천장이 있다면, 수열은 어딘가에 쌓일 수밖에 없습니다. 유리수만 있는 세계에서는 이것이 거짓입니다(\(1, 1.4, 1.41, 1.414, \dots\)는 유리수 안에 극한이 없습니다). 실수는 이런 "구멍"이 없도록 만든 수 체계이고, 그 성질을 <b>완비성</b>이라 부릅니다.</p>
+    <div class="callout deep"><strong>정리 11.3 (단조 수렴 정리)</strong> 모든 \(n\)에서 \(a_n \le a_{n+1}\)이면 수열을 <b>증가</b>, \(a_n \ge a_{n+1}\)이면 <b>감소</b>한다고 하고, 둘 중 하나면 <span class="term">단조 수열</span><span class="en">(monotonic sequence)</span>이라 한다. 모든 \(n\)에서 \(|a_n| \le M\)인 \(M\)이 있으면 <span class="term">유계 수열</span><span class="en">(bounded sequence)</span>이라 한다.
+      <div class="formula">$$\text{유계이고 단조인 수열은 수렴한다.}$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> 증가하고 위로 유계인 경우만 보이면 된다(감소는 \(-a_n\)을 보면 된다). 실수의 완비성에 따라 집합 \(\{a_n\}\)에는 최소 상계 \(L = \sup a_n\)이 있다. \(\varepsilon > 0\)을 주면 \(L - \varepsilon\)은 상계가 아니므로 \(a_N > L - \varepsilon\)인 \(N\)이 있다. 수열이 증가하므로 \(n > N\)이면 \(L - \varepsilon \lt a_N \le a_n \le L\), 즉 \(|a_n - L| \lt \varepsilon\). ∎</p></div>
+    <p>이 정리의 쓸모는 <b>두 성질을 따로따로 보이면 된다</b>는 데 있습니다. 보통 귀납법으로 유계성을, 차이 \(a_{n+1} - a_n\)의 부호로 단조성을 보이고, 수렴이 확보된 다음에 점화식에 극한을 넣어 값을 구합니다.</p>
+    <div class="callout"><strong>예제 11.2 (점화식으로 주어진 수열)</strong> \(a_1 = \sqrt2\), \(a_{n+1} = \sqrt{2 + a_n}\)이 수렴함을 보이고 극한을 구하라.
+      <ol>
+        <li>유계: \(a_n \lt 2\)임을 귀납법으로 보인다. \(a_1 = \sqrt2 \lt 2\)이고, \(a_n \lt 2\)이면 \(a_{n+1} = \sqrt{2 + a_n} \lt \sqrt4 = 2\). 또 모든 항이 양수다.</li>
+        <li>증가: \(a_{n+1}^2 - a_n^2 = 2 + a_n - a_n^2 = (2 - a_n)(1 + a_n) > 0\)이고 두 항이 모두 양수이므로 \(a_{n+1} > a_n\).</li>
+        <li>수렴: 단조 수렴 정리에 따라 극한 \(L\)이 있다. 점화식 양변에 극한을 취하면(√는 연속) \(L = \sqrt{2 + L}\), 즉 \(L^2 - L - 2 = (L-2)(L+1) = 0\). 모든 항이 양수이므로 \(L = 2\).</li>
+        <li>수치 확인: 1.41421, 1.84776, 1.96157, 1.99037, 1.99759, 1.99940, …. 2와의 거리가 매번 약 1/4로 줄어든다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>수렴을 먼저 확인할 것</strong> 수렴을 확인하지 않고 극한을 대입하면 엉뚱한 답이 나옵니다. \(a_1 = 1\), \(a_{n+1} = 2a_n\)에 \(L = 2L\)을 넣으면 \(L = 0\)이지만 수열은 1, 2, 4, 8, …로 발산합니다. "극한이 있다면 그 값은 이것뿐"이라는 정보만 줄 뿐입니다.</div>
+    <p>점화식 \(a_{n+1} = g(a_n)\)은 <b>거미줄 그림</b><span class="en">(cobweb plot)</span>으로 보면 한눈에 들어옵니다. 점 \((a_n, a_n)\)에서 세로로 곡선 \(y = g(x)\)까지 올라가면 높이가 \(a_{n+1}\)이고, 가로로 직선 \(y = x\)까지 가면 다음 출발점 \((a_{n+1}, a_{n+1})\)입니다. 극한 후보는 \(y = g(x)\)와 \(y = x\)가 만나는 <b>고정점</b>이고, 고정점에서의 기울기 \(|g'(L)| \lt 1\)이면 근처의 거미줄이 안으로 감겨 듭니다.</p>
+
+    <div class="sim" id="sim-sr-cobweb">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거미줄 그림: 점화식 a<sub>n+1</sub> = g(a<sub>n</sub>) 한 단계씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view sr-two">
+          <div><canvas id="sr-cv-web"></canvas><span class="sr-cap">시작점 a₁을 가로축에서 끌어 보세요</span></div>
+          <div><canvas id="sr-cv-webn"></canvas><span class="sr-cap">a<sub>n</sub> vs n</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>점화식</span><select id="sr-w-pre">
+            <option value="sqrt">√(2 + x) (예제 11.2)</option>
+            <option value="baby">(x + 2/x)/2 (바빌로니아)</option>
+            <option value="cos">cos x</option>
+            <option value="log28">2.8x(1 − x) (로지스틱)</option>
+            <option value="log33">3.3x(1 − x) (2주기)</option>
+            <option value="dbl">1.2x (발산)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="sr-w-step">다음 단계</button><button class="btn" id="sr-w-ten">+10단계</button><button class="btn" id="sr-w-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">n</span><span class="v" id="sr-w-n">—</span></div>
+        <div class="stat"><span class="k">a<sub>n</sub></span><span class="v" id="sr-w-a">—</span></div>
+        <div class="stat"><span class="k">고정점 L, |g′(L)|</span><span class="v" id="sr-w-L">—</span></div>
+        <div class="stat"><span class="k">지금까지의 모양</span><span class="v" id="sr-w-mono">—</span></div>
+      </div>
+      <div class="sr-msg" id="sr-w-msg"></div>
+      <div class="sim-note">해볼 것: ① √(2 + x)에서 a₁을 0과 4 사이 여기저기에 두고 계단이 늘 고정점 2로 올라가거나 내려오는지 보세요. 2보다 위에서 시작하면 감소하고 아래로 유계라 역시 수렴합니다. ② 바빌로니아 방법은 몇 단계 만에 √2에 붙습니다. 고정점에서 g′(√2) = 0이라 오차가 매번 제곱으로 줄어듭니다(6장 뉴턴 방법과 같은 식). ③ cos x와 2.8x(1 − x)는 고정점 주위를 감아 돌며 수렴합니다. 단조는 아니지만 홀수 번째와 짝수 번째 항이 각각 단조입니다. 3.3x(1 − x)는 |g′(L)| &gt; 1이라 두 값 사이를 영원히 오갑니다. 모델: 실수 반복, 화면 밖으로 나가면 멈춥니다.</div>
+    </div>
+    <p>같은 정리로 \(\left(1 + \frac1n\right)^n\)이 증가하고 3보다 작다는 것(이항 정리로 보일 수 있습니다)에서 그 극한 \(e\)의 존재가 보장됩니다. \(n = 1, 2, 10, 100, 1000\)일 때 값은 2, 2.25, 2.5937, 2.7048, 2.7169로, 아주 느리게 \(e = 2.71828\ldots\)로 올라갑니다.</p>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="partial-sums">
+    <h2>급수와 부분합, 기하 급수</h2>
+    <div class="problem"><strong>약을 6시간마다 먹으면 몸속 양은 끝없이 늘어날까</strong>
+      <p>반감기가 6시간인 약 100 mg을 6시간마다 먹는다고 합시다. 복용 직후 몸속 양은 100, 150, 175, 187.5, …로 늘어납니다. 매번 더해지므로 한없이 쌓일 것 같지만, 동시에 이전 양이 절반씩 빠져나갑니다. 오래 먹으면 복용 직후 양은 어디로 갈까요?</p></div>
+    <p>MathBook의 <a href="../../foundations/chapters/limits.html#zeno">"무한을 길들이기" 제논 절</a>에서 본 것처럼, 무한히 많은 수의 합은 "끝까지 더한 결과"가 아니라 "앞에서부터 더한 결과의 극한"으로 정의합니다. 이 절은 그 정의를 정리로 다지고, 공학에서 가장 자주 만나는 급수 둘을 계산합니다.</p>
+    <div class="callout deep"><strong>정의 11.4 (급수의 수렴)</strong> 수열 \(\{a_n\}\)에 대해 \(S_n = a_1 + a_2 + \cdots + a_n\)을 \(n\)번째 <span class="term">부분합</span><span class="en">(partial sum)</span>이라 한다. 부분합 수열 \(\{S_n\}\)이 \(S\)로 수렴하면 <span class="term">급수</span><span class="en">(series)</span> \(\sum_{n=1}^\infty a_n\)이 수렴한다고 하고 \(S\)를 그 합이라 쓴다.
+      <div class="formula">$$\sum_{n=1}^{\infty} a_n = \lim_{n\to\infty} S_n = \lim_{n\to\infty}\sum_{k=1}^{n} a_k.$$</div>
+      \(\{S_n\}\)이 발산하면 급수가 발산한다고 한다.</div>
+    <p>이 정의에서 바로 따라 나오는 성질이 있습니다. 수렴하는 두 급수의 합·상수배는 항별로 더하고 곱하면 됩니다(\(\sum(a_n + b_n) = \sum a_n + \sum b_n\)). 또 앞의 유한 개 항을 바꾸거나 빼도 <b>수렴 여부는 바뀌지 않습니다</b>(합의 값만 바뀝니다). 그래서 수렴을 판정할 때는 \(n = 1\)부터인지 \(n = 5\)부터인지 신경 쓰지 않아도 됩니다.</p>
+    <div class="callout deep"><strong>정리 11.5 (기하 급수)</strong> \(a \ne 0\)일 때 <span class="term">기하 급수</span><span class="en">(geometric series)</span>
+      <div class="formula">$$\sum_{n=0}^{\infty} ar^n = a + ar + ar^2 + \cdots = \frac{a}{1 - r} \qquad (|r| \lt 1)$$</div>
+      이고 \(|r| \ge 1\)이면 발산한다. 공비 \(r\)이 1보다 작은지가 전부를 정한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(S_n = a + ar + \cdots + ar^{n-1}\)에서 \(rS_n\)을 빼면 가운데 항이 모두 지워져 \((1 - r)S_n = a(1 - r^n)\). \(r \ne 1\)이면 \(S_n = a\,\frac{1 - r^n}{1 - r}\). \(|r| \lt 1\)이면 \(r^n \to 0\)이라 \(S_n \to \frac{a}{1-r}\). \(|r| > 1\)이면 \(|r^n| \to \infty\), \(r = -1\)이면 \(S_n\)이 \(a, 0, a, 0, \dots\)을 오가고, \(r = 1\)이면 \(S_n = na\)라 모두 발산한다. ∎</p></div>
+    <p>공식보다 중요한 것은 <b>남은 꼬리</b>입니다. \(n\)항에서 멈췄을 때의 오차는 \(S - S_n = \frac{ar^n}{1-r}\)로 정확히 알려져 있습니다. \(r = 0.9\)이면 오차를 1/1000로 줄이는 데 약 66항이 필요하고, \(r = 0.1\)이면 3항이면 됩니다. 수렴하느냐만큼 <b>얼마나 빨리</b> 수렴하느냐가 공학에서는 중요합니다.</p>
+    <div class="callout"><strong>예제 11.3 (반복 소수와 튀는 공)</strong>
+      <ol>
+        <li>\(0.\overline{27} = 0.272727\ldots = \frac{27}{100} + \frac{27}{100^2} + \cdots\)는 \(a = 0.27\), \(r = 0.01\)인 기하 급수이므로 \(\frac{0.27}{0.99} = \frac{27}{99} = \frac{3}{11}\). 같은 계산으로 \(0.\overline{9} = \frac{0.9}{0.9} = 1\)이다. 0.999…와 1은 같은 수를 두 가지로 적은 것이다.</li>
+        <li>2 m 높이에서 떨어뜨린 공이 매번 직전 높이의 60%까지 튀어 오른다. 공이 움직이는 총 거리는 처음 낙하 2 m에, 높이 \(2(0.6)^k\)까지 올라갔다 내려오는 왕복 \(2\cdot 2(0.6)^k\) (\(k = 1, 2, \dots\))을 더한 것이다. \(2 + 4\cdot\frac{0.6}{1 - 0.6} = 2 + 6 = 8\) m.</li>
+        <li>시간도 유한하다. 높이 \(h\)에서 떨어지는 시간은 \(\sqrt{2h/g}\)라 \(\sqrt{0.6} \approx 0.7746\)씩 줄어든다. \(g = 9.8\) m/s²이면 처음 낙하가 0.639 s이고 총 시간은 \(0.639\left(1 + \frac{2(0.7746)}{1 - 0.7746}\right) \approx 5.03\) s. 공은 무한 번 튀지만 약 5초 만에 멈춘다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 11.4 (약물의 정상 상태)</strong> 문제 상자의 약을 계속 먹을 때 \(n\)번째 복용 직후 양은 \(100 + 100\cdot\frac12 + \cdots + 100\cdot\left(\frac12\right)^{n-1}\)이다. 공비 1/2인 기하 급수의 부분합이므로 \(n \to \infty\)일 때 \(\frac{100}{1 - 1/2} = 200\) mg으로 다가간다. 일반적으로 복용량 \(D\), 복용 간격 동안 남는 비율 \(r\)이면 정상 상태 최고치는 \(\frac{D}{1-r}\)이다. 간격을 반감기의 절반(3시간)으로 줄이면 \(r = 2^{-1/2} \approx 0.707\)이라 최고치가 약 341 mg으로 커진다. 약의 복용 간격을 정할 때 실제로 쓰는 계산이다.</div>
+    <p>기하 급수 말고 정확한 합을 구할 수 있는 또 하나의 꼴은 항이 이웃끼리 지워지는 <span class="term">망원 급수</span><span class="en">(telescoping series)</span>입니다. \(\frac{1}{n(n+1)} = \frac1n - \frac{1}{n+1}\)이므로</p>
+    <div class="formula">$$S_n = \left(1 - \tfrac12\right) + \left(\tfrac12 - \tfrac13\right) + \cdots + \left(\tfrac1n - \tfrac1{n+1}\right) = 1 - \frac{1}{n+1} \;\longrightarrow\; 1.$$
+      <div class="where">같은 요령: \(\sum_{n=2}^\infty \frac{1}{n^2 - 1} = \sum_{n=2}^{\infty}\frac12\left(\frac1{n-1} - \frac1{n+1}\right) = \frac12\left(1 + \frac12\right) = \frac34\). 이번에는 한 칸 건너 지워지므로 앞의 두 항이 남는다. 부분 분수(<a href="techniques.html">9장</a>)가 여기서도 쓰인다.</div></div>
+
+    <div class="sim" id="sim-sr-partial">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>항과 부분합: 막대는 줄어드는데 합은 어디로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sr-cv-part"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>급수</span><select id="sr-p-pre">
+            <option value="geo">기하 Σ rⁿ (n ≥ 0)</option>
+            <option value="tel">망원 Σ 1/(n(n+1))</option>
+            <option value="sq">Σ 1/n²</option>
+            <option value="harm">조화 Σ 1/n</option>
+            <option value="sqrt">Σ 1/√n</option>
+            <option value="ah">교대 조화 Σ (−1)ⁿ⁺¹/n</option>
+            <option value="osc">Σ (−1)ⁿ (n ≥ 0)</option>
+          </select></label>
+          <label class="ctrl" id="sr-p-rbox"><span>공비 r <output id="sr-p-r-out"></output></span><input type="range" id="sr-p-r" min="-1.1" max="1.1" step="0.01" value="0.6"></label>
+          <label class="ctrl"><span>더한 항 수 n <output id="sr-p-n-out"></output></span><input type="range" id="sr-p-n" min="1" max="120" step="1" value="20"></label>
+          <label class="check"><input type="checkbox" id="sr-p-bars" checked> 항 aₙ 막대 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">마지막 항 aₙ</span><span class="v" id="sr-p-an">—</span></div>
+        <div class="stat"><span class="k">부분합 Sₙ</span><span class="v" id="sr-p-s">—</span></div>
+        <div class="stat"><span class="k">합 S</span><span class="v" id="sr-p-lim">—</span></div>
+        <div class="stat"><span class="k">남은 꼬리 S − Sₙ</span><span class="v" id="sr-p-tail">—</span></div>
+      </div>
+      <div class="sr-legend"><span><i style="background:var(--accent-2)"></i>항 aₙ</span><span><i style="background:var(--accent)"></i>부분합 Sₙ</span><span><i style="background:var(--ok)"></i>합 S (수렴할 때)</span></div>
+      <div class="sim-note">해볼 것: ① 기하 급수에서 r을 0.9, 0.5, −0.5로 바꾸며 꼬리 S − Sₙ이 arⁿ/(1 − r)과 같은지 확인하세요. r = −0.5이면 부분합이 위아래로 오가며 다가갑니다. ② r을 1 이상으로 밀면 부분합이 화면 밖으로 달아납니다. ③ Σ 1/n²과 Σ 1/n은 막대 모양이 비슷하지만 부분합 하나는 멈추고 하나는 계속 오릅니다. 다음 절의 주제입니다. 모델: 합 S는 알려진 정확한 값(π²/6, ln 2 등)을 씁니다.</div>
+    </div>
+    <p>기하 급수의 합 공식은 그림으로도 증명할 수 있습니다. 넓이 1인 정사각형에서 남은 부분의 비율 \(1 - r\)만큼을 잘라 내는 일을 되풀이하면, \(k\)번째 조각의 넓이는 \((1-r)r^{k}\)이고 \(n\)조각을 잘라 낸 뒤 남은 넓이는 \(r^n\)입니다. 조각이 결국 정사각형 전체를 채우므로 \((1-r)(1 + r + r^2 + \cdots) = 1\)입니다.</p>
+
+    <div class="sim" id="sim-sr-geosquare">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>정사각형 쪼개기로 보는 기하 급수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sr-cv-sq"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>쪼개는 방법</span><div class="seg" id="sr-g-mode"><button data-value="strip" class="on">비율 1 − r씩</button><button data-value="quad">네 칸 중 세 칸</button></div></div>
+          <label class="ctrl" id="sr-g-rbox"><span>공비 r <output id="sr-g-r-out"></output></span><input type="range" id="sr-g-r" min="0.1" max="0.9" step="0.05" value="0.5"></label>
+          <label class="ctrl"><span>조각 수 n <output id="sr-g-n-out"></output></span><input type="range" id="sr-g-n" min="1" max="24" step="1" value="4"></label>
+          <div class="btn-row"><button class="btn primary" id="sr-g-play">▶ 채우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">칠한 넓이</span><span class="v" id="sr-g-area">—</span></div>
+        <div class="stat"><span class="k">남은 넓이</span><span class="v" id="sr-g-rem">—</span></div>
+        <div class="stat"><span class="k">읽어 낸 합</span><span class="v" id="sr-g-sum">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① r = 0.5로 두면 제논의 정사각형(1/2 + 1/4 + ⋯ = 1)이 됩니다. r = 0.8로 바꾸면 조각이 얇게 오래 이어집니다. 수렴이 느린 급수의 모습입니다. ② '네 칸 중 세 칸'은 매번 남은 정사각형을 넷으로 나눠 세 칸을 세 가지 색으로 칠합니다. 세 색은 대칭이라 넓이가 같고, 합치면 1이므로 각 색은 1/4 + 1/16 + ⋯ = 1/3입니다. 모델: 넓이 1인 정사각형, 조각은 가로·세로를 번갈아 자릅니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="divergence">
+    <h2>발산 판정과 조화 급수</h2>
+    <div class="problem"><strong>항이 0으로 가면 충분한가</strong>
+      <p>합이 유한하려면 더하는 항이 점점 작아져야 할 것 같습니다. 그렇다면 거꾸로, 항이 0으로 줄어들기만 하면 합은 유한할까요? MathBook의 <a href="../../foundations/chapters/limits.html#harmonic">블록 쌓기 오버행</a>은 그렇지 않다는 놀라운 예를 보여 주었습니다. 이 절은 그 이유를 정확히 증명합니다.</p></div>
+    <div class="callout deep"><strong>정리 11.6 (발산 판정)</strong> \(\sum a_n\)이 수렴하면 \(a_n \to 0\)이다. 따라서 대우로, \(\lim a_n \ne 0\)이거나 극한이 없으면 \(\sum a_n\)은 발산한다. 이것을 <span class="term">발산 판정</span><span class="en">(divergence test, n-th term test)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(a_n = S_n - S_{n-1}\)이다. \(S_n \to S\)이면 \(S_{n-1} \to S\)이므로 \(a_n \to S - S = 0\). ∎</p></div>
+    <p>예: \(\sum \frac{n}{2n+1}\)은 항이 1/2로 가므로 발산합니다. \(\sum (-1)^n\)은 항의 극한이 없으므로 발산합니다. 이 판정은 <b>발산만 알려 줄 수 있습니다</b>. 항이 0으로 가는 급수에 대해서는 아무 말도 하지 않습니다. 그 대표적인 예가 <span class="term">조화 급수</span><span class="en">(harmonic series)</span>입니다.</p>
+    <div class="callout deep"><strong>정리 11.7 (조화 급수의 발산)</strong> \(\displaystyle\sum_{n=1}^\infty \frac1n = 1 + \frac12 + \frac13 + \cdots\)은 발산한다. 더 정확히 \(H_n = \sum_{k=1}^n \frac1k\)에 대해 \(H_{2^m} \ge 1 + \frac m2\)이다.
+      <p style="margin:8px 0 0"><b>증명 (오렘의 묶기).</b> 항을 1개, 1개, 2개, 4개, 8개, …씩 묶는다. \(\frac13 + \frac14 \ge \frac14 + \frac14 = \frac12\), \(\frac15 + \cdots + \frac18 \ge 4\cdot\frac18 = \frac12\)처럼 \(2^{j-1} + 1\)번째부터 \(2^j\)번째까지의 \(2^{j-1}\)개 항은 각각 \(\frac{1}{2^j}\) 이상이므로 합이 \(\frac12\) 이상이다. \(2^m\)번째 항까지는 이런 묶음이 \(m\)개 있으므로 \(H_{2^m} \ge 1 + \frac m2 \to \infty\). 부분합이 증가하므로 전체 수열도 발산한다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="오렘의 묶기 논증">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="44" y1="230" x2="730" y2="230" class="s-axis"/>
+        <rect x="50" y="50" width="38" height="180" class="f-acc2-soft"/><rect x="92" y="140" width="38" height="90" class="f-acc-soft"/><rect x="134" y="170" width="38" height="60" class="f-acc2-soft"/><line x1="134" y1="185" x2="172" y2="185" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="176" y="185" width="38" height="45" class="f-acc2-soft"/><line x1="176" y1="185" x2="214" y2="185" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="218" y="194" width="38" height="36" class="f-acc-soft"/><line x1="218" y1="207.5" x2="256" y2="207.5" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="260" y="200" width="38" height="30" class="f-acc-soft"/><line x1="260" y1="207.5" x2="298" y2="207.5" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="302" y="204.3" width="38" height="25.7" class="f-acc-soft"/><line x1="302" y1="207.5" x2="340" y2="207.5" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="344" y="207.5" width="38" height="22.5" class="f-acc-soft"/><line x1="344" y1="207.5" x2="382" y2="207.5" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="386" y="210" width="38" height="20" class="f-acc2-soft"/><line x1="386" y1="218.8" x2="424" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="428" y="212" width="38" height="18" class="f-acc2-soft"/><line x1="428" y1="218.8" x2="466" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="470" y="213.6" width="38" height="16.4" class="f-acc2-soft"/><line x1="470" y1="218.8" x2="508" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="512" y="215" width="38" height="15" class="f-acc2-soft"/><line x1="512" y1="218.8" x2="550" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="554" y="216.2" width="38" height="13.8" class="f-acc2-soft"/><line x1="554" y1="218.8" x2="592" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="596" y="217.1" width="38" height="12.9" class="f-acc2-soft"/><line x1="596" y1="218.8" x2="634" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="638" y="218" width="38" height="12" class="f-acc2-soft"/><line x1="638" y1="218.8" x2="676" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/><rect x="680" y="218.8" width="38" height="11.3" class="f-acc2-soft"/><line x1="680" y1="218.8" x2="718" y2="218.8" style="stroke:var(--text);stroke-width:2;stroke-dasharray:4 3"/>
+        <text x="69" y="44" text-anchor="middle" class="t-mono">1</text><text x="111" y="134" text-anchor="middle" class="t-mono">1/2</text>
+        <text x="174" y="160" text-anchor="middle" class="t-acc">≥ 1/2</text>
+        <text x="300" y="186" text-anchor="middle" class="t-acc">≥ 1/2</text>
+        <text x="552" y="200" text-anchor="middle" class="t-acc">≥ 1/2</text>
+        <text x="153" y="250" text-anchor="middle" class="t-dim">1/3 + 1/4</text><text x="300" y="250" text-anchor="middle" class="t-dim">1/5 + ⋯ + 1/8 (4개)</text><text x="552" y="250" text-anchor="middle" class="t-dim">1/9 + ⋯ + 1/16 (8개)</text>
+        <text x="380" y="272" text-anchor="middle" class="t-dim">점선: 묶음 안의 가장 작은 항으로 모두 바꾼 높이. 묶음마다 합 ≥ 1/2, 묶음은 끝없이 이어진다</text>
+      </svg>
+      <figcaption><b>그림 11-2.</b> 오렘의 묶기. 항 1/k의 막대를 1, 1, 2, 4, 8, …개씩 색으로 묶었다. 각 묶음의 막대를 그 묶음에서 가장 낮은 높이(점선)로 깎아도 묶음의 합은 정확히 1/2이다. 1/2을 무한 번 더하면 무한대이므로 원래 합도 무한대다.</figcaption>
+    </figure>
+    <p>오렘의 부등식은 조화 급수가 <b>얼마나 느리게</b> 자라는지도 알려 줍니다. 부분합을 1 늘리려면 항의 개수를 대략 \(e \approx 2.7\)배 늘려야 합니다. 다음 절의 적분 판정으로 보면 \(H_n\)은 \(\ln n\)과 거의 같고, 그 차이는 상수로 수렴합니다.</p>
+    <div class="formula">$$\lim_{n\to\infty}\left(H_n - \ln n\right) = \gamma = 0.5772156649\ldots$$
+      <div class="where">\(\gamma\)는 <span class="term">오일러–마스케로니 상수</span><span class="en">(Euler–Mascheroni constant)</span>. 예: \(H_{1000} = 7.48547\ldots\), \(\ln 1000 + \gamma = 7.48497\ldots\). 차이는 대략 \(\frac{1}{2n}\)이다. \(H_n\)이 10을 넘는 첫 \(n\)은 12367이다. \(\gamma\)가 유리수인지는 아직 아무도 모른다.</div></div>
+
+    <div class="sim" id="sim-sr-harmonic">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>조화 급수 vs 적분: 계단과 곡선 사이의 틈</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view sr-two">
+          <div><canvas id="sr-cv-harm"></canvas><span class="sr-cap">직사각형 넓이 1/k 와 곡선 y = 1/x</span></div>
+          <div><canvas id="sr-cv-harmlog"></canvas><span class="sr-cap">Hₙ, ln n, ln n + γ (가로축 로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>그림의 n <output id="sr-h-n-out"></output></span><input type="range" id="sr-h-n" min="1" max="30" step="1" value="8"></label>
+          <label class="ctrl"><span>큰 n = 10^k <output id="sr-h-k-out"></output></span><input type="range" id="sr-h-k" min="0" max="8" step="0.1" value="3"></label>
+          <label class="ctrl"><span>목표 합 M <output id="sr-h-m-out"></output></span><input type="range" id="sr-h-m" min="2" max="20" step="1" value="10"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Hₙ (큰 n)</span><span class="v" id="sr-h-H">—</span></div>
+        <div class="stat"><span class="k">ln n</span><span class="v" id="sr-h-ln">—</span></div>
+        <div class="stat"><span class="k">Hₙ − ln n</span><span class="v" id="sr-h-gam">—</span></div>
+        <div class="stat"><span class="k">Hₙ &gt; M 인 첫 n</span><span class="v" id="sr-h-need">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 위 그림에서 [k, k + 1] 위의 직사각형(높이 1/k)이 늘 곡선 위로 튀어나오는 것을 보세요. 그래서 Hₙ ≥ ∫₁ⁿ⁺¹ dx/x = ln(n + 1) → ∞입니다. ② 튀어나온 진분홍 조각들을 모두 왼쪽으로 밀면 높이 1, 폭 1인 칸 안에 겹치지 않고 들어갑니다. 그 합이 γ입니다. ③ 목표 M을 20으로 올리면 필요한 항이 약 2.7억 개입니다. 컴퓨터로도 더해서 확인하기 힘든 크기입니다. 모델: n ≤ 10⁵은 직접 더하고, 그보다 크면 Hₙ ≈ ln n + γ + 1/(2n) − 1/(12n²)을 씁니다(오차 10⁻²⁰ 이하).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="integral-test">
+    <h2>적분 판정과 p-급수</h2>
+    <div class="problem"><strong>바젤 문제의 합을 소수 셋째 자리까지 믿으려면</strong>
+      <p>\(\sum 1/n^2\)을 10항까지 더하면 1.5498입니다. 정답 \(\pi^2/6 = 1.6449\)과 0.1이나 차이 납니다. 오일러의 답을 모른다고 할 때, 10항의 합만 보고 진짜 합이 어느 범위에 있는지 말할 수 있을까요? 몇 항을 더해야 소수 넷째 자리가 맞을까요?</p></div>
+    <p>양의 항 \(a_n = f(n)\)을 높이로 하는 폭 1의 직사각형을 세우면, 급수는 직사각형 넓이의 합이고 \(\int f\)는 곡선 아래 넓이입니다. \(f\)가 감소하면 두 넓이가 서로를 위아래에서 조입니다. 7–9장의 도구로 적분은 계산할 수 있으니, 급수의 운명을 적분에 물어볼 수 있습니다. 이상 적분은 <a href="techniques.html">9장</a>에서 다뤘습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="적분 판정의 위아래 직사각형">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <rect x="60" y="192.5" width="95" height="47.5" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="60" y="50" width="95" height="190" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/><rect x="155" y="218.9" width="95" height="21.1" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="155" y="192.5" width="95" height="47.5" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/><rect x="250" y="228.1" width="95" height="11.9" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="250" y="218.9" width="95" height="21.1" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/><rect x="345" y="232.4" width="95" height="7.6" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="345" y="228.1" width="95" height="11.9" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/><rect x="440" y="234.7" width="95" height="5.3" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="440" y="232.4" width="95" height="7.6" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/><rect x="535" y="236.1" width="95" height="3.9" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1"/><rect x="535" y="234.7" width="95" height="5.3" style="fill:none;stroke:var(--accent-2);stroke-width:1.6;stroke-dasharray:5 3"/>
+        <path d="M55.2 29.5 56.1 33.4 57.8 41 60.2 50.7 63 61.6 66.4 73.2 70.2 85 74.3 96.6 78.9 107.8 83.8 118.5 89 128.5 94.6 137.9 100.5 146.6 106.6 154.5 113.1 161.8 119.9 168.5 126.9 174.6 134.2 180.1 141.7 185.1 149.6 189.7 157.6 193.8 165.9 197.5 174.5 200.9 183.3 204 192.3 206.8 201.6 209.4 211 211.7 220.7 213.8 230.6 215.7 240.8 217.5 251.1 219.1 261.7 220.5 272.4 221.9 283.4 223.1 294.5 224.2 305.9 225.2 317.5 226.2 329.2 227.1 341.2 227.9 353.3 228.6 365.6 229.3 378.1 230 390.8 230.5 403.7 231.1 416.7 231.6 430 232.1 443.4 232.5 457 232.9 470.7 233.3 484.7 233.7 498.8 234 513 234.3 527.5 234.6 542.1 234.9 556.9 235.1 571.8 235.3 586.9 235.6 602.2 235.8 617.7 236 633.2 236.2 649 236.3" fill="none" style="stroke:var(--text);stroke-width:2.4"/>
+        <line x1="40" y1="240" x2="730" y2="240" class="s-axis"/>
+        <text x="60" y="258" text-anchor="middle" class="t-mono">1</text><text x="155" y="258" text-anchor="middle" class="t-mono">2</text><text x="250" y="258" text-anchor="middle" class="t-mono">3</text><text x="345" y="258" text-anchor="middle" class="t-mono">4</text><text x="440" y="258" text-anchor="middle" class="t-mono">5</text><text x="535" y="258" text-anchor="middle" class="t-mono">6</text><text x="630" y="258" text-anchor="middle" class="t-mono">7</text>
+        <text x="166" y="60" class="t">y = f(x) = 1/x²</text>
+        <text x="420" y="110" class="t" style="fill:var(--accent-2);font-weight:700">점선: 높이 f(n), [n, n+1] 위</text>
+        <text x="420" y="132" class="t-dim">→ 넓이 합 a₁ + ⋯ + aₙ ≥ ∫₁ⁿ⁺¹ f</text>
+        <text x="420" y="162" class="t-acc">칠한 칸: 높이 f(n+1), [n, n+1] 위</text>
+        <text x="420" y="184" class="t-dim">→ 넓이 합 a₂ + ⋯ + aₙ ≤ ∫₁ⁿ f</text>
+      </svg>
+      <figcaption><b>그림 11-3.</b> 감소하는 f에서 왼쪽 끝 높이 직사각형(점선)은 곡선 위로, 오른쪽 끝 높이 직사각형(칠한 칸)은 곡선 아래로 들어간다. 그래서 급수의 부분합은 적분으로 위아래가 막힌다. 적분이 유한하면 칠한 칸의 합도 유한하고, 적분이 무한하면 점선 칸의 합도 무한하다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 11.8 (적분 판정)</strong> \(f\)가 \([1, \infty)\)에서 연속이고 양수이며 감소하고 \(a_n = f(n)\)이면,
+      <div class="formula">$$\sum_{n=1}^{\infty} a_n \text{ 수렴} \iff \int_1^{\infty} f(x)\,dx \text{ 수렴}.$$</div>
+      이것을 <span class="term">적분 판정</span><span class="en">(integral test)</span>이라 한다. (조건은 어떤 \(x \ge c\)부터만 성립해도 된다.)
+      <p style="margin:8px 0 0"><b>증명.</b> \(f\)가 감소하므로 \(k \le x \le k+1\)에서 \(a_{k+1} = f(k+1) \le f(x) \le f(k) = a_k\). 이를 \([k, k+1]\)에서 적분하고 \(k\)에 대해 더하면(그림 11-3)
+        $$\sum_{k=2}^{n} a_k \le \int_1^n f(x)\,dx \le \sum_{k=1}^{n-1} a_k.$$
+        적분이 수렴하면 왼쪽 부등식에서 \(S_n \le a_1 + \int_1^\infty f\)로 위로 유계이고, 양항이라 \(S_n\)이 증가하므로 단조 수렴 정리로 수렴한다. 적분이 발산하면 오른쪽 부등식에서 \(S_{n-1} \to \infty\). ∎</p></div>
+    <p>가장 중요한 응용은 거듭제곱 꼴의 급수입니다. 이 급수들은 이후의 비교 판정에서 "잣대"로 쓰입니다.</p>
+    <div class="callout deep"><strong>정리 11.9 (p-급수)</strong> <span class="term">p-급수</span><span class="en">(p-series)</span> \(\displaystyle\sum_{n=1}^{\infty}\frac{1}{n^p}\)은 \(p > 1\)이면 수렴하고 \(p \le 1\)이면 발산한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(p \le 0\)이면 항이 0으로 가지 않아 발산한다. \(p > 0\)이면 \(f(x) = x^{-p}\)은 양수이고 감소한다. \(\int_1^\infty x^{-p}dx\)는 \(p > 1\)이면 \(\frac{1}{p-1}\)로 수렴하고, \(p \le 1\)이면 발산한다(9장의 p-적분). 적분 판정을 적용한다. ∎</p></div>
+    <p>적분 판정은 수렴 여부만이 아니라 <b>꼬리의 크기</b>도 줍니다. \(N\)항까지 더하고 멈췄을 때의 나머지 \(R_N = S - S_N = a_{N+1} + a_{N+2} + \cdots\)도 같은 그림으로 적분 사이에 끼웁니다.</p>
+    <div class="callout deep"><strong>정리 11.10 (나머지 추정)</strong> 정리 11.8의 조건에서 급수가 수렴하면
+      <div class="formula">$$\int_{N+1}^{\infty} f(x)\,dx \;\le\; R_N \;\le\; \int_{N}^{\infty} f(x)\,dx,
+        \qquad\text{즉}\qquad S_N + \int_{N+1}^\infty f \le S \le S_N + \int_N^\infty f.$$</div></div>
+    <div class="callout"><strong>예제 11.5 (바젤 합의 범위)</strong> \(\sum 1/n^2\)을 10항까지 더한 값으로 진짜 합의 범위를 구하라. 오차 \(10^{-4}\) 이하를 보장하려면 몇 항이 필요한가?
+      <ol>
+        <li>부분합: \(S_{10} = 1 + \frac14 + \cdots + \frac1{100} = 1.549768\).</li>
+        <li>꼬리: \(\int_N^\infty x^{-2}dx = \frac1N\)이므로 \(\frac1{11} \le R_{10} \le \frac1{10}\).</li>
+        <li>범위: \(1.549768 + 0.090909 = 1.640677 \le S \le 1.649768\). 진짜 값 \(\pi^2/6 = 1.644934\)가 그 안에 있다. 10항만으로 소수 둘째 자리(1.64)가 확정된다.</li>
+        <li>항 수: \(S_N\)만 쓰면 오차가 최대 \(\frac1N\)이므로 \(N = 10^4\)항이 필요하다. 대신 범위의 가운데 \(S_N + \frac12\left(\frac1N + \frac1{N+1}\right)\)을 답으로 쓰면 오차가 범위 폭의 절반 \(\frac{1}{2N(N+1)}\) 이하라 \(N(N+1) \ge 5000\), 즉 \(N = 71\)이면 충분하다. 꼬리를 추정해 보태는 것이 항을 더 더하는 것보다 훨씬 싸다.</li>
+      </ol></div>
+    <p>적분 판정은 p-급수 경계 바로 근처의 미묘한 급수도 가려 줍니다. \(\sum_{n\ge2} \frac{1}{n\ln n}\)은 \(\int_2^\infty \frac{dx}{x\ln x} = [\ln\ln x]_2^\infty = \infty\)라 발산합니다. 하지만 백만 항까지 더해도 3.42에 불과합니다. 반면 \(\sum_{n\ge2}\frac{1}{n(\ln n)^2}\)은 \(\int_2^\infty\frac{dx}{x(\ln x)^2} = \frac{1}{\ln 2}\)이라 수렴합니다. 수치로 부분합을 보는 것만으로는 이 둘을 구분할 수 없습니다. 판정법이 필요한 이유입니다.</p>
+
+    <div class="sim" id="sim-sr-ptest">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>p-급수와 적분 꼬리: p = 1이 경계인 이유</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view sr-two">
+          <div><canvas id="sr-cv-pt"></canvas><span class="sr-cap">직사각형 aₙ = 1/nᵖ 와 곡선 1/xᵖ</span></div>
+          <div><canvas id="sr-cv-pts"></canvas><span class="sr-cap">부분합 Sₙ과 적분 범위 (가로축 로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지수 p <output id="sr-t-p-out"></output></span><input type="range" id="sr-t-p" min="0.4" max="3" step="0.05" value="2"></label>
+          <label class="ctrl"><span>더한 항 수 N <output id="sr-t-n-out"></output></span><input type="range" id="sr-t-n" min="1" max="12" step="1" value="5"></label>
+          <div class="ctrl"><span>직사각형</span><div class="seg" id="sr-t-mode"><button data-value="up" class="on">왼쪽 끝 높이</button><button data-value="low">오른쪽 끝 높이</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">S<sub>N</sub></span><span class="v" id="sr-t-s">—</span></div>
+        <div class="stat"><span class="k">∫<sub>1</sub><sup>∞</sup> x<sup>−p</sup> dx</span><span class="v" id="sr-t-int">—</span></div>
+        <div class="stat"><span class="k">S의 범위 (정리 11.10)</span><span class="v" id="sr-t-rng">—</span></div>
+        <div class="stat"><span class="k">참값 S</span><span class="v" id="sr-t-true">—</span></div>
+      </div>
+      <div class="sr-msg" id="sr-t-msg"></div>
+      <div class="sim-note">해볼 것: ① p = 2에서 N을 키우며 범위가 참값 π²/6을 조여 들어가는 것을 보세요. ② p를 1.05까지 내리면 여전히 수렴하지만 합이 약 20.6으로 크고, 아래 그래프의 부분합은 10⁸항에서도 참값에 한참 못 미칩니다. ③ p = 1을 넘어 0.9로 가면 적분이 무한대가 되고 부분합도 끝없이 오릅니다. 모델: 참값은 오일러–매클로린 공식으로 계산한 ζ(p)이고, 큰 n의 부분합도 같은 공식으로 구합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="comparison">
+    <h2>비교 판정과 극한 비교 판정</h2>
+    <div class="problem"><strong>적분이 안 되는 항은 어떻게 판정하나</strong>
+      <p>\(\sum \frac{1}{n^2 + n + 1}\), \(\sum \frac{1}{2^n - 1}\), \(\sum \frac{\ln n}{n^3}\), \(\sum \sin\frac1n\)처럼 항이 조금씩 복잡해지면 적분 판정의 적분을 계산하기 어렵거나 귀찮아집니다. 그런데 큰 \(n\)에서 이 항들은 각각 \(\frac1{n^2}\), \(\frac1{2^n}\), \(\frac1{n^3}\)보다 조금 큰 무엇, \(\frac1n\)과 거의 같습니다. "닮은 급수"의 운명을 빌려 올 수 있을까요?</p></div>
+    <div class="callout deep"><strong>정리 11.11 (비교 판정)</strong> 어떤 번호 이후 \(0 \le a_n \le b_n\)이라 하자.
+      <ul style="margin:6px 0 0">
+        <li>\(\sum b_n\)이 수렴하면 \(\sum a_n\)도 수렴한다(큰 쪽이 유한하면 작은 쪽도 유한).</li>
+        <li>\(\sum a_n\)이 발산하면 \(\sum b_n\)도 발산한다(작은 쪽이 무한하면 큰 쪽도 무한).</li>
+      </ul>
+      이것을 <span class="term">비교 판정</span><span class="en">(comparison test)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> 양항 급수의 부분합은 증가한다. \(\sum b_n = B\)이면 \(\sum_{k\le n} a_k \le \sum_{k\le n} b_k \le B\)이라 위로 유계이므로 단조 수렴 정리로 수렴한다. 둘째 문장은 첫째의 대우다. ∎</p></div>
+    <p>비교 판정은 부등식의 <b>방향</b>이 맞아야 합니다. \(\frac{1}{n^2+n+1} \le \frac1{n^2}\)이고 \(\sum\frac1{n^2}\)이 수렴하므로 수렴. 하지만 \(\frac{1}{2^n - 1}\)은 \(\frac1{2^n}\)보다 <b>크기</b> 때문에 \(\sum\frac1{2^n}\)과 바로 비교할 수 없습니다. 이럴 때 부등식을 찾느라 애쓰는 대신 두 항의 <b>비</b>를 봅니다.</p>
+    <div class="callout deep"><strong>정리 11.12 (극한 비교 판정)</strong> \(a_n, b_n > 0\)이고
+      <div class="formula">$$\lim_{n\to\infty}\frac{a_n}{b_n} = c, \qquad 0 \lt c \lt \infty$$</div>
+      이면 \(\sum a_n\)과 \(\sum b_n\)은 함께 수렴하거나 함께 발산한다. 이것을 <span class="term">극한 비교 판정</span><span class="en">(limit comparison test)</span>이라 한다. (\(c = 0\)이면 \(\sum b_n\) 수렴 ⇒ \(\sum a_n\) 수렴, \(c = \infty\)이면 \(\sum b_n\) 발산 ⇒ \(\sum a_n\) 발산.)
+      <p style="margin:8px 0 0"><b>증명.</b> 극한이 \(c\)이므로 어떤 \(N\) 이후 \(\frac c2 \lt \frac{a_n}{b_n} \lt \frac{3c}{2}\), 즉 \(\frac c2 b_n \lt a_n \lt \frac{3c}2 b_n\). 오른쪽 부등식과 비교 판정으로 \(\sum b_n\) 수렴 ⇒ \(\sum a_n\) 수렴, 왼쪽 부등식으로 \(\sum b_n\) 발산 ⇒ \(\sum a_n\) 발산. ∎</p></div>
+    <p>극한 비교 판정의 요령은 <b>항에서 가장 빨리 자라는 부분만 남기는 것</b>입니다. 분자와 분모에서 최고차항만 남긴 \(b_n\)을 만들고, 그 급수가 p-급수나 기하 급수라면 판정이 끝납니다.</p>
+    <div class="callout"><strong>예제 11.6 (잣대 고르기)</strong> 다음 급수의 수렴 여부를 판정하라.
+      <ol>
+        <li>\(\sum \frac{1}{2^n - 1}\): \(b_n = \frac1{2^n}\)이면 \(\frac{a_n}{b_n} = \frac{2^n}{2^n - 1} \to 1\). 기하 급수 \(\sum\frac1{2^n}\)이 수렴하므로 수렴(합은 약 1.6067).</li>
+        <li>\(\sum \frac{3n^2 + 5}{n^4 - n + 7}\): 최고차항만 남기면 \(\frac{3n^2}{n^4} = \frac3{n^2}\). \(b_n = \frac1{n^2}\)로 두면 \(\frac{a_n}{b_n} = \frac{3n^4 + 5n^2}{n^4 - n + 7} \to 3\). p = 2이므로 수렴.</li>
+        <li>\(\sum \frac{1}{\sqrt{n} + 1}\): \(b_n = \frac{1}{\sqrt n}\)이면 비가 \(\frac{\sqrt n}{\sqrt n + 1} \to 1\). p = 1/2이므로 발산.</li>
+        <li>\(\sum \sin\frac1n\): \(b_n = \frac1n\)이면 \(\frac{\sin(1/n)}{1/n} \to 1\)(2장의 \(\frac{\sin x}{x} \to 1\)). 조화 급수와 함께 발산.</li>
+        <li>\(\sum \frac{\ln n}{n^2}\): \(\ln n\)은 어떤 양의 거듭제곱보다도 느리게 자라므로 \(b_n = \frac{1}{n^{1.5}}\)과 비교하면 \(\frac{a_n}{b_n} = \frac{\ln n}{n^{0.5}} \to 0\). \(c = 0\)인 경우이고 \(\sum b_n\)이 수렴(p = 1.5)하므로 수렴. 로그는 지수를 \(1\)에서 조금 깎아 먹을 뿐이다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>성장 속도의 사다리</strong> 비교의 잣대를 고를 때는 5장에서 본 성장 순서를 씁니다. 큰 \(n\)에서 \(\ln n \ll n^{p} \ll r^n \ll n! \ll n^n\) (\(p > 0\), \(r > 1\)). 분모에 사다리의 높은 단이 있을수록 수렴이 쉽습니다. \(\frac{n^{100}}{1.01^n}\)도 결국 기하 급수처럼 줄어 수렴합니다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="alternating">
+    <h2>교대 급수, 절대 수렴과 조건 수렴</h2>
+    <div class="problem"><strong>부호가 번갈아 바뀌면 무엇이 달라지나</strong>
+      <p>조화 급수는 발산하지만 부호를 번갈아 붙인 \(1 - \frac12 + \frac13 - \frac14 + \cdots\)은 어떨까요? 앞으로 한 걸음, 그보다 짧게 뒤로 한 걸음, 또 더 짧게 앞으로…를 반복하면 어딘가에 멈출 것 같습니다. 그런데 이 합은 항의 <b>순서를 바꾸면 값이 달라지는</b> 기묘한 성질도 가지고 있습니다.</p></div>
+    <p>항의 부호가 번갈아 바뀌는 급수 \(\sum (-1)^{n+1}b_n\) (\(b_n > 0\))을 <span class="term">교대 급수</span><span class="en">(alternating series)</span>라 합니다. 지금까지의 판정법은 모두 양항 급수용이었습니다. 교대 급수에는 항이 서로 상쇄된다는 새로운 무기가 있습니다.</p>
+    <div class="callout deep"><strong>정리 11.13 (교대 급수 판정, 라이프니츠 판정)</strong> \(b_n\)이 감소하고(\(b_{n+1} \le b_n\)) \(b_n \to 0\)이면 교대 급수 \(\sum_{n=1}^\infty (-1)^{n+1}b_n = b_1 - b_2 + b_3 - \cdots\)은 수렴한다. 이것을 <span class="term">교대 급수 판정</span><span class="en">(alternating series test)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> 짝수 번째 부분합 \(S_{2m} = (b_1 - b_2) + (b_3 - b_4) + \cdots + (b_{2m-1} - b_{2m})\)은 괄호가 모두 0 이상이라 증가한다. 또 \(S_{2m} = b_1 - (b_2 - b_3) - \cdots - (b_{2m-2} - b_{2m-1}) - b_{2m} \le b_1\)이라 위로 유계다. 단조 수렴 정리로 \(S_{2m} \to S\). 홀수 번째는 \(S_{2m+1} = S_{2m} + b_{2m+1} \to S + 0 = S\). 짝수와 홀수 부분합이 같은 값으로 가므로 \(S_n \to S\). ∎</p></div>
+    <p>증명에서 부분합이 \(S\)를 사이에 두고 위아래로 번갈아 오간다는 것을 보았습니다. 그래서 오차가 바로 다음 항보다 작다는 강력한 보장이 따라옵니다.</p>
+    <div class="callout deep"><strong>정리 11.14 (교대 급수의 오차 한계)</strong> 정리 11.13의 조건에서
+      <div class="formula">$$|S - S_n| \le b_{n+1},$$</div>
+      그리고 \(S - S_n\)의 부호는 첫 번째로 버린 항 \((-1)^{n+2}b_{n+1}\)의 부호와 같다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(S - S_n = (-1)^{n}\left(b_{n+1} - b_{n+2} + b_{n+3} - \cdots\right)\)이고, 괄호 안은 다시 감소하는 교대 급수다. 정리 11.13의 증명처럼 그 합은 0과 첫 항 \(b_{n+1}\) 사이에 있다. ∎</p></div>
+    <div class="callout"><strong>예제 11.7 (몇 항이면 충분한가)</strong>
+      <ol>
+        <li>교대 조화 급수의 합은 \(\ln 2 = 0.693147\)이다(12장에서 증명한다). 10항의 합 \(S_{10} = 0.645635\)의 오차 상한은 \(b_{11} = \frac1{11} \approx 0.091\)이고 실제 오차는 0.0475다. 소수 여섯째 자리까지 맞추려면 \(\frac1{n+1} \lt 5\times10^{-7}\), 약 200만 항이 필요하다. 수렴하지만 느리다.</li>
+        <li>\(\sum_{n=0}^\infty \frac{(-1)^n}{n!} = \frac1e\)(12장)을 \(10^{-6}\) 이내로 계산하려면 \(\frac{1}{(n+1)!} \lt 10^{-6}\)이어야 한다. \(9! = 362880\), \(10! = 3628800\)이므로 \(n + 1 = 10\), 즉 \(n = 0\)부터 \(9\)까지 10항이면 된다. \(S_9 = 0.3678792\)이고 \(1/e = 0.3678794\)와의 차이는 \(2.5\times10^{-7}\)이다.</li>
+        <li>라이프니츠 급수 \(\pi = 4\left(1 - \frac13 + \frac15 - \cdots\right)\)은 \(N\)항의 오차가 \(\frac{4}{2N+1}\) 이하다. 1000항이면 오차가 약 0.001(실제로 3.1406)이고, \(10^{-6}\)을 보장하려면 약 200만 항이 필요하다. 실제 π 계산에 이 급수를 쓰지 않는 이유다(12장의 마친 공식 참고).</li>
+      </ol></div>
+    <p>교대 조화 급수는 수렴하지만 각 항에 절댓값을 씌우면 조화 급수가 되어 발산합니다. 반면 \(1 - \frac14 + \frac19 - \cdots\)은 절댓값을 씌워도 수렴합니다. 이 두 종류는 근본적으로 다르게 행동합니다.</p>
+    <div class="callout deep"><strong>정의 11.15 (절대 수렴과 조건 수렴)</strong> \(\sum |a_n|\)이 수렴하면 \(\sum a_n\)이 <span class="term">절대 수렴</span><span class="en">(absolute convergence)</span>한다고 한다. \(\sum a_n\)은 수렴하지만 \(\sum|a_n|\)이 발산하면 <span class="term">조건 수렴</span><span class="en">(conditional convergence)</span>한다고 한다.</div>
+    <div class="callout deep"><strong>정리 11.16 (절대 수렴하면 수렴한다)</strong> \(\sum|a_n|\)이 수렴하면 \(\sum a_n\)도 수렴한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(0 \le a_n + |a_n| \le 2|a_n|\)이므로 비교 판정으로 \(\sum(a_n + |a_n|)\)이 수렴한다. 수렴하는 두 급수의 차 \(\sum a_n = \sum(a_n + |a_n|) - \sum|a_n|\)도 수렴한다. ∎</p></div>
+    <p>이 정리 덕분에 부호가 불규칙한 급수도 양항 판정법으로 다룰 수 있습니다. 예: \(\left|\frac{\cos n}{n^2}\right| \le \frac1{n^2}\)이므로 \(\sum\frac{\cos n}{n^2}\)은 절대 수렴합니다. 하지만 조건 수렴은 위험합니다. 유한 개의 수는 순서를 바꿔 더해도 합이 같지만, 조건 수렴하는 급수는 그렇지 않습니다.</p>
+    <div class="callout deep"><strong>정리 11.17 (리만 재배열 정리, 요약)</strong> 절대 수렴하는 급수는 항의 순서를 어떻게 바꿔도 같은 합으로 수렴한다. 반대로 조건 수렴하는 급수는 항의 순서를 적절히 바꾸면 <b>임의의 실수</b>로 수렴하게 하거나 발산하게 할 수 있다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> 조건 수렴하면 양의 항만의 합과 음의 항만의 합이 각각 \(+\infty\), \(-\infty\)로 발산한다(둘 중 하나라도 유한하면 절대 수렴이 된다). 목표 \(T\)를 넘을 때까지 양의 항을 쓰고, \(T\) 아래로 내려갈 때까지 음의 항을 쓰는 일을 반복한다. 쓸 항은 결코 떨어지지 않고, 항이 0으로 가므로 \(T\)를 넘나드는 폭이 0으로 줄어든다.</p></div>
+    <p>예를 들어 교대 조화 급수를 양수 하나, 음수 둘의 순서 \(1 - \frac12 - \frac14 + \frac13 - \frac16 - \frac18 + \cdots\)로 재배열하면 합이 \(\frac12\ln 2\)가 됩니다. 같은 항을 같은 개수만큼 쓰는데 합이 절반이 된 것입니다. 수치 계산 프로그램이 조건 수렴하는 합을 병렬로 나눠 더할 때 이 점을 조심해야 합니다.</p>
+
+    <div class="sim" id="sim-sr-alt">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>교대 급수: 지그재그와 오차 띠, 그리고 재배열</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sr-cv-alt"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>급수</span><select id="sr-a-pre">
+            <option value="ah">1 − 1/2 + 1/3 − ⋯ = ln 2</option>
+            <option value="leib">1 − 1/3 + 1/5 − ⋯ = π/4</option>
+            <option value="efac">1 − 1 + 1/2! − 1/3! + ⋯ = 1/e</option>
+            <option value="sqrt">1 − 1/√2 + 1/√3 − ⋯</option>
+            <option value="sq">1 − 1/4 + 1/9 − ⋯ = π²/12</option>
+            <option value="rearr">교대 조화 재배열 → 목표 T</option>
+          </select></label>
+          <label class="ctrl"><span>항 수 n <output id="sr-a-n-out"></output></span><input type="range" id="sr-a-n" min="1" max="200" step="1" value="12"></label>
+          <label class="ctrl" id="sr-a-tbox"><span>재배열 목표 T <output id="sr-a-t-out"></output></span><input type="range" id="sr-a-t" min="-1.5" max="2.5" step="0.05" value="1.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Sₙ</span><span class="v" id="sr-a-s">—</span></div>
+        <div class="stat"><span class="k">실제 오차 |S − Sₙ|</span><span class="v" id="sr-a-err">—</span></div>
+        <div class="stat"><span class="k">보장 bₙ₊₁</span><span class="v" id="sr-a-bnd">—</span></div>
+        <div class="stat"><span class="k">수렴의 종류</span><span class="v" id="sr-a-kind">—</span></div>
+      </div>
+      <div class="sr-msg" id="sr-a-msg"></div>
+      <div class="sim-note">해볼 것: ① 1/e 급수에서 n = 10 부근의 오차가 보장 bₙ₊₁보다 늘 작은지 확인하세요. 계승 때문에 몇 항 만에 그래프가 평평해집니다. ② ln 2와 π/4는 200항에서도 오차가 10⁻³ 근처입니다. 조건 수렴하는 급수는 대개 느립니다. ③ '재배열'에서 T를 2.5나 −1.5로 옮겨 보세요. 똑같은 항 1, −1/2, 1/3, …을 순서만 바꿔 써서 아무 값에나 다가갑니다. 모델: 재배열은 정리 11.17의 탐욕 규칙(합이 T 이하면 다음 양수, 아니면 다음 음수)을 씁니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="ratio-root">
+    <h2>비 판정과 근 판정</h2>
+    <div class="problem"><strong>계승과 거듭제곱이 섞인 항</strong>
+      <p>\(\sum \frac{n^2}{2^n}\), \(\sum \frac{n!}{n^n}\), \(\sum \frac{(2n)!}{(n!)^2 5^n}\)처럼 계승이나 \(n\)제곱이 들어 있는 항은 적분할 수도 없고, 비교할 잣대를 찾기도 어렵습니다. 이런 항은 대부분 큰 \(n\)에서 <b>기하 급수처럼</b> 행동합니다. 그 공비를 직접 재면 어떨까요?</p></div>
+    <p>기하 급수는 연속한 항의 비가 일정한 급수입니다. 일반 급수에서 연속한 항의 비 \(|a_{n+1}/a_n|\)이 어떤 값 \(L\)로 간다면, 꼬리는 공비 \(L\)인 기하 급수와 닮았을 것입니다.</p>
+    <div class="callout deep"><strong>정리 11.18 (비 판정)</strong> \(\displaystyle L = \lim_{n\to\infty}\left|\frac{a_{n+1}}{a_n}\right|\)이 존재하거나 \(\infty\)라 하자.
+      <ul style="margin:6px 0 0">
+        <li>\(L \lt 1\)이면 \(\sum a_n\)은 절대 수렴한다.</li>
+        <li>\(L > 1\) (또는 \(L = \infty\))이면 발산한다.</li>
+        <li>\(L = 1\)이면 이 판정으로는 알 수 없다.</li>
+      </ul>
+      이것을 <span class="term">비 판정</span><span class="en">(ratio test)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(L \lt 1\)이면 \(L \lt r \lt 1\)인 \(r\)을 고른다. 어떤 \(N\) 이후 \(|a_{n+1}| \le r|a_n|\)이므로 \(|a_{N+k}| \le |a_N|r^k\). 공비 \(r\)인 기하 급수와 비교해 \(\sum|a_n|\)이 수렴한다. \(L > 1\)이면 어떤 번호 이후 \(|a_{n+1}| > |a_n|\)이라 항이 0으로 가지 않으므로 발산 판정으로 발산한다. ∎</p></div>
+    <p>\(L = 1\)이 판정 불가인 것은 p-급수를 보면 알 수 있습니다. \(\frac1n\)과 \(\frac1{n^2}\)은 둘 다 비가 1로 가지만 하나는 발산, 하나는 수렴합니다. 비 판정은 <b>기하 급수만큼 빨리</b> 줄어드는 항을 위한 도구이고, 거듭제곱처럼 느리게 줄어드는 항은 구분하지 못합니다.</p>
+    <div class="callout deep"><strong>정리 11.19 (근 판정)</strong> \(\displaystyle L = \lim_{n\to\infty}\sqrt[n]{|a_n|}\)이 존재하거나 \(\infty\)이면, 결론은 비 판정과 같다: \(L \lt 1\)이면 절대 수렴, \(L > 1\)이면 발산, \(L = 1\)이면 알 수 없다. 이것을 <span class="term">근 판정</span><span class="en">(root test)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(L \lt r \lt 1\)이면 어떤 번호 이후 \(|a_n| \le r^n\)이므로 기하 급수와 비교한다. \(L > 1\)이면 어떤 번호 이후 \(|a_n| > 1\)이라 발산한다. ∎</p></div>
+    <div class="callout"><strong>예제 11.8 (비와 근)</strong>
+      <ol>
+        <li>\(\sum\frac{n^2}{2^n}\): \(\frac{a_{n+1}}{a_n} = \frac{(n+1)^2}{2n^2} \to \frac12\). 수렴. (합은 정확히 6이다. 12장에서 거듭제곱 급수를 미분해 구한다.)</li>
+        <li>\(\sum\frac{n!}{n^n}\): \(\frac{a_{n+1}}{a_n} = \frac{(n+1)!}{(n+1)^{n+1}}\cdot\frac{n^n}{n!} = \left(\frac{n}{n+1}\right)^n = \frac{1}{(1 + 1/n)^n} \to \frac1e \lt 1\). 수렴(합 ≈ 1.8799). 계승이 \(n^n\)보다 느리게 자란다는 정량적 증거다.</li>
+        <li>\(\sum\frac{(2n)!}{(n!)^2}\left(\frac15\right)^n\): \(\frac{a_{n+1}}{a_n} = \frac{(2n+2)(2n+1)}{(n+1)^2}\cdot\frac15 \to \frac45\). 수렴. 공비를 \(\frac15\) 대신 \(\frac13\)으로 바꾸면 \(L = \frac43\)이라 발산한다.</li>
+        <li>\(\sum\left(\frac{n}{2n+1}\right)^n\): 근 판정이 자연스럽다. \(\sqrt[n]{a_n} = \frac{n}{2n+1} \to \frac12\). 수렴.</li>
+        <li>\(\sum\frac{3^n}{n!}\): \(\frac{a_{n+1}}{a_n} = \frac{3}{n+1} \to 0\). 수렴. 어떤 \(x\)에서도 \(\sum\frac{x^n}{n!}\)이 수렴한다는 뜻이고, 12장에서 그 합이 \(e^x\)임을 본다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>비 판정은 다음 장의 주인공</strong> 거듭제곱 급수 \(\sum c_nx^n\)에 비 판정을 쓰면 \(\left|\frac{c_{n+1}}{c_n}\right||x| \to L|x|\)이 되어 "\(|x| \lt 1/L\)이면 수렴"이라는 <b>수렴 반지름</b>이 바로 나옵니다. 끝점 \(|x| = 1/L\)에서는 \(L = 1\)인 경우가 되어 이 장의 다른 판정(p-급수, 교대 급수)이 필요합니다. <a href="taylor.html">12장</a>의 첫 절이 이 이야기입니다.</div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="strategy">
+    <h2>판정법 고르기</h2>
+    <div class="problem"><strong>시험지 위의 급수 한 줄</strong>
+      <p>판정법이 일곱 가지나 되면, 새 급수를 보았을 때 무엇부터 써야 할지 막막합니다. 모든 판정법을 차례로 시도할 수도 있지만, 항의 <b>모양</b>을 보면 대개 어떤 판정이 맞는지 바로 보입니다.</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 420" role="img" aria-label="급수 판정법 고르기 흐름도">
+        <defs><marker id="sr-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="400" rx="10" class="f-surface"/>
+        <rect x="250" y="24" width="260" height="44" rx="10" class="f-acc-soft"/><text x="380" y="51" text-anchor="middle" class="t" style="font-weight:700">① aₙ → 0 인가?</text>
+        <path d="M510 46 H600" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/><text x="555" y="38" text-anchor="middle" class="t-dim">아니오</text>
+        <rect x="604" y="26" width="132" height="40" rx="10" class="f-elev"/><text x="670" y="51" text-anchor="middle" class="t" style="fill:var(--bad);font-weight:700">발산</text>
+        <path d="M380 68 V96" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/><text x="392" y="88" class="t-dim">예 (아직 모름)</text>
+        <rect x="200" y="100" width="360" height="44" rx="10" class="f-acc-soft"/><text x="380" y="127" text-anchor="middle" class="t" style="font-weight:700">② 기하 급수나 p-급수, 망원 급수인가?</text>
+        <path d="M560 122 H600" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/>
+        <rect x="604" y="102" width="132" height="40" rx="10" class="f-elev"/><text x="670" y="120" text-anchor="middle" class="t-dim">|r| &lt; 1, p &gt; 1</text><text x="670" y="136" text-anchor="middle" class="t-dim">이면 수렴</text>
+        <path d="M380 144 V172" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/><text x="392" y="164" class="t-dim">아니오</text>
+        <rect x="150" y="176" width="460" height="44" rx="10" class="f-acc-soft"/><text x="380" y="203" text-anchor="middle" class="t" style="font-weight:700">③ 항의 모양은?</text>
+        <path d="M200 220 L110 262" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/>
+        <path d="M300 220 L290 262" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/>
+        <path d="M460 220 L470 262" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/>
+        <path d="M560 220 L650 262" style="stroke:var(--text-dim);stroke-width:1.5;fill:none" marker-end="url(#sr-ar)"/>
+        <rect x="24" y="266" width="170" height="126" rx="10" class="f-elev"/>
+        <text x="109" y="290" text-anchor="middle" class="t" style="font-weight:700">n의 유리식·근호</text>
+        <text x="109" y="314" text-anchor="middle" class="t-dim">최고차항만 남겨</text><text x="109" y="334" text-anchor="middle" class="t-dim">1/nᵖ와</text>
+        <text x="109" y="362" text-anchor="middle" class="t-acc">극한 비교</text><text x="109" y="382" text-anchor="middle" class="t-dim">(또는 비교)</text>
+        <rect x="204" y="266" width="170" height="126" rx="10" class="f-elev"/>
+        <text x="289" y="290" text-anchor="middle" class="t" style="font-weight:700">n!, rⁿ, nⁿ</text>
+        <text x="289" y="314" text-anchor="middle" class="t-dim">기하처럼 줄어든다</text>
+        <text x="289" y="342" text-anchor="middle" class="t-acc">비 판정</text>
+        <text x="289" y="362" text-anchor="middle" class="t-dim">(통째로 n제곱이면</text><text x="289" y="382" text-anchor="middle" class="t-dim">근 판정)</text>
+        <rect x="384" y="266" width="170" height="126" rx="10" class="f-elev"/>
+        <text x="469" y="290" text-anchor="middle" class="t" style="font-weight:700">(−1)ⁿ bₙ</text>
+        <text x="469" y="314" text-anchor="middle" class="t-dim">먼저 Σ|aₙ| 판정</text>
+        <text x="469" y="342" text-anchor="middle" class="t-acc">안 되면 교대 판정</text>
+        <text x="469" y="362" text-anchor="middle" class="t-dim">→ 조건 수렴</text>
+        <rect x="564" y="266" width="172" height="126" rx="10" class="f-elev"/>
+        <text x="650" y="290" text-anchor="middle" class="t" style="font-weight:700">f(n), f를 적분 가능</text>
+        <text x="650" y="314" text-anchor="middle" class="t-dim">양수·감소 확인</text>
+        <text x="650" y="342" text-anchor="middle" class="t-acc">적분 판정</text>
+        <text x="650" y="362" text-anchor="middle" class="t-dim">예: 1/(n ln n)</text>
+      </svg>
+      <figcaption><b>그림 11-4.</b> 판정법 고르기 순서. 발산 판정은 0.5초면 되니 늘 먼저 한다. 이름 있는 급수(기하·p·망원)인지 본 다음, 항의 모양으로 판정법을 고른다. 비 판정이 L = 1로 끝나면 p-급수 같은 거듭제곱 꼴이라는 신호이니 극한 비교로 돌아간다.</figcaption>
+    </figure>
+    <div class="table-wrap"><table class="sr-tbl">
+      <thead><tr><th>판정법</th><th>쓰는 곳</th><th>결론</th><th>주의</th></tr></thead>
+      <tbody>
+        <tr><td>발산 판정</td><td>모든 급수, 맨 먼저</td><td>aₙ ↛ 0이면 발산</td><td>aₙ → 0이어도 아무 결론 없음</td></tr>
+        <tr><td>기하 급수</td><td>Σ arⁿ</td><td>|r| &lt; 1이면 a/(1 − r)</td><td>첫 항의 번호 확인</td></tr>
+        <tr><td>p-급수</td><td>Σ 1/nᵖ</td><td>p &gt; 1이면 수렴</td><td>p = 1(조화)은 발산</td></tr>
+        <tr><td>적분 판정</td><td>aₙ = f(n), f 양수·감소</td><td>∫와 운명이 같다, 꼬리 추정</td><td>합 ≠ 적분값</td></tr>
+        <tr><td>비교·극한 비교</td><td>양항, 유리식·근호·로그</td><td>잣대와 운명이 같다</td><td>부등식 방향, 0 &lt; c &lt; ∞</td></tr>
+        <tr><td>교대 급수 판정</td><td>(−1)ⁿbₙ, bₙ 감소 → 0</td><td>수렴, 오차 ≤ bₙ₊₁</td><td>절대 수렴 여부는 따로</td></tr>
+        <tr><td>비 판정</td><td>계승, 지수, 거듭제곱 급수</td><td>L &lt; 1 절대 수렴, L &gt; 1 발산</td><td>L = 1이면 판정 불가</td></tr>
+        <tr><td>근 판정</td><td>항 전체가 n제곱</td><td>비 판정과 같다</td><td>L = 1이면 판정 불가</td></tr>
+      </tbody></table></div>
+    <p>아래 선택기에서 급수를 하나 고르고 판정법 버튼을 눌러 보세요. 맞는 판정을 고르면 결론이 나오고, 맞지 않는 판정은 왜 결론을 못 내는지 알려 줍니다. 아래 그래프의 부분합은 참고용입니다. 앞에서 본 것처럼 부분합 그래프만 보고는 \(\sum\frac1{n\ln n}\)이 발산하는지 알 수 없습니다.</p>
+
+    <div class="sim" id="sim-sr-chooser">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>판정법 선택기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sr-cv-ch"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>급수</span><select id="sr-c-pre"></select></label>
+          <div class="ctrl"><span>판정법 고르기</span>
+            <div class="sr-tests" id="sr-c-tests">
+              <button class="btn" data-t="div">발산 판정</button><button class="btn" data-t="named">기하·p-급수</button>
+              <button class="btn" data-t="cmp">비교</button><button class="btn" data-t="lcmp">극한 비교</button>
+              <button class="btn" data-t="int">적분</button><button class="btn" data-t="alt">교대</button>
+              <button class="btn" data-t="ratio">비</button><button class="btn" data-t="root">근</button>
+            </div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">급수</span><span class="v" id="sr-c-ser">—</span></div>
+        <div class="stat"><span class="k">S₁₀₀ (참고)</span><span class="v" id="sr-c-s">—</span></div>
+        <div class="stat"><span class="k">결론</span><span class="v" id="sr-c-ans">—</span></div>
+      </div>
+      <div class="sr-msg" id="sr-c-msg"></div>
+      <div class="sim-note">해볼 것: ① Σ n!/nⁿ에 비 판정을, Σ (2n/(3n + 1))ⁿ에 근 판정을 써 보세요. ② Σ 1/(n² + 1)에 비 판정을 쓰면 L = 1이 나옵니다. 판정 불가입니다. 같은 급수에 극한 비교를 쓰면 바로 끝납니다. ③ Σ (−1)ⁿ/ln n은 교대 판정으로 수렴하지만, 비교 판정으로 절댓값 급수가 발산함도 확인해 조건 수렴이라고 결론 내 보세요. 모델: 결론은 해석적으로 정리해 둔 것이고, 그래프는 부분합 S₁…S₁₀₀입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>급수는 "작은 효과가 끝없이 이어질 때 전체가 얼마인가"를 묻는 모든 곳에 있습니다. 그리고 공학에서는 늘 "몇 항에서 멈출 것인가"가 함께 따라옵니다.</p>
+    <div class="callout"><strong>디지털 필터의 안정성: 메아리의 합이 유한한가</strong> 출력이 \(y_n = x_n + a\,y_{n-1}\)인 1차 재귀 필터(IIR)에 크기 1인 펄스를 한 번 넣으면 출력은 \(1, a, a^2, a^3, \dots\)으로 메아리칩니다. 이 메아리의 절댓값 합 \(\sum|a|^n\)이 유한해야, 즉 \(|a| \lt 1\)이어야 유계 입력에 유계 출력이 나옵니다(BIBO 안정). 계수가 \(a = 0.95\)이면 메아리 합은 \(\frac{1}{1 - 0.95} = 20\)이라 직류 이득이 20배이고, 메아리가 1% 아래로 줄어드는 데 \(\ln 0.01/\ln 0.95 \approx 90\) 샘플이 걸립니다. 필터 설계에서 극점이 단위원 안에 있어야 한다는 조건이 바로 이 기하 급수의 수렴 조건입니다.</div>
+    <div class="uses">
+      <a href="taylor.html"><small>12장 · 테일러 전개</small>거듭제곱 급수<br><span>비 판정으로 수렴 반지름을, 교대 급수 오차로 계산기의 정밀도를 정한다.</span></a>
+      <a href="techniques.html"><small>9장 · 적분 기법</small>이상 적분<br><span>p-적분과 비교 판정은 적분 판정을 통해 급수 판정과 짝을 이룬다.</span></a>
+      <a href="../../foundations/chapters/limits.html"><small>MATHBOOK</small>무한을 길들이기<br><span>제논의 정사각형, 블록 쌓기 오버행, 테일러 다항식 실험실로 보는 입문편.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 급수<br><span>주기 신호를 사인파의 무한 합으로. 계수가 1/n로 줄면 조건 수렴, 1/n²이면 절대 수렴.</span></a>
+      <a href="../../probability/chapters/discrete.html"><small>확률과 통계</small>기하 분포와 기댓값<br><span>성공까지의 시행 수 분포. 확률의 합과 기댓값이 기하 급수와 그 미분이다.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK</small>반복법의 수렴<br><span>야코비·가우스–자이델 반복은 행렬 기하 급수 Σ Mᵏ가 수렴할 때(스펙트럼 반지름 &lt; 1) 수렴한다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>부동소수점 합<br><span>작은 항을 큰 부분합에 더하면 반올림으로 사라진다. 긴 급수는 작은 항부터 더하거나 보정 합을 쓴다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>수열 \(a_n \to L\): 모든 \(\varepsilon > 0\)에 대해 \(n > N \Rightarrow |a_n - L| \lt \varepsilon\)인 \(N\)이 있다. 유계이고 단조인 수열은 극한값을 몰라도 수렴한다(실수의 완비성).</li>
+      <li>급수의 합은 부분합 수열의 극한이다. 기하 급수 \(\sum ar^n = \frac{a}{1-r}\) (\(|r| \lt 1\)), 꼬리는 정확히 \(\frac{ar^n}{1-r}\). 망원 급수는 부분합이 지워져 계산된다.</li>
+      <li>수렴하면 \(a_n \to 0\)이지만 역은 거짓이다. 조화 급수 \(\sum\frac1n\)은 발산하고 \(H_n - \ln n \to \gamma\).</li>
+      <li>적분 판정: 양수·감소하는 \(f\)에 대해 \(\sum f(n)\)과 \(\int^\infty f\)는 운명이 같고, 꼬리는 \(\int_{N+1}^\infty f \le R_N \le \int_N^\infty f\). p-급수는 \(p > 1\)에서만 수렴한다.</li>
+      <li>비교·극한 비교: 최고차항만 남긴 잣대(\(1/n^p\), \(r^n\))와 비교한다. 극한 비교는 \(0 \lt c \lt \infty\)일 때 운명이 같다.</li>
+      <li>교대 급수는 \(b_n\)이 감소해 0으로 가면 수렴하고 오차는 \(b_{n+1}\) 이하다. 절대 수렴하면 수렴하며 순서를 바꿔도 합이 같지만, 조건 수렴하는 급수는 재배열로 합이 바뀐다.</li>
+      <li>비·근 판정은 기하 급수와의 비교다. \(L \lt 1\) 절대 수렴, \(L > 1\) 발산, \(L = 1\)이면 판정 불가(p-급수 꼴이라는 신호).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\sum_{n=1}^{\infty} 3\left(-\frac25\right)^{n-1}\)의 값은?</p><div class="opts">
+        <button class="opt">5</button>
+        <button class="opt" data-correct>15/7</button>
+        <button class="opt">3/7</button>
+        <button class="opt">발산한다</button>
+      </div><div class="quiz-exp">첫 항 \(a = 3\), 공비 \(r = -\frac25\)인 기하 급수다. \(|r| \lt 1\)이므로 합은 \(\frac{3}{1 - (-2/5)} = \frac{3}{7/5} = \frac{15}{7}\). 5는 공비를 \(+\frac25\)로 착각했을 때의 값이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 다음 중 <b>항상</b> 참인 것은?</p><div class="opts">
+        <button class="opt">\(a_n \to 0\)이면 \(\sum a_n\)은 수렴한다</button>
+        <button class="opt" data-correct>\(\sum a_n\)이 수렴하면 \(a_n \to 0\)이다</button>
+        <button class="opt">\(\sum a_n\)이 수렴하면 \(\sum |a_n|\)도 수렴한다</button>
+        <button class="opt">\(a_n\)이 감소하면 \(\sum a_n\)은 수렴한다</button>
+      </div><div class="quiz-exp">정리 11.6(발산 판정)의 내용이다. 첫째는 조화 급수가 반례, 셋째는 교대 조화 급수가 반례(조건 수렴), 넷째는 역시 조화 급수가 반례다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\sum_{n=1}^\infty \frac{n^2 + 1}{n^4 + 3}\)에 대한 판단으로 가장 알맞은 것은?</p><div class="opts">
+        <button class="opt">항이 0으로 가므로 수렴한다</button>
+        <button class="opt">비 판정으로 수렴한다</button>
+        <button class="opt" data-correct>\(\frac1{n^2}\)과 극한 비교하면 비가 1이므로 수렴한다</button>
+        <button class="opt">\(\frac1n\)과 비교하면 발산한다</button>
+      </div><div class="quiz-exp">최고차항만 남기면 \(\frac{n^2}{n^4} = \frac1{n^2}\). \(\frac{a_n}{1/n^2} = \frac{n^4 + n^2}{n^4 + 3} \to 1\)이고 p = 2인 p-급수가 수렴하므로 수렴한다. 비 판정은 \(L = 1\)이라 결론을 못 낸다. 첫째는 논리가 틀렸다(결론은 맞아도 근거가 아니다).</div></div>
+
+      <div class="quiz-q"><p>Q4. \(\sum\frac1{n^3}\)을 \(N = 10\)항까지 더해 멈췄다. 적분 판정의 나머지 추정이 주는 오차 \(R_{10}\)의 상한은?</p><div class="opts">
+        <button class="opt">1/1000</button>
+        <button class="opt">1/1331</button>
+        <button class="opt" data-correct>1/200</button>
+        <button class="opt">1/20</button>
+      </div><div class="quiz-exp">\(R_N \le \int_N^\infty x^{-3}dx = \frac{1}{2N^2}\). \(N = 10\)이면 \(\frac1{200} = 0.005\). 아래쪽 한계는 \(\frac{1}{2\cdot 11^2} = \frac1{242}\)이다. 1/1331은 다음 항 하나의 크기일 뿐이고, 양항 급수에서는 꼬리가 다음 항보다 훨씬 클 수 있다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\sum_{n=1}^\infty \frac{(-1)^{n+1}}{n^3}\)을 4항까지 더한 \(S_4\)의 오차에 대해 교대 급수 오차 한계가 보장하는 것은?</p><div class="opts">
+        <button class="opt">\(|S - S_4| \le 1/64\)</button>
+        <button class="opt" data-correct>\(|S - S_4| \le 1/125\)이고 \(S > S_4\)</button>
+        <button class="opt">\(|S - S_4| \le 1/125\)이고 \(S \lt S_4\)</button>
+        <button class="opt">오차를 알 수 없다</button>
+      </div><div class="quiz-exp">\(b_n = 1/n^3\)은 감소하며 0으로 가므로 정리 11.14에서 \(|S - S_4| \le b_5 = \frac1{125} = 0.008\). 첫 번째로 버린 항 \(+\frac1{125}\)이 양수이므로 \(S - S_4 > 0\), 즉 \(S_4\)는 참값보다 작다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\sum_{n=1}^\infty \frac{(2n)!}{(n!)^2}x^n\)이 비 판정으로 수렴하는 \(x > 0\)의 범위는?</p><div class="opts">
+        <button class="opt">\(x \lt 1\)</button>
+        <button class="opt">\(x \lt 1/2\)</button>
+        <button class="opt" data-correct>\(x \lt 1/4\)</button>
+        <button class="opt">모든 \(x > 0\)</button>
+      </div><div class="quiz-exp">\(\frac{a_{n+1}}{a_n} = \frac{(2n+2)(2n+1)}{(n+1)^2}x \to 4x\). \(4x \lt 1\)이면 수렴, \(4x > 1\)이면 발산한다. 이것이 다음 장에서 말하는 수렴 반지름 \(R = 1/4\)이다. 예제 11.8의 \(x = 1/5\)은 이 범위 안에 있다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(\sum_{n=1}^\infty \frac{(-1)^n}{\sqrt n}\)은?</p><div class="opts">
+        <button class="opt">절대 수렴한다</button>
+        <button class="opt" data-correct>조건 수렴한다</button>
+        <button class="opt">발산한다(항이 0으로 가지 않는다)</button>
+        <button class="opt">발산한다(p = 1/2 &lt; 1)</button>
+      </div><div class="quiz-exp">\(\frac1{\sqrt n}\)은 감소하며 0으로 가므로 교대 급수 판정으로 수렴한다. 절댓값 급수 \(\sum\frac1{\sqrt n}\)은 p = 1/2인 p-급수라 발산한다. 그러므로 조건 수렴이고, 재배열하면 다른 합을 만들 수 있다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 반복 소수 \(0.\overline{36} = 0.363636\ldots\)을 분수로 쓰면?</p><div class="opts">
+        <button class="opt">9/25</button>
+        <button class="opt">36/100</button>
+        <button class="opt" data-correct>4/11</button>
+        <button class="opt">2/5</button>
+      </div><div class="quiz-exp">\(0.36 + 0.36(0.01) + 0.36(0.01)^2 + \cdots = \frac{0.36}{1 - 0.01} = \frac{36}{99} = \frac{4}{11}\). 9/25 = 0.36은 첫 항만 쓴 값이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const SR = {
+  num(v, d = 4) {
+    if (!isFinite(v)) return v > 0 ? "∞" : v < 0 ? "−∞" : "—";
+    const a = Math.abs(v);
+    let s;
+    if (a !== 0 && (a < 1e-4 || a >= 1e7)) {
+      const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+      s = `${m.toFixed(2)}×10<sup>${String(e).replace("-", "−")}</sup>`;
+    } else s = String(Number(v.toFixed(d)));
+    return s.replace(/^-/, "−");
+  },
+  int(n) { return Math.round(n).toLocaleString("en-US"); },
+  clip(ctx, R) { ctx.save(); ctx.beginPath(); ctx.rect(R.box.x, R.box.y - 2, R.box.w + 2, R.box.h + 4); ctx.clip(); },
+  dot(ctx, x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); },
+  poly(ctx, pts, color, width, dash) {
+    ctx.strokeStyle = color; ctx.lineWidth = width || 2; ctx.setLineDash(dash || []); ctx.beginPath();
+    let on = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y) || Math.abs(y) > 1e6) { on = false; return; } on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; });
+    ctx.stroke(); ctx.setLineDash([]);
+  },
+  hband(ctx, R, y0, y1, color, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color;
+    const a = MB.clamp(R.Y(y1), R.box.y, R.box.y + R.box.h), b = MB.clamp(R.Y(y0), R.box.y, R.box.y + R.box.h);
+    ctx.fillRect(R.box.x, a, R.box.w, b - a); ctx.restore();
+  },
+  range(vals, pad = 0.08) {
+    const f = vals.filter((v) => isFinite(v));
+    let lo = Math.min(...f), hi = Math.max(...f);
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const p = (hi - lo) * pad; return [lo - p, hi + p];
+  },
+  GAMMA: 0.5772156649015329,
+  sup(k) { return String(k).split("").map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c]).join(""); },
+};
+/* 조화수: n ≤ 1e5는 표, 그 위는 점근 전개 */
+SR.HT = (function () { const t = new Float64Array(100001); for (let n = 1; n <= 100000; n++) t[n] = t[n - 1] + 1 / n; return t; })();
+SR.H = (n) => n <= 100000 ? SR.HT[Math.max(0, Math.floor(n))] : Math.log(n) + SR.GAMMA + 1 / (2 * n) - 1 / (12 * n * n);
+/* p-급수의 부분합(오일러–매클로린, M = 1000부터)과 ζ(p) */
+SR.PS = function (p) {
+  const M = 1000, tab = new Float64Array(M + 1);
+  for (let n = 1; n <= M; n++) tab[n] = tab[n - 1] + Math.pow(n, -p);
+  const f = (x) => Math.pow(x, -p), fp = (x) => -p * Math.pow(x, -p - 1);
+  const I = (a, b) => (Math.abs(p - 1) < 1e-9 ? Math.log(b / a) : (Math.pow(b, 1 - p) - Math.pow(a, 1 - p)) / (1 - p));
+  const S = (n) => n <= M ? tab[Math.max(0, Math.floor(n))] : tab[M - 1] + I(M, n) + (f(M) + f(n)) / 2 + (fp(n) - fp(M)) / 12;
+  const zeta = p > 1 + 1e-9 ? tab[M - 1] + Math.pow(M, 1 - p) / (p - 1) + f(M) / 2 - fp(M) / 12 : Infinity;
+  return { S, zeta };
+};
+
+/* ================================================================ 1. ε 띠와 N */
+(function () {
+  const PRE = {
+    rat: { f: (n) => (2 * n + 1) / (n + 3), L: 2, Ltxt: "2" },
+    alt: { f: (n) => (n % 2 ? -3 : 3) / n, L: 0, Ltxt: "0" },
+    sin: { f: (n) => Math.sin(n) / n, L: 0, Ltxt: "0" },
+    e: { f: (n) => Math.pow(1 + 1 / n, n), L: Math.E, Ltxt: "e = 2.71828…" },
+    root: { f: (n) => Math.pow(n, 1 / n), L: 1, Ltxt: "1" },
+    osc: { f: (n) => (n % 2 ? -1 : 1), L: null, cand: 1, Ltxt: "없음 (1이라 해 보면)" },
+    log: { f: (n) => Math.log(n), L: null, Ltxt: "없음 (→ ∞)" },
+  };
+  const NMAX = 20000;
+  let key = "rat";
+  const msg = document.getElementById("sr-q-msg");
+  const eps = MB.steps("sr-q-eps", [1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001], (v) => String(v), 0.1, () => cv.redraw());
+  const zoom = MB.check("sr-q-zoom", () => cv.redraw());
+  function lastOut(s, L, e) { let N = 0; for (let n = 1; n <= NMAX; n++) if (Math.abs(s.f(n) - L) >= e) N = n; return N; }
+  const cv = MB.canvas("#sr-cv-seq", (ctx) => {
+    const C = MB.palette(), s = PRE[key], e = eps();
+    const L = s.L != null ? s.L : s.cand;
+    let N = null;
+    if (s.L != null) N = lastOut(s, s.L, e);
+    let nmax = 60;
+    if (zoom() && N != null) nmax = Math.min(NMAX, Math.max(40, Math.ceil(N * 1.6) + 10));
+    if (key === "log") nmax = zoom() ? 2000 : 60;
+    const vals = []; const step = Math.max(1, Math.floor(nmax / 1500));
+    for (let n = 1; n <= nmax; n += step) vals.push([n, s.f(n)]);
+    let yr;
+    if (L != null && zoom() && key !== "osc") yr = [L - Math.max(4 * e, 1e-3), L + Math.max(4 * e, 1e-3)];
+    else yr = SR.range(vals.map((v) => v[1]).concat(L != null ? [L - e, L + e] : []));
+    const R = MB.chart(ctx, null, { x: [0, nmax], y: yr, xLabel: "n", xFmt: (v) => SR.int(v) });
+    if (L != null) {
+      SR.hband(ctx, R, L - e, L + e, C.accent, 0.16);
+      SR.clip(ctx, R);
+      SR.poly(ctx, [[R.box.x, R.Y(L)], [R.box.x + R.box.w, R.Y(L)]], C.accent, 1.4, [6, 4]);
+      ctx.restore();
+    }
+    SR.clip(ctx, R);
+    if (N != null && N > 0) { SR.poly(ctx, [[R.X(N), R.box.y], [R.X(N), R.box.y + R.box.h]], C.warn, 1.6, [5, 4]); ctx.fillStyle = C.warn; ctx.font = "600 12px sans-serif"; ctx.textAlign = "left"; ctx.fillText("N = " + SR.int(N), Math.min(R.X(N) + 5, R.box.x + R.box.w - 70), R.box.y + 14); }
+    const r = nmax > 400 ? 1.6 : nmax > 120 ? 2.4 : 3.6;
+    vals.forEach(([n, a]) => { const inb = L != null && Math.abs(a - L) < e; SR.dot(ctx, R.X(n), R.Y(a), r, inb ? C.accent : C.accent2); });
+    ctx.restore();
+    MB.stat("sr-q-L", s.Ltxt);
+    if (s.L != null) {
+      MB.stat("sr-q-N", SR.int(N));
+      MB.stat("sr-q-gap", N > 0 ? SR.num(Math.abs(s.f(N) - s.L), 5) + " ≥ ε" : "처음부터 띠 안");
+      msg.className = "sr-msg ok";
+      msg.innerHTML = `n &gt; <b>${SR.int(N)}</b>이면 모든 항이 띠 (L − ${e}, L + ${e}) 안에 있습니다. ε를 더 줄여도 언제나 이런 N을 찾을 수 있으니 수렴합니다.`;
+    } else if (key === "osc") {
+      MB.stat("sr-q-N", "없음"); MB.stat("sr-q-gap", "홀수 번째 항은 늘 2만큼 떨어짐");
+      msg.className = "sr-msg bad";
+      msg.innerHTML = e < 1 ? "L = 1로 잡으면 홀수 번째 항 −1이 영원히 띠 밖에 있습니다. 어떤 L을 골라도 ±1 중 하나는 1 이상 떨어지므로 ε &lt; 1이면 N이 없습니다. <b>발산</b>." : "ε = 1이면 띠가 너무 넓어 −1이 경계에 걸칩니다. ε를 줄여 보세요.";
+    } else {
+      MB.stat("sr-q-N", "없음"); MB.stat("sr-q-gap", "—");
+      msg.className = "sr-msg bad";
+      msg.innerHTML = `ln n은 아주 느리게 자라지만 한없이 커집니다(ln n &gt; M ⇔ n &gt; e<sup>M</sup>). 어떤 L 주위의 띠에도 머물지 않습니다. <b>∞로 발산</b>.`;
+    }
+  }, { aspect: 0.56, minHeight: 240, maxHeight: 400 });
+  document.getElementById("sr-q-pre").addEventListener("change", (ev) => { key = ev.target.value; cv.redraw(); });
+})();
+
+/* ================================================================ 2. 거미줄 그림 */
+(function () {
+  const PRE = {
+    sqrt: { g: (x) => Math.sqrt(2 + x), x: [-0.4, 4.4], y: [-0.4, 3], a0: 0, lo: -2, hi: 4.3, L: 2, d: 0.25 },
+    baby: { g: (x) => (x + 2 / x) / 2, x: [0, 4.2], y: [0, 3], a0: 3.6, lo: 0.25, hi: 4.1, L: Math.SQRT2, d: 0 },
+    cos: { g: Math.cos, x: [-0.3, 1.7], y: [-0.3, 1.2], a0: 1.5, lo: -0.25, hi: 1.65, L: 0.7390851332, d: Math.sin(0.7390851332) },
+    log28: { g: (x) => 2.8 * x * (1 - x), x: [-0.05, 1.05], y: [-0.05, 0.8], a0: 0.08, lo: 0.01, hi: 0.99, L: 1 - 1 / 2.8, d: 0.8 },
+    log33: { g: (x) => 3.3 * x * (1 - x), x: [-0.05, 1.05], y: [-0.05, 0.9], a0: 0.08, lo: 0.01, hi: 0.99, L: 1 - 1 / 3.3, d: 1.3 },
+    dbl: { g: (x) => 1.2 * x, x: [-0.5, 6.5], y: [-0.5, 5], a0: 0.4, lo: 0.05, hi: 6, L: 0, d: 1.2 },
+  };
+  let key = "sqrt", steps = 0, chn = null;
+  const msg = document.getElementById("sr-w-msg");
+  const seq = () => { const s = PRE[key], a = [pts[0].x]; for (let i = 0; i < steps; i++) { const v = s.g(a[a.length - 1]); if (!isFinite(v)) break; a.push(v); } return a; };
+  const pts = [{ x: PRE.sqrt.a0, y: 0, label: "a₁", r: 8, constrain(p) { const s = PRE[key]; p.y = 0; p.x = MB.clamp(p.x, s.lo, s.hi); } }];
+  const pl = MB.plane("#sr-cv-web", {
+    x: PRE.sqrt.x, y: PRE.sqrt.y, aspect: 0.7, maxHeight: 420, minHeight: 250, gridStep: 1, points: pts,
+    draw(P, api) {
+      const C = P.P, s = PRE[key], a = seq();
+      api.points[0].color = C.accent2;
+      P.line(P.x0, P.x0, P.x1, P.x1, { color: C.dim, width: 1.4, dash: [5, 4] });
+      P.curve(s.g, { color: C.accent, width: 2.6 });
+      P.dot(s.L, s.L, { r: 4, color: C.ok });
+      const ctx = P.ctx; ctx.save(); ctx.strokeStyle = C.accent2; ctx.lineWidth = 1.6; ctx.beginPath();
+      ctx.moveTo(P.X(a[0]), P.Y(0));
+      for (let i = 0; i + 1 < a.length; i++) { ctx.lineTo(P.X(a[i]), P.Y(a[i + 1])); ctx.lineTo(P.X(a[i + 1]), P.Y(a[i + 1])); }
+      ctx.stroke(); ctx.restore();
+      if (a.length > 1) P.dot(a[a.length - 1], a[a.length - 1], { r: 4.5, color: C.warn });
+      info(a); if (chn) chn.redraw();
+    },
+    onDrag() { steps = 0; },
+  });
+  function shape(a) {
+    if (a.length < 3) return "—";
+    let inc = true, dec = true, alt = true;
+    for (let i = 1; i < a.length; i++) { if (a[i] < a[i - 1] - 1e-15) inc = false; if (a[i] > a[i - 1] + 1e-15) dec = false; }
+    for (let i = 2; i < a.length; i++) if ((a[i] - a[i - 1]) * (a[i - 1] - a[i - 2]) > 0) alt = false;
+    return inc ? "증가" : dec ? "감소" : alt ? "진동(번갈아)" : "단조 아님";
+  }
+  function info(a) {
+    const s = PRE[key], last = a[a.length - 1];
+    MB.stat("sr-w-n", String(a.length)); MB.stat("sr-w-a", SR.num(last, 6));
+    MB.stat("sr-w-L", `${SR.num(s.L, 5)}, ${SR.num(s.d, 3)}`); MB.stat("sr-w-mono", shape(a));
+    const out = last < s.x[0] || last > s.x[1] * 1.5;
+    const dist = Math.abs(last - s.L);
+    if (key === "dbl") { msg.className = "sr-msg bad"; msg.innerHTML = out ? "화면 밖으로 달아났습니다. 고정점 0에서 |g′| = 1.2 &gt; 1이라 가까이서 시작해도 밀려나고, 증가하지만 위로 유계가 아닙니다." : "고정점은 0 하나뿐인데 거미줄이 0에서 멀어집니다. '다음 단계'를 계속 눌러 보세요."; return; }
+    if (key === "log33" && a.length > 30) { msg.className = "sr-msg warn"; msg.innerHTML = `|g′(L)| = 1.3 &gt; 1이라 고정점 ${SR.num(s.L, 4)}이 밀어냅니다. 수열은 약 0.479와 0.824 두 값 사이를 오가며 극한이 없습니다.`; return; }
+    if (a.length === 1) { msg.className = "sr-msg"; msg.innerHTML = "'다음 단계'를 누르면 세로(곡선까지) → 가로(대각선까지)로 한 칸 갑니다."; return; }
+    if (dist < 1e-6) { msg.className = "sr-msg ok"; msg.innerHTML = `${a.length}번째 항이 고정점 ${SR.num(s.L, 6)}과 10<sup>−6</sup> 이내입니다. ${s.d === 0 ? "g′(L) = 0이라 오차가 매번 제곱으로 줄었습니다." : `오차가 매번 약 ${SR.num(s.d, 3)}배로 줄어듭니다.`}`; }
+    else { msg.className = "sr-msg"; msg.innerHTML = `고정점까지 거리 <b>${SR.num(dist, 6)}</b>. 지금까지 ${shape(a)}.`; }
+  }
+  chn = MB.canvas("#sr-cv-webn", (ctx) => {
+    const C = MB.palette(), s = PRE[key], a = seq(), n = Math.max(10, a.length + 1);
+    const yr = SR.range(a.concat([s.L]).filter((v) => Math.abs(v) < 50));
+    const R = MB.chart(ctx, null, { x: [0, n], y: yr, xLabel: "n", hlines: [{ y: s.L, color: C.ok }] });
+    SR.clip(ctx, R);
+    SR.poly(ctx, a.map((v, i) => [R.X(i + 1), R.Y(v)]), C.accent2, 1.4);
+    a.forEach((v, i) => SR.dot(ctx, R.X(i + 1), R.Y(v), 3.4, i === a.length - 1 ? C.warn : C.accent2));
+    ctx.restore();
+  }, { aspect: 0.34, minHeight: 140, maxHeight: 200 });
+  function setPre(k) { key = k; steps = 0; const s = PRE[k]; pts[0].x = s.a0; pts[0].y = 0; pl.view({ x: s.x, y: s.y }); }
+  document.getElementById("sr-w-pre").addEventListener("change", (e) => setPre(e.target.value));
+  document.getElementById("sr-w-step").addEventListener("click", () => { steps = Math.min(200, steps + 1); pl.redraw(); });
+  document.getElementById("sr-w-ten").addEventListener("click", () => { steps = Math.min(200, steps + 10); pl.redraw(); });
+  document.getElementById("sr-w-reset").addEventListener("click", () => { steps = 0; pl.redraw(); });
+  pl.redraw();
+})();
+
+/* ================================================================ 3. 항과 부분합 */
+(function () {
+  const PRE = {
+    geo: { n0: 0, a: (n, r) => Math.pow(r, n), S: (r) => (Math.abs(r) < 1 ? 1 / (1 - r) : null), St: (r) => (Math.abs(r) < 1 ? `1/(1 − r) = ${SR.num(1 / (1 - r))}` : "발산 (|r| ≥ 1)") },
+    tel: { n0: 1, a: (n) => 1 / (n * (n + 1)), S: () => 1, St: () => "1" },
+    sq: { n0: 1, a: (n) => 1 / (n * n), S: () => Math.PI * Math.PI / 6, St: () => "π²/6 = 1.64493" },
+    harm: { n0: 1, a: (n) => 1 / n, S: () => null, St: () => "∞ (발산)" },
+    sqrt: { n0: 1, a: (n) => 1 / Math.sqrt(n), S: () => null, St: () => "∞ (발산)" },
+    ah: { n0: 1, a: (n) => (n % 2 ? 1 : -1) / n, S: () => Math.LN2, St: () => "ln 2 = 0.693147" },
+    osc: { n0: 0, a: (n) => (n % 2 ? -1 : 1), S: () => null, St: () => "없음 (1, 0, 1, 0, …)" },
+  };
+  let key = "geo";
+  const rbox = document.getElementById("sr-p-rbox");
+  const r = MB.range("sr-p-r", (v) => v.toFixed(2).replace("-", "−"), () => cv.redraw());
+  const N = MB.range("sr-p-n", (v) => String(v), () => cv.redraw());
+  const bars = MB.check("sr-p-bars", () => cv.redraw());
+  const cv = MB.canvas("#sr-cv-part", (ctx) => {
+    const C = MB.palette(), s = PRE[key], n = N(), rv = r();
+    const terms = [], sums = []; let acc = 0;
+    for (let k = 1; k <= n; k++) { const t = s.a(s.n0 + k - 1, rv); acc += t; terms.push(t); sums.push(acc); }
+    const S = s.S(rv);
+    const ys = sums.concat(bars() ? terms : []).concat(S != null ? [S] : []).concat([0]);
+    const yr = SR.range(ys, 0.06);
+    const R = MB.chart(ctx, null, { x: [0, n + 1], y: yr, xLabel: "항의 개수 n", xFmt: (v) => SR.int(v) });
+    SR.clip(ctx, R);
+    const bw = Math.max(1, Math.min(18, (R.box.w / (n + 1)) * 0.6));
+    if (bars()) { ctx.globalAlpha = 0.55; ctx.fillStyle = C.accent2; terms.forEach((t, i) => { const x = R.X(i + 1), y0 = R.Y(0), y1 = R.Y(t); ctx.fillRect(x - bw / 2, Math.min(y0, y1), bw, Math.abs(y1 - y0)); }); ctx.globalAlpha = 1; }
+    if (S != null) SR.poly(ctx, [[R.box.x, R.Y(S)], [R.box.x + R.box.w, R.Y(S)]], C.ok, 1.6, [6, 4]);
+    SR.poly(ctx, [[R.box.x, R.Y(0)], [R.box.x + R.box.w, R.Y(0)]], C.axis, 1);
+    SR.poly(ctx, sums.map((v, i) => [R.X(i + 1), R.Y(v)]), C.accent, 2);
+    if (n <= 60) sums.forEach((v, i) => SR.dot(ctx, R.X(i + 1), R.Y(v), 3.2, C.accent));
+    ctx.restore();
+    const last = terms[terms.length - 1], Sn = sums[sums.length - 1];
+    MB.stat("sr-p-an", SR.num(last, 6)); MB.stat("sr-p-s", SR.num(Sn, 6)); MB.stat("sr-p-lim", s.St(rv));
+    let tail = "—";
+    if (S != null) { tail = SR.num(S - Sn, 6); if (key === "geo") tail += ` (= rⁿ/(1 − r) = ${SR.num(Math.pow(rv, n) / (1 - rv), 6)})`; }
+    MB.stat("sr-p-tail", tail);
+  }, { aspect: 0.56, minHeight: 240, maxHeight: 400 });
+  document.getElementById("sr-p-pre").addEventListener("change", (e) => { key = e.target.value; rbox.style.display = key === "geo" ? "" : "none"; cv.redraw(); });
+})();
+
+/* ================================================================ 4. 정사각형 쪼개기 */
+(function () {
+  let mode = "strip", t = 0, playing = false;
+  const rbox = document.getElementById("sr-g-rbox");
+  const r = MB.range("sr-g-r", (v) => v.toFixed(2), () => cv.redraw());
+  const N = MB.range("sr-g-n", (v) => String(v), () => cv.redraw());
+  const cv = MB.canvas("#sr-cv-sq", (ctx, w, h) => {
+    const C = MB.palette(), n = N(), rv = r();
+    const side = Math.min(w - 40, h - 30), ox = (w - side) / 2, oy = (h - side) / 2;
+    const px = (x) => ox + x * side, py = (y) => oy + y * side;
+    ctx.fillStyle = C.surface; ctx.fillRect(ox, oy, side, side);
+    const cols = [C.accent, C.accent2, C.warn, C.ok];
+    ctx.font = "600 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (mode === "strip") {
+      let x = 0, y = 0, W = 1, H = 1;
+      for (let k = 0; k < n; k++) {
+        let piece;
+        if (k % 2 === 0) { piece = [x, y, (1 - rv) * W, H]; x += (1 - rv) * W; W *= rv; }
+        else { piece = [x, y, W, (1 - rv) * H]; y += (1 - rv) * H; H *= rv; }
+        ctx.globalAlpha = 0.75; ctx.fillStyle = cols[k % 2 ? 1 : 0]; ctx.fillRect(px(piece[0]), py(piece[1]), piece[2] * side, piece[3] * side); ctx.globalAlpha = 1;
+        ctx.strokeStyle = C.bg; ctx.lineWidth = 1.5; ctx.strokeRect(px(piece[0]), py(piece[1]), piece[2] * side, piece[3] * side);
+        if (piece[2] * side > 56 && piece[3] * side > 26) { ctx.fillStyle = C.text; ctx.fillText(k === 0 ? "1 − r" : "(1 − r)r" + (k === 1 ? "" : SR.sup(k)), px(piece[0] + piece[2] / 2), py(piece[1] + piece[3] / 2)); }
+      }
+      const area = 1 - Math.pow(rv, n);
+      MB.stat("sr-g-area", SR.num(area, 6)); MB.stat("sr-g-rem", `r<sup>${n}</sup> = ${SR.num(Math.pow(rv, n), 6)}`);
+      MB.stat("sr-g-sum", `1 + r + ⋯ + r<sup>${n - 1}</sup> = ${SR.num(area / (1 - rv), 5)} → 1/(1 − r) = ${SR.num(1 / (1 - rv), 5)}`);
+    } else {
+      let x = 0, y = 0, s = 1;
+      for (let k = 0; k < n; k++) {
+        const hs = s / 2, q = [[x, y], [x + hs, y], [x + hs, y + hs]];
+        q.forEach(([qx, qy], j) => { ctx.globalAlpha = 0.78; ctx.fillStyle = cols[j]; ctx.fillRect(px(qx), py(qy), hs * side, hs * side); ctx.globalAlpha = 1; ctx.strokeStyle = C.bg; ctx.lineWidth = 1.2; ctx.strokeRect(px(qx), py(qy), hs * side, hs * side); });
+        if (hs * side > 40) { ctx.fillStyle = C.text; q.forEach(([qx, qy]) => ctx.fillText("1/4" + (k === 0 ? "" : SR.sup(k + 1)), px(qx + hs / 2), py(qy + hs / 2))); }
+        y += hs; s = hs;
+      }
+      const each = (1 - Math.pow(0.25, n)) / 3;
+      MB.stat("sr-g-area", `색마다 ${SR.num(each, 6)}`); MB.stat("sr-g-rem", `(1/4)<sup>${n}</sup> = ${SR.num(Math.pow(0.25, n), 6)}`);
+      MB.stat("sr-g-sum", `1/4 + 1/16 + ⋯ → 1/3 (지금 ${SR.num(each, 6)})`);
+    }
+    ctx.strokeStyle = C.axis; ctx.lineWidth = 1.5; ctx.strokeRect(ox, oy, side, side);
+  }, { aspect: 0.62, minHeight: 240, maxHeight: 380 });
+  MB.seg("sr-g-mode", (v) => { mode = v; rbox.style.display = v === "strip" ? "" : "none"; cv.redraw(); });
+  const loop = MB.loop(document.getElementById("sim-sr-geosquare"), (dt) => {
+    if (!playing) return;
+    t += dt; if (t < 0.45) return; t = 0;
+    const n = N(); if (n >= 24) { N.set(1); } else N.set(n + 1);
+  });
+  MB.playButton("sr-g-play", () => { playing = true; t = 0; loop.start(); }, () => { playing = false; }, ["▶ 채우기", "■ 멈춤"]);
+})();
+
+/* ================================================================ 5. 조화 급수 vs 적분 */
+(function () {
+  const n1 = MB.range("sr-h-n", (v) => String(v), () => { top.redraw(); });
+  const kk = MB.range("sr-h-k", (v) => SR.int(Math.round(Math.pow(10, v))), () => { bot.redraw(); upd(); });
+  const M = MB.range("sr-h-m", (v) => String(v), () => upd());
+  const top = MB.canvas("#sr-cv-harm", (ctx) => {
+    const C = MB.palette(), n = n1();
+    const R = MB.chart(ctx, null, { x: [0.6, n + 1.4], y: [0, 1.12], xLabel: "x" });
+    SR.clip(ctx, R);
+    ctx.fillStyle = C.accent; ctx.globalAlpha = 0.55;
+    for (let k = 1; k <= n; k++) ctx.fillRect(R.X(k), R.Y(1 / k), R.X(k + 1) - R.X(k), R.Y(0) - R.Y(1 / k));
+    ctx.globalAlpha = 0.85; ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.moveTo(R.X(1), R.Y(0));
+    for (let i = 0; i <= 300; i++) { const x = 1 + n * i / 300; ctx.lineTo(R.X(x), R.Y(1 / x)); }
+    ctx.lineTo(R.X(n + 1), R.Y(0)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    const pts = []; for (let i = 0; i <= 300; i++) { const x = 0.75 + (n + 0.6) * i / 300; pts.push([R.X(x), R.Y(1 / x)]); }
+    SR.poly(ctx, pts, C.text, 2);
+    ctx.strokeStyle = C.bg; ctx.lineWidth = 1; for (let k = 1; k <= n; k++) ctx.strokeRect(R.X(k), R.Y(1 / k), R.X(k + 1) - R.X(k), R.Y(0) - R.Y(1 / k));
+    ctx.restore();
+    ctx.fillStyle = C.dim; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(`Hₙ = ${SR.num(SR.H(n), 4)},  ∫₁ⁿ⁺¹ dx/x = ln(${n + 1}) = ${SR.num(Math.log(n + 1), 4)}`, R.box.x + R.box.w - 6, R.box.y + 30);
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 270 });
+  const bot = MB.canvas("#sr-cv-harmlog", (ctx) => {
+    const C = MB.palette(), nn = Math.round(Math.pow(10, kk()));
+    const H = [], L = [], G = [];
+    for (let i = 0; i <= 200; i++) { const n = Math.max(1, Math.round(Math.pow(10, 8 * i / 200))); H.push([n, SR.H(n)]); L.push([n, Math.log(n)]); G.push([n, Math.log(n) + SR.GAMMA]); }
+    MB.chart(ctx, null, { x: [1, 1e8], y: [0, 20], logX: true, xLabel: "n",
+      series: [{ data: L, color: C.dim, width: 1.6, dash: [5, 4] }, { data: G, color: C.ok, width: 1.4, dash: [2, 3] }, { data: H, color: C.accent, width: 2.4 }],
+      vlines: [{ x: nn, color: C.warn }], points: [{ x: nn, y: SR.H(nn), color: C.warn, r: 5 }] });
+  }, { aspect: 0.36, minHeight: 160, maxHeight: 220 });
+  function need(m) {
+    let lo = 1, hi = 4e9;
+    while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (SR.H(mid) > m) hi = mid; else lo = mid; }
+    return hi;
+  }
+  function upd() {
+    const n = Math.round(Math.pow(10, kk()));
+    MB.stat("sr-h-H", SR.num(SR.H(n), 6)); MB.stat("sr-h-ln", SR.num(Math.log(n), 6)); MB.stat("sr-h-gam", SR.num(SR.H(n) - Math.log(n), 6) + " → γ");
+    MB.stat("sr-h-need", SR.int(need(M())));
+  }
+  upd();
+})();
+
+/* ================================================================ 6. p-급수와 적분 꼬리 */
+(function () {
+  let mode = "up", ps = SR.PS(2), lastP = 2;
+  const p = MB.range("sr-t-p", (v) => v.toFixed(2), () => draw());
+  const N = MB.range("sr-t-n", (v) => String(v), () => draw());
+  const msg = document.getElementById("sr-t-msg");
+  const top = MB.canvas("#sr-cv-pt", (ctx) => {
+    const C = MB.palette(), pv = p(), n = N(), f = (x) => Math.pow(x, -pv);
+    const R = MB.chart(ctx, null, { x: [0.6, n + 2.4], y: [0, 1.15], xLabel: "x" });
+    SR.clip(ctx, R);
+    ctx.globalAlpha = 0.22; ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.moveTo(R.X(1), R.Y(0));
+    for (let i = 0; i <= 200; i++) { const x = 1 + (n + 1.4) * i / 200; ctx.lineTo(R.X(x), R.Y(f(x))); }
+    ctx.lineTo(R.X(n + 2.4), R.Y(0)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    for (let k = 1; k <= n; k++) {
+      const x0 = mode === "up" ? k : k - 1, hgt = f(k);
+      if (mode === "low" && k === 1) continue;
+      ctx.globalAlpha = 0.45; ctx.fillStyle = C.accent; ctx.fillRect(R.X(x0), R.Y(hgt), R.X(x0 + 1) - R.X(x0), R.Y(0) - R.Y(hgt)); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.accent; ctx.lineWidth = 1.2; ctx.strokeRect(R.X(x0), R.Y(hgt), R.X(x0 + 1) - R.X(x0), R.Y(0) - R.Y(hgt));
+    }
+    const pts = []; for (let i = 0; i <= 300; i++) { const x = 0.8 + (n + 1.6) * i / 300; pts.push([R.X(x), R.Y(f(x))]); }
+    SR.poly(ctx, pts, C.text, 2.2);
+    ctx.restore();
+    ctx.fillStyle = C.dim; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(mode === "up" ? "직사각형 합 Sₙ ≥ ∫₁ⁿ⁺¹ f" : "직사각형 합 Sₙ − 1 ≤ ∫₁ⁿ f", R.box.x + R.box.w - 6, R.box.y + 30);
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 270 });
+  const bot = MB.canvas("#sr-cv-pts", (ctx) => {
+    const C = MB.palette(), pv = p(), conv = pv > 1 + 1e-9;
+    const S = [], lo = [], hi = [];
+    for (let i = 0; i <= 160; i++) {
+      const n = Math.max(1, Math.round(Math.pow(10, 8 * i / 160))), s = ps.S(n);
+      S.push([n, s]);
+      if (conv) { lo.push([n, s + Math.pow(n + 1, 1 - pv) / (pv - 1)]); hi.push([n, s + Math.pow(n, 1 - pv) / (pv - 1)]); }
+    }
+    const ymax = conv ? Math.max(ps.zeta * 1.12, 1.2) : S[S.length - 1][1] * 1.05;
+    MB.chart(ctx, null, { x: [1, 1e8], y: [0, Math.min(ymax, conv ? 60 : 1e9)], logX: true, xLabel: "n",
+      series: (conv ? [{ data: hi, color: C.ok, width: 1.2, dash: [4, 3] }, { data: lo, color: C.ok, width: 1.2, dash: [4, 3] }] : []).concat([{ data: S, color: C.accent, width: 2.4 }]),
+      hlines: conv ? [{ y: ps.zeta, color: C.ok, label: "ζ(p)" }] : [],
+      vlines: [{ x: N(), color: C.warn }] });
+  }, { aspect: 0.36, minHeight: 160, maxHeight: 220 });
+  function draw() {
+    const pv = p(), n = N();
+    if (pv !== lastP) { ps = SR.PS(pv); lastP = pv; }
+    const conv = pv > 1 + 1e-9, Sn = ps.S(n);
+    MB.stat("sr-t-s", SR.num(Sn, 6));
+    MB.stat("sr-t-int", conv ? `1/(p − 1) = ${SR.num(1 / (pv - 1), 4)}` : "∞");
+    if (conv) {
+      const a = Sn + Math.pow(n + 1, 1 - pv) / (pv - 1), b = Sn + Math.pow(n, 1 - pv) / (pv - 1);
+      MB.stat("sr-t-rng", `${SR.num(a, 5)} ~ ${SR.num(b, 5)}`); MB.stat("sr-t-true", SR.num(ps.zeta, 6));
+      msg.className = "sr-msg ok"; msg.innerHTML = `p = ${pv.toFixed(2)} &gt; 1: 적분이 유한하므로 급수도 <b>수렴</b>. ${n}항의 합에 꼬리 추정을 보태면 참값이 폭 ${SR.num(b - a, 4)}인 구간 안에 갇힙니다.`;
+    } else {
+      MB.stat("sr-t-rng", "—"); MB.stat("sr-t-true", "∞");
+      msg.className = "sr-msg bad"; msg.innerHTML = `p = ${pv.toFixed(2)} ≤ 1: ∫₁<sup>∞</sup> x<sup>−p</sup> dx = ∞이므로 직사각형(위쪽)의 합도 무한대, <b>발산</b>. 10⁸항의 합은 ${SR.num(ps.S(1e8), 4)}입니다.`;
+    }
+    top.redraw(); bot.redraw();
+  }
+  MB.seg("sr-t-mode", (v) => { mode = v; top.redraw(); });
+  draw();
+})();
+
+/* ================================================================ 7. 교대 급수와 재배열 */
+(function () {
+  const PRE = {
+    ah: { b: (n) => 1 / n, S: Math.LN2, kind: "조건 수렴 (Σ1/n 발산)" },
+    leib: { b: (n) => 1 / (2 * n - 1), S: Math.PI / 4, kind: "조건 수렴" },
+    efac: { b: (n) => { let f = 1; for (let k = 2; k < n; k++) f *= k; return 1 / f; }, S: 1 / Math.E, kind: "절대 수렴 (Σ1/n! 수렴)" },
+    sqrt: { b: (n) => 1 / Math.sqrt(n), S: 0.6048986434216305, kind: "조건 수렴 (p = 1/2)" },
+    sq: { b: (n) => 1 / (n * n), S: Math.PI * Math.PI / 12, kind: "절대 수렴 (p = 2)" },
+  };
+  let key = "ah";
+  const tbox = document.getElementById("sr-a-tbox");
+  const msg = document.getElementById("sr-a-msg");
+  const N = MB.range("sr-a-n", (v) => String(v), () => cv.redraw());
+  const T = MB.range("sr-a-t", (v) => v.toFixed(2).replace("-", "−"), () => cv.redraw());
+  function rearr(n, target) {
+    let ip = 1, ineg = 2, s = 0; const sums = [], used = [];
+    for (let k = 0; k < n; k++) {
+      if (s <= target) { s += 1 / ip; used.push("+1/" + ip); ip += 2; } else { s -= 1 / ineg; used.push("−1/" + ineg); ineg += 2; }
+      sums.push(s);
+    }
+    return { sums, used };
+  }
+  const cv = MB.canvas("#sr-cv-alt", (ctx) => {
+    const C = MB.palette(), n = N();
+    let sums = [], S, env = null, used = null;
+    if (key === "rearr") { const r = rearr(n, T()); sums = r.sums; used = r.used; S = T(); }
+    else {
+      const s = PRE[key]; let acc = 0; S = s.S; env = [];
+      for (let k = 1; k <= n; k++) { acc += (k % 2 ? 1 : -1) * s.b(k); sums.push(acc); env.push(s.b(k + 1)); }
+    }
+    const ys = sums.slice(0, Math.max(3, sums.length)).concat([S]);
+    if (env) env.forEach((e, i) => { if (i > 1) { ys.push(S + e); ys.push(S - e); } });
+    const yr = SR.range(ys, 0.08);
+    const R = MB.chart(ctx, null, { x: [0, n + 1], y: yr, xLabel: "항의 개수 n", xFmt: (v) => SR.int(v), hlines: [{ y: S, color: C.ok, label: key === "rearr" ? "목표 T" : "합 S" }] });
+    SR.clip(ctx, R);
+    if (env) {
+      SR.poly(ctx, env.map((e, i) => [R.X(i + 1), R.Y(S + e)]), C.warn, 1.3, [4, 3]);
+      SR.poly(ctx, env.map((e, i) => [R.X(i + 1), R.Y(S - e)]), C.warn, 1.3, [4, 3]);
+    }
+    SR.poly(ctx, sums.map((v, i) => [R.X(i + 1), R.Y(v)]), C.accent, 1.8);
+    if (n <= 80) sums.forEach((v, i) => SR.dot(ctx, R.X(i + 1), R.Y(v), 3, C.accent));
+    ctx.restore();
+    const Sn = sums[sums.length - 1];
+    MB.stat("sr-a-s", SR.num(Sn, 7)); MB.stat("sr-a-err", SR.num(Math.abs(S - Sn), 7));
+    if (key === "rearr") {
+      MB.stat("sr-a-bnd", "—"); MB.stat("sr-a-kind", "같은 항, 다른 순서");
+      const np = used.filter((u) => u[0] === "+").length;
+      msg.className = "sr-msg warn";
+      msg.innerHTML = `순서: ${used.slice(0, 9).join(" ")}${n > 9 ? " …" : ""}  ·  양수 ${np}개, 음수 ${n - np}개를 써서 합이 ${SR.num(Sn, 5)}입니다. 원래 순서의 합은 ln 2 = 0.6931입니다.`;
+    } else {
+      const s = PRE[key], bnd = s.b(n + 1);
+      MB.stat("sr-a-bnd", SR.num(bnd, 7)); MB.stat("sr-a-kind", s.kind);
+      const ok = Math.abs(S - Sn) <= bnd + 1e-15;
+      msg.className = ok ? "sr-msg ok" : "sr-msg bad";
+      msg.innerHTML = `실제 오차 ${SR.num(Math.abs(S - Sn), 5)} ≤ 다음 항 b<sub>${n + 1}</sub> = ${SR.num(bnd, 5)}. 부분합은 ${S > Sn ? "참값보다 작습니다(다음 항이 +)" : "참값보다 큽니다(다음 항이 −)"}. 주황 점선은 S ± b<sub>n+1</sub>의 깔때기입니다.`;
+    }
+  }, { aspect: 0.56, minHeight: 240, maxHeight: 400 });
+  document.getElementById("sr-a-pre").addEventListener("change", (e) => { key = e.target.value; tbox.style.display = key === "rearr" ? "" : "none"; if (key === "rearr" && N() < 60) N.set(120, false); cv.redraw(); });
+  tbox.style.display = "none";
+})();
+
+/* ================================================================ 8. 판정법 선택기 */
+(function () {
+  const W = "warn", O = "ok", D = "dim";
+  const DIV0 = [W, "aₙ → 0입니다. 발산 판정은 <b>결론을 내지 못합니다</b>(수렴할 수도, 발산할 수도)."];
+  const NAMED0 = [D, "기하 급수도 p-급수도 망원 급수도 아닙니다."];
+  const ALT0 = [D, "부호가 번갈아 바뀌는 급수가 아닙니다."];
+  const INT0 = [D, "항을 적분하기 쉬운 함수 f(x)로 옮기기 어렵습니다."];
+  const R1 = [W, "비의 극한이 L = 1입니다. 비 판정은 <b>판정 불가</b>. 거듭제곱 꼴이라는 신호이니 극한 비교로 가세요."];
+  const Q1 = [W, "ⁿ√|aₙ| → 1입니다. 근 판정은 <b>판정 불가</b>."];
+  const SERIES = [
+    { name: "Σ n/(2n + 1)", n0: 1, a: (n) => n / (2 * n + 1), ans: "발산", t: {
+      div: [O, "aₙ → 1/2 ≠ 0. 발산 판정으로 곧바로 <b>발산</b>."], named: NAMED0,
+      cmp: [O, "aₙ ≥ 1/3이고 Σ 1/3 = ∞이므로 비교 판정으로도 <b>발산</b>. 하지만 발산 판정이 더 빠릅니다."],
+      lcmp: [D, "잣대가 상수 1이 됩니다. 결국 발산 판정과 같은 이야기입니다."], int: INT0, alt: ALT0, ratio: R1, root: Q1 } },
+    { name: "Σ 1/(n² + 1)", n0: 1, a: (n) => 1 / (n * n + 1), ans: "수렴 (합 ≈ 1.0767)", t: {
+      div: DIV0, named: [D, "1/n²과 닮았지만 p-급수 자체는 아닙니다. 비교로 가세요."],
+      cmp: [O, "1/(n² + 1) &lt; 1/n²이고 Σ 1/n²이 수렴(p = 2)하므로 <b>수렴</b>."],
+      lcmp: [O, "1/n²과의 비 n²/(n² + 1) → 1. 0 &lt; c &lt; ∞이고 p = 2이므로 <b>수렴</b>."],
+      int: [O, "∫₁<sup>∞</sup> dx/(1 + x²) = π/2 − π/4 = π/4 &lt; ∞. f가 양수·감소이므로 <b>수렴</b>."], alt: ALT0, ratio: R1, root: Q1 } },
+    { name: "Σ 3ⁿ/n! (n ≥ 0)", n0: 0, a: (n) => { let v = 1; for (let k = 1; k <= n; k++) v *= 3 / k; return v; }, ans: "수렴 (합 e³ ≈ 20.086)", t: {
+      div: DIV0, named: NAMED0, cmp: [D, "잣대를 직접 찾기 번거롭습니다. 계승이 보이면 비 판정입니다."], lcmp: [D, "1/nᵖ 꼴의 잣대가 맞지 않습니다(항이 그보다 훨씬 빨리 줄어듭니다)."],
+      int: [D, "n!은 적분할 함수로 옮기기 어렵습니다."], alt: ALT0,
+      ratio: [O, "aₙ₊₁/aₙ = 3/(n + 1) → 0 &lt; 1. 비 판정으로 <b>절대 수렴</b>."],
+      root: [O, "ⁿ√(3ⁿ/n!) = 3/ⁿ√n! → 0이라 수렴이지만, ⁿ√n! → ∞를 보이려면 스털링 공식이 필요해 비 판정보다 번거롭습니다."] } },
+    { name: "Σ (−1)ⁿ / ln n (n ≥ 2)", n0: 2, a: (n) => (n % 2 ? -1 : 1) / Math.log(n), ans: "조건 수렴", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [W, "절댓값 1/ln n &gt; 1/n이고 Σ 1/n이 발산하므로 Σ|aₙ|은 <b>발산</b>(절대 수렴이 아님). 원래 급수의 수렴은 아직 모릅니다."],
+      lcmp: [W, "1/ln n과 1/n의 비 n/ln n → ∞. c = ∞이고 Σ1/n 발산이라 Σ|aₙ| 발산. 원래 급수는 교대 판정으로."],
+      int: [D, "부호가 바뀌는 항에는 적분 판정을 쓸 수 없습니다(f가 양수여야 함)."],
+      alt: [O, "bₙ = 1/ln n은 감소하고 0으로 갑니다. 교대 판정으로 <b>수렴</b>. 절댓값 급수는 발산하므로 <b>조건 수렴</b>."], ratio: R1, root: Q1 } },
+    { name: "Σ 1/(n ln n) (n ≥ 2)", n0: 2, a: (n) => 1 / (n * Math.log(n)), ans: "발산 (아주 느리게)", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [W, "1/(n ln n) &lt; 1/n이지만, 큰 쪽(Σ1/n)이 발산한다는 것은 작은 쪽에 대해 아무 말도 하지 않습니다."],
+      lcmp: [W, "1/n과의 비는 1/ln n → 0(c = 0), 1/n<sup>1.1</sup>과의 비는 n<sup>0.1</sup>/ln n → ∞. 어느 쪽도 결론이 나지 않습니다. 이 급수는 모든 p-급수의 '사이'에 있습니다."],
+      int: [O, "f(x) = 1/(x ln x)는 양수·감소. ∫₂<sup>∞</sup> dx/(x ln x) = [ln ln x]₂<sup>∞</sup> = ∞이므로 <b>발산</b>. 10⁶항의 합도 3.42밖에 안 됩니다."], alt: ALT0, ratio: R1, root: Q1 } },
+    { name: "Σ (2n/(3n + 1))ⁿ", n0: 1, a: (n) => Math.pow(2 * n / (3 * n + 1), n), ans: "수렴", t: {
+      div: DIV0, named: [D, "공비가 n마다 달라 기하 급수는 아닙니다. 하지만 공비 2/3인 기하 급수와 닮았습니다."],
+      cmp: [O, "2n/(3n + 1) &lt; 2/3이므로 aₙ &lt; (2/3)ⁿ. 기하 급수와 비교해 <b>수렴</b>."], lcmp: [D, "1/nᵖ과 비교할 꼴이 아닙니다."], int: INT0, alt: ALT0,
+      ratio: [O, "비의 극한도 2/3이지만 계산이 번거롭습니다. 항 전체가 n제곱이면 근 판정이 편합니다."],
+      root: [O, "ⁿ√aₙ = 2n/(3n + 1) → 2/3 &lt; 1. 근 판정으로 <b>수렴</b>."] } },
+    { name: "Σ (n + 1)/(n³ + 2)", n0: 1, a: (n) => (n + 1) / (n * n * n + 2), ans: "수렴", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [O, "(n + 1)/(n³ + 2) ≤ 2n/n³ = 2/n²이고 Σ 2/n²이 수렴하므로 <b>수렴</b>."],
+      lcmp: [O, "최고차항만 남기면 n/n³ = 1/n². 비 → 1이고 p = 2라 <b>수렴</b>. 가장 기계적인 방법입니다."],
+      int: [D, "가능하지만 부분 분수 적분이 번거롭습니다."], alt: ALT0, ratio: R1, root: Q1 } },
+    { name: "Σ 5/4ⁿ (n ≥ 1)", n0: 1, a: (n) => 5 / Math.pow(4, n), ans: "수렴 (합 5/3)", t: {
+      div: DIV0, named: [O, "첫 항 5/4, 공비 1/4인 기하 급수. 합은 (5/4)/(1 − 1/4) = <b>5/3</b>."],
+      cmp: [D, "기하 급수 그 자체라 비교할 필요가 없습니다."], lcmp: [D, "기하 급수 그 자체라 비교할 필요가 없습니다."], int: [D, "가능하지만 기하 급수 공식이 바로 답을 줍니다."], alt: ALT0,
+      ratio: [O, "비는 늘 1/4. <b>수렴</b>(합까지는 알려 주지 않습니다)."], root: [O, "ⁿ√aₙ = 5<sup>1/n</sup>/4 → 1/4. <b>수렴</b>."] } },
+    { name: "Σ 1/(√n + 1)", n0: 1, a: (n) => 1 / (Math.sqrt(n) + 1), ans: "발산", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [O, "√n + 1 ≤ 2√n이므로 aₙ ≥ 1/(2√n). Σ 1/(2√n)이 발산(p = 1/2)하므로 <b>발산</b>."],
+      lcmp: [O, "1/√n과의 비 √n/(√n + 1) → 1. p = 1/2 ≤ 1이라 <b>발산</b>."],
+      int: [O, "u = √x로 치환하면 ∫ dx/(√x + 1) = 2√x − 2 ln(1 + √x) → ∞. <b>발산</b>. 되지만 극한 비교가 더 빠릅니다."], alt: ALT0, ratio: R1, root: Q1 } },
+    { name: "Σ n!/nⁿ", n0: 1, a: (n) => { let v = 1; for (let k = 1; k <= n; k++) v *= k / n; return v; }, ans: "수렴 (합 ≈ 1.8799)", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [O, "aₙ = (1/n)(2/n)⋯(n/n) ≤ (1/n)(2/n) = 2/n² (n ≥ 2). Σ 2/n²과 비교해 <b>수렴</b>. 영리하지만 떠올리기 어렵습니다."],
+      lcmp: [D, "잣대를 고르기 어렵습니다."], int: INT0, alt: ALT0,
+      ratio: [O, "aₙ₊₁/aₙ = (n/(n + 1))ⁿ = 1/(1 + 1/n)ⁿ → 1/e ≈ 0.368 &lt; 1. <b>수렴</b>."],
+      root: [O, "ⁿ√aₙ → 1/e이지만 스털링 공식이 필요합니다. 비 판정이 훨씬 쉽습니다."] } },
+    { name: "Σ (−1)ⁿ n/(n + 1)", n0: 1, a: (n) => (n % 2 ? -1 : 1) * n / (n + 1), ans: "발산", t: {
+      div: [O, "|aₙ| → 1이라 aₙ은 ±1 근처를 오가며 0으로 가지 않습니다. <b>발산</b>."], named: NAMED0,
+      cmp: [D, "양항 급수가 아닙니다."], lcmp: [D, "양항 급수가 아닙니다."], int: [D, "부호가 바뀌는 항에는 쓸 수 없습니다."],
+      alt: [W, "bₙ = n/(n + 1)이 0으로 가지 않아 교대 판정의 조건이 깨집니다. 교대 판정은 <b>결론 없음</b>. (발산 판정을 쓰세요.)"], ratio: R1, root: Q1 } },
+    { name: "Σ cos n / n²", n0: 1, a: (n) => Math.cos(n) / (n * n), ans: "절대 수렴", t: {
+      div: DIV0, named: NAMED0,
+      cmp: [O, "|cos n/n²| ≤ 1/n²이므로 Σ|aₙ|이 수렴. 정리 11.16으로 <b>절대 수렴</b>."],
+      lcmp: [W, "|aₙ|/(1/n²) = |cos n|은 극한이 없습니다. 극한 비교는 쓸 수 없고, 부등식 비교가 맞습니다."],
+      int: [D, "부호가 불규칙하게 바뀌므로 쓸 수 없습니다."], alt: [D, "부호가 규칙적으로 번갈아 바뀌지 않습니다(cos n의 부호는 불규칙)."],
+      ratio: [W, "|aₙ₊₁/aₙ|이 극한을 갖지 않습니다. 비 판정은 쓸 수 없습니다."], root: Q1 } },
+  ];
+  const sel = document.getElementById("sr-c-pre");
+  SERIES.forEach((s, i) => { const o = document.createElement("option"); o.value = i; o.textContent = s.name; sel.appendChild(o); });
+  const msg = document.getElementById("sr-c-msg"), btns = [...document.querySelectorAll("#sr-c-tests .btn")];
+  let cur = 0, solved = false;
+  const cv = MB.canvas("#sr-cv-ch", (ctx) => {
+    const C = MB.palette(), s = SERIES[cur], sums = []; let acc = 0;
+    for (let k = 0; k < 100; k++) { acc += s.a(s.n0 + k); sums.push(acc); }
+    const R = MB.chart(ctx, null, { x: [0, 101], y: SR.range(sums.concat([0]), 0.08), xLabel: "더한 항 수", hlines: [{ y: 0, color: C.dim }] });
+    SR.clip(ctx, R);
+    SR.poly(ctx, sums.map((v, i) => [R.X(i + 1), R.Y(v)]), C.accent, 1.8);
+    sums.forEach((v, i) => { if (i % 2 === 0 || i < 20) SR.dot(ctx, R.X(i + 1), R.Y(v), 2.4, C.accent); });
+    ctx.restore();
+    MB.stat("sr-c-s", SR.num(sums[99], 5));
+  }, { aspect: 0.5, minHeight: 220, maxHeight: 340 });
+  function setSeries(i) {
+    cur = i; solved = false; btns.forEach((b) => b.classList.remove("on"));
+    MB.stat("sr-c-ser", SERIES[i].name); MB.stat("sr-c-ans", "판정법을 골라 보세요");
+    msg.className = "sr-msg"; msg.innerHTML = "오른쪽 버튼에서 판정법을 하나 고르세요. 그림 11-4의 순서(발산 판정 → 이름 있는 급수 → 모양)를 떠올리면 빠릅니다.";
+    cv.redraw();
+  }
+  btns.forEach((b) => b.addEventListener("click", () => {
+    const s = SERIES[cur], [v, text] = s.t[b.dataset.t];
+    btns.forEach((x) => x.classList.toggle("on", x === b));
+    msg.className = "sr-msg" + (v === O ? " ok" : v === W ? " warn" : "");
+    msg.innerHTML = `<b>${b.textContent}</b>: ${text}`;
+    if (v === O) solved = true;
+    MB.stat("sr-c-ans", solved ? s.ans : "아직 결론 없음");
+  }));
+  sel.addEventListener("change", () => setSeries(+sel.value));
+  setSeries(0);
+})();
+</script>
+</body>
+</html>

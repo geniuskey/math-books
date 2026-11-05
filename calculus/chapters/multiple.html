@@ -1,0 +1,1210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>중적분 · CalculusBook</title>
+<meta name="description" content="영역을 잘게 쪼개 기둥을 쌓는다. 이중 적분과 리만 합, 반복 적분과 푸비니 정리, 적분 순서 바꾸기, 극좌표와 가우스 적분, 삼중 적분과 원기둥·구면 좌표, 야코비안, 질량 중심과 관성 모멘트를 돌리고 끌며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .mi-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .mi-two > div { position: relative; min-width: 0; }
+  .mi-two > div + div { border-top: 1px solid var(--border); }
+  .mi-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 75%, transparent); padding: 1px 6px; border-radius: 5px; }
+  .mi-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .mi-msg b { color: var(--text); }
+  .mi-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .mi-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .mi-tbl td, .mi-tbl th { font-family: var(--mono); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="multiple">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 15</div>
+    <h1 data-no-glossary>중적분</h1>
+    <p class="lead">7장에서는 구간을 잘게 쪼개 직사각형 넓이를 더했습니다. 이번에는 평면의 영역을 잘게 쪼개 <b>기둥</b>을 세우고 그 부피를 더합니다. 밑면이 바둑판 칸 하나, 높이가 그 칸에서의 함숫값인 기둥을 수백 개 쌓으면 곡면 아래의 부피가 되고, 칸을 한없이 작게 하면 <span class="term">이중 적분</span>이 됩니다. 계산은 놀랍도록 단순해서, 한 방향으로 먼저 적분하고 나머지 방향으로 다시 적분하면 끝입니다. 문제는 영역의 모양입니다. 둥근 영역은 극좌표로, 공과 원기둥은 구면·원기둥 좌표로, 비스듬한 영역은 맞춤 좌표로 바꿔야 하고, 좌표를 바꿀 때마다 넓이 요소가 얼마나 늘고 주는지를 재는 배율, <span class="term">야코비안</span>이 붙습니다. 이 장의 끝에서 그 도구로 무게 중심, 관성 모멘트, 그리고 정규 분포의 정규화 상수 \(\sqrt{2\pi}\)까지 얻습니다.</p>
+    <ul class="objectives">
+      <li>직사각형 위 이중 적분을 기둥 리만 합의 극한으로 정의하고, 표본점과 분할 수에 따라 합이 어떻게 수렴하는지 본다.</li>
+      <li>반복 적분과 푸비니 정리로 이중 적분을 일변수 적분 두 번으로 계산하고, 단면 넓이 \(A(x)\)의 적분으로 해석한다.</li>
+      <li>제1형·제2형 영역의 적분 한계를 쓰고, 적분 순서를 바꿔 손으로 풀 수 없던 적분을 푼다.</li>
+      <li>극좌표 넓이 요소 \(dA = r\, dr\, d\theta\)를 유도하고, 가우스 적분 \(\int_{-\infty}^{\infty} e^{-x^2}dx = \sqrt\pi\)를 증명한다.</li>
+      <li>삼중 적분을 직교·원기둥·구면 좌표로 세우고, 부피 요소 \(r\, dz\, dr\, d\theta\)와 \(\rho^2\sin\varphi\, d\rho\, d\varphi\, d\theta\)가 어디서 오는지 설명한다.</li>
+      <li>일반 변수 변환에서 야코비안 행렬식이 넓이 배율임을 이해하고, 질량·질량 중심·관성 모멘트·확률을 중적분으로 계산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>무게 중심을 모르는 비행기, 관성을 모르는 플라이휠</b></div>
+      <div class="o-body"><p>아르키메데스는 공의 부피가 그 공을 꼭 감싸는 원기둥 부피의 \(2/3\)임을 보이고 이 결과를 매우 자랑스러워했습니다. 로마의 키케로는 시칠리아에서 원기둥과 공이 새겨진 그의 무덤을 찾아냈다고 적었습니다. 아르키메데스의 방법은 입체를 얇은 조각으로 자르고 조각끼리 무게를 맞춰 보는 것이었는데, 이것이 바로 이 장의 "잘게 쪼개 더하기"입니다.</p>
+        <p>오늘날 이 계산은 설계의 일상입니다. 비행기는 무게 중심이 날개의 정해진 범위 안에 있어야 안정하게 날고, 화물을 실을 때마다 그 위치를 다시 계산합니다. 터빈과 플라이휠은 관성 모멘트로 에너지를 저장하고, 웨이퍼 위 결함 밀도를 칩 영역에 걸쳐 적분하면 수율이 나옵니다. 모두 밀도 함수를 2차원·3차원 영역에서 적분하는 문제입니다.</p>
+        <div class="o-chain"><span>밀도 ρ(x, y, z)</span><i>→</i><span>작은 조각의 질량 ρ ΔV</span><i>→</i><span class="tool">중적분 ∭ρ dV</span><i>→</i><span>질량 · 무게 중심 · 관성 · 확률</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="double-riemann">
+    <h2>직사각형 위 이중 적분: 기둥을 쌓는다</h2>
+    <div class="problem"><strong>지붕 아래 공기는 몇 세제곱미터일까</strong>
+      <p>바닥이 \(2\, \text{m}\times 2\, \text{m}\)인 정사각형 정자에 휘어진 지붕을 얹었습니다. 바닥의 점 \((x, y)\)에서 지붕까지 높이가 \(f(x, y) = x^2 + y\)미터라면, 지붕 아래 공간의 부피는 얼마일까요? 높이가 곳곳에서 다르니 "밑넓이 × 높이"는 쓸 수 없습니다. 하지만 바닥을 작은 칸으로 나누면, 칸 하나 위에서는 높이가 거의 일정합니다.</p></div>
+    <p>7장의 리만 합을 한 차원 올리면 됩니다. 직사각형 \(R = [a, b]\times[c, d]\)를 가로 \(m\)등분, 세로 \(n\)등분해 작은 직사각형 \(R_{ij}\)로 나눕니다. 각 칸의 넓이는 \(\Delta A = \Delta x\, \Delta y\)이고, 칸 안에서 아무 점 \((x_{ij}^*, y_{ij}^*)\)을 골라 높이 \(f(x_{ij}^*, y_{ij}^*)\)인 기둥을 세웁니다. 기둥 부피를 모두 더한 것이 <span class="term">이중 리만 합</span><span class="en">(double Riemann sum)</span>입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="곡면 아래 한 칸 위에 세운 기둥">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <polygon points="80,230 380,230 470,160 170,160" class="f-elev" style="stroke:var(--border)"/>
+        <g style="stroke:var(--grid);stroke-width:1">
+          <line x1="155" y1="230" x2="245" y2="160"/><line x1="230" y1="230" x2="320" y2="160"/><line x1="305" y1="230" x2="395" y2="160"/>
+          <line x1="102" y1="212" x2="402" y2="212"/><line x1="125" y1="195" x2="425" y2="195"/><line x1="147" y1="177" x2="447" y2="177"/>
+        </g>
+        <path d="M80 120 C 160 80, 260 70, 380 60 L 470 30 C 350 40, 250 50, 170 60 Z" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5;opacity:.9"/>
+        <polygon points="230,212 305,212 327,195 252,195" class="f-acc" style="opacity:.9"/>
+        <polygon points="230,212 305,212 305,88 230,92" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+        <polygon points="305,212 327,195 327,80 305,88" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5;opacity:.8"/>
+        <polygon points="230,92 305,88 327,80 252,84" class="f-acc" style="opacity:.75"/>
+        <circle cx="278" cy="203" r="4" style="fill:var(--text)"/>
+        <line x1="278" y1="203" x2="278" y2="86" class="s-line" style="stroke-dasharray:4 4"/>
+        <text x="268" y="250" class="t-mono">ΔA = Δx Δy</text>
+        <line x1="268" y1="240" x2="275" y2="210" class="s-line"/>
+        <text x="338" y="140" class="t-acc">높이 f(x*ᵢⱼ, y*ᵢⱼ)</text>
+        <text x="420" y="54" class="t" style="fill:var(--accent-2)">곡면 z = f(x, y)</text>
+        <text x="60" y="248" class="t-dim">R = [a, b] × [c, d]</text>
+        <g transform="translate(520,70)">
+          <text x="0" y="0" class="t" style="font-weight:700">기둥 하나의 부피</text>
+          <text x="0" y="26" class="t-mono">f(x*ᵢⱼ, y*ᵢⱼ) · ΔA</text>
+          <text x="0" y="62" class="t" style="font-weight:700">모두 더하면</text>
+          <text x="0" y="88" class="t-mono">Σᵢ Σⱼ f(x*ᵢⱼ, y*ᵢⱼ) ΔA</text>
+          <text x="0" y="124" class="t" style="font-weight:700">칸을 한없이 작게</text>
+          <text x="0" y="150" class="t-mono">→ ∬_R f(x, y) dA</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-1.</b> 밑면 R을 격자로 나누고, 칸 하나(진분홍) 위에 표본점의 함숫값만큼 높은 기둥을 세운다. 기둥이 곡면을 위아래로 조금씩 벗어나지만, 칸이 작아질수록 벗어나는 부분의 합은 0으로 간다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 15.1 (직사각형 위의 이중 적분)</strong> 함수 \(f\)가 직사각형 \(R\)에서 유계일 때, 분할의 가장 긴 칸 대각선이 0으로 갈 때 표본점을 어떻게 고르든 리만 합이 같은 값으로 수렴하면
+      <div class="formula">$$\iint_R f(x, y)\,dA = \lim_{m,n\to\infty} \sum_{i=1}^{m}\sum_{j=1}^{n} f(x_{ij}^*, y_{ij}^*)\,\Delta A$$</div>
+      라 쓰고 \(f\)가 \(R\)에서 <b>적분 가능</b>하다고 한다. \(f \ge 0\)이면 이 값은 곡면 \(z = f(x, y)\)와 \(R\) 사이 입체의 부피다. 연속 함수는 적분 가능하고, 유한 개의 매끄러운 곡선 위에서만 불연속인 유계 함수도 적분 가능하다.</div>
+    <p>일변수 적분의 성질이 그대로 옮겨 옵니다. <b>선형성</b> \(\iint (\alpha f + \beta g) = \alpha\iint f + \beta\iint g\), <b>비교</b> \(f \le g\)이면 \(\iint f \le \iint g\), <b>영역 가법성</b> \(R\)을 겹치지 않는 두 조각으로 나누면 적분도 두 조각의 합. 그리고 \(f\)가 음수인 곳에서는 기둥이 아래로 자라 부피를 빼므로, 이중 적분은 <b>부호 있는 부피</b>입니다.</p>
+    <div class="callout"><strong>예제 15.1 (중점 규칙으로 지붕 아래 부피 어림)</strong> 문제의 정자 \(f(x, y) = x^2 + y\), \(R = [0, 2]\times[0, 2]\)를 \(2\times 2\) 칸으로 나누고 각 칸의 중점을 표본점으로 써서 부피를 어림하라.
+      <ol>
+        <li>칸은 한 변이 1이라 \(\Delta A = 1\). 중점은 \((0.5, 0.5)\), \((1.5, 0.5)\), \((0.5, 1.5)\), \((1.5, 1.5)\).</li>
+        <li>함숫값: \(0.25 + 0.5 = 0.75\), \(2.25 + 0.5 = 2.75\), \(0.25 + 1.5 = 1.75\), \(2.25 + 1.5 = 3.75\).</li>
+        <li>합: \((0.75 + 2.75 + 1.75 + 3.75)\cdot 1 = 9\, \text{m}^3\).</li>
+        <li>다음 절의 반복 적분으로 구한 정확한 값은 \(28/3 \approx 9.333\, \text{m}^3\)입니다. 칸 네 개만으로 오차가 약 3.6%입니다. 아래 시뮬레이터에서 \(n\)을 늘려 보면 중점 규칙의 오차는 \(n^2\)에 반비례해 줄어듭니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-mi-columns">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>기둥 리만 합: 끌어서 돌려 보는 3차원 기둥</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mi-cv-col"></canvas><span class="hint">끌어서 돌리기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 f(x, y) on [0,2]²</span><select id="mi-col-f">
+            <option value="0">x² + y (정자 지붕)</option>
+            <option value="1">4 − x² − y² (음수 구간 있음)</option>
+            <option value="2">2 + sin πx · sin πy</option>
+            <option value="3">3e^(−(x−1)² − (y−1)²) (봉우리)</option>
+          </select></label>
+          <label class="ctrl"><span>한 변의 분할 수 n <output id="mi-col-n-out"></output></span><input type="range" id="mi-col-n" min="1" max="24" step="1" value="4"></label>
+          <div class="ctrl"><span>표본점</span><div class="seg" id="mi-col-s"><button data-value="ll">왼쪽 아래</button><button data-value="mid" class="on">중점</button><button data-value="ur">오른쪽 위</button><button data-value="rnd">무작위</button></div></div>
+          <label class="check"><input type="checkbox" id="mi-col-surf" checked> 곡면 겹쳐 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">기둥 수</span><span class="v" id="mi-col-cnt">—</span></div>
+        <div class="stat"><span class="k">리만 합 Σ f ΔA</span><span class="v" id="mi-col-sum">—</span></div>
+        <div class="stat"><span class="k">정확한 값 ∬ f dA</span><span class="v" id="mi-col-ex">—</span></div>
+        <div class="stat"><span class="k">오차</span><span class="v" id="mi-col-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 정자 지붕에서 n = 2로 두고 예제 15.1의 9를 확인한 뒤, n을 2배씩 늘리며 중점 오차가 약 1/4씩 주는 것을 보세요. ② '왼쪽 아래'와 '오른쪽 위'는 증가 함수에서 항상 모자라거나 넘칩니다. 오차가 1/n에 비례해 훨씬 느리게 줍니다. ③ 4 − x² − y²에서는 (2, 2) 근처의 기둥이 바닥 아래로 자랍니다. 그 부피는 빼집니다. 모델: [0, 2]² 위 n×n 균등 분할, 기둥은 뒤에서부터 칠하는 단순 사영으로 그리고, 세로 축척은 함수마다 보기 좋게 줄입니다. 음수 기둥은 파란색입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="iterated">
+    <h2>반복 적분과 푸비니 정리: 얇게 썰어 더한다</h2>
+    <div class="problem"><strong>극한을 계산하지 않고 이중 적분을 구하려면</strong>
+      <p>정의대로라면 이중 적분은 이중 합의 극한입니다. 7장에서 일변수 리만 합의 극한을 직접 구하는 일이 얼마나 번거로웠는지 생각하면, 이중 극한은 더 끔찍합니다. 일변수에서는 기본 정리(8장)가 이 일을 덜어 줬습니다. 두 변수에서도 그런 지름길이 있을까요?</p></div>
+    <p>식빵을 생각합시다. 빵 전체의 부피는 얇은 조각들의 부피를 더한 것이고, 조각 하나의 부피는 (단면 넓이) × (두께)입니다. 입체를 \(x = \) 일정한 평면으로 자르면 단면 넓이는</p>
+    <div class="formula">$$A(x) = \int_c^d f(x, y)\,dy \qquad (x\text{는 고정})$$
+      <div class="where">\(x\)를 상수로 보고 \(y\)로만 적분한다. 13장의 편미분이 "다른 변수를 고정하고 미분"이었듯, 이것은 "다른 변수를 고정하고 적분"하는 <b>편적분</b>이다.</div></div>
+    <p>이고, 두께 \(dx\)인 조각을 \(x = a\)부터 \(b\)까지 쌓으면 부피 \(\int_a^b A(x)\, dx\)가 됩니다. 단면 넓이가 같은 두 입체는 부피도 같다는 <span class="term">카발리에리 원리</span><span class="en">(Cavalieri's principle)</span>를 식으로 쓴 것입니다. 이렇게 안쪽부터 한 번씩 적분하는 것을 <span class="term">반복 적분</span><span class="en">(iterated integral)</span>이라 합니다.</p>
+    <div class="callout deep"><strong>정리 15.2 (푸비니 정리)</strong> \(f\)가 직사각형 \(R = [a, b]\times[c, d]\)에서 연속이면
+      <div class="formula">$$\iint_R f(x, y)\,dA = \int_a^b\!\!\int_c^d f(x, y)\,dy\,dx = \int_c^d\!\!\int_a^b f(x, y)\,dx\,dy.$$</div>
+      더 일반적으로 \(f\)가 유계이고 유한 개의 매끄러운 곡선 위에서만 불연속이며 반복 적분이 존재하면 등식이 성립한다.
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> 리만 합 \(\sum_i\sum_j f(x_i^*, y_j^*)\Delta y\, \Delta x\)에서 안쪽 합 \(\sum_j f(x_i^*, y_j^*)\Delta y\)는 \(A(x_i^*)\)의 리만 합이고, 바깥 합은 \(\int A\, dx\)의 리만 합이다. 연속 함수는 직사각형에서 <b>균등 연속</b>이라 두 극한을 한꺼번에 보내도 오차가 균일하게 작아진다. 합의 순서를 바꾸면(\(\sum_j\sum_i\)) 다른 순서의 반복 적분이 나온다. ∎</p></div>
+    <p>반복 적분의 기호는 <b>안쪽부터</b> 읽습니다. \(\int_a^b\! \int_c^d f\, dy\, dx\)는 "\(dy\) 적분을 먼저(한계 \(c\)~\(d\)), 그 결과를 \(dx\)로(한계 \(a\)~\(b\))"입니다. 적분 기호와 미분 기호가 양파 껍질처럼 짝을 맞춥니다.</p>
+    <div class="callout"><strong>예제 15.2 (정자 지붕의 정확한 부피)</strong> \(\iint_R (x^2 + y)\, dA\), \(R = [0, 2]\times[0, 2]\)를 두 순서로 계산하라.
+      <ol>
+        <li>\(dy\) 먼저: \(\int_0^2 (x^2 + y)\, dy = \bigl[x^2y + \tfrac{y^2}{2} \bigr]_0^2 = 2x^2 + 2\). 이것이 단면 넓이 \(A(x)\)입니다.</li>
+        <li>\(\int_0^2 (2x^2 + 2)\, dx = \bigl[\tfrac{2x^3}{3} + 2x\bigr]_0^2 = \tfrac{16}{3} + 4 = \tfrac{28}{3}\).</li>
+        <li>\(dx\) 먼저: \(\int_0^2 (x^2 + y)\, dx = \tfrac{8}{3} + 2y\), 그리고 \(\int_0^2 \bigl(\tfrac{8}{3} + 2y\bigr)dy = \tfrac{16}{3} + 4 = \tfrac{28}{3}\). 같습니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 15.3 (순서가 계산의 난이도를 바꾼다)</strong> \(\iint_R x e^{xy}\, dA\), \(R = [0, 1]\times[0, 1]\)을 구하라.
+      <ol>
+        <li>\(dx\)를 먼저 하면 \(\int_0^1 x e^{xy}\, dx\)에 부분 적분(9장)이 필요하고, 그 결과를 다시 \(y\)로 적분하기가 번거롭습니다.</li>
+        <li>\(dy\)를 먼저 하면 \(x\)는 상수이므로 \(\int_0^1 x e^{xy}\, dy = \bigl[e^{xy} \bigr]_{y=0}^{y=1} = e^x - 1\). 안쪽 미분 \(\partial_y(xy) = x\)가 앞의 \(x\)와 맞아떨어졌습니다.</li>
+        <li>\(\int_0^1 (e^x - 1)\, dx = (e - 1) - 1 = e - 2 \approx 0.718\).</li>
+      </ol></div>
+    <p>피적분 함수가 \(f(x, y) = g(x)h(y)\)처럼 <b>곱으로 분리</b>되고 영역이 직사각형이면 더 간단합니다. 안쪽 적분에서 \(g(x)\)가 상수로 빠지므로 \(\iint_R g(x)h(y)\, dA = \bigl(\int_a^b g\, dx\bigr)\bigl(\int_c^d h\, dy\bigr)\). 4절의 가우스 적분이 이 성질을 거꾸로 씁니다.</p>
+    <div class="callout warn"><strong>푸비니에도 조건이 있다</strong> 연속이 아니고 유계도 아니면 두 순서의 값이 다를 수 있습니다. \(f(x, y) = \dfrac{x^2 - y^2}{(x^2 + y^2)^2}\)을 \([0, 1]^2\)에서 적분하면, \(\partial_y\bigl[\tfrac{y}{x^2 + y^2} \bigr] = f\)이므로 \(\int_0^1 f\, dy = \tfrac{1}{1 + x^2}\)이고 \(\int_0^1 \tfrac{dx}{1+x^2} = \tfrac{\pi}{4}\)입니다. 그런데 \(f\)는 \(x, y\)를 바꾸면 부호가 바뀌므로 다른 순서는 \(-\tfrac{\pi}{4}\)입니다. 원점 근처에서 \(f\)가 양·음으로 한없이 커져 이중 적분 자체가 정의되지 않기 때문입니다.</div>
+
+    <div class="sim" id="sim-mi-slices">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>단면 넓이 A(x)를 쌓으면 부피</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view mi-two">
+          <div><canvas id="mi-cv-sl3"></canvas><span class="mi-cap">끌어서 돌리기 · 진분홍 = 단면</span></div>
+          <div><canvas id="mi-cv-slA"></canvas><span class="mi-cap" id="mi-sl-cap">A(x) = ∫ f(x, y) dy</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="mi-sl-f">
+            <option value="0">x² + y</option>
+            <option value="1">4 − x² − y²</option>
+            <option value="2">2 + sin πx · sin πy</option>
+            <option value="3">3e^(−(x−1)² − (y−1)²)</option>
+          </select></label>
+          <div class="ctrl"><span>자르는 방향</span><div class="seg" id="mi-sl-dir"><button data-value="x" class="on">x 고정 (dy 먼저)</button><button data-value="y">y 고정 (dx 먼저)</button></div></div>
+          <label class="ctrl"><span>자르는 위치 <output id="mi-sl-c-out"></output></span><input type="range" id="mi-sl-c" min="0" max="2" step="0.01" value="0.7"></label>
+          <div class="btn-row"><button class="btn primary" id="mi-sl-play">▶ 쓸어 가기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단면 넓이</span><span class="v" id="mi-sl-A">—</span></div>
+        <div class="stat"><span class="k">지금까지 쌓은 부피</span><span class="v" id="mi-sl-acc">—</span></div>
+        <div class="stat"><span class="k">x 고정 / y 고정 총부피</span><span class="v" id="mi-sl-tot">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶로 단면을 쓸어 가며 아래 그래프의 칠해진 넓이가 쌓인 부피와 같음을 보세요. ② 방향을 바꾸면 A(x)와 A(y)의 모양은 다르지만 총부피는 같습니다(푸비니). ③ 정자 지붕에서 A(x) = 2x² + 2가 그래프와 맞는지 확인하세요. 모델: 단면 넓이와 총부피는 심프슨 공식(200등분)으로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="general-regions">
+    <h2>일반 영역과 적분 순서 바꾸기</h2>
+    <div class="problem"><strong>원도 삼각형도 직사각형이 아니다</strong>
+      <p>실제 부품의 단면은 원, 삼각형, 곡선으로 둘러싸인 모양입니다. 또 \(\int e^{y^2}dy\)나 \(\int \sin(x^2)\, dx\)처럼 기본 함수로 쓸 수 없는 적분이 안쪽에 오면 반복 적분이 막힙니다. 그런데 영역을 다른 방향으로 썰면 이런 적분이 풀리기도 합니다.</p></div>
+    <p>유계 영역 \(D\)를 감싸는 직사각형 \(R\)을 잡고, \(D\) 밖에서 0인 함수 \(F\)(\(D\) 안에서는 \(f\))를 \(R\)에서 적분한 값을 \(\iint_D f\, dA\)로 정의합니다. \(D\)의 경계가 매끄러운 곡선 몇 개로 되어 있으면 \(F\)의 불연속은 그 곡선 위에만 있으니 적분 가능합니다. 계산할 때는 \(D\)를 두 가지 방식으로 묘사합니다.</p>
+    <div class="callout deep"><strong>정의 15.3 (제1형·제2형 영역)</strong>
+      <ul style="margin:6px 0 0">
+        <li><span class="term">제1형 영역</span><span class="en">(type I region)</span>: \(D = \{(x, y) : a \le x \le b,\ g_1(x) \le y \le g_2(x)\}\). 세로 띠로 자른다. \(\displaystyle\iint_D f\, dA = \int_a^b\! \int_{g_1(x)}^{g_2(x)} f(x, y)\, dy\, dx.\)</li>
+        <li><span class="term">제2형 영역</span><span class="en">(type II region)</span>: \(D = \{(x, y) : c \le y \le d,\ h_1(y) \le x \le h_2(y)\}\). 가로 띠로 자른다. \(\displaystyle\iint_D f\, dA = \int_c^d\! \int_{h_1(y)}^{h_2(y)} f(x, y)\, dx\, dy.\)</li>
+      </ul>
+      안쪽 적분의 한계는 바깥 변수의 함수일 수 있지만, <b>바깥 적분의 한계는 반드시 상수</b>다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="제1형 영역과 제2형 영역">
+        <rect x="10" y="10" width="365" height="270" rx="10" class="f-surface"/>
+        <rect x="385" y="10" width="365" height="270" rx="10" class="f-surface"/>
+        <text x="24" y="34" class="t" style="font-weight:700">제1형: 세로 띠, dy 먼저</text>
+        <text x="399" y="34" class="t" style="font-weight:700">제2형: 가로 띠, dx 먼저</text>
+        <line x1="40" y1="250" x2="355" y2="250" class="s-axis"/><line x1="50" y1="260" x2="50" y2="48" class="s-axis"/>
+        <path d="M90 210 C 150 230, 240 220, 320 190 L 320 110 C 240 70, 150 60, 90 120 Z" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <rect x="196" y="76" width="16" height="148" class="f-acc" style="opacity:.55"/>
+        <text x="215" y="240" class="t-mono">y = g₁(x)</text><text x="216" y="66" class="t-mono">y = g₂(x)</text>
+        <line x1="90" y1="250" x2="90" y2="120" class="s-line" style="stroke-dasharray:4 4"/><line x1="320" y1="250" x2="320" y2="110" class="s-line" style="stroke-dasharray:4 4"/>
+        <text x="86" y="270" class="t-mono">a</text><text x="316" y="270" class="t-mono">b</text>
+        <text x="190" y="268" class="t-acc">x</text>
+        <line x1="415" y1="250" x2="730" y2="250" class="s-axis"/><line x1="425" y1="260" x2="425" y2="48" class="s-axis"/>
+        <path d="M520 230 C 470 190, 480 110, 540 70 L 680 70 C 700 120, 650 190, 690 230 Z" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/>
+        <rect x="488" y="140" width="190" height="14" style="fill:var(--accent-2);opacity:.5"/>
+        <text x="436" y="128" class="t-mono">x = h₁(y)</text><text x="640" y="128" class="t-mono">x = h₂(y)</text>
+        <line x1="425" y1="230" x2="520" y2="230" class="s-line" style="stroke-dasharray:4 4"/><line x1="425" y1="70" x2="540" y2="70" class="s-line" style="stroke-dasharray:4 4"/>
+        <text x="410" y="234" class="t-mono">c</text><text x="410" y="74" class="t-mono">d</text>
+        <text x="408" y="152" class="t" style="fill:var(--accent-2)">y</text>
+      </svg>
+      <figcaption><b>그림 15-2.</b> 왼쪽: 아래·위 경계가 x의 함수인 영역은 세로 띠(두께 dx)로 썰고, 띠 안에서 y를 g₁(x)부터 g₂(x)까지 적분한다. 오른쪽: 왼쪽·오른쪽 경계가 y의 함수인 영역은 가로 띠로 썬다. 원이나 삼각형처럼 두 형으로 모두 쓸 수 있는 영역이 많고, 그때 적분 순서를 고를 수 있다.</figcaption>
+    </figure>
+    <p>한계를 세울 때는 <b>바깥 변수를 하나 고정한 띠를 그리고</b>, 그 띠가 영역에 들어가는 곳과 나가는 곳을 읽습니다. 순서를 바꿀 때도 같습니다. 식을 기계적으로 뒤집지 말고, 영역을 그린 뒤 반대 방향의 띠로 다시 읽습니다.</p>
+    <div class="callout"><strong>예제 15.4 (두 곡선 사이 영역)</strong> \(D\)가 \(y = x^2\)과 \(y = x\)로 둘러싸인 영역일 때 넓이와 \(\iint_D xy\, dA\)를 구하라.
+      <ol>
+        <li>두 곡선은 \(x^2 = x\)에서, 즉 \(x = 0, 1\)에서 만나고, \(0 \lt x \lt 1\)에서 \(x^2 \lt x\). 제1형: \(0 \le x \le 1\), \(x^2 \le y \le x\).</li>
+        <li>넓이: \(\iint_D 1\, dA = \int_0^1 (x - x^2)\, dx = \tfrac12 - \tfrac13 = \tfrac16\). 10장의 "두 곡선 사이 넓이"와 같은 식입니다.</li>
+        <li>\(\int_{x^2}^{x} xy\, dy = x\cdot \tfrac{x^2 - x^4}{2}\), 그리고 \(\int_0^1 \tfrac{x^3 - x^5}{2}\, dx = \tfrac12\bigl(\tfrac14 - \tfrac16\bigr) = \tfrac{1}{24}\).</li>
+        <li>제2형으로 쓰면 \(0 \le y \le 1\), \(y \le x \le \sqrt y\). \(\int_0^1\! \int_y^{\sqrt y} xy\, dx\, dy = \int_0^1 \tfrac{y(y - y^2)}{2}\, dy = \tfrac12\bigl(\tfrac13 - \tfrac14\bigr) = \tfrac{1}{24}\). 같습니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 15.5 (순서를 바꿔야만 풀리는 적분)</strong> \(\displaystyle\int_0^1\! \int_y^1 \sin(x^2)\, dx\, dy\)를 구하라.
+      <ol>
+        <li>안쪽 \(\int \sin(x^2)\, dx\)는 기본 함수로 쓸 수 없습니다(프레넬 적분). 이 순서로는 막힙니다.</li>
+        <li>영역을 그립니다: \(0 \le y \le 1\), \(y \le x \le 1\)은 꼭짓점이 \((0,0), (1,0), (1,1)\)인 삼각형, 즉 \(0 \le x \le 1\), \(0 \le y \le x\)입니다.</li>
+        <li>바꾼 순서: \(\int_0^1\! \int_0^x \sin(x^2)\, dy\, dx = \int_0^1 x\sin(x^2)\, dx\). 안쪽 적분이 \(x\)를 곱해 준 덕분에 치환 \(u = x^2\)이 됩니다.</li>
+        <li>\(= \bigl[-\tfrac12\cos(x^2)\bigr]_0^1 = \tfrac{1 - \cos 1}{2} \approx 0.2298\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-mi-order">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세로 띠와 가로 띠: 적분 순서 바꾸기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mi-cv-order"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>영역과 피적분 함수</span><select id="mi-or-pre">
+            <option value="tri">삼각형, f = sin(x²) (예제 15.5)</option>
+            <option value="lens">y = x² ~ y = x, f = xy (예제 15.4)</option>
+            <option value="sqrt">√x ≤ y ≤ 2, f = x</option>
+            <option value="quarter">사분원, f = xy</option>
+          </select></label>
+          <div class="ctrl"><span>순서</span><div class="seg" id="mi-or-ord"><button data-value="I" class="on">dy dx (세로 띠)</button><button data-value="II">dx dy (가로 띠)</button></div></div>
+          <label class="ctrl"><span>띠 위치 <output id="mi-or-t-out"></output></span><input type="range" id="mi-or-t" min="0.01" max="0.99" step="0.01" value="0.55"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 적분</span><span class="v" id="mi-or-lim">—</span></div>
+        <div class="stat"><span class="k">띠의 안쪽 적분</span><span class="v" id="mi-or-in">—</span></div>
+        <div class="stat"><span class="k">dy dx / dx dy</span><span class="v" id="mi-or-tot">—</span></div>
+        <div class="stat"><span class="k">정확한 값</span><span class="v" id="mi-or-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 삼각형에서 순서를 'dx dy'로 바꾸면 띠가 x = y에서 들어가 x = 1에서 나갑니다. 안쪽 적분이 sin(x²)이라 손으로는 막히는 순서입니다. ② √x ≤ y ≤ 2를 가로 띠로 읽으면 0 ≤ x ≤ y²입니다. 띠 끝점을 보며 확인하세요. ③ 두 순서의 수치값이 같은 것이 푸비니 정리입니다. 모델: 안쪽·바깥 적분 모두 심프슨 공식(160등분)으로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="polar">
+    <h2>극좌표 이중 적분과 가우스 적분</h2>
+    <div class="problem"><strong>원판을 바둑판으로 자르면 가장자리가 들쭉날쭉하다</strong>
+      <p>원판 \(x^2 + y^2 \le 4\) 위의 적분을 직교 좌표로 쓰면 \(\int_{-2}^{2} \int_{-\sqrt{4-x^2}}^{\sqrt{4-x^2}}\cdots\, dy\, dx\)처럼 제곱근이 한계에 들어가 계산이 금세 복잡해집니다. 원판은 동심원과 반지름으로 자르는 것이 자연스럽습니다. 그런데 그렇게 자른 조각은 직사각형이 아니라 부채꼴 띠입니다. 그 넓이는 얼마일까요?</p></div>
+    <p>극좌표 \(x = r\cos\theta\), \(y = r\sin\theta\)에서 \(r_1 \le r \le r_2\), \(\theta_1 \le \theta \le \theta_2\)인 조각을 <span class="term">극사각형</span><span class="en">(polar rectangle)</span>이라 합니다. 넓이는 큰 부채꼴에서 작은 부채꼴을 뺀 것이므로</p>
+    <div class="formula">$$\Delta A = \tfrac12 r_2^2\,\Delta\theta - \tfrac12 r_1^2\,\Delta\theta = \tfrac{r_1 + r_2}{2}\,(r_2 - r_1)\,\Delta\theta = \bar r\,\Delta r\,\Delta\theta$$
+      <div class="where">\(\bar r\)는 두 반지름의 평균. 조각은 가로 \(\Delta r\), 세로 \(\bar r\Delta\theta\)(호의 길이)인 거의 직사각형이다. 같은 \(\Delta\theta\)라도 바깥 조각일수록 크다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="극사각형과 넓이 요소">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <line x1="60" y1="230" x2="440" y2="230" class="s-axis"/><line x1="70" y1="240" x2="70" y2="30" class="s-axis"/>
+        <path d="M70 230 L 400 142" class="s-line" style="stroke-dasharray:4 4"/><path d="M70 230 L 356 66" class="s-line" style="stroke-dasharray:4 4"/>
+        <path d="M241 184 A 177 177 0 0 0 224 142 L 304 96 A 270 270 0 0 1 330 160 Z" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <path d="M241 184 A 177 177 0 0 0 224 142" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+        <path d="M128 215 A 60 60 0 0 0 122 200" fill="none" class="s-line"/>
+        <text x="134" y="204" class="t-mono">Δθ</text>
+        <path d="M150 230 A 80 80 0 0 0 147 209" fill="none" class="s-line"/>
+        <text x="156" y="222" class="t-mono">θ</text>
+        <text x="258" y="200" class="t-acc">Δr</text>
+        <text x="320" y="118" class="t-acc">r Δθ</text>
+        <text x="168" y="130" class="t-mono">r</text>
+        <g transform="translate(480,40)">
+          <text x="0" y="0" class="t" style="font-weight:700">넓이 요소</text>
+          <text x="0" y="28" class="t-mono">직교: dA = dx dy</text>
+          <text x="0" y="54" class="t-mono">극좌표: dA = r dr dθ</text>
+          <text x="0" y="92" class="t-dim">빠뜨리기 쉬운 r 하나가</text>
+          <text x="0" y="114" class="t-dim">"바깥 조각이 더 크다"를 센다.</text>
+          <text x="0" y="152" class="t-dim">r = 0 근처의 조각은 거의</text>
+          <text x="0" y="174" class="t-dim">넓이가 없는 바늘 모양이다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-3.</b> 반지름 r과 r + Δr, 각도 θ와 θ + Δθ로 둘러싸인 극사각형. 두 변은 Δr와 호 rΔθ라서 넓이가 약 r Δr Δθ다. 이 r이 극좌표 적분의 핵심이며, 6절에서 야코비안으로 일반화된다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 15.4 (극좌표 이중 적분)</strong> 영역이 \(D = \{(r, \theta) : \alpha \le \theta \le \beta,\ h_1(\theta) \le r \le h_2(\theta)\}\)이고(\(0 \le \beta - \alpha \le 2\pi\)) \(f\)가 연속이면
+      <div class="formula">$$\iint_D f(x, y)\,dA = \int_\alpha^\beta\!\!\int_{h_1(\theta)}^{h_2(\theta)} f(r\cos\theta, r\sin\theta)\,r\,dr\,d\theta.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 극사각형 분할로 리만 합을 만들면 표본점을 각 조각의 \(\bar r\)에 두었을 때 \(\Delta A = \bar r\, \Delta r\, \Delta\theta\)가 <b>정확히</b> 성립한다. 그래서 합 \(\sum f(\bar r\cos\theta^*, \bar r\sin\theta^*)\, \bar r\, \Delta r\, \Delta\theta\)는 \((r, \theta)\) 직사각형 위의 함수 \(f(r\cos\theta, r\sin\theta)\, r\)의 리만 합이다. ∎</p></div>
+    <div class="callout"><strong>예제 15.6 (포물면 아래 부피)</strong> 포물면 \(z = 4 - x^2 - y^2\)과 \(xy\) 평면 사이의 부피를 구하라.
+      <ol>
+        <li>\(z \ge 0\)인 곳은 \(x^2 + y^2 \le 4\), 즉 \(0 \le r \le 2\), \(0 \le \theta \le 2\pi\). 피적분 함수는 \(4 - r^2\).</li>
+        <li>\(\int_0^{2\pi}\! \int_0^2 (4 - r^2)\, r\, dr\, d\theta = 2\pi\bigl[2r^2 - \tfrac{r^4}{4} \bigr]_0^2 = 2\pi(8 - 4) = 8\pi \approx 25.13\).</li>
+        <li>검산: 같은 높이 4, 반지름 2인 원기둥의 부피 \(16\pi\)의 정확히 절반입니다. 포물면 그릇이 원기둥을 반만 채운다는 것은 아르키메데스도 알던 사실입니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-mi-polar">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>극좌표 격자: 바깥 조각이 더 크다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mi-cv-polar"></canvas><span class="tag-tl">조각을 눌러 고르기 · 색 = e<sup>−r²</sup></span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>원판 반지름 R <output id="mi-po-R-out"></output></span><input type="range" id="mi-po-R" min="0.5" max="2.4" step="0.05" value="2"></label>
+          <label class="ctrl"><span>반지름 분할 수 <output id="mi-po-nr-out"></output></span><input type="range" id="mi-po-nr" min="1" max="16" step="1" value="5"></label>
+          <label class="ctrl"><span>각도 분할 수 <output id="mi-po-nt-out"></output></span><input type="range" id="mi-po-nt" min="3" max="48" step="1" value="12"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고른 조각의 넓이 (정확)</span><span class="v" id="mi-po-cell">—</span></div>
+        <div class="stat"><span class="k">r 없이 Δr Δθ</span><span class="v" id="mi-po-wrong">—</span></div>
+        <div class="stat"><span class="k">Σ e<sup>−r²</sup> r Δr Δθ</span><span class="v" id="mi-po-sum">—</span></div>
+        <div class="stat"><span class="k">정확 π(1 − e<sup>−R²</sup>)</span><span class="v" id="mi-po-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 가운데 조각과 가장자리 조각을 차례로 눌러 넓이를 비교하세요. 같은 Δr, Δθ인데 넓이는 r̄에 비례합니다. ② 'r 없이' 값은 모든 조각이 같다고 우기는 계산입니다. 원의 중심 쪽을 과대평가합니다. ③ R을 키우면 합이 π ≈ 3.1416에 다가갑니다. 아래 가우스 적분의 핵심입니다. 모델: 표본점은 각 조각의 r̄ = (r₁ + r₂)/2, 각도 중점.</div>
+    </div>
+
+    <h3>가우스 적분: 1차원 문제를 2차원에서 푼다</h3>
+    <p>\(e^{-x^2}\)의 부정적분은 기본 함수로 쓸 수 없습니다(12장에서 급수로만 적었습니다). 그런데 실수 전체에서의 정적분은 정확히 구할 수 있고, 그 방법은 이 장에서만 가능합니다. 같은 적분을 두 번 곱해 2차원 적분으로 만드는 것입니다.</p>
+    <div class="callout deep"><strong>정리 15.5 (<span class="term">가우스 적분</span><span class="en">(Gaussian integral)</span>)</strong>
+      <div class="formula">$$\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(I(a) = \int_{-a}^{a} e^{-x^2}dx\)라 하자. 곱으로 분리되는 함수이므로 \(I(a)^2 = \iint_{S_a} e^{-(x^2 + y^2)}\, dA\), 여기서 \(S_a = [-a, a]^2\)이다. 반지름 \(a\)인 원판 \(D_a\)는 \(S_a\) 안에, \(S_a\)는 반지름 \(a\sqrt2\)인 원판 안에 들어가고 피적분 함수가 양수이므로</p>
+      <div class="formula">$$\iint_{D_a} e^{-r^2}\,dA \;\le\; I(a)^2 \;\le\; \iint_{D_{a\sqrt2}} e^{-r^2}\,dA.$$</div>
+      <p style="margin:6px 0 0">원판 위 적분은 극좌표로 \(\int_0^{2\pi}\! \int_0^{R} e^{-r^2}r\, dr\, d\theta = 2\pi\cdot \tfrac12(1 - e^{-R^2}) = \pi(1 - e^{-R^2})\). 그래서 \(\pi(1 - e^{-a^2}) \le I(a)^2 \le \pi(1 - e^{-2a^2})\)이고, \(a \to \infty\)이면 조임 정리(1장)로 \(I(a)^2 \to \pi\). \(I(a) \gt 0\)이므로 \(I(a) \to \sqrt\pi\). ∎</p></div>
+    <p>극좌표가 마법을 부린 곳은 \(r\, dr\)입니다. \(e^{-r^2}\)만으로는 적분할 수 없지만 \(r e^{-r^2}\)은 \(-\tfrac12 e^{-r^2}\)의 도함수입니다. 그리고 치환 \(x = t/\sqrt2\)를 하면 \(\int_{-\infty}^\infty e^{-t^2/2}dt = \sqrt{2\pi}\)가 됩니다. 이것이 <a href="../../probability/chapters/continuous.html#normal">표준 정규 분포</a>의 밀도 \(\tfrac{1}{\sqrt{2\pi}}e^{-t^2/2}\) 앞에 \(\sqrt{2\pi}\)가 붙는 이유입니다.</p>
+
+    <div class="sim" id="sim-mi-gauss">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>원판–정사각형–원판으로 조이는 가우스 적분</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view mi-two">
+          <div><canvas id="mi-cv-gmap"></canvas><span class="mi-cap">e<sup>−(x²+y²)</sup>와 세 영역</span></div>
+          <div><canvas id="mi-cv-gch"></canvas><span class="mi-cap">세 적분값 vs a</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>반너비 a <output id="mi-ga-a-out"></output></span><input type="range" id="mi-ga-a" min="0.1" max="3" step="0.01" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="mi-ga-play">▶ a 키우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">안쪽 원판 π(1 − e<sup>−a²</sup>)</span><span class="v" id="mi-ga-in">—</span></div>
+        <div class="stat"><span class="k">정사각형 I(a)²</span><span class="v" id="mi-ga-sq">—</span></div>
+        <div class="stat"><span class="k">바깥 원판 π(1 − e<sup>−2a²</sup>)</span><span class="v" id="mi-ga-out">—</span></div>
+        <div class="stat"><span class="k">I(a) → √π = 1.77245</span><span class="v" id="mi-ga-I">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① a = 1에서 세 값이 1.986 ≤ 2.231 ≤ 2.716로 정사각형이 가운데에 끼어 있음을 확인하세요. ② a를 3까지 키우면 세 곡선이 모두 π에 달라붙습니다. a = 3이면 e<sup>−9</sup> ≈ 0.0001이라 사실상 다 모입니다. ③ 그래서 정규 분포에서 평균 ± 3σ 밖의 확률이 아주 작습니다. 모델: I(a) = √π · erf(a)로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="triple">
+    <h2>삼중 적분: 원기둥 좌표와 구면 좌표</h2>
+    <div class="problem"><strong>밀도가 고르지 않은 부품의 질량</strong>
+      <p>금속 3D 프린팅으로 만든 부품은 위치마다 밀도 \(\rho(x, y, z)\)가 조금씩 다릅니다. 질량은 작은 상자의 질량 \(\rho\, \Delta V\)를 모두 더한 것, 즉 3차원 리만 합의 극한입니다. 한 차원이 늘었을 뿐 아이디어는 같습니다. 다만 공·원기둥·원뿔 모양의 부품을 상자로 썰기는 불편합니다.</p></div>
+    <div class="callout deep"><strong>정의 15.6 (삼중 적분)</strong> 유계 입체 \(E\) 위의 <span class="term">삼중 적분</span><span class="en">(triple integral)</span>은 \(E\)를 감싸는 상자를 작은 상자 \(\Delta V = \Delta x\, \Delta y\, \Delta z\)로 나눈 리만 합의 극한이다.
+      <div class="formula">$$\iiint_E f(x, y, z)\,dV = \lim \sum f(x^*, y^*, z^*)\,\Delta V.$$</div>
+      \(f = 1\)이면 \(E\)의 부피, \(f = \rho\)(밀도)이면 질량이다. 푸비니 정리가 그대로 성립해 여섯 가지 순서의 반복 적분 중 편한 것으로 계산한다.</div>
+    <div class="callout"><strong>예제 15.7 (사면체의 부피와 무게 중심)</strong> \(E\): \(x, y, z \ge 0\), \(x + y + z \le 1\)의 부피와 \(\iiint_E x\, dV\)를 구하라.
+      <ol>
+        <li>안쪽부터: \(z\)는 0에서 \(1 - x - y\)까지, 그 그림자(\(xy\) 평면의 삼각형)에서 \(y\)는 0에서 \(1 - x\)까지, \(x\)는 0에서 1까지.</li>
+        <li>부피: \(\int_0^1\! \int_0^{1-x}(1 - x - y)\, dy\, dx = \int_0^1 \tfrac{(1-x)^2}{2}\, dx = \tfrac16\).</li>
+        <li>\(\iiint_E x\, dV = \int_0^1 x\tfrac{(1-x)^2}{2}\, dx = \tfrac12\bigl(\tfrac12 - \tfrac23 + \tfrac14\bigr) = \tfrac{1}{24}\). 그래서 무게 중심의 \(x\)좌표는 \(\tfrac{1/24}{1/6} = \tfrac14\)이고, 대칭으로 무게 중심은 \(\bigl(\tfrac14, \tfrac14, \tfrac14\bigr)\)입니다. 삼각형의 무게 중심이 \(\tfrac13\)이었듯 사면체는 \(\tfrac14\)입니다.</li>
+      </ol></div>
+    <p>축 대칭인 입체에는 <span class="term">원기둥 좌표</span><span class="en">(cylindrical coordinates)</span> \((r, \theta, z)\)가, 점 대칭인 입체에는 <span class="term">구면 좌표</span><span class="en">(spherical coordinates)</span> \((\rho, \varphi, \theta)\)가 맞습니다.</p>
+    <div class="table-wrap"><table class="mi-tbl">
+      <thead><tr><th>좌표계</th><th>변환</th><th>범위</th><th>부피 요소 dV</th></tr></thead>
+      <tbody>
+        <tr><td>직교</td><td>(x, y, z)</td><td>—</td><td>dx dy dz</td></tr>
+        <tr><td>원기둥</td><td>x = r cos θ, y = r sin θ, z = z</td><td>r ≥ 0, 0 ≤ θ &lt; 2π</td><td>r dz dr dθ</td></tr>
+        <tr><td>구면</td><td>x = ρ sin φ cos θ, y = ρ sin φ sin θ, z = ρ cos φ</td><td>ρ ≥ 0, 0 ≤ φ ≤ π, 0 ≤ θ &lt; 2π</td><td>ρ² sin φ dρ dφ dθ</td></tr>
+      </tbody></table></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="구면 좌표와 부피 요소">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="180" y1="200" x2="180" y2="30" class="s-axis"/><line x1="180" y1="200" x2="350" y2="200" class="s-axis"/><line x1="180" y1="200" x2="90" y2="270" class="s-axis"/>
+        <text x="186" y="40" class="t-mono">z</text><text x="340" y="218" class="t-mono">y</text><text x="80" y="268" class="t-mono">x</text>
+        <line x1="180" y1="200" x2="280" y2="90" style="stroke:var(--accent);stroke-width:2.5"/>
+        <circle cx="280" cy="90" r="5" style="fill:var(--accent)"/>
+        <text x="288" y="86" class="t-acc">P(ρ, φ, θ)</text>
+        <line x1="280" y1="90" x2="280" y2="236" class="s-line" style="stroke-dasharray:4 4"/>
+        <line x1="180" y1="200" x2="280" y2="236" class="s-line" style="stroke-dasharray:4 4"/>
+        <text x="226" y="136" class="t-acc">ρ</text>
+        <path d="M180 140 A 60 60 0 0 1 221 155" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+        <text x="196" y="128" class="t" style="fill:var(--accent-2)">φ</text>
+        <path d="M148 225 A 42 42 0 0 0 214 216" fill="none" style="stroke:var(--ok);stroke-width:2"/>
+        <text x="172" y="250" class="t" style="fill:var(--ok)">θ</text>
+        <text x="238" y="252" class="t-dim">ρ sin φ</text>
+        <g transform="translate(400,40)">
+          <text x="0" y="0" class="t" style="font-weight:700">구면 '상자'의 세 변</text>
+          <text x="0" y="30" class="t-mono">반지름 방향:  Δρ</text>
+          <text x="0" y="56" class="t-mono">경선(φ) 방향: ρ Δφ</text>
+          <text x="0" y="82" class="t-mono">위선(θ) 방향: ρ sin φ Δθ</text>
+          <text x="0" y="118" class="t" style="font-weight:700">곱하면</text>
+          <text x="0" y="144" class="t-mono">ΔV ≈ ρ² sin φ Δρ Δφ Δθ</text>
+          <text x="0" y="184" class="t-dim">θ 방향 원의 반지름이 ρ가 아니라</text>
+          <text x="0" y="206" class="t-dim">z축까지 거리 ρ sin φ라서 sin φ가 붙는다.</text>
+          <text x="0" y="228" class="t-dim">극 근처(φ ≈ 0)의 조각은 납작하다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 15-4.</b> 구면 좌표. ρ는 원점까지 거리, φ는 양의 z축에서 내려온 각(0 ≤ φ ≤ π), θ는 xy 평면에 비친 그림자의 각이다(원기둥 좌표의 θ와 같다). 지구의 위도는 90° − φ에 해당한다. 수학·물리 교재마다 φ와 θ의 이름을 바꿔 쓰기도 하니 정의를 먼저 확인할 것.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 15.8 (공의 부피와 아이스크림 콘)</strong> 반지름 \(a\)인 공의 부피와, 그 공 안에서 원뿔 \(\varphi \le \pi/3\) 안쪽 부분(콘)의 부피를 구하라.
+      <ol>
+        <li>공: \(\int_0^{2\pi}\! \int_0^{\pi}\! \int_0^{a} \rho^2\sin\varphi\, d\rho\, d\varphi\, d\theta = 2\pi\cdot \bigl[-\cos\varphi\bigr]_0^\pi\cdot \tfrac{a^3}{3} = 2\pi\cdot 2\cdot \tfrac{a^3}{3} = \tfrac43\pi a^3\). 피적분 함수가 곱으로 분리되어 세 적분의 곱이 됩니다.</li>
+        <li>콘: \(\varphi\)의 범위만 \(0 \le \varphi \le \pi/3\)로 바꾸면 \(\bigl[-\cos\varphi\bigr]_0^{\pi/3} = 1 - \tfrac12 = \tfrac12\)이므로 \(2\pi\cdot \tfrac12\cdot \tfrac{a^3}{3} = \tfrac{\pi a^3}{3}\). 공 부피의 \(1/4\)입니다.</li>
+        <li>원기둥 좌표로 하면 \(r\)의 범위를 원뿔과 구면 두 경계로 나눠야 해서 훨씬 번거롭습니다. 경계가 \(\rho\) = 상수, \(\varphi\) = 상수인 입체는 구면 좌표로 씁니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-mi-coords">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부피 요소 해부: 직교·원기둥·구면 상자</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mi-cv-coords"></canvas><span class="hint">끌어서 돌리기</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>좌표계</span><div class="seg" id="mi-co-sys"><button data-value="cart">직교</button><button data-value="cyl">원기둥</button><button data-value="sph" class="on">구면</button></div></div>
+          <label class="ctrl"><span id="mi-co-l1">ρ</span><input type="range" id="mi-co-1" min="0" max="1" step="0.01" value="0.6" aria-label="첫째 좌표"></label>
+          <label class="ctrl"><span id="mi-co-l2">φ</span><input type="range" id="mi-co-2" min="0" max="1" step="0.01" value="0.3" aria-label="둘째 좌표"></label>
+          <label class="ctrl"><span id="mi-co-l3">θ</span><input type="range" id="mi-co-3" min="0" max="1" step="0.01" value="0.15" aria-label="셋째 좌표"></label>
+          <label class="ctrl"><span>조각 크기 h <output id="mi-co-h-out"></output></span><input type="range" id="mi-co-h" min="0.05" max="0.6" step="0.01" value="0.35"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">세 변의 길이</span><span class="v" id="mi-co-edges">—</span></div>
+        <div class="stat"><span class="k">정확한 부피</span><span class="v" id="mi-co-ex">—</span></div>
+        <div class="stat"><span class="k">부피 요소 근사</span><span class="v" id="mi-co-ap">—</span></div>
+        <div class="stat"><span class="k">근사 / 정확</span><span class="v" id="mi-co-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 구면에서 φ를 0 근처(북극)로 옮기면 같은 h인데 조각이 납작해집니다. sin φ가 작기 때문입니다. ② h를 줄이면 근사/정확 비가 1로 갑니다. 부피 요소는 h → 0의 극한에서만 정확합니다. ③ 원기둥에서 r을 키우면 θ 방향 변 rΔθ만 길어집니다. 모델: 좌표 상자 [u, u + h] × [v, v + h] × [w, w + h]의 정확한 상을 그립니다(각도는 라디안). 근사는 안쪽 꼭짓점에서 잰 값입니다.</div>
+    </div>
+    <div class="callout"><strong>예제 15.9 (원기둥 좌표: 바깥이 무거운 원기둥)</strong> 반지름 \(a\), 높이 \(H\)인 원기둥의 밀도가 축에서의 거리에 비례해 \(\delta = kr\)일 때 질량을 구하라.
+      <p style="margin:6px 0 0">\(M = \int_0^{2\pi}\! \int_0^a\! \int_0^H kr\cdot r\, dz\, dr\, d\theta = 2\pi\cdot H\cdot \tfrac{k a^3}{3} = \tfrac{2\pi k H a^3}{3}\). 부피 요소의 \(r\)과 밀도의 \(r\)이 곱해져 \(r^2\)이 된 것에 주의하세요. 밀도가 고르다면 \(M = \delta\pi a^2H\)인데, 그 공식을 쓸 수 없는 경우입니다.</p></div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="jacobian">
+    <h2>변수 변환과 야코비안</h2>
+    <div class="problem"><strong>비스듬한 평행사변형, 타원, 그 밖의 맞춤 좌표</strong>
+      <p>영역이 \(0 \le x + y \le 2\), \(0 \le x - y \le 2\)처럼 기울어진 정사각형이면 \(u = x + y\), \(v = x - y\)로 두는 순간 반듯한 정사각형이 됩니다. 타원은 늘인 원이고, 극좌표·원기둥·구면 좌표도 모두 이런 바꾸기의 예입니다. 좌표를 바꿀 때 넓이는 얼마나 늘고 줄까요?</p></div>
+    <p>변환 \(T(u, v) = (x(u, v),\ y(u, v))\)가 \(uv\) 평면의 작은 칸 \([u, u + \Delta u]\times[v, v + \Delta v]\)를 \(xy\) 평면으로 보낸다고 합시다. 칸이 작으면 \(T\)는 거의 선형(13장의 선형 근사)이라서 칸의 상은 두 벡터 \(\mathbf r_u\Delta u\), \(\mathbf r_v\Delta v\)가 만드는 평행사변형에 가깝습니다. 평행사변형의 넓이는 행렬식의 절댓값입니다(<a href="../../linear/chapters/determinants.html#jacobian">LinearBook 10장 행렬식: 넓이 배율로서의 야코비안</a>).</p>
+    <div class="callout deep"><strong>정의 15.7 (야코비안)</strong> \(C^1\) 변환 \(x = x(u, v)\), \(y = y(u, v)\)의 <span class="term">야코비안</span><span class="en">(Jacobian)</span>은
+      <div class="formula">$$\frac{\partial(x, y)}{\partial(u, v)} = \det\begin{bmatrix}\partial x/\partial u & \partial x/\partial v\\ \partial y/\partial u & \partial y/\partial v\end{bmatrix} = x_u y_v - x_v y_u.$$</div>
+      작은 칸의 넓이는 \(\Delta A \approx \bigl|\tfrac{\partial(x, y)}{\partial(u, v)} \bigr|\, \Delta u\, \Delta v\)로 바뀐다. 세 변수면 3×3 야코비 행렬의 행렬식이 부피 배율이다.</div>
+    <div class="callout deep"><strong>정리 15.8 (<span class="term">변수 변환 공식</span><span class="en">(change of variables)</span>)</strong> \(T\)가 \(uv\) 영역 \(S\)를 \(xy\) 영역 \(D\)로 보내는 일대일 \(C^1\) 변환이고(경계에서는 일대일이 아니어도 된다) 야코비안이 \(S\)의 내부에서 0이 아니면
+      <div class="formula">$$\iint_D f(x, y)\,dx\,dy = \iint_S f\bigl(x(u, v), y(u, v)\bigr)\,\left|\frac{\partial(x, y)}{\partial(u, v)}\right|\,du\,dv.$$</div>
+      <p style="margin:6px 0 0"><b>확인.</b> 극좌표 \(x = r\cos\theta\), \(y = r\sin\theta\): \(\det\begin{bmatrix} \cos\theta & -r\sin\theta\\ \sin\theta & r\cos\theta\end{bmatrix} = r\cos^2\theta + r\sin^2\theta = r\). 정리 15.4의 \(r\)이 바로 야코비안이다. 구면 좌표의 3×3 야코비안을 계산하면 \(\rho^2\sin\varphi\)가 나온다. 경계 \(r = 0\)에서 야코비안이 0인 것은 허용된다.</p></div>
+    <p>일변수 치환 \(\int f(x)\, dx = \int f(g(u))\, g'(u)\, du\)(8장)에서 \(g'(u)\)가 "길이 배율"이었다면, 야코비안은 "넓이 배율"입니다. 일변수에서는 구간의 방향(\(a\)에서 \(b\)로)이 부호를 챙겨 주지만, 이중 적분의 \(dA\)는 방향이 없는 넓이라서 <b>절댓값</b>을 씁니다.</p>
+    <div class="callout"><strong>예제 15.10 (기울어진 정사각형)</strong> \(D\): \(0 \le x + y \le 2\), \(0 \le x - y \le 2\)일 때 \(\iint_D (x + y)\, dA\)를 구하라.
+      <ol>
+        <li>\(u = x + y\), \(v = x - y\)로 두면 \(S = [0, 2]\times[0, 2]\). 거꾸로 풀면 \(x = \tfrac{u + v}{2}\), \(y = \tfrac{u - v}{2}\).</li>
+        <li>야코비안: \(\det\begin{bmatrix}1/2 & 1/2\\ 1/2 & -1/2\end{bmatrix} = -\tfrac14 - \tfrac14 = -\tfrac12\), 절댓값 \(\tfrac12\).</li>
+        <li>\(\int_0^2\! \int_0^2 u\cdot \tfrac12\, dv\, du = \tfrac12\cdot 2\cdot \bigl[\tfrac{u^2}{2} \bigr]_0^2 = 2\).</li>
+        <li>검산: \(D\)는 한 변이 \(\sqrt2\)인 정사각형이라 넓이가 2(= \(uv\) 넓이 4 × 배율 ½)이고, 그 위에서 \(x + y\)의 평균이 1이므로 \(2\times 1 = 2\).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 15.11 (타원의 넓이)</strong> \(\tfrac{x^2}{a^2} + \tfrac{y^2}{b^2} \le 1\)의 넓이를 구하라.
+      <p style="margin:6px 0 0">\(x = au\), \(y = bv\)는 단위 원판 \(u^2 + v^2 \le 1\)을 타원으로 보내고 야코비안은 \(\det\begin{bmatrix}a & 0\\ 0 & b\end{bmatrix} = ab\). 그래서 넓이 \(= \iint_{u^2+v^2\le 1} ab\, du\, dv = ab\cdot \pi\). 같은 방법으로 반축이 \(a, b, c\)인 타원체의 부피는 \(\tfrac43\pi abc\)입니다.</p></div>
+
+    <div class="sim" id="sim-mi-jacobian">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>야코비안: 작은 칸이 얼마나 늘어나는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view mi-two">
+          <div><canvas id="mi-cv-juv"></canvas><span class="mi-cap">uv 평면 · 점을 끌어 칸 옮기기</span></div>
+          <div><canvas id="mi-cv-jxy"></canvas><span class="mi-cap">xy 평면 · 칸의 상과 평행사변형(점선)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>변환 T(u, v)</span><select id="mi-ja-map">
+            <option value="polar">극좌표 (r cos θ, r sin θ)</option>
+            <option value="ex">((u+v)/2, (u−v)/2) (예제 15.10)</option>
+            <option value="lin">(2u + v, 0.5u + 1.5v)</option>
+            <option value="sq">(u² − v², 2uv) (복소수 제곱)</option>
+          </select></label>
+          <label class="ctrl"><span>칸 크기 (격자 비율) <output id="mi-ja-h-out"></output></span><input type="range" id="mi-ja-h" min="0.02" max="0.25" step="0.01" value="0.12"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">야코비 행렬</span><span class="v" id="mi-ja-J">—</span></div>
+        <div class="stat"><span class="k">∂(x,y)/∂(u,v)</span><span class="v" id="mi-ja-det">—</span></div>
+        <div class="stat"><span class="k">상의 실제 넓이</span><span class="v" id="mi-ja-area">—</span></div>
+        <div class="stat"><span class="k">|J| Δu Δv</span><span class="v" id="mi-ja-ap">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 극좌표에서 점을 r = 0 쪽으로 끌면 상이 쪼그라들고 r에 비례해 커집니다. ② 선형 변환은 칸을 어디로 옮겨도 배율이 det = 2.5로 같습니다. 선형대수의 행렬식 그 자체입니다. ③ 복소수 제곱에서 배율은 4(u² + v²)라 원점에서 멀수록 급격히 커집니다. 칸을 키우면 실제 넓이와 |J|ΔuΔv의 차이가 커지는 것도 보세요. 모델: 실제 넓이는 칸 경계를 변환한 곡선 다각형을 신발끈 공식으로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="mass">
+    <h2>응용: 질량, 질량 중심, 관성 모멘트, 확률</h2>
+    <div class="problem"><strong>같은 질량인데 왜 굴러가는 속도가 다를까</strong>
+      <p>질량과 반지름이 같은 고리, 원판, 공을 같은 경사면에서 동시에 굴리면 공이 먼저, 고리가 가장 늦게 도착합니다. 질량이 같아도 그 질량이 축에서 얼마나 멀리 퍼져 있는지가 다르기 때문입니다. "얼마나 멀리 퍼져 있는가"를 재는 양이 중적분입니다.</p></div>
+    <p>평면 박판의 밀도(넓이당 질량)가 \(\delta(x, y)\)이면, 작은 조각의 질량은 \(\delta\, \Delta A\)이고 다음 양들이 모두 "조각마다 무언가 × 질량"의 합입니다.</p>
+    <div class="callout deep"><strong>정의 15.9 (질량, 모멘트, 질량 중심, 관성 모멘트)</strong>
+      <div class="formula">$$M = \iint_D \delta\,dA,\qquad \bar x = \frac{1}{M}\iint_D x\,\delta\,dA,\qquad \bar y = \frac{1}{M}\iint_D y\,\delta\,dA,\qquad I_0 = \iint_D (x^2 + y^2)\,\delta\,dA.$$
+        <div class="where">\((\bar x, \bar y)\)는 <span class="term">질량 중심</span><span class="en">(center of mass)</span>, 그 점을 받치면 박판이 균형을 잡는다. \(I_0\)는 원점을 지나고 판에 수직인 축에 대한 <span class="term">관성 모멘트</span><span class="en">(moment of inertia)</span>로, 회전 운동 에너지 \(\tfrac12 I\omega^2\)에서 질량 역할을 한다. 3차원에서는 \(\iiint\)와 축까지 거리의 제곱을 쓴다.</div></div></div>
+    <div class="callout"><strong>예제 15.12 (반원판의 질량 중심)</strong> 반지름 \(a\)인 균일한 반원판 \(x^2 + y^2 \le a^2\), \(y \ge 0\)의 질량 중심을 구하라.
+      <ol>
+        <li>대칭으로 \(\bar x = 0\). 밀도가 고르면 \(\delta\)가 약분되어 \(\bar y = \tfrac{1}{A}\iint_D y\, dA\), \(A = \tfrac12\pi a^2\).</li>
+        <li>극좌표: \(\iint_D y\, dA = \int_0^\pi\! \int_0^a r\sin\theta\cdot r\, dr\, d\theta = \tfrac{a^3}{3} \bigl[-\cos\theta\bigr]_0^\pi = \tfrac{2a^3}{3}\).</li>
+        <li>\(\bar y = \tfrac{2a^3/3}{\pi a^2/2} = \tfrac{4a}{3\pi} \approx 0.424a\). 반지름의 절반보다 조금 아래입니다. 넓은 쪽(지름 쪽)에 질량이 많기 때문입니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 15.13 (속이 찬 공의 관성 모멘트)</strong> 밀도 \(\delta\)가 고른, 반지름 \(a\)·질량 \(M\)인 공의 \(z\)축에 대한 관성 모멘트를 구하라.
+      <ol>
+        <li>\(z\)축까지 거리의 제곱은 \(x^2 + y^2 = \rho^2\sin^2\varphi\).</li>
+        <li>\(I_z = \delta\int_0^{2\pi}\! \int_0^\pi\! \int_0^a \rho^2\sin^2\varphi\cdot \rho^2\sin\varphi\, d\rho\, d\varphi\, d\theta = \delta\cdot 2\pi\cdot \tfrac{a^5}{5}\cdot \int_0^\pi\sin^3\varphi\, d\varphi\).</li>
+        <li>\(\int_0^\pi \sin^3\varphi\, d\varphi = \int_{-1}^{1}(1 - u^2)\, du = \tfrac43\) (\(u = \cos\varphi\)). 그래서 \(I_z = \tfrac{8\pi\delta a^5}{15}\).</li>
+        <li>\(M = \tfrac43\pi a^3\delta\)로 나누면 \(I_z = \tfrac25 Ma^2\). 같은 방법으로 원판은 \(\tfrac12 Ma^2\), 얇은 고리는 \(Ma^2\)입니다.</li>
+      </ol></div>
+    <p>경사각 \(\alpha\)인 면을 미끄러지지 않고 구르는 물체는 에너지 보존 \(Mgh = \tfrac12 Mv^2 + \tfrac12 I\omega^2\), \(v = R\omega\)에서 가속도가 \(a = \dfrac{g\sin\alpha}{1 + I/(MR^2)}\)입니다. 질량과 반지름은 사라지고 <b>모양의 숫자 \(c = I/(MR^2)\)</b>만 남습니다. 공 \(\tfrac25\), 원판 \(\tfrac12\), 고리 \(1\)이니 공이 가장 빠릅니다. 밀도가 \(r^p\)에 비례하는 원판이라면 \(c = \dfrac{\int_0^R r^{p}\, r^2\, r\, dr}{R^2\int_0^R r^p\, r\, dr} = \dfrac{p + 2}{p + 4}\)이고, 예제 15.9의 원기둥(\(p = 1\))은 \(c = \tfrac35\)입니다.</p>
+
+    <div class="sim" id="sim-mi-inertia">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>구르기 경주: 관성 모멘트가 승부를 가른다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="mi-cv-race"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>경사각 α <output id="mi-ra-al-out"></output></span><input type="range" id="mi-ra-al" min="3" max="40" step="1" value="12"></label>
+          <label class="ctrl"><span>맞춤 원판 밀도 ∝ rᵖ, p <output id="mi-ra-p-out"></output></span><input type="range" id="mi-ra-p" min="-1.8" max="12" step="0.1" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="mi-ra-go">▶ 출발</button><button class="btn" id="mi-ra-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">맞춤 원판 c = I/(MR²)</span><span class="v" id="mi-ra-c">—</span></div>
+        <div class="stat"><span class="k">도착 시간 (경사면 2 m)</span><span class="v" id="mi-ra-T">—</span></div>
+        <div class="stat"><span class="k">경과 시간</span><span class="v" id="mi-ra-t">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 출발시키고 순서(상자 → 공 → 원판 → 고리)를 확인하세요. 상자는 마찰 없이 미끄러지므로 회전에 에너지를 쓰지 않습니다(c = 0). ② p를 크게 하면 질량이 가장자리로 몰려 고리에 가까워지고, p를 −2 가까이 내리면 질량이 축에 모여 상자에 가까워집니다. ③ p = 1은 예제 15.9의 바깥이 무거운 원기둥(c = 3/5)입니다. 모델: 미끄러짐 없는 구르기, 공기 저항 무시, g = 9.81 m/s².</div>
+    </div>
+
+    <h3>확률: 결합 밀도의 이중 적분</h3>
+    <p>두 확률 변수 \((X, Y)\)의 <span class="term">결합 확률 밀도</span><span class="en">(joint probability density)</span> \(f(x, y)\)는 "넓이당 확률"입니다. 그래서 \(P\bigl((X, Y) \in D\bigr) = \iint_D f\, dA\)이고, 평면 전체의 적분은 1입니다(<a href="../../probability/chapters/joint.html">확률과 통계: 결합 분포</a>). 질량 밀도를 확률 밀도로 바꿔 읽으면 질량 중심은 기댓값 \((E[X], E[Y])\), 관성 모멘트는 분산입니다.</p>
+    <div class="callout"><strong>예제 15.14 (과녁에서 반지름 r 안에 맞을 확률)</strong> 사격의 가로·세로 오차 \(X, Y\)가 서로 독립인 표준 정규 분포를 따른다. 탄착점이 중심에서 거리 \(r\) 안에 들어올 확률은?
+      <ol>
+        <li>결합 밀도 \(f = \tfrac{1}{2\pi}e^{-(x^2 + y^2)/2}\)는 원점 대칭이라 극좌표가 맞습니다.</li>
+        <li>\(P = \int_0^{2\pi}\! \int_0^r \tfrac{1}{2\pi}e^{-s^2/2}\, s\, ds\, d\theta = \bigl[-e^{-s^2/2} \bigr]_0^r = 1 - e^{-r^2/2}\).</li>
+        <li>\(r = 1\)이면 \(1 - e^{-1/2} \approx 0.393\), \(r = 2\)이면 \(1 - e^{-2} \approx 0.865\). 1차원에서 ±1σ 안의 확률이 0.683인 것과 비교하면, 2차원에서는 두 방향이 모두 작아야 해서 같은 반지름 안에 덜 들어옵니다. 이 분포가 레일리 분포입니다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"넓게 퍼진 양을 모두 더한다"는 요구가 있는 곳마다 중적분이 있습니다. 영역의 모양에 맞는 좌표를 고르는 감각이 실제 계산의 절반입니다.</p>
+    <div class="callout"><strong>단면 2차 모멘트: 같은 재료로 더 단단한 보</strong> 보가 휘어지는 정도는 단면의 2차 모멘트 \(I_x = \iint_{\text{단면}} y^2\, dA\)에 반비례합니다(관성 모멘트와 같은 꼴의 적분). 폭 \(b\), 높이 \(h\)인 직사각형 단면은 \(\int_{-h/2}^{h/2}\! \int_{-b/2}^{b/2} y^2\, dx\, dy = \tfrac{bh^3}{12}\)입니다. 높이를 두 배로 하면 단단함이 8배가 되니, 같은 나무판을 눕히지 않고 세워 쓰는 이유입니다. H형 강이 재료를 위아래 끝에 몰아 두는 것도 \(y^2\)이 큰 곳에 넓이를 두기 위해서입니다.</div>
+    <div class="uses">
+      <a href="vector-calculus.html"><small>16장 · 벡터 미적분</small>그린·발산·스토크스 정리<br><span>경계의 선적분·면적분을 영역의 이중·삼중 적분으로 바꾼다. 이 장의 적분이 오른쪽 변이다.</span></a>
+      <a href="applications.html"><small>10장 · 적분의 응용</small>회전체 부피와 무게 중심<br><span>원판·와셔·원통 껍질은 원기둥 좌표 삼중 적분을 한 번 적분해 둔 것이다.</span></a>
+      <a href="../../linear/chapters/determinants.html"><small>LINEARBOOK 10장</small>행렬식은 부피 배율<br><span>야코비안 |det J|가 작은 칸의 넓이·부피를 몇 배로 바꾸는지 잰다.</span></a>
+      <a href="../../probability/chapters/joint.html"><small>확률과 통계</small>결합 분포와 변수 변환<br><span>P((X, Y) ∈ D) = ∬ f dA, 변환된 밀도는 야코비안으로 나눈다.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>정규 분포의 √(2π)<br><span>가우스 적분이 정규 분포 밀도의 정규화 상수를 준다.</span></a>
+      <a href="https://semi.euiyun.com/yield/"><small>YIELDBOOK</small>결함 밀도와 수율<br><span>웨이퍼 위 결함 밀도 D(x, y)를 칩 영역에서 적분한 기대 결함 수가 수율 모델의 입력이다.</span></a>
+      <a href="https://science.euiyun.com/general-physics/"><small>일반물리</small>강체의 회전<br><span>관성 모멘트, 평행축 정리, 구르는 물체의 에너지.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>이중 적분 \(\iint_R f\, dA\)는 기둥 리만 합 \(\sum f(x^*, y^*)\, \Delta A\)의 극한이고, \(f \ge 0\)이면 곡면 아래 부피, 일반적으로 부호 있는 부피다.</li>
+      <li>푸비니 정리: 연속 함수의 이중 적분은 두 순서의 반복 적분과 같다. 안쪽 적분은 다른 변수를 고정한 단면 넓이 \(A(x)\)다.</li>
+      <li>일반 영역은 제1형(세로 띠, \(g_1(x) \le y \le g_2(x)\))이나 제2형(가로 띠)으로 쓰고, 바깥 한계는 상수다. 순서를 바꿀 때는 영역을 그려서 다시 읽는다.</li>
+      <li>극좌표 넓이 요소는 \(dA = r\, dr\, d\theta\). 이 \(r\) 덕분에 \(\int e^{-x^2}dx = \sqrt\pi\)를 구할 수 있고, 정규 분포의 \(\sqrt{2\pi}\)가 여기서 나온다.</li>
+      <li>삼중 적분의 부피 요소: 원기둥 \(r\, dz\, dr\, d\theta\), 구면 \(\rho^2\sin\varphi\, d\rho\, d\varphi\, d\theta\). 경계가 좌표 = 상수인 좌표계를 고른다.</li>
+      <li>변수 변환: \(dx\, dy = \bigl|\partial(x, y)/\partial(u, v)\bigr|\, du\, dv\). 야코비안 행렬식은 작은 칸의 넓이(부피) 배율이다.</li>
+      <li>질량 \(\iint\delta\), 질량 중심 \(\tfrac1M\iint x\delta\), 관성 모멘트 \(\iint r^2\delta\), 확률 \(\iint_D f\). 구르는 물체의 가속도는 \(c = I/(MR^2)\)만으로 정해진다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\displaystyle\int_0^1\! \int_0^2 (x + y)\, dy\, dx\)의 값은?</p><div class="opts">
+        <button class="opt">1.5</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">안쪽: \(\int_0^2 (x + y)\, dy = 2x + 2\). 바깥: \(\int_0^1 (2x + 2)\, dx = 1 + 2 = 3\). 검산: 영역 넓이 2 × \(x + y\)의 평균(0.5 + 1) = 3.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\displaystyle\int_0^1\! \int_{x^2}^{1} f(x, y)\, dy\, dx\)의 적분 순서를 바꾸면?</p><div class="opts">
+        <button class="opt">\(\int_0^1\! \int_{y^2}^{1} f\, dx\, dy\)</button>
+        <button class="opt" data-correct>\(\int_0^1\! \int_0^{\sqrt y} f\, dx\, dy\)</button>
+        <button class="opt">\(\int_{x^2}^1\! \int_0^1 f\, dx\, dy\)</button>
+        <button class="opt">\(\int_0^1\! \int_{\sqrt y}^{1} f\, dx\, dy\)</button>
+      </div><div class="quiz-exp">영역은 포물선 \(y = x^2\) 위, \(y = 1\) 아래, \(x \ge 0\)인 부분이다. 가로 띠(높이 \(y\))는 \(x = 0\)에서 들어가 포물선 \(x = \sqrt y\)에서 나가고, \(y\)는 0부터 1까지. 세 번째 보기처럼 바깥 한계에 변수가 있으면 안 된다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 카디오이드 \(r = 1 + \cos\theta\)로 둘러싸인 영역의 넓이는?</p><div class="opts">
+        <button class="opt">\(\pi\)</button>
+        <button class="opt" data-correct>\(3\pi/2\)</button>
+        <button class="opt">\(2\pi\)</button>
+        <button class="opt">\(3\pi\)</button>
+      </div><div class="quiz-exp">\(\int_0^{2\pi}\! \int_0^{1+\cos\theta} r\, dr\, d\theta = \tfrac12\int_0^{2\pi}(1 + 2\cos\theta + \cos^2\theta)\, d\theta = \tfrac12(2\pi + 0 + \pi) = \tfrac{3\pi}{2}\). \(r\, dr\)을 빼먹고 \(\int(1 + \cos\theta)\, d\theta = 2\pi\)로 계산하면 틀린다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 변환 \(x = 2u - v\), \(y = u + 3v\)가 \(uv\) 평면의 단위 정사각형을 보낸 평행사변형의 넓이는?</p><div class="opts">
+        <button class="opt">5</button>
+        <button class="opt">6</button>
+        <button class="opt" data-correct>7</button>
+        <button class="opt">1</button>
+      </div><div class="quiz-exp">\(\partial(x, y)/\partial(u, v) = \det\begin{bmatrix}2 & -1\\ 1 & 3\end{bmatrix} = 6 + 1 = 7\). 선형 변환이라 배율이 어디서나 같으므로 넓이는 \(7\times 1 = 7\).</div></div>
+
+      <div class="quiz-q"><p>Q5. 구면 좌표로 반지름 1인 공의 부피를 계산하면서 \(\sin\varphi\)를 빠뜨려 \(\int_0^{2\pi}\! \int_0^\pi\! \int_0^1 \rho^2\, d\rho\, d\varphi\, d\theta\)를 계산했다. 결과와 그 의미는?</p><div class="opts">
+        <button class="opt">\(4\pi/3\), 결과가 같다</button>
+        <button class="opt" data-correct>\(2\pi^2/3 \approx 6.58\), 극 근처의 납작한 조각을 적도 조각만큼 크게 센 값</button>
+        <button class="opt">\(\pi/3\), 너무 작다</button>
+        <button class="opt">발산한다</button>
+      </div><div class="quiz-exp">\(2\pi\cdot \pi\cdot \tfrac13 = \tfrac{2\pi^2}{3} \approx 6.58\)로, 참값 \(\tfrac{4\pi}{3} \approx 4.19\)보다 크다. 위선 방향 변의 길이는 \(\rho\sin\varphi\, \Delta\theta\)라서 극(\(\varphi \approx 0, \pi\)) 근처 조각은 거의 넓이가 없는데, \(\sin\varphi\)를 빼면 모든 조각을 적도 조각처럼 센다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 질량과 반지름이 같은 속이 찬 공, 원판, 얇은 고리를 같은 경사면에서 굴릴 때 도착 순서는?</p><div class="opts">
+        <button class="opt">셋이 동시에 도착한다</button>
+        <button class="opt">고리 → 원판 → 공</button>
+        <button class="opt" data-correct>공 → 원판 → 고리</button>
+        <button class="opt">원판 → 공 → 고리</button>
+      </div><div class="quiz-exp">가속도는 \(g\sin\alpha/(1 + c)\), \(c = I/(MR^2)\)는 공 \(\tfrac25\), 원판 \(\tfrac12\), 고리 \(1\). 질량이 축 가까이 모여 있을수록 \(c\)가 작아 회전에 쓰는 에너지가 적고 더 빨리 내려간다. 질량과 반지름은 답에 영향이 없다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(X, Y\)가 독립인 표준 정규 분포일 때 \(P(X^2 + Y^2 \le 4)\)는?</p><div class="opts">
+        <button class="opt">약 0.683</button>
+        <button class="opt">약 0.954</button>
+        <button class="opt" data-correct>약 0.865</button>
+        <button class="opt">약 0.393</button>
+      </div><div class="quiz-exp">예제 15.14에서 \(P(\sqrt{X^2 + Y^2} \le r) = 1 - e^{-r^2/2}\). \(r = 2\)이면 \(1 - e^{-2} \approx 0.865\). 1차원의 ±2σ 확률 0.954보다 작다. 0.393은 \(r = 1\)일 때다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(\iint_R x y^2\, dA\), \(R = [0, 1]\times[0, 2]\)를 가장 빨리 계산하는 방법과 값은?</p><div class="opts">
+        <button class="opt">극좌표로 바꾼다, \(\pi/2\)</button>
+        <button class="opt" data-correct>곱으로 분리해 \(\bigl(\int_0^1 x\, dx\bigr)\bigl(\int_0^2 y^2\, dy\bigr)\), 값 \(4/3\)</button>
+        <button class="opt">곱으로 분리해 값 \(8/3\)</button>
+        <button class="opt">순서를 바꿔야 풀린다, \(2/3\)</button>
+      </div><div class="quiz-exp">직사각형 위에서 피적분 함수가 \(g(x)h(y)\)이면 두 일변수 적분의 곱이다. \(\tfrac12\cdot \tfrac83 = \tfrac43\). 영역이 직사각형이 아니면 이 지름길은 쓸 수 없다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const MI = {
+  F: [
+    { f: (x, y) => x * x + y, ex: 28 / 3, exs: "28/3 ≈ 9.333" },
+    { f: (x, y) => 4 - x * x - y * y, ex: 16 / 3, exs: "16/3 ≈ 5.333" },
+    { f: (x, y) => 2 + Math.sin(Math.PI * x) * Math.sin(Math.PI * y), ex: 8, exs: "8" },
+    { f: (x, y) => 3 * Math.exp(-((x - 1) ** 2) - (y - 1) ** 2), ex: 6.692955, exs: "3π·erf(1)² ≈ 6.693" },
+  ],
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  font(s, bold) { return `${bold ? "700 " : ""}${s}px ${getComputedStyle(document.body).getPropertyValue("--font")}`; },
+  alpha(c, a) {
+    c = String(c).trim();
+    if (c[0] === "#") {
+      let h = c.slice(1); if (h.length === 3) h = h.split("").map((q) => q + q).join("");
+      const n = parseInt(h.slice(0, 6), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
+    if (c.startsWith("rgb")) { const p = c.slice(c.indexOf("(") + 1, c.indexOf(")")).split(",").slice(0, 3).join(","); return `rgba(${p},${a})`; }
+    return c;
+  },
+  shade(rgb, k) { return `rgb(${Math.round(rgb[0] * k)},${Math.round(rgb[1] * k)},${Math.round(rgb[2] * k)})`; },
+  /** 회전 사영: 월드 z가 위. 반환 [px, py, depth(클수록 멀다)] */
+  view(yaw, pitch, s, cx, cy) {
+    const ca = Math.cos(yaw), sa = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const pr = (x, y, z) => { const xr = x * ca - y * sa, yr = x * sa + y * ca; return [cx + s * xr, cy - s * (z * cp + yr * sp), yr * cp - z * sp]; };
+    pr.dirDepth = (x, y, z) => (x * sa + y * ca) * cp - z * sp;
+    return pr;
+  },
+  orbit(canvas, st, redraw) {
+    canvas.classList.add("drag");
+    let d = null;
+    canvas.addEventListener("pointerdown", (e) => { d = { x: e.clientX, y: e.clientY, yaw: st.yaw, pitch: st.pitch }; canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging"); e.preventDefault(); });
+    canvas.addEventListener("pointermove", (e) => { if (!d) return; st.yaw = d.yaw - (e.clientX - d.x) * 0.01; st.pitch = MB.clamp(d.pitch + (e.clientY - d.y) * 0.008, -0.15, 1.45); redraw(); });
+    const up = () => { d = null; canvas.classList.remove("dragging"); };
+    canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
+  },
+  poly(ctx, pts, fill, stroke, lw = 1) {
+    ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  },
+  line(ctx, a, b, color, lw = 1, dash) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); },
+  text(ctx, s, p, color, size = 12, align = "center") { ctx.save(); ctx.fillStyle = color; ctx.font = MI.font(size); ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(s, p[0], p[1]); ctx.restore(); },
+  simpson(f, a, b, n = 200) {
+    if (b <= a) return 0; if (n % 2) n++;
+    const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2);
+    return (s * h) / 3;
+  },
+  /** 함수별 z 범위와 보기 축척 */
+  scene(F) {
+    if (F._sc) return F._sc;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= 40; i++) for (let j = 0; j <= 40; j++) { const z = F.f(i / 20, j / 20); lo = Math.min(lo, z); hi = Math.max(hi, z); }
+    lo = Math.min(0, lo); hi = Math.max(0, hi);
+    const zs = Math.min(1, 2.6 / (hi - lo));
+    return (F._sc = { lo, hi, zs, mid: (lo + hi) / 2 });
+  },
+};
+
+/* ================================================================ 1. 기둥 리만 합 */
+(function () {
+  const st = { yaw: -0.75, pitch: 0.5 };
+  let cv = null;
+  const redraw = () => cv && cv.redraw();
+  const fSel = document.getElementById("mi-col-f");
+  const nR = MB.range("mi-col-n", (v) => v + " × " + v, redraw);
+  const sG = MB.seg("mi-col-s", redraw);
+  const surf = MB.check("mi-col-surf", redraw);
+  fSel.addEventListener("change", redraw);
+  cv = MB.canvas("#mi-cv-col", (ctx, w, h) => {
+    const C = MB.palette(), F = MI.F[+fSel.value], n = nR(), d = 2 / n, mode = sG(), sc = MI.scene(F);
+    const half = ((sc.hi - sc.lo) * sc.zs) / 2, rad = Math.sqrt(2 + half * half);
+    const pr0 = MI.view(st.yaw, st.pitch, (Math.min(w, h) / (2 * rad)) * 0.92, w / 2, h / 2);
+    const P = (x, y, z) => pr0(x - 1, y - 1, (z - sc.mid) * sc.zs);
+    const R = MB.rng(11 + n * 7);
+    const cols = []; let sum = 0;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      let sx, sy;
+      if (mode === "ll") { sx = i * d; sy = j * d; }
+      else if (mode === "ur") { sx = (i + 1) * d; sy = (j + 1) * d; }
+      else if (mode === "rnd") { sx = (i + R.range(0, 1)) * d; sy = (j + R.range(0, 1)) * d; }
+      else { sx = (i + 0.5) * d; sy = (j + 0.5) * d; }
+      const z = F.f(sx, sy); sum += z * d * d;
+      cols.push({ x0: i * d, x1: (i + 1) * d, y0: j * d, y1: (j + 1) * d, z, sx, sy, dep: P((i + 0.5) * d, (j + 0.5) * d, 0)[2] });
+    }
+    // 바닥
+    MI.poly(ctx, [P(0, 0, 0), P(2, 0, 0), P(2, 2, 0), P(0, 2, 0)].map((q) => q.slice(0, 2)), MI.alpha(C.faint, 0.12), C.axis, 1);
+    cols.sort((a, b) => b.dep - a.dep);
+    const dd = pr0.dirDepth, top = st.pitch > 0;
+    ctx.lineJoin = "round";
+    cols.forEach((c) => {
+      const z0 = Math.min(0, c.z), z1 = Math.max(0, c.z);
+      const base = c.z < 0 ? MB.colormap(0.12, "diverge") : MB.colormap(MB.clamp((c.z - Math.max(0, sc.lo)) / (sc.hi - Math.max(0, sc.lo) || 1), 0, 1) * 0.85 + 0.1);
+      const faces = [];
+      if (dd(-1, 0, 0) < 0) faces.push([[c.x0, c.y0], [c.x0, c.y1], 0.62]);
+      if (dd(1, 0, 0) < 0) faces.push([[c.x1, c.y0], [c.x1, c.y1], 0.62]);
+      if (dd(0, -1, 0) < 0) faces.push([[c.x0, c.y0], [c.x1, c.y0], 0.8]);
+      if (dd(0, 1, 0) < 0) faces.push([[c.x0, c.y1], [c.x1, c.y1], 0.8]);
+      faces.forEach(([a, b, k]) => {
+        MI.poly(ctx, [P(a[0], a[1], z0), P(b[0], b[1], z0), P(b[0], b[1], z1), P(a[0], a[1], z1)].map((q) => q.slice(0, 2)), MI.shade(base, k), MI.alpha(C.bg, 0.7), 0.7);
+      });
+      const zt = top ? z1 : z0;
+      MI.poly(ctx, [P(c.x0, c.y0, zt), P(c.x1, c.y0, zt), P(c.x1, c.y1, zt), P(c.x0, c.y1, zt)].map((q) => q.slice(0, 2)), MI.shade(base, 1), MI.alpha(C.bg, 0.7), 0.7);
+    });
+    if (surf()) {
+      ctx.save(); ctx.strokeStyle = MI.alpha(C.text, 0.4); ctx.lineWidth = 1;
+      const N = 16;
+      for (let k = 0; k <= N; k++) {
+        ctx.beginPath();
+        for (let m = 0; m <= 40; m++) { const q = P((2 * k) / N, m / 20, F.f((2 * k) / N, m / 20)); m ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+        ctx.stroke(); ctx.beginPath();
+        for (let m = 0; m <= 40; m++) { const q = P(m / 20, (2 * k) / N, F.f(m / 20, (2 * k) / N)); m ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (n <= 8) cols.forEach((c) => { const q = P(c.sx, c.sy, c.z); ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(q[0], q[1], 2.4, 0, 7); ctx.fill(); });
+    MI.text(ctx, "x", P(2.25, 0, 0), C.dim, 13); MI.text(ctx, "y", P(0, 2.25, 0), C.dim, 13);
+    MI.line(ctx, P(0, 0, sc.lo), P(0, 0, sc.hi + 0.4), C.axis, 1); MI.text(ctx, "z", P(0, 0, sc.hi + 0.6), C.dim, 13);
+    MI.text(ctx, "(0,0)", P(-0.15, -0.15, 0), C.faint, 11);
+    const ex = F.ex, err = sum - ex;
+    MB.stat("mi-col-cnt", String(n * n));
+    MB.stat("mi-col-sum", MI.num(sum, 4));
+    MB.stat("mi-col-ex", F.exs);
+    MB.stat("mi-col-err", `${MI.num(err, 4)} (${MI.num((100 * err) / ex, 2)}%)`);
+  }, { aspect: 0.75, minHeight: 280, maxHeight: 460 });
+  MI.orbit(cv.canvas, st, redraw);
+})();
+
+/* ================================================================ 2. 단면 넓이 */
+(function () {
+  const st = { yaw: -0.75, pitch: 0.45 };
+  let c3 = null, cA = null, playing = false;
+  const fSel = document.getElementById("mi-sl-f");
+  const both = () => { c3 && c3.redraw(); cA && cA.redraw(); stats(); };
+  const dirG = MB.seg("mi-sl-dir", both);
+  const cR = MB.range("mi-sl-c", (v) => (dirG ? dirG() : "x") + " = " + v.toFixed(2), both);
+  fSel.addEventListener("change", both);
+  const fn = () => MI.F[+fSel.value];
+  const Aof = (F, dir, c) => MI.simpson((t) => (dir === "x" ? F.f(c, t) : F.f(t, c)), 0, 2, 200);
+  c3 = MB.canvas("#mi-cv-sl3", (ctx, w, h) => {
+    const C = MB.palette(), F = fn(), sc = MI.scene(F), dir = dirG(), c = cR();
+    const half = ((sc.hi - sc.lo) * sc.zs) / 2, rad = Math.sqrt(2 + half * half);
+    const pr0 = MI.view(st.yaw, st.pitch, (Math.min(w, h) / (2 * rad)) * 0.92, w / 2, h / 2);
+    const P = (x, y, z) => pr0(x - 1, y - 1, (z - sc.mid) * sc.zs);
+    const N = 20, d = 2 / N, quads = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const x0 = i * d, y0 = j * d, x1 = x0 + d, y1 = y0 + d, zc = F.f(x0 + d / 2, y0 + d / 2);
+      quads.push({ pts: [P(x0, y0, F.f(x0, y0)), P(x1, y0, F.f(x1, y0)), P(x1, y1, F.f(x1, y1)), P(x0, y1, F.f(x0, y1))], dep: P(x0 + d / 2, y0 + d / 2, zc)[2], key: dir === "x" ? x0 + d / 2 : y0 + d / 2, z: zc });
+    }
+    MI.poly(ctx, [P(0, 0, 0), P(2, 0, 0), P(2, 2, 0), P(0, 2, 0)].map((q) => q.slice(0, 2)), MI.alpha(C.faint, 0.12), C.axis, 1);
+    const plusFar = (dir === "x" ? pr0.dirDepth(1, 0, 0) : pr0.dirDepth(0, 1, 0)) > 0;
+    const far = quads.filter((q) => (q.key > c) === plusFar).sort((a, b) => b.dep - a.dep);
+    const near = quads.filter((q) => (q.key > c) !== plusFar).sort((a, b) => b.dep - a.dep);
+    const paint = (list, al) => list.forEach((q) => { const col = MB.colormap(MB.clamp((q.z - sc.lo) / (sc.hi - sc.lo), 0, 1) * 0.8 + 0.12); MI.poly(ctx, q.pts.map((p) => p.slice(0, 2)), `rgba(${col[0]},${col[1]},${col[2]},${al})`, MI.alpha(C.bg, 0.35 * al), 0.6); });
+    paint(far, 0.95);
+    const sl = [];
+    for (let m = 0; m <= 60; m++) { const t = (2 * m) / 60; sl.push(dir === "x" ? P(c, t, F.f(c, t)) : P(t, c, F.f(t, c))); }
+    sl.push(dir === "x" ? P(c, 2, 0) : P(2, c, 0)); sl.push(dir === "x" ? P(c, 0, 0) : P(0, c, 0));
+    MI.poly(ctx, sl.map((q) => q.slice(0, 2)), MI.alpha(C.accent, 0.62), C.accent, 2);
+    paint(near, 0.58);
+    MI.text(ctx, "x", P(2.25, 0, 0), C.dim, 13); MI.text(ctx, "y", P(0, 2.25, 0), C.dim, 13);
+  }, { aspect: 0.62, minHeight: 240, maxHeight: 380 });
+  MI.orbit(c3.canvas, st, () => c3.redraw());
+  cA = MB.canvas("#mi-cv-slA", (ctx) => {
+    const C = MB.palette(), F = fn(), dir = dirG(), c = cR(), data = [], part = [];
+    for (let i = 0; i <= 100; i++) { const t = (2 * i) / 100, a = Aof(F, dir, t); data.push([t, a]); if (t <= c + 1e-9) part.push([t, a]); }
+    part.push([c, Aof(F, dir, c)]);
+    const ys = data.map((q) => q[1]), lo = Math.min(0, ...ys), hi = Math.max(...ys);
+    MB.chart(ctx, null, {
+      x: [0, 2], y: [lo, hi + (hi - lo) * 0.12 + 0.1], xLabel: dir === "x" ? "자르는 위치 x" : "자르는 위치 y",
+      series: [{ data: part, color: C.accent, width: 0.01, fill: MI.alpha(C.accent, 0.25) }, { data, color: C.accent, width: 2.2 }],
+      hlines: [{ y: 0, color: C.dim }], vlines: [{ x: c, color: C.accent2 }],
+    });
+  }, { aspect: 0.38, minHeight: 170, maxHeight: 230 });
+  function stats() {
+    const F = fn(), dir = dirG(), c = cR();
+    document.getElementById("mi-sl-cap").textContent = dir === "x" ? "A(x) = ∫₀² f(x, y) dy" : "A(y) = ∫₀² f(x, y) dx";
+    MB.stat("mi-sl-A", (dir === "x" ? "A(x) = " : "A(y) = ") + MI.num(Aof(F, dir, c), 4));
+    MB.stat("mi-sl-acc", MI.num(MI.simpson((t) => Aof(F, dir, t), 0, c, 60), 4));
+    const tx = MI.simpson((t) => Aof(F, "x", t), 0, 2, 100), ty = MI.simpson((t) => Aof(F, "y", t), 0, 2, 100);
+    MB.stat("mi-sl-tot", `${MI.num(tx, 4)} / ${MI.num(ty, 4)}`);
+  }
+  stats();
+  const loop = MB.loop(document.getElementById("sim-mi-slices"), (dt) => {
+    if (!playing) return;
+    let v = cR() + dt * 0.4; if (v >= 2) { v = 2; playing = false; btn.set(false); }
+    cR.set(v);
+  });
+  const btn = MB.playButton("mi-sl-play", () => { if (cR() >= 1.99) cR.set(0); playing = true; loop.start(); }, () => { playing = false; }, ["▶ 쓸어 가기", "■ 멈춤"]);
+})();
+
+/* ================================================================ 3. 적분 순서 */
+(function () {
+  const sq = Math.sqrt;
+  const PRE = {
+    tri: { a: 0, b: 1, g1: () => 0, g2: (x) => x, c: 0, d: 1, h1: (y) => y, h2: () => 1, f: (x, y) => Math.sin(x * x), ex: (1 - Math.cos(1)) / 2, exs: "(1 − cos 1)/2 ≈ 0.2298",
+      I: "∫<sub>0</sub><sup>1</sup> ∫<sub>0</sub><sup>x</sup> sin(x²) dy dx", II: "∫<sub>0</sub><sup>1</sup> ∫<sub>y</sub><sup>1</sup> sin(x²) dx dy", s: ["y = 0", "y = x", "x = y", "x = 1"], W: [1, 1] },
+    lens: { a: 0, b: 1, g1: (x) => x * x, g2: (x) => x, c: 0, d: 1, h1: (y) => y, h2: (y) => sq(y), f: (x, y) => x * y, ex: 1 / 24, exs: "1/24 ≈ 0.04167",
+      I: "∫<sub>0</sub><sup>1</sup> ∫<sub>x²</sub><sup>x</sup> xy dy dx", II: "∫<sub>0</sub><sup>1</sup> ∫<sub>y</sub><sup>√y</sup> xy dx dy", s: ["y = x²", "y = x", "x = y", "x = √y"], W: [1, 1] },
+    sqrt: { a: 0, b: 4, g1: (x) => sq(x), g2: () => 2, c: 0, d: 2, h1: () => 0, h2: (y) => y * y, f: (x) => x, ex: 3.2, exs: "16/5 = 3.2",
+      I: "∫<sub>0</sub><sup>4</sup> ∫<sub>√x</sub><sup>2</sup> x dy dx", II: "∫<sub>0</sub><sup>2</sup> ∫<sub>0</sub><sup>y²</sup> x dx dy", s: ["y = √x", "y = 2", "x = 0", "x = y²"], W: [4, 2] },
+    quarter: { a: 0, b: 1, g1: () => 0, g2: (x) => sq(Math.max(0, 1 - x * x)), c: 0, d: 1, h1: () => 0, h2: (y) => sq(Math.max(0, 1 - y * y)), f: (x, y) => x * y, ex: 0.125, exs: "1/8 = 0.125",
+      I: "∫<sub>0</sub><sup>1</sup> ∫<sub>0</sub><sup>√(1−x²)</sup> xy dy dx", II: "∫<sub>0</sub><sup>1</sup> ∫<sub>0</sub><sup>√(1−y²)</sup> xy dx dy", s: ["y = 0", "y = √(1−x²)", "x = 0", "x = √(1−y²)"], W: [1, 1] },
+  };
+  let pr = PRE.tri, pl = null;
+  const ordG = MB.seg("mi-or-ord", () => pl && pl.redraw());
+  const tR = MB.range("mi-or-t", (v) => v.toFixed(2), () => pl && pl.redraw());
+  const inner = (p, ord, s) => (ord === "I" ? MI.simpson((y) => p.f(s, y), p.g1(s), p.g2(s), 160) : MI.simpson((x) => p.f(x, s), p.h1(s), p.h2(s), 160));
+  const total = (p, ord) => (ord === "I" ? MI.simpson((x) => inner(p, "I", x), p.a, p.b, 160) : MI.simpson((y) => inner(p, "II", y), p.c, p.d, 160));
+  let tots = null;
+  const range = (p) => ({ x: [-0.14 * p.W[0], 1.14 * p.W[0]], y: [-0.14 * p.W[1], 1.16 * p.W[1]] });
+  pl = MB.plane("#mi-cv-order", {
+    ...range(pr), aspect: 0.7, maxHeight: 440, minHeight: 250, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, p = pr, ord = ordG(), t = tR(), ctx = P.ctx;
+      const gs = p.W[0] > 2 ? 0.5 : 0.25;
+      for (let g = 0; g <= p.W[0] + 1e-9; g += gs) P.line(g, 0, g, p.W[1] * 1.08, { color: C.grid, width: 1 });
+      for (let g = 0; g <= p.W[1] + 1e-9; g += gs) P.line(0, g, p.W[0] * 1.08, g, { color: C.grid, width: 1 });
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 }); P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1.2 });
+      for (let g = gs * 2; g <= p.W[0] + 1e-9; g += gs * 2) P.text(String(+g.toFixed(2)), g, 0, { color: C.faint, size: 10, align: "center", dy: 10 });
+      for (let g = gs * 2; g <= p.W[1] + 1e-9; g += gs * 2) P.text(String(+g.toFixed(2)), 0, g, { color: C.faint, size: 10, align: "right", dx: -5 });
+      const reg = [];
+      for (let i = 0; i <= 120; i++) { const x = p.a + ((p.b - p.a) * i) / 120; reg.push([x, p.g2(x)]); }
+      for (let i = 120; i >= 0; i--) { const x = p.a + ((p.b - p.a) * i) / 120; reg.push([x, p.g1(x)]); }
+      P.poly(reg, { fill: MI.alpha(C.accent2, 0.13), color: C.accent2, width: 2 });
+      const K = 14;
+      for (let k = 1; k < K; k++) {
+        if (ord === "I") { const x = p.a + ((p.b - p.a) * k) / K; P.line(x, p.g1(x), x, p.g2(x), { color: C.accent, width: 1, alpha: 0.28 }); }
+        else { const y = p.c + ((p.d - p.c) * k) / K; P.line(p.h1(y), y, p.h2(y), y, { color: C.accent, width: 1, alpha: 0.28 }); }
+      }
+      let s, lo, hi;
+      if (ord === "I") {
+        s = p.a + (p.b - p.a) * t; lo = p.g1(s); hi = p.g2(s); const hw = (p.b - p.a) / 60;
+        P.poly([[s - hw, lo], [s + hw, lo], [s + hw, hi], [s - hw, hi]], { fill: MI.alpha(C.accent, 0.55), color: C.accent, width: 1.5 });
+        P.dot(s, lo, { color: C.accent, r: 5 }); P.dot(s, hi, { color: C.accent, r: 5 });
+        P.text("들어감: " + p.s[0], s, lo, { color: C.text, size: 12, dx: 10, dy: 12, bold: true });
+        P.text("나감: " + p.s[1], s, hi, { color: C.text, size: 12, dx: 10, dy: -12, bold: true });
+        P.text("x = " + s.toFixed(2), s, 0, { color: C.accent, size: 11, align: "center", dy: 24 });
+      } else {
+        s = p.c + (p.d - p.c) * t; lo = p.h1(s); hi = p.h2(s); const hw = (p.d - p.c) / 60;
+        P.poly([[lo, s - hw], [hi, s - hw], [hi, s + hw], [lo, s + hw]], { fill: MI.alpha(C.accent, 0.55), color: C.accent, width: 1.5 });
+        P.dot(lo, s, { color: C.accent, r: 5 }); P.dot(hi, s, { color: C.accent, r: 5 });
+        P.text("들어감: " + p.s[2], lo, s, { color: C.text, size: 12, dx: 8, dy: -14, bold: true });
+        P.text("나감: " + p.s[3], hi, s, { color: C.text, size: 12, dx: 8, dy: 14, bold: true });
+      }
+      const inn = inner(p, ord, s);
+      if (!tots) tots = [total(p, "I"), total(p, "II")];
+      MB.stat("mi-or-lim", ord === "I" ? p.I : p.II);
+      MB.stat("mi-or-in", (ord === "I" ? `x = ${s.toFixed(2)}에서 ` : `y = ${s.toFixed(2)}에서 `) + MI.num(inn, 4));
+      MB.stat("mi-or-tot", `${MI.num(tots[0], 5)} / ${MI.num(tots[1], 5)}`);
+      MB.stat("mi-or-ex", p.exs);
+    },
+  });
+  document.getElementById("mi-or-pre").addEventListener("change", (e) => { pr = PRE[e.target.value]; tots = null; pl.view(range(pr)); });
+})();
+
+/* ================================================================ 4. 극좌표 격자 */
+(function () {
+  let sel = [4, 1], pl = null;
+  const rd = () => pl && pl.redraw();
+  const RR = MB.range("mi-po-R", (v) => v.toFixed(2), rd);
+  const NR = MB.range("mi-po-nr", null, rd);
+  const NT = MB.range("mi-po-nt", null, rd);
+  pl = MB.plane("#mi-cv-polar", {
+    x: [-3.1, 3.1], aspect: 0.8, maxHeight: 460, minHeight: 260, gridStep: 1,
+    draw(P) {
+      const C = P.P, R = RR(), nr = NR(), nt = NT(), dr = R / nr, dt = (2 * Math.PI) / nt, ctx = P.ctx;
+      sel[0] = Math.min(sel[0], nr - 1); sel[1] = Math.min(sel[1], nt - 1);
+      let sum = 0;
+      const cell = (i, j) => {
+        const r1 = i * dr, r2 = r1 + dr, t1 = j * dt, t2 = t1 + dt, pts = [];
+        for (let k = 0; k <= 12; k++) { const t = t1 + (dt * k) / 12; pts.push([r2 * Math.cos(t), r2 * Math.sin(t)]); }
+        for (let k = 12; k >= 0; k--) { const t = t1 + (dt * k) / 12; pts.push([r1 * Math.cos(t), r1 * Math.sin(t)]); }
+        return pts;
+      };
+      for (let i = 0; i < nr; i++) for (let j = 0; j < nt; j++) {
+        const rb = (i + 0.5) * dr, fv = Math.exp(-rb * rb);
+        sum += fv * rb * dr * dt;
+        const col = MB.colormap(0.15 + 0.8 * fv);
+        P.poly(cell(i, j), { fill: `rgba(${col[0]},${col[1]},${col[2]},0.85)`, color: C.bg, width: 1 });
+      }
+      P.poly(cell(sel[0], sel[1]), { fill: MI.alpha(C.accent, 0.35), color: C.accent, width: 3 });
+      const r1 = sel[0] * dr, r2 = r1 + dr, rb = (r1 + r2) / 2, tm = (sel[1] + 0.5) * dt;
+      P.dot(rb * Math.cos(tm), rb * Math.sin(tm), { color: C.text, r: 3 });
+      P.circle(0, 0, R, { color: C.accent2, width: 1.5 });
+      const exact = 0.5 * (r2 * r2 - r1 * r1) * dt;
+      MB.stat("mi-po-cell", `${MI.num(exact, 4)} (r̄ = ${rb.toFixed(2)})`);
+      MB.stat("mi-po-wrong", MI.num(dr * dt, 4));
+      MB.stat("mi-po-sum", MI.num(sum, 4));
+      MB.stat("mi-po-ex", MI.num(Math.PI * (1 - Math.exp(-R * R)), 4));
+    },
+    onPointer(x, y, type) {
+      if (type !== "down") return;
+      const R = RR(), nr = NR(), nt = NT(), r = Math.hypot(x, y);
+      if (r >= R) return;
+      let t = Math.atan2(y, x); if (t < 0) t += 2 * Math.PI;
+      sel = [Math.min(nr - 1, Math.floor((r / R) * nr)), Math.min(nt - 1, Math.floor((t / (2 * Math.PI)) * nt))];
+      pl.redraw();
+    },
+  });
+})();
+
+/* ================================================================ 5. 가우스 적분 */
+(function () {
+  let map = null, ch = null, playing = false;
+  const both = () => { map && map.redraw(); ch && ch.redraw(); stats(); };
+  const aR = MB.range("mi-ga-a", (v) => v.toFixed(2), both);
+  const sqv = (a) => Math.PI * MB.erf(a) ** 2;
+  map = MB.canvas("#mi-cv-gmap", (ctx, w, h) => {
+    const C = MB.palette(), a = aR(), L = 3.3, s = Math.min(w, h) / (2 * L), cx = w / 2, cy = h / 2;
+    const n = 70, step = (2 * L) / n;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const x = -L + (i + 0.5) * step, y = -L + (j + 0.5) * step, v = Math.exp(-(x * x + y * y));
+      if (v < 0.004) continue;
+      const col = MB.colormap(v * 0.95);
+      ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.25 + 0.75 * v})`;
+      ctx.fillRect(cx + (x - step / 2) * s, cy - (y + step / 2) * s, step * s + 0.6, step * s + 0.6);
+    }
+    MI.line(ctx, [cx - L * s, cy], [cx + L * s, cy], C.axis, 1); MI.line(ctx, [cx, cy - L * s], [cx, cy + L * s], C.axis, 1);
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = C.ok; ctx.beginPath(); ctx.arc(cx, cy, a * s, 0, 7); ctx.stroke();
+    ctx.strokeStyle = C.accent; ctx.strokeRect(cx - a * s, cy - a * s, 2 * a * s, 2 * a * s);
+    ctx.strokeStyle = C.warn; ctx.beginPath(); ctx.arc(cx, cy, a * Math.SQRT2 * s, 0, 7); ctx.stroke();
+    MI.text(ctx, "a", [cx + a * s + 8, cy + 10], C.accent, 12);
+  }, { aspect: 0.75, minHeight: 220, maxHeight: 330 });
+  ch = MB.canvas("#mi-cv-gch", (ctx) => {
+    const C = MB.palette(), a = aR(), d1 = [], d2 = [], d3 = [];
+    for (let i = 0; i <= 150; i++) { const t = (3 * i) / 150; d1.push([t, Math.PI * (1 - Math.exp(-t * t))]); d2.push([t, sqv(t)]); d3.push([t, Math.PI * (1 - Math.exp(-2 * t * t))]); }
+    MB.chart(ctx, null, {
+      x: [0, 3], y: [0, 3.6], xLabel: "a",
+      series: [{ data: d1, color: C.ok, width: 2 }, { data: d2, color: C.accent, width: 2.6 }, { data: d3, color: C.warn, width: 2 }],
+      hlines: [{ y: Math.PI, color: C.dim, label: "π" }], vlines: [{ x: a, color: C.accent2 }],
+      points: [{ x: a, y: sqv(a), color: C.accent, r: 5 }],
+    });
+  }, { aspect: 0.5, minHeight: 180, maxHeight: 250 });
+  function stats() {
+    const a = aR();
+    MB.stat("mi-ga-in", MI.num(Math.PI * (1 - Math.exp(-a * a)), 4));
+    MB.stat("mi-ga-sq", MI.num(sqv(a), 4));
+    MB.stat("mi-ga-out", MI.num(Math.PI * (1 - Math.exp(-2 * a * a)), 4));
+    MB.stat("mi-ga-I", MI.num(Math.sqrt(sqv(a)), 5));
+  }
+  stats();
+  const loop = MB.loop(document.getElementById("sim-mi-gauss"), (dt) => {
+    if (!playing) return;
+    let v = aR() + dt * 0.5; if (v >= 3) { v = 3; playing = false; btn.set(false); }
+    aR.set(v);
+  });
+  const btn = MB.playButton("mi-ga-play", () => { if (aR() >= 2.99) aR.set(0.1); playing = true; loop.start(); }, () => { playing = false; }, ["▶ a 키우기", "■ 멈춤"]);
+})();
+
+/* ================================================================ 6. 부피 요소 */
+(function () {
+  const TAU = 2 * Math.PI;
+  const SYS = {
+    cart: { n: ["x", "y", "z"], r: [[-1.6, 1.4], [-1.6, 1.4], [-1, 1.2]], T: (a, b, c) => [a, b, c],
+      ex: (u, v, w, h) => h ** 3, ap: (u, v, w, h) => h ** 3, apS: "Δx Δy Δz", ed: (u, v, w, h) => [h, h, h], edS: ["Δx", "Δy", "Δz"] },
+    cyl: { n: ["r", "θ", "z"], r: [[0.05, 1.9], [0, TAU], [-1, 1.2]], T: (r, t, z) => [r * Math.cos(t), r * Math.sin(t), z],
+      ex: (r, t, z, h) => (r * h + (h * h) / 2) * h * h, ap: (r, t, z, h) => r * h ** 3, apS: "r Δr Δθ Δz", ed: (r, t, z, h) => [h, r * h, h], edS: ["Δr", "rΔθ", "Δz"] },
+    sph: { n: ["ρ", "φ", "θ"], r: [[0.2, 1.9], [0, Math.PI], [0, TAU]], T: (p, f, t) => [p * Math.sin(f) * Math.cos(t), p * Math.sin(f) * Math.sin(t), p * Math.cos(f)],
+      ex: (p, f, t, h) => (((p + h) ** 3 - p ** 3) / 3) * (Math.cos(f) - Math.cos(f + h)) * h, ap: (p, f, t, h) => p * p * Math.sin(f) * h ** 3, apS: "ρ² sin φ Δρ Δφ Δθ", ed: (p, f, t, h) => [h, p * h, p * Math.sin(f) * h], edS: ["Δρ", "ρΔφ", "ρ sin φ Δθ"] },
+  };
+  const st = { yaw: -0.6, pitch: 0.42 };
+  let cv = null;
+  const rd = () => cv && cv.redraw();
+  const sys = MB.seg("mi-co-sys", rd);
+  const sl = [1, 2, 3].map((k) => MB.range("mi-co-" + k, null, rd));
+  const hR = MB.range("mi-co-h", (v) => v.toFixed(2), rd);
+  const labs = [1, 2, 3].map((k) => document.getElementById("mi-co-l" + k));
+  function coords() {
+    const S = SYS[sys()], h = hR();
+    return S.r.map((r, k) => {
+      let hi = r[1];
+      if (sys() === "sph" && k === 1) hi = Math.PI - h;
+      if (k === 0 || (sys() !== "cart" && k === 2 && sys() === "cyl")) hi = r[1] - h;
+      if (sys() === "cart") hi = r[1] - h;
+      return r[0] + (hi - r[0]) * sl[k]();
+    });
+  }
+  cv = MB.canvas("#mi-cv-coords", (ctx, w, h) => {
+    const C = MB.palette(), S = SYS[sys()], hh = hR(), q = coords();
+    const pr = MI.view(st.yaw, st.pitch, (Math.min(w, h) / 5.4) * 1.05, w / 2, h / 2 + 8);
+    const P = (x, y, z) => pr(x, y, z);
+    // 축
+    [[2.3, 0, 0, "x"], [0, 2.3, 0, "y"], [0, 0, 2.1, "z"]].forEach(([x, y, z, l]) => { MI.line(ctx, P(0, 0, 0), P(x, y, z), C.axis, 1.2); MI.text(ctx, l, P(x * 1.07, y * 1.07, z * 1.07), C.dim, 13); });
+    MI.line(ctx, P(0, 0, 0), P(-1.6, 0, 0), C.grid, 1); MI.line(ctx, P(0, 0, 0), P(0, -1.6, 0), C.grid, 1);
+    // 참고 곡면
+    ctx.save(); ctx.strokeStyle = MI.alpha(C.dim, 0.35); ctx.lineWidth = 1;
+    const ring = (fn) => { ctx.beginPath(); for (let k = 0; k <= 64; k++) { const p = fn((TAU * k) / 64); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke(); };
+    if (sys() === "sph") {
+      const rho = q[0];
+      [-0.6, -0.3, 0, 0.3, 0.6].forEach((c) => ring((t) => P(rho * Math.sqrt(1 - c * c) * Math.cos(t), rho * Math.sqrt(1 - c * c) * Math.sin(t), rho * c)));
+      [0, 1, 2, 3].forEach((m) => ring((t) => { const a = (m * Math.PI) / 4; return P(rho * Math.sin(t) * Math.cos(a), rho * Math.sin(t) * Math.sin(a), rho * Math.cos(t)); }));
+    } else if (sys() === "cyl") {
+      const r = q[0];
+      [-1, q[2], 1.2].forEach((z) => ring((t) => P(r * Math.cos(t), r * Math.sin(t), z)));
+      for (let m = 0; m < 8; m++) { const a = (m * TAU) / 8; MI.line(ctx, P(r * Math.cos(a), r * Math.sin(a), -1), P(r * Math.cos(a), r * Math.sin(a), 1.2), MI.alpha(C.dim, 0.3), 1); }
+    }
+    ctx.restore();
+    // 원점에서 꼭짓점까지
+    const corner = S.T(q[0], q[1], q[2]);
+    if (sys() !== "cart") {
+      MI.line(ctx, P(0, 0, 0), P(...corner), C.accent2, 1.6, [5, 4]);
+      MI.line(ctx, P(corner[0], corner[1], 0), P(...corner), C.faint, 1, [3, 3]);
+      MI.line(ctx, P(0, 0, 0), P(corner[0], corner[1], 0), C.faint, 1, [3, 3]);
+    } else {
+      MI.line(ctx, P(corner[0], 0, 0), P(corner[0], corner[1], 0), C.faint, 1, [3, 3]);
+      MI.line(ctx, P(0, corner[1], 0), P(corner[0], corner[1], 0), C.faint, 1, [3, 3]);
+      MI.line(ctx, P(corner[0], corner[1], 0), P(...corner), C.faint, 1, [3, 3]);
+    }
+    // 상자의 여섯 면
+    const lo = q, hi = q.map((v) => v + hh), m = 8, faces = [];
+    for (let ax = 0; ax < 3; ax++) for (const side of [0, 1]) {
+      const o1 = (ax + 1) % 3, o2 = (ax + 2) % 3, pts = [], cen = [];
+      const at = (s, t) => { const c = [0, 0, 0]; c[ax] = side ? hi[ax] : lo[ax]; c[o1] = lo[o1] + hh * s; c[o2] = lo[o2] + hh * t; return S.T(c[0], c[1], c[2]); };
+      for (let k = 0; k < m; k++) pts.push(at(k / m, 0));
+      for (let k = 0; k < m; k++) pts.push(at(1, k / m));
+      for (let k = m; k > 0; k--) pts.push(at(k / m, 1));
+      for (let k = m; k > 0; k--) pts.push(at(0, k / m));
+      const c0 = at(0.5, 0.5);
+      faces.push({ pts: pts.map((p) => P(...p)), dep: P(...c0)[2], ax });
+    }
+    faces.sort((a, b) => b.dep - a.dep);
+    const shadeK = [0.3, 0.42, 0.55];
+    faces.forEach((f) => MI.poly(ctx, f.pts.map((p) => p.slice(0, 2)), MI.alpha(C.accent, shadeK[f.ax]), C.accent, 1.5));
+    const pc = P(...corner); ctx.fillStyle = C.accent2; ctx.beginPath(); ctx.arc(pc[0], pc[1], 4, 0, 7); ctx.fill();
+    // 라벨과 수치
+    const names = S.n;
+    labs.forEach((el, k) => { const v = q[k]; el.innerHTML = `${names[k]} <output>${(k > 0 && sys() !== "cart" && !(sys() === "cyl" && k === 2)) ? (v * 180 / Math.PI).toFixed(0) + "°" : v.toFixed(2)}</output>`; });
+    const E = S.ed(q[0], q[1], q[2], hh);
+    MB.stat("mi-co-edges", S.edS.map((s, k) => `${s} = ${E[k].toFixed(3)}`).join(", "));
+    const ex = S.ex(q[0], q[1], q[2], hh), ap = S.ap(q[0], q[1], q[2], hh);
+    MB.stat("mi-co-ex", MI.num(ex, 5));
+    MB.stat("mi-co-ap", `${S.apS} = ${MI.num(ap, 5)}`);
+    MB.stat("mi-co-ratio", MI.num(ap / ex, 3));
+  }, { aspect: 0.72, minHeight: 280, maxHeight: 460 });
+  MI.orbit(cv.canvas, st, rd);
+})();
+
+/* ================================================================ 7. 야코비안 */
+(function () {
+  const TAU = 2 * Math.PI, c = Math.cos, s = Math.sin;
+  const MAPS = {
+    polar: { uv: [[-0.15, 2.2], [-0.3, 6.6]], xy: [[-3.1, 3.1], [-2.3, 2.3]], gu: [0, 2, 0.25], gv: [0, TAU, TAU / 12], T: (u, v) => [u * c(v), u * s(v)], J: (u, v) => [[c(v), -u * s(v)], [s(v), u * c(v)]], p: [1.2, 0.9], lab: ["r", "θ"] },
+    ex: { uv: [[-0.3, 2.3], [-0.3, 2.3]], xy: [[-0.6, 2.9], [-1.3, 1.3]], gu: [0, 2, 0.25], gv: [0, 2, 0.25], T: (u, v) => [(u + v) / 2, (u - v) / 2], J: () => [[0.5, 0.5], [0.5, -0.5]], p: [1.2, 0.5], lab: ["u", "v"] },
+    lin: { uv: [[-1.7, 1.7], [-1.7, 1.7]], xy: [[-4.6, 4.6], [-3.4, 3.4]], gu: [-1.5, 1.5, 0.25], gv: [-1.5, 1.5, 0.25], T: (u, v) => [2 * u + v, 0.5 * u + 1.5 * v], J: () => [[2, 1], [0.5, 1.5]], p: [0.4, 0.3], lab: ["u", "v"] },
+    sq: { uv: [[-0.15, 1.6], [-0.15, 1.6]], xy: [[-3.4, 3.4], [-0.4, 4.7]], gu: [0, 1.5, 0.125], gv: [0, 1.5, 0.125], T: (u, v) => [u * u - v * v, 2 * u * v], J: (u, v) => [[2 * u, -2 * v], [2 * v, 2 * u]], p: [0.8, 0.5], lab: ["u", "v"] },
+  };
+  let M = MAPS.polar, xy = null, uv = null;
+  const hR = MB.range("mi-ja-h", (v) => v.toFixed(2), () => { clampPt(); uv && uv.redraw(); xy && xy.redraw(); });
+  const pts = [{ x: M.p[0], y: M.p[1], r: 8, label: "(u₀, v₀)", constrain: (p) => clampPt(p) }];
+  function steps() { return [hR() * (M.gu[1] - M.gu[0]), hR() * (M.gv[1] - M.gv[0])]; }
+  function clampPt(p = pts[0]) { const [du, dv] = steps(); p.x = MB.clamp(p.x, M.gu[0], M.gu[1] - du); p.y = MB.clamp(p.y, M.gv[0], M.gv[1] - dv); }
+  function cellBoundary(f) {
+    const [du, dv] = steps(), u0 = pts[0].x, v0 = pts[0].y, out = [], m = 16;
+    for (let k = 0; k < m; k++) out.push(f(u0 + (du * k) / m, v0));
+    for (let k = 0; k < m; k++) out.push(f(u0 + du, v0 + (dv * k) / m));
+    for (let k = m; k > 0; k--) out.push(f(u0 + (du * k) / m, v0 + dv));
+    for (let k = m; k > 0; k--) out.push(f(u0, v0 + (dv * k) / m));
+    return out;
+  }
+  function gridLines(P, f) {
+    const C = P.P;
+    for (let u = M.gu[0]; u <= M.gu[1] + 1e-9; u += M.gu[2]) { const L = []; for (let k = 0; k <= 60; k++) L.push(f(u, M.gv[0] + ((M.gv[1] - M.gv[0]) * k) / 60)); P.poly(L, { close: false, color: C.accent2, width: 1, alpha: 0.45 }); }
+    for (let v = M.gv[0]; v <= M.gv[1] + 1e-9; v += M.gv[2]) { const L = []; for (let k = 0; k <= 60; k++) L.push(f(M.gu[0] + ((M.gu[1] - M.gu[0]) * k) / 60, v)); P.poly(L, { close: false, color: C.accent, width: 1, alpha: 0.45 }); }
+  }
+  const xyOpt = {
+    x: M.xy[0], y: null, cy: (M.xy[1][0] + M.xy[1][1]) / 2, aspect: 0.75, maxHeight: 360, minHeight: 220, grid: false, axes: false,
+    draw(P) {
+      const C = P.P;
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1 }); P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1 });
+      gridLines(P, M.T);
+      const img = cellBoundary(M.T);
+      P.poly(img, { fill: MI.alpha(C.ok, 0.4), color: C.ok, width: 2 });
+      const u0 = pts[0].x, v0 = pts[0].y, [du, dv] = steps(), J = M.J(u0, v0), o = M.T(u0, v0);
+      const a = [J[0][0] * du, J[1][0] * du], b = [J[0][1] * dv, J[1][1] * dv];
+      P.poly([o, [o[0] + a[0], o[1] + a[1]], [o[0] + a[0] + b[0], o[1] + a[1] + b[1]], [o[0] + b[0], o[1] + b[1]]], { color: C.text, width: 1.5, dash: [5, 4] });
+      P.dot(o[0], o[1], { color: C.text, r: 3.5 });
+      let A = 0; for (let i = 0; i < img.length; i++) { const p = img[i], q = img[(i + 1) % img.length]; A += p[0] * q[1] - q[0] * p[1]; }
+      A = Math.abs(A) / 2;
+      const det = J[0][0] * J[1][1] - J[0][1] * J[1][0];
+      MB.stat("mi-ja-J", `[${MI.num(J[0][0], 2)} ${MI.num(J[0][1], 2)}; ${MI.num(J[1][0], 2)} ${MI.num(J[1][1], 2)}]`);
+      MB.stat("mi-ja-det", MI.num(det, 3));
+      MB.stat("mi-ja-area", MI.num(A, 4));
+      MB.stat("mi-ja-ap", `${MI.num(Math.abs(det) * du * dv, 4)} (비 ${MI.num(A / (Math.abs(det) * du * dv || 1), 3)})`);
+    },
+  };
+  xy = MB.plane("#mi-cv-jxy", xyOpt);
+  uv = MB.plane("#mi-cv-juv", {
+    x: M.uv[0], y: M.uv[1], aspect: 0.75, maxHeight: 360, minHeight: 220, grid: false, axes: false, points: pts,
+    draw(P) {
+      const C = P.P;
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1 }); P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1 });
+      P.text(M.lab[0], P.x1, 0, { color: C.dim, align: "right", dx: -6, dy: -10 }); P.text(M.lab[1], 0, P.y1, { color: C.dim, dx: 8, dy: 12 });
+      gridLines(P, (u, v) => [u, v]);
+      const [du, dv] = steps(), u0 = pts[0].x, v0 = pts[0].y;
+      P.poly([[u0, v0], [u0 + du, v0], [u0 + du, v0 + dv], [u0, v0 + dv]], { fill: MI.alpha(C.ok, 0.4), color: C.ok, width: 2 });
+      xy && xy.redraw();
+    },
+    onDrag() { xy.redraw(); },
+  });
+  document.getElementById("mi-ja-map").addEventListener("change", (e) => {
+    M = MAPS[e.target.value]; pts[0].x = M.p[0]; pts[0].y = M.p[1]; clampPt();
+    xyOpt.cy = (M.xy[1][0] + M.xy[1][1]) / 2; xy.view({ x: M.xy[0], y: null }); uv.view({ x: M.uv[0], y: M.uv[1] });
+  });
+})();
+
+/* ================================================================ 8. 구르기 경주 */
+(function () {
+  const g = 9.81, L = 2;
+  let t = 0, running = false, cv = null;
+  const alR = MB.range("mi-ra-al", (v) => v + "°", () => { reset(); });
+  const pR = MB.range("mi-ra-p", (v) => v.toFixed(1), () => { reset(); });
+  const objs = () => {
+    const p = pR();
+    return [
+      { name: "상자(미끄럼)", c: 0, kind: "box" },
+      { name: "공", c: 0.4, kind: "ball" },
+      { name: "원판", c: 0.5, kind: "disk" },
+      { name: `맞춤 p=${p.toFixed(1)}`, c: (p + 2) / (p + 4), kind: "custom", p },
+      { name: "고리", c: 1, kind: "hoop" },
+    ];
+  };
+  const acc = (o) => (g * Math.sin((alR() * Math.PI) / 180)) / (1 + o.c);
+  function reset() { t = 0; running = false; btn && btn.set(false); cv && cv.redraw(); stats(); }
+  function stats() {
+    const O = objs();
+    MB.stat("mi-ra-c", MI.num(O[3].c, 3));
+    MB.stat("mi-ra-T", O.map((o) => `${o.name.split(" ")[0]} ${Math.sqrt((2 * L) / acc(o)).toFixed(2)} s`).join(" · "));
+    MB.stat("mi-ra-t", t.toFixed(2) + " s");
+  }
+  cv = MB.canvas("#mi-cv-race", (ctx, w, h) => {
+    const C = MB.palette(), O = objs(), lane = (h - 30) / O.length, x0 = Math.min(118, w * 0.3), x1 = w - 24;
+    MI.text(ctx, `경사면을 따라 내려간 거리 (α = ${alR()}°, 길이 2 m)`, [x0, 14], C.dim, 12, "left");
+    MI.line(ctx, [x1, 24], [x1, h - 4], C.ok, 2, [5, 4]);
+    O.forEach((o, i) => {
+      const y = 30 + lane * (i + 0.5), R = Math.min(lane * 0.36, 16);
+      const sDist = Math.min(L, 0.5 * acc(o) * t * t), px = x0 + R + ((x1 - x0 - 2 * R) * sDist) / L;
+      MI.line(ctx, [x0, y + R], [x1, y + R], C.axis, 1.2);
+      MI.text(ctx, o.name, [8, y], C.text, 12, "left");
+      const ang = ((x1 - x0 - 2 * R) * sDist) / L / R;
+      ctx.save(); ctx.translate(px, y);
+      if (o.kind === "box") {
+        ctx.fillStyle = MI.alpha(C.dim, 0.5); ctx.strokeStyle = C.dim; ctx.lineWidth = 1.5; ctx.fillRect(-R, -R, 2 * R, 2 * R); ctx.strokeRect(-R, -R, 2 * R, 2 * R);
+      } else {
+        ctx.rotate(ang);
+        const col = o.kind === "ball" ? C.accent : o.kind === "disk" ? C.accent2 : o.kind === "hoop" ? C.warn : C.ok;
+        if (o.kind === "hoop") { ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, R - 2, 0, 7); ctx.stroke(); }
+        else if (o.kind === "custom") {
+          const p = o.p, k = 6;
+          for (let j = k; j >= 1; j--) { const rr = (R * j) / k, dens = Math.pow(j / k, p); ctx.fillStyle = MI.alpha(col, MB.clamp(0.15 + 0.75 * dens / Math.max(1, Math.pow(1 / k, Math.min(0, p))), 0.12, 0.95)); ctx.beginPath(); ctx.arc(0, 0, rr, 0, 7); ctx.fill(); }
+          ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
+        } else {
+          ctx.fillStyle = MI.alpha(col, o.kind === "ball" ? 0.75 : 0.5); ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill();
+        }
+        ctx.strokeStyle = C.text; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-R + 2, 0); ctx.lineTo(R - 2, 0); ctx.moveTo(0, -R + 2); ctx.lineTo(0, R - 2); ctx.stroke();
+      }
+      ctx.restore();
+      if (sDist >= L) MI.text(ctx, Math.sqrt((2 * L) / acc(o)).toFixed(2) + " s", [x1 - 30, y - R - 4], C.ok, 11);
+    });
+  }, { aspect: 0.55, minHeight: 250, maxHeight: 360 });
+  const loop = MB.loop(document.getElementById("sim-mi-inertia"), (dt) => {
+    if (!running) return;
+    t += dt;
+    const slow = Math.max(...objs().map((o) => Math.sqrt((2 * L) / acc(o))));
+    if (t >= slow) { t = slow; running = false; btn.set(false); }
+    cv.redraw(); stats();
+  });
+  const btn = MB.playButton("mi-ra-go", () => { const slow = Math.max(...objs().map((o) => Math.sqrt((2 * L) / acc(o)))); if (t >= slow - 1e-6) t = 0; running = true; loop.start(); }, () => { running = false; }, ["▶ 출발", "■ 멈춤"]);
+  document.getElementById("mi-ra-reset").addEventListener("click", reset);
+  stats();
+})();
+</script>
+</body>
+</html>

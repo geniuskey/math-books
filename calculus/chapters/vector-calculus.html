@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>벡터 미적분 · CalculusBook</title>
+<meta name="description" content="바람과 물과 전기장처럼 공간에 퍼진 화살표를 미적분한다. 벡터장, 선적분과 일, 보존장과 퍼텐셜, 그린 정리와 플라니미터, 발산과 회전, 면적분과 플럭스, 스토크스·발산 정리, 맥스웰 방정식까지 끌고 흘려 보며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .vc-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .vc-two > div { position: relative; min-width: 0; }
+  .vc-two > div + div { border-top: 1px solid var(--border); }
+  .vc-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 75%, transparent); padding: 1px 6px; border-radius: 5px; }
+  .vc-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .vc-msg b { color: var(--text); }
+  .vc-msg.ok { color: var(--ok); font-weight: 600; }
+  .vc-msg.bad { color: var(--bad); font-weight: 600; }
+  .vc-tbl td, .vc-tbl th { vertical-align: top; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="vector-calculus">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 16</div>
+    <h1 data-no-glossary>벡터 미적분</h1>
+    <p class="lead">일기 예보의 바람 지도에는 곳곳에 화살표가 그려져 있습니다. 점마다 벡터 하나를 붙인 이런 그림이 <span class="term">벡터장</span>입니다. 바람, 강물, 열의 흐름, 중력, 전기장과 자기장이 모두 벡터장입니다. 이 장에서는 벡터장을 미적분합니다. 곡선을 따라 더하면 <b>일과 순환</b>, 곡면을 뚫고 지나가는 양을 더하면 <b>플럭스</b>, 한 점에서 미분하면 <b>발산과 회전</b>이 나옵니다. 그리고 이 모든 것이 하나의 원리로 묶입니다. 영역 안에서 미분한 것을 모두 더하면 경계에서의 값이 된다는, 미적분의 기본 정리의 고차원 판입니다. 그 원리가 그린, 스토크스, 발산 정리이고, 그 언어로 쓴 것이 전자기학의 맥스웰 방정식입니다.</p>
+    <ul class="objectives">
+      <li>벡터장을 화살표 격자와 흐르는 입자로 읽고, 회전·소스·안장·소용돌이 장을 구분한다.</li>
+      <li>스칼라 선적분 \(\int_C f\, ds\)와 벡터 선적분(일) \(\int_C \mathbf F\cdot d\mathbf r\)를 매개변수로 계산하고, 방향을 바꾸면 부호가 바뀜을 안다.</li>
+      <li>보존장에서 선적분의 기본 정리 \(\int_C \nabla f\cdot d\mathbf r = f(B) - f(A)\)를 쓰고, 경로 독립·닫힌 경로 0·퍼텐셜 존재의 관계와 구멍 난 영역의 함정을 설명한다.</li>
+      <li>그린 정리로 경계의 순환을 내부 회전의 합으로 바꾸고, 선적분으로 넓이를 재는 플라니미터의 원리를 이해한다.</li>
+      <li>발산과 회전을 "작은 상자의 단위 부피당 유출량", "작은 바람개비의 회전"으로 해석하고 계산한다.</li>
+      <li>매개 곡면의 넓이와 플럭스를 계산하고, 스토크스 정리와 발산 정리로 면적분·선적분·부피 적분을 오간다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>라디오도, 휴대폰도, 와이파이도</b></div>
+      <div class="o-body"><p>1860년대에 맥스웰은 전기와 자기에 관해 알려진 실험 법칙들을 장(field)의 방정식으로 모으고, 실험 법칙에는 없던 항 하나(변위 전류)를 더했습니다. 그 결과 방정식이 <b>빛의 속력으로 퍼지는 파동</b>을 예언했고, 맥스웰은 빛이 전자기파라고 결론지었습니다. 1880년대 후반 헤르츠가 실험실에서 전자기파를 만들고 검출해 이를 확인했고, 그 뒤로 무선 통신의 시대가 열렸습니다.</p>
+        <p>맥스웰의 원래 식은 성분별로 풀어 쓴 스무 개 남짓한 식이었습니다. 지금 우리가 아는 네 줄짜리 식은 헤비사이드 등이 이 장의 언어, 즉 발산 \(\nabla\cdot \)과 회전 \(\nabla\times\)로 다시 쓴 것입니다. 안테나 설계, 전동기, 변압기, 무선 충전, 레이더가 모두 이 네 줄과 발산·스토크스 정리 위에 서 있습니다.</p>
+        <div class="o-chain"><span>실험 법칙(쿨롱·앙페르·패러데이)</span><i>→</i><span>장의 언어로 다시 쓰기</span><i>→</i><span class="tool">∇·E = ρ/ε₀, ∇×B = μ₀J + μ₀ε₀∂E/∂t</span><i>→</i><span>전자기파와 무선 통신</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="fields">
+    <h2>벡터장: 점마다 붙은 화살표</h2>
+    <div class="problem"><strong>바람 지도를 어떻게 수학으로 쓸까</strong>
+      <p>기상 관측소 수백 곳이 저마다 바람의 방향과 세기를 보고합니다. 이것을 지도에 화살표로 그리면 흐름의 모양이 보입니다. 저기압 주변으로 감아 도는 바람, 산맥을 넘어 퍼지는 바람. 이 모양을 식으로 쓰고, "얼마나 감아 도는가", "얼마나 퍼지는가"를 숫자로 재려면 무엇이 필요할까요?</p></div>
+    <div class="callout deep"><strong>정의 16.1 (벡터장)</strong> 평면 영역 \(D\)의 <span class="term">벡터장</span><span class="en">(vector field)</span>은 각 점 \((x, y)\)에 벡터 \(\mathbf F(x, y) = \bigl(P(x, y),\ Q(x, y)\bigr)\)를 대응시키는 함수다. 공간에서는 \(\mathbf F = (P, Q, R)\). 성분 함수가 연속 편도함수를 가지면 \(\mathbf F\)를 \(C^1\) 벡터장이라 한다.</div>
+    <p>14장의 그래디언트 \(\nabla f\)가 이미 벡터장의 예였습니다. 몇 가지 기본 모양을 익혀 두면 거의 모든 장을 그 조합으로 읽을 수 있습니다.</p>
+    <ul>
+      <li><b>회전</b> \(\mathbf F = (-y, x)\): 원점을 중심으로 반시계로 돈다. 벡터가 위치 \((x, y)\)에 늘 수직이다.</li>
+      <li><b>소스</b> \(\mathbf F = (x, y)\): 원점에서 사방으로 뿜어 나간다. 부호를 바꾸면 빨려 드는 싱크.</li>
+      <li><b>안장</b> \(\mathbf F = (x, -y)\): 한 방향으로 늘이고 다른 방향으로 누른다. \(f = \tfrac12(x^2 - y^2)\)의 그래디언트다.</li>
+      <li><b>전단</b> \(\mathbf F = (y, 0)\): 모든 화살표가 가로인데 높이에 따라 세기가 다르다. 강물의 바닥과 수면처럼.</li>
+      <li><b>중력·쿨롱 장</b> \(\mathbf F = -\dfrac{\mathbf r}{|\mathbf r|^3}\): 거리 제곱에 반비례해 원점으로 끌린다. 원점에서 정의되지 않는다.</li>
+    </ul>
+    <p>입자를 벡터장에 놓고 화살표가 가리키는 대로 흘려 보내면 그 자취가 <span class="term">흐름선</span><span class="en">(flow line, streamline)</span>입니다. 흐름선 \(\mathbf r(t)\)는 미분방정식 \(\mathbf r'(t) = \mathbf F(\mathbf r(t))\)의 해이고, 각 점에서 벡터장에 접합니다.</p>
+
+    <div class="sim" id="sim-vc-field">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>벡터장과 흐르는 입자</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-field"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-fd-f">
+            <option value="rot">회전 (−y, x)</option>
+            <option value="source">소스 (x, y)</option>
+            <option value="saddle">안장 (x, −y)</option>
+            <option value="shear">전단 (y, 0)</option>
+            <option value="spiral">나선 (0.5x − y, x + 0.5y)</option>
+            <option value="wave">격자 소용돌이 (sin y, sin x)</option>
+            <option value="vortex">점 소용돌이 (−y, x)/(x² + y²)</option>
+            <option value="grav">중력 −r/|r|³</option>
+          </select></label>
+          <label class="ctrl"><span>흐름 속도 <output id="vc-fd-sp-out"></output></span><input type="range" id="vc-fd-sp" min="0.1" max="2" step="0.05" value="0.6"></label>
+          <label class="ctrl"><span>입자 수 <output id="vc-fd-n-out"></output></span><input type="range" id="vc-fd-n" min="0" max="600" step="20" value="300"></label>
+          <label class="check"><input type="checkbox" id="vc-fd-arr" checked> 화살표 격자</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">F(x, y)</span><span class="v" id="vc-fd-s">—</span></div>
+        <div class="stat"><span class="k">div F</span><span class="v" id="vc-fd-div">—</span></div>
+        <div class="stat"><span class="k">curl F (z 성분)</span><span class="v" id="vc-fd-curl">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '회전'과 '점 소용돌이'는 둘 다 감아 돌지만, 점 소용돌이는 바깥일수록 느립니다. 5절에서 보듯 점 소용돌이는 원점 밖에서 회전이 0입니다. ② '소스'에서는 입자 사이 간격이 벌어지고(발산 > 0), '안장'에서는 한쪽으로 늘고 한쪽으로 줄어 넓이가 보존됩니다(발산 = 0). ③ '전단'은 화살표가 모두 평행한데도 회전이 0이 아닙니다. 모델: 입자는 r′ = F(r)를 2차 룽게–쿠타로 적분하고, 수명이 다하거나 화면을 벗어나면 새로 뿌립니다. 특이점 근처 속도는 제한합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="line-integrals">
+    <h2>선적분: 곡선을 따라 더하기, 그리고 일</h2>
+    <div class="problem"><strong>바람을 거슬러 자전거를 타면 일을 얼마나 할까</strong>
+      <p>일정한 힘 \(\mathbf F\)로 직선 \(\mathbf d\)만큼 움직이면 일은 \(\mathbf F\cdot \mathbf d\)입니다. 그런데 바람(힘)이 곳곳에서 다르고 길이 구불구불하면? 길을 짧은 조각으로 나누면 조각마다 힘은 거의 일정하고 길은 거의 직선입니다. 조각마다 \(\mathbf F\cdot \Delta\mathbf r\)를 구해 더하면 됩니다.</p></div>
+    <p>곡선 \(C\)를 매개변수 \(\mathbf r(t)\), \(a \le t \le b\)로 나타냅시다. 짧은 조각의 길이는 \(\Delta s \approx |\mathbf r'(t)|\, \Delta t\)이고 방향은 단위 접선 \(\mathbf T = \mathbf r'/|\mathbf r'|\)입니다.</p>
+    <div class="callout deep"><strong>정의 16.2 (선적분)</strong> 매끄러운 곡선 \(C: \mathbf r(t)\), \(a \le t \le b\) 위에서
+      <div class="formula">$$\int_C f\,ds = \int_a^b f(\mathbf r(t))\,|\mathbf r'(t)|\,dt, \qquad \int_C \mathbf F\cdot d\mathbf r = \int_a^b \mathbf F(\mathbf r(t))\cdot\mathbf r'(t)\,dt = \int_C \mathbf F\cdot\mathbf T\,ds.$$
+        <div class="where">왼쪽은 스칼라 함수의 <span class="term">선적분</span><span class="en">(line integral)</span>: 밀도 \(f\)인 철사의 질량처럼 곡선을 따라 쌓인 양. 오른쪽은 벡터장의 선적분: 힘의 접선 성분을 더한 <b>일</b>. 성분으로 쓰면 \(\int_C P\, dx + Q\, dy\).</div></div>
+      두 값 모두 같은 곡선을 다른 매개변수로 나타내도 변하지 않는다(8장의 치환 적분). 다만 벡터 선적분은 <b>방향을 뒤집으면 부호가 바뀐다</b>: \(\int_{-C}\mathbf F\cdot d\mathbf r = -\int_C \mathbf F\cdot d\mathbf r\). 스칼라 선적분은 \(ds \gt 0\)이라 방향과 무관하다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="곡선을 따라 힘의 접선 성분을 더하는 선적분">
+        <defs><marker id="vc-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="vc-ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="vc-ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ok)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <path d="M60 220 C 160 60, 300 260, 470 90" fill="none" class="s-line" style="stroke-width:3"/>
+        <circle cx="60" cy="220" r="5" style="fill:var(--text)"/><text x="40" y="244" class="t-mono">A = r(a)</text>
+        <circle cx="470" cy="90" r="5" style="fill:var(--text)"/><text x="478" y="84" class="t-mono">B = r(b)</text>
+        <line x1="262" y1="170" x2="340" y2="138" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#vc-ah2)"/>
+        <text x="344" y="140" class="t" style="fill:var(--accent-2);font-weight:700">T</text>
+        <line x1="262" y1="170" x2="300" y2="80" style="stroke:var(--accent);stroke-width:3" marker-end="url(#vc-ah)"/>
+        <text x="304" y="78" class="t-acc">F(r(t))</text>
+        <line x1="262" y1="170" x2="318" y2="147" style="stroke:var(--ok);stroke-width:5;opacity:.7"/>
+        <line x1="300" y1="80" x2="318" y2="147" class="s-line" style="stroke-dasharray:4 4"/>
+        <text x="200" y="196" class="t" style="fill:var(--ok)">F·T (접선 성분)</text>
+        <circle cx="262" cy="170" r="4" style="fill:var(--text)"/>
+        <g style="opacity:.45"><line x1="110" y1="80" x2="140" y2="50" class="s-line" marker-end="url(#vc-ah)"/><line x1="380" y1="220" x2="410" y2="190" class="s-line" marker-end="url(#vc-ah)"/><line x1="420" y1="160" x2="450" y2="130" class="s-line" marker-end="url(#vc-ah)"/><line x1="170" y1="230" x2="200" y2="200" class="s-line" marker-end="url(#vc-ah)"/></g>
+        <g transform="translate(520,50)">
+          <text x="0" y="0" class="t" style="font-weight:700">조각 하나의 일</text>
+          <text x="0" y="26" class="t-mono">F·Δr = (F·T) Δs</text>
+          <text x="0" y="62" class="t" style="font-weight:700">모두 더하면</text>
+          <text x="0" y="88" class="t-mono">W = ∫_C F·dr</text>
+          <text x="0" y="124" class="t-dim">F·T &gt; 0: 힘이 밀어 준다</text>
+          <text x="0" y="146" class="t-dim">F·T &lt; 0: 힘을 거슬러 간다</text>
+          <text x="0" y="168" class="t-dim">F ⟂ T: 일을 하지 않는다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-1.</b> 곡선 위 각 점에서 힘 F를 접선 방향 T로 사영한 길이 F·T만 일에 기여한다. 수직 성분은 경로를 휘게 할 뿐 일을 하지 않는다. 원운동하는 위성에 중력이 일을 하지 않는 이유다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 16.1 (철사의 질량)</strong> 밀도가 \(f(x, y) = x + y\)인 철사가 \((0, 0)\)에서 \((1, 1)\)까지 직선으로 놓여 있다. 질량 \(\int_C f\, ds\)를 구하라.
+      <p style="margin:6px 0 0">\(\mathbf r(t) = (t, t)\), \(0 \le t \le 1\), \(|\mathbf r'(t)| = \sqrt2\). \(\int_0^1 2t\cdot \sqrt2\, dt = \sqrt2 \approx 1.414\). 검산: 철사 길이 \(\sqrt2\) × 평균 밀도 1.</p></div>
+    <div class="callout"><strong>예제 16.2 (회전장이 한 바퀴에 하는 일)</strong> \(\mathbf F = (-y, x)\)가 단위원을 반시계로 한 바퀴 도는 입자에 하는 일은?
+      <ol>
+        <li>\(\mathbf r(t) = (\cos t, \sin t)\), \(\mathbf r'(t) = (-\sin t, \cos t)\), \(\mathbf F(\mathbf r(t)) = (-\sin t, \cos t)\).</li>
+        <li>\(\mathbf F\cdot \mathbf r' = \sin^2 t + \cos^2 t = 1\). 힘이 늘 진행 방향과 나란합니다.</li>
+        <li>\(\int_0^{2\pi} 1\, dt = 2\pi\). 시계 방향으로 돌면 \(-2\pi\). 출발점으로 돌아왔는데도 일이 0이 아닙니다. 이런 닫힌 경로의 선적분을 <span class="term">순환</span><span class="en">(circulation)</span>이라 하고 \(\oint_C \mathbf F\cdot d\mathbf r\)로 씁니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 16.3 (경로가 다르면 일도 다르다)</strong> \(\mathbf F = (x^2, xy)\)가 \((0, 0)\)에서 \((1, 1)\)까지 (a) 직선 \(y = x\), (b) 포물선 \(y = x^2\)을 따라 하는 일을 구하라.
+      <ol>
+        <li>(a) \(\mathbf r = (t, t)\), \(\mathbf r' = (1, 1)\): \(\mathbf F\cdot \mathbf r' = t^2 + t^2 = 2t^2\), 일 \(= \tfrac23\).</li>
+        <li>(b) \(\mathbf r = (t, t^2)\), \(\mathbf r' = (1, 2t)\): \(\mathbf F\cdot \mathbf r' = t^2 + t\cdot t^2\cdot 2t = t^2 + 2t^4\), 일 \(= \tfrac13 + \tfrac25 = \tfrac{11}{15}\).</li>
+        <li>\(\tfrac{10}{15} \ne \tfrac{11}{15}\). 이 힘은 "어느 길로 갔는가"를 기억합니다. 다음 절에서 그렇지 않은 힘을 다룹니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-vc-work">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>경로를 끌어 일 계산하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view vc-two">
+          <div><canvas id="vc-cv-work"></canvas><span class="vc-cap">점 네 개를 끌어 경로 바꾸기 · 초록 = 밀어 줌, 빨강 = 거스름</span></div>
+          <div><canvas id="vc-cv-wcum"></canvas><span class="vc-cap">누적 일 W(t) = ∫₀ᵗ F·r′ dt</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-wk-f">
+            <option value="rot">회전 (−y, x)</option>
+            <option value="ex">(x², xy) (예제 16.3)</option>
+            <option value="grad">퍼텐셜장 ∇f</option>
+            <option value="shear">전단 (y, 0)</option>
+            <option value="wave">(sin y, sin x)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn" id="vc-wk-close">닫힌 경로로</button><button class="btn" id="vc-wk-rev">방향 뒤집기</button><button class="btn" id="vc-wk-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">일 ∫ F·dr</span><span class="v" id="vc-wk-W">—</span></div>
+        <div class="stat"><span class="k">경로 길이 ∫ ds</span><span class="v" id="vc-wk-L">—</span></div>
+        <div class="stat"><span class="k">시작 → 끝</span><span class="v" id="vc-wk-ab">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 회전장에서 경로를 원점 둘레로 크게 휘게 하면 일이 커집니다. 화살표와 나란히 갈수록 초록이 늘어납니다. ② '방향 뒤집기'는 같은 곡선을 거꾸로 갑니다. 일의 부호만 바뀌고 길이는 그대로입니다. ③ '퍼텐셜장'에서는 양 끝을 고정한 채 가운데 두 점을 아무리 끌어도 일이 변하지 않습니다. 다음 절의 주제입니다. 모델: 경로는 3차 베지에 곡선, 적분은 600조각 중점 합입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="conservative">
+    <h2>보존장과 퍼텐셜: 경로가 상관없을 때</h2>
+    <div class="problem"><strong>산을 오르는 데 드는 일은 길에 따라 다를까</strong>
+      <p>중력을 거슬러 질량 \(m\)인 짐을 높이 \(h\)만큼 올리는 일은 \(mgh\)입니다. 지그재그 등산로로 가든 곧장 절벽을 타든 같습니다. 중력은 출발점과 도착점의 높이만 기억하고 길은 잊습니다. 어떤 벡터장이 이런 성질을 가질까요?</p></div>
+    <div class="callout deep"><strong>정의 16.3 (보존장과 퍼텐셜)</strong> 어떤 스칼라 함수 \(f\)에 대해 \(\mathbf F = \nabla f\)이면 \(\mathbf F\)를 <span class="term">보존장</span><span class="en">(conservative field)</span>, \(f\)를 \(\mathbf F\)의 <span class="term">퍼텐셜 함수</span><span class="en">(potential function)</span>라 한다. 물리에서는 위치 에너지 \(U = -f\)를 쓴다. 이름 그대로, 보존력만 작용하면 운동 에너지 + 위치 에너지가 보존된다.</div>
+    <div class="callout deep"><strong>정리 16.4 (<span class="term">선적분의 기본 정리</span><span class="en">(fundamental theorem for line integrals)</span>)</strong> \(C\)가 \(A\)에서 \(B\)로 가는 조각마다 매끄러운 곡선이고 \(f\)가 \(C^1\)이면
+      <div class="formula">$$\int_C \nabla f\cdot d\mathbf r = f(B) - f(A).$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> 연쇄 법칙(13장)으로 \(\tfrac{d}{dt}f(\mathbf r(t)) = \nabla f(\mathbf r(t))\cdot \mathbf r'(t)\). 그래서 \(\int_a^b \nabla f\cdot \mathbf r'\, dt = \int_a^b \tfrac{d}{dt}f(\mathbf r(t))\, dt = f(\mathbf r(b)) - f(\mathbf r(a))\)(8장의 기본 정리). ∎</p></div>
+    <p>8장의 \(\int_a^b F'(x)\, dx = F(b) - F(a)\)가 그대로 곡선 위로 옮겨 왔습니다. "도함수를 적분하면 양 끝 값의 차"라는 원리가 이 장의 모든 정리를 관통합니다. 그 결과로 다음 세 성질이 같아집니다.</p>
+    <div class="callout deep"><strong>정리 16.5 (경로 독립의 동치 조건)</strong> 열린 연결 영역 \(D\)의 연속 벡터장 \(\mathbf F\)에 대해 다음은 서로 동치다.
+      <ol style="margin:6px 0 0">
+        <li>\(\mathbf F = \nabla f\)인 퍼텐셜 \(f\)가 있다.</li>
+        <li>\(\int_C \mathbf F\cdot d\mathbf r\)가 양 끝점에만 의존한다(<span class="term">경로 독립</span><span class="en">(path independence)</span>).</li>
+        <li>\(D\) 안의 모든 닫힌 경로에서 \(\oint_C \mathbf F\cdot d\mathbf r = 0\).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> (1)⇒(2)는 정리 16.4. (2)⇔(3): 같은 끝점을 잇는 두 경로 \(C_1, C_2\)에 대해 \(C_1 - C_2\)는 닫힌 경로다. (2)⇒(1): 기준점 \(A\)를 고정하고 \(f(\mathbf x) = \int_A^{\mathbf x}\mathbf F\cdot d\mathbf r\)로 정의하면(경로 독립이라 잘 정의된다), 끝 부분을 \(x\) 방향 선분으로 잡아 미분하면 \(\partial_x f = P\), 마찬가지로 \(\partial_y f = Q\). ∎</p></div>
+    <p>그러면 주어진 장이 보존장인지 어떻게 알까요? \(\mathbf F = (P, Q) = (f_x, f_y)\)이면 클레로 정리(13장)로 \(P_y = f_{xy} = f_{yx} = Q_x\)입니다. 이 필요조건이 언제 충분한지가 미묘합니다.</p>
+    <div class="callout deep"><strong>정리 16.6 (보존장 판정)</strong> \(\mathbf F = (P, Q)\)가 \(C^1\)이고 \(D\)가 <span class="term">단순 연결 영역</span><span class="en">(simply connected region)</span>(구멍이 없어서 \(D\) 안의 닫힌 곡선을 \(D\) 안에서 한 점으로 줄일 수 있는 영역)이면
+      <div class="formula">$$\mathbf F \text{가 보존장} \iff \frac{\partial Q}{\partial x} = \frac{\partial P}{\partial y} \quad (D \text{ 전체에서}).$$</div>
+      3차원에서는 \(\nabla\times\mathbf F = \mathbf 0\)이 같은 역할을 한다. 증명은 다음 절의 그린 정리로 한다.</div>
+    <div class="callout warn"><strong>구멍이 있으면 판정이 깨진다</strong> 점 소용돌이 \(\mathbf F = \dfrac{(-y, x)}{x^2 + y^2}\)는 원점 밖에서 \(P_y = Q_x = \dfrac{y^2 - x^2}{(x^2 + y^2)^2}\)입니다. 그런데 단위원을 한 바퀴 돌면 \(\mathbf F\cdot \mathbf r' = 1\)이라 순환은 \(2\pi \ne 0\). 원점이 빠진 평면은 단순 연결이 아니기 때문입니다. 국소적으로는 \(\mathbf F = \nabla\theta\)(극좌표의 각)이지만, \(\theta\)는 한 바퀴 돌면 \(2\pi\)만큼 어긋나서 평면 전체의 함수가 될 수 없습니다.</div>
+    <div class="callout"><strong>예제 16.4 (퍼텐셜 찾기)</strong> \(\mathbf F = (2xy + 1,\ x^2 + 3y^2)\)가 보존장인지 확인하고, \((0, 0)\)에서 \((1, 2)\)까지의 일을 구하라.
+      <ol>
+        <li>\(P_y = 2x\), \(Q_x = 2x\). 같고 정의역은 평면 전체(단순 연결)이므로 보존장입니다.</li>
+        <li>\(f_x = 2xy + 1\)을 \(x\)로 적분: \(f = x^2y + x + g(y)\). 여기서 "상수"는 \(y\)의 함수일 수 있습니다.</li>
+        <li>\(f_y = x^2 + g'(y)\)를 \(Q = x^2 + 3y^2\)과 비교하면 \(g' = 3y^2\), \(g = y^3\). 그래서 \(f = x^2y + x + y^3\).</li>
+        <li>일 \(= f(1, 2) - f(0, 0) = (2 + 1 + 8) - 0 = 11\). 어떤 경로로 가도 같습니다.</li>
+      </ol></div>
+    <p>중력 \(\mathbf F = -GMm\, \mathbf r/|\mathbf r|^3\)은 \(f = GMm/|\mathbf r|\)의 그래디언트입니다. 그래서 반지름 \(r_1\)에서 \(r_2\)로 갈 때 중력이 하는 일은 경로와 무관하게 \(GMm\bigl(\tfrac{1}{r_2} - \tfrac{1}{r_1} \bigr)\)이고, \(r_2 \to \infty\)로 보내면 탈출 속도가 나옵니다.</p>
+
+    <div class="sim" id="sim-vc-path">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 경로 비교: 경로 독립인가?</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-path"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-pa-f">
+            <option value="grad">퍼텐셜장 ∇(1.5 sin x cos y + 0.2x)</option>
+            <option value="saddle">안장 (x, −y) = ∇(½(x² − y²))</option>
+            <option value="rot">회전 (−y, x)</option>
+            <option value="shear">전단 (y, 0)</option>
+            <option value="vortex">점 소용돌이 (−y, x)/(x² + y²)</option>
+          </select></label>
+          <label class="ctrl"><span>경로를 휘는 정도 <output id="vc-pa-b-out"></output></span><input type="range" id="vc-pa-b" min="0" max="3" step="0.05" value="1.4"></label>
+          <label class="check"><input type="checkbox" id="vc-pa-pot" checked> 퍼텐셜 f 색 띠(있을 때)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">위로 휜 경로</span><span class="v" id="vc-pa-w1">—</span></div>
+        <div class="stat"><span class="k">직선</span><span class="v" id="vc-pa-w2">—</span></div>
+        <div class="stat"><span class="k">아래로 휜 경로</span><span class="v" id="vc-pa-w3">—</span></div>
+        <div class="stat"><span class="k">f(B) − f(A)</span><span class="v" id="vc-pa-df">—</span></div>
+      </div>
+      <div class="vc-msg" id="vc-pa-msg"></div>
+      <div class="sim-note">해볼 것: ① 퍼텐셜장과 안장에서 A, B를 끌고 휘는 정도를 바꿔도 세 값이 같고 f(B) − f(A)와 일치합니다. ② 회전장에서는 위·아래 경로의 차이가 두 경로가 둘러싼 넓이의 2배입니다(다음 절 그린 정리, curl = 2). ③ 점 소용돌이에서 두 경로가 원점을 사이에 두면 차이가 정확히 2π, 원점을 사이에 두지 않으면 0입니다. 모델: 휜 경로는 A, B를 잇는 2차 베지에 곡선, 적분은 800조각 중점 합입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="green">
+    <h2>그린 정리: 경계의 순환 = 내부 회전의 합</h2>
+    <div class="problem"><strong>울타리를 한 바퀴 돌며 안쪽 넓이를 잰다</strong>
+      <p>측량사는 땅 안으로 들어가지 않고 경계를 따라 걸으며 좌표만 재서 넓이를 계산합니다. 19세기에는 바늘 끝으로 지도 위 경계를 한 바퀴 따라가기만 하면 바퀴 눈금에 넓이가 찍히는 기계, 플라니미터가 쓰였습니다. 경계 정보만으로 내부를 알 수 있는 이유는 무엇일까요?</p></div>
+    <p>경계 곡선 \(C\)가 영역 \(D\)를 반시계 방향(왼쪽에 \(D\)를 두고)으로 한 바퀴 돌 때, 이것을 <b>양의 방향</b>이라 합니다.</p>
+    <div class="callout deep"><strong>정리 16.7 (<span class="term">그린 정리</span><span class="en">(Green's theorem)</span>)</strong> \(D\)가 조각마다 매끄러운 단순 닫힌 곡선 \(C\)로 둘러싸인 평면 영역이고 \(C\)가 양의 방향이며, \(P, Q\)가 \(D\)를 포함하는 열린 영역에서 \(C^1\)이면
+      <div class="formula">$$\oint_C P\,dx + Q\,dy = \iint_D \left(\frac{\partial Q}{\partial x} - \frac{\partial P}{\partial y}\right) dA.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> \(D\)가 제1형 영역 \(a \le x \le b\), \(g_1(x) \le y \le g_2(x)\)이라 하자. 기본 정리로 \(\iint_D -P_y\, dA = -\int_a^b \bigl[P(x, g_2(x)) - P(x, g_1(x))\bigr]dx\). 한편 \(\oint_C P\, dx\)는 아래 경계(왼→오)에서 \(\int_a^b P(x, g_1)\, dx\), 위 경계(오→왼)에서 \(-\int_a^b P(x, g_2)\, dx\), 세로 변에서는 \(dx = 0\). 두 식이 같다. \(Q\) 부분은 \(D\)를 제2형으로 보고 같은 계산을 한다. 일반 영역은 이런 조각으로 자른다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="작은 칸들의 순환을 더하면 안쪽 변이 상쇄되어 경계 순환만 남는다">
+        <defs><marker id="vc-gh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="vc-gh2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-faint)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <g transform="translate(50,40)">
+          <rect x="0" y="0" width="300" height="200" class="f-acc-soft"/>
+          <g style="stroke:var(--text-faint);stroke-width:1.5">
+            <line x1="100" y1="0" x2="100" y2="200"/><line x1="200" y1="0" x2="200" y2="200"/><line x1="0" y1="100" x2="300" y2="100"/>
+          </g>
+          <g style="stroke:var(--text-faint);stroke-width:1.5">
+            <line x1="94" y1="30" x2="94" y2="70" marker-end="url(#vc-gh2)"/><line x1="106" y1="70" x2="106" y2="30" marker-end="url(#vc-gh2)"/>
+            <line x1="194" y1="130" x2="194" y2="170" marker-end="url(#vc-gh2)"/><line x1="206" y1="170" x2="206" y2="130" marker-end="url(#vc-gh2)"/>
+            <line x1="130" y1="94" x2="170" y2="94" marker-end="url(#vc-gh2)"/><line x1="170" y1="106" x2="130" y2="106" marker-end="url(#vc-gh2)"/>
+          </g>
+          <g style="stroke:var(--accent);stroke-width:3">
+            <line x1="20" y1="200" x2="280" y2="200" marker-end="url(#vc-gh)"/><line x1="300" y1="180" x2="300" y2="20" marker-end="url(#vc-gh)"/>
+            <line x1="280" y1="0" x2="20" y2="0" marker-end="url(#vc-gh)"/><line x1="0" y1="20" x2="0" y2="180" marker-end="url(#vc-gh)"/>
+          </g>
+          <text x="150" y="228" text-anchor="middle" class="t-dim">이웃한 칸의 공유 변은 서로 반대 방향으로 지나 상쇄된다</text>
+        </g>
+        <g transform="translate(400,50)">
+          <text x="0" y="0" class="t" style="font-weight:700">작은 칸 하나의 순환</text>
+          <text x="0" y="28" class="t-mono">∮ F·dr ≈ (Q_x − P_y) ΔA</text>
+          <text x="0" y="64" class="t" style="font-weight:700">칸을 모두 더하면</text>
+          <text x="0" y="92" class="t-mono">Σ (내부 회전) ΔA</text>
+          <text x="0" y="118" class="t-mono">= 바깥 경계의 순환만 남음</text>
+          <text x="0" y="158" class="t" style="font-weight:700">극한</text>
+          <text x="0" y="186" class="t-mono">∬_D (Q_x − P_y) dA = ∮_C F·dr</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-2.</b> 영역을 작은 칸으로 나눠 각 칸의 경계를 반시계로 돌면, 안쪽 변은 이웃한 두 칸이 서로 반대 방향으로 지나가 기여가 상쇄되고 바깥 경계만 남는다. 칸 하나의 순환은 넓이 × (Q_x − P_y)이므로, 그린 정리는 "작은 바람개비들의 회전을 모두 더하면 경계를 도는 순환"이라는 뜻이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 16.5 (정사각형에서 확인)</strong> \(\mathbf F = (xy, x^2)\), \(C\)는 단위 정사각형 \([0, 1]^2\)의 경계(반시계)일 때 양변을 계산하라.
+      <ol>
+        <li>이중 적분: \(Q_x - P_y = 2x - x = x\), \(\iint_{[0,1]^2} x\, dA = \tfrac12\).</li>
+        <li>선적분, 네 변: 아래 \(y = 0\): \(P\, dx = 0\). 오른쪽 \(x = 1\), \(y: 0 \to 1\): \(Q\, dy = 1\, dy\) → 1. 위 \(y = 1\), \(x: 1 \to 0\): \(P\, dx = x\, dx\) → \(\int_1^0 x\, dx = -\tfrac12\). 왼쪽 \(x = 0\): \(Q = 0\) → 0.</li>
+        <li>합: \(0 + 1 - \tfrac12 + 0 = \tfrac12\). 같습니다.</li>
+      </ol></div>
+    <p>그린 정리에 \(Q_x - P_y = 1\)인 장을 넣으면 우변이 넓이가 됩니다. \(\mathbf F = (0, x)\), \((-y, 0)\), \(\tfrac12(-y, x)\)가 모두 그런 장이므로</p>
+    <div class="formula">$$\text{넓이}(D) = \oint_C x\,dy = -\oint_C y\,dx = \frac12\oint_C (x\,dy - y\,dx).$$
+      <div class="where">꼭짓점 \((x_i, y_i)\)인 다각형에 적용하면 측량에서 쓰는 신발끈 공식 \(\tfrac12\sum (x_i y_{i+1} - x_{i+1}y_i)\)이 된다. 플라니미터는 이 선적분을 바퀴의 회전으로 기계적으로 더한다.</div></div>
+    <div class="callout"><strong>예제 16.6 (타원의 넓이를 경계로)</strong> \(x = a\cos t\), \(y = b\sin t\) (\(0 \le t \le 2\pi\))로 둘러싸인 넓이는 \(\tfrac12\int_0^{2\pi} \bigl(a\cos t\cdot b\cos t - b\sin t\cdot (-a\sin t)\bigr)dt = \tfrac12\int_0^{2\pi} ab\, dt = \pi ab\). 15장에서 야코비안으로 구한 값과 같습니다.</div>
+
+    <div class="sim" id="sim-vc-green">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>그린 정리: 경계 순환 = 회전의 이중 적분</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-green"></canvas><span class="tag-tl">꼭짓점을 끌어 영역 바꾸기 · 색 = Q<sub>x</sub> − P<sub>y</sub></span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-gr-f">
+            <option value="rot">회전 (−y, x), 회전 = 2</option>
+            <option value="ex">(x², xy), 회전 = y</option>
+            <option value="xy">(xy, x²), 회전 = x (예제 16.5)</option>
+            <option value="cubic">(−x²y, xy²), 회전 = x² + y²</option>
+            <option value="wave">(sin y, sin x), 회전 = cos x − cos y</option>
+            <option value="vortex">점 소용돌이 (원점은 특이점)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="vc-gr-cells" checked> 작은 바람개비(칸마다 회전) 보기</label>
+          <div class="btn-row"><button class="btn" id="vc-gr-reset">육각형으로</button><button class="btn" id="vc-gr-sq">단위 정사각형</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∮ F·dr (경계)</span><span class="v" id="vc-gr-L">—</span></div>
+        <div class="stat"><span class="k">∬ (Q<sub>x</sub> − P<sub>y</sub>) dA (내부)</span><span class="v" id="vc-gr-A">—</span></div>
+        <div class="stat"><span class="k">영역 넓이</span><span class="v" id="vc-gr-area">—</span></div>
+      </div>
+      <div class="vc-msg" id="vc-gr-msg"></div>
+      <div class="sim-note">해볼 것: ① 회전장에서는 회전이 어디서나 2라서 순환 = 2 × 넓이입니다. 영역을 어떻게 바꿔도 확인됩니다. ② '단위 정사각형'과 (xy, x²)로 예제 16.5의 1/2을 확인하세요. ③ 점 소용돌이에서 원점을 영역 안에 넣으면 순환은 2π인데 내부 회전의 합은 0입니다. 영역 안에 미분 불가능한 점이 있어 그린 정리의 조건이 깨진 것입니다. 꼭짓점을 엇갈리게 끌어 경계가 꼬이면 값이 맞지 않으니 단순 다각형을 유지하세요. 모델: 경계는 변마다 200조각 중점 합, 내부는 160×160 격자 합.</div>
+    </div>
+
+    <div class="sim" id="sim-vc-planimeter">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>플라니미터: 경계를 그리면 넓이가 나온다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-plan"></canvas><span class="tag-tl">끌어서 닫힌 곡선을 그려 보세요</span></div>
+        <div class="sim-controls">
+          <div class="btn-row"><button class="btn primary" id="vc-pl-circ">원 r = 2 따라가기</button><button class="btn" id="vc-pl-card">카디오이드</button><button class="btn" id="vc-pl-ell">타원 2.5 × 1.5</button></div>
+          <div class="btn-row"><button class="btn" id="vc-pl-clear">지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">½∮(x dy − y dx) (누적)</span><span class="v" id="vc-pl-line">—</span></div>
+        <div class="stat"><span class="k">격자 칸 세기 ∬ dA</span><span class="v" id="vc-pl-grid">—</span></div>
+        <div class="stat"><span class="k">도는 방향</span><span class="v" id="vc-pl-dir">—</span></div>
+        <div class="stat"><span class="k">정확한 넓이</span><span class="v" id="vc-pl-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 원을 따라가게 하고 누적값이 4π ≈ 12.566으로 자라는 것을 보세요. 반쯤 돌았을 때의 값은 그때까지 원점과 곡선이 쓸고 간 부채꼴 넓이입니다. ② 직접 그릴 때 시계 방향으로 돌면 값이 음수가 됩니다. 그린 정리는 반시계를 양의 방향으로 씁니다. ③ 8자처럼 꼬인 곡선을 그리면 두 고리의 넓이가 서로 빼집니다. 모델: 그린 곡선을 다각형으로 보고 신발끈 공식, 격자 칸 세기는 0.05 간격 격자점의 안팎 판정입니다. 카디오이드 r = 1.4(1 + cos θ)의 넓이는 1.4² · 3π/2.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="div-curl">
+    <h2>회전과 발산: 작은 바람개비와 작은 상자</h2>
+    <div class="problem"><strong>한 점에서 흐름이 "도는지", "퍼지는지" 재는 법</strong>
+      <p>강물에 작은 바람개비를 띄웠다고 합시다. 물이 바람개비의 한쪽을 더 세게 밀면 바람개비가 돕니다. 또 물속 한 점을 작은 상자로 둘러쌌을 때 나가는 물이 들어오는 물보다 많다면 그 안에 샘이 있는 것입니다. 이 두 양을 극한으로 정의하면 회전과 발산입니다.</p></div>
+    <p>그린 정리를 점 \(\mathbf p\) 주위의 반지름 \(\varepsilon\)인 작은 원판 \(D_\varepsilon\)에 쓰고 넓이로 나누면 \(\tfrac{1}{\pi\varepsilon^2}\oint \mathbf F\cdot d\mathbf r = \text{(}Q_x - P_y\text{의 평균)} \to (Q_x - P_y)(\mathbf p)\). 그래서 \(Q_x - P_y\)는 "단위 넓이당 순환"입니다. 같은 원 위에서 바깥 법선 \(\mathbf n\) 방향 성분을 더하면 \(\oint \mathbf F\cdot \mathbf n\, ds = \oint P\, dy - Q\, dx\)이고, 그린 정리를 \((-Q, P)\)에 쓰면 \(\iint (P_x + Q_y)\, dA\)가 나옵니다. 이것이 그린 정리의 <b>플럭스 꼴</b>입니다.</p>
+    <div class="callout deep"><strong>정의 16.8 (발산과 회전)</strong> 공간의 \(C^1\) 벡터장 \(\mathbf F = (P, Q, R)\)에 대해, 연산자 \(\nabla = (\partial_x, \partial_y, \partial_z)\)를 써서
+      <div class="formula">$$\operatorname{div}\mathbf F = \nabla\cdot\mathbf F = \frac{\partial P}{\partial x} + \frac{\partial Q}{\partial y} + \frac{\partial R}{\partial z},\qquad \operatorname{curl}\mathbf F = \nabla\times\mathbf F = \left(R_y - Q_z,\ P_z - R_x,\ Q_x - P_y\right).$$
+        <div class="where"><span class="term">발산</span><span class="en">(divergence)</span>은 스칼라로, 작은 상자에서 나가는 단위 부피당 알짜 유량. <span class="term">회전</span><span class="en">(curl)</span>은 벡터로, 방향은 작은 바람개비의 회전축(오른손 법칙), 크기는 각속도의 2배. 평면 장 \((P, Q, 0)\)의 회전은 \((0, 0, Q_x - P_y)\)이다.</div></div></div>
+    <div class="callout"><strong>예제 16.7 (발산과 회전 계산)</strong> \(\mathbf F = (xz,\ xyz,\ -y^2)\)의 발산과 회전을 구하라.
+      <ol>
+        <li>발산: \(\partial_x(xz) + \partial_y(xyz) + \partial_z(-y^2) = z + xz + 0 = z(1 + x)\).</li>
+        <li>회전: \(R_y - Q_z = -2y - xy\), \(P_z - R_x = x - 0 = x\), \(Q_x - P_y = yz - 0 = yz\). 그래서 \(\nabla\times\mathbf F = (-2y - xy,\ x,\ yz)\).</li>
+        <li>점 \((1, 1, 2)\)에서 발산 4(이 점 근처는 샘), 회전 \((-3, 1, 2)\)(바람개비 축이 이 방향일 때 가장 빨리 돈다).</li>
+      </ol></div>
+    <p>회전장 \((-y, x)\)는 회전이 어디서나 2이고 발산은 0입니다. 소스 \((x, y)\)는 발산 2, 회전 0. 흥미로운 것은 겉모양과 다른 경우입니다. 전단 \((y, 0)\)은 화살표가 모두 평행한데 회전이 \(-1\)입니다. 바람개비의 위쪽이 아래쪽보다 세게 밀려 시계 방향으로 돕니다. 반대로 점 소용돌이는 눈에 띄게 감아 도는데 원점 밖에서 회전이 0입니다. 바깥일수록 느려지는 정도가 바람개비를 돌리려는 효과를 정확히 상쇄합니다(작은 바람개비는 원점 둘레를 돌기는 하지만 자기 축으로는 돌지 않습니다).</p>
+    <div class="callout deep"><strong>정리 16.9 (두 항등식)</strong> \(C^2\) 함수 \(f\)와 벡터장 \(\mathbf F\)에 대해
+      <div class="formula">$$\nabla\times(\nabla f) = \mathbf 0, \qquad \nabla\cdot(\nabla\times\mathbf F) = 0.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(\nabla\times\nabla f\)의 \(z\) 성분은 \(f_{yx} - f_{xy} = 0\)(클레로 정리), 다른 성분도 같다. \(\nabla\cdot (\nabla\times\mathbf F) = (R_y - Q_z)_x + (P_z - R_x)_y + (Q_x - P_y)_z\)를 전개하면 혼합 편도함수가 둘씩 상쇄된다. ∎ 첫 식은 "보존장은 회전이 없다", 둘째 식은 "회전장의 흐름에는 샘이 없다"는 뜻이고, 맥스웰 방정식에서 전하 보존을 이끌어 낸다.</p></div>
+    <p>또 \(\nabla\cdot \nabla f = f_{xx} + f_{yy} + f_{zz} = \nabla^2 f\)는 <b>라플라시안</b>으로, 13장에서 맛본 열 방정식 \(u_t = k\nabla^2 u\)와 파동 방정식에 나옵니다.</p>
+
+    <div class="sim" id="sim-vc-probe">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>발산·회전 탐침: 바람개비와 작은 원</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-probe"></canvas><span class="tag-tl">탐침을 끌어 옮기기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-pr-f">
+            <option value="shear">전단 (y, 0)</option>
+            <option value="rot">회전 (−y, x)</option>
+            <option value="source">소스 (x, y)</option>
+            <option value="vortex">점 소용돌이 (−y, x)/(x² + y²)</option>
+            <option value="spiral">나선 (0.5x − y, x + 0.5y)</option>
+            <option value="ex">(x², xy)</option>
+            <option value="wave">(sin y, sin x)</option>
+            <option value="grad">퍼텐셜장 ∇f</option>
+          </select></label>
+          <label class="ctrl"><span>탐침 반지름 ε <output id="vc-pr-e-out"></output></span><input type="range" id="vc-pr-e" min="0.1" max="1.2" step="0.05" value="0.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∮F·T ds / (πε²)</span><span class="v" id="vc-pr-circ">—</span></div>
+        <div class="stat"><span class="k">curl F = Q<sub>x</sub> − P<sub>y</sub></span><span class="v" id="vc-pr-curl">—</span></div>
+        <div class="stat"><span class="k">∮F·n ds / (πε²)</span><span class="v" id="vc-pr-flux">—</span></div>
+        <div class="stat"><span class="k">div F = P<sub>x</sub> + Q<sub>y</sub></span><span class="v" id="vc-pr-div">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 전단에서 탐침을 어디에 두어도 바람개비가 시계 방향(curl = −1)으로 돕니다. ② 점 소용돌이에서 탐침을 원점에서 떨어뜨리면 바람개비가 멈추고, 원점을 감싸면 단위 넓이당 순환이 2/ε²으로 커집니다. 원점에 회전이 '모여' 있는 셈입니다. ③ ε를 줄이면 두 비율이 각각 curl과 div로 수렴합니다. 경계 위 짧은 막대는 F·n(초록 = 나감, 빨강 = 들어옴)입니다. 모델: 바람개비의 각속도는 curl/2, 원 위 적분은 240조각 합입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="surface">
+    <h2>매개 곡면과 면적분, 플럭스</h2>
+    <div class="problem"><strong>그물을 지나가는 물은 초당 몇 리터일까</strong>
+      <p>강에 둥근 그물을 걸면, 그물을 뚫고 지나가는 물의 양은 물의 속도뿐 아니라 그물이 놓인 각도에 달려 있습니다. 그물이 흐름과 나란하면 아무것도 지나가지 않고, 흐름에 수직이면 가장 많이 지나갑니다. 휘어진 그물이라면 조각마다 각도가 다릅니다.</p></div>
+    <p>15장의 이중 적분이 평평한 영역 위의 적분이었다면, 이제는 휘어진 곡면 위에서 적분합니다. 곡면을 두 매개변수로 나타내는 것이 출발점입니다.</p>
+    <div class="callout deep"><strong>정의 16.10 (매개 곡면과 면적분)</strong> <span class="term">매개 곡면</span><span class="en">(parametric surface)</span> \(S\)는 \(uv\) 평면의 영역 \(E\)에서 정의된 \(\mathbf r(u, v) = \bigl(x(u, v), y(u, v), z(u, v)\bigr)\)의 상이다. 작은 칸 \(\Delta u\, \Delta v\)는 곡면 위에서 \(\mathbf r_u\Delta u\)와 \(\mathbf r_v\Delta v\)가 만드는 평행사변형에 가까우므로
+      <div class="formula">$$dS = |\mathbf r_u\times\mathbf r_v|\,du\,dv,\qquad \iint_S f\,dS = \iint_E f(\mathbf r(u, v))\,|\mathbf r_u\times\mathbf r_v|\,du\,dv.$$</div>
+      벡터장 \(\mathbf F\)의 <span class="term">플럭스</span><span class="en">(flux)</span>는 단위 법선 \(\mathbf n\) 방향 성분의 <span class="term">면적분</span><span class="en">(surface integral)</span>이다.
+      <div class="formula">$$\iint_S \mathbf F\cdot\mathbf n\,dS = \iint_E \mathbf F(\mathbf r(u, v))\cdot(\mathbf r_u\times\mathbf r_v)\,du\,dv.$$</div>
+      법선의 방향(곡면의 <b>향</b>)을 반대로 고르면 플럭스의 부호가 바뀐다. 닫힌 곡면은 바깥 방향을 양으로 한다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="매개변수 영역의 칸이 곡면 위 평행사변형으로 가는 그림">
+        <defs><marker id="vc-sh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker><marker id="vc-sh2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-2)"/></marker><marker id="vc-sh3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ok)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g transform="translate(40,60)">
+          <rect x="0" y="0" width="180" height="150" class="f-elev" style="stroke:var(--border)"/>
+          <g style="stroke:var(--grid)"><line x1="45" y1="0" x2="45" y2="150"/><line x1="90" y1="0" x2="90" y2="150"/><line x1="135" y1="0" x2="135" y2="150"/><line x1="0" y1="50" x2="180" y2="50"/><line x1="0" y1="100" x2="180" y2="100"/></g>
+          <rect x="90" y="50" width="45" height="50" class="f-acc"/>
+          <text x="96" y="122" class="t-mono">Δu</text><text x="140" y="80" class="t-mono">Δv</text>
+          <text x="0" y="178" class="t-dim">매개변수 영역 E (uv 평면)</text>
+        </g>
+        <path d="M250 135 C 280 120, 300 120, 330 135" fill="none" class="s-acc" marker-end="url(#vc-sh)"/>
+        <text x="270" y="112" class="t-mono">r(u, v)</text>
+        <path d="M360 210 C 420 150, 520 130, 600 160 L 650 80 C 560 50, 460 60, 410 120 Z" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+        <polygon points="480,150 540,138 560,108 500,118" class="f-acc" style="opacity:.8"/>
+        <line x1="480" y1="150" x2="540" y2="138" style="stroke:var(--accent);stroke-width:3" marker-end="url(#vc-sh)"/>
+        <line x1="480" y1="150" x2="500" y2="118" style="stroke:var(--accent-2);stroke-width:3" marker-end="url(#vc-sh2)"/>
+        <text x="520" y="164" class="t-acc">r_u Δu</text><text x="440" y="118" class="t" style="fill:var(--accent-2)">r_v Δv</text>
+        <line x1="520" y1="128" x2="500" y2="56" style="stroke:var(--ok);stroke-width:3" marker-end="url(#vc-sh3)"/>
+        <text x="460" y="50" class="t" style="fill:var(--ok)">n ∥ r_u × r_v</text>
+        <text x="570" y="214" class="t-mono">ΔS ≈ |r_u × r_v| Δu Δv</text>
+      </svg>
+      <figcaption><b>그림 16-3.</b> uv 평면의 작은 칸이 곡면 위에서는 두 편미분 벡터 r_uΔu, r_vΔv가 만드는 평행사변형이 된다. 그 넓이는 외적의 크기이고, 외적의 방향이 곡면의 법선이다. 15장의 야코비안 |det J|가 "평면 → 평면" 넓이 배율이었다면, |r_u × r_v|는 "평면 → 곡면" 넓이 배율이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 16.8 (구의 겉넓이)</strong> 반지름 \(a\)인 구 \(\mathbf r(\varphi, \theta) = a(\sin\varphi\cos\theta, \sin\varphi\sin\theta, \cos\varphi)\)의 넓이를 구하라.
+      <ol>
+        <li>\(\mathbf r_\varphi = a(\cos\varphi\cos\theta, \cos\varphi\sin\theta, -\sin\varphi)\), \(\mathbf r_\theta = a(-\sin\varphi\sin\theta, \sin\varphi\cos\theta, 0)\).</li>
+        <li>외적을 계산하면 \(\mathbf r_\varphi\times\mathbf r_\theta = a^2\sin\varphi\, (\sin\varphi\cos\theta, \sin\varphi\sin\theta, \cos\varphi) = a\sin\varphi\, \mathbf r\). 바깥 방향이고 크기는 \(a^2\sin\varphi\).</li>
+        <li>\(\int_0^{2\pi}\! \int_0^\pi a^2\sin\varphi\, d\varphi\, d\theta = 4\pi a^2\). 15장 구면 좌표의 \(\rho^2\sin\varphi\)에서 \(\rho = a\)로 고정한 것과 같습니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 16.9 (구를 빠져나가는 플럭스)</strong> \(\mathbf F = (x, y, z)\)가 반지름 \(a\)인 구를 바깥으로 지나가는 플럭스를 구하라.
+      <p style="margin:6px 0 0">구 위에서 \(\mathbf n = \mathbf r/a\)이므로 \(\mathbf F\cdot \mathbf n = |\mathbf r|^2/a = a\)로 일정합니다. 플럭스 \(= a\cdot 4\pi a^2 = 4\pi a^3\). 다음 절의 발산 정리로는 \(\iiint \operatorname{div}\mathbf F\, dV = 3\cdot \tfrac43\pi a^3 = 4\pi a^3\). 같습니다.</p></div>
+
+    <div class="sim" id="sim-vc-flux">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>곡면을 뚫고 지나가는 플럭스</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-flux"></canvas><span class="hint">끌어서 돌리기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>곡면 S</span><select id="vc-fl-s">
+            <option value="sphere">구 a = 1.2 (닫힘, 바깥 법선)</option>
+            <option value="hemi">위 반구 a = 1.2 (위쪽 법선)</option>
+            <option value="cyl">원기둥 옆면 r = 1, −1 ≤ z ≤ 1</option>
+            <option value="disk">원판 z = 0, r ≤ 1.2 (위쪽 법선)</option>
+          </select></label>
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-fl-f">
+            <option value="radial">(x, y, z), div = 3</option>
+            <option value="up">(0, 0, 1), div = 0</option>
+            <option value="rot">(−y, x, 0), div = 0</option>
+            <option value="xy">(x, y, 0), div = 2</option>
+            <option value="cube">(x³, y³, z³), div = 3(x² + y² + z²)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="vc-fl-arr" checked> 벡터 화살표</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">플럭스 ∬ F·n dS</span><span class="v" id="vc-fl-flux">—</span></div>
+        <div class="stat"><span class="k">곡면 넓이</span><span class="v" id="vc-fl-area">—</span></div>
+        <div class="stat"><span class="k">∭ div F dV (닫힌 곡면일 때)</span><span class="v" id="vc-fl-div">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 구와 (x, y, z)로 예제 16.9의 4π(1.2)³ ≈ 21.71을 확인하세요. ② (0, 0, 1)은 구 위쪽에서 나가고 아래쪽에서 들어와 합이 0입니다. 반구로 바꾸면 반구의 그림자(원판) 넓이 π(1.2)²와 같은 값이 나옵니다. ③ 원기둥 옆면에서 (0, 0, 1)은 곡면과 나란해 플럭스가 0, (x, y, 0)은 어디서나 F·n = 1이라 넓이 4π와 같습니다. 색은 F·n(빨강 = 나감, 파랑 = 들어옴). 모델: 곡면을 48×96 칸으로 나눈 중점 합, r<sub>u</sub> × r<sub>v</sub>는 수치 미분으로 구합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="theorems">
+    <h2>스토크스 정리와 발산 정리</h2>
+    <div class="problem"><strong>그린 정리를 휘어진 곡면과 입체로</strong>
+      <p>그린 정리는 평평한 영역에 대한 이야기였습니다. 경계가 공간 곡선이고 그 위에 비누막 같은 곡면이 걸려 있다면? 또는 닫힌 곡면이 감싼 입체라면? 그림 16-2의 상쇄 논리는 칸이 휘어져 있어도, 상자라도 똑같이 통합니다.</p></div>
+    <div class="callout deep"><strong>정리 16.11 (<span class="term">스토크스 정리</span><span class="en">(Stokes' theorem)</span>)</strong> \(S\)가 향이 있는 조각마다 매끄러운 곡면이고 그 경계 \(C\)가 단순 닫힌 곡선이며, \(C\)의 방향이 \(S\)의 법선과 오른손 법칙으로 맞춰져 있으면(법선 쪽에서 보았을 때 \(C\)가 반시계) \(C^1\) 벡터장 \(\mathbf F\)에 대해
+      <div class="formula">$$\oint_C \mathbf F\cdot d\mathbf r = \iint_S (\nabla\times\mathbf F)\cdot\mathbf n\,dS.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 곡면을 작은 칸으로 나누면 칸 하나는 거의 평평하고, 그 칸의 순환은 그린 정리(정의 16.8의 해석)로 \((\nabla\times\mathbf F)\cdot \mathbf n\, \Delta S\)다. 이웃한 칸의 공유 변은 상쇄되고 바깥 경계만 남는다. \(S\)가 \(xy\) 평면의 영역이면 \(\mathbf n = \mathbf k\), \((\nabla\times\mathbf F)\cdot \mathbf k = Q_x - P_y\)라서 그린 정리가 된다. ∎</p></div>
+    <p>놀라운 결과가 하나 따라 나옵니다. 우변은 곡면 \(S\)에 대한 적분인데 좌변은 경계에만 의존합니다. 그래서 <b>경계가 같은 곡면이면 어떤 곡면이든 회전의 플럭스가 같습니다</b>. 비누막을 불어 부풀려도 값이 그대로입니다. 정리 16.9의 \(\nabla\cdot (\nabla\times\mathbf F) = 0\)과 다음 발산 정리가 그 이유를 다른 각도에서 설명합니다.</p>
+    <div class="callout deep"><strong>정리 16.12 (<span class="term">발산 정리</span><span class="en">(divergence theorem, Gauss's theorem)</span>)</strong> \(E\)가 조각마다 매끄러운 닫힌 곡면 \(S\)로 둘러싸인 입체이고 \(S\)의 법선이 바깥 방향이면 \(C^1\) 벡터장 \(\mathbf F\)에 대해
+      <div class="formula">$$\oiint_S \mathbf F\cdot\mathbf n\,dS = \iiint_E \nabla\cdot\mathbf F\,dV.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 입체를 작은 상자로 나누면 상자 하나에서 나가는 알짜 유량은 \((\nabla\cdot \mathbf F)\, \Delta V\)다(\(x\) 방향의 두 면에서 \([P(x + \Delta x) - P(x)]\Delta y\Delta z \approx P_x\Delta V\), 나머지 방향도 같다). 이웃한 상자의 공유 면은 한쪽에서 나가는 것이 다른 쪽에 들어오는 것이라 상쇄되고 바깥 겉면만 남는다. ∎</p></div>
+    <div class="callout"><strong>예제 16.10 (스토크스: 반구와 원판)</strong> \(\mathbf F = (-y + z,\ x,\ xy)\), \(S\)는 단위 구의 위 반구(바깥 법선), \(C\)는 \(xy\) 평면의 단위원(반시계)이다.
+      <ol>
+        <li>선적분: \(\mathbf r = (\cos t, \sin t, 0)\)에서 \(\mathbf F = (-\sin t, \cos t, \sin t\cos t)\), \(\mathbf r' = (-\sin t, \cos t, 0)\). \(\mathbf F\cdot \mathbf r' = 1\), 순환 \(= 2\pi\).</li>
+        <li>회전: \(\nabla\times\mathbf F = (R_y - Q_z,\ P_z - R_x,\ Q_x - P_y) = (x - 0,\ 1 - y,\ 1 + 1) = (x,\ 1 - y,\ 2)\).</li>
+        <li>반구 위에서 \(\mathbf n = (x, y, z)\)이므로 \((\nabla\times\mathbf F)\cdot \mathbf n = x^2 + y - y^2 + 2z\). 대칭으로 \(\iint x^2\, dS = \iint y^2\, dS\)이고 \(\iint y\, dS = 0\). 남는 것은 \(\iint 2z\, dS = 2\int_0^{2\pi}\! \int_0^{\pi/2} \cos\varphi\sin\varphi\, d\varphi\, d\theta = 2\cdot 2\pi\cdot \tfrac12 = 2\pi\).</li>
+        <li>같은 원을 경계로 하는 평평한 원판에서는 \(\mathbf n = \mathbf k\), \((\nabla\times\mathbf F)\cdot \mathbf k = 2\)라서 \(2\cdot \pi = 2\pi\). 세 계산이 모두 \(2\pi\)입니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 16.11 (발산 정리로 어려운 면적분 피하기)</strong> \(\mathbf F = (x^3, y^3, z^3)\)가 반지름 \(a\)인 구를 바깥으로 지나가는 플럭스를 구하라.
+      <ol>
+        <li>면적분으로 직접 하면 \(\mathbf F\cdot \mathbf n = (x^4 + y^4 + z^4)/a\)를 구면에서 적분해야 합니다.</li>
+        <li>발산: \(\nabla\cdot \mathbf F = 3(x^2 + y^2 + z^2) = 3\rho^2\).</li>
+        <li>구면 좌표: \(\int_0^{2\pi}\! \int_0^\pi\! \int_0^a 3\rho^2\cdot \rho^2\sin\varphi\, d\rho\, d\varphi\, d\theta = 3\cdot 2\pi\cdot 2\cdot \tfrac{a^5}{5} = \tfrac{12\pi a^5}{5}\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-vc-stokes">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>비누막을 부풀려도 회전의 플럭스는 그대로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="vc-cv-stokes"></canvas><span class="hint">끌어서 돌리기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>막의 높이 k (꼭대기 z) <output id="vc-st-k-out"></output></span><input type="range" id="vc-st-k" min="-1.6" max="2.4" step="0.02" value="1"></label>
+          <label class="ctrl"><span>벡터장 F</span><select id="vc-st-f">
+            <option value="a">(−y + z, x, xy) (예제 16.10)</option>
+            <option value="b">(z², x, y³)</option>
+            <option value="c">(−y³, x³, 0)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="vc-st-curl" checked> 회전 벡터 ∇×F 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∮<sub>C</sub> F·dr (경계 원)</span><span class="v" id="vc-st-line">—</span></div>
+        <div class="stat"><span class="k">∬<sub>S</sub> (∇×F)·n dS</span><span class="v" id="vc-st-surf">—</span></div>
+        <div class="stat"><span class="k">막의 넓이</span><span class="v" id="vc-st-area">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k = 0(평평한 원판)에서 k = 1(반구), k = 2.4(거의 공)까지 부풀리는 동안 막의 넓이는 여섯 배 넘게 늘지만 회전의 플럭스는 2π ≈ 6.283 그대로입니다. ② k를 음수로 내려 막을 아래로 처지게 해도 같습니다. 법선은 경계 원의 방향과 오른손 법칙으로 맞춥니다. ③ 장을 바꾸면 값은 π, 3π/2로 바뀌지만 여전히 모든 막에서 같습니다. 모델: 막은 경계 원 x² + y² = 1, z = 0을 지나는 구면 조각, 면적분은 40×80 칸 중점 합입니다. 색은 (∇×F)·n입니다.</div>
+    </div>
+
+    <p>지금까지의 정리를 한 표에 놓으면 하나의 원리가 보입니다. <b>도형의 경계에서 함수를 적분한 것 = 도형 안에서 그 함수의 '도함수'를 적분한 것.</b></p>
+    <div class="table-wrap"><table class="vc-tbl">
+      <thead><tr><th>정리</th><th>도형 (차원)</th><th>경계</th><th>등식</th></tr></thead>
+      <tbody>
+        <tr><td>미적분의 기본 정리 (8장)</td><td>구간 [a, b] (1)</td><td>두 점 a, b</td><td>\(\int_a^b F'\, dx = F(b) - F(a)\)</td></tr>
+        <tr><td>선적분의 기본 정리</td><td>곡선 C (1)</td><td>두 점 A, B</td><td>\(\int_C \nabla f\cdot d\mathbf r = f(B) - f(A)\)</td></tr>
+        <tr><td>그린 정리</td><td>평면 영역 D (2)</td><td>닫힌 곡선</td><td>\(\iint_D (Q_x - P_y)\, dA = \oint_C \mathbf F\cdot d\mathbf r\)</td></tr>
+        <tr><td>스토크스 정리</td><td>곡면 S (2)</td><td>닫힌 곡선</td><td>\(\iint_S (\nabla\times\mathbf F)\cdot \mathbf n\, dS = \oint_C \mathbf F\cdot d\mathbf r\)</td></tr>
+        <tr><td>발산 정리</td><td>입체 E (3)</td><td>닫힌 곡면</td><td>\(\iiint_E \nabla\cdot \mathbf F\, dV = \oiint_S \mathbf F\cdot \mathbf n\, dS\)</td></tr>
+      </tbody></table></div>
+    <p>경계의 경계는 비어 있습니다. 곡면의 경계인 닫힌 곡선은 끝점이 없고, 입체의 경계인 닫힌 곡면은 테두리가 없습니다. 이것이 정리 16.9의 두 항등식(\(\nabla\times\nabla = 0\), \(\nabla\cdot \nabla\times = 0\))과 짝을 이룹니다. 이 통일된 그림은 미분 형식과 일반화된 스토크스 정리 \(\int_M d\omega = \int_{\partial M}\omega\)로 정리되는데, 대학원 미분기하에서 만납니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="maxwell">
+    <h2>맥스웰 방정식으로 마무리</h2>
+    <div class="problem"><strong>네 줄의 식이 빛을 설명한다</strong>
+      <p>전기장 \(\mathbf E\)와 자기장 \(\mathbf B\)는 벡터장입니다. 전하 밀도 \(\rho\), 전류 밀도 \(\mathbf J\)가 주어지면 두 장은 어떤 법칙을 따를까요? 이 장의 발산·회전·두 정리가 그 법칙의 언어입니다.</p></div>
+    <div class="table-wrap"><table class="vc-tbl">
+      <thead><tr><th>법칙</th><th>미분 꼴</th><th>적분 꼴</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>가우스 법칙</td><td>\(\nabla\cdot \mathbf E = \rho/\varepsilon_0\)</td><td>\(\oiint_S \mathbf E\cdot \mathbf n\, dS = Q_{\text{안}}/\varepsilon_0\)</td><td>전기장의 샘은 전하다</td></tr>
+        <tr><td>자기 가우스 법칙</td><td>\(\nabla\cdot \mathbf B = 0\)</td><td>\(\oiint_S \mathbf B\cdot \mathbf n\, dS = 0\)</td><td>자기 홀극은 없다</td></tr>
+        <tr><td>패러데이 법칙</td><td>\(\nabla\times\mathbf E = -\partial\mathbf B/\partial t\)</td><td>\(\oint_C \mathbf E\cdot d\mathbf r = -\tfrac{d}{dt}\iint_S \mathbf B\cdot \mathbf n\, dS\)</td><td>변하는 자기장이 전기장을 감아 돌게 한다 (발전기, 변압기)</td></tr>
+        <tr><td>앙페르–맥스웰 법칙</td><td>\(\nabla\times\mathbf B = \mu_0\mathbf J + \mu_0\varepsilon_0\, \partial\mathbf E/\partial t\)</td><td>\(\oint_C \mathbf B\cdot d\mathbf r = \mu_0 I + \mu_0\varepsilon_0\tfrac{d}{dt}\iint_S \mathbf E\cdot \mathbf n\, dS\)</td><td>전류와 변하는 전기장이 자기장을 감아 돌게 한다</td></tr>
+      </tbody></table></div>
+    <p>미분 꼴과 적분 꼴은 발산 정리와 스토크스 정리로 서로 오갑니다. 예를 들어 가우스 법칙의 미분 꼴을 입체 \(E\)에서 적분하고 발산 정리를 쓰면 \(\oiint \mathbf E\cdot \mathbf n\, dS = \iiint \rho/\varepsilon_0\, dV = Q_{\text{안}}/\varepsilon_0\)입니다. 점전하 \(q\)를 감싼 구라면 대칭으로 \(|\mathbf E|\cdot 4\pi r^2 = q/\varepsilon_0\), 즉 쿨롱 법칙 \(|\mathbf E| = \tfrac{q}{4\pi\varepsilon_0 r^2}\)이 나옵니다.</p>
+    <p>맥스웰이 더한 항은 \(\mu_0\varepsilon_0\, \partial\mathbf E/\partial t\)입니다. 이 항이 없으면 \(\nabla\cdot (\nabla\times\mathbf B) = 0\)(정리 16.9)에서 \(\nabla\cdot \mathbf J = 0\)이 강요되어, 축전기를 충전하듯 전하가 한곳에 쌓이는 상황과 모순됩니다. 이 항을 넣고 전하와 전류가 없는 공간에서 패러데이 법칙의 회전을 한 번 더 취하면, 항등식 \(\nabla\times(\nabla\times\mathbf E) = \nabla(\nabla\cdot \mathbf E) - \nabla^2\mathbf E\)와 \(\nabla\cdot \mathbf E = 0\)에서</p>
+    <div class="formula">$$\nabla^2\mathbf E = \mu_0\varepsilon_0\,\frac{\partial^2\mathbf E}{\partial t^2}, \qquad c = \frac{1}{\sqrt{\mu_0\varepsilon_0}} \approx \frac{1}{\sqrt{(1.2566\times 10^{-6})(8.854\times 10^{-12})}} \approx 2.998\times 10^{8}\ \text{m/s}.$$
+      <div class="where">파동 방정식이고, 전파 속도는 전기·자기 실험에서 잰 두 상수만으로 정해진다. 그 값이 측정된 빛의 속력과 같았다.</div></div>
+    <p>다리를 놓을 때 응력의 발산이 하중과 균형을 이루고, 비압축성 유체에서 \(\nabla\cdot \mathbf u = 0\)이며, 열의 흐름 \(-k\nabla T\)의 발산이 온도 변화를 만듭니다. 벡터 미적분은 전자기학만의 언어가 아니라 연속체를 다루는 모든 공학의 언어입니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="callout"><strong>연속 방정식: 질량은 어디로도 사라지지 않는다</strong> 밀도 \(\rho\), 속도 \(\mathbf u\)인 유체가 고정된 영역 \(E\) 안에 가진 질량의 변화율은 경계로 들어오는 유량과 같습니다: \(\tfrac{d}{dt}\iiint_E\rho\, dV = -\oiint_S \rho\mathbf u\cdot \mathbf n\, dS\). 발산 정리로 우변을 부피 적분으로 바꾸고, 영역 \(E\)를 아무렇게나 잡아도 성립하므로 피적분 함수끼리 같아야 합니다: \(\partial_t\rho + \nabla\cdot (\rho\mathbf u) = 0\). 같은 논리로 열 방정식, 반도체의 전하 연속 방정식, 교통 흐름 모형이 나옵니다. "적분 꼴의 보존 법칙 → 발산 정리 → 미분 꼴의 편미분방정식"이 공학 모델링의 기본 순서입니다.</div>
+    <div class="uses">
+      <a href="multiple.html"><small>15장 · 중적분</small>오른쪽 변의 계산<br><span>그린·발산 정리가 바꿔 놓은 이중·삼중 적분은 극좌표·구면 좌표로 푼다.</span></a>
+      <a href="gradient.html"><small>14장 · 기울기 벡터</small>그래디언트 장<br><span>보존장은 그래디언트 장이고, 등고선(등퍼텐셜선)에 수직이다.</span></a>
+      <a href="https://science.euiyun.com/fluid-mechanics/"><small>유체역학</small>연속 방정식과 와도<br><span>∇·u = 0인 비압축성 흐름, 와도 ∇×u, 순환과 양력.</span></a>
+      <a href="https://science.euiyun.com/general-physics/"><small>일반물리</small>가우스 법칙과 패러데이 법칙<br><span>대칭인 전하 분포의 전기장, 유도 기전력과 발전기.</span></a>
+      <a href="https://semi.euiyun.com/device/"><small>DEVICEBOOK</small>푸아송 방정식과 전류 연속<br><span>∇·(εE) = ρ로 pn 접합의 전위를 풀고, ∇·J = −∂ρ/∂t로 전하를 보존한다.</span></a>
+      <a href="https://semi.euiyun.com/tcad/"><small>TCADBOOK</small>유한 체적법<br><span>격자 칸마다 발산 정리를 써서 경계 플럭스의 합으로 방정식을 이산화한다.</span></a>
+      <a href="../../linear/chapters/determinants.html"><small>LINEARBOOK 10장</small>외적과 넓이<br><span>|r_u × r_v|와 야코비안은 모두 행렬식으로 잰 넓이 배율이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>벡터장은 점마다 벡터를 붙인 함수이고, 흐름선은 \(\mathbf r' = \mathbf F(\mathbf r)\)의 해다.</li>
+      <li>선적분: \(\int_C f\, ds = \int f|\mathbf r'|\, dt\), 일 \(\int_C \mathbf F\cdot d\mathbf r = \int \mathbf F\cdot \mathbf r'\, dt\). 매개변수에 무관하고, 벡터 선적분은 방향을 뒤집으면 부호가 바뀐다.</li>
+      <li>\(\mathbf F = \nabla f\)이면 \(\int_C\mathbf F\cdot d\mathbf r = f(B) - f(A)\). 퍼텐셜 존재 ⇔ 경로 독립 ⇔ 닫힌 경로 0. 단순 연결 영역에서는 \(Q_x = P_y\)(3차원은 \(\nabla\times\mathbf F = \mathbf 0\))로 판정하고, 구멍이 있으면 판정이 깨질 수 있다.</li>
+      <li>그린 정리 \(\oint_C P\, dx + Q\, dy = \iint_D (Q_x - P_y)\, dA\). 넓이 \(= \tfrac12\oint(x\, dy - y\, dx)\)는 플라니미터와 신발끈 공식의 원리다.</li>
+      <li>발산 \(\nabla\cdot \mathbf F\)는 단위 부피당 유출량, 회전 \(\nabla\times\mathbf F\)는 작은 바람개비의 회전축과 각속도의 2배. \(\nabla\times\nabla f = \mathbf 0\), \(\nabla\cdot \nabla\times\mathbf F = 0\).</li>
+      <li>면적분은 \(dS = |\mathbf r_u\times\mathbf r_v|\, du\, dv\), 플럭스는 \(\iint \mathbf F\cdot (\mathbf r_u\times\mathbf r_v)\, du\, dv\). 향을 바꾸면 부호가 바뀐다.</li>
+      <li>스토크스 \(\oint_C\mathbf F\cdot d\mathbf r = \iint_S(\nabla\times\mathbf F)\cdot \mathbf n\, dS\), 발산 정리 \(\oiint_S\mathbf F\cdot \mathbf n\, dS = \iiint_E\nabla\cdot \mathbf F\, dV\). 모두 "경계의 적분 = 내부의 도함수의 적분"이며, 맥스웰 방정식의 미분 꼴과 적분 꼴을 잇는다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\mathbf F = (xy,\ yz,\ zx)\)의 점 \((1, 2, 3)\)에서 발산은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">3</button>
+        <button class="opt" data-correct>6</button>
+        <button class="opt">11</button>
+      </div><div class="quiz-exp">\(\nabla\cdot \mathbf F = \partial_x(xy) + \partial_y(yz) + \partial_z(zx) = y + z + x\). \((1, 2, 3)\)에서 \(2 + 3 + 1 = 6\). 회전은 \((-y, -z, -x)\)로 벡터다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\mathbf F = \nabla(x^2y)\)가 \((0, 0)\)에서 \((2, 3)\)까지 구불구불한 경로를 따라 하는 일은?</p><div class="opts">
+        <button class="opt">경로를 알아야 계산할 수 있다</button>
+        <button class="opt">6</button>
+        <button class="opt" data-correct>12</button>
+        <button class="opt">0</button>
+      </div><div class="quiz-exp">선적분의 기본 정리로 \(f(2, 3) - f(0, 0) = 4\cdot 3 - 0 = 12\). 그래디언트 장은 경로와 무관하다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 점 소용돌이 \(\mathbf F = (-y, x)/(x^2 + y^2)\)는 원점 밖에서 \(Q_x = P_y\)인데 단위원을 한 바퀴 돈 순환이 \(2\pi\)다. 그 이유는?</p><div class="opts">
+        <button class="opt">계산 실수다. 순환은 0이어야 한다</button>
+        <button class="opt" data-correct>정의역(원점이 빠진 평면)이 단순 연결이 아니라 판정 정리를 쓸 수 없다</button>
+        <button class="opt">\(\mathbf F\)가 연속이 아닌 점이 단위원 위에 있다</button>
+        <button class="opt">순환은 방향을 바꾸면 0이 된다</button>
+      </div><div class="quiz-exp">\(Q_x = P_y\)는 단순 연결 영역에서만 보존장을 보장한다. 단위원은 원점이라는 구멍을 감싸므로 영역 안에서 한 점으로 줄일 수 없고, 그린 정리를 쓰려 해도 원판 안에 특이점이 있다. 방향을 바꾸면 \(-2\pi\)다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 반지름 2인 원을 반시계로 한 바퀴 도는 \(\oint_C x\, dy\)의 값은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">\(2\pi\)</button>
+        <button class="opt" data-correct>\(4\pi\)</button>
+        <button class="opt">\(8\pi\)</button>
+      </div><div class="quiz-exp">그린 정리에서 \(P = 0\), \(Q = x\)이면 \(Q_x - P_y = 1\)이라 값은 넓이 \(\pi\cdot 2^2 = 4\pi\). 직접: \(\int_0^{2\pi} 2\cos t\cdot 2\cos t\, dt = 4\pi\).</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\mathbf F = (x, y, z)\)가 단위 정육면체 \([0, 1]^3\)의 겉면을 바깥으로 지나가는 플럭스는?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt">1</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">6</button>
+      </div><div class="quiz-exp">발산 정리: \(\nabla\cdot \mathbf F = 3\), \(\iiint 3\, dV = 3\). 직접 확인해도 \(x = 1\), \(y = 1\), \(z = 1\)인 세 면에서 각각 1, 원점 쪽 세 면에서는 법선 성분이 0이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 다음 중 모든 \(C^2\) 함수와 벡터장에 대해 <b>항상</b> 참인 것은?</p><div class="opts">
+        <button class="opt">\(\nabla\cdot (\nabla f) = 0\)</button>
+        <button class="opt" data-correct>\(\nabla\cdot (\nabla\times\mathbf F) = 0\)</button>
+        <button class="opt">\(\nabla\times(\nabla\times\mathbf F) = \mathbf 0\)</button>
+        <button class="opt">\(\nabla(\nabla\cdot \mathbf F) = \mathbf 0\)</button>
+      </div><div class="quiz-exp">회전의 발산은 혼합 편도함수가 상쇄되어 항상 0이다(그래디언트의 회전도 항상 0). \(\nabla\cdot \nabla f = \nabla^2 f\)는 라플라시안으로, 예를 들어 \(f = x^2\)이면 2다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(\mathbf F = (y, -x)\)의 단위원 반시계 순환과 회전은?</p><div class="opts">
+        <button class="opt">순환 \(2\pi\), 회전 2</button>
+        <button class="opt" data-correct>순환 \(-2\pi\), 회전 \(-2\)</button>
+        <button class="opt">순환 0, 회전 0</button>
+        <button class="opt">순환 \(-\pi\), 회전 \(-1\)</button>
+      </div><div class="quiz-exp">\(Q_x - P_y = -1 - 1 = -2\), 그린 정리로 순환 \(= -2\cdot \pi = -2\pi\). 시계 방향으로 도는 장이라 반시계 경로에서 계속 거슬러 간다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 닫힌 곡면을 지나는 자기장의 플럭스가 언제나 0이라는 맥스웰 방정식의 뜻은?</p><div class="opts">
+        <button class="opt">자기장은 언제나 0이다</button>
+        <button class="opt">자기장은 보존장이다</button>
+        <button class="opt" data-correct>자기장에는 샘이 없다 (자기 홀극이 없다), 즉 ∇·B = 0</button>
+        <button class="opt">자기장은 회전이 없다</button>
+      </div><div class="quiz-exp">발산 정리로 \(\oiint\mathbf B\cdot \mathbf n\, dS = \iiint\nabla\cdot \mathbf B\, dV\)가 모든 영역에서 0이면 \(\nabla\cdot \mathbf B = 0\). 자기력선은 시작점도 끝점도 없이 닫힌다. 회전은 전류가 있으면 0이 아니다(앙페르 법칙).</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const VC = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  font(s) { return `${s}px ${getComputedStyle(document.body).getPropertyValue("--font")}`; },
+  alpha(c, a) {
+    c = String(c).trim();
+    if (c[0] === "#") { let h = c.slice(1); if (h.length === 3) h = h.split("").map((q) => q + q).join(""); const n = parseInt(h.slice(0, 6), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+    if (c.startsWith("rgb")) { const p = c.slice(c.indexOf("(") + 1, c.indexOf(")")).split(",").slice(0, 3).join(","); return `rgba(${p},${a})`; }
+    return c;
+  },
+  rgba(rgb, a) { return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`; },
+  /** 2차원 벡터장: f, div, curl, 퍼텐셜(있으면) */
+  F: {
+    rot: { s: "(−y, x)", f: (x, y) => [-y, x], div: () => 0, curl: () => 2 },
+    source: { s: "(x, y)", f: (x, y) => [x, y], div: () => 2, curl: () => 0, pot: (x, y) => (x * x + y * y) / 2 },
+    saddle: { s: "(x, −y)", f: (x, y) => [x, -y], div: () => 0, curl: () => 0, pot: (x, y) => (x * x - y * y) / 2 },
+    shear: { s: "(y, 0)", f: (x, y) => [y, 0], div: () => 0, curl: () => -1 },
+    spiral: { s: "(0.5x − y, x + 0.5y)", f: (x, y) => [0.5 * x - y, x + 0.5 * y], div: () => 1, curl: () => 2 },
+    ex: { s: "(x², xy)", f: (x, y) => [x * x, x * y], div: (x) => 3 * x, curl: (x, y) => y },
+    xy: { s: "(xy, x²)", f: (x, y) => [x * y, x * x], div: (x, y) => y, curl: (x) => x },
+    cubic: { s: "(−x²y, xy²)", f: (x, y) => [-x * x * y, x * y * y], div: () => 0, curl: (x, y) => x * x + y * y },
+    wave: { s: "(sin y, sin x)", f: (x, y) => [Math.sin(y), Math.sin(x)], div: () => 0, curl: (x, y) => Math.cos(x) - Math.cos(y) },
+    grad: { s: "∇(1.5 sin x cos y + 0.2x)", f: (x, y) => [1.5 * Math.cos(x) * Math.cos(y) + 0.2, -1.5 * Math.sin(x) * Math.sin(y)], div: (x, y) => -3 * Math.sin(x) * Math.cos(y), curl: () => 0, pot: (x, y) => 1.5 * Math.sin(x) * Math.cos(y) + 0.2 * x },
+    vortex: { s: "(−y, x)/(x² + y²)", f: (x, y) => { const r = x * x + y * y || 1e-12; return [-y / r, x / r]; }, div: () => 0, curl: () => 0, sing: true },
+    grav: { s: "−r/|r|³", f: (x, y) => { const r = Math.hypot(x, y) || 1e-9; return [-x / r ** 3, -y / r ** 3]; }, div: () => 0, curl: () => 0, sing: true },
+  },
+  arrows(P, F, step = 0.5, o = {}) {
+    const C = P.P, ref = o.ref || 1.5;
+    for (let x = Math.ceil(P.x0 / step) * step; x <= P.x1; x += step) for (let y = Math.ceil(P.y0 / step) * step; y <= P.y1; y += step) {
+      if (F.sing && Math.hypot(x, y) < 0.3) continue;
+      const v = F.f(x, y), m = Math.hypot(v[0], v[1]); if (!isFinite(m) || m < 1e-9) continue;
+      const L = step * 0.82 * Math.tanh(m / ref) + step * 0.08;
+      P.arrow(x - (v[0] / m) * L / 2, y - (v[1] / m) * L / 2, x + (v[0] / m) * L / 2, y + (v[1] / m) * L / 2, { color: o.color || C.dim, width: 1.3, head: 6, alpha: o.alpha != null ? o.alpha : 0.6 });
+    }
+  },
+  /** 경로 pts를 따라 ∫F·dr (중점) */
+  work(F, pts) { let W = 0; for (let i = 0; i + 1 < pts.length; i++) { const a = pts[i], b = pts[i + 1], v = F.f((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); W += v[0] * (b[0] - a[0]) + v[1] * (b[1] - a[1]); } return W; },
+  bez(P, t) { const u = 1 - t; return [0, 1].map((k) => u * u * u * P[0][k] + 3 * u * u * t * P[1][k] + 3 * u * t * t * P[2][k] + t * t * t * P[3][k]); },
+  pip(pt, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < ((b[0] - a[0]) * (pt[1] - a[1])) / (b[1] - a[1]) + a[0]) c = !c; } return c; },
+  signedArea(poly) { let s = 0; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; },
+  view(yaw, pitch, s, cx, cy) {
+    const ca = Math.cos(yaw), sa = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    return (x, y, z) => { const xr = x * ca - y * sa, yr = x * sa + y * ca; return [cx + s * xr, cy - s * (z * cp + yr * sp), yr * cp - z * sp]; };
+  },
+  orbit(canvas, st, redraw) {
+    canvas.classList.add("drag");
+    let d = null;
+    canvas.addEventListener("pointerdown", (e) => { d = { x: e.clientX, y: e.clientY, yaw: st.yaw, pitch: st.pitch }; canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging"); e.preventDefault(); });
+    canvas.addEventListener("pointermove", (e) => { if (!d) return; st.yaw = d.yaw - (e.clientX - d.x) * 0.01; st.pitch = MB.clamp(d.pitch + (e.clientY - d.y) * 0.008, -1.2, 1.45); redraw(); });
+    const up = () => { d = null; canvas.classList.remove("dragging"); };
+    canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
+  },
+  poly(ctx, pts, fill, stroke, lw = 1) {
+    ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  },
+  line(ctx, a, b, color, lw = 1, dash) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); },
+  arrow2(ctx, a, b, color, lw = 1.6, hd = 6) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 1) return;
+    const ux = dx / L, uy = dy / L, h = Math.min(hd, L * 0.5);
+    VC.line(ctx, a, [b[0] - ux * h * 0.7, b[1] - uy * h * 0.7], color, lw);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - ux * h - uy * h * 0.45, b[1] - uy * h + ux * h * 0.45); ctx.lineTo(b[0] - ux * h + uy * h * 0.45, b[1] - uy * h - ux * h * 0.45); ctx.closePath(); ctx.fill();
+  },
+  text(ctx, s, p, color, size = 12, align = "center") { ctx.save(); ctx.fillStyle = color; ctx.font = VC.font(size); ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(s, p[0], p[1]); ctx.restore(); },
+  axes3(ctx, P, L, C) { [[L, 0, 0, "x"], [0, L, 0, "y"], [0, 0, L, "z"]].forEach(([x, y, z, l]) => { VC.line(ctx, P(0, 0, 0), P(x, y, z), C.axis, 1.2); VC.text(ctx, l, P(x * 1.08, y * 1.08, z * 1.08), C.dim, 13); }); },
+  /** 매개 곡면 r(u,v)의 (수치) 법선 r_u × r_v */
+  normal(r, u, v, sg = 1) {
+    const h = 1e-4, a = r(u + h, v), b = r(u - h, v), c = r(u, v + h), d = r(u, v - h);
+    const ru = [0, 1, 2].map((k) => (a[k] - b[k]) / (2 * h)), rv = [0, 1, 2].map((k) => (c[k] - d[k]) / (2 * h));
+    return [sg * (ru[1] * rv[2] - ru[2] * rv[1]), sg * (ru[2] * rv[0] - ru[0] * rv[2]), sg * (ru[0] * rv[1] - ru[1] * rv[0])];
+  },
+};
+
+/* ================================================================ 1. 벡터장과 입자 */
+(function () {
+  let F = VC.F.rot, parts = [], pl = null;
+  const sel = document.getElementById("vc-fd-f");
+  const spR = MB.range("vc-fd-sp", (v) => v.toFixed(2) + "×");
+  const nR = MB.range("vc-fd-n", null);
+  const arr = MB.check("vc-fd-arr", () => pl && pl.redraw());
+  const R = MB.rng(5);
+  function spawn(p) {
+    const P = pl && pl.P; const x0 = P ? P.x0 : -3, x1 = P ? P.x1 : 3, y0 = P ? P.y0 : -2, y1 = P ? P.y1 : 2;
+    p.x = R.range(x0, x1); p.y = R.range(y0, y1); p.age = 0; p.life = R.range(2.5, 6); p.tr = [[p.x, p.y]];
+    return p;
+  }
+  function stats() {
+    MB.stat("vc-fd-s", F.s);
+    const probe = { rot: "0", source: "2", saddle: "0", shear: "0", spiral: "1", wave: "0", vortex: "0 (원점 제외)", grav: "0 (원점 제외)" }[sel.value];
+    const curl = { rot: "2", source: "0", saddle: "0", shear: "−1", spiral: "2", wave: "cos x − cos y", vortex: "0 (원점 제외)", grav: "0 (원점 제외)" }[sel.value];
+    MB.stat("vc-fd-div", probe); MB.stat("vc-fd-curl", curl);
+  }
+  pl = MB.plane("#vc-cv-field", {
+    x: [-3.2, 3.2], aspect: 0.66, maxHeight: 470, minHeight: 250, gridStep: 1,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      if (arr()) VC.arrows(P, F, 0.5);
+      ctx.save(); ctx.lineWidth = 1.8; ctx.lineCap = "round";
+      parts.forEach((p) => {
+        const a = Math.min(1, p.age * 2, (p.life - p.age) * 2);
+        if (p.tr.length < 2 || a <= 0) return;
+        ctx.strokeStyle = VC.alpha(C.accent, 0.85 * a); ctx.beginPath();
+        p.tr.forEach((q, i) => (i ? ctx.lineTo(P.X(q[0]), P.Y(q[1])) : ctx.moveTo(P.X(q[0]), P.Y(q[1])))); ctx.stroke();
+      });
+      ctx.restore();
+      if (F.sing) P.dot(0, 0, { color: C.text, r: 4 });
+    },
+  });
+  const vel = (x, y) => { const v = F.f(x, y), m = Math.hypot(v[0], v[1]); return m > 3 ? [(3 * v[0]) / m, (3 * v[1]) / m] : v; };
+  MB.loop(document.getElementById("sim-vc-field"), (dt) => {
+    const n = nR();
+    while (parts.length < n) parts.push(spawn({}));
+    if (parts.length > n) parts.length = n;
+    const P = pl.P, h = dt * spR();
+    parts.forEach((p) => {
+      const k1 = vel(p.x, p.y), k2 = vel(p.x + k1[0] * h / 2, p.y + k1[1] * h / 2);
+      p.x += k2[0] * h; p.y += k2[1] * h; p.age += dt;
+      p.tr.push([p.x, p.y]); if (p.tr.length > 12) p.tr.shift();
+      if (p.age > p.life || p.x < P.x0 - 0.2 || p.x > P.x1 + 0.2 || p.y < P.y0 - 0.2 || p.y > P.y1 + 0.2 || (F.sing && Math.hypot(p.x, p.y) < 0.12)) spawn(p);
+    });
+    pl.redraw();
+  });
+  sel.addEventListener("change", () => { F = VC.F[sel.value]; parts.forEach(spawn); stats(); pl.redraw(); });
+  stats();
+})();
+
+/* ================================================================ 2. 경로와 일 */
+(function () {
+  const INIT = [[-2.2, -1.2], [-1.2, 1.6], [1.0, -1.6], [2.2, 1.0]];
+  const pts = INIT.map((p, i) => ({ x: p[0], y: p[1], r: 8, label: ["A", "", "", "B"][i] }));
+  let F = VC.F.rot, ch = null, pl = null, cum = [];
+  const sel = document.getElementById("vc-wk-f");
+  const path = () => { const Q = pts.map((p) => [p.x, p.y]), out = []; for (let i = 0; i <= 600; i++) out.push(VC.bez(Q, i / 600)); return out; };
+  pl = MB.plane("#vc-cv-work", {
+    x: [-3.2, 3.2], aspect: 0.66, maxHeight: 440, minHeight: 240, gridStep: 1, points: pts,
+    draw(P, api) {
+      const C = P.P, ctx = P.ctx, pp = api.points;
+      VC.arrows(P, F, 0.5, { alpha: 0.45 });
+      P.line(pp[0].x, pp[0].y, pp[1].x, pp[1].y, { color: C.faint, width: 1, dash: [3, 3] });
+      P.line(pp[3].x, pp[3].y, pp[2].x, pp[2].y, { color: C.faint, width: 1, dash: [3, 3] });
+      const Q = pp.map((p) => [p.x, p.y]), ps = []; for (let i = 0; i <= 600; i++) ps.push(VC.bez(Q, i / 600));
+      cum = [[0, 0]]; let W = 0, L = 0;
+      ctx.save(); ctx.lineWidth = 4.5; ctx.lineCap = "round";
+      for (let i = 0; i < 600; i++) {
+        const a = ps[i], b = ps[i + 1], v = F.f((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), dw = v[0] * (b[0] - a[0]) + v[1] * (b[1] - a[1]);
+        W += dw; L += Math.hypot(b[0] - a[0], b[1] - a[1]); cum.push([(i + 1) / 600, W]);
+        ctx.strokeStyle = dw >= 0 ? C.ok : C.bad; ctx.beginPath(); ctx.moveTo(P.X(a[0]), P.Y(a[1])); ctx.lineTo(P.X(b[0]), P.Y(b[1])); ctx.stroke();
+      }
+      ctx.restore();
+      [0.25, 0.5, 0.75].forEach((t) => { const a = VC.bez(Q, t - 0.01), b = VC.bez(Q, t + 0.01); P.arrow(a[0], a[1], b[0] + (b[0] - a[0]) * 8, b[1] + (b[1] - a[1]) * 8, { color: C.text, width: 1.5, head: 9 }); });
+      pp[1].color = pp[2].color = C.accent2; pp[0].color = pp[3].color = C.accent;
+      MB.stat("vc-wk-W", VC.num(W, 4)); MB.stat("vc-wk-L", VC.num(L, 3));
+      MB.stat("vc-wk-ab", `(${VC.num(pp[0].x, 2)}, ${VC.num(pp[0].y, 2)}) → (${VC.num(pp[3].x, 2)}, ${VC.num(pp[3].y, 2)})`);
+      ch && ch.redraw();
+    },
+  });
+  ch = MB.canvas("#vc-cv-wcum", (ctx) => {
+    const C = MB.palette(); if (!cum.length) return;
+    const ys = cum.map((q) => q[1]), lo = Math.min(0, ...ys), hi = Math.max(0, ...ys), pad = (hi - lo) * 0.1 + 0.1;
+    MB.chart(ctx, null, { x: [0, 1], y: [lo - pad, hi + pad], xLabel: "매개변수 t", series: [{ data: cum, color: C.accent, width: 2.4 }], hlines: [{ y: 0, color: C.dim }] });
+  }, { aspect: 0.32, minHeight: 150, maxHeight: 200 });
+  ch.redraw();
+  sel.addEventListener("change", () => { F = VC.F[sel.value]; pl.redraw(); });
+  document.getElementById("vc-wk-close").addEventListener("click", () => { pts[3].x = pts[0].x; pts[3].y = pts[0].y; pl.redraw(); });
+  document.getElementById("vc-wk-rev").addEventListener("click", () => { const c = pts.map((p) => [p.x, p.y]).reverse(); pts.forEach((p, i) => { p.x = c[i][0]; p.y = c[i][1]; }); pl.redraw(); });
+  document.getElementById("vc-wk-reset").addEventListener("click", () => { pts.forEach((p, i) => { p.x = INIT[i][0]; p.y = INIT[i][1]; }); pl.redraw(); });
+})();
+
+/* ================================================================ 3. 경로 독립 */
+(function () {
+  const pts = [{ x: -2, y: -0.6, r: 8, label: "A" }, { x: 2, y: 0.8, r: 8, label: "B" }];
+  let F = VC.F.grad, pl = null;
+  const sel = document.getElementById("vc-pa-f"), msg = document.getElementById("vc-pa-msg");
+  const bR = MB.range("vc-pa-b", (v) => v.toFixed(2), () => pl && pl.redraw());
+  const potC = MB.check("vc-pa-pot", () => pl && pl.redraw());
+  function paths() {
+    const A = [pts[0].x, pts[0].y], B = [pts[1].x, pts[1].y], M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+    const d = [B[0] - A[0], B[1] - A[1]], L = Math.hypot(d[0], d[1]) || 1, n = [-d[1] / L, d[0] / L], b = bR();
+    return [b, 0, -b].map((s) => { const c = [M[0] + n[0] * s, M[1] + n[1] * s], out = []; for (let i = 0; i <= 800; i++) { const t = i / 800, u = 1 - t; out.push([u * u * A[0] + 2 * u * t * c[0] + t * t * B[0], u * u * A[1] + 2 * u * t * c[1] + t * t * B[1]]); } return out; });
+  }
+  pl = MB.plane("#vc-cv-path", {
+    x: [-3.2, 3.2], aspect: 0.66, maxHeight: 440, minHeight: 240, gridStep: 1, points: pts,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      if (F.pot && potC()) {
+        const n = 64, m = Math.round((n * (P.y1 - P.y0)) / (P.x1 - P.x0)), sx = (P.x1 - P.x0) / n, sy = (P.y1 - P.y0) / m;
+        let lo = Infinity, hi = -Infinity; const V = [];
+        for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) { const v = F.pot(P.x0 + (i + 0.5) * sx, P.y0 + (j + 0.5) * sy); V.push(v); lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        let k = 0;
+        for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) {
+          const t = Math.floor(((V[k++] - lo) / (hi - lo || 1)) * 9.999) / 9;
+          ctx.fillStyle = VC.rgba(MB.colormap(t), 0.22);
+          ctx.fillRect(P.X(P.x0 + i * sx), P.Y(P.y0 + (j + 1) * sy), sx * P.unit + 0.7, sy * P.unit + 0.7);
+        }
+      }
+      VC.arrows(P, F, 0.5, { alpha: 0.45 });
+      const ps = paths(), cols = [C.accent, C.text, C.accent2], W = ps.map((q) => VC.work(F, q));
+      ps.forEach((q, i) => P.poly(q, { close: false, color: cols[i], width: i === 1 ? 2 : 3, dash: i === 1 ? [6, 4] : [] }));
+      if (F.sing) P.dot(0, 0, { color: C.bad, r: 5, label: "특이점" });
+      MB.stat("vc-pa-w1", VC.num(W[0], 4)); MB.stat("vc-pa-w2", VC.num(W[1], 4)); MB.stat("vc-pa-w3", VC.num(W[2], 4));
+      if (F.pot) MB.stat("vc-pa-df", VC.num(F.pot(pts[1].x, pts[1].y) - F.pot(pts[0].x, pts[0].y), 4));
+      else MB.stat("vc-pa-df", sel.value === "vortex" ? "전역 퍼텐셜 없음" : "퍼텐셜 없음");
+      const spread = Math.max(...W) - Math.min(...W);
+      if (spread < 1e-3) { msg.className = "vc-msg ok"; msg.textContent = "세 경로의 일이 같습니다. 이 영역에서 경로 독립입니다."; }
+      else {
+        let extra = "";
+        if (sel.value === "vortex") {
+          const loop = ps[0].concat(ps[2].slice().reverse());
+          extra = VC.pip([0, 0], loop) ? " 위·아래 경로가 원점을 사이에 둡니다. 차이가 ±2π(≈ 6.283)입니다." : "";
+        } else if (sel.value === "rot") {
+          const loop = ps[0].concat(ps[2].slice().reverse());
+          extra = ` 두 휜 경로가 둘러싼 넓이 ${VC.num(Math.abs(VC.signedArea(loop)), 3)}의 2배입니다(회전 = 2).`;
+        }
+        msg.className = "vc-msg bad"; msg.textContent = `경로에 따라 일이 다릅니다. 위 − 아래 = ${VC.num(W[0] - W[2], 4)}.` + extra;
+      }
+    },
+  });
+  sel.addEventListener("change", () => { F = VC.F[sel.value]; if (sel.value === "vortex") { pts[0].x = -2; pts[0].y = 0.3; pts[1].x = 2; pts[1].y = 0.3; } pl.redraw(); });
+})();
+
+/* ================================================================ 4. 그린 정리 */
+(function () {
+  const HEX = Array.from({ length: 6 }, (_, i) => [1.6 * Math.cos((i * Math.PI) / 3) + 0.3, 1.25 * Math.sin((i * Math.PI) / 3) + 0.1]);
+  const SQ = [[0, 0], [0.5, 0], [1, 0], [1, 1], [0.5, 1], [0, 1]];
+  const pts = HEX.map((p) => ({ x: p[0], y: p[1], r: 8 }));
+  let F = VC.F.rot, pl = null;
+  const sel = document.getElementById("vc-gr-f"), msg = document.getElementById("vc-gr-msg");
+  const cells = MB.check("vc-gr-cells", () => pl && pl.redraw());
+  pl = MB.plane("#vc-cv-green", {
+    x: [-3, 3], aspect: 0.7, maxHeight: 460, minHeight: 250, gridStep: 1, points: pts,
+    draw(P, api) {
+      const C = P.P, ctx = P.ctx, poly = api.points.map((p) => [p.x, p.y]);
+      const sA = VC.signedArea(poly), ori = sA >= 0 ? 1 : -1;
+      const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
+      // 회전 색칠
+      let sc = 1e-9; const n = 44, cs = [];
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const x = bx0 + ((i + 0.5) * (bx1 - bx0)) / n, y = by0 + ((j + 0.5) * (by1 - by0)) / n; if (!VC.pip([x, y], poly)) continue; const c = F.curl(x, y); cs.push([x, y, c]); sc = Math.max(sc, Math.abs(c)); }
+      if (sel.value === "rot") sc = 2;
+      const cw = ((bx1 - bx0) / n) * P.unit + 0.8, chh = ((by1 - by0) / n) * P.unit + 0.8;
+      cs.forEach(([x, y, c]) => { ctx.fillStyle = VC.rgba(MB.colormap(0.5 + 0.45 * (c / sc), "diverge"), 0.55); ctx.fillRect(P.X(x) - cw / 2, P.Y(y) - chh / 2, cw, chh); });
+      VC.arrows(P, F, 0.5, { alpha: 0.4 });
+      P.poly(poly, { color: C.accent, width: 2.6 });
+      for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], d = ori * 0.12; const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; P.arrow(m[0] - ((b[0] - a[0]) / L) * d, m[1] - ((b[1] - a[1]) / L) * d, m[0] + ((b[0] - a[0]) / L) * d, m[1] + ((b[1] - a[1]) / L) * d, { color: C.accent, width: 2.5, head: 10 }); }
+      if (cells()) {
+        for (let x = Math.ceil(bx0 / 0.6) * 0.6; x <= bx1; x += 0.6) for (let y = Math.ceil(by0 / 0.6) * 0.6; y <= by1; y += 0.6) {
+          if (!VC.pip([x, y], poly)) continue;
+          const c = F.curl(x, y); if (Math.abs(c) < 0.02 * sc) continue;
+          const r = (0.1 + 0.12 * Math.sqrt(Math.abs(c) / sc)) * P.unit, s = Math.sign(c);
+          ctx.save(); ctx.strokeStyle = C.text; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), r, 0.3, 5.6); ctx.stroke();
+          const ang = s > 0 ? 5.6 : 0.3, hx = P.X(x) + r * Math.cos(ang), hy = P.Y(y) + r * Math.sin(ang), tx = -Math.sin(ang) * -s, ty = Math.cos(ang) * -s;
+          ctx.fillStyle = C.text; ctx.beginPath(); ctx.moveTo(hx + tx * 5, hy + ty * 5); ctx.lineTo(hx - ty * 3.5, hy + tx * 3.5); ctx.lineTo(hx + ty * 3.5, hy - tx * 3.5); ctx.closePath(); ctx.fill(); ctx.restore();
+        }
+      }
+      if (F.sing) P.dot(0, 0, { color: C.bad, r: 5 });
+      // 수치
+      let circ = 0;
+      for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length], seg = []; for (let k = 0; k <= 200; k++) seg.push([a[0] + ((b[0] - a[0]) * k) / 200, a[1] + ((b[1] - a[1]) * k) / 200]); circ += VC.work(F, seg); }
+      circ *= ori;
+      let dbl = 0; const N = 160, dx = (bx1 - bx0) / N, dy = (by1 - by0) / N;
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const x = bx0 + (i + 0.5) * dx, y = by0 + (j + 0.5) * dy; if (VC.pip([x, y], poly)) dbl += F.curl(x, y) * dx * dy; }
+      MB.stat("vc-gr-L", VC.num(circ, 4) + (ori < 0 ? " (반시계로 환산)" : ""));
+      MB.stat("vc-gr-A", VC.num(dbl, 4));
+      MB.stat("vc-gr-area", VC.num(Math.abs(sA), 4));
+      const inside = F.sing && VC.pip([0, 0], poly);
+      if (inside) { msg.className = "vc-msg bad"; msg.textContent = "원점(특이점)이 영역 안에 있습니다. F가 영역 전체에서 C¹이 아니라 그린 정리를 쓸 수 없고, 순환 2π가 내부 회전의 합 0과 다릅니다."; }
+      else if (Math.abs(circ - dbl) < 0.01 + 0.005 * Math.abs(dbl)) { msg.className = "vc-msg ok"; msg.textContent = "경계 순환과 내부 회전의 합이 같습니다(격자 오차 범위)."; }
+      else { msg.className = "vc-msg"; msg.textContent = "값이 어긋나면 다각형이 꼬였는지(변이 서로 교차) 확인하세요."; }
+    },
+  });
+  sel.addEventListener("change", () => { F = VC.F[sel.value]; pl.redraw(); });
+  const setP = (L) => { L.forEach((p, i) => { pts[i].x = p[0]; pts[i].y = p[1]; }); pl.redraw(); };
+  document.getElementById("vc-gr-reset").addEventListener("click", () => setP(HEX));
+  document.getElementById("vc-gr-sq").addEventListener("click", () => setP(SQ));
+})();
+
+/* ================================================================ 5. 플라니미터 */
+(function () {
+  let pts = [], closed = false, drawing = false, anim = null, exact = "—", pl = null;
+  const PRE = {
+    circ: { f: (t) => [2 * Math.cos(t), 2 * Math.sin(t)], ex: "4π ≈ 12.566" },
+    card: { f: (t) => { const r = 1.4 * (1 + Math.cos(t)); return [r * Math.cos(t) - 1.2, r * Math.sin(t)]; }, ex: "1.96 · 3π/2 ≈ 9.236" },
+    ell: { f: (t) => [2.5 * Math.cos(t), 1.5 * Math.sin(t)], ex: "3.75π ≈ 11.781" },
+  };
+  function lineArea() { let s = 0; const n = pts.length; for (let i = 0; i + 1 < n; i++) s += pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1]; if (closed && n > 2) s += pts[n - 1][0] * pts[0][1] - pts[0][0] * pts[n - 1][1]; return s / 2; }
+  function gridArea() {
+    if (!closed || pts.length < 3) return null;
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), h = 0.05; let c = 0;
+    for (let x = Math.min(...xs) + h / 2; x < Math.max(...xs); x += h) for (let y = Math.min(...ys) + h / 2; y < Math.max(...ys); y += h) if (VC.pip([x, y], pts)) c++;
+    return c * h * h;
+  }
+  pl = MB.plane("#vc-cv-plan", {
+    x: [-3.4, 3.4], aspect: 0.7, maxHeight: 440, minHeight: 250, gridStep: 1,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      if (pts.length > 1) {
+        ctx.save(); ctx.fillStyle = VC.alpha(C.accent2, 0.12); ctx.beginPath(); ctx.moveTo(P.X(0), P.Y(0)); pts.forEach((p) => ctx.lineTo(P.X(p[0]), P.Y(p[1]))); ctx.closePath(); ctx.fill(); ctx.restore();
+        if (closed) P.poly(pts, { fill: VC.alpha(C.accent, 0.18), color: C.accent, width: 2.5 });
+        else P.poly(pts, { close: false, color: C.accent, width: 2.5 });
+        const last = pts[pts.length - 1];
+        P.line(0, 0, last[0], last[1], { color: C.accent2, width: 1.5, dash: [5, 4] });
+        P.dot(last[0], last[1], { color: C.accent2, r: 5 });
+      }
+      P.dot(0, 0, { color: C.text, r: 3 });
+      const A = lineArea(), G = gridArea();
+      MB.stat("vc-pl-line", VC.num(A, 3));
+      MB.stat("vc-pl-grid", G == null ? "곡선을 닫으면 계산" : VC.num(G, 3));
+      MB.stat("vc-pl-dir", pts.length < 3 ? "—" : A > 0 ? "반시계 (+)" : "시계 (−)");
+      MB.stat("vc-pl-ex", exact);
+    },
+    onPointer(x, y, type) {
+      if (type === "down") { anim = null; pts = [[x, y]]; closed = false; drawing = true; exact = "—"; }
+      else if (type === "move" && drawing) { const l = pts[pts.length - 1]; if (Math.hypot(x - l[0], y - l[1]) > 0.03) pts.push([x, y]); }
+      else if (type === "up" && drawing) { drawing = false; closed = pts.length > 2; }
+      pl.redraw();
+    },
+  });
+  MB.loop(document.getElementById("sim-vc-planimeter"), (dt) => {
+    if (!anim) return;
+    const t1 = Math.min(2 * Math.PI, anim.t + dt * (2 * Math.PI / 3.5));
+    for (let t = anim.t + 0.02; t <= t1; t += 0.02) pts.push(anim.f(t));
+    anim.t = t1; if (t1 >= 2 * Math.PI) { closed = true; anim = null; }
+    pl.redraw();
+  });
+  ["circ", "card", "ell"].forEach((k) => document.getElementById("vc-pl-" + k).addEventListener("click", () => { pts = [PRE[k].f(0)]; closed = false; exact = PRE[k].ex; anim = { f: PRE[k].f, t: 0 }; pl.redraw(); }));
+  document.getElementById("vc-pl-clear").addEventListener("click", () => { pts = []; closed = false; anim = null; exact = "—"; pl.redraw(); });
+})();
+
+/* ================================================================ 6. 발산·회전 탐침 */
+(function () {
+  const pts = [{ x: 0.8, y: 0.6, r: 9, label: "탐침" }];
+  let F = VC.F.shear, ang = 0, pl = null;
+  const sel = document.getElementById("vc-pr-f");
+  const eR = MB.range("vc-pr-e", (v) => v.toFixed(2), () => pl && pl.redraw());
+  function ints(p, e) {
+    let c = 0, f = 0; const N = 240;
+    for (let i = 0; i < N; i++) { const t = ((i + 0.5) * 2 * Math.PI) / N, n = [Math.cos(t), Math.sin(t)], v = F.f(p[0] + e * n[0], p[1] + e * n[1]); c += (-v[0] * n[1] + v[1] * n[0]) * e * (2 * Math.PI / N); f += (v[0] * n[0] + v[1] * n[1]) * e * (2 * Math.PI / N); }
+    return [c / (Math.PI * e * e), f / (Math.PI * e * e)];
+  }
+  pl = MB.plane("#vc-cv-probe", {
+    x: [-3, 3], aspect: 0.66, maxHeight: 440, minHeight: 240, gridStep: 1, points: pts,
+    draw(P, api) {
+      const C = P.P, ctx = P.ctx, p = [api.points[0].x, api.points[0].y], e = eR();
+      api.points[0].color = C.accent2;
+      VC.arrows(P, F, 0.5, { alpha: 0.5 });
+      P.circle(p[0], p[1], e, { color: C.accent2, width: 2, fill: VC.alpha(C.accent2, 0.08) });
+      for (let i = 0; i < 24; i++) {
+        const t = (i * 2 * Math.PI) / 24, n = [Math.cos(t), Math.sin(t)], b = [p[0] + e * n[0], p[1] + e * n[1]], v = F.f(b[0], b[1]), fn = v[0] * n[0] + v[1] * n[1];
+        if (!isFinite(fn)) continue;
+        const L = 0.35 * Math.tanh(fn / 1.5);
+        P.line(b[0], b[1], b[0] + n[0] * L, b[1] + n[1] * L, { color: fn >= 0 ? C.ok : C.bad, width: 3 });
+      }
+      const R = e * 0.8 * P.unit;
+      ctx.save(); ctx.translate(P.X(p[0]), P.Y(p[1])); ctx.rotate(-ang); ctx.strokeStyle = C.text; ctx.fillStyle = C.accent; ctx.lineWidth = 2;
+      for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R, 0); ctx.stroke(); ctx.fillRect(R * 0.55, -R * 0.08, R * 0.45, R * 0.28); }
+      ctx.restore();
+      if (F.sing) P.dot(0, 0, { color: C.bad, r: 4 });
+      const [ci, fl] = ints(p, e), atO = F.sing && Math.hypot(p[0], p[1]) < 1e-6;
+      MB.stat("vc-pr-circ", VC.num(ci, 4)); MB.stat("vc-pr-flux", VC.num(fl, 4));
+      MB.stat("vc-pr-curl", atO ? "정의 안 됨" : VC.num(F.curl(p[0], p[1]), 4));
+      MB.stat("vc-pr-div", atO ? "정의 안 됨" : VC.num(F.div(p[0], p[1]), 4));
+    },
+  });
+  MB.loop(document.getElementById("sim-vc-probe"), (dt) => {
+    const p = pts[0]; let w = F.curl(p.x, p.y) / 2;
+    if (F.sing && Math.hypot(p.x, p.y) < eR()) w = 0;
+    ang += MB.clamp(w, -4, 4) * dt; pl.redraw();
+  });
+  sel.addEventListener("change", () => { F = VC.F[sel.value]; pl.redraw(); });
+})();
+
+/* ================================================================ 7. 플럭스 (3D) */
+(function () {
+  const a = 1.2, PI = Math.PI;
+  const SURF = {
+    sphere: { r: (u, v) => [a * Math.sin(u) * Math.cos(v), a * Math.sin(u) * Math.sin(v), a * Math.cos(u)], U: [0, PI], V: [0, 2 * PI], sg: 1, closed: true },
+    hemi: { r: (u, v) => [a * Math.sin(u) * Math.cos(v), a * Math.sin(u) * Math.sin(v), a * Math.cos(u)], U: [0, PI / 2], V: [0, 2 * PI], sg: 1 },
+    cyl: { r: (u, v) => [Math.cos(v), Math.sin(v), u], U: [-1, 1], V: [0, 2 * PI], sg: -1 },
+    disk: { r: (u, v) => [u * Math.cos(v), u * Math.sin(v), 0], U: [0, a], V: [0, 2 * PI], sg: 1 },
+  };
+  const FLD = {
+    radial: { f: (x, y, z) => [x, y, z], vol: 4 * PI * a ** 3, vs: "4π(1.2)³" },
+    up: { f: () => [0, 0, 1], vol: 0, vs: "0" },
+    rot: { f: (x, y) => [-y, x, 0], vol: 0, vs: "0" },
+    xy: { f: (x, y) => [x, y, 0], vol: (8 * PI * a ** 3) / 3, vs: "8π(1.2)³/3" },
+    cube: { f: (x, y, z) => [x ** 3, y ** 3, z ** 3], vol: (12 * PI * a ** 5) / 5, vs: "12π(1.2)⁵/5" },
+  };
+  const st = { yaw: -0.55, pitch: 0.38 };
+  let cv = null;
+  const rd = () => cv && cv.redraw();
+  const sS = document.getElementById("vc-fl-s"), sF = document.getElementById("vc-fl-f");
+  const arr = MB.check("vc-fl-arr", rd);
+  let cache = null;
+  function integrate(S, F) {
+    const Nu = 48, Nv = 96, du = (S.U[1] - S.U[0]) / Nu, dv = (S.V[1] - S.V[0]) / Nv; let fl = 0, ar = 0;
+    for (let i = 0; i < Nu; i++) for (let j = 0; j < Nv; j++) {
+      const u = S.U[0] + (i + 0.5) * du, v = S.V[0] + (j + 0.5) * dv, p = S.r(u, v), N = VC.normal(S.r, u, v, S.sg), f = F.f(...p);
+      fl += (f[0] * N[0] + f[1] * N[1] + f[2] * N[2]) * du * dv; ar += Math.hypot(...N) * du * dv;
+    }
+    return [fl, ar];
+  }
+  cv = MB.canvas("#vc-cv-flux", (ctx, w, h) => {
+    const C = MB.palette(), S = SURF[sS.value], F = FLD[sF.value];
+    const P = VC.view(st.yaw, st.pitch, Math.min(w, h) / 4.6, w / 2, h / 2);
+    VC.axes3(ctx, P, 2, C);
+    const nu = 14, nv = 28, du = (S.U[1] - S.U[0]) / nu, dv = (S.V[1] - S.V[0]) / nv, items = [];
+    let mx = 1e-9;
+    for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+      const u = S.U[0] + (i + 0.5) * du, v = S.V[0] + (j + 0.5) * dv, c = S.r(u, v), N = VC.normal(S.r, u, v, S.sg), m = Math.hypot(...N) || 1, f = F.f(...c);
+      const val = (f[0] * N[0] + f[1] * N[1] + f[2] * N[2]) / m; mx = Math.max(mx, Math.abs(val));
+      const cs = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a2, b2]) => P(...S.r(S.U[0] + a2 * du, S.V[0] + b2 * dv)));
+      items.push({ k: "p", pts: cs, dep: P(...c)[2], val });
+      if (arr() && i % 2 === 1 && j % 2 === 1) items.push({ k: "a", c, f, n: N.map((q) => q / m), dep: P(...c)[2] - 0.01 });
+    }
+    let fm = 1e-9; items.forEach((it) => { if (it.k === "a") fm = Math.max(fm, Math.hypot(...it.f)); });
+    items.sort((p, q) => q.dep - p.dep);
+    items.forEach((it) => {
+      if (it.k === "p") VC.poly(ctx, it.pts, VC.rgba(MB.colormap(0.5 + 0.48 * (it.val / mx), "diverge"), 0.82), VC.alpha(C.text, 0.18), 0.6);
+      else { const s = 0.45 / fm, b = [it.c[0] + it.f[0] * s, it.c[1] + it.f[1] * s, it.c[2] + it.f[2] * s]; VC.arrow2(ctx, P(...it.c), P(...b), C.text, 1.4, 6); }
+    });
+    if (!cache || cache.key !== sS.value + sF.value) cache = { key: sS.value + sF.value, v: integrate(S, F) };
+    MB.stat("vc-fl-flux", VC.num(cache.v[0], 4));
+    MB.stat("vc-fl-area", VC.num(cache.v[1], 4));
+    MB.stat("vc-fl-div", S.closed ? `${F.vs} ≈ ${VC.num(F.vol, 4)}` : "열린 곡면 (해당 없음)");
+  }, { aspect: 0.75, minHeight: 280, maxHeight: 460 });
+  VC.orbit(cv.canvas, st, rd);
+  sS.addEventListener("change", rd); sF.addEventListener("change", rd);
+})();
+
+/* ================================================================ 8. 스토크스 (3D) */
+(function () {
+  const FLD = {
+    a: { f: (x, y, z) => [-y + z, x, x * y], curl: (x, y) => [x, 1 - y, 2], ex: "2π ≈ 6.2832" },
+    b: { f: (x, y, z) => [z * z, x, y ** 3], curl: (x, y, z) => [3 * y * y, 2 * z, 1], ex: "π ≈ 3.1416" },
+    c: { f: (x, y) => [-(y ** 3), x ** 3, 0], curl: (x, y) => [0, 0, 3 * x * x + 3 * y * y], ex: "3π/2 ≈ 4.7124" },
+  };
+  function cap(k) {
+    if (Math.abs(k) < 0.02) return (s, t) => [s * Math.cos(t), s * Math.sin(t), 0];
+    const kk = Math.abs(k), c = (kk * kk - 1) / (2 * kk), R = (kk * kk + 1) / (2 * kk), pm = Math.acos(MB.clamp(-c / R, -1, 1)), sg = k > 0 ? 1 : -1;
+    return (s, t) => { const f = s * pm; return [R * Math.sin(f) * Math.cos(t), R * Math.sin(f) * Math.sin(t), sg * (c + R * Math.cos(f))]; };
+  }
+  const st = { yaw: -0.6, pitch: 0.35 };
+  let cv = null, cache = null;
+  const rd = () => cv && cv.redraw();
+  const kR = MB.range("vc-st-k", (v) => v.toFixed(2), rd);
+  const sF = document.getElementById("vc-st-f");
+  const curlC = MB.check("vc-st-curl", rd);
+  sF.addEventListener("change", rd);
+  function integrate(r, F) {
+    const Ns = 40, Nt = 80, ds = 1 / Ns, dt = (2 * Math.PI) / Nt; let fl = 0, ar = 0;
+    for (let i = 0; i < Ns; i++) for (let j = 0; j < Nt; j++) {
+      const s = (i + 0.5) * ds, t = (j + 0.5) * dt, p = r(s, t), N = VC.normal(r, s, t, 1), c = F.curl(...p);
+      fl += (c[0] * N[0] + c[1] * N[1] + c[2] * N[2]) * ds * dt; ar += Math.hypot(...N) * ds * dt;
+    }
+    let li = 0; const M = 400;
+    for (let j = 0; j < M; j++) { const t = ((j + 0.5) * 2 * Math.PI) / M, f = F.f(Math.cos(t), Math.sin(t), 0); li += (-f[0] * Math.sin(t) + f[1] * Math.cos(t)) * (2 * Math.PI / M); }
+    return [li, fl, ar];
+  }
+  cv = MB.canvas("#vc-cv-stokes", (ctx, w, h) => {
+    const C = MB.palette(), k = kR(), F = FLD[sF.value], r = cap(k);
+    const P = VC.view(st.yaw, st.pitch, Math.min(w, h) / 5.2, w / 2, h / 2 + (k > 0 ? 0.25 : -0.25) * Math.min(w, h) / 5.2);
+    VC.axes3(ctx, P, 1.8, C);
+    const ns = 12, nt = 32, items = []; let mx = 1e-9;
+    for (let i = 0; i < ns; i++) for (let j = 0; j < nt; j++) {
+      const s = (i + 0.5) / ns, t = ((j + 0.5) * 2 * Math.PI) / nt, c = r(s, t), N = VC.normal(r, s, t, 1), m = Math.hypot(...N) || 1, cu = F.curl(...c);
+      const val = (cu[0] * N[0] + cu[1] * N[1] + cu[2] * N[2]) / m; mx = Math.max(mx, Math.abs(val));
+      const cs = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a2, b2]) => P(...r(a2 / ns, (b2 * 2 * Math.PI) / nt)));
+      items.push({ k: "p", pts: cs, dep: P(...c)[2], val });
+      if (curlC() && i % 3 === 1 && j % 4 === 1) items.push({ k: "a", c, cu, dep: P(...c)[2] - 0.01 });
+    }
+    let cm = 1e-9; items.forEach((it) => { if (it.k === "a") cm = Math.max(cm, Math.hypot(...it.cu)); });
+    items.sort((p, q) => q.dep - p.dep);
+    items.forEach((it) => {
+      if (it.k === "p") VC.poly(ctx, it.pts, VC.rgba(MB.colormap(0.5 + 0.48 * (it.val / mx), "diverge"), 0.8), VC.alpha(C.text, 0.15), 0.6);
+      else { const s = 0.45 / cm, b = it.c.map((q, z) => q + it.cu[z] * s); VC.arrow2(ctx, P(...it.c), P(...b), C.accent2, 1.6, 6); }
+    });
+    ctx.save(); ctx.strokeStyle = C.accent; ctx.lineWidth = 3.2; ctx.beginPath();
+    for (let j = 0; j <= 96; j++) { const t = (j * 2 * Math.PI) / 96, q = P(Math.cos(t), Math.sin(t), 0); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+    ctx.stroke(); ctx.restore();
+    [0, 1, 2, 3].forEach((m) => { const t = (m * Math.PI) / 2 + 0.3; VC.arrow2(ctx, P(Math.cos(t), Math.sin(t), 0), P(Math.cos(t + 0.25), Math.sin(t + 0.25), 0), C.accent, 3, 11); });
+    const key = sF.value + k.toFixed(2);
+    if (!cache || cache.key !== key) cache = { key, v: integrate(r, F) };
+    MB.stat("vc-st-line", `${VC.num(cache.v[0], 4)} (정확 ${F.ex})`);
+    MB.stat("vc-st-surf", VC.num(cache.v[1], 4));
+    MB.stat("vc-st-area", `${VC.num(cache.v[2], 3)} (원판 π의 ${VC.num(cache.v[2] / Math.PI, 2)}배)`);
+  }, { aspect: 0.75, minHeight: 280, maxHeight: 460 });
+  VC.orbit(cv.canvas, st, rd);
+})();
+</script>
+</body>
+</html>

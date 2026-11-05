@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>최적화와 근사 · CalculusBook</title>
+<meta name="description" content="도함수가 0인 곳에서 최선을 찾고, 접선 하나로 복잡한 함수를 근사한다. 닫힌 구간 방법, 상자·캔·울타리 최적화, 페르마 원리와 스넬 법칙, 선형 근사와 오차 한계, 미분과 오차 전파, 뉴턴 방법의 수렴과 실패, 2차 근사를 직접 끌고 돌리며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .op-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .op-msg b { color: var(--text); }
+  .op-msg.ok { color: var(--ok); }
+  .op-msg.bad { color: var(--bad); }
+  .op-tbl { border-top: 1px solid var(--border); padding: 0 12px; }
+  .op-tbl table { font-family: var(--mono); font-size: 13px; }
+  .op-tbl td, .op-tbl th { text-align: right; padding: 4px 10px; }
+  .op-tbl tr.op-best td { color: var(--ok); font-weight: 700; }
+  .op-tbl tr.op-worst td { color: var(--bad); font-weight: 700; }
+  .op-stack > div { position: relative; min-width: 0; }
+  .op-stack > div + div { border-top: 1px solid var(--border); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="optimization">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 06</div>
+    <h1 data-no-glossary>최적화와 근사</h1>
+    <p class="lead">공학의 질문 대부분은 두 가지 꼴입니다. "가장 좋은 것은 무엇인가"(재료를 가장 적게 쓰는 캔, 가장 빨리 도착하는 경로)와 "대충 얼마인가"(측정 오차가 결과를 얼마나 흔드나, 이 방정식의 근은 어디쯤인가). 이 장은 5장에서 얻은 도구로 두 질문에 답합니다. 최선은 <b>도함수가 0인 곳</b>에 숨어 있고, 어림은 <b>접선</b>에서 나옵니다. 그리고 두 생각이 만나는 곳에 뉴턴 방법이 있습니다. 접선으로 근사하고, 근사의 근을 찾고, 다시 접선을 긋는 일을 반복하면 계산기가 √2를 구하는 방법이 됩니다.</p>
+    <ul class="objectives">
+      <li>닫힌 구간 방법(임계점과 끝점의 값을 비교)으로 연속 함수의 최댓값·최솟값을 구한다.</li>
+      <li>말로 된 최적화 문제를 목적 함수와 제약 조건으로 옮기고, 한 변수로 줄여 푼다(상자, 캔, 울타리).</li>
+      <li>페르마의 최소 시간 원리에서 스넬의 굴절 법칙 \(\frac{\sin\theta_1}{v_1} = \frac{\sin\theta_2}{v_2}\)를 유도한다.</li>
+      <li>선형 근사 \(L(x) = f(a) + f'(a)(x - a)\)를 쓰고, 오차가 \(\frac{M}{2}(x - a)^2\) 이하임을 보인다.</li>
+      <li>미분 \(dy = f'(x)\,dx\)로 측정 오차의 전파와 상대 오차를 어림한다.</li>
+      <li>뉴턴 방법을 손으로 몇 단계 계산하고, 2차 수렴과 실패(순환, 발산, 중근)의 원인을 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>빛은 가장 빠른 길을 고른다</b></div>
+      <div class="o-body"><p>물컵에 꽂은 빨대는 수면에서 꺾여 보입니다. 빛이 공기에서 물로 들어갈 때 방향을 바꾸기 때문입니다. 꺾이는 각도의 규칙은 10세기 페르시아의 이븐 살<span class="en">(Ibn Sahl)</span>이 이미 기록했고, 1621년 스넬<span class="en">(Willebrord Snell)</span>이 다시 찾았으며, 1637년 데카르트가 출판했습니다. 그러나 <b>왜</b> 그 규칙인지는 1662년 페르마<span class="en">(Pierre de Fermat)</span>가 답했습니다. 빛은 두 점 사이를 <b>시간이 가장 적게 걸리는 경로</b>로 간다고 가정하고 그 시간을 최소화하자, 굴절 법칙이 그대로 나왔습니다.</p>
+        <p>"자연은 무엇인가를 최소화한다"는 이 생각은 렌즈와 광섬유 설계, 해석역학의 최소 작용 원리, 오늘날의 기계 학습까지 이어집니다. 최소화의 도구는 하나입니다. 도함수가 0인 곳을 찾는 것. 이 장에서는 해변의 인명 구조원이 물에 뛰어들 지점을 고르는 문제로 페르마의 계산을 직접 해 봅니다.</p>
+        <div class="o-chain"><span>빛의 경로 후보 전부</span><i>→</i><span>걸리는 시간 T(x)</span><i>→</i><span class="tool">T′(x) = 0</span><i>→</i><span>스넬 법칙 → 렌즈·광섬유 설계</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="closed-interval">
+    <h2>닫힌 구간 방법: 후보만 비교하면 된다</h2>
+    <div class="problem"><strong>무한히 많은 점 중 가장 높은 곳</strong>
+      <p>공정 온도 \(x\)를 0 ℃에서 4 ℃ 사이(기준 대비 편차)에서 조절할 수 있고, 수율 모델이 \(f(x) = x^3 - 3x^2 + 1\)이라 합시다(단위는 임의). 구간 안의 점은 무한히 많습니다. 모든 점을 시험하지 않고 가장 좋은 온도와 가장 나쁜 온도를 확정할 수 있을까요?</p></div>
+    <p>2장의 최대·최소 정리는 닫힌 구간의 연속 함수에 최댓값과 최솟값이 <b>있다</b>고 보장합니다. 5장의 페르마 정리는 그 위치를 좁혀 줍니다. 최댓값이 구간 내부에 있으면 그곳은 극댓값이고, 따라서 \(f' = 0\)이거나 \(f'\)이 없는 임계점입니다. 내부에 없으면 끝점입니다. 후보는 이 둘뿐입니다.</p>
+    <div class="callout deep"><strong>정리 6.1 (닫힌 구간 방법)</strong> \(f\)가 \([a, b]\)에서 연속이면 최댓값·최솟값은 다음 후보 중에서 나온다.
+      <ol style="margin:6px 0 0">
+        <li>\((a, b)\) 안의 임계점(\(f'(c) = 0\) 또는 \(f'(c)\)가 없는 점)</li>
+        <li>끝점 \(a\), \(b\)</li>
+      </ol>
+      후보에서의 함숫값 중 가장 큰 것이 최댓값, 가장 작은 것이 최솟값이다. 이 절차를 <span class="term">닫힌 구간 방법</span><span class="en">(closed interval method)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> 최대·최소 정리로 최댓값을 주는 점 \(c\)가 있다. \(c\)가 끝점이면 후보 2에 들고, 내부이면 \(f(c)\)는 극댓값이므로 \(f'(c)\)가 없거나, 있으면 페르마 정리로 0이다. 최솟값도 같다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="닫힌 구간 방법의 후보점">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <line x1="60" y1="220" x2="700" y2="220" class="s-axis"/>
+        <path d="M100 150 C 170 40, 260 40, 320 120 S 430 250, 520 190 S 620 30, 660 40" fill="none" class="s-acc" style="stroke-width:2.8"/>
+        <circle cx="100" cy="150" r="6" style="fill:var(--accent-2)"/><text x="78" y="140" class="t-mono">f(a)</text>
+        <circle cx="660" cy="40" r="7" style="fill:var(--ok)"/><text x="600" y="34" class="t" style="fill:var(--ok);font-weight:700">최댓값 (끝점)</text>
+        <circle cx="208" cy="65" r="6" style="fill:var(--accent-2)"/><text x="170" y="55" class="t-dim">극댓값 f′ = 0</text>
+        <circle cx="430" cy="214" r="7" style="fill:var(--bad)"/><text x="380" y="245" class="t" style="fill:var(--bad);font-weight:700">최솟값 (임계점)</text>
+        <line x1="100" y1="150" x2="100" y2="220" class="s-line" style="stroke-dasharray:3 4"/><line x1="660" y1="40" x2="660" y2="220" class="s-line" style="stroke-dasharray:3 4"/>
+        <text x="96" y="240" class="t-mono">a</text><text x="656" y="240" class="t-mono">b</text>
+        <text x="460" y="80" class="t-dim">후보: 내부 임계점 2개 + 끝점 2개</text>
+        <text x="460" y="102" class="t-dim">→ 네 값만 비교하면 끝</text>
+      </svg>
+      <figcaption><b>그림 6-1.</b> 닫힌 구간의 연속 함수. 극댓값(왼쪽 봉우리)이 최댓값이 아닐 수 있고, 최댓값이 끝점에서 나올 수 있다. 그래서 임계점만 보면 안 되고 끝점도 반드시 넣어야 한다. 후보는 유한 개라 비교가 끝난다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 6.1 (수율 모델)</strong> \(f(x) = x^3 - 3x^2 + 1\)의 \([-\tfrac12, 4]\)에서의 최댓값과 최솟값을 구하라.
+      <ol>
+        <li>\(f'(x) = 3x^2 - 6x = 3x(x - 2)\). 내부 임계점은 \(x = 0\), \(x = 2\)(둘 다 구간 안).</li>
+        <li>후보 값: \(f(-\tfrac12) = -\tfrac18 - \tfrac34 + 1 = \tfrac18\), \(f(0) = 1\), \(f(2) = 8 - 12 + 1 = -3\), \(f(4) = 64 - 48 + 1 = 17\).</li>
+        <li>최댓값 17(\(x = 4\), 끝점), 최솟값 −3(\(x = 2\), 임계점). \(x = 0\)은 극댓값 1이지만 최댓값이 아니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-op-closed">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>후보표 만들기: 임계점 + 끝점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="op-cv-closed"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="op-c-pre">
+            <option value="cubic">x³ − 3x² + 1 (예제 6.1)</option>
+            <option value="cos">x + 2cos x</option>
+            <option value="abs">|x² − 4| (꺾인 점)</option>
+            <option value="xexp">x e^(−x)</option>
+          </select></label>
+          <p class="sim-note" style="margin:0;padding:0;border:0">끝점 a, b를 곡선을 따라 끌어 구간을 바꾸세요.</p>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">구간</span><span class="v" id="op-c-ab">—</span></div>
+        <div class="stat"><span class="k">최댓값</span><span class="v" id="op-c-max">—</span></div>
+        <div class="stat"><span class="k">최솟값</span><span class="v" id="op-c-min">—</span></div>
+      </div>
+      <div class="table-wrap op-tbl" id="op-c-tbl"></div>
+      <div class="sim-note">해볼 것: ① 예제 6.1의 구간에서 최댓값이 끝점 b = 4에서 나오는 것을 확인하고, b를 3보다 왼쪽으로 끌어 최댓값이 x = 0의 극댓값으로 옮겨 가는 순간을 찾으세요. ② '|x² − 4|'의 x = ±2는 f′이 없는 임계점입니다. 거기서 최솟값 0이 나옵니다. ③ 'x e^(−x)'에서 a를 1보다 오른쪽으로 옮기면 내부 임계점이 사라지고 후보는 끝점 둘뿐입니다. 모델: 임계점은 f′의 부호 변화(이분법)와 미리 알려 둔 미분 불가능 점입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="modeling">
+    <h2>최적화 문제 세우기: 상자, 캔, 울타리</h2>
+    <div class="problem"><strong>문장을 함수로</strong>
+      <p>"16 cm × 10 cm 판지의 네 귀퉁이에서 같은 크기의 정사각형을 잘라 내고 접어 뚜껑 없는 상자를 만든다. 부피가 가장 큰 상자는?" 미분은 어렵지 않습니다. 어려운 것은 이 문장을 미분할 수 있는 함수 하나로 옮기는 일입니다.</p></div>
+    <p>최적화 문제는 거의 언제나 같은 순서로 풉니다.</p>
+    <ol>
+      <li><b>그림</b>을 그리고 변수에 이름을 붙인다.</li>
+      <li>최대·최소로 만들 양, 즉 <span class="term">목적 함수</span><span class="en">(objective function)</span>를 식으로 쓴다.</li>
+      <li>변수 사이의 관계인 <span class="term">제약 조건</span><span class="en">(constraint)</span>을 써서 변수를 하나로 줄인다.</li>
+      <li>그 변수가 물리적으로 가질 수 있는 <b>범위</b>(정의역)를 정한다.</li>
+      <li>임계점을 찾고, 끝점과 비교하거나 1계·2계 판정으로 최댓값임을 확인한다.</li>
+      <li>원래 질문(치수, 비율)에 단위와 함께 답하고, 상식과 맞는지 본다.</li>
+    </ol>
+    <p>정의역이 열린 구간이거나 무한하면 닫힌 구간 방법을 그대로 쓸 수 없습니다. 이때 자주 쓰는 판정이 있습니다.</p>
+    <div class="callout deep"><strong>정리 6.2 (유일한 임계점)</strong> \(f\)가 구간 \(I\)(열려 있거나 무한해도 된다)에서 연속이고 \(I\) 안에 임계점이 \(c\) 하나뿐이라 하자. \(f(c)\)가 극댓값이면 \(f(c)\)는 \(I\)에서의 최댓값이고, 극솟값이면 최솟값이다.
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> 극대인데 다른 점 \(d > c\)에서 \(f(d) > f(c)\)라면, \(c\) 오른쪽 가까이에서는 \(f \lt f(c)\)이므로 \([c, d]\)에서의 최솟값이 내부의 어떤 점에서 나오고, 그곳이 또 다른 임계점이 되어 가정에 모순이다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="판지 상자 전개도와 완성된 상자">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <g transform="translate(40,30)">
+          <rect x="0" y="0" width="320" height="200" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+          <rect x="0" y="0" width="40" height="40" class="f-elev" style="stroke:var(--text-dim);stroke-dasharray:4 3"/>
+          <rect x="280" y="0" width="40" height="40" class="f-elev" style="stroke:var(--text-dim);stroke-dasharray:4 3"/>
+          <rect x="0" y="160" width="40" height="40" class="f-elev" style="stroke:var(--text-dim);stroke-dasharray:4 3"/>
+          <rect x="280" y="160" width="40" height="40" class="f-elev" style="stroke:var(--text-dim);stroke-dasharray:4 3"/>
+          <rect x="40" y="40" width="240" height="120" fill="none" style="stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 4"/>
+          <text x="14" y="25" class="t-mono">x</text><text x="294" y="25" class="t-mono">x</text>
+          <text x="125" y="104" class="t" style="font-weight:700">바닥 (16 − 2x) × (10 − 2x)</text>
+          <text x="140" y="-6" class="t-dim">16 cm</text><text x="328" y="104" class="t-dim">10 cm</text>
+        </g>
+        <g transform="translate(440,40)">
+          <polygon points="0,90 200,90 260,50 60,50" class="f-elev" style="stroke:var(--text-dim)"/>
+          <polygon points="0,90 200,90 200,170 0,170" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.5"/>
+          <polygon points="200,90 260,50 260,130 200,170" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:1.5"/>
+          <text x="80" y="140" class="t-mono">높이 x</text>
+          <text x="40" y="198" class="t-mono">V(x) = x(16 − 2x)(10 − 2x)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 6-2.</b> 귀퉁이에서 한 변 x인 정사각형을 잘라 내고 점선을 따라 접는다. x를 키우면 상자는 깊어지지만 바닥이 좁아진다. 이 맞바꿈(trade-off)이 최적화 문제의 본질이다. x는 0과 5(짧은 변의 절반) 사이에서만 뜻이 있다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 6.2 (판지 상자)</strong> 위 문제를 풀어라.
+      <ol>
+        <li>목적 함수: \(V(x) = x(16 - 2x)(10 - 2x) = 4x^3 - 52x^2 + 160x\), 정의역 \([0, 5]\).</li>
+        <li>\(V'(x) = 12x^2 - 104x + 160 = 4(3x^2 - 26x + 40) = 4(3x - 20)(x - 2)\). 임계점 \(x = 2\), \(x = \tfrac{20}{3} \approx 6.67\)(정의역 밖).</li>
+        <li>닫힌 구간 방법: \(V(0) = 0\), \(V(5) = 0\), \(V(2) = 2\cdot12\cdot6 = 144\).</li>
+        <li>답: 귀퉁이를 2 cm씩 잘라 12 cm × 6 cm × 2 cm, 부피 144 cm³.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-op-box">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>판지 상자의 부피 최대화</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="op-cv-box"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>판지 가로 L <output id="op-b-L-out"></output></span><input type="range" id="op-b-L" min="6" max="40" step="1" value="16"></label>
+          <label class="ctrl"><span>판지 세로 W <output id="op-b-W-out"></output></span><input type="range" id="op-b-W" min="6" max="40" step="1" value="10"></label>
+          <label class="ctrl"><span>자르는 크기 x <output id="op-b-x-out"></output></span><input type="range" id="op-b-x" min="0" max="1000" step="1" value="300"></label>
+          <div class="btn-row"><button class="btn primary" id="op-b-opt">최적 x로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">V(x)</span><span class="v" id="op-b-V">—</span></div>
+        <div class="stat"><span class="k">V′(x)</span><span class="v" id="op-b-dV">—</span></div>
+        <div class="stat"><span class="k">최적 x*, V*</span><span class="v" id="op-b-opt-v">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x 슬라이더를 움직이며 V′(x)의 부호가 + → 0 → −로 바뀌는 곳에서 부피가 가장 큰지 보세요. ② 정사각형 판지(L = W)에서 x* = L/6이 되는지 확인하세요. ③ 판지를 아주 길쭉하게(L = 40, W = 6) 하면 x*는 W/4 = 1.5에 가까워집니다. 긴 쪽은 거의 상관이 없어지기 때문입니다. 모델: V = x(L − 2x)(W − 2x), x* = [(L + W) − √(L² − LW + W²)]/6.</div>
+    </div>
+
+    <h3>캔: 재료를 가장 적게</h3>
+    <p>부피 \(V\)가 정해진 원기둥 캔의 겉넓이를 최소로 하는 모양을 찾아봅시다. 반지름 \(r\), 높이 \(h\)이면 목적 함수는 \(S = 2\pi r^2 + 2\pi rh\)이고 제약 조건은 \(\pi r^2 h = V\)입니다. 제약에서 \(h = V/(\pi r^2)\)를 넣으면 한 변수 함수 \(S(r) = 2\pi r^2 + \dfrac{2V}{r}\), \(r > 0\)이 됩니다.</p>
+    <div class="callout"><strong>예제 6.3 (500 mL 캔)</strong>
+      <ol>
+        <li>\(S'(r) = 4\pi r - \dfrac{2V}{r^2} = 0\)에서 \(r^3 = \dfrac{V}{2\pi}\). 정의역 \((0, \infty)\)의 유일한 임계점이다.</li>
+        <li>\(S''(r) = 4\pi + \dfrac{4V}{r^3} > 0\)이므로 극소, 정리 6.2로 최솟값이다.</li>
+        <li>그때 \(h = \dfrac{V}{\pi r^2} = \dfrac{2\pi r^3}{\pi r^2} = 2r\). <b>높이 = 지름</b>인 캔이 겉넓이가 가장 작다.</li>
+        <li>\(V = 500\) cm³이면 \(r = (500/2\pi)^{1/3} \approx 4.30\) cm, \(h \approx 8.60\) cm, \(S = 6\pi r^2 \approx 349\) cm².</li>
+      </ol>
+      <p style="margin:6px 0 0">실제 음료 캔은 대개 지름보다 키가 큽니다. 겉넓이 말고도 손에 쥐는 느낌, 뚜껑과 바닥을 더 두꺼운 재료로 만드는 비용, 이음매 길이 같은 다른 비용이 있기 때문입니다. 뚜껑·바닥의 단위 넓이 비용이 옆면의 \(k\)배라면 같은 계산으로 \(h = 2kr\)이 나옵니다. 아래 시뮬레이터의 k 슬라이더가 그것입니다.</p></div>
+
+    <div class="sim" id="sim-op-can">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>캔의 재료비 최소화: h = 2kr</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="op-cv-can"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>부피 V <output id="op-k-V-out"></output></span><input type="range" id="op-k-V" min="100" max="1000" step="5" value="500"></label>
+          <label class="ctrl"><span>반지름 r <output id="op-k-r-out"></output></span><input type="range" id="op-k-r" min="1.5" max="9" step="0.01" value="3"></label>
+          <label class="ctrl"><span>뚜껑·바닥 비용 배율 k <output id="op-k-k-out"></output></span><input type="range" id="op-k-k" min="0.5" max="3" step="0.05" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="op-k-opt">최적 r로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">높이 h</span><span class="v" id="op-k-h">—</span></div>
+        <div class="stat"><span class="k">h / r</span><span class="v" id="op-k-hr">—</span></div>
+        <div class="stat"><span class="k">비용 C(r) (옆면 cm² 환산)</span><span class="v" id="op-k-C">—</span></div>
+        <div class="stat"><span class="k">최적 r*, C*</span><span class="v" id="op-k-opt-v">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k = 1에서 '최적 r로'를 누르고 h/r = 2(키 = 지름)인지 확인하세요. ② k를 2로 올리면 최적 캔은 h/r = 4로 홀쭉해집니다. ③ 최솟값 근처에서 r을 10% 바꿔도 비용은 1~2%밖에 늘지 않습니다. 바닥이 평평한 최솟값의 성질로, 설계에 여유를 줍니다. 모델: C(r) = 2πk r² + 2V/r, r* = (V/(2πk))<sup>1/3</sup>.</div>
+    </div>
+
+    <div class="callout"><strong>예제 6.4 (강가의 울타리)</strong> 직선 강가에 직사각형 목초지를 만든다. 강 쪽에는 울타리가 필요 없고 울타리 재료는 600 m다. 넓이를 최대로 하라.
+      <ol>
+        <li>강과 수직인 변을 \(x\), 평행한 변을 \(y\)라 하면 제약 \(2x + y = 600\), 목적 \(A = xy = x(600 - 2x)\), 정의역 \([0, 300]\).</li>
+        <li>\(A'(x) = 600 - 4x = 0\)에서 \(x = 150\). 끝점에서 \(A = 0\)이므로 최댓값은 \(A(150) = 150\cdot300 = 45\,000\) m².</li>
+        <li>강과 평행한 변이 수직인 변의 두 배다. 울타리 네 변이 모두 필요하면 정사각형이 답인데, 한 변이 공짜이니 그쪽으로 늘이는 것이 이득이다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="refraction">
+    <h2>빛의 굴절: 페르마 원리와 스넬 법칙</h2>
+    <div class="problem"><strong>인명 구조원은 어디서 물에 들어가야 하나</strong>
+      <p>해변의 구조원이 물가에서 20 m 떨어진 모래밭에 있고, 물에 빠진 사람은 물가에서 30 m 떨어진 바다에, 물가를 따라 60 m 옆에 있습니다. 구조원은 모래에서 6 m/s로 달리고 물에서 1.5 m/s로 헤엄칩니다. 일직선으로 가면 거리는 가장 짧지만 느린 물속 구간이 깁니다. 어디서 물에 들어가야 가장 빨리 도착할까요?</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="두 매질 사이의 최소 시간 경로">
+        <rect x="10" y="10" width="740" height="140" class="f-elev"/>
+        <rect x="10" y="150" width="740" height="140" class="f-acc2-soft"/>
+        <line x1="10" y1="150" x2="750" y2="150" class="s-axis" style="stroke-width:1.5"/>
+        <text x="24" y="34" class="t-dim">매질 1 (모래, 공기): 속력 v₁</text><text x="24" y="276" class="t-dim">매질 2 (물): 속력 v₂ &lt; v₁</text>
+        <line x1="120" y1="50" x2="520" y2="150" style="stroke:var(--accent);stroke-width:3"/>
+        <line x1="520" y1="150" x2="640" y2="270" style="stroke:var(--accent);stroke-width:3"/>
+        <line x1="120" y1="50" x2="640" y2="270" class="s-line" style="stroke-dasharray:5 5"/>
+        <circle cx="120" cy="50" r="7" style="fill:var(--accent-2)"/><text x="132" y="46" class="t" style="font-weight:700">A</text>
+        <circle cx="640" cy="270" r="7" style="fill:var(--accent-2)"/><text x="652" y="274" class="t" style="font-weight:700">B</text>
+        <circle cx="520" cy="150" r="5" style="fill:var(--accent)"/>
+        <line x1="520" y1="40" x2="520" y2="280" class="s-line" style="stroke-dasharray:3 4"/>
+        <path d="M520 110 A40 40 0 0 0 481 140" fill="none" style="stroke:var(--warn);stroke-width:2"/>
+        <text x="482" y="104" class="t" style="fill:var(--warn);font-weight:700">θ₁</text>
+        <path d="M520 190 A40 40 0 0 0 548 178" fill="none" style="stroke:var(--warn);stroke-width:2"/>
+        <text x="540" y="208" class="t" style="fill:var(--warn);font-weight:700">θ₂</text>
+        <line x1="120" y1="150" x2="120" y2="50" class="s-line" style="stroke-dasharray:2 3"/><text x="96" y="104" class="t-mono">a</text>
+        <line x1="640" y1="150" x2="640" y2="270" class="s-line" style="stroke-dasharray:2 3"/><text x="648" y="214" class="t-mono">b</text>
+        <text x="300" y="168" class="t-mono">x</text><text x="570" y="168" class="t-mono">d − x</text>
+        <text x="300" y="230" class="t-dim">점선: 가장 짧은 길(느린 매질 구간이 길다)</text>
+      </svg>
+      <figcaption><b>그림 6-3.</b> A에서 B로 가는 경로가 경계의 점(가로 위치 x)에서 꺾인다. 각도는 경계의 법선(세로 점선)에서 잰다. 빠른 매질에서 더 오래 가고 느린 매질에서 짧게 가도록 경로가 꺾이는데, 얼마나 꺾일지는 T′(x) = 0이 정한다.</figcaption>
+    </figure>
+    <p>그림 6-3처럼 A가 경계에서 \(a\), B가 경계에서 \(b\)만큼 떨어져 있고 가로 거리가 \(d\)라 하면, 경계의 \(x\) 지점을 지나는 경로의 시간은</p>
+    <div class="formula">$$T(x) = \frac{\sqrt{a^2 + x^2}}{v_1} + \frac{\sqrt{b^2 + (d - x)^2}}{v_2}, \qquad 0 \le x \le d.$$</div>
+    <p>미분하면 두 항이 각각 사인이 됩니다. \(\dfrac{x}{\sqrt{a^2 + x^2}} = \sin\theta_1\), \(\dfrac{d - x}{\sqrt{b^2 + (d-x)^2}} = \sin\theta_2\)이기 때문입니다.</p>
+    <div class="formula">$$T'(x) = \frac{x}{v_1\sqrt{a^2 + x^2}} - \frac{d - x}{v_2\sqrt{b^2 + (d - x)^2}} = \frac{\sin\theta_1}{v_1} - \frac{\sin\theta_2}{v_2}.$$</div>
+    <div class="callout deep"><strong>정리 6.3 (스넬 법칙)</strong> 위의 최소 시간 경로는 유일하고, 그 경로에서
+      <div class="formula">$$\frac{\sin\theta_1}{v_1} = \frac{\sin\theta_2}{v_2}, \qquad\text{빛에서는}\qquad n_1\sin\theta_1 = n_2\sin\theta_2$$
+        <div class="where">\(n = c/v\)는 매질의 <span class="term">굴절률</span><span class="en">(refractive index)</span>, \(c\)는 진공에서의 빛의 속력.</div></div>
+      이 관계를 <span class="term">스넬 법칙</span><span class="en">(Snell's law)</span>이라 하고, "빛은 걸리는 시간이 정류값(대개 최소)이 되는 경로로 간다"는 가정을 <span class="term">페르마 원리</span><span class="en">(Fermat's principle)</span>라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(T'(0) = -\frac{d}{v_2\sqrt{b^2+d^2}} \lt 0\), \(T'(d) = \frac{d}{v_1\sqrt{a^2+d^2}} > 0\)이다. 또 \(\frac{d}{dx}\frac{x}{\sqrt{a^2+x^2}} = \frac{a^2}{(a^2+x^2)^{3/2}} > 0\)이고 둘째 항도 같은 꼴이라 \(T''(x) > 0\). 따라서 \(T'\)은 증가하며 음수에서 양수로 정확히 한 번 0을 지나고, 그 점이 유일한 최솟값이다. 그 점에서 \(T' = 0\)을 쓰면 위 식이다. ∎</p></div>
+    <p>이 증명에는 \(x\)를 구하는 공식이 없습니다. \(T'(x) = 0\)은 4차 방정식이 되어 손으로 풀기 어렵습니다. 그래도 최적 경로가 <b>만족하는 법칙</b>은 깔끔하게 나왔고, 해는 수치로 구하면 됩니다(뉴턴 방법, 6절).</p>
+
+    <div class="sim" id="sim-op-snell">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최소 시간 경로: 구조원과 빛</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view op-stack">
+          <div><canvas id="op-cv-snell"></canvas></div>
+          <div><canvas id="op-cv-snellT"></canvas></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>매질 1 속력 v₁ <output id="op-s-v1-out"></output></span><input type="range" id="op-s-v1" min="0.5" max="10" step="0.01" value="6"></label>
+          <label class="ctrl"><span>매질 2 속력 v₂ <output id="op-s-v2-out"></output></span><input type="range" id="op-s-v2" min="0.5" max="10" step="0.01" value="1.5"></label>
+          <div class="btn-row"><button class="btn primary" id="op-s-opt">최소 시간 찾기</button><button class="btn" id="op-s-light">빛: 공기 → 물</button></div>
+          <p class="sim-note" style="margin:0;padding:0;border:0">물가의 점을 끌어 입수 지점을 바꾸세요.</p>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">입수 지점 x, 시간 T</span><span class="v" id="op-s-T">—</span></div>
+        <div class="stat"><span class="k">sin θ₁ / v₁</span><span class="v" id="op-s-l">—</span></div>
+        <div class="stat"><span class="k">sin θ₂ / v₂</span><span class="v" id="op-s-r">—</span></div>
+        <div class="stat"><span class="k">θ₁, θ₂</span><span class="v" id="op-s-th">—</span></div>
+      </div>
+      <div class="op-msg" id="op-s-msg"></div>
+      <div class="sim-note">해볼 것: ① 점을 끌어 아래 T(x) 그래프의 바닥을 찾으세요. 바닥에서 sin θ₁/v₁과 sin θ₂/v₂가 같아집니다. ② v₁ = v₂로 두면 최적 경로는 직선(점선)이 됩니다. ③ '빛: 공기 → 물'은 속력을 1과 0.75(굴절률 1과 1.33)로 맞추고 최소 시간 경로로 보냅니다. 그때 sin θ₁ / sin θ₂ = 1.33이 되는지 θ₁, θ₂로 계산해 보세요. 모델: A = (0, 20), B = (60, −30) m, 경계 y = 0. 최소점은 T가 볼록함수라는 성질을 이용해 삼분 탐색으로 찾습니다.</div>
+    </div>
+    <div class="callout"><strong>예제 6.5 (구조원의 답)</strong> 문제의 수치(a = 20, b = 30, d = 60 m, v₁ = 6, v₂ = 1.5 m/s)로 계산하면 다음과 같다.
+      <ol>
+        <li>일직선(x = 24 m): 모래 31.2 m ÷ 6 + 물 46.9 m ÷ 1.5 ≈ 5.2 + 31.2 = <b>36.4 s</b>.</li>
+        <li>물가를 따라 B 바로 앞까지 달린 뒤 수직으로 헤엄(x = 60): ≈ 10.5 + 20.0 = <b>30.5 s</b>.</li>
+        <li>최적(T′ = 0을 수치로 풀면 x ≈ 52.8 m): <b>30.0 s</b>. 이때 \(\sin\theta_1/6 = \sin\theta_2/1.5 \approx 0.156\).</li>
+      </ol>
+      <p style="margin:6px 0 0">최적점은 극단적인 "물가를 따라 끝까지"와 가깝지만 같지 않습니다. 물속 구간을 살짝 비스듬히 하는 대가(물속 거리 증가)보다 모래에서 줄인 거리가 더 이득이기 때문입니다. 최솟값 근처에서는 T가 평평해 30.0 s와 30.5 s의 차이가 작다는 점도 눈여겨보세요.</p></div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="linear-approx">
+    <h2>선형 근사: 확대하면 곡선은 직선이다</h2>
+    <div class="problem"><strong>계산기 없이 √4.1</strong>
+      <p>설계 도면의 공차 계산, 진자의 작은 진폭 근사, 열팽창 공식 \(L = L_0(1 + \alpha\Delta T)\)는 모두 복잡한 함수를 직선으로 바꿔 계산합니다. 언제 그래도 되고, 얼마나 틀릴까요?</p></div>
+    <p>미분 가능한 함수의 그래프는 한 점을 충분히 확대하면 접선과 구별되지 않습니다(<a href="derivative.html">3장</a>). 그래서 그 점 근처에서는 함수 대신 접선을 써도 됩니다.</p>
+    <div class="callout deep"><strong>정의 6.4 (선형 근사)</strong> \(f\)가 \(a\)에서 미분 가능할 때
+      <div class="formula">$$L(x) = f(a) + f'(a)(x - a)$$</div>
+      를 \(a\)에서 \(f\)의 <span class="term">선형화</span><span class="en">(linearization)</span>라 하고, \(x\)가 \(a\) 근처일 때 \(f(x) \approx L(x)\)를 <span class="term">선형 근사</span><span class="en">(linear approximation)</span>라 한다.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>함수</th><th>기준점</th><th>선형 근사</th><th>쓰이는 곳</th></tr></thead>
+      <tbody>
+        <tr><td>\(\sin\theta\)</td><td>0</td><td>\(\theta\)</td><td>진자, 광학의 근축 근사</td></tr>
+        <tr><td>\(\cos\theta\)</td><td>0</td><td>\(1\)</td><td>작은 각의 투영</td></tr>
+        <tr><td>\(e^x\)</td><td>0</td><td>\(1 + x\)</td><td>작은 이율, 작은 감쇠</td></tr>
+        <tr><td>\(\ln(1 + x)\)</td><td>0</td><td>\(x\)</td><td>로그 수익률, 데시벨의 작은 변화</td></tr>
+        <tr><td>\((1 + x)^k\)</td><td>0</td><td>\(1 + kx\)</td><td>\(\sqrt{1+x} \approx 1 + x/2\), 상대 오차 전파</td></tr>
+      </tbody></table></div>
+    <p>근사를 썼다면 반드시 오차를 물어야 합니다. 접선에서 벗어나는 정도는 곡선이 얼마나 휘는지, 즉 \(f''\)이 정합니다. 5장의 코시 평균값 정리를 두 번 쓰면 정확한 식이 나옵니다.</p>
+    <div class="callout deep"><strong>정리 6.5 (선형 근사의 오차)</strong> \(f''\)이 \(a\)와 \(x\) 사이에서 존재하면, 그 사이의 어떤 \(\xi\)에 대해
+      <div class="formula">$$f(x) - L(x) = \frac{f''(\xi)}{2}(x - a)^2.$$</div>
+      따라서 그 구간에서 \(|f''| \le M\)이면 \(|f(x) - L(x)| \le \dfrac{M}{2}(x - a)^2\)이다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(R(t) = f(t) - L(t)\)라 하면 \(R(a) = R'(a) = 0\), \(R'' = f''\)이다. \(R\)과 \((t - a)^2\)에 코시 평균값 정리를 쓰면 \(\frac{R(x)}{(x-a)^2} = \frac{R'(c)}{2(c - a)}\)인 \(c\)가 \(a\)와 \(x\) 사이에 있고, 다시 \(R'\)과 \(2(t - a)\)에 쓰면 \(\frac{R'(c) - R'(a)}{2(c - a)} = \frac{R''(\xi)}{2}\)인 \(\xi\)가 \(a\)와 \(c\) 사이에 있다. ∎</p></div>
+    <p>두 가지를 읽어 냅시다. 첫째, 오차는 \((x - a)^2\)에 비례합니다. 거리를 10배 줄이면 오차는 100배 줄어듭니다. 둘째, <b>부호</b>도 알 수 있습니다. \(f'' > 0\)(위로 오목)이면 곡선이 접선 위에 있으므로 선형 근사는 <b>과소</b> 추정, \(f'' \lt 0\)이면 <b>과대</b> 추정입니다.</p>
+    <div class="callout"><strong>예제 6.6 (√4.1과 오차 한계)</strong>
+      <ol>
+        <li>\(f(x) = \sqrt{x}\), \(a = 4\): \(f(4) = 2\), \(f'(4) = \frac{1}{2\sqrt4} = \frac14\). \(L(4.1) = 2 + \frac14(0.1) = 2.025\).</li>
+        <li>오차 한계: \(f''(x) = -\frac14x^{-3/2}\)이고 \([4, 4.1]\)에서 \(|f''| \le \frac14\cdot4^{-3/2} = \frac1{32}\). 따라서 \(|\text{오차}| \le \frac{1}{2}\cdot\frac{1}{32}\cdot(0.1)^2 \approx 1.56\times10^{-4}\).</li>
+        <li>\(f'' \lt 0\)이므로 2.025는 과대 추정이다. 실제 \(\sqrt{4.1} = 2.024846\cdots\), 오차 \(1.54\times10^{-4}\)로 한계 안에 있고 부호도 맞다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-op-linzoom">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>선형 근사 확대경과 오차의 기울기 2</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="op-cv-lin"></canvas><span class="cap">f(x)와 접선 L(x)</span></div>
+          <div><canvas id="op-cv-linerr"></canvas><span class="cap">|f − L| vs h (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 기준점</span><select id="op-l-pre">
+            <option value="sqrt">√x, a = 4 (예제 6.6)</option>
+            <option value="sin">sin x, a = 0.5</option>
+            <option value="exp">eˣ, a = 0</option>
+            <option value="log">ln x, a = 1</option>
+            <option value="recip">1/x, a = 1</option>
+          </select></label>
+          <label class="ctrl"><span>거리 h = x − a <output id="op-l-h-out"></output></span><input type="range" id="op-l-h" min="-3" max="0.3" step="0.01" value="0"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">L(x)</span><span class="v" id="op-l-L">—</span></div>
+        <div class="stat"><span class="k">x = a + h에서 f, L</span><span class="v" id="op-l-fx">—</span></div>
+        <div class="stat"><span class="k">오차 f − L</span><span class="v" id="op-l-e">—</span></div>
+        <div class="stat"><span class="k">오차 / h² → f″(a)/2</span><span class="v" id="op-l-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① h를 10배씩 줄이며 오차가 100배씩 주는지 보세요. 오른쪽 그래프에서 오차 곡선은 기울기 2인 기준 점선(4 × |f″(a)|h²/2)과 평행합니다. ② '오차/h²'이 f″(a)/2로 다가가는지 확인하세요. √x에서는 −1/64 = −0.015625입니다. ③ 오차의 부호로 곡선이 접선 위인지 아래인지 말해 보세요. 모델: h &gt; 0 쪽만 계산합니다. 창의 가로 폭은 ±h입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="differentials">
+    <h2>미분 dy와 오차 전파</h2>
+    <div class="problem"><strong>자로 잰 반지름의 0.5% 오차는 부피를 얼마나 흔드나</strong>
+      <p>베어링 볼의 반지름을 10.0 mm ± 0.05 mm로 쟀습니다. 부피 \(V = \frac43\pi r^3\)도 오차를 가집니다. 공차가 부피, 질량, 관성에 어떻게 퍼지는지 알아야 부품 검사 기준을 정할 수 있습니다.</p></div>
+    <p>선형 근사를 "변화량"의 언어로 다시 쓴 것이 미분입니다.</p>
+    <div class="callout deep"><strong>정의 6.6 (미분)</strong> \(y = f(x)\)에서 \(dx\)를 독립 변수로 보고 \(dy = f'(x)\,dx\)를 \(y\)의 <span class="term">미분</span><span class="en">(differential)</span>이라 한다. 실제 변화량 \(\Delta y = f(x + dx) - f(x)\)와 달리 \(dy\)는 접선을 따른 변화량이며, \(dx \to 0\)이면 \(\Delta y - dy = O(dx^2)\)다(정리 6.5).</div>
+    <p>측정값 \(x\)에 <span class="term">절대 오차</span><span class="en">(absolute error)</span> \(\Delta x\)가 있으면 계산값 \(y\)의 오차는 \(|dy| = |f'(x)|\,\Delta x\)로 어림합니다. 공학에서는 크기에 대한 비율인 <span class="term">상대 오차</span><span class="en">(relative error)</span> \(\Delta y/|y|\)가 더 유용합니다. 이렇게 입력의 오차가 출력으로 퍼지는 것을 <span class="term">오차 전파</span><span class="en">(error propagation)</span>라 합니다.</p>
+    <div class="callout deep"><strong>정리 6.7 (거듭제곱의 상대 오차)</strong> \(y = kx^n\)이면
+      <div class="formula">$$\frac{dy}{y} = n\,\frac{dx}{x}.$$</div>
+      즉 상대 오차는 지수 \(n\)배로 커진다(음의 지수면 부호만 바뀐다).
+      <p style="margin:8px 0 0"><b>증명.</b> \(dy = knx^{n-1}dx\)를 \(y = kx^n\)으로 나눈다. 같은 결과를 로그 미분 \(d(\ln y) = n\,d(\ln x)\)로도 얻는다(<a href="chain-rule.html">4장</a>). ∎</p></div>
+    <div class="callout"><strong>예제 6.7 (구의 부피와 진자로 잰 g)</strong>
+      <ol>
+        <li>\(r = 10.0 \pm 0.05\) cm: \(V = \frac43\pi(10)^3 \approx 4189\) cm³, \(dV = 4\pi r^2\,dr = 4\pi(100)(0.05) = 20\pi \approx 62.8\) cm³. 상대 오차 \(62.8/4189 = 1.5\%\) \(= 3\times0.5\%\). 실제 최대 변화 \(V(10.05) - V(10) \approx 63.1\) cm³로 거의 같다.</li>
+        <li>진자: \(T = 2\pi\sqrt{L/g}\)에서 \(g = 4\pi^2L/T^2\). \(L = 1.000\) m(정확하다고 보자), \(T = 2.006 \pm 0.005\) s이면 \(g \approx 9.811\) m/s². \(n = -2\)이므로 상대 오차 \(2\times\frac{0.005}{2.006} \approx 0.50\%\), \(\Delta g \approx 0.049\) m/s².</li>
+        <li>교훈: 결과가 측정값의 거듭제곱에 민감하면(\(|n|\)이 크면) 그 측정을 가장 정밀하게 해야 한다. 진자 실험에서 시간을 한 주기가 아니라 20주기 재서 나누는 이유다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-op-err">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차 전파 계산기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="op-cv-err"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>공식</span><select id="op-e-pre">
+            <option value="sphere">구의 부피 V = (4/3)πr³</option>
+            <option value="circle">원의 넓이 A = πr²</option>
+            <option value="pend">진자 g = 4π²L/T² (T를 측정)</option>
+            <option value="wire">도선 저항 R = 4ρL/(πd²) (d를 측정)</option>
+            <option value="power">전력 P = V²/R (V를 측정)</option>
+          </select></label>
+          <label class="ctrl"><span>측정값 x <output id="op-e-x-out"></output></span><input type="range" id="op-e-x" min="0.5" max="1.5" step="0.005" value="1"></label>
+          <label class="ctrl"><span>상대 오차 Δx/x <output id="op-e-r-out"></output></span><input type="range" id="op-e-r" min="0.1" max="15" step="0.1" value="0.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">계산값 y</span><span class="v" id="op-e-y">—</span></div>
+        <div class="stat"><span class="k">미분 |dy| = |f′(x)|Δx</span><span class="v" id="op-e-dy">—</span></div>
+        <div class="stat"><span class="k">실제 Δy (+Δx / −Δx)</span><span class="v" id="op-e-ex">—</span></div>
+        <div class="stat"><span class="k">상대 오차 |dy/y|</span><span class="v" id="op-e-rel">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '구의 부피'에서 상대 오차 0.5%가 1.5%가 되는 것을 확인하세요(예제 6.7). ② 상대 오차를 10% 이상으로 키우면 접선 띠(파랑)와 실제 범위(진분홍)가 어긋나기 시작합니다. 위아래 비대칭도 생깁니다. 선형 근사는 작은 오차에서만 믿을 만합니다. ③ '도선 저항'에서 지름 1% 오차가 저항 2% 오차가 됩니다. 모델: y = kxⁿ 꼴, x 슬라이더는 기본 측정값에 곱하는 배율입니다.</div>
+    </div>
+    <div class="callout tip"><strong>변수가 여럿이면</strong> 결과가 측정값 여러 개에 의존하면(예: \(g = 4\pi^2L/T^2\)에서 \(L\)과 \(T\)가 모두 불확실) 각 변수의 기여를 편미분으로 더합니다. 최악의 경우는 절댓값의 합, 오차가 서로 독립인 무작위 오차라면 제곱합의 제곱근을 씁니다. 이것은 <a href="partial.html">13장 전미분</a>과 <a href="../../probability/chapters/joint.html">확률과 통계의 결합 분포</a>에서 다룹니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="newton">
+    <h2>뉴턴 방법: 접선으로 근 찾기</h2>
+    <div class="problem"><strong>풀 수 없는 방정식</strong>
+      <p>\(\cos x = x\), 스넬 문제의 \(T'(x) = 0\), 회로의 다이오드 방정식 \(I = I_s(e^{V/V_T} - 1)\)과 저항의 연립은 근의 공식이 없습니다. 2장의 이분법은 확실하지만 한 단계에 한 비트(절반)씩만 좁혀 15자리를 얻는 데 50번쯤 걸립니다. 더 빠른 방법이 있을까요?</p></div>
+    <p>아이디어는 이 장의 두 주제를 합친 것입니다. 근을 모르는 함수 대신 <b>접선</b>(선형 근사)의 근을 구합니다. 접선의 근은 공식으로 나옵니다. 그 점에서 다시 접선을 긋습니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="뉴턴 방법의 기하학">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="40" y1="220" x2="720" y2="220" class="s-axis"/>
+        <path d="M80 250 C 200 230, 360 190, 450 140 S 620 40, 680 22" fill="none" class="s-acc" style="stroke-width:2.8"/>
+        <circle cx="236" cy="220" r="5" style="fill:var(--text)"/><text x="214" y="242" class="t" style="font-weight:700">근 r</text>
+        <line x1="640" y1="220" x2="640" y2="36" class="s-line" style="stroke-dasharray:3 4"/>
+        <circle cx="640" cy="36" r="5" style="fill:var(--accent-2)"/>
+        <line x1="640" y1="36" x2="420" y2="220" style="stroke:var(--accent-2);stroke-width:2.2"/>
+        <circle cx="640" cy="220" r="5" style="fill:var(--accent-2)"/><text x="632" y="242" class="t-mono">x₀</text>
+        <circle cx="420" cy="220" r="5" style="fill:var(--ok)"/><text x="412" y="242" class="t-mono">x₁</text>
+        <line x1="420" y1="220" x2="420" y2="152" class="s-line" style="stroke-dasharray:3 4"/>
+        <circle cx="420" cy="152" r="5" style="fill:var(--ok)"/>
+        <line x1="420" y1="152" x2="290" y2="220" style="stroke:var(--ok);stroke-width:2.2"/>
+        <circle cx="290" cy="220" r="5" style="fill:var(--warn)"/><text x="282" y="242" class="t-mono">x₂</text>
+        <text x="470" y="60" class="t-dim">(x₀, f(x₀))에서 접선</text>
+        <text x="470" y="82" class="t-mono">x₁ = x₀ − f(x₀)/f′(x₀)</text>
+        <text x="60" y="50" class="t" style="font-weight:700">접선의 근 → 다시 접선</text>
+        <text x="60" y="74" class="t-dim">한 번 갈 때마다 맞는 자릿수가 약 두 배</text>
+      </svg>
+      <figcaption><b>그림 6-4.</b> 뉴턴 방법. 점 (xₙ, f(xₙ))에서 그은 접선이 가로축과 만나는 곳을 다음 추정값 xₙ₊₁로 삼는다. 곡선이 근 근처에서 접선과 비슷할수록(확대하면 직선이므로) 추정이 빠르게 좋아진다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 6.8 (뉴턴 방법)</strong> 초기값 \(x_0\)에서 시작해
+      <div class="formula">$$x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}$$</div>
+      을 반복하는 방법을 <span class="term">뉴턴 방법</span><span class="en">(Newton's method, Newton–Raphson method)</span>이라 한다. \(x_{n+1}\)은 \(x_n\)에서의 선형화 \(L(x) = f(x_n) + f'(x_n)(x - x_n)\)의 근이다.</div>
+    <p>뉴턴은 1669년 무렵의 원고에서 다항식의 근을 이런 방식으로 구했고, 1690년 랩슨<span class="en">(Joseph Raphson)</span>이 지금과 비슷한 반복 형태로 발표했습니다. 도함수를 쓰는 일반적인 공식으로 정리된 것은 그 뒤입니다.</p>
+    <div class="callout"><strong>예제 6.8 (√2와 cos x = x)</strong>
+      <ol>
+        <li>\(f(x) = x^2 - 2\)이면 \(x_{n+1} = x_n - \frac{x_n^2 - 2}{2x_n} = \frac12\left(x_n + \frac{2}{x_n}\right)\). "추정값과 2/추정값의 평균"이라는 바빌로니아 방법과 같다.</li>
+        <li>\(x_0 = 1\): \(x_1 = 1.5\), \(x_2 = 1.41\underline{6}667\), \(x_3 = 1.41421\underline{5}686\), \(x_4 = 1.41421356237\underline{4}69\). 오차는 \(8.6\times10^{-2}\), \(2.5\times10^{-3}\), \(2.1\times10^{-6}\), \(1.6\times10^{-12}\). 맞는 자릿수가 1, 3, 6, 12로 매번 두 배가 된다.</li>
+        <li>\(f(x) = \cos x - x\), \(f'(x) = -\sin x - 1\), \(x_0 = 1\): \(x_1 = 0.750364\), \(x_2 = 0.739113\), \(x_3 = 0.7390851334\), \(x_4 = 0.7390851332\). 이분법으로 10자리를 얻으려면 30번 넘게 반으로 나눠야 한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-op-newton">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>뉴턴 방법 한 단계씩: 수렴과 실패</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="op-cv-newton"></canvas><span class="tag-tl" id="op-n-tag">n = 0</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="op-n-pre">
+            <option value="sq2">x² − 2 (√2)</option>
+            <option value="cos">cos x − x</option>
+            <option value="cube">x³ − x (근 셋, 끌림 영역)</option>
+            <option value="cycle">x³ − 2x + 2 (순환)</option>
+            <option value="atan">arctan x (발산)</option>
+            <option value="cbrt">∛x (발산)</option>
+            <option value="double">(x − 1)² (중근)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="op-n-step">다음 단계 ▶</button><button class="btn" id="op-n-five">5단계</button><button class="btn" id="op-n-reset">초기화</button></div>
+          <label class="check"><input type="checkbox" id="op-n-basin" checked> 아래 띠: 초기값별 도착 근</label>
+          <p class="sim-note" style="margin:0;padding:0;border:0">가로축 위의 점 x₀을 끌어 시작점을 바꾸세요.</p>
+        </div>
+      </div>
+      <div class="op-msg" id="op-n-msg"></div>
+      <div class="table-wrap op-tbl" id="op-n-tbl"></div>
+      <div class="sim-note">해볼 것: ① 'x² − 2'에서 다섯 단계 만에 오차가 10⁻¹⁵ 아래로 떨어지는 것을 표에서 보세요. ② 'x³ − 2x + 2'를 x₀ = 0에서 시작하면 0 → 1 → 0 → …으로 영원히 돕니다. x₀을 조금만 옮겨도 근 −1.769로 갑니다. ③ 'arctan x'는 |x₀| &lt; 1.39이면 수렴하고 그보다 크면 발산합니다. ④ '(x − 1)²'은 오차가 매번 절반으로만 줍니다. ⑤ 'x³ − x'의 아래 띠에서 근 사이 경계 근처는 색이 잘게 섞입니다. 모델: 해석적 도함수, 띠는 화면의 각 x를 초기값으로 60번 반복한 결과입니다(회색: 수렴하지 않음).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="newton-convergence">
+    <h2>뉴턴 방법은 왜 빠르고, 언제 실패하나</h2>
+    <p>예제 6.8에서 오차가 \(10^{-3} \to 10^{-6} \to 10^{-12}\)으로 줄었습니다. 오차가 <b>제곱</b>으로 줄어든다는 뜻입니다. 정리 6.5가 그 이유를 정확히 말해 줍니다.</p>
+    <div class="callout deep"><strong>정리 6.9 (2차 수렴)</strong> \(f(r) = 0\), \(f'(r) \ne 0\)이고 \(f''\)이 \(r\) 근처에서 연속이라 하자. \(x_0\)이 \(r\)에 충분히 가까우면 뉴턴 방법은 \(r\)로 수렴하고, 오차 \(e_n = x_n - r\)은
+      <div class="formula">$$e_{n+1} = \frac{f''(\xi_n)}{2f'(x_n)}\,e_n^2 \;\approx\; \frac{f''(r)}{2f'(r)}\,e_n^2$$</div>
+      을 만족한다(\(\xi_n\)은 \(x_n\)과 \(r\) 사이). 이런 수렴을 <span class="term">2차 수렴</span><span class="en">(quadratic convergence)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명.</b> 정리 6.5를 \(a = x_n\), \(x = r\)에 쓰면 \(0 = f(r) = f(x_n) + f'(x_n)(r - x_n) + \frac{f''(\xi_n)}{2}(r - x_n)^2\). \(f'(x_n)\)으로 나누고 정리하면 \(x_n - \frac{f(x_n)}{f'(x_n)} - r = \frac{f''(\xi_n)}{2f'(x_n)}(x_n - r)^2\), 왼쪽이 \(e_{n+1}\)이다. \(|f''/(2f')| \le K\)인 근방에서 \(K|e_0| \lt 1\)이면 \(|e_{n+1}| \le (K|e_n|)|e_n|\)이라 오차가 줄어들며 수렴한다. ∎</p></div>
+    <p>정리의 가정이 깨지는 곳이 곧 실패의 목록입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>실패</th><th>예</th><th>무슨 일이 일어나나</th></tr></thead>
+      <tbody>
+        <tr><td>\(f'(x_n) = 0\)</td><td>\(x^2 - 2\)에서 \(x_0 = 0\)</td><td>접선이 수평이라 가로축과 만나지 않는다. 0에 가까우면 아주 멀리 튄다.</td></tr>
+        <tr><td>순환</td><td>\(x^3 - 2x + 2\), \(x_0 = 0\)</td><td>\(x_1 = 0 - \frac{2}{-2} = 1\), \(x_2 = 1 - \frac11 = 0\). 0과 1을 영원히 오간다.</td></tr>
+        <tr><td>발산 (초기값이 멀다)</td><td>\(\arctan x\), \(|x_0| > 1.3917\)</td><td>곡선이 납작해 접선이 반대편으로 더 멀리 보낸다. \(|x_0| \lt 1.3917\)이면 수렴한다.</td></tr>
+        <tr><td>발산 (\(f'(r)\)이 없다)</td><td>\(\sqrt[3]{x}\)</td><td>\(x_{n+1} = x_n - 3x_n = -2x_n\). 근에 아무리 가까워도 매번 두 배 멀어진다.</td></tr>
+        <tr><td>느린 수렴 (\(f'(r) = 0\), 중근)</td><td>\((x - 1)^2\)</td><td>\(x_{n+1} - 1 = \frac12(x_n - 1)\). 수렴은 하지만 1차(선형) 수렴이다.</td></tr>
+      </tbody></table></div>
+    <div class="callout tip"><strong>실무의 처방</strong> 실제 근 찾기 프로그램은 이분법의 확실함과 뉴턴 방법의 속도를 합칩니다. 근을 끼고 있는 구간을 유지하면서 뉴턴 단계를 시도하고, 그 단계가 구간 밖으로 나가면 이분법 한 단계로 대신합니다. 또 도함수를 구하기 어려우면 두 점의 할선 기울기로 대신하는 할선법을 씁니다(수렴 차수 약 1.618). 많은 수치 라이브러리의 근 찾기 함수가 이런 혼합 방식입니다.</div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="quadratic-approx">
+    <h2>2차 근사 맛보기: 휘어짐까지 맞추기</h2>
+    <p>선형 근사는 값과 기울기만 맞춥니다. 정리 6.5의 오차 항 \(\frac{f''}{2}(x - a)^2\)을 보면 다음 개선이 무엇인지 보입니다. 그 항을 근사에 넣으면 됩니다.</p>
+    <div class="callout deep"><strong>정의 6.10 (2차 근사)</strong> \(f\)가 \(a\)에서 두 번 미분 가능할 때
+      <div class="formula">$$Q(x) = f(a) + f'(a)(x - a) + \frac{f''(a)}{2}(x - a)^2$$</div>
+      를 \(a\)에서의 <span class="term">2차 근사</span><span class="en">(quadratic approximation)</span>라 한다. \(Q\)는 \(Q(a) = f(a)\), \(Q'(a) = f'(a)\), \(Q''(a) = f''(a)\)를 만족하는 유일한 2차 다항식이다.</div>
+    <p>계수 \(\frac12\)은 \((x - a)^2\)을 두 번 미분하면 2가 나오는 것을 상쇄합니다. \(f'''\)이 있으면 오차는 \((x - a)^3\)에 비례합니다(12장에서 증명). 예를 들어 \(\cos x \approx 1 - \frac{x^2}{2}\)는 \(x = 0.5\)에서 0.875, 실제 값 0.87758로 오차가 \(2.6\times10^{-3}\)인데, 선형 근사 1의 오차 0.12보다 50배쯤 작습니다. \(\sqrt{4.1}\)은 \(Q = 2.025 - \frac{1}{64}(0.01) = 2.02484375\)로 오차가 \(1.9\times10^{-6}\)입니다.</p>
+
+    <div class="sim" id="sim-op-quad">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>접선 vs 접하는 포물선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view split">
+          <div><canvas id="op-cv-quad"></canvas><span class="cap">f, L(1차), Q(2차)</span></div>
+          <div><canvas id="op-cv-quaderr"></canvas><span class="cap">오차 vs h (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 기준점</span><select id="op-q-pre">
+            <option value="cos">cos x, a = 0</option>
+            <option value="exp">eˣ, a = 0</option>
+            <option value="sqrt">√x, a = 4</option>
+            <option value="log">ln(1 + x), a = 0</option>
+            <option value="sin">sin x, a = π/4</option>
+          </select></label>
+          <label class="ctrl"><span>거리 h <output id="op-q-h-out"></output></span><input type="range" id="op-q-h" min="0.01" max="2" step="0.01" value="0.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">f(a + h)</span><span class="v" id="op-q-f">—</span></div>
+        <div class="stat"><span class="k">L, 오차</span><span class="v" id="op-q-L">—</span></div>
+        <div class="stat"><span class="k">Q, 오차</span><span class="v" id="op-q-Q">—</span></div>
+        <div class="stat"><span class="k">오차 비 |f − L| / |f − Q|</span><span class="v" id="op-q-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① h를 줄이며 오른쪽 두 곡선의 기울기를 비교하세요. 1차 근사의 오차는 기울기 2, 2차 근사의 오차는 기울기 3입니다. ② 'cos x, a = 0'에서는 2차 근사의 오차 기울기가 4입니다. f‴(0) = 0이라 3차 항이 공짜로 맞기 때문입니다. ③ 'ln(1 + x)'에서 h를 1 가까이 키우면 Q가 오히려 크게 빗나갑니다. 근사는 '근처'에서만 약속입니다. 모델: 해석적 f′, f″. 오른쪽 그래프는 h = 10⁻³ ~ 2.</div>
+    </div>
+    <p>이 생각을 끝까지 밀면 \(n\)차 다항식으로 \(n\)번째 도함수까지 맞추는 <a href="taylor.html">12장의 테일러 다항식</a>이 됩니다. 또 2차 근사의 최솟값을 찾아 반복하면 최적화의 뉴턴 방법 \(x_{n+1} = x_n - f'(x_n)/f''(x_n)\)이 되는데, 이것은 \(f'\)에 뉴턴 근 찾기를 쓴 것과 같습니다. 다변수로 가면 \(f''\) 자리에 헤세 행렬이 들어갑니다(<a href="gradient.html">14장</a>).</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"최솟값을 찾는다"와 "접선으로 근사한다"는 공학 계산의 두 기본 동작입니다. 큰 시뮬레이션 프로그램도 안을 열어 보면 이 두 동작을 수백만 번 반복합니다.</p>
+    <div class="callout"><strong>계산기와 컴퓨터의 나눗셈·제곱근</strong> 여러 프로세서와 수학 라이브러리는 \(1/a\)이나 \(1/\sqrt{a}\)을 직접 나누지 않고, 대략적인 초기값(표에서 읽거나 비트 조작으로 얻은 값)에서 뉴턴 단계를 한두 번 돌려 정밀도를 맞춥니다. \(f(x) = 1/x - a\)에 뉴턴 방법을 쓰면 \(x_{n+1} = x_n(2 - ax_n)\)으로 <b>곱셈과 뺄셈만으로</b> 역수가 나오기 때문입니다. 2차 수렴 덕분에 맞는 비트가 8 → 16 → 32 → 64로 늘어 몇 단계면 충분합니다. 1990년대 3D 게임 Quake III의 유명한 '고속 역제곱근' 코드도 비트 요령으로 얻은 초기값에 뉴턴 단계 한 번을 쓴 것입니다.</div>
+    <div class="uses">
+      <a href="gradient.html"><small>14장 · 기울기 벡터와 최적화</small>다변수 최적화<br><span>임계점은 ∇f = 0, 판정은 헤세 행렬, 제약이 있으면 라그랑주 승수법.</span></a>
+      <a href="taylor.html"><small>12장 · 테일러 전개</small>선형·2차 근사의 끝<br><span>n차 다항식과 라그랑주 나머지로 근사의 오차를 원하는 만큼 줄인다.</span></a>
+      <a href="partial.html"><small>13장 · 편미분</small>전미분과 오차 전파<br><span>입력이 여러 개일 때 dy = Σ (∂f/∂xᵢ) dxᵢ.</span></a>
+      <a href="../../foundations/chapters/optimization.html"><small>MATHBOOK</small>경사 하강법과 학습률<br><span>도함수가 0인 곳을 반복으로 찾아가는 기계 학습의 기본 도구.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK</small>수치 선형대수<br><span>연립 방정식판 뉴턴 방법은 매 단계 야코비 행렬 연립을 푼다.</span></a>
+      <a href="../../probability/chapters/regression.html"><small>확률과 통계</small>최소제곱 회귀<br><span>오차 제곱합의 도함수를 0으로 두면 회귀 계수가 나온다.</span></a>
+      <a href="../../foundations/chapters/numerics.html#condition-number"><small>MATHBOOK</small>조건수<br><span>입력의 상대 오차가 출력에서 몇 배가 되는가. 정리 6.7의 일반화.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li><b>닫힌 구간 방법</b>: [a, b]의 연속 함수의 최댓값·최솟값은 내부 임계점과 끝점 중에서 나온다. 후보의 값을 비교하면 끝.</li>
+      <li>최적화 문제: 그림 → 목적 함수 → 제약으로 변수 하나 → 정의역 → 임계점 → 판정. 정의역이 열려 있으면 '유일한 임계점' 판정이나 끝에서의 극한을 쓴다.</li>
+      <li>결과: 겉넓이 최소 캔은 h = 2r(뚜껑 비용이 k배면 h = 2kr). 최소 시간 경로는 \(\sin\theta_1/v_1 = \sin\theta_2/v_2\)(스넬 법칙, 페르마 원리).</li>
+      <li><b>선형 근사</b> \(L(x) = f(a) + f'(a)(x - a)\). 오차 \(= \frac{f''(\xi)}{2}(x - a)^2\), 따라서 \(|오차| \le \frac M2(x - a)^2\). f″ > 0이면 과소, f″ &lt; 0이면 과대 추정.</li>
+      <li><b>미분</b> dy = f′(x)dx로 오차를 전파한다. \(y = kx^n\)이면 상대 오차가 \(|n|\)배.</li>
+      <li><b>뉴턴 방법</b> \(x_{n+1} = x_n - f(x_n)/f'(x_n)\): 단순근 근처에서 2차 수렴(맞는 자릿수가 두 배씩). 실패: f′ = 0, 순환, 먼 초기값, f′(r)이 없음. 중근에서는 1차 수렴.</li>
+      <li><b>2차 근사</b> \(Q = L + \frac{f''(a)}{2}(x - a)^2\): 휘어짐까지 맞추면 오차가 \((x - a)^3\) 수준. 12장 테일러 전개의 첫걸음.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(f(x) = x - 2\sqrt{x}\)의 \([0, 9]\)에서의 최솟값은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt" data-correct>−1</button>
+        <button class="opt">−2</button>
+        <button class="opt">3</button>
+      </div><div class="quiz-exp">\(f'(x) = 1 - \frac{1}{\sqrt x} = 0\)에서 \(x = 1\)(x = 0은 f′이 없는 끝점). 후보 \(f(0) = 0\), \(f(1) = -1\), \(f(9) = 9 - 6 = 3\). 최솟값 −1, 최댓값 3(끝점 x = 9).</div></div>
+
+      <div class="quiz-q"><p>Q2. 강가에 직사각형 울타리를 친다. 강 쪽은 울타리가 필요 없고 재료는 240 m다. 최대 넓이는?</p><div class="opts">
+        <button class="opt">3600 m²</button>
+        <button class="opt">4800 m²</button>
+        <button class="opt" data-correct>7200 m²</button>
+        <button class="opt">14 400 m²</button>
+      </div><div class="quiz-exp">\(A = x(240 - 2x)\), \(A' = 240 - 4x = 0\)에서 \(x = 60\). \(A = 60\times120 = 7200\) m². 3600은 네 변 모두 울타리를 치는 정사각형(60 × 60)의 넓이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 빛이 공기(n = 1.00)에서 물(n = 1.33)로 입사각 30°로 들어간다. 굴절각은 약?</p><div class="opts">
+        <button class="opt">15°</button>
+        <button class="opt" data-correct>22°</button>
+        <button class="opt">30°</button>
+        <button class="opt">42°</button>
+      </div><div class="quiz-exp">\(\sin\theta_2 = \frac{1.00\cdot\sin30°}{1.33} = \frac{0.5}{1.33} \approx 0.376\), \(\theta_2 \approx 22.1°\). 느린 매질로 들어가면 법선 쪽으로 꺾인다. 각도가 굴절률에 반비례하는 것이 아니라 사인이 반비례한다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(a = 8\)에서의 선형 근사로 \(\sqrt[3]{8.12}\)를 어림하면?</p><div class="opts">
+        <button class="opt">2.0004</button>
+        <button class="opt" data-correct>2.01</button>
+        <button class="opt">2.04</button>
+        <button class="opt">2.12</button>
+      </div><div class="quiz-exp">\(f'(x) = \frac13x^{-2/3}\), \(f'(8) = \frac{1}{12}\). \(L(8.12) = 2 + \frac{0.12}{12} = 2.01\). 실제 값 2.009950…이고, \(f'' \lt 0\)이라 선형 근사가 살짝 과대 추정이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 정육면체 한 변을 상대 오차 1%로 쟀다. 부피의 상대 오차는 대략?</p><div class="opts">
+        <button class="opt">1%</button>
+        <button class="opt">2%</button>
+        <button class="opt" data-correct>3%</button>
+        <button class="opt">0.33%</button>
+      </div><div class="quiz-exp">\(V = s^3\)이므로 \(dV/V = 3\,ds/s = 3\%\). 정확히는 \(1.01^3 - 1 = 3.03\%\)로 미분의 어림과 거의 같다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(f(x) = x^2 - 5\)에 뉴턴 방법을 \(x_0 = 2\)에서 시작했다. \(x_2\)는?</p><div class="opts">
+        <button class="opt">2.25</button>
+        <button class="opt" data-correct>2.2361</button>
+        <button class="opt">2.2500</button>
+        <button class="opt">2.2222</button>
+      </div><div class="quiz-exp">\(x_1 = 2 - \frac{-1}{4} = 2.25\), \(x_2 = 2.25 - \frac{0.0625}{4.5} = 2.236111\). \(\sqrt5 = 2.236068\)이라 두 단계 만에 소수 넷째 자리까지 맞았다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(f(x) = x^3 - 2x + 2\)에 뉴턴 방법을 \(x_0 = 0\)에서 시작하면?</p><div class="opts">
+        <button class="opt">근 −1.769로 2차 수렴한다</button>
+        <button class="opt">f′(0) = 0이라 첫 단계에서 멈춘다</button>
+        <button class="opt" data-correct>0과 1을 영원히 오간다</button>
+        <button class="opt">무한대로 발산한다</button>
+      </div><div class="quiz-exp">\(f(0) = 2\), \(f'(0) = -2\)이므로 \(x_1 = 1\). \(f(1) = 1\), \(f'(1) = 1\)이므로 \(x_2 = 0\). 이후 같은 두 점을 되풀이한다. 초기값을 −1.5처럼 근 가까이 잡으면 수렴한다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 단순근으로 수렴 중인 뉴턴 방법에서 지금 오차가 약 10⁻³이고 \(|f''(r)/(2f'(r))| \approx 1\)이다. 다음 단계의 오차는 대략?</p><div class="opts">
+        <button class="opt">5 × 10⁻⁴</button>
+        <button class="opt">10⁻⁴</button>
+        <button class="opt" data-correct>10⁻⁶</button>
+        <button class="opt">10⁻⁹</button>
+      </div><div class="quiz-exp">2차 수렴: \(|e_{n+1}| \approx \left|\frac{f''(r)}{2f'(r)}\right| e_n^2 = 10^{-6}\). 5 × 10⁻⁴(절반)는 중근에서의 1차 수렴이나 이분법의 속도다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const OP = {
+  num(v, d = 2) {
+    if (!isFinite(v)) return v > 0 ? "∞" : v < 0 ? "−∞" : "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  exp(v, d = 2) { if (v === 0) return "0"; if (!isFinite(v)) return "—"; return v.toExponential(d).replace("e+0", "").replace(/e([+-])(\d+)/, (m, s, k) => ` × 10<sup>${s === "-" ? "−" : ""}${k}</sup>`).replace("-", "−"); },
+  roots(g, a, b, n = 600, tol = 1e-6) {
+    const out = []; let xp = a, gp = g(a);
+    for (let i = 1; i <= n; i++) {
+      const x = a + (b - a) * i / n, gx = g(x);
+      if (isFinite(gp) && isFinite(gx) && gp * gx < 0) {
+        let lo = xp, hi = x, glo = gp;
+        for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2, gm = g(m); if (glo * gm <= 0) hi = m; else { lo = m; glo = gm; } }
+        const r = (lo + hi) / 2; if (Math.abs(g(r)) < tol) out.push(r);
+      }
+      xp = x; gp = gx;
+    }
+    return out;
+  },
+  /** 볼록 함수의 최소점(삼분 탐색) */
+  argmin(f, a, b) { for (let i = 0; i < 200; i++) { const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3; if (f(m1) < f(m2)) b = m2; else a = m1; } return (a + b) / 2; },
+};
+
+/* ================================================================ 1. 닫힌 구간 방법 */
+(function () {
+  const PRE = {
+    cubic: { f: (x) => x ** 3 - 3 * x * x + 1, d: (x) => 3 * x * x - 6 * x, x: [-1.4, 4.6], y: [-4.5, 19], a: -0.5, b: 4, sing: [], g: 2 },
+    cos: { f: (x) => x + 2 * Math.cos(x), d: (x) => 1 - 2 * Math.sin(x), x: [-0.6, 7], y: [-1, 9], a: 0, b: 2 * Math.PI, sing: [], g: 1 },
+    abs: { f: (x) => Math.abs(x * x - 4), d: (x) => (x * x > 4 ? 2 * x : -2 * x), x: [-3.5, 3.5], y: [-1, 7], a: -3, b: 3, sing: [-2, 2], g: 1 },
+    xexp: { f: (x) => x * Math.exp(-x), d: (x) => (1 - x) * Math.exp(-x), x: [-0.5, 5], y: [-0.6, 0.6], a: 0, b: 4, sing: [], g: 0.5 },
+  };
+  let cur = PRE.cubic;
+  const tbl = document.getElementById("op-c-tbl");
+  const pts = [{ x: cur.a, y: 0, label: "a", r: 8 }, { x: cur.b, y: 0, label: "b", r: 8 }];
+  const fix = (p, i) => { let x = MB.clamp(p.x, cur.x[0] + 0.05, cur.x[1] - 0.05); x = i ? Math.max(x, pts[0].x + 0.1) : Math.min(x, pts[1].x - 0.1); p.x = x; p.y = cur.f(x); };
+  pts[0].constrain = (p) => fix(p, 0); pts[1].constrain = (p) => fix(p, 1);
+  pts.forEach((p) => (p.y = cur.f(p.x)));
+  const opts = {
+    x: cur.x, y: cur.y, aspect: 0.62, maxHeight: 420, minHeight: 240, points: pts, gridStep: cur.g,
+    draw(P, api) {
+      const C = P.P, [A, B] = api.points;
+      A.color = B.color = C.accent2;
+      P.curve(cur.f, { color: C.dim, width: 1.4, alpha: 0.6 });
+      P.curve(cur.f, { from: A.x, to: B.x, color: C.accent, width: 3 });
+      const crit = OP.roots(cur.d, A.x + 1e-6, B.x - 1e-6, 600, 1e-6).concat(cur.sing.filter((s) => s > A.x && s < B.x)).sort((u, v) => u - v);
+      const cand = [{ x: A.x, k: "끝점 a" }, ...crit.map((x) => ({ x, k: cur.sing.includes(x) ? "임계점 (f′ 없음)" : "임계점 (f′ = 0)" })), { x: B.x, k: "끝점 b" }].map((c) => ({ ...c, y: cur.f(c.x) }));
+      let iMax = 0, iMin = 0;
+      cand.forEach((c, i) => { if (c.y > cand[iMax].y) iMax = i; if (c.y < cand[iMin].y) iMin = i; });
+      cand.forEach((c, i) => { if (c.k.startsWith("임계")) P.dot(c.x, c.y, { r: 5, color: C.accent2 }); });
+      P.line(P.x0, cand[iMax].y, P.x1, cand[iMax].y, { color: C.ok, width: 1, dash: [4, 4] });
+      P.line(P.x0, cand[iMin].y, P.x1, cand[iMin].y, { color: C.bad, width: 1, dash: [4, 4] });
+      P.dot(cand[iMax].x, cand[iMax].y, { r: 7, color: C.ok, label: "최대" });
+      P.dot(cand[iMin].x, cand[iMin].y, { r: 7, color: C.bad, label: "최소" });
+      MB.stat("op-c-ab", `[${OP.num(A.x)}, ${OP.num(B.x)}]`);
+      MB.stat("op-c-max", `${OP.num(cand[iMax].y, 3)} (x = ${OP.num(cand[iMax].x, 3)})`);
+      MB.stat("op-c-min", `${OP.num(cand[iMin].y, 3)} (x = ${OP.num(cand[iMin].x, 3)})`);
+      tbl.innerHTML = `<table><thead><tr><th style="text-align:left">후보</th><th>x</th><th>f(x)</th></tr></thead><tbody>${cand.map((c, i) => `<tr class="${i === iMax ? "op-best" : i === iMin ? "op-worst" : ""}"><td style="text-align:left">${c.k}</td><td>${OP.num(c.x, 3)}</td><td>${OP.num(c.y, 4)}</td></tr>`).join("")}</tbody></table>`;
+    },
+  };
+  const pl = MB.plane("#op-cv-closed", opts);
+  document.getElementById("op-c-pre").addEventListener("change", (e) => { cur = PRE[e.target.value]; opts.gridStep = cur.g; pts[0].x = cur.a; pts[1].x = cur.b; pts.forEach((p) => (p.y = cur.f(p.x))); pl.view({ x: cur.x, y: cur.y }); });
+})();
+
+/* ================================================================ 2. 판지 상자 */
+(function () {
+  const Lr = MB.range("op-b-L", (v) => v + " cm", () => upd());
+  const Wr = MB.range("op-b-W", (v) => v + " cm", () => upd());
+  const xmax = () => Math.min(Lr(), Wr()) / 2;
+  const xr = MB.range("op-b-x", (v) => (xmax() * v / 1000).toFixed(2) + " cm", () => upd());
+  const V = (x) => x * (Lr() - 2 * x) * (Wr() - 2 * x);
+  const dV = (x) => 12 * x * x - 4 * (Lr() + Wr()) * x + Lr() * Wr();
+  const xs = () => { const L = Lr(), W = Wr(); return (L + W - Math.sqrt(L * L - L * W + W * W)) / 6; };
+  const cv = MB.canvas("#op-cv-box", (ctx, w, h) => {
+    const C = MB.palette(), L = Lr(), W = Wr(), x = xmax() * xr() / 1000, top = h * 0.5;
+    // 전개도
+    const s = Math.min((w * 0.46 - 20) / L, (top - 30) / W), ox = 14, oy = 14;
+    ctx.fillStyle = C.surface; ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const P = [[x, 0], [L - x, 0], [L - x, x], [L, x], [L, W - x], [L - x, W - x], [L - x, W], [x, W], [x, W - x], [0, W - x], [0, x], [x, x]];
+    P.forEach(([a, b], i) => (i ? ctx.lineTo(ox + a * s, oy + b * s) : ctx.moveTo(ox + a * s, oy + b * s))); ctx.closePath(); ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = C.dim; ctx.strokeRect(ox + x * s, oy + x * s, (L - 2 * x) * s, (W - 2 * x) * s); ctx.setLineDash([]);
+    ctx.fillStyle = C.dim; ctx.font = "11px sans-serif"; ctx.textAlign = "center"; ctx.fillText(`${L} × ${W} cm`, ox + L * s / 2, oy + W * s + 14);
+    // 상자 (사선 투영)
+    const bl = L - 2 * x, bw = W - 2 * x, bx0 = w * 0.55, by0 = top - 16;
+    const k = Math.min((w * 0.42) / (bl + 0.5 * bw + 1e-9), (top - 30) / (x + 0.5 * bw + 1e-9), s * 1.2), dx = 0.5 * bw * k * 0.87, dy = 0.5 * bw * k * 0.5;
+    const poly = (pts, fill, stroke) => { ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b))); ctx.closePath(); ctx.fillStyle = fill; ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = stroke; ctx.lineWidth = 1.4; ctx.stroke(); };
+    const fx = bl * k, hz = x * k;
+    poly([[bx0 + dx, by0 - dy - hz], [bx0 + dx + fx, by0 - dy - hz], [bx0 + dx + fx, by0 - dy], [bx0 + dx, by0 - dy]], C.elev, C.dim);
+    poly([[bx0, by0 - hz], [bx0 + dx, by0 - dy - hz], [bx0 + dx, by0 - dy], [bx0, by0]], C.surface, C.dim);
+    poly([[bx0 + fx, by0 - hz], [bx0 + fx + dx, by0 - dy - hz], [bx0 + fx + dx, by0 - dy], [bx0 + fx, by0]], C.accent2, C.accent2);
+    poly([[bx0, by0 - hz], [bx0 + fx, by0 - hz], [bx0 + fx, by0], [bx0, by0]], C.accent, C.accent);
+    // 부피 그래프
+    const xm = xmax(), data = []; let vmax = 0;
+    for (let i = 0; i <= 200; i++) { const t = xm * i / 200, v = V(t); data.push([t, v]); vmax = Math.max(vmax, v); }
+    const xo = xs();
+    MB.chart(ctx, { x: 58, y: top + 10, w: w - 58 - 18, h: h - top - 10 - 40 }, {
+      x: [0, xm], y: [0, vmax * 1.12 || 1], xLabel: "x (cm)", yLabel: "V (cm³)",
+      series: [{ data, color: C.accent, width: 2.4 }],
+      vlines: [{ x: xo, color: C.ok, label: "x* " + xo.toFixed(2) }],
+      points: [{ x, y: V(x), r: 6, color: C.accent2 }],
+    });
+  }, { aspect: 0.78, minHeight: 360, maxHeight: 520 });
+  function upd() {
+    const x = xmax() * xr() / 1000, xo = xs();
+    xr.set(xr(), false);
+    MB.stat("op-b-V", OP.num(V(x), 2) + " cm³");
+    MB.stat("op-b-dV", OP.num(dV(x), 2));
+    MB.stat("op-b-opt-v", `${OP.num(xo, 3)} cm, ${OP.num(V(xo), 2)} cm³`);
+    cv.redraw();
+  }
+  document.getElementById("op-b-opt").addEventListener("click", () => xr.set(Math.round(xs() / xmax() * 1000)));
+  upd();
+})();
+
+/* ================================================================ 3. 캔 */
+(function () {
+  const Vr = MB.range("op-k-V", (v) => v + " cm³", () => upd());
+  const rr = MB.range("op-k-r", (v) => v.toFixed(2) + " cm", () => upd());
+  const kr = MB.range("op-k-k", (v) => v.toFixed(2), () => upd());
+  const Cost = (r) => 2 * Math.PI * kr() * r * r + 2 * Vr() / r;
+  const rOpt = () => Math.cbrt(Vr() / (2 * Math.PI * kr()));
+  const cv = MB.canvas("#op-cv-can", (ctx, w, h) => {
+    const C = MB.palette(), r = rr(), V = Vr(), hh = V / (Math.PI * r * r);
+    // 캔 그림 (왼쪽)
+    const cw = Math.min(w * 0.36, 220), sc = Math.min((cw - 30) / (2 * r), (h - 70) / hh), cx = cw / 2 + 6, base = h - 30;
+    const rw = r * sc, hp = hh * sc, ry = rw * 0.28;
+    ctx.fillStyle = C.accent; ctx.globalAlpha = 0.2; ctx.fillRect(cx - rw, base - hp, 2 * rw, hp); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - rw, base - hp); ctx.lineTo(cx - rw, base); ctx.moveTo(cx + rw, base - hp); ctx.lineTo(cx + rw, base); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, base, rw, ry, 0, 0, Math.PI); ctx.stroke();
+    ctx.fillStyle = C.accent2; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.ellipse(cx, base - hp, rw, ry, 0, 0, 2 * Math.PI); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.accent2; ctx.beginPath(); ctx.ellipse(cx, base - hp, rw, ry, 0, 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`h/r = ${(hh / r).toFixed(2)}`, cx, base + 20);
+    // 비용 그래프 (오른쪽)
+    const data = []; let cmin = Infinity, cmaxv = 0;
+    for (let i = 0; i <= 200; i++) { const t = 1.5 + 7.5 * i / 200, c = Cost(t); data.push([t, c]); cmin = Math.min(cmin, c); cmaxv = Math.max(cmaxv, c); }
+    const ro = rOpt();
+    MB.chart(ctx, { x: cw + 58, y: 14, w: w - cw - 58 - 16, h: h - 14 - 42 }, {
+      x: [1.5, 9], y: [0, Math.min(cmaxv, cmin * 3)], xLabel: "반지름 r (cm)",
+      series: [{ data, color: C.accent, width: 2.4 }],
+      vlines: [{ x: ro, color: C.ok, label: "r* " + ro.toFixed(2) }],
+      points: [{ x: r, y: Cost(r), r: 6, color: C.accent2 }],
+    });
+  }, { aspect: 0.55, minHeight: 260, maxHeight: 380 });
+  function upd() {
+    const r = rr(), V = Vr(), hh = V / (Math.PI * r * r), ro = rOpt();
+    MB.stat("op-k-h", hh.toFixed(2) + " cm");
+    MB.stat("op-k-hr", (hh / r).toFixed(2) + ` (최적 ${(2 * kr()).toFixed(2)})`);
+    MB.stat("op-k-C", Cost(r).toFixed(1) + ` (최솟값보다 +${((Cost(r) / Cost(ro) - 1) * 100).toFixed(1)}%)`);
+    MB.stat("op-k-opt-v", `${ro.toFixed(2)} cm, ${Cost(ro).toFixed(1)}`);
+    cv.redraw();
+  }
+  document.getElementById("op-k-opt").addEventListener("click", () => rr.set(MB.clamp(+rOpt().toFixed(2), 1.5, 9)));
+  upd();
+})();
+
+/* ================================================================ 4. 스넬 */
+(function () {
+  const A = [0, 20], B = [60, -30];
+  const v1 = MB.range("op-s-v1", (v) => v.toFixed(1), () => upd());
+  const v2 = MB.range("op-s-v2", (v) => v.toFixed(2), () => upd());
+  const T = (x) => Math.hypot(x - A[0], A[1]) / v1() + Math.hypot(B[0] - x, B[1]) / v2();
+  const msg = document.getElementById("op-s-msg");
+  const pts = [{ x: 30, y: 0, lock: "y", r: 9, label: "P", constrain(p) { p.x = MB.clamp(p.x, -5, 65); p.y = 0; } }];
+  let chart = null;
+  const pl = MB.plane("#op-cv-snell", {
+    x: [-8, 68], cy: -5, aspect: 0.72, maxHeight: 600, minHeight: 230, gridStep: 10, points: pts,
+    draw(P, api) {
+      const C = P.P, p = api.points[0], ctx = P.ctx;
+      p.color = C.accent;
+      ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = C.accent2; ctx.fillRect(0, P.Y(0), P.w, P.h - P.Y(0)); ctx.globalAlpha = 0.1; ctx.fillStyle = C.warn; ctx.fillRect(0, 0, P.w, P.Y(0)); ctx.restore();
+      P.line(P.x0, 0, P.x1, 0, { color: C.text, width: 1.6 });
+      P.line(A[0], A[1], B[0], B[1], { color: C.dim, width: 1.2, dash: [5, 5] });
+      const xo = OP.argmin(T, 0, 60);
+      P.line(A[0], A[1], xo, 0, { color: C.ok, width: 1.4, dash: [3, 4], alpha: 0.8 }); P.line(xo, 0, B[0], B[1], { color: C.ok, width: 1.4, dash: [3, 4], alpha: 0.8 });
+      P.line(p.x, 14, p.x, -14, { color: C.dim, width: 1, dash: [2, 3] });
+      P.line(A[0], A[1], p.x, 0, { color: C.accent, width: 3 }); P.line(p.x, 0, B[0], B[1], { color: C.accent, width: 3 });
+      P.dot(A[0], A[1], { r: 7, color: C.accent2, label: "A" }); P.dot(B[0], B[1], { r: 7, color: C.accent2, label: "B" });
+      P.text("매질 1 · v₁", P.x0 + 1, 3, { color: C.dim, size: 12, baseline: "bottom" }); P.text("매질 2 · v₂", P.x0 + 1, -3, { color: C.dim, size: 12, baseline: "top" });
+      if (chart) chart.redraw();
+    },
+    onDrag() { upd(); },
+  });
+  chart = MB.canvas("#op-cv-snellT", (ctx) => {
+    const C = MB.palette(), data = []; let lo = Infinity, hi = 0;
+    for (let i = 0; i <= 200; i++) { const x = -5 + 70 * i / 200, t = T(x); data.push([x, t]); lo = Math.min(lo, t); hi = Math.max(hi, t); }
+    const xo = OP.argmin(T, 0, 60);
+    MB.chart(ctx, null, { x: [-5, 65], y: [lo * 0.95, hi * 1.02], xLabel: "입수 지점 x (m)", yLabel: "T (s)", series: [{ data, color: C.accent, width: 2.2 }], vlines: [{ x: xo, color: C.ok }], points: [{ x: pts[0].x, y: T(pts[0].x), r: 5, color: C.accent2 }] });
+  }, { aspect: 0.3, minHeight: 140, maxHeight: 190 });
+  function upd() {
+    pl.redraw();
+    const x = pts[0].x, s1 = (x - A[0]) / Math.hypot(x - A[0], A[1]), s2 = (B[0] - x) / Math.hypot(B[0] - x, B[1]);
+    const l = s1 / v1(), r = s2 / v2(), xo = OP.argmin(T, 0, 60);
+    MB.stat("op-s-T", `${x.toFixed(1)} m, ${T(x).toFixed(2)} s`);
+    MB.stat("op-s-l", l.toFixed(4)); MB.stat("op-s-r", r.toFixed(4));
+    MB.stat("op-s-th", `${(Math.asin(s1) * 180 / Math.PI).toFixed(1)}°, ${(Math.asin(s2) * 180 / Math.PI).toFixed(1)}°`);
+    const gap = T(x) - T(xo);
+    if (gap < 1e-3 * T(xo)) { msg.className = "op-msg ok"; msg.innerHTML = `최소 시간 경로! sin θ₁/v₁ = sin θ₂/v₂ (스넬 법칙). 최소 시간 ${T(xo).toFixed(2)}, 직선 경로(x = 24)보다 ${(T(24) - T(xo)).toFixed(2)} 빠릅니다.`; }
+    else { msg.className = "op-msg"; msg.innerHTML = `최적(초록 점선, x ≈ ${xo.toFixed(1)})보다 <b>${gap.toFixed(2)}</b> 늦습니다. T′(x) = sin θ₁/v₁ − sin θ₂/v₂ = ${(l - r).toFixed(4)} ${l > r ? "&gt; 0 → 왼쪽으로" : "&lt; 0 → 오른쪽으로"} 옮기세요.`; }
+  }
+  document.getElementById("op-s-opt").addEventListener("click", () => { pts[0].x = OP.argmin(T, 0, 60); upd(); });
+  document.getElementById("op-s-light").addEventListener("click", () => { v1.set(1, false); v2.set(0.75, false); pts[0].x = OP.argmin(T, 0, 60); upd(); });
+  upd();
+})();
+
+/* ================================================================ 5. 선형 근사 확대경 */
+(function () {
+  const PRE = {
+    sqrt: { f: Math.sqrt, d1: (x) => 0.5 / Math.sqrt(x), d2: (x) => -0.25 * Math.pow(x, -1.5), a: 4, hMax: 2, name: "√x" },
+    sin: { f: Math.sin, d1: Math.cos, d2: (x) => -Math.sin(x), a: 0.5, hMax: 2, name: "sin x" },
+    exp: { f: Math.exp, d1: Math.exp, d2: Math.exp, a: 0, hMax: 2, name: "eˣ" },
+    log: { f: Math.log, d1: (x) => 1 / x, d2: (x) => -1 / (x * x), a: 1, hMax: 0.9, name: "ln x" },
+    recip: { f: (x) => 1 / x, d1: (x) => -1 / (x * x), d2: (x) => 2 / x ** 3, a: 1, hMax: 0.9, name: "1/x" },
+  };
+  let cur = PRE.sqrt;
+  const hr = MB.range("op-l-h", (v) => OP.num(Math.min(Math.pow(10, v), cur.hMax), 4), () => upd());
+  const H = () => Math.min(Math.pow(10, hr()), cur.hMax);
+  const L = (x) => cur.f(cur.a) + cur.d1(cur.a) * (x - cur.a);
+  const left = MB.canvas("#op-cv-lin", (ctx) => {
+    const C = MB.palette(), h = H(), a = cur.a, F = [], Ls = []; let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= 200; i++) { const x = a - h + 2 * h * i / 200, y = cur.f(x); F.push([x, y]); Ls.push([x, L(x)]); lo = Math.min(lo, y, L(x)); hi = Math.max(hi, y, L(x)); }
+    const pad = (hi - lo) * 0.1 || 0.1, dg = Math.max(0, Math.ceil(-Math.log10(h)) + 1);
+    MB.chart(ctx, null, { x: [a - h, a + h], y: [lo - pad, hi + pad], xFmt: (v) => OP.num(v, dg), yFmt: (v) => OP.num(v, dg + 1),
+      series: [{ data: Ls, color: C.accent2, width: 2, dash: [6, 4] }, { data: F, color: C.accent, width: 2.6 }],
+      vlines: [{ x: a, color: C.dim }, { x: a + h, color: C.warn }], points: [{ x: a, y: cur.f(a), r: 5, color: C.text }] });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  const right = MB.canvas("#op-cv-linerr", (ctx) => {
+    const C = MB.palette(), a = cur.a, E = [], R = [], c2 = Math.abs(cur.d2(a)) / 2;
+    for (let i = 0; i <= 120; i++) { const h = Math.pow(10, -3 + (Math.log10(cur.hMax) + 3) * i / 120); E.push([h, Math.abs(cur.f(a + h) - L(a + h))]); R.push([h, 4 * c2 * h * h]); }
+    MB.chart(ctx, null, { x: [1e-3, cur.hMax], y: [1e-8, 10], logX: true, logY: true, xLabel: "h", yTicks: [1e-8, 1e-6, 1e-4, 1e-2, 1],
+      series: [{ data: R, color: C.dim, width: 1.4, dash: [5, 4] }, { data: E, color: C.accent, width: 2.4 }],
+      vlines: [{ x: H(), color: C.warn }] });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  function upd() {
+    left.redraw(); right.redraw();
+    const a = cur.a, h = H(), x = a + h, fx = cur.f(x), Lx = L(x), e = fx - Lx;
+    MB.stat("op-l-L", `${OP.num(cur.f(a), 4)} ${cur.d1(a) < 0 ? "−" : "+"} ${OP.num(Math.abs(cur.d1(a)), 4)}(x ${a < 0 ? "+" : "−"} ${OP.num(Math.abs(a), 2)})`);
+    MB.stat("op-l-fx", `${OP.num(fx, 6)}, ${OP.num(Lx, 6)}`);
+    MB.stat("op-l-e", OP.exp(e, 2));
+    MB.stat("op-l-r", `${OP.num(e / (h * h), 5)} → ${OP.num(cur.d2(a) / 2, 5)}`);
+  }
+  document.getElementById("op-l-pre").addEventListener("change", (e) => { cur = PRE[e.target.value]; hr.set(-1); });
+  upd();
+})();
+
+/* ================================================================ 6. 오차 전파 */
+(function () {
+  const PRE = {
+    sphere: { k: 4 / 3 * Math.PI, n: 3, x0: 10, xu: "cm", yu: "cm³", xn: "r", yn: "V" },
+    circle: { k: Math.PI, n: 2, x0: 10, xu: "cm", yu: "cm²", xn: "r", yn: "A" },
+    pend: { k: 4 * Math.PI * Math.PI * 1.0, n: -2, x0: 2.006, xu: "s", yu: "m/s²", xn: "T", yn: "g" },
+    wire: { k: 4 * 1.68e-8 * 10 / Math.PI * 1e6, n: -2, x0: 1.0, xu: "mm", yu: "Ω", xn: "d", yn: "R" },
+    power: { k: 1 / 10, n: 2, x0: 5, xu: "V", yu: "W", xn: "V", yn: "P" },
+  };
+  let cur = PRE.sphere;
+  const xs = MB.range("op-e-x", (v) => `${OP.num(cur.x0 * v, 3)} ${cur.xu}`, () => upd());
+  const rs = MB.range("op-e-r", (v) => v.toFixed(1) + "%", () => upd());
+  const y = (x) => cur.k * Math.pow(x, cur.n), dy = (x) => cur.k * cur.n * Math.pow(x, cur.n - 1);
+  const fmt = (v) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0) ? OP.exp(v, 3) : OP.num(v, Math.abs(v) < 1 ? 4 : Math.abs(v) < 100 ? 3 : 1));
+  const cv = MB.canvas("#op-cv-err", (ctx, w, h) => {
+    const C = MB.palette(), x = cur.x0 * xs(), dx = x * rs() / 100;
+    const x0 = Math.max(x * 1e-3, x - 3 * dx), x1 = x + 3 * dx, data = [], tan = [];
+    for (let i = 0; i <= 200; i++) { const t = x0 + (x1 - x0) * i / 200; data.push([t, y(t)]); tan.push([t, y(x) + dy(x) * (t - x)]); }
+    const ys = data.map((d) => d[1]).concat(tan.map((d) => d[1])), lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.05;
+    const R = MB.chart(ctx, null, { x: [x0, x1], y: [lo - pad, hi + pad], xLabel: `${cur.xn} (${cur.xu})`, yLabel: `${cur.yn} (${cur.yu})`, yFmt: fmt, xFmt: (v) => OP.num(v, 3),
+      series: [{ data: tan, color: C.accent2, width: 1.6, dash: [6, 4] }, { data, color: C.accent, width: 2.6 }],
+      vlines: [{ x: x - dx, color: C.dim }, { x: x + dx, color: C.dim }] });
+    const ya = y(x - dx), yb = y(x + dx), d = Math.abs(dy(x) * dx);
+    MV_band(ctx, R, ya, yb, C.accent, 0.16, 0); MV_band(ctx, R, y(x) - d, y(x) + d, C.accent2, 0.16, 1);
+    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(R.X(x), R.Y(y(x)), 5, 0, 7); ctx.fill();
+    ctx.font = "11px sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = C.accent; ctx.fillText("실제 범위", R.box.x + 6, R.box.y + 12); ctx.fillStyle = C.accent2; ctx.fillText("미분으로 어림한 범위", R.box.x + 6, R.box.y + 28);
+  }, { aspect: 0.6, minHeight: 240, maxHeight: 380 });
+  function MV_band(ctx, R, ya, yb, color, alpha, side) {
+    const lo = Math.min(ya, yb), hi = Math.max(ya, yb), bw = 14, x = side ? R.box.x + R.box.w - 2 * bw - 4 : R.box.x + R.box.w - bw;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(R.box.x, R.Y(hi), R.box.w, R.Y(lo) - R.Y(hi));
+    ctx.globalAlpha = 1; ctx.fillRect(x, R.Y(hi), bw, Math.max(2, R.Y(lo) - R.Y(hi))); ctx.restore();
+  }
+  function upd() {
+    cv.redraw();
+    const x = cur.x0 * xs(), dx = x * rs() / 100, Y = y(x), d = Math.abs(dy(x) * dx);
+    MB.stat("op-e-y", `${fmt(Y)} ${cur.yu}`);
+    MB.stat("op-e-dy", `± ${fmt(d)} ${cur.yu}`);
+    MB.stat("op-e-ex", `${y(x + dx) - Y >= 0 ? "+" : "−"}${fmt(Math.abs(y(x + dx) - Y))} / ${y(x - dx) - Y >= 0 ? "+" : "−"}${fmt(Math.abs(y(x - dx) - Y))}`);
+    MB.stat("op-e-rel", `${(100 * d / Math.abs(Y)).toFixed(2)}% = |${String(cur.n).replace("-", "−")}| × ${rs().toFixed(1)}%`);
+  }
+  document.getElementById("op-e-pre").addEventListener("change", (e) => { cur = PRE[e.target.value]; xs.set(1, false); upd(); });
+  upd();
+})();
+
+/* ================================================================ 7. 뉴턴 방법 */
+(function () {
+  const PRE = {
+    sq2: { f: (x) => x * x - 2, d: (x) => 2 * x, x: [-0.6, 3.2], y: [-2.6, 8.5], x0: 2.8, roots: [Math.SQRT2, -Math.SQRT2] },
+    cos: { f: (x) => Math.cos(x) - x, d: (x) => -Math.sin(x) - 1, x: [-1, 3], y: [-4, 1.6], x0: 2.5, roots: [0.7390851332151607] },
+    cube: { f: (x) => x ** 3 - x, d: (x) => 3 * x * x - 1, x: [-2, 2], y: [-2.2, 2.2], x0: 0.46, roots: [-1, 0, 1] },
+    cycle: { f: (x) => x ** 3 - 2 * x + 2, d: (x) => 3 * x * x - 2, x: [-2.6, 2], y: [-3.5, 6], x0: 0, roots: [-1.7692923542386314] },
+    atan: { f: Math.atan, d: (x) => 1 / (1 + x * x), x: [-8, 8], y: [-1.9, 1.9], x0: 1.45, roots: [0] },
+    cbrt: { f: Math.cbrt, d: (x) => 1 / (3 * Math.cbrt(x) ** 2), x: [-6, 6], y: [-2, 2], x0: 0.4, roots: [0] },
+    double: { f: (x) => (x - 1) ** 2, d: (x) => 2 * (x - 1), x: [-0.4, 3.2], y: [-0.6, 4.8], x0: 2.8, roots: [1] },
+  };
+  let cur = PRE.sq2, n = 0;
+  const msg = document.getElementById("op-n-msg"), tbl = document.getElementById("op-n-tbl"), tag = document.getElementById("op-n-tag");
+  const basin = MB.check("op-n-basin", () => pl.redraw());
+  const iter = (x0, N) => { const xs = [x0]; for (let k = 0; k < N; k++) { const x = xs[k], d = cur.d(x); if (!isFinite(x) || !d || !isFinite(d) || Math.abs(x) > 1e8) break; xs.push(x - cur.f(x) / d); } return xs; };
+  const nearest = (x) => { let best = Infinity, bi = -1; cur.roots.forEach((r, i) => { const e = Math.abs(x - r); if (e < best) { best = e; bi = i; } }); return [bi, best]; };
+  const pts = [{ x: cur.x0, y: 0, lock: "y", r: 8, label: "x₀", constrain(p) { p.y = 0; } }];
+  const pl = MB.plane("#op-cv-newton", {
+    x: cur.x, y: cur.y, aspect: 0.62, maxHeight: 440, minHeight: 250, points: pts,
+    draw(P, api) {
+      const C = P.P, p = api.points[0], ctx = P.ctx;
+      p.color = C.accent2;
+      if (basin()) {
+        const cols = [C.ok, C.accent2, C.warn];
+        for (let px = 0; px < P.w; px += 2) {
+          const xs = iter(P.ix(px), 60), last = xs[xs.length - 1], [bi, e] = nearest(last);
+          ctx.fillStyle = e < 1e-6 ? cols[bi % 3] : C.faint; ctx.globalAlpha = e < 1e-6 ? 0.85 : 0.5; ctx.fillRect(px, P.h - 9, 2, 9);
+        }
+        ctx.globalAlpha = 1;
+      }
+      P.curve(cur.f, { color: C.accent, width: 2.6 });
+      cur.roots.forEach((r) => P.dot(r, 0, { r: 4, color: C.text }));
+      const xs = iter(p.x, n);
+      for (let k = 0; k < xs.length - 1; k++) {
+        const x = xs[k], y = cur.f(x), nx = xs[k + 1], a = 0.35 + 0.65 * (k + 1) / xs.length;
+        P.line(x, 0, x, y, { color: C.dim, width: 1.2, dash: [3, 4], alpha: a });
+        P.line(x, y, nx, 0, { color: C.ok, width: 2, alpha: a });
+        P.dot(x, y, { r: 3.5, color: C.ok, alpha: a });
+        P.dot(nx, 0, { r: 4.5, color: C.warn, alpha: a });
+      }
+    },
+    onDrag() { info(); },
+  });
+  function info() {
+    tag.textContent = `n = ${n}`;
+    const xs = iter(pts[0].x, Math.max(n, 0));
+    const rows = xs.slice(0, 12).map((x, k) => { const [, e] = nearest(x); return `<tr><td>${k}</td><td>${x.toPrecision(12).replace("-", "−")}</td><td>${OP.exp(cur.f(x), 2)}</td><td>${OP.exp(e, 2)}</td></tr>`; });
+    tbl.innerHTML = `<table><thead><tr><th>n</th><th>xₙ</th><th>f(xₙ)</th><th>가장 가까운 근까지</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    const last = xs[xs.length - 1], [, e] = nearest(last);
+    if (n === 0) { msg.className = "op-msg"; msg.innerHTML = "다음 단계를 누르면 (xₙ, f(xₙ))에서 접선을 긋고 그 근을 다음 추정값으로 삼습니다."; }
+    else if (xs.length <= n) { msg.className = "op-msg bad"; msg.innerHTML = "f′(xₙ) = 0이거나 값이 너무 커져 멈췄습니다."; }
+    else if (e < 1e-12) { msg.className = "op-msg ok"; msg.innerHTML = `수렴: ${n}단계 만에 근까지 거리 ${OP.exp(e, 1)}.`; }
+    else if (xs.length > 3 && Math.abs(last - xs[xs.length - 3]) < 1e-9 && Math.abs(last - xs[xs.length - 2]) > 1e-3) { msg.className = "op-msg bad"; msg.innerHTML = "순환: 두 점을 번갈아 오가며 근에 다가가지 않습니다."; }
+    else if (xs.length > 3 && Math.abs(last) > Math.abs(xs[xs.length - 2]) && Math.abs(xs[xs.length - 2]) > Math.abs(xs[xs.length - 3]) && e > nearest(xs[xs.length - 2])[1]) { msg.className = "op-msg bad"; msg.innerHTML = "발산: 단계마다 근에서 더 멀어집니다."; }
+    else { const e1 = nearest(xs[xs.length - 2])[1]; msg.className = "op-msg"; msg.innerHTML = `오차 ${OP.exp(e1, 2)} → ${OP.exp(e, 2)}${e1 > 0 && e > 0 ? ` (비율 ${OP.num(e / e1, 3)}, e/e² = ${OP.num(e / (e1 * e1), 3)})` : ""}`; }
+    pl.redraw();
+  }
+  document.getElementById("op-n-step").addEventListener("click", () => { n = Math.min(n + 1, 40); info(); });
+  document.getElementById("op-n-five").addEventListener("click", () => { n = Math.min(n + 5, 40); info(); });
+  document.getElementById("op-n-reset").addEventListener("click", () => { n = 0; pts[0].x = cur.x0; info(); });
+  document.getElementById("op-n-pre").addEventListener("change", (e) => { cur = PRE[e.target.value]; n = 0; pts[0].x = cur.x0; pl.view({ x: cur.x, y: cur.y }); info(); });
+  info();
+})();
+
+/* ================================================================ 8. 1차 vs 2차 근사 */
+(function () {
+  const PRE = {
+    cos: { f: Math.cos, d1: (x) => -Math.sin(x), d2: (x) => -Math.cos(x), a: 0, hMax: 2 },
+    exp: { f: Math.exp, d1: Math.exp, d2: Math.exp, a: 0, hMax: 2 },
+    sqrt: { f: Math.sqrt, d1: (x) => 0.5 / Math.sqrt(x), d2: (x) => -0.25 * Math.pow(x, -1.5), a: 4, hMax: 2 },
+    log: { f: (x) => Math.log(1 + x), d1: (x) => 1 / (1 + x), d2: (x) => -1 / (1 + x) ** 2, a: 0, hMax: 0.95 },
+    sin: { f: Math.sin, d1: Math.cos, d2: (x) => -Math.sin(x), a: Math.PI / 4, hMax: 2 },
+  };
+  let cur = PRE.cos;
+  const hr = MB.range("op-q-h", (v) => Math.min(v, cur.hMax).toFixed(2), () => upd());
+  const H = () => Math.min(hr(), cur.hMax);
+  const L = (x) => cur.f(cur.a) + cur.d1(cur.a) * (x - cur.a);
+  const Q = (x) => L(x) + cur.d2(cur.a) / 2 * (x - cur.a) ** 2;
+  const left = MB.canvas("#op-cv-quad", (ctx) => {
+    const C = MB.palette(), a = cur.a, R = cur.hMax, x0 = a - R, x1 = a + R, F = [], Ls = [], Qs = [];
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= 240; i++) { const x = x0 + (x1 - x0) * i / 240, y = cur.f(x); if (isFinite(y)) { F.push([x, y]); lo = Math.min(lo, y); hi = Math.max(hi, y); } Ls.push([x, L(x)]); Qs.push([x, Q(x)]); }
+    const pad = (hi - lo) * 0.25 || 0.5, h = H();
+    MB.chart(ctx, null, { x: [x0, x1], y: [lo - pad, hi + pad],
+      series: [{ data: Ls, color: C.accent2, width: 1.8, dash: [6, 4] }, { data: Qs, color: C.ok, width: 2, dash: [2, 3] }, { data: F, color: C.accent, width: 2.6 }],
+      vlines: [{ x: a, color: C.dim }, { x: a + h, color: C.warn }], points: [{ x: a + h, y: cur.f(a + h), r: 4, color: C.accent }] });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  const right = MB.canvas("#op-cv-quaderr", (ctx) => {
+    const C = MB.palette(), a = cur.a, E1 = [], E2 = [];
+    for (let i = 0; i <= 120; i++) { const h = Math.pow(10, -3 + (Math.log10(cur.hMax) + 3) * i / 120); E1.push([h, Math.max(1e-17, Math.abs(cur.f(a + h) - L(a + h)))]); E2.push([h, Math.max(1e-17, Math.abs(cur.f(a + h) - Q(a + h)))]); }
+    MB.chart(ctx, null, { x: [1e-3, cur.hMax], y: [1e-14, 10], logX: true, logY: true, xLabel: "h", yTicks: [1e-14, 1e-11, 1e-8, 1e-5, 1e-2, 10],
+      series: [{ data: E1, color: C.accent2, width: 2.2 }, { data: E2, color: C.ok, width: 2.2 }], vlines: [{ x: H(), color: C.warn }] });
+  }, { aspect: 0.75, minHeight: 200, maxHeight: 300 });
+  function upd() {
+    left.redraw(); right.redraw();
+    const x = cur.a + H(), f = cur.f(x), e1 = f - L(x), e2 = f - Q(x);
+    MB.stat("op-q-f", OP.num(f, 6));
+    MB.stat("op-q-L", `${OP.num(L(x), 6)}, ${OP.exp(e1, 1)}`);
+    MB.stat("op-q-Q", `${OP.num(Q(x), 6)}, ${OP.exp(e2, 1)}`);
+    MB.stat("op-q-ratio", e2 ? OP.num(Math.abs(e1 / e2), 1) : "∞");
+  }
+  document.getElementById("op-q-pre").addEventListener("change", (e) => { cur = PRE[e.target.value]; hr.set(Math.min(0.5, cur.hMax)); });
+  upd();
+})();
+</script>
+</body>
+</html>

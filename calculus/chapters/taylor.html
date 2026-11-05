@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>거듭제곱 급수와 테일러 전개 · CalculusBook</title>
+<meta name="description" content="함수를 무한 차수 다항식으로 바꾼다. 수렴 반지름과 복소 특이점, 항별 미분·적분, 테일러·매클로린 급수, 라그랑주 나머지로 보장하는 오차, eˣ·sin·ln·이항 급수, 오일러 공식, 진자·상대론 근사와 계산기의 sin, 적분할 수 없는 e^(−x²)까지 시뮬레이터로 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ty-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ty-msg b { color: var(--text); }
+  .ty-msg.ok { color: var(--ok); font-weight: 600; }
+  .ty-msg.bad { color: var(--bad); font-weight: 600; }
+  .ty-msg.warn { color: var(--warn); font-weight: 600; }
+  .ty-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ty-two > div { position: relative; min-width: 0; }
+  .ty-two > div + div { border-top: 1px solid var(--border); }
+  .ty-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; }
+  .ty-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ty-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ty-poly { font: 600 13px var(--mono); overflow-wrap: anywhere; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="taylor">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 12</div>
+    <h1 data-no-glossary>거듭제곱 급수와 테일러 전개</h1>
+    <p class="lead">컴퓨터가 할 줄 아는 계산은 사실상 덧셈과 곱셈뿐입니다. 그런데도 계산기는 sin, eˣ, ln을 순식간에 내놓습니다. 비결은 이 함수들을 <b>무한 차수의 다항식</b>, 즉 거듭제곱 급수로 바꾸는 데 있습니다. 6장의 선형 근사는 함수를 한 점 근처에서 직선으로 바꿨습니다. 이 장은 그 생각을 끝까지 밀어붙여 2차, 3차, … 무한 차 다항식으로 함수를 <b>정확히</b> 되살리고, 몇 차에서 멈추면 오차가 얼마인지 <b>보장</b>하는 법을 배웁니다. 11장의 판정법이 수렴 범위를 정하고, 복소수가 그 범위가 왜 거기서 끝나는지 설명하며, 마지막에는 \(e^{i\pi} + 1 = 0\)이 급수 몇 줄에서 튀어나옵니다.</p>
+    <ul class="objectives">
+      <li>거듭제곱 급수의 수렴 반지름을 비 판정으로 구하고, 끝점의 수렴을 11장의 판정법으로 따로 확인해 수렴 구간을 쓴다.</li>
+      <li>수렴 반지름이 가장 가까운 복소 특이점까지의 거리라는 사실로, 매끄러운 실함수의 급수가 왜 갑자기 발산하는지 설명한다.</li>
+      <li>기하 급수를 항별로 미분·적분해 ln(1 + x), arctan x 등의 급수와 \(\sum n^2/2^n\) 같은 합을 얻는다.</li>
+      <li>테일러·매클로린 급수의 계수를 도함수로 구하고, 라그랑주 나머지로 근사 오차의 상한을 계산한다.</li>
+      <li>eˣ, sin x, cos x, ln(1 + x), 이항 급수 (1 + x)ᵏ를 외우고 대입·곱·미분으로 새 급수를 만든다.</li>
+      <li>오일러 공식 \(e^{i\theta} = \cos\theta + i\sin\theta\)를 급수로 유도하고, 진자 주기·상대론·계산기의 sin·가우스 적분에 테일러 전개를 적용한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>표 없이 sin을 계산하는 기계</b></div>
+      <div class="o-body"><p>계산기와 컴퓨터가 나오기 전, 항해사·측량사·천문학자는 두꺼운 수표(삼각 함수표, 로그표)를 펼쳐 값을 찾았습니다. 그 표의 숫자를 채운 것은 손으로 하는 계산이었고, 계산 방법의 중심에는 무한급수가 있었습니다. 1715년 영국의 브룩 테일러<span class="en">(Brook Taylor)</span>는 함수를 한 점에서의 도함수들로 전개하는 일반 공식을 책으로 펴냈고, 오늘날 이 전개에 그의 이름이 붙어 있습니다. 1748년 오일러는 이 전개로 지수 함수와 삼각 함수가 복소수 안에서 하나라는 공식 \(e^{i\theta} = \cos\theta + i\sin\theta\)를 널리 알렸습니다.</p>
+        <p>지금도 원리는 같습니다. 컴퓨터의 수학 라이브러리는 입력을 좁은 구간으로 옮긴 다음(범위 축소), 그 구간에서 오차가 보장된 다항식을 계산합니다. 회로 시뮬레이터는 트랜지스터의 지수 특성을 동작점 근처에서 전개해 소신호 모델을 만들고, 제어 공학자는 비선형 시스템을 평형점에서 전개해 선형 모델을 얻습니다. "복잡한 함수 = 다항식 + 작은 나머지"는 공학 계산의 기본 문법입니다.</p>
+        <div class="o-chain"><span>sin, eˣ, ln …</span><i>→</i><span class="tool">테일러 다항식 + 나머지 상한</span><i>→</i><span>덧셈·곱셈 몇 번</span><i>→</i><span>보장된 정밀도</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="power-series">
+    <h2>거듭제곱 급수와 수렴 구간</h2>
+    <div class="problem"><strong>x에 따라 수렴하기도 하고 안 하기도 하는 급수</strong>
+      <p>기하 급수 \(1 + x + x^2 + x^3 + \cdots\)은 \(x = 0.5\)이면 2로 수렴하고 \(x = 2\)이면 발산합니다. 항이 \(x\)의 거듭제곱이라, 급수는 숫자 하나가 아니라 <b>\(x\)의 함수</b>입니다. 이 함수는 어떤 \(x\)에서 정의될까요? 그 범위는 늘 구간일까요?</p></div>
+    <div class="callout deep"><strong>정의 12.1 (거듭제곱 급수)</strong> 상수 \(c_0, c_1, c_2, \dots\)와 \(a\)에 대해
+      <div class="formula">$$\sum_{n=0}^{\infty} c_n(x - a)^n = c_0 + c_1(x - a) + c_2(x - a)^2 + \cdots$$</div>
+      를 \(a\)를 중심으로 하는 <span class="term">거듭제곱 급수</span><span class="en">(power series)</span>라 한다. (\((x-a)^0 = 1\)로, \(x = a\)일 때도 그렇게 약속한다.)</div>
+    <p>\(x = a\)에서는 언제나 \(c_0\)으로 수렴합니다. 문제는 \(a\)에서 멀어질 때입니다. 놀랍게도 수렴하는 \(x\)의 집합은 늘 \(a\)를 가운데 둔 구간입니다.</p>
+    <div class="callout deep"><strong>정리 12.2 (수렴의 세 경우)</strong> 거듭제곱 급수 \(\sum c_n(x-a)^n\)에 대해 다음 중 정확히 하나가 성립한다.
+      <ol style="margin:6px 0 0">
+        <li>\(x = a\)에서만 수렴한다.</li>
+        <li>모든 \(x\)에서 (절대) 수렴한다.</li>
+        <li>어떤 \(R > 0\)이 있어 \(|x - a| \lt R\)이면 절대 수렴하고 \(|x - a| > R\)이면 발산한다.</li>
+      </ol>
+      \(R\)을 <span class="term">수렴 반지름</span><span class="en">(radius of convergence)</span>이라 한다(1의 경우 \(R = 0\), 2의 경우 \(R = \infty\)). 끝점 \(x = a \pm R\)에서는 아무 일이나 일어날 수 있어 따로 확인한다. 수렴하는 \(x\) 전체를 <span class="term">수렴 구간</span><span class="en">(interval of convergence)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 급수가 \(x_0 \ne a\)에서 수렴하면 항 \(c_n(x_0-a)^n \to 0\)이라 어떤 \(M\)으로 \(|c_n(x_0-a)^n| \le M\). \(|x - a| \lt |x_0 - a|\)이면 \(\rho = \frac{|x-a|}{|x_0-a|} \lt 1\)로 \(|c_n(x-a)^n| \le M\rho^n\)이므로 기하 급수와 비교해 절대 수렴한다. 즉 한 점에서 수렴하면 그보다 중심에 가까운 모든 점에서 절대 수렴하고, 한 점에서 발산하면 더 먼 점에서도 발산한다. 수렴하는 거리의 상한이 \(R\)이다. ∎</p></div>
+    <p>실제로 \(R\)을 구할 때는 11장의 비 판정을 항 전체 \(c_n(x-a)^n\)에 그대로 씁니다.</p>
+    <div class="callout deep"><strong>정리 12.3 (비 판정으로 구하는 반지름)</strong> \(\displaystyle\lim_{n\to\infty}\left|\frac{c_{n+1}}{c_n}\right| = L\)이 존재하면(∞ 포함) \(R = 1/L\)이다(\(L = 0\)이면 \(R = \infty\), \(L = \infty\)이면 \(R = 0\)).
+      <p style="margin:8px 0 0"><b>증명.</b> \(\left|\frac{c_{n+1}(x-a)^{n+1}}{c_n(x-a)^n}\right| \to L|x - a|\). 비 판정으로 \(L|x-a| \lt 1\)이면 절대 수렴, \(> 1\)이면 발산한다. ∎</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 210" role="img" aria-label="수렴 구간과 끝점">
+        <rect x="10" y="10" width="740" height="190" rx="10" class="f-surface"/>
+        <line x1="40" y1="110" x2="720" y2="110" class="s-axis"/>
+        <rect x="180" y="96" width="400" height="28" rx="4" class="f-acc-soft"/>
+        <line x1="40" y1="110" x2="170" y2="110" style="stroke:var(--bad);stroke-width:4"/><line x1="590" y1="110" x2="720" y2="110" style="stroke:var(--bad);stroke-width:4"/>
+        <circle cx="180" cy="110" r="7" style="fill:var(--surface);stroke:var(--warn);stroke-width:2.5"/><circle cx="580" cy="110" r="7" style="fill:var(--surface);stroke:var(--warn);stroke-width:2.5"/>
+        <circle cx="380" cy="110" r="5" style="fill:var(--accent)"/>
+        <text x="380" y="146" text-anchor="middle" class="t-mono">a</text><text x="180" y="146" text-anchor="middle" class="t-mono">a − R</text><text x="580" y="146" text-anchor="middle" class="t-mono">a + R</text>
+        <path d="M380 82 H580" style="stroke:var(--accent);stroke-width:1.5"/><text x="480" y="74" text-anchor="middle" class="t-acc">R</text>
+        <text x="380" y="40" text-anchor="middle" class="t" style="font-weight:700">|x − a| &lt; R: 절대 수렴 (비 판정 L|x − a| &lt; 1)</text>
+        <text x="105" y="92" text-anchor="middle" class="t" style="fill:var(--bad);font-weight:700">발산</text><text x="655" y="92" text-anchor="middle" class="t" style="fill:var(--bad);font-weight:700">발산</text>
+        <text x="180" y="176" text-anchor="middle" class="t" style="fill:var(--warn);font-weight:700">끝점: 따로 확인</text><text x="580" y="176" text-anchor="middle" class="t" style="fill:var(--warn);font-weight:700">끝점: 따로 확인</text>
+        <text x="380" y="190" text-anchor="middle" class="t-dim">(비 판정이 L = 1로 끝나는 곳 → p-급수, 교대 급수 판정)</text>
+      </svg>
+      <figcaption><b>그림 12-1.</b> 수렴 구간의 구조. 가운데 a에서 반지름 R 안쪽은 언제나 절대 수렴, 바깥쪽은 언제나 발산이다. 두 끝점은 급수마다 다르다. 예: Σxⁿ은 둘 다 발산 (−1, 1), Σxⁿ/n은 [−1, 1), Σxⁿ/n²은 둘 다 수렴 [−1, 1].</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 12.1 (수렴 구간 구하기)</strong> \(\displaystyle\sum_{n=1}^\infty \frac{(x-3)^n}{n\,2^n}\)의 수렴 구간을 구하라.
+      <ol>
+        <li>반지름: \(c_n = \frac{1}{n2^n}\)이므로 \(\left|\frac{c_{n+1}}{c_n}\right| = \frac{n}{2(n+1)} \to \frac12\). \(R = 2\)이고 \(|x - 3| \lt 2\), 즉 \(1 \lt x \lt 5\)에서 절대 수렴한다.</li>
+        <li>오른쪽 끝 \(x = 5\): \(\sum\frac{2^n}{n2^n} = \sum\frac1n\), 조화 급수라 발산.</li>
+        <li>왼쪽 끝 \(x = 1\): \(\sum\frac{(-2)^n}{n2^n} = \sum\frac{(-1)^n}{n}\), 교대 급수 판정으로 수렴(조건 수렴).</li>
+        <li>수렴 구간은 \([1, 5)\). 반지름은 비 판정이, 끝점은 11장의 나머지 판정이 정한다.</li>
+      </ol></div>
+    <p>\(\sum\frac{x^n}{n!}\)은 \(\left|\frac{c_{n+1}}{c_n}\right| = \frac{1}{n+1} \to 0\)이라 \(R = \infty\)이고, \(\sum n!\,x^n\)은 비가 \(n + 1 \to \infty\)라 \(R = 0\)입니다. 아래 시뮬레이터에서 부분합 곡선 \(S_N(x)\)이 수렴 구간 안에서는 극한 함수에 달라붙고 밖에서는 튀어 나가는 모습을 보세요.</p>
+
+    <div class="sim" id="sim-ty-interval">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부분합 곡선과 수렴 구간: 끝점에서는 무슨 일이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ty-two">
+          <div><canvas id="ty-cv-int"></canvas><span class="ty-cap">극한 f(x)와 부분합 S<sub>N</sub>(x)</span></div>
+          <div><canvas id="ty-cv-intk"></canvas><span class="ty-cap">선택한 x에서 S<sub>k</sub>(x) vs k</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>급수</span><select id="ty-i-pre">
+            <option value="geo">Σ xⁿ = 1/(1 − x)</option>
+            <option value="logm">Σ xⁿ/n = −ln(1 − x)</option>
+            <option value="ln">Σ (−1)ⁿ⁺¹xⁿ/n = ln(1 + x)</option>
+            <option value="atan">Σ (−1)ⁿx²ⁿ⁺¹/(2n + 1) = arctan x</option>
+            <option value="sq">Σ xⁿ/n²</option>
+            <option value="nx">Σ n xⁿ = x/(1 − x)²</option>
+            <option value="exp">Σ xⁿ/n! = eˣ</option>
+          </select></label>
+          <label class="ctrl"><span>차수 N <output id="ty-i-n-out"></output></span><input type="range" id="ty-i-n" min="1" max="60" step="1" value="8"></label>
+          <label class="ctrl"><span>살펴볼 x <output id="ty-i-x-out"></output></span><input type="range" id="ty-i-x" min="-1.5" max="1.5" step="0.01" value="0.9"></label>
+          <div class="btn-row"><button class="btn" id="ty-i-m1">x = −1</button><button class="btn" id="ty-i-p1">x = 1</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">R, 수렴 구간</span><span class="v" id="ty-i-R">—</span></div>
+        <div class="stat"><span class="k">S<sub>N</sub>(x)</span><span class="v" id="ty-i-s">—</span></div>
+        <div class="stat"><span class="k">f(x)</span><span class="v" id="ty-i-f">—</span></div>
+      </div>
+      <div class="ty-msg" id="ty-i-msg"></div>
+      <div class="sim-note">해볼 것: ① 1/(1 − x)에서 x = 0.9로 두고 N을 키우면 느리게, x = 0.5면 빠르게 수렴합니다. 중심에서 멀수록 느립니다. ② ln(1 + x)에서 x = 1을 눌러 보세요. 교대 조화 급수가 되어 ln 2로 (느리게) 수렴합니다. x = −1은 조화 급수의 음수라 발산합니다. ③ Σxⁿ/n²은 두 끝점 모두 수렴하지만, 끝점 밖으로 조금만 나가도 아래 그래프가 폭발합니다. 모델: 부분합을 직접 계산합니다. 회색 띠가 수렴 구간입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="radius">
+    <h2>수렴 반지름은 어디서 오나: 복소 특이점</h2>
+    <div class="problem"><strong>매끄러운 함수의 급수가 왜 x = 1에서 멈추나</strong>
+      <p>\(\frac{1}{1-x}\)의 급수가 \(|x| \lt 1\)에서 끝나는 것은 이해가 됩니다. \(x = 1\)에서 함수가 무한대로 터지기 때문입니다. 그런데 \(\frac{1}{1+x^2} = 1 - x^2 + x^4 - \cdots\)도 수렴 반지름이 1입니다. 이 함수는 실수 전체에서 매끄럽고 유계인데, 왜 \(x = 1\)을 넘으면 급수가 발산할까요?</p></div>
+    <p>답은 실수축 밖에 있습니다. \(x\) 자리에 복소수 \(z\)를 넣으면 \(\frac{1}{1+z^2}\)은 \(z = \pm i\)에서 분모가 0이 됩니다. 거듭제곱 급수 \(\sum c_n z^n\)의 수렴 영역은 사실 복소평면의 <b>원판</b>이고(정리 12.2의 증명은 복소수에서도 그대로 성립합니다), 그 원판은 함수가 터지는 점, 즉 <span class="term">특이점</span><span class="en">(singularity)</span>에 닿는 순간 더 커질 수 없습니다. 실수축은 그 원판의 지름을 지나갈 뿐입니다.</p>
+    <div class="callout deep"><strong>사실 12.4 (반지름 = 가장 가까운 특이점까지 거리)</strong> 분수 함수처럼 복소평면에서 몇 개의 점을 빼고 미분 가능한 함수 \(f\)를 \(a\)에서 전개하면, 그 테일러 급수의 수렴 반지름은 \(a\)에서 \(f\)의 가장 가까운 복소 특이점까지의 거리와 같다. 이 사실의 증명은 복소해석학의 몫이고, 여기서는 쓰기만 한다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="복소평면의 특이점과 수렴 원판">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="40" y1="150" x2="720" y2="150" class="s-axis"/><line x1="380" y1="24" x2="380" y2="276" class="s-axis"/>
+        <text x="708" y="140" class="t-mono">Re</text><text x="388" y="36" class="t-mono">Im</text>
+        <circle cx="380" cy="150" r="80" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <circle cx="460" cy="150" r="113.1" style="fill:none;stroke:var(--accent-2);stroke-width:2;stroke-dasharray:6 4"/>
+        <g style="stroke:var(--bad);stroke-width:3"><line x1="372" y1="62" x2="388" y2="78"/><line x1="388" y1="62" x2="372" y2="78"/><line x1="372" y1="222" x2="388" y2="238"/><line x1="388" y1="222" x2="372" y2="238"/></g>
+        <text x="396" y="66" class="t" style="fill:var(--bad);font-weight:700">i</text><text x="396" y="246" class="t" style="fill:var(--bad);font-weight:700">−i</text>
+        <circle cx="380" cy="150" r="4" style="fill:var(--accent)"/><circle cx="460" cy="150" r="4" style="fill:var(--accent-2)"/>
+        <line x1="380" y1="150" x2="380" y2="70" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/>
+        <line x1="460" y1="150" x2="380" y2="70" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:3 3"/>
+        <text x="300" y="172" class="t-acc">a = 0, R = 1</text>
+        <text x="500" y="100" class="t" style="fill:var(--accent-2);font-weight:700">a = 1, R = √2</text>
+        <line x1="300" y1="150" x2="460" y2="150" style="stroke:var(--accent);stroke-width:5;opacity:.6"/>
+        <text x="40" y="276" class="t-dim">f(z) = 1/(1 + z²): 실수축 위에서는 매끄럽지만 ±i에서 터진다</text>
+      </svg>
+      <figcaption><b>그림 12-2.</b> 1/(1 + x²)을 a = 0에서 전개하면 수렴 원판(진분홍)이 특이점 ±i에 닿아 반지름이 1이다. 실수축에서는 구간 (−1, 1)만 남는다. 중심을 a = 1로 옮기면 가장 가까운 특이점까지 거리가 √2가 되어 수렴 구간이 (1 − √2, 1 + √2)로 바뀐다.</figcaption>
+    </figure>
+    <p>이 관점은 실용적입니다. 함수의 식만 보고 반지름을 바로 읽을 수 있기 때문입니다. \(\frac{1}{1+x+x^2}\)의 분모는 \(z = e^{\pm 2\pi i/3}\)에서 0이고 두 점 모두 원점에서 거리 1이므로 \(a = 0\)에서의 반지름은 1입니다. \(\ln(1+x)\)는 \(x = -1\)에서 정의되지 않으므로 반지름 1이고, \(e^x\), \(\sin x\)처럼 특이점이 없는 함수는 반지름이 \(\infty\)입니다. \(\tan x\)는 \(\cos z = 0\)인 \(z = \pm\pi/2\)가 가장 가까우므로 반지름이 \(\pi/2\)입니다.</p>
+
+    <div class="sim" id="sim-ty-radius">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>수렴 원판: 중심을 끌어 특이점까지 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ty-two">
+          <div><canvas id="ty-cv-rad"></canvas><span class="ty-cap">복소평면: 중심 a를 실수축에서 끌어 보세요</span></div>
+          <div><canvas id="ty-cv-radf"></canvas><span class="ty-cap">실수축 위의 f(x)와 T<sub>N</sub>(x)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ty-r-pre">
+            <option value="runge">1/(1 + x²)</option>
+            <option value="geo">1/(1 − x)</option>
+            <option value="tri">1/(1 + x + x²)</option>
+            <option value="two">1/(x² − 4)</option>
+            <option value="ln">ln(1 + x)</option>
+            <option value="exp">eˣ (특이점 없음)</option>
+          </select></label>
+          <label class="ctrl"><span>차수 N <output id="ty-r-n-out"></output></span><input type="range" id="ty-r-n" min="1" max="40" step="1" value="12"></label>
+          <div class="btn-row"><button class="btn" id="ty-r-a0">a = 0</button><button class="btn" id="ty-r-a1">a = 1</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">중심 a</span><span class="v" id="ty-r-a">—</span></div>
+        <div class="stat"><span class="k">가장 가까운 특이점</span><span class="v" id="ty-r-p">—</span></div>
+        <div class="stat"><span class="k">수렴 반지름 R</span><span class="v" id="ty-r-R">—</span></div>
+        <div class="stat"><span class="k">실수 구간</span><span class="v" id="ty-r-I">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 1/(1 + x²)에서 a를 0에서 2로 끌면 원판이 ±i에 닿은 채로 커지고, 아래 그래프에서 T<sub>N</sub>이 맞는 구간이 넓어집니다. ② 1/(x² − 4)는 특이점 ±2가 실수축 위에 있어 그래프에서도 보입니다. a = 0에서 R = 2. ③ N을 40까지 올려도 구간 밖에서는 T<sub>N</sub>이 오히려 더 크게 튑니다. 차수를 올리는 것으로는 반지름을 넘을 수 없습니다. 모델: 계수는 부분 분수 c/(z − p) = −c Σ (z − a)ⁿ/(p − a)ⁿ⁺¹로 정확히 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="term-by-term">
+    <h2>항별 미분과 적분: 기하 급수 하나로 여러 함수를</h2>
+    <div class="problem"><strong>ln 2를 손으로 소수 다섯째 자리까지</strong>
+      <p>11장에서 \(1 - \frac12 + \frac13 - \cdots = \ln 2\)라고 했지만 증명하지 않았고, 이 급수로 ln 2를 계산하려면 수십만 항이 필요했습니다. 로그의 급수는 어디서 오며, 더 빠른 급수는 없을까요?</p></div>
+    <p>수렴 반지름 안에서 거듭제곱 급수는 다항식처럼 다룰 수 있습니다. 항마다 미분하거나 적분해도 됩니다.</p>
+    <div class="callout deep"><strong>정리 12.5 (항별 미분·적분)</strong> \(f(x) = \sum_{n=0}^\infty c_n(x-a)^n\)의 수렴 반지름이 \(R > 0\)이면 \(f\)는 \((a - R, a + R)\)에서 미분 가능하고
+      <div class="formula">$$f'(x) = \sum_{n=1}^{\infty} n c_n (x-a)^{n-1}, \qquad \int f(x)\,dx = C + \sum_{n=0}^{\infty}\frac{c_n}{n+1}(x-a)^{n+1}$$</div>
+      이며, 두 급수의 수렴 반지름도 \(R\)이다. (끝점의 수렴은 달라질 수 있다.) 이것을 <span class="term">항별 미분</span><span class="en">(term-by-term differentiation)</span>과 항별 적분이라 한다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> 반지름이 같은 이유: \(\sqrt[n]{n} \to 1\)이라 계수에 \(n\)이나 \(\frac{1}{n+1}\)을 곱해도 근 판정의 극한이 바뀌지 않는다. 미분을 무한 합 안으로 넣어도 되는 이유는 반지름보다 작은 닫힌 구간에서 급수가 "고르게" 수렴하기 때문인데, 그 증명은 해석학 과목에서 한다.</p></div>
+    <p>기하 급수 \(\frac{1}{1-x} = \sum x^n\) 하나에서 출발해 대입·미분·적분만으로 여러 급수가 나옵니다.</p>
+    <div class="formula">$$\frac{1}{1+x} = \sum_{n=0}^{\infty}(-1)^n x^n \;\xrightarrow{\ \int_0^x\ }\; \ln(1+x) = x - \frac{x^2}{2} + \frac{x^3}{3} - \cdots \quad (-1 \lt x \le 1)$$
+      $$\frac{1}{1+x^2} = \sum_{n=0}^{\infty}(-1)^n x^{2n} \;\xrightarrow{\ \int_0^x\ }\; \arctan x = x - \frac{x^3}{3} + \frac{x^5}{5} - \cdots \quad (-1 \le x \le 1)$$
+      $$\frac{1}{(1-x)^2} = \frac{d}{dx}\frac{1}{1-x} = \sum_{n=1}^{\infty} n x^{n-1} \quad (|x| \lt 1)$$
+      <div class="where">적분 상수는 \(x = 0\)을 넣어 정한다(\(\ln 1 = 0\), \(\arctan 0 = 0\)). 끝점 \(x = 1\)에서 급수가 수렴하면 그 값이 함수값과 같다는 것은 아벨 정리가 보장한다. 그래서 \(1 - \frac12 + \frac13 - \cdots = \ln 2\), \(1 - \frac13 + \frac15 - \cdots = \frac\pi4\)이다.</div></div>
+    <div class="callout"><strong>예제 12.2 (빠른 ln 2)</strong> \(\ln(1+x)\)에서 \(\ln(1-x)\)를 빼면 짝수 차 항이 지워진다.
+      <ol>
+        <li>\(\ln\dfrac{1+x}{1-x} = 2\left(x + \dfrac{x^3}{3} + \dfrac{x^5}{5} + \cdots\right)\) (\(|x| \lt 1\)).</li>
+        <li>\(\frac{1+x}{1-x} = 2\)이 되는 \(x = \frac13\)을 넣는다. \(\ln 2 = 2\left(\frac13 + \frac1{81} + \frac{1}{1215} + \frac{1}{15309} + \cdots\right)\).</li>
+        <li>네 항의 합은 0.6931348, 참값 0.6931472와의 차이는 \(1.2\times10^{-5}\). 다섯 항이면 \(1.1\times10^{-6}\). 한 항마다 오차가 약 1/9로 준다(\(x^2 = 1/9\)). 교대 조화 급수의 백만 항보다 다섯 항이 더 정확하다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 12.3 (11장의 약속: Σ n²/2ⁿ = 6)</strong>
+      <ol>
+        <li>\(\sum_{n\ge1} nx^{n-1} = \frac{1}{(1-x)^2}\)에 \(x\)를 곱하면 \(\sum nx^n = \frac{x}{(1-x)^2}\).</li>
+        <li>다시 미분하고 \(x\)를 곱한다: \(\sum n^2x^n = x\,\frac{d}{dx}\frac{x}{(1-x)^2} = \frac{x(1+x)}{(1-x)^3}\).</li>
+        <li>\(x = \frac12\)은 반지름 1 안이므로 대입할 수 있다: \(\frac{(1/2)(3/2)}{(1/2)^3} = \frac{3/4}{1/8} = 6\). 같은 방법으로 기하 분포의 기댓값 \(\sum k p(1-p)^{k-1} = \frac1p\)도 나온다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>π를 급수로: 마친 공식</strong> \(\arctan 1 = \frac\pi4\)의 급수는 너무 느리지만(11장), 1706년 존 마친<span class="en">(John Machin)</span>은 \(\frac\pi4 = 4\arctan\frac15 - \arctan\frac1{239}\)이라는 항등식을 써서 π를 소수 100자리까지 계산했습니다. \(x = \frac15\)이면 항이 25배씩 줄어들기 때문입니다. \(\arctan\frac15\)을 6항, \(\arctan\frac1{239}\)를 2항만 써도 π의 오차가 \(10^{-9}\) 정도입니다. 같은 꼴의 공식은 컴퓨터 시대에도 π 자릿수 기록에 쓰였습니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="taylor-series">
+    <h2>테일러 급수와 매클로린 급수</h2>
+    <div class="problem"><strong>함수가 주어지면 계수는 어떻게 정하나</strong>
+      <p>지금까지는 기하 급수라는 출발점이 있었습니다. \(e^x\)이나 \(\sin x\)에는 그런 출발점이 없습니다. 이 함수들이 어떤 거듭제곱 급수와 같다고 가정한다면, 계수 \(c_n\)은 무엇이어야 할까요?</p></div>
+    <p>\(f(x) = c_0 + c_1(x-a) + c_2(x-a)^2 + c_3(x-a)^3 + \cdots\)라 하고 \(x = a\)를 넣으면 \(c_0 = f(a)\). 한 번 미분하고 넣으면 \(c_1 = f'(a)\). 두 번 미분하면 \(2c_2 + 3\cdot2c_3(x-a) + \cdots\)이므로 \(c_2 = \frac{f''(a)}{2}\). 이렇게 \(n\)번 미분하면 \(c_n\) 앞에 \(n!\)이 남습니다.</p>
+    <div class="callout deep"><strong>정리 12.6 (계수의 유일성)</strong> \(f(x) = \sum c_n(x-a)^n\)이 \(|x - a| \lt R\) (\(R > 0\))에서 성립하면
+      <div class="formula">$$c_n = \frac{f^{(n)}(a)}{n!}.$$</div>
+      그러므로 한 함수를 같은 중심으로 전개한 거듭제곱 급수는 하나뿐이다. 어떤 방법(대입, 미분, 곱셈)으로 얻든 같은 급수다.
+      <p style="margin:8px 0 0"><b>증명.</b> 정리 12.5로 \(n\)번 항별 미분하면 \(f^{(n)}(x) = \sum_{k\ge n} k(k-1)\cdots(k-n+1)c_k(x-a)^{k-n}\). \(x = a\)를 넣으면 \(k = n\)항만 남아 \(f^{(n)}(a) = n!\,c_n\). ∎</p></div>
+    <div class="callout deep"><strong>정의 12.7 (테일러 급수)</strong> \(a\)에서 모든 차수로 미분 가능한 \(f\)에 대해
+      <div class="formula">$$\sum_{n=0}^{\infty}\frac{f^{(n)}(a)}{n!}(x-a)^n = f(a) + f'(a)(x-a) + \frac{f''(a)}{2!}(x-a)^2 + \cdots$$</div>
+      를 \(a\)에서의 <span class="term">테일러 급수</span><span class="en">(Taylor series)</span>라 하고, \(a = 0\)일 때를 <span class="term">매클로린 급수</span><span class="en">(Maclaurin series)</span>라 한다. \(n\)차까지 자른 다항식
+      $$T_n(x) = \sum_{k=0}^{n}\frac{f^{(k)}(a)}{k!}(x-a)^k$$
+      를 \(n\)차 <span class="term">테일러 다항식</span><span class="en">(Taylor polynomial)</span>이라 한다. \(T_n\)은 \(a\)에서 \(f\)와 함숫값 및 \(n\)계 도함수까지 모두 일치하는 유일한 \(n\)차 이하 다항식이다.</div>
+    <p>\(T_1(x) = f(a) + f'(a)(x-a)\)는 6장의 <a href="optimization.html">선형 근사</a>이고, \(T_2\)는 그 장 끝에서 예고한 2차 근사입니다. 2계 도함수 판정이 통하는 이유도 여기서 보입니다. 임계점(\(f'(a) = 0\)) 근처에서 \(f(x) \approx f(a) + \frac{f''(a)}{2}(x-a)^2\)이므로 \(f''(a)\)의 부호가 위로 볼록인 포물선인지 아래로 볼록인지를 정합니다.</p>
+    <div class="callout"><strong>예제 12.4 (eˣ, cos x, √x)</strong>
+      <ol>
+        <li>\(e^x\)은 모든 도함수가 \(e^x\)이라 \(f^{(n)}(0) = 1\). \(e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots\), \(R = \infty\).</li>
+        <li>\(\cos x\)의 도함수는 \(\cos, -\sin, -\cos, \sin\)을 돌고, \(x = 0\)에서 \(1, 0, -1, 0\)을 돈다. \(\cos x = 1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \cdots\). 짝함수라 짝수 차 항만 남는다.</li>
+        <li>\(\sqrt x\)를 \(a = 4\)에서: \(f(4) = 2\), \(f'(4) = \frac{1}{2\sqrt4} = \frac14\), \(f''(4) = -\frac{1}{4\cdot 4^{3/2}} = -\frac1{32}\). \(T_2(x) = 2 + \frac{x-4}{4} - \frac{(x-4)^2}{64}\). \(\sqrt{4.1} \approx 2 + 0.025 - 0.00015625 = 2.02484375\), 참값 2.02484567과 \(1.9\times10^{-6}\) 차이다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>테일러 급수가 함수와 다를 수도 있다</strong> \(f(x) = e^{-1/x^2}\) (\(x \ne 0\)), \(f(0) = 0\)인 함수는 \(x = 0\)에서 모든 차수의 도함수가 0입니다(\(e^{-1/x^2}\)이 \(x\)의 어떤 거듭제곱보다도 빨리 0으로 가기 때문입니다). 그래서 매클로린 급수는 모든 \(x\)에서 수렴하는 \(0 + 0x + 0x^2 + \cdots = 0\)인데, 함수는 \(x \ne 0\)에서 양수입니다. 급수가 수렴한다는 것과 <b>그 합이 \(f\)라는 것</b>은 별개의 문제입니다. 그 둘을 이어 주는 것이 다음 절의 나머지 항입니다. 테일러 급수가 근처에서 \(f\)와 같은 함수를 <span class="term">해석 함수</span><span class="en">(analytic function)</span>라 부릅니다.</div>
+    <p>MathBook의 <a href="../../foundations/chapters/limits.html#taylor">테일러 다항식 실험실</a>은 sin 0.5를 계산기처럼 구하는 입문 데모입니다. 아래 시뮬레이터에서는 전개점 a를 곡선 위에서 끌고 다니며 T<sub>n</sub>이 a에서 함수에 "접하는" 정도가 차수마다 어떻게 깊어지는지 봅니다.</p>
+
+    <div class="sim" id="sim-ty-poly">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>테일러 다항식: 차수 슬라이더와 움직이는 전개점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ty-cv-poly"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 f(x)</span><select id="ty-p-f">
+            <option value="sin">sin x</option>
+            <option value="cos">cos x</option>
+            <option value="exp">eˣ</option>
+            <option value="ln">ln(1 + x)</option>
+            <option value="sqrt">√(1 + x)</option>
+            <option value="geo">1/(1 − x)</option>
+            <option value="flat">e^(−1/x²) (평평한 함수)</option>
+          </select></label>
+          <label class="ctrl"><span>차수 n <output id="ty-p-n-out"></output></span><input type="range" id="ty-p-n" min="0" max="25" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="ty-p-all"> 0차부터 n차까지 모두 겹쳐 그리기</label>
+          <div class="btn-row"><button class="btn" id="ty-p-a0">a = 0으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">전개점 a</span><span class="v" id="ty-p-a">—</span></div>
+        <div class="stat"><span class="k">T<sub>n</sub>(x)</span><span class="v ty-poly" id="ty-p-T">—</span></div>
+        <div class="stat"><span class="k">x = a + 1에서 |f − T<sub>n</sub>|</span><span class="v" id="ty-p-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① sin x에서 n을 1, 3, 5, …로 올리며 T<sub>n</sub>이 a에서 함수에 붙어 있는 구간이 점점 넓어지는 것을 보세요. sin은 R = ∞라 결국 어디든 닿습니다. ② ln(1 + x)는 a를 어디에 두든 x = −1까지의 거리(1 + a)를 넘지 못합니다. a를 2로 끌면 반지름이 3이 됩니다. ③ 평평한 함수는 a = 0에서 모든 T<sub>n</sub>이 0입니다. 급수는 수렴하지만 함수와 다릅니다. a를 옮기면 정상적으로 근사합니다. 모델: 계수는 도함수의 정확한 공식으로 계산합니다(평평한 함수는 f⁽ⁿ⁾ = Pₙ(1/x)·f의 다항식 점화식).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="remainder">
+    <h2>나머지 항: 오차를 보장하는 법</h2>
+    <div class="problem"><strong>e를 소수 여섯째 자리까지 믿을 수 있게</strong>
+      <p>\(e = 1 + 1 + \frac12 + \frac16 + \cdots\)를 몇 항에서 멈춰야 오차가 \(10^{-6}\) 아래라고 <b>장담</b>할 수 있을까요? 항이 작아졌다는 것만으로는 부족합니다. 11장에서 보았듯이 양항 급수의 꼬리는 다음 항보다 훨씬 클 수 있습니다.</p></div>
+    <p>\(f(x) - T_n(x)\)를 <span class="term">나머지 항</span><span class="en">(remainder)</span> \(R_n(x)\)이라 합니다. 테일러 급수가 \(f\)로 수렴한다는 것은 정확히 \(R_n(x) \to 0\)이라는 뜻입니다. 평균값 정리(<a href="mean-value.html">5장</a>)가 \(f(x) - f(a) = f'(\xi)(x-a)\)였던 것을 기억하세요. 이것은 \(n = 0\)인 나머지 공식입니다. 일반 차수로 늘리면 다음이 됩니다.</p>
+    <div class="callout deep"><strong>정리 12.8 (테일러 정리, 라그랑주 나머지)</strong> \(f\)가 \(a\)와 \(x\)를 포함하는 구간에서 \(n+1\)번 미분 가능하면, \(a\)와 \(x\) 사이의 어떤 \(\xi\)가 있어
+      <div class="formula">$$f(x) = T_n(x) + R_n(x), \qquad R_n(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}(x-a)^{n+1}.$$</div>
+      이 \(R_n\)을 <span class="term">라그랑주 나머지</span><span class="en">(Lagrange remainder)</span>라 한다.
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> \(x\)를 고정하고 \(R_n(x) = K(x-a)^{n+1}\)이 되도록 상수 \(K\)를 잡는다. \(g(t) = f(t) - T_n(t) - K(t-a)^{n+1}\)은 \(g(a) = g'(a) = \cdots = g^{(n)}(a) = 0\)이고 \(g(x) = 0\)이다. 롤의 정리를 \(g\)에 쓰면 \(a\)와 \(x\) 사이에 \(g'(\xi_1) = 0\), 다시 \(g'\)에 쓰면 \(a\)와 \(\xi_1\) 사이에 \(g''(\xi_2) = 0\), …, \(n+1\)번 되풀이하면 \(g^{(n+1)}(\xi) = f^{(n+1)}(\xi) - (n+1)!\,K = 0\). ∎</p></div>
+    <p>\(\xi\)가 어디인지는 모릅니다. 하지만 \(f^{(n+1)}\)의 크기를 구간 전체에서 막을 수 있으면 오차의 상한이 나옵니다.</p>
+    <div class="callout deep"><strong>정리 12.9 (테일러 부등식)</strong> \(a\)와 \(x\) 사이의 모든 \(t\)에서 \(|f^{(n+1)}(t)| \le M\)이면
+      <div class="formula">$$|R_n(x)| \le \frac{M}{(n+1)!}|x - a|^{n+1}.$$</div>
+      이것을 <span class="term">테일러 부등식</span><span class="en">(Taylor's inequality)</span>이라 한다. 특히 \(n \to \infty\)일 때 우변이 0으로 가면 테일러 급수는 \(f(x)\)로 수렴한다.</div>
+    <p>이 부등식으로 \(e^x\), \(\sin x\), \(\cos x\)가 <b>모든 \(x\)에서</b> 자기 테일러 급수와 같다는 것이 증명됩니다. sin과 cos은 모든 도함수의 크기가 1 이하라 \(M = 1\)이고, \(e^x\)은 \(|t| \le |x|\)에서 \(M = e^{|x|}\)입니다. 어느 쪽이든 \(\frac{|x|^{n+1}}{(n+1)!} \to 0\) (11장의 \(x^n/n! \to 0\))이므로 나머지가 0으로 갑니다.</p>
+    <div class="callout"><strong>예제 12.5 (e와 sin 10°를 보장된 정밀도로)</strong>
+      <ol>
+        <li>\(e = e^1\)을 \(T_n(1) = \sum_{k=0}^n \frac1{k!}\)로 계산한다. \([0, 1]\)에서 \(|f^{(n+1)}| = e^t \le e \lt 3\)이므로 \(|R_n(1)| \lt \frac{3}{(n+1)!}\). \(\frac{3}{(n+1)!} \lt 10^{-6}\)이려면 \((n+1)! > 3\times10^6\)이고, \(10! = 3628800\)이므로 \(n = 9\). \(T_9(1) = 2.7182815\), 실제 오차는 \(3.0\times10^{-7}\)으로 상한 \(8.3\times10^{-7}\) 안이다.</li>
+        <li>\(\sin 10°\): 라디안으로 \(x = \pi/18 = 0.174533\). \(T_3(x) = x - \frac{x^3}{6} = 0.1736468\). sin의 \(T_3\)과 \(T_4\)는 같은 다항식이므로(4차 계수가 0) 오차는 \(n = 4\)의 부등식으로 \(\frac{x^5}{5!} = 1.35\times10^{-6}\) 이하다. 참값 0.1736482와의 차이는 \(1.35\times10^{-6}\)로 상한에 거의 붙어 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ty-remainder">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>실제 오차 vs 라그랑주 상한 (로그 눈금)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ty-cv-rem"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수 (a = 0)</span><select id="ty-m-f">
+            <option value="exp">eˣ</option>
+            <option value="sin">sin x</option>
+            <option value="cos">cos x</option>
+            <option value="ln">ln(1 + x)</option>
+          </select></label>
+          <label class="ctrl"><span>차수 n <output id="ty-m-n-out"></output></span><input type="range" id="ty-m-n" min="0" max="20" step="1" value="5"></label>
+          <label class="ctrl"><span>살펴볼 x <output id="ty-m-x-out"></output></span><input type="range" id="ty-m-x" min="-3" max="3" step="0.05" value="1"></label>
+          <label class="ctrl"><span>목표 오차 <output id="ty-m-tol-out"></output></span><input type="range" id="ty-m-tol"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">실제 |R<sub>n</sub>(x)|</span><span class="v" id="ty-m-act">—</span></div>
+        <div class="stat"><span class="k">상한 M|x|<sup>n+1</sup>/(n+1)!</span><span class="v" id="ty-m-bnd">—</span></div>
+        <div class="stat"><span class="k">목표를 보장하는 최소 n</span><span class="v" id="ty-m-need">—</span></div>
+      </div>
+      <div class="ty-legend"><span><i style="background:var(--accent)"></i>실제 오차 |f − T<sub>n</sub>|</span><span><i style="background:var(--warn)"></i>라그랑주 상한</span></div>
+      <div class="sim-note">해볼 것: ① eˣ에서 x = 1, 목표 10⁻⁶으로 두면 최소 n = 9(예제 12.5)가 나옵니다. 주황 곡선은 어디서나 진분홍 곡선 위에 있습니다. ② sin x에서 n을 3과 4로 바꿔도 실제 오차 곡선은 그대로인데 상한만 내려갑니다. T₃ = T₄이기 때문입니다. ③ ln(1 + x)에서 x를 −0.9 쪽으로 옮기면 M이 n!/(1 + x)ⁿ⁺¹로 커져 상한이 쓸모없어집니다. x &gt; 1이면 급수 자체가 발산합니다. 모델: M은 0과 x 사이에서 |f⁽ⁿ⁺¹⁾|의 정확한 최댓값. 10⁻¹⁶ 아래는 배정밀도 반올림 잡음입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="standard">
+    <h2>기본 급수표와 이항 급수</h2>
+    <div class="problem"><strong>e^(−x²)의 급수를 20번 미분해서 구해야 하나</strong>
+      <p>\(e^{-x^2}\)을 정의대로 미분하면 도함수가 금세 감당할 수 없이 길어집니다. 하지만 \(e^u\)의 급수에 \(u = -x^2\)을 넣으면 한 줄로 끝납니다. 계수의 유일성(정리 12.6) 덕분에 그렇게 얻은 급수가 바로 테일러 급수입니다. 몇 개의 기본 급수만 외우면 대부분의 전개를 대입과 곱셈으로 얻습니다.</p></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>함수</th><th>매클로린 급수</th><th>수렴 구간</th></tr></thead>
+      <tbody>
+        <tr><td>\(\frac{1}{1-x}\)</td><td>\(1 + x + x^2 + x^3 + \cdots\)</td><td>\((-1, 1)\)</td></tr>
+        <tr><td>\(e^x\)</td><td>\(1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots\)</td><td>\((-\infty, \infty)\)</td></tr>
+        <tr><td>\(\sin x\)</td><td>\(x - \frac{x^3}{3!} + \frac{x^5}{5!} - \cdots\)</td><td>\((-\infty, \infty)\)</td></tr>
+        <tr><td>\(\cos x\)</td><td>\(1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \cdots\)</td><td>\((-\infty, \infty)\)</td></tr>
+        <tr><td>\(\ln(1+x)\)</td><td>\(x - \frac{x^2}{2} + \frac{x^3}{3} - \cdots\)</td><td>\((-1, 1]\)</td></tr>
+        <tr><td>\(\arctan x\)</td><td>\(x - \frac{x^3}{3} + \frac{x^5}{5} - \cdots\)</td><td>\([-1, 1]\)</td></tr>
+        <tr><td>\((1+x)^k\)</td><td>\(1 + kx + \frac{k(k-1)}{2!}x^2 + \cdots\)</td><td>\((-1, 1)\) (k가 자연수가 아닐 때)</td></tr>
+      </tbody></table></div>
+    <p>마지막 줄이 뉴턴이 일반화한 이항 정리입니다. 자연수 \(k\)에 대한 이항 계수 \(\binom{k}{n}\)을 실수 \(k\)로 넓힙니다.</p>
+    <div class="callout deep"><strong>정리 12.10 (이항 급수)</strong> 실수 \(k\)에 대해 <span class="term">일반화된 이항 계수</span><span class="en">(generalized binomial coefficient)</span>를 \(\binom{k}{n} = \frac{k(k-1)\cdots(k-n+1)}{n!}\), \(\binom{k}{0} = 1\)로 정의하면
+      <div class="formula">$$(1+x)^k = \sum_{n=0}^{\infty}\binom{k}{n}x^n = 1 + kx + \frac{k(k-1)}{2}x^2 + \frac{k(k-1)(k-2)}{6}x^3 + \cdots \quad (|x| \lt 1).$$</div>
+      이 급수를 <span class="term">이항 급수</span><span class="en">(binomial series)</span>라 한다. \(k\)가 0 이상의 정수이면 \(n > k\)에서 계수가 0이 되어 보통의 이항 전개(다항식)가 된다.
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> 비 판정: \(\left|\frac{\binom{k}{n+1}}{\binom{k}{n}}\right| = \left|\frac{k - n}{n+1}\right| \to 1\)이라 \(R = 1\). 급수의 합을 \(g(x)\)라 하면 항별 미분으로 \((1+x)g'(x) = kg(x)\), \(g(0) = 1\)을 확인할 수 있고, 이 미분방정식의 해는 \((1+x)^k\)뿐이다. ∎</p></div>
+    <div class="callout"><strong>예제 12.6 (대입·곱·미분으로 새 급수 만들기)</strong>
+      <ol>
+        <li>\(\sqrt{1+x} = (1+x)^{1/2} = 1 + \frac x2 - \frac{x^2}{8} + \frac{x^3}{16} - \cdots\). \(\sqrt{1.1} \approx 1 + 0.05 - 0.00125 = 1.04875\). 참값 1.0488088과의 차이 \(5.9\times10^{-5}\)는 다음 항 \(\frac{0.1^3}{16} = 6.25\times10^{-5}\)보다 작다.</li>
+        <li>\(\frac{1}{\sqrt{1-x^2}} = (1 - x^2)^{-1/2} = 1 + \frac{x^2}{2} + \frac{3x^4}{8} + \cdots\)을 항별 적분하면 \(\arcsin x = x + \frac{x^3}{6} + \frac{3x^5}{40} + \cdots\).</li>
+        <li>\(e^{-x^2} = 1 - x^2 + \frac{x^4}{2!} - \frac{x^6}{3!} + \cdots\) (\(e^u\)에 \(u = -x^2\)).</li>
+        <li>\(x e^x = x + x^2 + \frac{x^3}{2!} + \cdots\), \(\frac{\sin x}{x} = 1 - \frac{x^2}{3!} + \frac{x^4}{5!} - \cdots\) (곱셈과 나눗셈도 항별로).</li>
+        <li>\(e^x\sin x\)처럼 두 급수의 곱은 다항식처럼 전개해 같은 차수끼리 모은다: \((1 + x + \frac{x^2}{2} + \cdots)(x - \frac{x^3}{6} + \cdots) = x + x^2 + \frac{x^3}{3} + \cdots\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ty-binomial">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이항 급수: k가 정수가 아니면 끝나지 않는다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ty-cv-bin"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지수 k <output id="ty-b-k-out"></output></span><input type="range" id="ty-b-k" min="-3" max="4" step="0.25" value="0.5"></label>
+          <label class="ctrl"><span>항 수 N <output id="ty-b-n-out"></output></span><input type="range" id="ty-b-n" min="1" max="30" step="1" value="3"></label>
+          <label class="ctrl"><span>살펴볼 x <output id="ty-b-x-out"></output></span><input type="range" id="ty-b-x" min="-0.99" max="1.5" step="0.01" value="0.1"></label>
+          <div class="btn-row"><button class="btn" data-k="0.5">√(1 + x)</button><button class="btn" data-k="-0.5">1/√(1 + x)</button><button class="btn" data-k="-1">1/(1 + x)</button><button class="btn" data-k="3">(1 + x)³</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">계수 1, k, k(k−1)/2, …</span><span class="v ty-poly" id="ty-b-c">—</span></div>
+        <div class="stat"><span class="k">부분합 (항 N개)</span><span class="v" id="ty-b-s">—</span></div>
+        <div class="stat"><span class="k">(1 + x)<sup>k</sup></span><span class="v" id="ty-b-f">—</span></div>
+      </div>
+      <div class="ty-msg" id="ty-b-msg"></div>
+      <div class="sim-note">해볼 것: ① k = 3이면 계수가 1, 3, 3, 1 다음부터 0입니다. 부분합이 N ≥ 4에서 모든 x에 대해 정확합니다. ② k = 0.5에서 x = 0.1, N = 3이 예제 12.6의 √1.1입니다. ③ x를 1보다 크게 두면 k가 정수가 아닐 때 부분합이 발산합니다. 함수 (1 + x)ᵏ는 x = −1에서만 특이점(또는 0)을 가지므로 반지름이 1입니다. 모델: 일반화된 이항 계수를 점화식 cₙ₊₁ = cₙ(k − n)/(n + 1)로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="euler">
+    <h2>오일러 공식: 지수와 회전이 하나가 되는 곳</h2>
+    <div class="problem"><strong>eˣ에 허수를 넣으면</strong>
+      <p>\(e^{2}\)은 "e를 두 번 곱한 수"라고 말할 수 있지만 \(e^{i}\)은 "e를 i번 곱한 수"라고 할 수 없습니다. 그런데 \(e^x\)의 급수에는 덧셈과 곱셈만 있으니, 복소수를 넣어도 계산이 됩니다. 무엇이 나올까요?</p></div>
+    <p>\(e^z = \sum\frac{z^n}{n!}\)은 복소수에서도 모든 \(z\)에 대해 절대 수렴하므로, 이것을 복소 지수 함수의 정의로 삼습니다. \(z = i\theta\)를 넣고 \(i^2 = -1\), \(i^3 = -i\), \(i^4 = 1\)을 쓰면 항이 실수부와 허수부로 갈라집니다. 절대 수렴하므로 항의 순서를 바꿔 모아도 됩니다(11장 정리 11.17).</p>
+    <div class="formula">$$e^{i\theta} = 1 + i\theta - \frac{\theta^2}{2!} - i\frac{\theta^3}{3!} + \frac{\theta^4}{4!} + \cdots = \left(1 - \frac{\theta^2}{2!} + \frac{\theta^4}{4!} - \cdots\right) + i\left(\theta - \frac{\theta^3}{3!} + \cdots\right)$$</div>
+    <div class="callout deep"><strong>정리 12.11 (오일러 공식)</strong> 모든 실수 \(\theta\)에 대해
+      <div class="formula">$$e^{i\theta} = \cos\theta + i\sin\theta.$$</div>
+      이것을 <span class="term">오일러 공식</span><span class="en">(Euler's formula)</span>이라 한다. 특히 \(\theta = \pi\)이면 \(e^{i\pi} + 1 = 0\)이다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="단위원 위의 e^(iθ)">
+        <defs><marker id="ty-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="100" y1="160" x2="420" y2="160" class="s-axis"/><line x1="260" y1="30" x2="260" y2="280" class="s-axis"/>
+        <circle cx="260" cy="160" r="110" style="fill:none;stroke:var(--text-dim);stroke-width:1.5"/>
+        <line x1="260" y1="160" x2="344.3" y2="89.3" style="stroke:var(--accent);stroke-width:3" marker-end="url(#ty-ah)"/>
+        <line x1="344.3" y1="160" x2="344.3" y2="89.3" style="stroke:var(--accent-2);stroke-width:2;stroke-dasharray:5 3"/>
+        <line x1="260" y1="160" x2="344.3" y2="160" style="stroke:var(--ok);stroke-width:4"/>
+        <path d="M300 160 A40 40 0 0 0 290.6 134.3" style="fill:none;stroke:var(--warn);stroke-width:2"/>
+        <text x="304" y="146" class="t" style="fill:var(--warn);font-weight:700">θ</text>
+        <text x="350" y="84" class="t-acc">e^(iθ)</text>
+        <text x="282" y="182" class="t" style="fill:var(--ok);font-weight:700">cos θ</text>
+        <text x="352" y="130" class="t" style="fill:var(--accent-2);font-weight:700">sin θ</text>
+        <text x="378" y="176" class="t-mono">1</text><text x="132" y="176" class="t-mono">−1 = e^(iπ)</text><text x="268" y="44" class="t-mono">i = e^(iπ/2)</text>
+        <g transform="translate(450,50)">
+          <text x="0" y="0" class="t" style="font-weight:700">한 줄에서 나오는 것들</text>
+          <text x="0" y="30" class="t-dim">|e^(iθ)| = 1: 단위원 위의 점</text>
+          <text x="0" y="56" class="t-dim">e^(iα)·e^(iβ) = e^(i(α+β)): 회전의 합성</text>
+          <text x="0" y="82" class="t-dim">→ 덧셈 정리 cos(α+β), sin(α+β)</text>
+          <text x="0" y="108" class="t-dim">(e^(iθ))ⁿ = e^(inθ): 드무아브르</text>
+          <text x="0" y="134" class="t-dim">cos θ = (e^(iθ) + e^(−iθ))/2</text>
+          <text x="0" y="160" class="t-dim">sin θ = (e^(iθ) − e^(−iθ))/(2i)</text>
+          <text x="0" y="190" class="t-dim">d/dθ e^(iθ) = i e^(iθ): 속도는</text>
+          <text x="0" y="212" class="t-dim">위치를 90° 돌린 것 → 원운동</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 12-3.</b> e^(iθ)는 실수축에서 각 θ만큼 돌아간 단위원 위의 점이다. 실수부가 cos θ, 허수부가 sin θ. 지수 법칙 e^(iα)·e^(iβ) = e^(i(α+β))가 회전을 이어 붙이는 것이므로 삼각 함수의 덧셈 정리가 지수 법칙 한 줄로 바뀐다.</figcaption>
+    </figure>
+    <p>공학에서 이 공식은 교류 회로·진동·신호 처리의 공용어입니다. \(\cos\omega t\)를 \(\operatorname{Re}\,e^{i\omega t}\)로 쓰면 미분이 \(i\omega\)를 곱하는 일이 되어, 미분방정식이 대수 방정식으로 바뀝니다(페이저). 복소수의 기하는 MathBook의 <a href="../../foundations/chapters/complex.html">복소수 장</a>에서, 진동 해석은 <a href="../../linear/chapters/eigen.html">LinearBook 고유값 장</a>의 복소 고유값에서 이어집니다.</p>
+
+    <div class="sim" id="sim-ty-euler">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오일러 나선: Σ(iθ)ⁿ/n!이 단위원에 내려앉는 길</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ty-cv-eul"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>각 θ (라디안) <output id="ty-e-th-out"></output></span><input type="range" id="ty-e-th" min="0" max="6.2832" step="any" value="3.14159265"></label>
+          <label class="ctrl"><span>더한 항 수 N <output id="ty-e-n-out"></output></span><input type="range" id="ty-e-n" min="1" max="30" step="1" value="6"></label>
+          <div class="btn-row"><button class="btn primary" id="ty-e-play">▶ 한 항씩</button><button class="btn" id="ty-e-pi">θ = π</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">부분합 S<sub>N</sub></span><span class="v" id="ty-e-s">—</span></div>
+        <div class="stat"><span class="k">cos θ + i sin θ</span><span class="v" id="ty-e-t">—</span></div>
+        <div class="stat"><span class="k">거리 |S<sub>N</sub> − e<sup>iθ</sup>|</span><span class="v" id="ty-e-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① θ = π에서 항을 하나씩 더해 보세요. 각 항은 직전 항을 90° 돌리고 θ/n배 한 화살표라, 길은 각진 나선을 그리며 −1에 내려앉습니다. 13항(N = 13)이면 거리가 5×10⁻⁴ 아래입니다. ② θ를 2π로 키우면 길이 한참 멀리 돌아 나갔다가 1로 돌아옵니다. |θ|ⁿ/n!이 줄어들기 시작하는 n ≈ θ까지는 항이 커지기 때문입니다. ③ 아주 작은 θ에서는 1 + iθ만으로 거의 맞습니다. 회전의 1차 근사입니다. 모델: 복소수 산술로 부분합을 직접 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="approximations">
+    <h2>공학의 근사: 진자, 상대론, 계산기</h2>
+    <div class="problem"><strong>"sin θ ≈ θ"는 얼마나 믿을 만한가</strong>
+      <p>물리 교과서는 진자의 방정식 \(\theta'' = -\frac gL\sin\theta\)에서 \(\sin\theta\)를 \(\theta\)로 바꿔 주기 \(T_0 = 2\pi\sqrt{L/g}\)를 얻습니다. 이 <span class="term">소각 근사</span><span class="en">(small-angle approximation)</span>는 진폭이 몇 도까지 괜찮을까요? 그리고 근사를 더 정확하게 고칠 수는 없을까요?</p></div>
+    <p>테일러 전개는 근사가 <b>얼마나 틀리는지</b>를 함께 알려 줍니다. \(\sin\theta = \theta - \frac{\theta^3}{6} + \cdots\)이므로 상대 오차는 약 \(\frac{\theta^2}{6}\)입니다. 10°(0.1745 rad)에서 0.5%, 30°에서 4.6%입니다. 진폭 \(\theta_0\)인 진자의 정확한 주기는 타원 적분으로 주어지는데, 그것을 \(\theta_0\)에 대해 전개하면</p>
+    <div class="formula">$$T = 2\pi\sqrt{\frac{L}{g}}\left(1 + \frac{\theta_0^2}{16} + \frac{11\theta_0^4}{3072} + \cdots\right)$$
+      <div class="where">\(\theta_0\)은 라디안. 30°에서 첫 보정항 \(\theta_0^2/16 = 0.0171\)을 더하면 1.01713, 둘째 항까지 1.01740이고 정확한 값은 1.01741이다. 진자시계가 진폭 변화에 민감한 이유가 이 첫 보정항이다.</div></div>
+
+    <div class="sim" id="sim-ty-pendulum">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>진자: sin θ 와 θ, 두 진자의 경주</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ty-two">
+          <div><canvas id="ty-cv-pen"></canvas><span class="ty-cap">진분홍: 진짜 진자 (sin θ) · 파랑: 선형 진자 (θ)</span></div>
+          <div><canvas id="ty-cv-pent"></canvas><span class="ty-cap">θ(t) (°), 가로축 t/T₀</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>진폭 θ₀ <output id="ty-n-a-out"></output></span><input type="range" id="ty-n-a" min="5" max="170" step="1" value="45"></label>
+          <div class="btn-row"><button class="btn primary" id="ty-n-play">▶ 흔들기</button><button class="btn" id="ty-n-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">정확한 T/T₀</span><span class="v" id="ty-n-ex">—</span></div>
+        <div class="stat"><span class="k">1 + θ₀²/16</span><span class="v" id="ty-n-s1">—</span></div>
+        <div class="stat"><span class="k">+ 11θ₀⁴/3072</span><span class="v" id="ty-n-s2">—</span></div>
+        <div class="stat"><span class="k">10주기 뒤 어긋남</span><span class="v" id="ty-n-lag">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 10°에서는 두 진자가 오래도록 함께 움직입니다(주기 차 0.19%). ② 90°로 올리면 진짜 진자가 눈에 띄게 늦고, 보정항 둘까지 써도 1.1760으로 정확한 값 1.1803에 0.4% 못 미칩니다. ③ 170°에서는 진짜 진자가 꼭대기 근처에서 오래 머뭅니다. θ₀ → 180°이면 주기가 무한대로 가므로 어떤 유한 차수의 다항식도 이를 따라갈 수 없습니다. 모델: 감쇠 없는 단진자, 비선형 방정식은 RK4로 적분, 정확한 주기는 T/T₀ = 1/AGM(1, cos(θ₀/2))로 계산합니다.</div>
+    </div>
+
+    <div class="callout"><strong>예제 12.7 (상대론의 운동 에너지)</strong> 상대론의 운동 에너지는 \(K = (\gamma - 1)mc^2\), \(\gamma = (1 - \beta^2)^{-1/2}\), \(\beta = v/c\)이다. 이항 급수(\(k = -\frac12\), \(x = -\beta^2\))로
+      <ol>
+        <li>\(\gamma = 1 + \frac12\beta^2 + \frac38\beta^4 + \frac5{16}\beta^6 + \cdots\) (\(\beta \lt 1\)).</li>
+        <li>\(K = mc^2\left(\frac12\beta^2 + \frac38\beta^4 + \cdots\right) = \frac12mv^2 + \frac38\frac{mv^4}{c^2} + \cdots\). 첫 항이 뉴턴 역학의 운동 에너지이고, 둘째 항부터가 상대론 보정이다.</li>
+        <li>\(v = 0.1c\)이면 \(K/(\frac12mv^2) = 1.00756\): 뉴턴 공식이 0.76% 작다. 보정항의 비 \(\frac34\beta^2 = 0.0075\)가 바로 그 크기다.</li>
+        <li>GPS 위성(궤도 속도 약 3.87 km/s)의 시계는 \(\gamma - 1 \approx \frac{\beta^2}{2} = 8.3\times10^{-11}\)만큼 느리게 간다. 하루(86400 s)면 약 7.2 μs다. 중력에 의한 반대 효과와 함께 보정하지 않으면 위치 오차가 하루에 수 km씩 쌓인다.</li>
+      </ol></div>
+    <p>계산기의 sin도 같은 원리입니다. 다만 \(x\)가 클 때 테일러 급수를 그대로 쓰면 항이 커졌다 작아지며 반올림 오차가 쌓이므로, 먼저 <span class="term">범위 축소</span><span class="en">(range reduction)</span>를 합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 200" role="img" aria-label="계산기가 sin을 계산하는 과정">
+        <defs><marker id="ty-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <rect x="10" y="10" width="740" height="180" rx="10" class="f-surface"/>
+        <g transform="translate(24,40)"><rect width="150" height="100" rx="12" class="f-elev"/><text x="75" y="28" text-anchor="middle" class="t" style="font-weight:700">입력 x</text><text x="75" y="56" text-anchor="middle" class="t-mono">x = 100</text><text x="75" y="80" text-anchor="middle" class="t-dim">아무 실수</text></g>
+        <path d="M180 90 H206" class="s-acc" marker-end="url(#ty-ar)"/>
+        <g transform="translate(212,40)"><rect width="170" height="100" rx="12" class="f-acc-soft"/><text x="85" y="28" text-anchor="middle" class="t" style="font-weight:700">① 범위 축소</text><text x="85" y="54" text-anchor="middle" class="t-mono">x = k·π/2 + r</text><text x="85" y="78" text-anchor="middle" class="t-dim">|r| ≤ π/4, k mod 4</text></g>
+        <path d="M388 90 H414" class="s-acc" marker-end="url(#ty-ar)"/>
+        <g transform="translate(420,40)"><rect width="170" height="100" rx="12" class="f-acc-soft"/><text x="85" y="28" text-anchor="middle" class="t" style="font-weight:700">② 다항식</text><text x="85" y="54" text-anchor="middle" class="t-mono">sin r 또는 cos r</text><text x="85" y="78" text-anchor="middle" class="t-dim">차수 ~15, 오차 보장</text></g>
+        <path d="M596 90 H622" class="s-acc" marker-end="url(#ty-ar)"/>
+        <g transform="translate(628,40)"><rect width="110" height="100" rx="12" class="f-elev"/><text x="55" y="28" text-anchor="middle" class="t" style="font-weight:700">③ 부호</text><text x="55" y="54" text-anchor="middle" class="t-mono">±sin r</text><text x="55" y="78" text-anchor="middle" class="t-mono">±cos r</text></g>
+        <text x="380" y="172" text-anchor="middle" class="t-dim">sin(r + kπ/2)는 k mod 4에 따라 sin r, cos r, −sin r, −cos r 중 하나다</text>
+      </svg>
+      <figcaption><b>그림 12-4.</b> 수학 라이브러리가 sin x를 계산하는 기본 구조. 범위 축소로 |r| ≤ π/4로 옮기면 라그랑주 상한 (π/4)¹⁷/17! &lt; 1.1×10⁻¹⁶이라 차수 15(0이 아닌 항 8개)면 배정밀도에 충분하다. 실제 라이브러리는 같은 구간에서 오차를 고르게 퍼뜨린 최소최대 다항식을 써서 차수를 조금 더 줄이고, 큰 x의 범위 축소는 π를 아주 많은 자리로 저장해 정밀하게 한다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="nonelementary">
+    <h2>적분할 수 없는 함수와 급수로 구하는 극한</h2>
+    <div class="problem"><strong>정규 분포의 확률을 계산하려면</strong>
+      <p>표준 정규 분포에서 \(|Z| \lt 1\)일 확률은 \(\frac{1}{\sqrt{2\pi}}\int_{-1}^{1}e^{-t^2/2}dt\)입니다. 그런데 \(e^{-x^2}\)의 부정적분은 다항식·지수·로그·삼각 함수를 어떻게 조합해도 쓸 수 없다는 것이 알려져 있습니다(리우빌의 정리). 9장의 어떤 기법도 통하지 않습니다. 확률표의 숫자는 어디서 왔을까요?</p></div>
+    <p>급수는 적분 기호 안으로 들어갈 수 있습니다. \(e^{-t^2}\)의 급수를 항별로 적분하면</p>
+    <div class="formula">$$\int_0^x e^{-t^2}\,dt = \sum_{n=0}^{\infty}\frac{(-1)^n x^{2n+1}}{n!\,(2n+1)} = x - \frac{x^3}{3} + \frac{x^5}{10} - \frac{x^7}{42} + \cdots$$
+      <div class="where">이것에 \(\frac{2}{\sqrt\pi}\)를 곱한 것이 <span class="term">오차 함수</span><span class="en">(error function, erf)</span> \(\operatorname{erf}(x)\)이다. 정규 분포에서 \(P(|Z| \lt z) = \operatorname{erf}(z/\sqrt2)\). 예: \(\operatorname{erf}(1/\sqrt2) = 0.6827\), 이른바 "68% 규칙".</div></div>
+    <div class="callout"><strong>예제 12.8 (∫₀¹ e^(−x²) dx를 10⁻⁴ 이내로)</strong>
+      <ol>
+        <li>\(x = 1\)이면 급수는 \(1 - \frac13 + \frac1{10} - \frac1{42} + \frac1{216} - \frac1{1320} + \frac1{9360} - \cdots\), 항의 크기가 감소하며 0으로 가는 교대 급수다.</li>
+        <li>11장의 교대 급수 오차 한계: 첫 번째로 버린 항이 \(10^{-4}\)보다 작아야 한다. \(n = 6\)항이 \(\frac{1}{720\cdot13} = 1.07\times10^{-4}\), \(n = 7\)항이 \(\frac{1}{5040\cdot15} = 1.32\times10^{-5}\)이므로 \(n = 0\)부터 6까지 7항을 더한다.</li>
+        <li>합은 0.7468360, 정확한 값 0.7468241과의 차이는 \(1.2\times10^{-5}\)로 보장값 \(1.32\times10^{-5}\) 이하다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ty-erf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>∫₀ˣ e^(−t²) dt: 급수 몇 항이면 되나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ty-two">
+          <div><canvas id="ty-cv-erf"></canvas><span class="ty-cap">정확한 적분(검정)과 급수 부분합(진분홍)</span></div>
+          <div><canvas id="ty-cv-erft"></canvas><span class="ty-cap">선택한 x에서 항의 크기 |aₙ| (로그 눈금)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>위끝 x <output id="ty-f-x-out"></output></span><input type="range" id="ty-f-x" min="0.1" max="3" step="0.05" value="1"></label>
+          <label class="ctrl"><span>항 수 N <output id="ty-f-n-out"></output></span><input type="range" id="ty-f-n" min="1" max="40" step="1" value="7"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">급수 (항 N개)</span><span class="v" id="ty-f-s">—</span></div>
+        <div class="stat"><span class="k">정확한 값</span><span class="v" id="ty-f-ex">—</span></div>
+        <div class="stat"><span class="k">오차 / 보장(다음 항)</span><span class="v" id="ty-f-err">—</span></div>
+        <div class="stat"><span class="k">P(|Z| &lt; √2·x)</span><span class="v" id="ty-f-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① x = 1, N = 7이 예제 12.8입니다. ② x = 3으로 올리면 항이 처음에는 커져 n = 9 부근에서 약 190까지 갔다가 줄어듭니다. 결국 수렴하지만 큰 항끼리 빼느라 유효 숫자를 잃습니다. 큰 x에서는 다른 전개(점근 전개)나 수치 적분을 씁니다. ③ 아래 그래프의 막대가 주황 선(10⁻⁶) 아래로 내려가는 n이 필요한 항 수의 감입니다. 모델: 정확한 값은 심프슨 공식(2000구간)으로 계산합니다.</div>
+    </div>
+    <p>같은 생각으로 0/0꼴 극한을 로피탈 정리 없이 한 줄로 끝낼 수 있습니다. 분자와 분모를 전개해 가장 낮은 차수끼리 비교하면 됩니다.</p>
+    <div class="callout"><strong>예제 12.9 (급수로 구하는 극한)</strong>
+      <ol>
+        <li>\(\displaystyle\lim_{x\to0}\frac{\sin x - x}{x^3} = \lim\frac{-\frac{x^3}{6} + \frac{x^5}{120} - \cdots}{x^3} = -\frac16\). 로피탈을 세 번 쓰는 것과 같은 답이다.</li>
+        <li>\(\displaystyle\lim_{x\to0}\frac{1 - \cos x}{x^2} = \frac12\), \(\displaystyle\lim_{x\to0}\frac{e^x - 1 - x}{x^2} = \frac12\).</li>
+        <li>\(\tan x = x + \frac{x^3}{3} + \frac{2x^5}{15} + \cdots\)이므로 \(\displaystyle\lim_{x\to0}\frac{\tan x - x}{x^3} = \frac13\). 수치 확인: \(x = 0.1\)이면 \(\tan 0.1 - 0.1 = 3.347\times10^{-4}\), \(0.1^3/3 = 3.333\times10^{-4}\).</li>
+      </ol>
+      급수는 극한값만이 아니라 "얼마나 빨리 다가가는가"(다음 항)까지 알려 준다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>테일러 전개는 "복잡한 것을 동작점 근처에서 다항식으로"라는 공학의 습관 그 자체입니다.</p>
+    <div class="callout"><strong>다이오드의 소신호 모델</strong> 다이오드 전류는 \(I = I_s\left(e^{V/V_T} - 1\right)\), 실온에서 \(V_T \approx 25.9\) mV입니다. 동작점 \(V_0\)에 작은 신호 \(v\)를 얹으면 \(e^{(V_0 + v)/V_T} = e^{V_0/V_T}\left(1 + \frac{v}{V_T} + \frac12\frac{v^2}{V_T^2} + \cdots\right)\)이므로, 1차 항만 남기면 전류 변화가 \(i \approx \frac{I_0}{V_T}v\), 즉 저항 \(r_d = V_T/I_0\)처럼 행동합니다. \(I_0 = 1\) mA이면 \(r_d \approx 26\) Ω. 2차 항과 1차 항의 비는 \(\frac{v}{2V_T}\)이라, 신호가 5 mV면 약 10%의 2차 왜곡이 생깁니다. 증폭기 설계에서 "소신호"의 기준이 \(v \ll V_T\)인 이유입니다.</div>
+    <div class="uses">
+      <a href="series.html"><small>11장 · 수열과 급수</small>판정법과 오차 한계<br><span>비 판정이 수렴 반지름을, 교대 급수 오차가 계산의 보장을 준다.</span></a>
+      <a href="optimization.html"><small>6장 · 최적화와 근사</small>선형 근사와 뉴턴 방법<br><span>T₁이 선형 근사, T₂가 뉴턴 방법의 수렴 속도와 2계 판정의 근거.</span></a>
+      <a href="partial.html"><small>13장 · 편미분</small>다변수 테일러 전개<br><span>접평면은 다변수 T₁, 헤세 행렬은 다변수 T₂의 계수다.</span></a>
+      <a href="../../foundations/chapters/complex.html"><small>MATHBOOK</small>복소수와 회전<br><span>오일러 공식 e<sup>iθ</sup>로 회전·교류·페이저를 다룬다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식의 수치 해법<br><span>오일러·룽게–쿠타 방법의 오차 차수는 해의 테일러 전개를 몇 차까지 맞추는가로 정해진다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>수치 계산과 반올림<br><span>큰 항끼리의 상쇄, 범위 축소, 유한 차분의 오차를 테일러 전개로 분석한다.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>정규 분포<br><span>e<sup>−x²/2</sup>의 적분, 오차 함수, 정규 분포표.</span></a>
+      <a href="../../linear/chapters/dynamics.html"><small>LINEARBOOK</small>행렬 지수 e<sup>At</sup><br><span>e<sup>x</sup>의 급수에 행렬을 넣은 I + At + (At)²/2! + ⋯가 연립 미분방정식의 해다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>거듭제곱 급수 \(\sum c_n(x-a)^n\)은 \(|x - a| \lt R\)에서 절대 수렴하고 밖에서 발산한다. \(R = 1/\lim|c_{n+1}/c_n|\)(비 판정), 끝점은 11장의 판정법으로 따로 확인한다.</li>
+      <li>수렴 반지름은 중심에서 가장 가까운 복소 특이점까지의 거리다. 1/(1 + x²)이 실수에서 매끄러워도 R = 1인 이유는 ±i다.</li>
+      <li>반지름 안에서 항별 미분·적분이 된다(반지름 불변). 기하 급수에서 ln(1 + x), arctan x, Σnxⁿ = x/(1 − x)²이 나온다.</li>
+      <li>테일러 계수는 \(c_n = f^{(n)}(a)/n!\)로 유일하다. \(T_n\)은 a에서 n계 도함수까지 f와 일치한다. 급수가 수렴해도 f와 같다는 보장은 없다(\(e^{-1/x^2}\)).</li>
+      <li>라그랑주 나머지 \(R_n = \frac{f^{(n+1)}(\xi)}{(n+1)!}(x-a)^{n+1}\), 테일러 부등식 \(|R_n| \le \frac{M}{(n+1)!}|x-a|^{n+1}\). 이것으로 eˣ, sin, cos이 모든 x에서 급수와 같음이 증명되고, 필요한 차수를 미리 정한다.</li>
+      <li>기본 급수(eˣ, sin, cos, ln(1 + x), arctan, (1 + x)ᵏ)에 대입·곱·미분·적분을 하면 대부분의 전개가 나온다. 이항 급수는 k가 자연수가 아니면 무한히 이어지고 R = 1이다.</li>
+      <li>\(e^{i\theta} = \cos\theta + i\sin\theta\). 응용: 소각 근사와 진자 주기 보정, 상대론의 ½mv², 계산기의 범위 축소 + 다항식, erf처럼 부정적분이 없는 함수의 계산, 급수로 푸는 0/0 극한.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\sum_{n=1}^\infty \frac{n\,x^n}{3^n}\)의 수렴 반지름은?</p><div class="opts">
+        <button class="opt">1/3</button>
+        <button class="opt">1</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">∞</button>
+      </div><div class="quiz-exp">\(\left|\frac{c_{n+1}}{c_n}\right| = \frac{n+1}{3n} \to \frac13\)이므로 \(R = 3\). 계수의 \(n\)은 반지름에 영향을 주지 않는다(\(\sqrt[n]{n} \to 1\)). 끝점 \(x = \pm3\)에서는 항 \(n(\pm1)^n\)이 0으로 가지 않아 둘 다 발산한다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\sum_{n=1}^\infty \frac{x^n}{n}\)의 수렴 구간은?</p><div class="opts">
+        <button class="opt">\((-1, 1)\)</button>
+        <button class="opt" data-correct>\([-1, 1)\)</button>
+        <button class="opt">\((-1, 1]\)</button>
+        <button class="opt">\([-1, 1]\)</button>
+      </div><div class="quiz-exp">반지름은 1이다. \(x = 1\)이면 조화 급수라 발산, \(x = -1\)이면 교대 조화 급수라 수렴한다. 이 급수의 합은 \(-\ln(1-x)\)이고, \(x = -1\)에서 \(-\ln 2\)다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\cos(2x)\)의 매클로린 급수에서 \(x^4\)의 계수는?</p><div class="opts">
+        <button class="opt">1/24</button>
+        <button class="opt" data-correct>2/3</button>
+        <button class="opt">−2/3</button>
+        <button class="opt">16</button>
+      </div><div class="quiz-exp">\(\cos u = 1 - \frac{u^2}{2} + \frac{u^4}{24} - \cdots\)에 \(u = 2x\)를 넣으면 \(x^4\)항은 \(\frac{16x^4}{24} = \frac23x^4\). 대입으로 얻은 급수도 계수의 유일성에 따라 테일러 급수다. 검산: \(f^{(4)}(0) = 16\cos 0 = 16\), \(16/4! = 2/3\).</div></div>
+
+      <div class="quiz-q"><p>Q4. \(\lim_{x\to0}\frac{x - \sin x}{x^3}\)은?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt" data-correct>1/6</button>
+        <button class="opt">−1/6</button>
+        <button class="opt">1/3</button>
+      </div><div class="quiz-exp">\(x - \sin x = \frac{x^3}{6} - \frac{x^5}{120} + \cdots\)이므로 \(x^3\)으로 나누면 \(\frac16\)로 간다. 예제 12.9의 극한과 부호가 반대다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(\frac{1}{1+x^2}\)을 \(a = 2\)에서 테일러 전개할 때 수렴 반지름은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>√5</button>
+        <button class="opt">∞ (실수에서 매끄러우므로)</button>
+      </div><div class="quiz-exp">특이점은 \(\pm i\)이고 \(2\)에서 \(i\)까지의 거리는 \(|2 - i| = \sqrt{4 + 1} = \sqrt5 \approx 2.236\). 실수축에서는 구간 \((2 - \sqrt5, 2 + \sqrt5)\)에서 수렴한다. 실수 위에서 매끄럽다는 것은 반지름을 정하지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\sin 0.5 \approx 0.5 - \frac{0.5^3}{6}\)의 오차에 대해 테일러 부등식이 주는 가장 좋은 상한은?</p><div class="opts">
+        <button class="opt">\(0.5^4/4! \approx 2.6\times10^{-3}\)</button>
+        <button class="opt" data-correct>\(0.5^5/5! \approx 2.6\times10^{-4}\)</button>
+        <button class="opt">\(0.5^3/3! \approx 2.1\times10^{-2}\)</button>
+        <button class="opt">\(0.5^7/7! \approx 1.6\times10^{-6}\)</button>
+      </div><div class="quiz-exp">sin의 4차 계수가 0이라 \(T_3 = T_4\)이고, \(n = 4\)의 부등식(\(M = 1\))으로 \(|R_4| \le \frac{0.5^5}{5!} = 2.6\times10^{-4}\). 실제 오차는 \(2.59\times10^{-4}\)다. \(0.5^7/7!\)은 \(T_5\)를 쓸 때의 상한이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(e^{i\pi/2}\)의 값은?</p><div class="opts">
+        <button class="opt">\(-1\)</button>
+        <button class="opt" data-correct>\(i\)</button>
+        <button class="opt">\(e^{\pi/2}\)</button>
+        <button class="opt">\(\frac{1+i}{\sqrt2}\)</button>
+      </div><div class="quiz-exp">오일러 공식으로 \(\cos\frac\pi2 + i\sin\frac\pi2 = 0 + i = i\). 단위원에서 90° 돌아간 점이다. \(\frac{1+i}{\sqrt2}\)는 \(e^{i\pi/4}\)다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 진폭 \(\theta_0 = 0.2\) rad인 진자의 주기는 소각 근사 \(T_0\)보다 대략 몇 % 긴가?</p><div class="opts">
+        <button class="opt">약 0.025%</button>
+        <button class="opt" data-correct>약 0.25%</button>
+        <button class="opt">약 2.5%</button>
+        <button class="opt">약 4%</button>
+      </div><div class="quiz-exp">첫 보정항 \(\frac{\theta_0^2}{16} = \frac{0.04}{16} = 0.0025\), 즉 0.25%. 다음 항 \(\frac{11\theta_0^4}{3072} \approx 5.7\times10^{-6}\)은 무시할 만하다. 하루(86400 s) 동안 이 차이가 쌓이면 약 216초(3.6분)가 된다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const TY = {
+  num(v, d = 5) {
+    if (v == null || !isFinite(v)) return v > 0 ? "∞" : v < 0 ? "−∞" : "—";
+    const a = Math.abs(v);
+    let s;
+    if (a !== 0 && (a < 1e-4 || a >= 1e7)) {
+      const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+      s = `${m.toFixed(2)}×10<sup>${String(e).replace("-", "−")}</sup>`;
+    } else s = String(Number(v.toFixed(d)));
+    return s.replace(/^-/, "−");
+  },
+  clip(ctx, R) { ctx.save(); ctx.beginPath(); ctx.rect(R.box.x, R.box.y - 2, R.box.w + 2, R.box.h + 4); ctx.clip(); },
+  dot(ctx, x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); },
+  poly(ctx, pts, color, width, dash) {
+    ctx.strokeStyle = color; ctx.lineWidth = width || 2; ctx.setLineDash(dash || []); ctx.beginPath();
+    let on = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y) || Math.abs(y) > 1e5) { on = false; return; } on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; });
+    ctx.stroke(); ctx.setLineDash([]);
+  },
+  /** 차트 좌표의 곡선을 y 범위 밖은 끊어서 그린다 */
+  curve(ctx, R, fn, x0, x1, color, width, dash, n = 400) {
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = fn(x); pts.push([R.X(x), y == null || !isFinite(y) ? NaN : R.Y(y)]); }
+    TY.poly(ctx, pts, color, width, dash);
+  },
+  sup(k) { return String(k).split("").map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c]).join(""); },
+  fact(n) { let f = 1; for (let k = 2; k <= n; k++) f *= k; return f; },
+  simpson(g, a, b, N = 400) { if (b === a) return 0; const h = (b - a) / N; let s = g(a) + g(b); for (let i = 1; i < N; i++) s += (i % 2 ? 4 : 2) * g(a + i * h); return s * h / 3; },
+  /** 다항식 문자열: 계수 c[k], 중심 a */
+  polyText(c, a, maxTerms = 5) {
+    const xs = Math.abs(a) < 1e-9 ? "x" : `(x ${a > 0 ? "−" : "+"} ${TY.num(Math.abs(a), 2)})`;
+    const parts = [];
+    for (let k = 0; k < c.length && parts.length < maxTerms; k++) {
+      if (Math.abs(c[k]) < 1e-12) continue;
+      const v = Math.abs(c[k]), sign = c[k] < 0 ? "−" : "+";
+      const coef = k > 0 && Math.abs(v - 1) < 1e-12 ? "" : TY.num(v, 4);
+      parts.push([sign, coef + (k === 0 ? "" : xs + (k > 1 ? TY.sup(k) : ""))]);
+    }
+    if (!parts.length) return "0";
+    let s = (parts[0][0] === "−" ? "−" : "") + parts[0][1];
+    for (let i = 1; i < parts.length; i++) s += ` ${parts[i][0]} ${parts[i][1]}`;
+    const nz = c.filter((v) => Math.abs(v) > 1e-12).length;
+    return s + (nz > maxTerms ? " + ⋯" : "");
+  },
+};
+
+/* ================================================================ 1. 부분합 곡선과 수렴 구간 */
+(function () {
+  const PRE = {
+    geo: { n0: 0, t: (n, x) => Math.pow(x, n), f: (x) => (x < 1 ? 1 / (1 - x) : null), R: 1, I: "(−1, 1)", y: [-1.5, 6], end: { "-1": "x = −1: 1 − 1 + 1 − ⋯, 항이 0으로 가지 않아 발산(부분합이 1, 0, 1, 0, …).", "1": "x = 1: 1 + 1 + 1 + ⋯, 발산." } },
+    logm: { n0: 1, t: (n, x) => Math.pow(x, n) / n, f: (x) => (x < 1 ? -Math.log(1 - x) : null), R: 1, I: "[−1, 1)", y: [-1.5, 4], end: { "-1": "x = −1: −1 + 1/2 − 1/3 + ⋯, 교대 급수 판정으로 수렴해 −ln 2.", "1": "x = 1: 조화 급수, 발산." } },
+    ln: { n0: 1, t: (n, x) => (n % 2 ? 1 : -1) * Math.pow(x, n) / n, f: (x) => (x > -1 ? Math.log(1 + x) : null), R: 1, I: "(−1, 1]", y: [-3, 1.6], end: { "-1": "x = −1: −(1 + 1/2 + 1/3 + ⋯), 조화 급수라 발산.", "1": "x = 1: 1 − 1/2 + 1/3 − ⋯ = ln 2. 수렴하지만 느립니다." } },
+    atan: { n0: 0, t: (n, x) => (n % 2 ? -1 : 1) * Math.pow(x, 2 * n + 1) / (2 * n + 1), f: Math.atan, R: 1, I: "[−1, 1]", y: [-1.6, 1.6], end: { "-1": "x = −1: −(1 − 1/3 + 1/5 − ⋯) = −π/4. 수렴.", "1": "x = 1: 라이프니츠 급수 1 − 1/3 + 1/5 − ⋯ = π/4. 수렴." } },
+    sq: { n0: 1, t: (n, x) => Math.pow(x, n) / (n * n), f: (x) => { if (Math.abs(x) > 1 + 1e-12) return null; let s = 0; for (let n = 1; n <= 1000; n++) s += Math.pow(x, n) / (n * n); return s; }, R: 1, I: "[−1, 1]", y: [-1.2, 2], end: { "-1": "x = −1: Σ(−1)ⁿ/n², 절대 수렴(−π²/12).", "1": "x = 1: Σ1/n² = π²/6, 수렴." } },
+    nx: { n0: 1, t: (n, x) => n * Math.pow(x, n), f: (x) => (Math.abs(x) < 1 ? x / ((1 - x) * (1 - x)) : null), R: 1, I: "(−1, 1)", y: [-1.5, 6], end: { "-1": "x = −1: −1 + 2 − 3 + ⋯, 항이 커져 발산.", "1": "x = 1: 1 + 2 + 3 + ⋯, 발산." } },
+    exp: { n0: 0, t: (n, x) => Math.pow(x, n) / TY.fact(n), f: Math.exp, R: Infinity, I: "(−∞, ∞)", y: [-1, 5], end: {} },
+  };
+  let key = "geo";
+  const msg = document.getElementById("ty-i-msg");
+  const N = MB.range("ty-i-n", (v) => String(v), () => draw());
+  const X = MB.range("ty-i-x", (v) => v.toFixed(2).replace("-", "−"), () => draw());
+  const S = (s, x, n) => { let acc = 0; for (let k = 0; k < n; k++) acc += s.t(s.n0 + k, x); return acc; };
+  const top = MB.canvas("#ty-cv-int", (ctx) => {
+    const C = MB.palette(), s = PRE[key], n = N(), x0 = X();
+    const R = MB.chart(ctx, null, { x: [-1.6, 1.6], y: s.y, xLabel: "x",
+      bands: isFinite(s.R) ? [{ x0: -s.R, x1: s.R, color: C.grid }] : [], vlines: [{ x: x0, color: C.warn }], hlines: [{ y: 0, color: C.dim, dash: [] }] });
+    TY.clip(ctx, R);
+    TY.curve(ctx, R, (x) => s.f(x), -1.6, 1.6, C.text, 2.2);
+    TY.curve(ctx, R, (x) => S(s, x, n), -1.6, 1.6, C.accent, 2.2, null, 320);
+    ctx.restore();
+  }, { aspect: 0.48, minHeight: 200, maxHeight: 300 });
+  const bot = MB.canvas("#ty-cv-intk", (ctx) => {
+    const C = MB.palette(), s = PRE[key], n = N(), x0 = X(), sums = []; let acc = 0;
+    for (let k = 0; k < n; k++) { acc += s.t(s.n0 + k, x0); sums.push(acc); }
+    const fv = s.f(x0), ys = sums.filter((v) => isFinite(v) && Math.abs(v) < 1e6).concat(fv != null && isFinite(fv) ? [fv] : []).concat([0]);
+    let lo = Math.min(...ys), hi = Math.max(...ys); if (hi - lo < 1e-6) { lo -= 1; hi += 1; } const pad = (hi - lo) * 0.08;
+    const R = MB.chart(ctx, null, { x: [0, n + 1], y: [lo - pad, hi + pad], xLabel: "k", hlines: fv != null && isFinite(fv) ? [{ y: fv, color: C.ok, label: "f(x)" }] : [] });
+    TY.clip(ctx, R);
+    TY.poly(ctx, sums.map((v, i) => [R.X(i + 1), R.Y(v)]), C.accent, 1.6);
+    if (n <= 60) sums.forEach((v, i) => TY.dot(ctx, R.X(i + 1), R.Y(v), 2.6, C.accent));
+    ctx.restore();
+  }, { aspect: 0.32, minHeight: 140, maxHeight: 200 });
+  function draw() {
+    const s = PRE[key], n = N(), x0 = X(), sn = S(s, x0, n), fv = s.f(x0);
+    MB.stat("ty-i-R", `R = ${isFinite(s.R) ? s.R : "∞"}, ${s.I}`); MB.stat("ty-i-s", TY.num(sn, 6));
+    const inside = Math.abs(x0) < s.R - 1e-9, edge = Math.abs(Math.abs(x0) - 1) < 1e-9 && isFinite(s.R);
+    MB.stat("ty-i-f", inside || (edge && fv != null) ? TY.num(fv, 6) : "정의 안 됨 / 발산");
+    if (edge) { msg.className = "ty-msg warn"; msg.innerHTML = "끝점 — " + s.end[x0 > 0 ? "1" : "-1"]; }
+    else if (inside) { msg.className = "ty-msg ok"; msg.innerHTML = `|x| = ${TY.num(Math.abs(x0), 2)} &lt; R: 절대 수렴. 오차 |f − S<sub>N</sub>| = ${TY.num(Math.abs(fv - sn), 6)}.${isFinite(s.R) ? ` 중심에서 멀수록(|x|/R → 1) 느려집니다.` : ""}`; }
+    else { msg.className = "ty-msg bad"; msg.innerHTML = `|x| = ${TY.num(Math.abs(x0), 2)} &gt; R = 1: 항 |aₙxⁿ|이 0으로 가지 않아 <b>발산</b>. N을 올리면 아래 그래프가 더 크게 튑니다.`; }
+    top.redraw(); bot.redraw();
+  }
+  document.getElementById("ty-i-pre").addEventListener("change", (e) => { key = e.target.value; draw(); });
+  document.getElementById("ty-i-m1").addEventListener("click", () => X.set(-1));
+  document.getElementById("ty-i-p1").addEventListener("click", () => X.set(1));
+  draw();
+})();
+
+/* ================================================================ 2. 수렴 원판과 복소 특이점 */
+(function () {
+  const cx = MB.cx, r3 = 1 / Math.sqrt(3);
+  const PRE = {
+    runge: { poles: [{ p: [0, 1], c: [0, -0.5] }, { p: [0, -1], c: [0, 0.5] }], f: (x) => 1 / (1 + x * x), y: [-0.6, 1.6] },
+    geo: { poles: [{ p: [1, 0], c: [-1, 0] }], f: (x) => 1 / (1 - x), y: [-4, 4] },
+    tri: { poles: [{ p: [-0.5, Math.sqrt(3) / 2], c: [0, -r3] }, { p: [-0.5, -Math.sqrt(3) / 2], c: [0, r3] }], f: (x) => 1 / (1 + x + x * x), y: [-0.6, 1.8] },
+    two: { poles: [{ p: [2, 0], c: [0.25, 0] }, { p: [-2, 0], c: [-0.25, 0] }], f: (x) => 1 / (x * x - 4), y: [-2, 2] },
+    ln: { branch: [-1, 0], f: (x) => (x > -1 ? Math.log(1 + x) : null), y: [-3, 2], lo: -0.9 },
+    exp: { entire: true, f: Math.exp, y: [-1, 8] },
+  };
+  let key = "runge", fcv = null;
+  const N = MB.range("ty-r-n", (v) => String(v), () => pl.redraw());
+  function coefs(a, n) {
+    const s = PRE[key], c = [];
+    if (s.entire) { for (let k = 0; k <= n; k++) c.push(Math.exp(a) / TY.fact(k)); return c; }
+    if (s.branch) { c.push(Math.log(1 + a)); for (let k = 1; k <= n; k++) c.push((k % 2 ? 1 : -1) / (k * Math.pow(1 + a, k))); return c; }
+    for (let k = 0; k <= n; k++) {
+      let sum = 0;
+      s.poles.forEach(({ p, c: cc }) => { const w = cx.sub(p, [a, 0]); let wp = w; for (let j = 0; j < k; j++) wp = cx.mul(wp, w); sum += -cx.div(cc, wp)[0]; });
+      c.push(sum);
+    }
+    return c;
+  }
+  function radius(a) {
+    const s = PRE[key];
+    if (s.entire) return { R: Infinity, p: null };
+    const ps = s.branch ? [s.branch] : s.poles.map((q) => q.p);
+    let best = null, R = Infinity;
+    ps.forEach((p) => { const d = Math.hypot(p[0] - a, p[1]); if (d < R) { R = d; best = p; } });
+    return { R, p: best };
+  }
+  const pts = [{ x: 0, y: 0, label: "a", r: 8, constrain(p) { const s = PRE[key]; p.y = 0; p.x = MB.clamp(p.x, s.lo != null ? s.lo : -3, 3); if (!s.branch && !s.entire) s.poles.forEach((q) => { if (Math.abs(q.p[1]) < 1e-9 && Math.abs(p.x - q.p[0]) < 0.15) p.x = q.p[0] + (p.x < q.p[0] ? -0.15 : 0.15); }); } }];
+  const pl = MB.plane("#ty-cv-rad", {
+    x: [-3.6, 3.6], aspect: 0.6, maxHeight: 380, minHeight: 220, points: pts,
+    draw(P, api) {
+      const C = P.P, s = PRE[key], a = api.points[0].x, { R, p } = radius(a);
+      api.points[0].color = C.accent2;
+      if (isFinite(R)) { P.circle(a, 0, R, { color: C.accent, width: 2, fill: C.accent, alpha: 0.16 }); P.circle(a, 0, R, { color: C.accent, width: 2 }); P.line(a, 0, p[0], p[1], { color: C.accent, width: 1.4, dash: [4, 3] }); P.line(a - R, 0, a + R, 0, { color: C.accent, width: 5, alpha: 0.55 }); }
+      else P.text("특이점이 없다: R = ∞", P.x0 + 0.2, P.y1 - 0.4, { color: C.ok, bold: true });
+      const marks = s.entire ? [] : s.branch ? [s.branch] : s.poles.map((q) => q.p);
+      marks.forEach(([x, y]) => { const d = 0.12; P.line(x - d, y - d, x + d, y + d, { color: C.bad, width: 3 }); P.line(x - d, y + d, x + d, y - d, { color: C.bad, width: 3 }); });
+      if (s.branch) P.line(P.x0, 0, -1, 0, { color: C.bad, width: 2, dash: [3, 3], alpha: 0.7 });
+      MB.stat("ty-r-a", TY.num(a, 3));
+      MB.stat("ty-r-p", p ? (Math.abs(p[1]) < 1e-9 ? TY.num(p[0], 3) : `${TY.num(p[0], 3)} ${p[1] < 0 ? "−" : "+"} ${TY.num(Math.abs(p[1]), 3)}i`) : "없음");
+      MB.stat("ty-r-R", isFinite(R) ? TY.num(R, 4) : "∞");
+      MB.stat("ty-r-I", isFinite(R) ? `(${TY.num(a - R, 3)}, ${TY.num(a + R, 3)})` : "(−∞, ∞)");
+      if (fcv) fcv.redraw();
+    },
+  });
+  fcv = MB.canvas("#ty-cv-radf", (ctx) => {
+    const C = MB.palette(), s = PRE[key], a = pts[0].x, n = N(), { R } = radius(a), c = coefs(a, n);
+    const T = (x) => { let v = 0, pw = 1; for (let k = 0; k <= n; k++) { v += c[k] * pw; pw *= x - a; } return v; };
+    const Rc = MB.chart(ctx, null, { x: [-3.6, 3.6], y: s.y, xLabel: "x", bands: isFinite(R) ? [{ x0: a - R, x1: a + R, color: C.grid }] : [], vlines: [{ x: a, color: C.accent2 }] });
+    TY.clip(ctx, Rc);
+    TY.curve(ctx, Rc, s.f, -3.6, 3.6, C.text, 2.2, null, 700);
+    TY.curve(ctx, Rc, T, -3.6, 3.6, C.accent, 2.2, null, 500);
+    ctx.restore();
+  }, { aspect: 0.36, minHeight: 160, maxHeight: 230 });
+  document.getElementById("ty-r-pre").addEventListener("change", (e) => { key = e.target.value; pts[0].x = 0; pl.redraw(); });
+  document.getElementById("ty-r-a0").addEventListener("click", () => { pts[0].x = 0; pl.redraw(); });
+  document.getElementById("ty-r-a1").addEventListener("click", () => { pts[0].x = 1; pts[0].constrain(pts[0]); pl.redraw(); });
+  pl.redraw();
+})();
+
+/* ================================================================ 3. 테일러 다항식 */
+(function () {
+  /* e^(−1/x²)의 도함수: f⁽ⁿ⁾ = Pₙ(u)·f, u = 1/x, P₀ = 1, Pₙ₊₁ = −u²Pₙ′ + 2u³Pₙ */
+  const FLATP = (function () {
+    const P = [[1]];
+    for (let n = 0; n < 26; n++) {
+      const p = P[n], q = new Array(p.length + 3).fill(0);
+      p.forEach((c, k) => { if (k > 0) q[k + 1] -= k * c; q[k + 3] += 2 * c; });
+      P.push(q);
+    }
+    return P;
+  })();
+  const F = {
+    sin: { f: Math.sin, c: (a, k) => Math.sin(a + k * Math.PI / 2) / TY.fact(k), lo: -4, hi: 4 },
+    cos: { f: Math.cos, c: (a, k) => Math.cos(a + k * Math.PI / 2) / TY.fact(k), lo: -4, hi: 4 },
+    exp: { f: Math.exp, c: (a, k) => Math.exp(a) / TY.fact(k), lo: -4, hi: 1.1 },
+    ln: { f: (x) => (x > -1 ? Math.log(1 + x) : null), c: (a, k) => (k === 0 ? Math.log(1 + a) : (k % 2 ? 1 : -1) / (k * Math.pow(1 + a, k))), lo: -0.85, hi: 3.5 },
+    sqrt: { f: (x) => (x >= -1 ? Math.sqrt(1 + x) : null), c: (a, k) => { let b = 1; for (let j = 0; j < k; j++) b *= (0.5 - j) / (j + 1); return b * Math.pow(1 + a, 0.5 - k); }, lo: -0.85, hi: 3.5 },
+    geo: { f: (x) => (Math.abs(1 - x) > 1e-9 ? 1 / (1 - x) : null), c: (a, k) => 1 / Math.pow(1 - a, k + 1), lo: -3.5, hi: 0.6 },
+    flat: { f: (x) => (x === 0 ? 0 : Math.exp(-1 / (x * x))), c: (a, k) => { if (Math.abs(a) < 1e-9) return 0; const u = 1 / a; let s = 0; FLATP[k].forEach((cc, j) => { s += cc * Math.pow(u, j); }); return s * Math.exp(-u * u) / TY.fact(k); }, lo: -3.5, hi: 3.5 },
+  };
+  let key = "sin";
+  const N = MB.range("ty-p-n", (v) => String(v), () => pl.redraw());
+  const all = MB.check("ty-p-all", () => pl.redraw());
+  const pts = [{ x: 0, y: 0, label: "a", r: 8, constrain(p) { const s = F[key]; p.x = MB.clamp(p.x, s.lo, s.hi); const v = s.f(p.x); p.y = v == null ? 0 : MB.clamp(v, -2.4, 3.4); } }];
+  const pl = MB.plane("#ty-cv-poly", {
+    x: [-4.5, 4.5], y: [-2.5, 3.5], aspect: 0.6, maxHeight: 440, minHeight: 250, points: pts,
+    draw(P, api) {
+      const C = P.P, s = F[key], a = api.points[0].x, n = N();
+      api.points[0].color = C.accent2;
+      const c = []; for (let k = 0; k <= n; k++) c.push(s.c(a, k));
+      const T = (m) => (x) => { let v = 0, pw = 1; for (let k = 0; k <= m; k++) { v += c[k] * pw; pw *= x - a; } return v; };
+      if (all()) for (let m = 0; m < n; m++) P.curve(T(m), { color: C.accent, width: 1, alpha: 0.18 + 0.5 * m / Math.max(1, n) });
+      P.curve((x) => s.f(x), { color: C.text, width: 2.4 });
+      P.curve(T(n), { color: C.accent, width: 2.6 });
+      MB.stat("ty-p-a", TY.num(a, 3));
+      MB.stat("ty-p-T", TY.polyText(c, a, 4));
+      const xe = a + 1, fv = s.f(xe);
+      MB.stat("ty-p-err", fv == null || !isFinite(fv) ? "f가 정의되지 않음" : TY.num(Math.abs(fv - T(n)(xe)), 6));
+    },
+  });
+  document.getElementById("ty-p-f").addEventListener("change", (e) => { key = e.target.value; pts[0].x = 0; pts[0].constrain(pts[0]); pl.redraw(); });
+  document.getElementById("ty-p-a0").addEventListener("click", () => { pts[0].x = 0; pts[0].constrain(pts[0]); pl.redraw(); });
+  pts[0].constrain(pts[0]); pl.redraw();
+})();
+
+/* ================================================================ 4. 실제 오차 vs 라그랑주 상한 */
+(function () {
+  const F = {
+    exp: { f: Math.exp, c: (k) => 1 / TY.fact(k), bnd: (x, n) => Math.exp(Math.max(0, x)) * Math.pow(Math.abs(x), n + 1) / TY.fact(n + 1), lo: -3, hi: 3 },
+    sin: { f: Math.sin, c: (k) => (k % 2 ? (k % 4 === 1 ? 1 : -1) / TY.fact(k) : 0), bnd: (x, n) => Math.pow(Math.abs(x), n + 1) / TY.fact(n + 1), lo: -3, hi: 3 },
+    cos: { f: Math.cos, c: (k) => (k % 2 ? 0 : (k % 4 === 0 ? 1 : -1) / TY.fact(k)), bnd: (x, n) => Math.pow(Math.abs(x), n + 1) / TY.fact(n + 1), lo: -3, hi: 3 },
+    ln: { f: (x) => Math.log(1 + x), c: (k) => (k === 0 ? 0 : (k % 2 ? 1 : -1) / k), bnd: (x, n) => Math.pow(Math.abs(x), n + 1) / ((n + 1) * Math.pow(1 + Math.min(0, x), n + 1)), lo: -0.95, hi: 3 },
+  };
+  let key = "exp";
+  const N = MB.range("ty-m-n", (v) => String(v), () => cv.redraw());
+  const X = MB.range("ty-m-x", (v) => v.toFixed(2).replace("-", "−"), () => cv.redraw());
+  const tol = MB.steps("ty-m-tol", [1e-2, 1e-3, 1e-4, 1e-6, 1e-8, 1e-10, 1e-12], (v) => "10⁻" + TY.sup(Math.round(-Math.log10(v))), 1e-6, () => cv.redraw());
+  const T = (s, x, n) => { let v = 0, pw = 1; for (let k = 0; k <= n; k++) { v += s.c(k) * pw; pw *= x; } return v; };
+  const cv = MB.canvas("#ty-cv-rem", (ctx) => {
+    const C = MB.palette(), s = F[key], n = N(), x0 = MB.clamp(X(), s.lo, s.hi);
+    const R = MB.chart(ctx, null, { x: [s.lo, s.hi], y: [1e-17, 1e3], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "x",
+      hlines: [{ y: tol(), color: C.ok, label: "목표" }], vlines: [{ x: x0, color: C.accent2 }] });
+    TY.clip(ctx, R);
+    const act = [], bnd = [];
+    for (let i = 0; i <= 500; i++) {
+      const x = s.lo + (s.hi - s.lo) * i / 500;
+      const e = Math.max(1e-18, Math.abs(s.f(x) - T(s, x, n))), b = Math.max(1e-18, s.bnd(x, n));
+      act.push([R.X(x), R.Y(MB.clamp(e, 1e-18, 1e6))]); bnd.push([R.X(x), R.Y(MB.clamp(b, 1e-18, 1e6))]);
+    }
+    TY.poly(ctx, bnd, C.warn, 2, [6, 4]); TY.poly(ctx, act, C.accent, 2.2);
+    ctx.restore();
+    const a = Math.abs(s.f(x0) - T(s, x0, n)), b = s.bnd(x0, n);
+    MB.stat("ty-m-act", a < 2e-16 ? "≈ 0 (반올림 수준)" : TY.num(a, 4)); MB.stat("ty-m-bnd", TY.num(b, 4));
+    let need = null; for (let m = 0; m <= 80; m++) if (s.bnd(x0, m) <= tol()) { need = m; break; }
+    MB.stat("ty-m-need", need == null ? "없음 (상한이 줄지 않음)" : `n = ${need}`);
+  }, { aspect: 0.52, minHeight: 240, maxHeight: 380 });
+  document.getElementById("ty-m-f").addEventListener("change", (e) => { key = e.target.value; cv.redraw(); });
+})();
+
+/* ================================================================ 5. 이항 급수 */
+(function () {
+  const msg = document.getElementById("ty-b-msg");
+  const K = MB.range("ty-b-k", (v) => String(v).replace("-", "−"), () => cv.redraw());
+  const N = MB.range("ty-b-n", (v) => String(v), () => cv.redraw());
+  const X = MB.range("ty-b-x", (v) => v.toFixed(2).replace("-", "−"), () => cv.redraw());
+  const coef = (k, n) => { const c = [1]; for (let j = 0; j < n - 1; j++) c.push(c[j] * (k - j) / (j + 1)); return c; };
+  const cv = MB.canvas("#ty-cv-bin", (ctx) => {
+    const C = MB.palette(), k = K(), n = N(), x0 = X(), c = coef(k, n);
+    const S = (x) => { let v = 0, pw = 1; for (let j = 0; j < n; j++) { v += c[j] * pw; pw *= x; } return v; };
+    const f = (x) => (x > -1 || Number.isInteger(k) ? Math.pow(1 + x, k) : null);
+    const R = MB.chart(ctx, null, { x: [-1.2, 1.6], y: [-1.5, 6], xLabel: "x", bands: [{ x0: -1, x1: 1, color: C.grid }], vlines: [{ x: x0, color: C.warn }], hlines: [{ y: 0, color: C.dim, dash: [] }] });
+    TY.clip(ctx, R);
+    TY.curve(ctx, R, (x) => (x <= -1 && k < 0 ? null : f(x)), -1.2, 1.6, C.text, 2.4, null, 600);
+    TY.curve(ctx, R, S, -1.2, 1.6, C.accent, 2.2);
+    ctx.restore();
+    const cs = coef(k, 6).map((v) => TY.num(v, 4)).join(", ");
+    MB.stat("ty-b-c", cs + (Number.isInteger(k) && k >= 0 && k < 5 ? "" : ", …"));
+    const sv = S(x0), fv = Math.pow(1 + x0, k);
+    MB.stat("ty-b-s", TY.num(sv, 6)); MB.stat("ty-b-f", TY.num(fv, 6));
+    const poly = Number.isInteger(k) && k >= 0;
+    if (poly) { msg.className = "ty-msg ok"; msg.innerHTML = `k = ${k}는 0 이상의 정수: ${k + 1}번째 항 다음부터 계수가 0이라 급수가 다항식으로 끝납니다. ${n > k ? "지금 부분합이 모든 x에서 정확합니다." : `항을 ${k + 1}개 이상 쓰면 모든 x에서 정확합니다.`}`; }
+    else if (Math.abs(x0) < 1) { msg.className = "ty-msg ok"; msg.innerHTML = `|x| &lt; 1: 수렴. 오차 ${TY.num(Math.abs(fv - sv), 6)}, 다음 항 크기 ${TY.num(Math.abs(coef(k, n + 1)[n] * Math.pow(x0, n)), 6)}.`; }
+    else { msg.className = "ty-msg bad"; msg.innerHTML = `|x| ≥ 1이고 k가 정수가 아니므로 계수 비 |(k − n)/(n + 1)| → 1, 항 |cₙxⁿ|이 줄지 않아 <b>발산</b>합니다(x = 1 끝점은 k에 따라 다름).`; }
+  }, { aspect: 0.52, minHeight: 240, maxHeight: 380 });
+  document.querySelectorAll("#sim-ty-binomial [data-k]").forEach((b) => b.addEventListener("click", () => K.set(+b.dataset.k)));
+})();
+
+/* ================================================================ 6. 오일러 나선 */
+(function () {
+  let playing = false, t = 0;
+  const TH = MB.range("ty-e-th", (v) => v.toFixed(2) + " (" + Math.round(v * 180 / Math.PI) + "°)", () => fit());
+  const N = MB.range("ty-e-n", (v) => String(v), () => pl.redraw());
+  function sums(th, n) { const out = [[0, 0]]; let re = 0, im = 0, tr = 1, ti = 0; for (let k = 0; k < n; k++) { re += tr; im += ti; out.push([re, im]); [tr, ti] = [-ti * th / (k + 1), tr * th / (k + 1)]; } return out; }
+  const pl = MB.plane("#ty-cv-eul", {
+    x: [-4, 4], y: [-3, 3], aspect: 0.62, maxHeight: 440, minHeight: 250, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, th = TH(), n = N(), s = sums(th, n);
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 }); P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1.2 });
+      P.param((u) => [Math.cos(u), Math.sin(u)], 0, 2 * Math.PI, { color: C.dim, width: 1.4 });
+      P.param((u) => [Math.cos(u), Math.sin(u)], 0, th, { color: C.ok, width: 3, alpha: 0.6 });
+      for (let k = 1; k < s.length; k++) P.arrow(s[k - 1][0], s[k - 1][1], s[k][0], s[k][1], { color: k % 2 ? C.accent : C.accent2, width: 2.4, head: 9 });
+      P.dot(Math.cos(th), Math.sin(th), { r: 6, color: C.ok, label: "e^(iθ)" });
+      const last = s[s.length - 1];
+      P.dot(last[0], last[1], { r: 4.5, color: C.warn });
+      const fmt = (z) => `${TY.num(z[0], 5)} ${z[1] < 0 ? "−" : "+"} ${TY.num(Math.abs(z[1]), 5)}i`;
+      MB.stat("ty-e-s", fmt(last)); MB.stat("ty-e-t", fmt([Math.cos(th), Math.sin(th)]));
+      MB.stat("ty-e-d", TY.num(Math.hypot(last[0] - Math.cos(th), last[1] - Math.sin(th)), 4));
+    },
+  });
+  function fit() {
+    const s = sums(TH(), 30); let x0 = -1.2, x1 = 1.2, y0 = -1.2, y1 = 1.2;
+    s.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+    const w = pl.cv.w || 600, h = pl.cv.h || 370, cxm = (x0 + x1) / 2, cym = (y0 + y1) / 2;
+    let hw = (x1 - x0) / 2 * 1.12, hh = (y1 - y0) / 2 * 1.12;
+    if (hw / hh < w / h) hw = hh * w / h; else hh = hw * h / w;
+    pl.view({ x: [cxm - hw, cxm + hw], y: [cym - hh, cym + hh] });
+  }
+  const loop = MB.loop(document.getElementById("sim-ty-euler"), (dt) => {
+    if (!playing) return; t += dt; if (t < 0.55) return; t = 0;
+    N.set(N() >= 20 ? 1 : N() + 1);
+  });
+  MB.playButton("ty-e-play", () => { playing = true; t = 0; if (N() >= 20) N.set(1); loop.start(); }, () => { playing = false; }, ["▶ 한 항씩", "■ 멈춤"]);
+  document.getElementById("ty-e-pi").addEventListener("click", () => TH.set(Math.PI));
+  fit();
+})();
+
+/* ================================================================ 7. 진자 경주 */
+(function () {
+  let sim = null, tt = 0, playing = false;
+  const A = MB.range("ty-n-a", (v) => v + "°", () => { build(); tt = 0; draw(); });
+  const agm = (a, b) => { for (let i = 0; i < 40; i++) [a, b] = [(a + b) / 2, Math.sqrt(a * b)]; return a; };
+  const DT = 0.01, TMAX = 2 * Math.PI * 11;
+  function build() {
+    const th0 = A() * Math.PI / 180;
+    sim = MB.rk4((t, y) => [y[1], -Math.sin(y[0])], [th0, 0], 0, DT, Math.ceil(TMAX / DT));
+  }
+  const thAt = (t) => { const i = MB.clamp(Math.floor(t / DT), 0, sim.length - 2), f = t / DT - i; return sim[i][1][0] * (1 - f) + sim[i + 1][1][0] * f; };
+  build();
+  const top = MB.canvas("#ty-cv-pen", (ctx, w, h) => {
+    const C = MB.palette(), th0 = A() * Math.PI / 180, L = Math.min(h * 0.62, w * 0.2);
+    const th1 = thAt(tt), th2 = th0 * Math.cos(tt);
+    [[w * 0.3, th1, C.accent], [w * 0.7, th2, C.accent2]].forEach(([px, th, col]) => {
+      const py = h * 0.18;
+      ctx.strokeStyle = C.dim; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + L * 1.05); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.axis; ctx.fillRect(px - 30, py - 4, 60, 4);
+      const bx = px + L * Math.sin(th), by = py + L * Math.cos(th);
+      ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx, by); ctx.stroke();
+      TY.dot(ctx, bx, by, 11, col);
+    });
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 260 });
+  const bot = MB.canvas("#ty-cv-pent", (ctx) => {
+    const C = MB.palette(), a = A(), th0 = a * Math.PI / 180, T0 = 2 * Math.PI;
+    const d1 = [], d2 = [];
+    for (let i = 0; i <= 600; i++) { const t = 3 * T0 * i / 600; d1.push([t / T0, thAt(t) * 180 / Math.PI]); d2.push([t / T0, a * Math.cos(t)]); }
+    const tn = (tt % (3 * T0)) / T0;
+    MB.chart(ctx, null, { x: [0, 3], y: [-a * 1.1, a * 1.1], xLabel: "t / T₀",
+      series: [{ data: d2, color: C.accent2, width: 1.8 }, { data: d1, color: C.accent, width: 2.2 }], vlines: [{ x: tn, color: C.warn }] });
+  }, { aspect: 0.32, minHeight: 140, maxHeight: 200 });
+  function draw() {
+    const th0 = A() * Math.PI / 180, ex = 1 / agm(1, Math.cos(th0 / 2)), s1 = 1 + th0 * th0 / 16, s2 = s1 + 11 * Math.pow(th0, 4) / 3072;
+    MB.stat("ty-n-ex", TY.num(ex, 5)); MB.stat("ty-n-s1", TY.num(s1, 5)); MB.stat("ty-n-s2", TY.num(s2, 5));
+    MB.stat("ty-n-lag", `${TY.num(10 - 10 / ex, 3)}주기 늦음`);
+    top.redraw(); bot.redraw();
+  }
+  const loop = MB.loop(document.getElementById("sim-ty-pendulum"), (dt) => {
+    if (!playing) return; tt += dt * Math.PI; if (tt > TMAX - 0.1) tt = 0; top.redraw(); bot.redraw();
+  });
+  MB.playButton("ty-n-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 흔들기", "■ 멈춤"]);
+  document.getElementById("ty-n-reset").addEventListener("click", () => { tt = 0; draw(); });
+  draw();
+})();
+
+/* ================================================================ 8. 가우스 적분의 급수 */
+(function () {
+  const X = MB.range("ty-f-x", (v) => v.toFixed(2), () => draw());
+  const N = MB.range("ty-f-n", (v) => String(v), () => draw());
+  const g = (t) => Math.exp(-t * t);
+  const term = (n, x) => (n % 2 ? -1 : 1) * Math.pow(x, 2 * n + 1) / (TY.fact(n) * (2 * n + 1));
+  const S = (x, n) => { let s = 0; for (let k = 0; k < n; k++) s += term(k, x); return s; };
+  const top = MB.canvas("#ty-cv-erf", (ctx) => {
+    const C = MB.palette(), n = N(), x0 = X();
+    const R = MB.chart(ctx, null, { x: [0, 3], y: [-0.4, 1.4], xLabel: "x", vlines: [{ x: x0, color: C.warn }], hlines: [{ y: Math.sqrt(Math.PI) / 2, color: C.ok, label: "√π/2" }] });
+    TY.clip(ctx, R);
+    TY.curve(ctx, R, (x) => TY.simpson(g, 0, x, 120), 0, 3, C.text, 2.4, null, 200);
+    TY.curve(ctx, R, (x) => S(x, n), 0, 3, C.accent, 2.2, null, 300);
+    ctx.restore();
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 270 });
+  const bot = MB.canvas("#ty-cv-erft", (ctx) => {
+    const C = MB.palette(), n = N(), x0 = X();
+    const R = MB.chart(ctx, null, { x: [-1, 41], y: [1e-12, 1e3], logY: true, yTicks: [1e-12, 1e-9, 1e-6, 1e-3, 1, 1e3], xLabel: "n", hlines: [{ y: 1e-6, color: C.warn, label: "10⁻⁶" }] });
+    TY.clip(ctx, R);
+    for (let k = 0; k <= 40; k++) { const v = Math.abs(term(k, x0)); if (v < 1e-13) continue; ctx.globalAlpha = k < n ? 0.9 : 0.3; ctx.fillStyle = k < n ? C.accent : C.dim; const y = R.Y(Math.min(v, 1e3)); ctx.fillRect(R.X(k) - 3, y, 6, R.box.y + R.box.h - y); }
+    ctx.globalAlpha = 1; ctx.restore();
+  }, { aspect: 0.3, minHeight: 140, maxHeight: 190 });
+  function draw() {
+    const n = N(), x0 = X(), s = S(x0, n), ex = TY.simpson(g, 0, x0, 2000), nxt = Math.abs(term(n, x0));
+    MB.stat("ty-f-s", TY.num(s, 7)); MB.stat("ty-f-ex", TY.num(ex, 7));
+    MB.stat("ty-f-err", `${TY.num(Math.abs(s - ex), 3)} / ${TY.num(nxt, 3)}`);
+    MB.stat("ty-f-p", TY.num(2 / Math.sqrt(Math.PI) * ex, 5));
+    top.redraw(); bot.redraw();
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>적분의 응용 · CalculusBook</title>
+<meta name="description" content="잘게 자르고 더하기. 두 곡선 사이의 넓이, 단면·원판·와셔·원통 껍질로 구하는 부피, 곡선의 길이와 회전면의 넓이, 물 퍼 올리기와 수압, 질량 중심과 파푸스 정리, 확률 밀도와 소비자 잉여까지 돌리고 끌며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ap-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ap-two > div { position: relative; min-width: 0; }
+  .ap-two > div + div { border-top: 1px solid var(--border); }
+  .ap-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 75%, transparent); padding: 1px 6px; border-radius: 5px; }
+  .ap-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ap-msg b { color: var(--text); }
+  .ap-msg.ok { color: var(--ok); font-weight: 600; }
+  .ap-msg.bad { color: var(--bad); font-weight: 600; }
+  canvas.ap-rot { cursor: grab; touch-action: none; }
+  canvas.ap-rot:active { cursor: grabbing; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="applications">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 10</div>
+    <h1 data-no-glossary>적분의 응용</h1>
+    <p class="lead">정적분의 정의를 다시 읽으면 하나의 요리법이 보입니다. <b>전체를 얇게 자르고, 조각 하나를 근사하고, 더하고, 극한을 취한다.</b> 7장에서는 이 요리법으로 곡선 아래 넓이를 구했지만, 조각이 꼭 직사각형일 필요는 없습니다. 원판이면 부피, 짧은 선분이면 길이, 얇은 물층이면 퍼 올리는 일, 가는 띠면 수압, 작은 질량이면 무게 중심, 작은 확률이면 기댓값이 됩니다. 이 장은 같은 요리법을 여러 재료에 써 보며, 무엇을 \(dx\) 하나로 잘라야 계산이 쉬워지는지 고르는 감각을 기릅니다.</p>
+    <ul class="objectives">
+      <li>두 곡선 사이 넓이를 \(x\)로 자를지 \(y\)로 자를지 판단해 하나의 적분으로 세운다.</li>
+      <li>단면적 \(A(x)\)로 부피를 구하고, 회전체를 원판·와셔·원통 껍질 중 알맞은 방법으로 계산한다.</li>
+      <li>꺾은선 근사에서 곡선의 길이 공식 \(\int\sqrt{1+f'(x)^2}\,dx\)를 유도하고, 회전면의 넓이로 넓힌다.</li>
+      <li>용수철·물 퍼 올리기의 일과 수문에 걸리는 수압을 "조각마다 힘 × 거리", "조각마다 압력 × 넓이"로 세운다.</li>
+      <li>막대와 판의 질량 중심(도심)을 모멘트로 구하고, 파푸스 정리로 회전체 부피를 한 줄에 얻는다.</li>
+      <li>확률 밀도 함수의 넓이로 확률을, 무게 중심으로 기댓값을 읽고, 소비자 잉여를 넓이로 계산한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>포도주 통의 부피</b></div>
+      <div class="o-body"><p>1613년, 재혼을 앞두고 포도주를 사던 케플러<span class="en">(Johannes Kepler)</span>는 상인이 통의 부피를 재는 방식에 의문을 품었습니다. 상인은 통 옆구리의 구멍으로 막대를 비스듬히 꽂아 반대편 바닥 모서리까지의 젖은 길이 하나만 읽고 값을 매겼습니다. 통의 배가 불룩하든 홀쭉하든 같은 길이면 같은 값이었습니다. 케플러는 통을 수많은 얇은 원판으로 잘라 그 부피를 더하는 방법으로 여러 회전체의 부피를 구했고, 1615년 『포도주 통의 새로운 입체 기하학』<span class="en">(Nova Stereometria Doliorum Vinariorum)</span>을 펴냈습니다. 미적분이 체계화되기 반세기도 전의 일입니다.</p>
+        <p>얇게 잘라 더하는 이 생각은 지금도 공학 계산의 중심에 있습니다. 탱크의 눈금표, 댐과 수문의 설계 하중, 회전하는 부품의 관성, 항공기의 무게 중심, 제품 수명의 기댓값이 모두 "조각 하나의 식"을 세우고 적분하는 일입니다. 이 장에서는 케플러의 원판을 직접 쌓아 봅니다.</p>
+        <div class="o-chain"><span>통·탱크·댐·부품</span><i>→</i><span>얇은 조각 하나</span><i>→</i><span class="tool">조각의 식을 적분</span><i>→</i><span>부피·힘·일·중심</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="area-between">
+    <h2>두 곡선 사이의 넓이: x로 자를까, y로 자를까</h2>
+    <div class="problem"><strong>설계 도면의 굽은 판</strong>
+      <p>레이저로 잘라 낼 금속 판의 윤곽이 두 곡선으로 주어졌습니다. 재료비와 무게를 계산하려면 판의 넓이가 필요합니다. 7장의 정적분은 곡선과 \(x\)축 사이 넓이였는데, 위아래가 모두 곡선이면 어떻게 할까요? 그리고 윤곽이 옆으로 누운 곡선 \(x = y^2\)이라면?</p></div>
+    <p>요리법을 그대로 따릅니다. 영역을 세로로 얇게 자르면 폭 \(\Delta x\)인 띠 하나의 높이는 "위 곡선 − 아래 곡선"입니다. 띠를 더하고 극한을 취하면 정적분입니다. 위아래가 아니라 좌우가 곡선으로 깔끔하게 정해지는 영역이면 가로로 자르고 \(y\)로 적분합니다.</p>
+    <div class="callout deep"><strong>정리 10.1 (두 곡선 사이의 넓이)</strong> \([a, b]\)에서 \(f, g\)가 연속이고 \(g(x) \le f(x)\)이면 두 곡선과 직선 \(x = a, x = b\)로 둘러싸인 영역의 넓이는
+      <div class="formula">$$A = \int_a^b\big[f(x) - g(x)\big]\,dx = \int_a^b(\text{위} - \text{아래})\,dx.$$</div>
+      마찬가지로 \([c, d]\)에서 \(q(y) \le p(y)\)이면 \(x = q(y)\)와 \(x = p(y)\) 사이 넓이는 \(\int_c^d\big[p(y) - q(y)\big]\,dy = \int_c^d(\text{오른쪽} - \text{왼쪽})\,dy\)이다. 두 곡선이 구간 안에서 교차하면 \(\int|f - g|\)로, 즉 교점에서 나눠 각 조각에서 위아래를 다시 정한다.</div>
+    <div class="callout"><strong>예제 10.1 (x로 자르기)</strong> \(y = x + 2\)와 \(y = x^2\)으로 둘러싸인 영역의 넓이를 구하라.
+      <ol>
+        <li>교점: \(x^2 = x + 2 \Rightarrow (x-2)(x+1) = 0\), \(x = -1, 2\). 그 사이에서 \(x = 0\)을 넣어 보면 \(2 > 0\)이므로 직선이 위입니다.</li>
+        <li>\(A = \int_{-1}^2(x + 2 - x^2)\,dx = \Big[\tfrac{x^2}{2} + 2x - \tfrac{x^3}{3}\Big]_{-1}^2 = \tfrac{10}{3} - \big(-\tfrac{7}{6}\big) = \tfrac{9}{2}\).</li>
+      </ol></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="x로 자르기와 y로 자르기 비교">
+        <rect x="10" y="10" width="365" height="270" rx="10" class="f-surface"/>
+        <rect x="385" y="10" width="365" height="270" rx="10" class="f-surface"/>
+        <text x="24" y="32" class="t" style="font-weight:700">x로 자르기: 아래 경계가 바뀐다</text>
+        <text x="399" y="32" class="t" style="font-weight:700">y로 자르기: 적분 하나</text>
+        <g transform="translate(70,150)">
+          <line x1="-40" y1="0" x2="290" y2="0" class="s-axis"/><line x1="0" y1="-110" x2="0" y2="110" class="s-axis"/>
+          <path d="M0 0 C 20 -45 50 -64 60 -64 C 120 -90 170 -110 240 -128" fill="none" class="s-acc" style="stroke-width:2.5"/>
+          <path d="M0 0 C 20 45 50 64 60 64" fill="none" class="s-acc" style="stroke-width:2.5"/>
+          <path d="M60 64 L240 -128" fill="none" style="stroke:var(--accent-2);stroke-width:2.5"/>
+          <rect x="20" y="-38" width="10" height="76" class="f-acc-soft" style="stroke:var(--accent)"/>
+          <rect x="150" y="-104" width="10" height="70" class="f-acc2-soft" style="stroke:var(--accent-2)"/>
+          <line x1="60" y1="-120" x2="60" y2="110" class="s-line" style="stroke-dasharray:4 4"/>
+          <text x="14" y="58" class="t-dim">−√x 위로</text><text x="170" y="-20" class="t-dim">x − 2 위로</text>
+          <text x="64" y="104" class="t-mono">x = 1</text>
+        </g>
+        <g transform="translate(445,150)">
+          <line x1="-40" y1="0" x2="290" y2="0" class="s-axis"/><line x1="0" y1="-110" x2="0" y2="110" class="s-axis"/>
+          <path d="M0 0 C 20 -45 50 -64 60 -64 C 120 -90 170 -110 240 -128" fill="none" class="s-acc" style="stroke-width:2.5"/>
+          <path d="M0 0 C 20 45 50 64 60 64" fill="none" class="s-acc" style="stroke-width:2.5"/>
+          <path d="M60 64 L240 -128" fill="none" style="stroke:var(--accent-2);stroke-width:2.5"/>
+          <rect x="22" y="-60" width="148" height="10" class="f-acc-soft" style="stroke:var(--accent)"/>
+          <rect x="8" y="30" width="60" height="10" class="f-acc-soft" style="stroke:var(--accent)"/>
+          <text x="176" y="-52" class="t-mono">오른쪽 y + 2</text><text x="74" y="42" class="t-mono">− 왼쪽 y²</text>
+          <text x="120" y="96" class="t-dim">모든 가로 띠가 같은 식</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 10-1.</b> x = y²과 y = x − 2로 둘러싸인 영역. 세로로 자르면 x = 1에서 아래 경계가 −√x에서 x − 2로 바뀌어 적분이 두 개 필요하다. 가로로 자르면 모든 띠가 "오른쪽 y + 2 − 왼쪽 y²"이라 적분 하나로 끝난다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 10.2 (y로 자르기)</strong> \(x = y^2\)과 \(y = x - 2\)로 둘러싸인 영역의 넓이를 구하라.
+      <ol>
+        <li>교점: \(y^2 = y + 2\)에서 \(y = -1, 2\). 가로 띠의 오른쪽은 직선 \(x = y + 2\), 왼쪽은 포물선 \(x = y^2\).</li>
+        <li>\(A = \int_{-1}^2(y + 2 - y^2)\,dy = \tfrac92\). 예제 10.1과 같은 적분입니다. 실제로 이 영역은 예제 10.1의 영역을 직선 \(y = x\)에 대해 뒤집은 것입니다.</li>
+        <li>\(x\)로 자르면: \(\int_0^1[\sqrt x - (-\sqrt x)]\,dx + \int_1^4[\sqrt x - (x-2)]\,dx = \tfrac43 + \tfrac{19}{6} = \tfrac92\). 같은 답이지만 일이 두 배입니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-between">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>띠로 채우기: 세로 띠와 가로 띠</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-between"></canvas><span class="tag-tl" id="ap-b-tag">y = x + 2, y = x²</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>영역</span><select id="ap-b-pre">
+            <option value="A">y = x + 2와 y = x² (예제 10.1)</option>
+            <option value="B">x = y²과 y = x − 2 (예제 10.2)</option>
+            <option value="C">y = sin x와 y = cos x, [π/4, 5π/4]</option>
+          </select></label>
+          <div class="ctrl"><span>자르는 방향</span><div class="seg" id="ap-b-dir"><button data-value="x" class="on">세로 띠 (dx)</button><button data-value="y">가로 띠 (dy)</button></div></div>
+          <label class="ctrl"><span>띠의 개수 n <output id="ap-b-n-out"></output></span><input type="range" id="ap-b-n" min="2" max="80" step="1" value="12"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">띠 넓이의 합</span><span class="v" id="ap-b-sum">—</span></div>
+        <div class="stat"><span class="k">정확한 넓이</span><span class="v" id="ap-b-ex">—</span></div>
+        <div class="stat"><span class="k">필요한 적분 개수</span><span class="v" id="ap-b-cnt">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-b-msg"></div>
+      <div class="sim-note">해볼 것: ① 예제 10.2 영역을 세로 띠로 자르면 x = 1의 왼쪽과 오른쪽에서 띠의 아래 끝이 다른 곡선에 닿습니다(색이 바뀝니다). 가로 띠로 바꾸면 한 가지 식입니다. ② 예제 10.1은 반대로 세로 띠가 편합니다. ③ sin·cos 영역을 가로로 자르면 띠의 양 끝을 arcsin·arccos으로 풀어야 합니다. 같은 넓이 2√2이지만 식이 훨씬 복잡합니다. 모델: 띠는 가운데 점 높이를 쓰는 중점 합입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="slicing">
+    <h2>단면으로 구하는 부피</h2>
+    <div class="problem"><strong>모양이 제각각인 물체의 부피</strong>
+      <p>피라미드, 돌출된 콘크리트 기초, 비행기 동체의 한 구간처럼 회전체가 아닌 물체도 많습니다. 이런 물체의 부피는 어떻게 구할까요? 어느 방향으로 잘라 보니 단면의 넓이를 식으로 쓸 수 있다면 충분합니다.</p></div>
+    <p>물체를 \(x\)축에 수직인 평면으로 자른 단면의 넓이를 \(A(x)\)라 합시다. 두께 \(\Delta x\)인 얇은 조각의 부피는 거의 \(A(x)\,\Delta x\)이고, 이것을 더하면 리만 합, 극한을 취하면 정적분입니다. 이것이 <span class="term">단면적 방법</span><span class="en">(method of slicing)</span>입니다.</p>
+    <div class="callout deep"><strong>정의 10.2 (단면적으로 정의한 부피)</strong> 물체가 \(a \le x \le b\) 사이에 있고, \(x\)에서의 단면적 \(A(x)\)가 연속이면 그 부피는
+      <div class="formula">$$V = \int_a^b A(x)\,dx = \lim_{n\to\infty}\sum_{i=1}^n A(x_i^*)\,\Delta x.$$</div>
+      <p style="margin:6px 0 0">따름 정리로, 두 물체의 모든 높이의 단면적이 같으면 부피도 같다. 이것을 <span class="term">카발리에리 원리</span><span class="en">(Cavalieri's principle)</span>라 한다. 동전 더미를 비스듬히 밀어도 부피가 그대로인 것과 같다.</p></div>
+    <div class="callout"><strong>예제 10.3 (각뿔)</strong> 밑면이 한 변 \(a\)인 정사각형이고 높이가 \(h\)인 각뿔의 부피를 구하라.
+      <ol>
+        <li>꼭짓점에서 아래로 \(x\)만큼 내려간 곳의 단면은 한 변이 \(\frac{a}{h}x\)인 정사각형입니다(닮음). \(A(x) = \frac{a^2}{h^2}x^2\).</li>
+        <li>\(V = \int_0^h\frac{a^2}{h^2}x^2\,dx = \frac{a^2}{h^2}\cdot\frac{h^3}{3} = \frac13a^2h\). 기둥 부피의 1/3이라는 공식이 적분에서 나옵니다. 꼭짓점을 옆으로 밀어도(빗각뿔) 단면적이 같으므로 카발리에리 원리로 부피는 그대로입니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 10.4 (정사각형 단면을 가진 물체)</strong> 밑면이 반지름 \(r\)인 원판이고, \(x\)축에 수직인 단면이 모두 정사각형인 물체의 부피를 구하라.
+      <ol>
+        <li>\(x\)에서 원판을 가로지르는 현의 길이는 \(2\sqrt{r^2 - x^2}\)이고, 이것이 정사각형의 한 변입니다. \(A(x) = 4(r^2 - x^2)\).</li>
+        <li>\(V = \int_{-r}^r4(r^2 - x^2)\,dx = 4\big(2r^3 - \tfrac23r^3\big) = \tfrac{16}{3}r^3\). 같은 밑면 위의 구의 부피 \(\frac43\pi r^3 \approx 4.19r^3\)보다 큰 \(5.33r^3\)입니다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="disks-washers">
+    <h2>회전체: 원판과 와셔</h2>
+    <p>평면 영역을 한 직선 둘레로 돌리면 <b>회전체</b>가 생깁니다. 회전축에 수직으로 자르면 단면이 원이므로 \(A(x) = \pi(\text{반지름})^2\)입니다. 영역 가운데가 비어 있으면 단면은 가운데 구멍이 뚫린 원, 즉 와셔<span class="en">(washer)</span>가 됩니다.</p>
+    <div class="callout deep"><strong>정리 10.3 (원판·와셔 방법)</strong> \(0 \le g(x) \le f(x)\)인 영역 \(a \le x \le b\)를 \(x\)축 둘레로 회전한 입체의 부피는
+      <div class="formula">$$V = \pi\int_a^b\big[f(x)^2 - g(x)^2\big]\,dx = \pi\int_a^b\big(R^2 - r^2\big)\,dx.$$
+        <div class="where">\(R = f(x)\)는 바깥 반지름, \(r = g(x)\)는 안쪽 반지름. \(g = 0\)이면 <span class="term">원판 방법</span><span class="en">(disk method)</span>, \(g > 0\)이면 <span class="term">와셔 방법</span><span class="en">(washer method)</span>이다. 회전축이 \(y = k\)이면 반지름을 축에서 잰 거리 \(|f - k|\), \(|g - k|\)로 바꾼다.</div></div></div>
+    <div class="callout warn"><strong>\(\pi(R - r)^2\)이 아니다</strong> 와셔의 넓이는 큰 원에서 작은 원을 뺀 \(\pi R^2 - \pi r^2\)입니다. 반지름을 먼저 빼고 제곱하는 \(\pi(R - r)^2\)은 흔한 실수이고, 예를 들어 \(R = 2, r = 1\)이면 \(3\pi\)와 \(\pi\)로 세 배 차이가 납니다.</div>
+    <div class="callout"><strong>예제 10.5 (원판과 와셔)</strong>
+      <ol>
+        <li>\(y = \sqrt x\), \(0 \le x \le 4\)를 \(x\)축 둘레로: \(V = \pi\int_0^4 x\,dx = 8\pi \approx 25.13\). 이 회전체는 포물면 그릇입니다.</li>
+        <li>\(y = x\)와 \(y = x^2\) 사이(\(0 \le x \le 1\))를 \(x\)축 둘레로: \([0,1]\)에서 \(x \ge x^2\)이므로 \(R = x\), \(r = x^2\). \(V = \pi\int_0^1(x^2 - x^4)\,dx = \pi\big(\tfrac13 - \tfrac15\big) = \tfrac{2\pi}{15}\).</li>
+        <li>구: \(y = \sqrt{r^2 - x^2}\)를 돌리면 \(\pi\int_{-r}^r(r^2 - x^2)\,dx = \tfrac43\pi r^3\). 고대의 결과가 한 줄로 나옵니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-washer">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>회전체를 와셔로 쌓기 (3D, 끌어서 돌리기)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-washer" class="ap-rot"></canvas><span class="tag-tl" id="ap-w-tag">y = √x, x축 회전</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>영역</span><select id="ap-w-pre">
+            <option value="sqrt">y = √x, [0, 4] (원판)</option>
+            <option value="wash">y = x와 y = x², [0, 1] (와셔)</option>
+            <option value="sphere">y = √(1 − x²) (구)</option>
+            <option value="barrel">y = 1 − 0.1x², [−1.5, 1.5] (포도주 통)</option>
+          </select></label>
+          <label class="ctrl"><span>조각 수 n <output id="ap-w-n-out"></output></span><input type="range" id="ap-w-n" min="1" max="40" step="1" value="8"></label>
+          <label class="ctrl"><span>회전 각 <output id="ap-w-phi-out"></output></span><input type="range" id="ap-w-phi" min="10" max="360" step="5" value="290"></label>
+          <div class="btn-row"><button class="btn primary" id="ap-w-play">▶ 돌려 만들기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">Σ π(R² − r²)Δx</span><span class="v" id="ap-w-sum">—</span></div>
+        <div class="stat"><span class="k">정확한 부피</span><span class="v" id="ap-w-ex">—</span></div>
+        <div class="stat"><span class="k">상대 오차</span><span class="v" id="ap-w-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 그림을 끌어 돌려 보세요. 잘린 면에서 와셔의 구멍(안쪽 반지름 r = x²)이 보입니다. ② n을 늘리면 계단 모양 원판 더미가 매끄러운 회전체로 다가가고 오차가 n²에 반비례해 줄어듭니다(√x는 R² = x가 일차식이라 중점 합이 처음부터 정확합니다). ③ '포도주 통'은 케플러가 다룬 종류의 모양입니다. 모델: 각 조각의 반지름은 가운데 점에서 잰 값(중점 합), 3D는 회전 행렬로 사영하고 뒤에서부터 칠합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="shells">
+    <h2>원통 껍질: 축과 나란히 자르기</h2>
+    <div class="problem"><strong>역함수를 구하기 힘들 때</strong>
+      <p>\(y = 2x - x^2\)과 \(x\)축 사이 영역을 \(y\)축 둘레로 돌린 그릇 모양의 부피를 구해 봅시다. 와셔로 하려면 \(y\)축에 수직으로, 즉 \(y\)로 잘라야 하고, 그러려면 \(y = 2x - x^2\)을 \(x\)에 대해 풀어 \(x = 1 \pm\sqrt{1 - y}\)라는 두 반지름을 써야 합니다. \(y = \sin x\)처럼 역함수가 마땅치 않으면 더 곤란합니다.</p></div>
+    <p>이번에는 회전축과 <b>나란하게</b> 자릅니다. \(x\)에 있는 폭 \(\Delta x\), 높이 \(f(x)\)인 세로 띠를 \(y\)축 둘레로 돌리면 얇은 원통 껍질이 됩니다. 껍질을 칼로 세로로 갈라 펼치면 거의 직육면체이고, 가로가 둘레 \(2\pi x\), 세로가 높이 \(f(x)\), 두께가 \(\Delta x\)입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="와셔 방법과 원통 껍질 방법의 비교">
+        <rect x="10" y="10" width="365" height="280" rx="10" class="f-surface"/>
+        <rect x="385" y="10" width="365" height="280" rx="10" class="f-surface"/>
+        <text x="24" y="32" class="t" style="font-weight:700">와셔: 축에 수직으로 자른다</text>
+        <text x="399" y="32" class="t" style="font-weight:700">껍질: 축과 나란히 자른다</text>
+        <line x1="40" y1="160" x2="350" y2="160" class="s-axis" style="stroke-dasharray:6 4"/><text x="330" y="150" class="t-mono">축</text>
+        <ellipse cx="190" cy="160" rx="18" ry="92" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <ellipse cx="190" cy="160" rx="7" ry="36" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/>
+        <path d="M60 160 C 120 120 160 75 300 64" fill="none" class="s-line" style="stroke-width:2"/>
+        <path d="M60 160 C 120 140 160 125 300 120" fill="none" class="s-line" style="stroke-width:1.5;stroke-dasharray:4 3"/>
+        <text x="214" y="96" class="t-mono">R</text><text x="200" y="146" class="t-mono">r</text>
+        <text x="60" y="270" class="t-dim">조각 부피 ≈ π(R² − r²) Δx</text>
+        <line x1="560" y1="270" x2="560" y2="46" class="s-axis" style="stroke-dasharray:6 4"/><text x="568" y="56" class="t-mono">축</text>
+        <ellipse cx="560" cy="230" rx="110" ry="22" fill="none" style="stroke:var(--accent-2);stroke-width:1.5"/>
+        <path d="M450 230 L450 110 M670 230 L670 110" style="stroke:var(--accent-2);stroke-width:2"/>
+        <ellipse cx="560" cy="110" rx="110" ry="22" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/>
+        <ellipse cx="560" cy="110" rx="98" ry="19" style="fill:var(--surface);stroke:var(--accent-2);stroke-width:1"/>
+        <line x1="560" y1="110" x2="670" y2="110" class="s-line"/><text x="600" y="104" class="t-mono">x</text>
+        <text x="678" y="174" class="t-mono">f(x)</text>
+        <text x="410" y="270" class="t-dim">펼치면 2πx × f(x) × Δx 인 판</text>
+      </svg>
+      <figcaption><b>그림 10-2.</b> 같은 회전체를 자르는 두 방법. 와셔는 축에 수직인 조각이라 반지름을 축 방향 변수의 함수로 써야 하고, 껍질은 축과 나란한 띠를 돌린 것이라 주어진 y = f(x)를 그대로 쓴다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 10.4 (원통 껍질 방법)</strong> \(0 \le a \lt b\)이고 \(f \ge 0\)이 연속일 때, \(y = f(x)\) 아래 영역 \(a \le x \le b\)를 \(y\)축 둘레로 회전한 입체의 부피는
+      <div class="formula">$$V = \int_a^b 2\pi x\,f(x)\,dx = \int_a^b(\text{둘레})(\text{높이})\,dx.$$</div>
+      <p style="margin:6px 0 0"><b>유도.</b> 반지름 \(x_{i-1}\)과 \(x_i\) 사이 껍질의 부피는 정확히 \(\pi(x_i^2 - x_{i-1}^2)f(\bar x_i) = 2\pi\bar x_i f(\bar x_i)\Delta x\)이다(\(\bar x_i\)는 가운데 점). 이 합은 \(2\pi xf(x)\)의 리만 합이므로 극한이 위 적분이다. 회전축이 \(x = k\)이면 \(x\) 대신 축까지 거리 \(|x - k|\)를 쓴다. 이 <span class="term">원통 껍질 방법</span><span class="en">(shell method)</span>이 와셔 방법과 같은 값을 준다는 것도 증명할 수 있다.</p></div>
+    <div class="callout"><strong>예제 10.6 (껍질로 쉽게)</strong>
+      <ol>
+        <li>\(y = 2x - x^2\), \(0 \le x \le 2\)를 \(y\)축 둘레로: \(V = 2\pi\int_0^2x(2x - x^2)\,dx = 2\pi\Big[\tfrac{2x^3}{3} - \tfrac{x^4}{4}\Big]_0^2 = 2\pi\cdot\tfrac43 = \tfrac{8\pi}{3}\).</li>
+        <li>와셔로 검산: \(y\)에서 바깥 반지름 \(1 + \sqrt{1-y}\), 안쪽 \(1 - \sqrt{1-y}\). \(R^2 - r^2 = 4\sqrt{1-y}\)이므로 \(\pi\int_0^1 4\sqrt{1-y}\,dy = \tfrac{8\pi}{3}\). ✓</li>
+        <li>\(y = \sin x\), \(0 \le x \le \pi\)를 \(y\)축 둘레로: \(V = 2\pi\int_0^\pi x\sin x\,dx\). 부분 적분(<a href="techniques.html#by-parts">9장</a>)으로 \(\int_0^\pi x\sin x\,dx = [-x\cos x + \sin x]_0^\pi = \pi\), 따라서 \(V = 2\pi^2 \approx 19.74\). 와셔로는 arcsin이 필요한 문제입니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-shells">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>원통 껍질 쌓기 (3D, 끌어서 돌리기)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-shells" class="ap-rot"></canvas><span class="tag-tl" id="ap-s-tag">y = 2x − x², y축 회전</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>영역</span><select id="ap-s-pre">
+            <option value="para">y = 2x − x², [0, 2]</option>
+            <option value="sin">y = sin x, [0, π]</option>
+            <option value="cap">y = 1 − x², [0, 1]</option>
+          </select></label>
+          <label class="ctrl"><span>껍질 수 n <output id="ap-s-n-out"></output></span><input type="range" id="ap-s-n" min="1" max="30" step="1" value="6"></label>
+          <label class="ctrl"><span>회전 각 <output id="ap-s-phi-out"></output></span><input type="range" id="ap-s-phi" min="10" max="360" step="5" value="270"></label>
+          <label class="ctrl"><span>강조할 껍질 k <output id="ap-s-k-out"></output></span><input type="range" id="ap-s-k" min="1" max="6" step="1" value="3"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">껍질 k: 2π x̄ f(x̄) Δx</span><span class="v" id="ap-s-one">—</span></div>
+        <div class="stat"><span class="k">Σ 껍질 부피</span><span class="v" id="ap-s-sum">—</span></div>
+        <div class="stat"><span class="k">정확한 부피</span><span class="v" id="ap-s-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 회전 각을 줄여 잘린 면을 보세요. 껍질은 세로 띠를 돌린 것이라 잘린 면이 바로 원래 영역의 리만 합 막대입니다. ② 강조한 껍질 k를 바깥으로 옮기면 높이가 같아도 둘레 2πx가 커서 부피 몫이 큽니다. ③ 'sin x'에서 정확한 부피 2π² ≈ 19.74를 확인하세요. 모델: 껍질 높이는 가운데 점의 f 값, 3D는 회전 행렬 사영과 뒤에서부터 칠하기입니다.</div>
+    </div>
+    <div class="callout tip"><strong>어느 방법을 고를까</strong> 회전축에 <b>수직</b>인 조각(와셔)은 축 방향 변수로, <b>나란한</b> 조각(껍질)은 축에 수직인 변수로 적분합니다. 경계가 \(y = f(x)\)로 주어졌는데 \(y\)축 둘레로 돌린다면 보통 껍질이, \(x\)축 둘레라면 보통 와셔가 편합니다. 둘 다 세울 수 있으면 하나로 풀고 다른 하나로 검산하세요.</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="arc-length">
+    <h2>곡선의 길이</h2>
+    <div class="problem"><strong>전선은 얼마나 필요한가</strong>
+      <p>두 철탑 사이에 처진 송전선은 현수선 \(y = a\cosh(x/a)\)의 모양입니다. 철탑 사이 거리는 알지만, 처진 전선의 실제 길이는 그보다 깁니다. 자를 대고 잴 수 없는 곡선의 길이를 어떻게 계산할까요?</p></div>
+    <p>곡선 위에 점 \(n + 1\)개를 찍고 꺾은선으로 이으면, 선분 하나의 길이는 피타고라스 정리로 \(\sqrt{\Delta x^2 + \Delta y^2}\)입니다. 평균값 정리로 \(\Delta y = f'(x_i^*)\Delta x\)인 \(x_i^*\)가 조각마다 있으므로 선분 길이는 \(\sqrt{1 + f'(x_i^*)^2}\,\Delta x\)이고, 꺾은선 길이는 리만 합이 됩니다.</p>
+    <div class="callout deep"><strong>정리 10.5 (곡선의 길이)</strong> \(f'\)이 \([a, b]\)에서 연속이면 곡선 \(y = f(x)\)의 <span class="term">곡선의 길이</span><span class="en">(arc length)</span>는
+      <div class="formula">$$L = \int_a^b\sqrt{1 + f'(x)^2}\,dx = \int_a^b\sqrt{1 + \Big(\frac{dy}{dx}\Big)^2}\,dx.$$
+        <div class="where">기억하는 방법: \(ds = \sqrt{dx^2 + dy^2}\). 매개 곡선 \((x(t), y(t))\)이면 \(L = \int\sqrt{x'(t)^2 + y'(t)^2}\,dt\).</div></div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 위의 꺾은선 길이 \(\sum\sqrt{1 + f'(x_i^*)^2}\Delta x\)는 연속 함수 \(\sqrt{1 + f'^2}\)의 리만 합이므로, 분할을 잘게 하면 적분으로 수렴한다. 곡선의 길이를 "꺾은선 길이의 상한"으로 정의하면 이 극한이 그 값이다. ∎</p></div>
+    <div class="callout"><strong>예제 10.7 (닫힌 꼴이 나오는 경우)</strong>
+      <ol>
+        <li>\(y = \tfrac23x^{3/2}\), \(0 \le x \le 3\): \(f' = \sqrt x\)이므로 \(\sqrt{1 + f'^2} = \sqrt{1+x}\). \(L = \Big[\tfrac23(1+x)^{3/2}\Big]_0^3 = \tfrac23(8 - 1) = \tfrac{14}{3} \approx 4.667\).</li>
+        <li>현수선 \(y = \cosh x\), \(-1 \le x \le 1\): \(1 + \sinh^2x = \cosh^2x\)이므로 \(L = \int_{-1}^1\cosh x\,dx = 2\sinh 1 \approx 2.350\). 같은 구간의 직선 거리 2보다 약 17.5% 깁니다.</li>
+        <li>\(y = x^2\), \(0 \le x \le 2\): \(L = \int_0^2\sqrt{1 + 4x^2}\,dx\). 삼각 치환 \(2x = \tan\theta\)(<a href="techniques.html#trig-sub">9장</a>)으로 \(\sqrt{17} + \tfrac14\ln(4 + \sqrt{17}) \approx 4.647\).</li>
+      </ol></div>
+    <p>그러나 대부분의 곡선은 근호 때문에 닫힌 꼴이 나오지 않습니다. \(y = \sin x\)의 한 아치 길이 \(\int_0^\pi\sqrt{1 + \cos^2x}\,dx\)는 타원 적분이라 초등 함수로 쓸 수 없고, 수치 적분으로 약 3.820입니다. 실무에서 곡선 길이는 대개 꺾은선이나 심프슨 공식(<a href="techniques.html#numerical">9장</a>)으로 계산합니다.</p>
+
+    <div class="sim" id="sim-ap-arclen">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>꺾은선으로 곡선 길이 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-arc"></canvas><span class="tag-tl" id="ap-a-tag">y = x², [0, 2]</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>곡선</span><select id="ap-a-f">
+            <option value="x2">y = x², [0, 2]</option>
+            <option value="pow">y = (2/3)x^(3/2), [0, 3] (14/3)</option>
+            <option value="cosh">y = cosh x, [−1, 1] (현수선)</option>
+            <option value="sin">y = sin x, [0, π] (닫힌 꼴 없음)</option>
+            <option value="circ">y = √(1 − x²), [−1, 1] (반원, π)</option>
+          </select></label>
+          <label class="ctrl"><span>선분 수 n <output id="ap-a-n-out"></output></span><input type="range" id="ap-a-n" min="1" max="64" step="1" value="4"></label>
+          <div class="btn-row"><button class="btn" id="ap-a-half">n ÷ 2</button><button class="btn primary" id="ap-a-dbl">n × 2</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">꺾은선 길이 Lₙ</span><span class="v" id="ap-a-Ln">—</span></div>
+        <div class="stat"><span class="k">곡선 길이 L</span><span class="v" id="ap-a-L">—</span></div>
+        <div class="stat"><span class="k">L − Lₙ</span><span class="v" id="ap-a-err">—</span></div>
+        <div class="stat"><span class="k">오차(n) / 오차(2n)</span><span class="v" id="ap-a-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n × 2를 누르며 꺾은선이 언제나 곡선보다 짧고(두 점 사이 최단 거리는 선분), 오차 비율이 약 4에 다가가는 것을 보세요. 오차가 1/n²로 줄어듭니다. ② '반원'에서는 양 끝에서 기울기가 무한이라 비율이 4보다 작습니다. 적분 ∫√(1 + f′²)가 이상 적분이 되는 곳입니다. ③ 'sin x'의 정답 3.8202는 수치 적분으로만 얻은 값입니다. 모델: L은 닫힌 꼴이 있으면 그 값, 없으면 심프슨 공식(n = 2000)으로 계산합니다. 화면은 가로세로 축척이 같지 않을 수 있습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="surface">
+    <h2>회전면의 넓이</h2>
+    <p>곡선 \(y = f(x) \ge 0\)을 \(x\)축 둘레로 돌리면 곡면이 생기고, 그 넓이를 <span class="term">회전면의 넓이</span><span class="en">(surface area of revolution)</span>라 합니다. 곡선의 짧은 조각 \(ds\)를 돌리면 반지름 \(f(x)\), 폭 \(ds\)인 띠가 되고, 그 넓이는 둘레 × 폭 \(= 2\pi f(x)\,ds\)입니다(정확히는 원뿔대 옆넓이 \(2\pi\bar r\,\ell\)).</p>
+    <div class="callout deep"><strong>정리 10.6 (회전면의 넓이)</strong> \(f \ge 0\)이고 \(f'\)이 연속이면 \(y = f(x)\), \(a \le x \le b\)를 \(x\)축 둘레로 돌린 곡면의 넓이는
+      <div class="formula">$$S = \int_a^b 2\pi f(x)\sqrt{1 + f'(x)^2}\,dx = \int 2\pi\,(\text{반지름})\,ds.$$</div>
+      <p style="margin:6px 0 0">흔한 실수는 \(ds\) 대신 \(dx\)를 쓰는 것이다. 그러면 곡면이 아니라 그 그림자 원기둥의 넓이를 구하게 된다.</p></div>
+    <div class="callout"><strong>예제 10.8 (구의 띠와 가브리엘의 뿔)</strong>
+      <ol>
+        <li>구 \(f = \sqrt{r^2 - x^2}\): \(f' = -x/f\)이므로 \(f\sqrt{1 + f'^2} = \sqrt{f^2 + x^2} = r\). 따라서 \(x = c\)와 \(x = d\) 사이 띠의 넓이는 \(2\pi r(d - c)\)로 <b>높이에만 비례</b>합니다. 전체 구는 \(2\pi r\cdot 2r = 4\pi r^2\). 아르키메데스가 알았던 "구와 외접 원기둥의 옆넓이가 같다"는 결과입니다.</li>
+        <li>\(y = 1/x\), \(x \ge 1\)을 돌린 나팔: 부피는 \(\pi\int_1^\infty\frac{dx}{x^2} = \pi\)로 유한한데, 겉넓이는 \(2\pi\int_1^\infty\frac1x\sqrt{1 + \frac{1}{x^4}}\,dx \ge 2\pi\int_1^\infty\frac{dx}{x} = \infty\)입니다(<a href="techniques.html#improper">9장 이상 적분</a>의 비교 판정). 페인트 π만큼이면 안을 가득 채울 수 있는데, 겉을 칠하기에는 아무리 많아도 모자란다는 역설로 유명합니다. 수학적 넓이와 실제 페인트 두께를 섞어 생각해서 생기는 역설입니다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="work-pressure">
+    <h2>일과 유체 압력</h2>
+    <div class="problem"><strong>물탱크를 비우는 펌프</strong>
+      <p>지하 물탱크를 비울 펌프를 고르려면 필요한 에너지를 알아야 합니다. 물 전체를 한 덩어리로 들어 올리는 것이 아니라, 바닥의 물은 멀리, 위의 물은 조금만 올리면 됩니다. 거리가 물의 높이마다 다를 때 "일 = 힘 × 거리"를 어떻게 쓸까요?</p></div>
+    <p>힘이 일정하면 일은 \(W = Fd\)입니다. 힘이 위치에 따라 변하면 짧은 구간 \(\Delta x\)에서는 힘을 일정하다고 보고 \(F(x)\Delta x\)를 더합니다.</p>
+    <div class="callout deep"><strong>정의 10.7 (변하는 힘이 하는 일)</strong> 직선 위에서 위치 \(x\)에 따라 연속인 힘 \(F(x)\)가 물체를 \(a\)에서 \(b\)로 옮길 때 하는 <span class="term">일</span><span class="en">(work)</span>은
+      <div class="formula">$$W = \int_a^b F(x)\,dx \quad[\mathrm{J} = \mathrm{N\cdot m}].$$</div>
+      거리가 조각마다 다른 경우(물 퍼 올리기)에는 반대로 <b>물체를 조각으로</b> 자른다. 높이 \(y\)의 얇은 층의 무게 \(\rho g A(y)\Delta y\)에 그 층이 올라갈 거리 \(D(y)\)를 곱해 더하면 \(W = \int\rho g\,A(y)\,D(y)\,dy\).</div>
+    <div class="callout"><strong>예제 10.9 (용수철)</strong> 용수철을 자연 길이에서 0.05 m 늘이는 데 10 N이 든다. 0.05 m 늘어난 상태에서 0.15 m 늘어난 상태까지 늘이는 일은?
+      <ol>
+        <li><span class="term">훅의 법칙</span><span class="en">(Hooke's law)</span> \(F = kx\)에서 \(10 = k(0.05)\), \(k = 200\ \mathrm{N/m}\).</li>
+        <li>\(W = \int_{0.05}^{0.15}200x\,dx = 100\big(0.15^2 - 0.05^2\big) = 100(0.0225 - 0.0025) = 2\ \mathrm{J}\). 처음 0.05 m를 늘이는 일은 0.25 J에 불과한데, 같은 힘의 증가가 뒤쪽에서는 더 긴 거리에 걸치기 때문입니다.</li>
+      </ol></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="원뿔 탱크에서 물 한 층을 퍼 올리기">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <path d="M110 50 L370 50 L240 260 Z" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/>
+        <line x1="240" y1="50" x2="240" y2="270" class="s-axis" style="stroke-dasharray:5 4"/>
+        <rect x="178" y="152" width="124" height="10" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <line x1="320" y1="157" x2="320" y2="56" class="s-acc" marker-end="url(#ap-ar)"/>
+        <defs><marker id="ap-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+        <text x="328" y="110" class="t-acc">올라갈 거리 4 − y</text>
+        <text x="200" y="146" class="t-mono">반지름 y/2</text>
+        <line x1="90" y1="260" x2="90" y2="157" class="s-line"/><text x="44" y="214" class="t-mono">y</text>
+        <text x="230" y="282" class="t-mono">꼭짓점 y = 0</text><text x="372" y="46" class="t-mono">y = 4 (꼭대기, 반지름 2)</text>
+        <g transform="translate(470,70)">
+          <text x="0" y="0" class="t" style="font-weight:700">층 하나의 일</text>
+          <text x="0" y="30" class="t-mono">무게 = ρg · π(y/2)² · Δy</text>
+          <text x="0" y="56" class="t-mono">거리 = 4 − y</text>
+          <text x="0" y="82" class="t-mono">일 ≈ ρgπ(y²/4)(4 − y)Δy</text>
+          <text x="0" y="120" class="t-dim">층마다 거리가 다르니</text>
+          <text x="0" y="142" class="t-dim">거리가 같은 '수평 층'으로 자른다.</text>
+          <text x="0" y="178" class="t-dim">아래층은 무겁지 않지만 멀다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 10-3.</b> 꼭짓점이 아래인 원뿔 탱크(높이 4 m, 윗면 반지름 2 m). 같은 높이의 물은 같은 거리를 올라가므로 수평 층으로 자르면 층 하나의 일이 한 식으로 쓰인다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 10.10 (원뿔 탱크 퍼 올리기)</strong> 그림 10-3의 탱크에 물(\(\rho = 1000\ \mathrm{kg/m^3}\))이 가득 차 있다. 물을 모두 탱크 꼭대기로 퍼 올리는 일은? (\(g = 9.8\ \mathrm{m/s^2}\))
+      <ol>
+        <li>높이 \(y\)의 반지름은 닮음으로 \(y/2\), 단면적 \(A(y) = \pi y^2/4\), 거리 \(4 - y\).</li>
+        <li>\(W = \int_0^4\rho g\,\frac{\pi y^2}{4}(4 - y)\,dy = \frac{\rho g\pi}{4}\Big[\frac{4y^3}{3} - \frac{y^4}{4}\Big]_0^4 = \frac{\rho g\pi}{4}\cdot\frac{64}{3} = \frac{16\pi}{3}\rho g\).</li>
+        <li>수치: \(\frac{16\pi}{3}\times 9800 \approx 1.642\times10^5\ \mathrm{J}\), 약 164 kJ. 물의 질량은 \(\rho\cdot\frac13\pi(2^2)(4) \approx 16{,}755\ \mathrm{kg}\)이므로 평균으로 \(W/(mg) \approx 1.0\ \mathrm{m}\)씩 올린 셈입니다. 원뿔의 무게 중심이 꼭짓점에서 높이의 3/4, 즉 꼭대기 1 m 아래에 있기 때문입니다(8절).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-pump">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>물 퍼 올리기: 층마다 무게 × 거리</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ap-two">
+          <div><canvas id="ap-cv-pump"></canvas><span class="ap-cap">탱크 단면 (높이 4 m)</span></div>
+          <div><canvas id="ap-cv-pumpW"></canvas><span class="ap-cap">층의 일 밀도 dW/dy (kJ/m) — 넓이가 W</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>탱크 모양</span><div class="seg" id="ap-p-shape"><button data-value="cone" class="on">원뿔</button><button data-value="cyl">원기둥</button><button data-value="sph">구</button></div></div>
+          <label class="ctrl"><span>물 깊이 d <output id="ap-p-d-out"></output></span><input type="range" id="ap-p-d" min="0.2" max="4" step="0.05" value="4"></label>
+          <label class="ctrl"><span>배출구 높이 (꼭대기 위) e <output id="ap-p-e-out"></output></span><input type="range" id="ap-p-e" min="0" max="3" step="0.1" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="ap-p-play">▶ 층 훑기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">물의 질량</span><span class="v" id="ap-p-m">—</span></div>
+        <div class="stat"><span class="k">일 W</span><span class="v" id="ap-p-W">—</span></div>
+        <div class="stat"><span class="k">평균 들어 올린 높이 W/(mg)</span><span class="v" id="ap-p-h">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 기본값(원뿔, 가득, e = 0)이 예제 10.10의 164 kJ입니다. ② 원기둥으로 바꾸면 물이 두 배 이상 많은데 일은 그보다 더 늘어납니다. 아래쪽에도 물이 많기 때문입니다. ③ 배출구를 e만큼 올리면 W가 정확히 mg·e만큼 늘어납니다. 아래 그래프의 모양은 그대로 위로 올라갑니다. 모델: ρ = 1000 kg/m³, g = 9.8 m/s², 물은 꼭대기 위 e 높이의 배출구까지 올립니다. W는 심프슨 공식으로 적분합니다.</div>
+    </div>
+
+    <p>물속의 벽이나 수문에는 깊이에 비례하는 압력 \(p = \rho gh\)가 걸립니다. 압력이 깊이마다 다르므로, 깊이가 같은 <b>수평 띠</b>로 잘라 "압력 × 띠의 넓이"를 더합니다.</p>
+    <div class="callout deep"><strong>정리 10.8 (수직 판에 걸리는 유체의 힘)</strong> 밀도 \(\rho\)인 액체 속에 수직으로 잠긴 판이 깊이 \(h = c\)에서 \(h = d\)까지 있고, 깊이 \(h\)에서 판의 폭이 \(w(h)\)이면 판 한쪽에 걸리는 힘은
+      <div class="formula">$$F = \int_c^d\rho g\,h\,w(h)\,dh = \rho g\,\bar h\,A.$$
+        <div class="where">\(A\)는 판의 넓이, \(\bar h\)는 판의 도심(8절)의 깊이. 즉 힘은 "도심 깊이의 압력 × 넓이"와 같다.</div></div></div>
+    <div class="callout"><strong>예제 10.11 (수문)</strong> 폭 3 m, 높이 2 m인 직사각형 수문의 윗변이 수면에 있다. 수문에 걸리는 힘은?
+      <ol>
+        <li>\(w(h) = 3\). \(F = \int_0^2 9800\cdot h\cdot 3\,dh = 9800\cdot3\cdot\tfrac{2^2}{2} = 58{,}800\ \mathrm{N}\), 약 58.8 kN.</li>
+        <li>검산: 도심 깊이 \(\bar h = 1\ \mathrm{m}\), 넓이 6 m²이므로 \(\rho g\bar hA = 9800\cdot1\cdot6 = 58{,}800\ \mathrm{N}\). ✓</li>
+        <li>같은 수문을 3 m 더 깊이 내리면 \(\bar h = 4\)라 힘은 네 배인 235.2 kN이 됩니다. 댐이 아래로 갈수록 두꺼운 이유입니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-pressure">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>잠긴 판의 수압: 깊이마다 다른 압력을 더하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-press"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>판 모양</span><div class="seg" id="ap-q-shape"><button data-value="rect" class="on">직사각형 2×1.5</button><button data-value="tri">역삼각형</button><button data-value="circ">원 (지름 1.5)</button></div></div>
+          <label class="ctrl"><span>윗변 깊이 <output id="ap-q-top-out"></output></span><input type="range" id="ap-q-top" min="0" max="4" step="0.05" value="0.5"></label>
+          <div class="ctrl"><span>액체</span><div class="seg" id="ap-q-fluid"><button data-value="1000" class="on">물 1000</button><button data-value="1025">바닷물 1025</button><button data-value="800">기름 800</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫ρg h w(h) dh</span><span class="v" id="ap-q-F">—</span></div>
+        <div class="stat"><span class="k">ρg · h̄ · A</span><span class="v" id="ap-q-F2">—</span></div>
+        <div class="stat"><span class="k">도심 깊이 h̄</span><span class="v" id="ap-q-hc">—</span></div>
+        <div class="stat"><span class="k">압력 중심 깊이</span><span class="v" id="ap-q-hp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 판을 깊이 내리면 화살표(압력)가 모두 길어지고, 위아래 압력의 비가 1에 가까워집니다. ② 압력 중심(힘이 실제로 작용하는 점)은 언제나 도심보다 깊고, 판이 깊이 내려갈수록 도심에 다가갑니다. ③ 역삼각형은 넓은 쪽이 얕아서 같은 넓이의 직사각형보다 힘이 작습니다. 모델: 판은 수직, 수면의 대기압은 양쪽에서 상쇄되어 빼고 계산합니다. g = 9.8 m/s².</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="center-of-mass">
+    <h2>질량 중심과 파푸스 정리</h2>
+    <div class="problem"><strong>어디를 받치면 균형이 맞을까</strong>
+      <p>항공기는 화물과 연료를 실을 때마다 무게 중심을 다시 계산해 허용 범위 안에 있는지 확인합니다. 크레인이 비대칭 부재를 들어 올릴 때도 고리를 무게 중심 바로 위에 걸어야 부재가 기울지 않습니다. 질량이 연속적으로 퍼져 있을 때 그 "평균 위치"는 어떻게 구할까요?</p></div>
+    <p>시소를 생각합시다. 질량 \(m_i\)가 위치 \(x_i\)에 있으면 받침점 \(\bar x\)에 대한 돌림힘의 합 \(\sum m_i(x_i - \bar x)\)가 0일 때 균형이 맞으므로 \(\bar x = \frac{\sum m_ix_i}{\sum m_i}\)입니다. 분자 \(\sum m_ix_i\)를 원점에 대한 <span class="term">모멘트</span><span class="en">(moment)</span>라 합니다. 질량이 연속으로 퍼져 있으면 합이 적분이 됩니다.</p>
+    <div class="callout deep"><strong>정의 10.9 (질량 중심)</strong> 선밀도 \(\rho(x)\)인 막대 \([a, b]\)의 <span class="term">질량 중심</span><span class="en">(center of mass)</span>은
+      <div class="formula">$$\bar x = \frac{M_0}{m} = \frac{\int_a^b x\,\rho(x)\,dx}{\int_a^b\rho(x)\,dx}.$$</div>
+      밀도가 고른 판(라미나)의 질량 중심은 밀도와 무관한 순수한 기하학적 점이며 <span class="term">도심</span><span class="en">(centroid)</span>이라 부른다.</div>
+    <div class="callout deep"><strong>정리 10.10 (판의 도심)</strong> \(g \le f\)인 영역 \(a \le x \le b\)의 넓이가 \(A = \int_a^b(f - g)\,dx\)이면
+      <div class="formula">$$\bar x = \frac1A\int_a^b x\,\big[f(x) - g(x)\big]\,dx, \qquad \bar y = \frac1A\int_a^b\frac12\big[f(x)^2 - g(x)^2\big]\,dx.$$</div>
+      <p style="margin:6px 0 0"><b>유도.</b> 폭 \(\Delta x\)인 세로 띠의 질량은 \(\rho(f - g)\Delta x\)이고, 그 띠의 질량 중심은 \(x\), 높이로는 띠의 가운데 \(\frac{f+g}{2}\)에 있다. 그래서 \(y\)축 방향 모멘트에는 \(\frac{f+g}{2}(f - g) = \frac12(f^2 - g^2)\)이 들어간다. 밀도 \(\rho\)는 분자·분모에서 약분된다. ∎</p></div>
+    <div class="callout"><strong>예제 10.12 (도심 계산)</strong>
+      <ol>
+        <li>\(y = x^2\) 아래, \(0 \le x \le 1\): \(A = \tfrac13\). \(\bar x = 3\int_0^1x^3\,dx = \tfrac34\), \(\bar y = 3\int_0^1\tfrac12x^4\,dx = \tfrac{3}{10}\). 도심 \((0.75, 0.3)\)은 판의 오른쪽 아래, 질량이 많은 쪽에 있습니다.</li>
+        <li>반지름 \(r\)인 반원판 \(y = \sqrt{r^2 - x^2}\): 대칭으로 \(\bar x = 0\). \(\bar y = \frac{2}{\pi r^2}\int_{-r}^r\tfrac12(r^2 - x^2)\,dx = \frac{2}{\pi r^2}\cdot\frac{2r^3}{3} = \frac{4r}{3\pi} \approx 0.424r\).</li>
+      </ol></div>
+    <p>도심을 알면 회전체의 부피가 한 줄로 나옵니다. 영역을 축 둘레로 돌리면 영역의 모든 점이 원을 그리는데, 평균적으로는 도심이 그리는 원의 둘레만큼 움직입니다.</p>
+    <div class="callout deep"><strong>정리 10.11 (파푸스 정리)</strong> 평면 영역을 그 영역과 만나지 않는 같은 평면 위의 직선 둘레로 돌려 만든 입체의 부피는
+      <div class="formula">$$V = 2\pi\,d\,A$$
+        <div class="where">\(A\)는 영역의 넓이, \(d\)는 도심에서 회전축까지의 거리. 즉 "넓이 × 도심이 움직인 거리".</div></div>
+      <p style="margin:6px 0 0"><b>증명.</b> 축을 \(y\)축으로 놓고 영역이 \(x \ge 0\)에 있다고 하면, 껍질 방법으로 \(V = \int 2\pi x(f - g)\,dx = 2\pi\cdot A\bar x\)이다(정리 10.10의 \(\bar x\) 정의). ∎ 이 <span class="term">파푸스 정리</span><span class="en">(Pappus's centroid theorem)</span>는 4세기 알렉산드리아의 파푸스가 남긴 책에 실려 있다.</p></div>
+    <div class="callout"><strong>예제 10.13 (토러스)</strong> 반지름 \(r\)인 원판을, 중심에서 \(R\) (\(R > r\)) 떨어진 축 둘레로 돌린 도넛 모양(토러스)의 부피는 \(V = 2\pi R\cdot\pi r^2 = 2\pi^2Rr^2\)입니다. \(R = 3\), \(r = 1\)이면 \(6\pi^2 \approx 59.22\). 반원판(\(\bar y = 4r/3\pi\))을 지름 둘레로 돌리면 \(2\pi\cdot\frac{4r}{3\pi}\cdot\frac{\pi r^2}{2} = \frac43\pi r^3\), 구의 부피가 다시 나옵니다.</div>
+
+    <div class="sim" id="sim-ap-balance">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>무게 중심 균형 잡기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-bal"></canvas><span class="tag-tl">받침점(아래 점)을 끌어 판을 수평으로</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>판의 모양</span><select id="ap-c-pre">
+            <option value="x2">y = x², [0, 1]</option>
+            <option value="tri">삼각형 y = x, [0, 2]</option>
+            <option value="semi">반원 √(1 − x²)</option>
+            <option value="sin">y = sin x, [0, π]</option>
+            <option value="exp">y = e^(−x), [0, 3]</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="ap-c-show"> 도심 보이기</label>
+          <div class="btn-row"><button class="btn" id="ap-c-snap">도심 아래로 옮기기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">받침점 c</span><span class="v" id="ap-c-c">—</span></div>
+        <div class="stat"><span class="k">알짜 돌림힘 A(x̄ − c)</span><span class="v" id="ap-c-tq">—</span></div>
+        <div class="stat"><span class="k">도심 (x̄, ȳ)</span><span class="v" id="ap-c-cen">—</span></div>
+        <div class="stat"><span class="k">파푸스: x축 회전 / y축 회전 부피</span><span class="v" id="ap-c-pap">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-c-msg"></div>
+      <div class="sim-note">해볼 것: ① 도심을 숨긴 채 받침점을 끌어 판이 수평이 되는 곳을 찾아보세요. 그 x가 x̄입니다. ② y = x²은 질량이 오른쪽에 몰려 x̄ = 0.75입니다. 가운데(0.5)를 받치면 오른쪽으로 기웁니다. ③ 반원의 x축 회전 부피가 4π/3(구)인지 확인하세요. 모델: 밀도가 고른 얇은 판, 기울기는 돌림힘에 비례하도록 과장해 그립니다. y축 회전 부피는 영역이 y축을 가로지르면 계산하지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="probability">
+    <h2>확률 밀도, 기댓값, 그리고 경제</h2>
+    <div class="problem"><strong>부품의 수명을 넓이로 읽기</strong>
+      <p>어떤 LED 드라이버의 수명은 평균 1000시간인 지수분포를 따른다고 합니다. 2000시간 넘게 버틸 확률은? 시간은 연속이라 "정확히 1500.000…시간에 고장 날 확률"은 0입니다. 확률을 점이 아니라 구간에, 곡선 아래 넓이로 주어야 합니다.</p></div>
+    <div class="callout deep"><strong>정의 10.12 (확률 밀도 함수와 기댓값)</strong> \(f(x) \ge 0\)이고 \(\int_{-\infty}^\infty f(x)\,dx = 1\)인 함수 \(f\)를 연속 확률 변수 \(X\)의 <span class="term">확률 밀도 함수</span><span class="en">(probability density function, PDF)</span>라 하고
+      <div class="formula">$$P(a \le X \le b) = \int_a^b f(x)\,dx, \qquad E[X] = \mu = \int_{-\infty}^\infty x\,f(x)\,dx, \qquad \operatorname{Var}X = \int_{-\infty}^\infty(x - \mu)^2f(x)\,dx.$$</div>
+      <p style="margin:6px 0 0"><span class="term">기댓값</span><span class="en">(expected value)</span>의 식은 정의 10.9의 질량 중심과 똑같다. 전체 "질량"이 1이니 분모가 없을 뿐이다. 즉 <b>기댓값은 밀도 곡선 아래 영역을 막대로 보았을 때의 균형점</b>이고, 분산은 관성 모멘트에 해당한다.</p></div>
+    <div class="callout"><strong>예제 10.14 (지수분포 수명)</strong> 평균 수명 \(m = 1000\) h인 지수분포 \(f(t) = \frac1m e^{-t/m}\) (\(t \ge 0\)).
+      <ol>
+        <li>정규화: \(\int_0^\infty\frac1me^{-t/m}dt = 1\). ✓ (9장 이상 적분)</li>
+        <li>\(P(T > 2000) = \int_{2000}^\infty\frac1me^{-t/m}dt = e^{-2} \approx 0.135\). 평균보다 오래 버틸 확률은 \(e^{-1} \approx 0.368\)로, 절반보다 작습니다.</li>
+        <li>기댓값: 부분 적분으로 \(\int_0^\infty t\cdot\frac1me^{-t/m}dt = m\). 중앙값은 \(P(T \le t) = \tfrac12\)에서 \(m\ln2 \approx 693\) h. 오른쪽으로 긴 꼬리가 균형점을 중앙값보다 오른쪽으로 끌어당깁니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-pdf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>확률 = 넓이, 기댓값 = 균형점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-cv-pdf"></canvas><span class="tag-tl">두 점 a, b를 끌어 구간을 정하세요 · ▲ = 기댓값(균형점)</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>분포</span><div class="seg" id="ap-d-dist"><button data-value="exp" class="on">지수</button><button data-value="unif">균등</button><button data-value="tri">삼각</button><button data-value="norm">정규</button></div></div>
+          <label class="ctrl"><span><span id="ap-d-plab">평균 m</span> <output id="ap-d-par-out"></output></span><input type="range" id="ap-d-par" min="0.5" max="4" step="0.05" value="2"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">P(a ≤ X ≤ b) = ∫ₐᵇ f</span><span class="v" id="ap-d-P">—</span></div>
+        <div class="stat"><span class="k">E[X] = ∫x f dx</span><span class="v" id="ap-d-E">—</span></div>
+        <div class="stat"><span class="k">표준편차 σ</span><span class="v" id="ap-d-s">—</span></div>
+        <div class="stat"><span class="k">중앙값</span><span class="v" id="ap-d-med">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 지수분포에서 a = 0, b를 평균에 두면 확률이 1 − e⁻¹ ≈ 0.632입니다. 평균 m을 바꿔도 같습니다. ② 삼각 분포의 꼭짓점을 한쪽으로 밀면 ▲(평균)이 중앙값(점선)보다 꼬리 쪽으로 더 끌려갑니다. ③ 정규분포에서 a, b를 평균 ± σ에 두면 약 0.683입니다. 모델: 확률·평균·분산은 심프슨 공식으로 적분합니다. 정규분포의 중앙값은 대칭으로 평균과 같습니다.</div>
+    </div>
+    <p>같은 계산이 경제와 교통에서도 나옵니다. 수요 곡선 \(p = D(q)\)는 \(q\)번째 단위에 소비자가 낼 용의가 있는 최고 가격입니다. 시장 가격 \(P\)에 \(Q\)개가 팔리면, 소비자가 "낼 용의가 있던 금액"과 "실제 낸 금액"의 차이의 합이 <span class="term">소비자 잉여</span><span class="en">(consumer surplus)</span>입니다.</p>
+    <div class="formula">$$\text{CS} = \int_0^Q\big[D(q) - P\big]\,dq.$$</div>
+    <div class="callout"><strong>예제 10.15 (소비자 잉여)</strong> 수요 \(D(q) = 100 - 0.5q\) (원)이고 시장 가격이 40원이면 \(100 - 0.5Q = 40\)에서 \(Q = 120\). \(\text{CS} = \int_0^{120}(60 - 0.5q)\,dq = 60\cdot120 - 0.25\cdot120^2 = 7200 - 3600 = 3600\)원. 수요 곡선, 가격선, 세로축이 만드는 삼각형 넓이 \(\tfrac12\cdot120\cdot60\)과 같습니다.</div>
+    <div class="callout tip"><strong>교통량도 넓이다</strong> 교차로를 지나는 차량의 흐름률 \(q(t)\) (대/분)이 시간마다 바뀌면, 출근 시간 한 시간 동안 지나간 차량 수는 \(\int q(t)\,dt\)입니다. 8장의 순변화량 정리가 그대로 쓰이고, 들어오는 흐름과 나가는 흐름의 적분 차이가 대기 행렬의 길이가 됩니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"얇게 자르고, 조각 하나의 식을 쓰고, 적분한다"는 요리법은 공학의 거의 모든 누적량 계산에 들어 있습니다.</p>
+    <div class="callout"><strong>탱크 눈금표</strong> 눕힌 원통형 유류 탱크(반지름 \(r\), 길이 \(\ell\))에 깊이 \(h\)까지 기름이 있으면 부피는 단면의 원 조각 넓이 \(\int_{-r}^{-r+h}2\sqrt{r^2 - y^2}\,dy\)에 \(\ell\)을 곱한 것입니다. 이 적분을 깊이마다 계산해 둔 표가 탱크 측정봉의 눈금이고, 케플러가 의심했던 막대 측정의 현대판입니다. 깊이가 반일 때 정확히 반이 차지만, 1/4 깊이에서는 약 19.6%만 차 있습니다.</div>
+    <div class="uses">
+      <a href="techniques.html"><small>9장 · 적분 기법</small>계산 도구<br><span>껍질 부피의 부분 적분, 곡선 길이의 삼각 치환, 닫힌 꼴이 없을 때의 심프슨 공식.</span></a>
+      <a href="multiple.html"><small>15장 · 중적분</small>질량·관성 모멘트<br><span>밀도가 고르지 않은 판과 입체의 질량 중심과 관성은 이중·삼중 적분으로 넓어진다.</span></a>
+      <a href="vector-calculus.html"><small>16장 · 벡터 미적분</small>선적분과 일<br><span>곡선을 따라 변하는 힘의 일은 ∫F·dr, 곡면의 넓이는 면적분.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>연속 분포<br><span>밀도·기댓값·분산, 정규·지수·감마 분포의 적분.</span></a>
+      <a href="../../probability/chapters/reliability-yield.html"><small>확률과 통계</small>신뢰성과 수율<br><span>수명 분포의 생존 함수와 평균 수명은 꼬리 넓이다.</span></a>
+      <a href="../../foundations/chapters/geometry.html"><small>MATHBOOK</small>기하와 측정<br><span>넓이·부피 공식의 기하학적 배경.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>모든 응용의 공통 구조: 얇은 조각 하나의 양 ≈ (그 조각에서의 값) × \(\Delta x\), 더하고 극한을 취하면 정적분이다.</li>
+      <li>두 곡선 사이 넓이는 \(\int(\text{위} - \text{아래})dx\) 또는 \(\int(\text{오른쪽} - \text{왼쪽})dy\). 경계 식이 한 가지로 유지되는 방향으로 자른다.</li>
+      <li>부피 \(V = \int A(x)dx\). 회전체는 와셔 \(\pi\int(R^2 - r^2)dx\)(축에 수직) 또는 껍질 \(2\pi\int(\text{반지름})(\text{높이})dx\)(축과 나란히).</li>
+      <li>곡선 길이 \(L = \int\sqrt{1 + f'^2}dx\), 회전면 넓이 \(S = 2\pi\int f\sqrt{1 + f'^2}dx\). 대부분 닫힌 꼴이 없어 수치로 계산한다.</li>
+      <li>일 \(W = \int F\,dx\). 거리가 조각마다 다르면 물체를 층으로 잘라 \(\int\rho gA(y)D(y)dy\). 수직 판의 수압 \(F = \int\rho ghw(h)dh = \rho g\bar hA\).</li>
+      <li>질량 중심 \(\bar x = \int x\,dm/\int dm\). 고른 판의 도심은 \(\bar x = \frac1A\int x(f-g)dx\), \(\bar y = \frac1A\int\frac12(f^2 - g^2)dx\). 파푸스: \(V = 2\pi dA\).</li>
+      <li>확률 밀도의 넓이가 확률, 균형점이 기댓값이다. 소비자 잉여는 수요 곡선과 가격선 사이 넓이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(y = x\)와 \(y = x^2\)으로 둘러싸인 영역의 넓이는?</p><div class="opts">
+        <button class="opt">1/2</button>
+        <button class="opt">1/3</button>
+        <button class="opt" data-correct>1/6</button>
+        <button class="opt">2π/15</button>
+      </div><div class="quiz-exp">교점 x = 0, 1, 그 사이에서 x ≥ x². \(\int_0^1(x - x^2)dx = \tfrac12 - \tfrac13 = \tfrac16\). 2π/15는 같은 영역을 x축 둘레로 돌린 와셔 부피다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(y = \sqrt x\), \(0 \le x \le 4\)를 \(x\)축 둘레로 돌린 입체의 부피는?</p><div class="opts">
+        <button class="opt">\(4\pi\)</button>
+        <button class="opt" data-correct>\(8\pi\)</button>
+        <button class="opt">\(16\pi/3\)</button>
+        <button class="opt">\(16\pi\)</button>
+      </div><div class="quiz-exp">원판 방법: \(\pi\int_0^4(\sqrt x)^2dx = \pi\int_0^4x\,dx = \pi\cdot8\). 반지름이 \(\sqrt x\)이므로 넓이 \(\pi x\)로 제곱을 먼저 하는 것을 잊지 말 것.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(y = f(x) \ge 0\), \(1 \le x \le 3\) 아래 영역을 직선 \(x = -1\) 둘레로 돌린 부피를 껍질로 쓰면?</p><div class="opts">
+        <button class="opt">\(2\pi\int_1^3 x f(x)\,dx\)</button>
+        <button class="opt">\(2\pi\int_1^3(x - 1)f(x)\,dx\)</button>
+        <button class="opt" data-correct>\(2\pi\int_1^3(x + 1)f(x)\,dx\)</button>
+        <button class="opt">\(\pi\int_1^3 f(x)^2\,dx\)</button>
+      </div><div class="quiz-exp">껍질의 반지름은 회전축까지의 거리다. 축 x = −1에서 x까지의 거리는 x − (−1) = x + 1. 마지막 보기는 x축 둘레 원판 부피다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 곡선 \(y = \tfrac23x^{3/2}\)의 \(0 \le x \le 3\) 부분의 길이는?</p><div class="opts">
+        <button class="opt">\(2\sqrt3\)</button>
+        <button class="opt">\(16/3\)</button>
+        <button class="opt" data-correct>\(14/3\)</button>
+        <button class="opt">\(\sqrt{13}\)</button>
+      </div><div class="quiz-exp">\(f' = \sqrt x\), \(\sqrt{1 + x}\)를 적분하면 \(\tfrac23[(1+x)^{3/2}]_0^3 = \tfrac23(8 - 1) = \tfrac{14}{3} \approx 4.67\). 양 끝을 잇는 선분 길이 \(\sqrt{9 + 12} = \sqrt{21} \approx 4.58\)보다 약간 길어야 맞다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 용수철 상수 200 N/m인 용수철을 자연 길이에서 0.1 m 늘이는 일은?</p><div class="opts">
+        <button class="opt">20 J</button>
+        <button class="opt">2 J</button>
+        <button class="opt" data-correct>1 J</button>
+        <button class="opt">0.5 J</button>
+      </div><div class="quiz-exp">\(\int_0^{0.1}200x\,dx = 100(0.1)^2 = 1\) J. 최대 힘 20 N에 거리 0.1 m를 곱한 2 J은 힘이 처음부터 20 N이라고 본 과대 추정이고, 실제 일은 그 절반(삼각형 넓이)이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 수직 수문을 그대로 두고 수위만 올려서, 수문 도심의 깊이가 2 m에서 6 m가 되었다. 수문에 걸리는 힘은?</p><div class="opts">
+        <button class="opt">그대로다</button>
+        <button class="opt">√3배</button>
+        <button class="opt" data-correct>3배</button>
+        <button class="opt">9배</button>
+      </div><div class="quiz-exp">\(F = \rho g\bar hA\)이고 넓이 A는 그대로이므로 힘은 도심 깊이에 비례해 3배가 된다. 압력이 깊이에 비례(1차)하므로 제곱이 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 반지름 1인 원판을, 원의 중심에서 3만큼 떨어진 축 둘레로 돌린 토러스의 부피는?</p><div class="opts">
+        <button class="opt">\(3\pi\)</button>
+        <button class="opt">\(6\pi\)</button>
+        <button class="opt">\(3\pi^2\)</button>
+        <button class="opt" data-correct>\(6\pi^2\)</button>
+      </div><div class="quiz-exp">파푸스 정리: 넓이 \(\pi\cdot1^2\) × 도심이 움직인 거리 \(2\pi\cdot3\) = \(6\pi^2 \approx 59.2\).</div></div>
+
+      <div class="quiz-q"><p>Q8. 평균 수명 1000시간인 지수분포를 따르는 부품이 1000시간 넘게 버틸 확률은?</p><div class="opts">
+        <button class="opt">0.5</button>
+        <button class="opt" data-correct>약 0.368</button>
+        <button class="opt">약 0.632</button>
+        <button class="opt">약 0.135</button>
+      </div><div class="quiz-exp">\(\int_{1000}^\infty\tfrac{1}{1000}e^{-t/1000}dt = e^{-1} \approx 0.368\). 평균이 중앙값(693 h)보다 오른쪽에 있기 때문에 평균보다 오래 버틸 확률은 절반보다 작다. 0.135는 2000시간을 넘길 확률이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const AP = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return v > 0 ? "∞" : "−∞";
+    let r = Number(v.toFixed(d));
+    if (Math.abs(r) < 0.5 * Math.pow(10, -d)) r = 0;
+    return String(r).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 1e-3 && a < 1e5) return AP.num(v, Math.max(d, 3 - Math.floor(Math.log10(a))));
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return `${AP.num(m, d)}×10<sup>${String(e).replace("-", "−")}</sup>`;
+  },
+  simpson(f, a, b, n = 400) {
+    if (n % 2) n++;
+    const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * f(a + i * h);
+    return (s * h) / 3;
+  },
+  fillPx(ctx, pts, color, alpha) {
+    if (pts.length < 3) return;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  linePx(ctx, pts, color, width = 2, dash = []) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash); ctx.beginPath();
+    let on = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y)) { on = false; return; } on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; });
+    ctx.stroke(); ctx.restore();
+  },
+  _c: null,
+  /** CSS 색 → [r, g, b] */
+  rgb(color) {
+    if (!AP._c) AP._c = document.createElement("canvas").getContext("2d");
+    const c = AP._c; c.fillStyle = "#000"; c.fillStyle = color; const s = c.fillStyle;
+    if (s[0] === "#") return [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
+    const m = s.match(/[\d.]+/g) || [0, 0, 0]; return m.slice(0, 3).map(Number);
+  },
+};
+
+/* ================================================================ 3D: 회전 행렬 사영 + 뒤에서부터 칠하기 */
+const AP3 = {
+  /** 축 방향 annulus(와셔/껍질) 조각을 faces에 넣는다. axis "x": (s, ρcosθ, ρsinθ), "y": (ρcosθ, s, ρsinθ) */
+  ring(faces, s0, s1, r, R, axis, phi, col, M) {
+    const P = (s, rho, th) => (axis === "x" ? [s, rho * Math.cos(th), rho * Math.sin(th)] : [rho * Math.cos(th), s, rho * Math.sin(th)]);
+    const m = Math.max(3, Math.round(M * phi / (2 * Math.PI)));
+    for (let j = 0; j < m; j++) {
+      const t0 = phi * j / m, t1 = phi * (j + 1) / m;
+      faces.push({ p: [P(s0, R, t0), P(s1, R, t0), P(s1, R, t1), P(s0, R, t1)], col });
+      if (r > 1e-9) faces.push({ p: [P(s0, r, t0), P(s1, r, t0), P(s1, r, t1), P(s0, r, t1)], col, inner: true });
+      faces.push({ p: [P(s0, r, t0), P(s0, R, t0), P(s0, R, t1), P(s0, r, t1)], col });
+      faces.push({ p: [P(s1, r, t0), P(s1, R, t0), P(s1, R, t1), P(s1, r, t1)], col });
+    }
+    if (phi < 2 * Math.PI - 1e-6) [0, phi].forEach((th) => faces.push({ p: [P(s0, r, th), P(s1, r, th), P(s1, R, th), P(s0, R, th)], col, cut: true }));
+  },
+  /** view = {yaw, pitch, c:[x,y,z] 중심, s: 1단위 px} */
+  render(ctx, w, h, faces, view, extra) {
+    const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw), cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+    const tf = (q) => {
+      const x = q[0] - view.c[0], y = q[1] - view.c[1], z = q[2] - view.c[2];
+      const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
+      return [x1, y * cp - z1 * sp, y * sp + z1 * cp];
+    };
+    const L = [-0.35, 0.6, 0.72], Ln = Math.hypot(...L);
+    const out = faces.map((f) => {
+      const v = f.p.map(tf);
+      const ax = v[1][0] - v[0][0], ay = v[1][1] - v[0][1], az = v[1][2] - v[0][2];
+      const bx = v[3][0] - v[0][0], by = v[3][1] - v[0][1], bz = v[3][2] - v[0][2];
+      let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+      const nn = Math.hypot(nx, ny, nz) || 1;
+      const lam = Math.abs((nx * L[0] + ny * L[1] + nz * L[2]) / (nn * Ln));
+      return { v, z: (v[0][2] + v[1][2] + v[2][2] + v[3][2]) / 4, k: 0.42 + 0.58 * lam, f };
+    });
+    out.sort((a, b) => a.z - b.z);
+    const X = (q) => w / 2 + view.s * q[0], Y = (q) => h / 2 - view.s * q[1];
+    ctx.save(); ctx.lineJoin = "round";
+    out.forEach((o) => {
+      const [r, g, b] = o.f.col, k = o.f.cut ? Math.min(1.08, o.k + 0.15) : o.f.inner ? o.k * 0.8 : o.k;
+      ctx.fillStyle = `rgb(${Math.round(r * k)},${Math.round(g * k)},${Math.round(b * k)})`;
+      ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 0.6;
+      ctx.beginPath(); o.v.forEach((q, i) => (i ? ctx.lineTo(X(q), Y(q)) : ctx.moveTo(X(q), Y(q)))); ctx.closePath(); ctx.fill(); ctx.stroke();
+    });
+    if (extra) extra((q) => { const t = tf(q); return [X(t), Y(t)]; });
+    ctx.restore();
+  },
+  /** 캔버스를 끌어 yaw/pitch 바꾸기 */
+  drag(canvas, view, redraw) {
+    let last = null;
+    canvas.addEventListener("pointerdown", (e) => { last = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!last) return;
+      view.yaw += (e.clientX - last[0]) * 0.01; view.pitch = MB.clamp(view.pitch + (e.clientY - last[1]) * 0.01, -1.4, 1.4);
+      last = [e.clientX, e.clientY]; redraw();
+    });
+    const up = () => { last = null; };
+    canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
+  },
+};
+
+/* ================================================================ 1. 두 곡선 사이 넓이 */
+(function () {
+  const S2 = Math.SQRT1_2;
+  const PRE = {
+    A: { tag: "y = x + 2, y = x²", xr: [-1, 2], yr: [0, 4], view: { x: [-2.2, 3.2], y: [-1, 4.8] },
+      top: (x) => x + 2, bot: (x) => x * x, botId: () => 0,
+      right: (y) => Math.sqrt(y), left: (y) => (y < 1 ? -Math.sqrt(y) : y - 2), leftId: (y) => (y < 1 ? 0 : 1),
+      ex: 4.5, cnt: { x: "1개 (위 x + 2, 아래 x²)", y: "2개 (y = 1에서 왼쪽 경계가 바뀜)" },
+      curves: [(P, C) => P.curve((x) => x + 2, { color: C.accent2, width: 2.4 }), (P, C) => P.curve((x) => x * x, { color: C.accent, width: 2.4 })] },
+    B: { tag: "x = y², y = x − 2", xr: [0, 4], yr: [-1, 2], view: { x: [-1, 5], y: [-2.2, 3.2] },
+      top: (x) => Math.sqrt(x), bot: (x) => (x < 1 ? -Math.sqrt(x) : x - 2), botId: (x) => (x < 1 ? 0 : 1),
+      right: (y) => y + 2, left: (y) => y * y, leftId: () => 0,
+      ex: 4.5, cnt: { x: "2개 (x = 1에서 아래 경계가 바뀜)", y: "1개 (오른쪽 y + 2, 왼쪽 y²)" },
+      curves: [(P, C) => P.param((t) => [t * t, t], -1.8, 2.2, { color: C.accent, width: 2.4 }), (P, C) => P.curve((x) => x - 2, { color: C.accent2, width: 2.4 })] },
+    C: { tag: "y = sin x, y = cos x", xr: [Math.PI / 4, 5 * Math.PI / 4], yr: [-S2, S2], view: { x: [0, 4.6], y: [-1.5, 1.5] },
+      top: Math.sin, bot: Math.cos, botId: () => 0,
+      right: (y) => Math.min(Math.PI - Math.asin(y), 2 * Math.PI - Math.acos(y)), left: (y) => Math.max(Math.asin(y), Math.acos(y)),
+      leftId: (y) => (Math.asin(y) > Math.acos(y) ? 1 : 0),
+      ex: 2 * Math.SQRT2, cnt: { x: "1개 (위 sin, 아래 cos)", y: "2개 + 역삼각 함수 (y = 0 근처에서 경계가 바뀜)" },
+      curves: [(P, C) => P.curve(Math.sin, { color: C.accent2, width: 2.4 }), (P, C) => P.curve(Math.cos, { color: C.accent, width: 2.4 })] },
+  };
+  let pre = PRE.A, dir = "x", n = 12;
+  const msg = document.getElementById("ap-b-msg");
+  const pl = MB.plane("#ap-cv-between", {
+    x: pre.view.x, y: pre.view.y, aspect: 0.7, maxHeight: 440, minHeight: 240, gridStep: 1,
+    draw(P) {
+      const C = P.P, cols = [C.accent, C.warn];
+      if (dir === "x") {
+        const [a, b] = pre.xr, h = (b - a) / n;
+        for (let i = 0; i < n; i++) { const x = a + (i + 0.5) * h, t = pre.top(x), u = pre.bot(x); P.poly([[a + i * h, u], [a + (i + 1) * h, u], [a + (i + 1) * h, t], [a + i * h, t]], { fill: cols[pre.botId(x)], color: cols[pre.botId(x)], alpha: 0.35, width: 1 }); }
+      } else {
+        const [c, d] = pre.yr, h = (d - c) / n;
+        for (let i = 0; i < n; i++) { const y = c + (i + 0.5) * h, r = pre.right(y), l = pre.left(y); P.poly([[l, c + i * h], [r, c + i * h], [r, c + (i + 1) * h], [l, c + (i + 1) * h]], { fill: cols[pre.leftId(y)], color: cols[pre.leftId(y)], alpha: 0.35, width: 1 }); }
+      }
+      pre.curves.forEach((f) => f(P, C));
+    },
+  });
+  function upd() {
+    let s = 0;
+    if (dir === "x") { const [a, b] = pre.xr, h = (b - a) / n; for (let i = 0; i < n; i++) { const x = a + (i + 0.5) * h; s += (pre.top(x) - pre.bot(x)) * h; } }
+    else { const [c, d] = pre.yr, h = (d - c) / n; for (let i = 0; i < n; i++) { const y = c + (i + 0.5) * h; s += (pre.right(y) - pre.left(y)) * h; } }
+    MB.stat("ap-b-sum", AP.num(s, 4)); MB.stat("ap-b-ex", AP.num(pre.ex, 4) + (pre === PRE.C ? " (= 2√2)" : " (= 9/2)"));
+    MB.stat("ap-b-cnt", pre.cnt[dir]);
+    const two = pre.cnt[dir][0] !== "1";
+    msg.className = "ap-msg" + (two ? " bad" : " ok");
+    msg.textContent = two ? "주황색 띠는 경계가 다른 곡선으로 바뀐 띠입니다. 이 방향으로는 적분을 나눠야 합니다." : "모든 띠가 같은 두 곡선 사이에 있습니다. 적분 하나로 끝납니다.";
+    document.getElementById("ap-b-tag").textContent = pre.tag;
+    pl.redraw();
+  }
+  document.getElementById("ap-b-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; pl.view(pre.view); upd(); });
+  MB.seg("ap-b-dir", (v) => { dir = v; upd(); });
+  MB.range("ap-b-n", String, (v) => { n = v; upd(); });
+  upd();
+})();
+
+/* ================================================================ 2. 와셔 쌓기 3D */
+(function () {
+  const PRE = {
+    sqrt: { a: 0, b: 4, f: Math.sqrt, g: () => 0, ex: 8 * Math.PI, exS: "8π", tag: "y = √x, x축 회전" },
+    wash: { a: 0, b: 1, f: (x) => x, g: (x) => x * x, ex: 2 * Math.PI / 15, exS: "2π/15", tag: "R = x, r = x², x축 회전" },
+    sphere: { a: -1, b: 1, f: (x) => Math.sqrt(Math.max(0, 1 - x * x)), g: () => 0, ex: 4 * Math.PI / 3, exS: "4π/3", tag: "y = √(1 − x²), x축 회전" },
+    barrel: { a: -1.5, b: 1.5, f: (x) => 1 - 0.1 * x * x, g: () => 0, ex: 2.580375 * Math.PI, exS: "2.580375π", tag: "포도주 통 y = 1 − 0.1x²" },
+  };
+  let pre = PRE.sqrt, n = 8, phi = 290 * Math.PI / 180, playing = false;
+  const view = { yaw: -0.55, pitch: 0.42, c: [2, 0, 0], s: 50 };
+  const cv = MB.canvas("#ap-cv-washer", (ctx, w, h) => {
+    const C = MB.palette(), col = AP.rgb(C.accent), col2 = AP.rgb(C.accent2), faces = [];
+    const { a, b, f, g } = pre, dx = (b - a) / n, Rm = Math.max(...Array.from({ length: 41 }, (_, i) => f(a + (b - a) * i / 40)));
+    view.c = [(a + b) / 2, 0, 0];
+    view.s = Math.min(w / ((b - a) * 1.5 + 0.6), h / (2 * Rm * 1.45 + 0.4));
+    for (let i = 0; i < n; i++) { const xm = a + (i + 0.5) * dx; AP3.ring(faces, a + i * dx, a + (i + 1) * dx, g(xm), f(xm), "x", phi, i % 2 ? col : col2, 30); }
+    AP3.render(ctx, w, h, faces, view, (pj) => {
+      ctx.strokeStyle = C.text; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+      const p0 = pj([a - 0.25 * (b - a), 0, 0]), p1 = pj([b + 0.25 * (b - a), 0, 0]);
+      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.text; ctx.font = "12px sans-serif"; ctx.fillText("x축", p1[0] + 4, p1[1]);
+      ctx.strokeStyle = C.warn; ctx.lineWidth = 2; ctx.beginPath();
+      for (let i = 0; i <= 80; i++) { const x = a + (b - a) * i / 80, p = pj([x, f(x), 0]); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+      ctx.stroke();
+    });
+  }, { aspect: 0.66, minHeight: 250, maxHeight: 440 });
+  AP3.drag(cv.canvas, view, () => cv.redraw());
+  function upd() {
+    const { a, b, f, g } = pre, dx = (b - a) / n;
+    let s = 0; for (let i = 0; i < n; i++) { const xm = a + (i + 0.5) * dx; s += Math.PI * (f(xm) ** 2 - g(xm) ** 2) * dx; }
+    MB.stat("ap-w-sum", AP.num(s, 4)); MB.stat("ap-w-ex", `${pre.exS} ≈ ${AP.num(pre.ex, 4)}`);
+    MB.stat("ap-w-err", `${AP.num(100 * (s - pre.ex) / pre.ex, 3)} %`);
+    document.getElementById("ap-w-tag").textContent = pre.tag;
+    cv.redraw();
+  }
+  MB.range("ap-w-n", String, (v) => { n = v; upd(); });
+  const phR = MB.range("ap-w-phi", (v) => v + "°", (v) => { phi = v * Math.PI / 180; cv.redraw(); });
+  document.getElementById("ap-w-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; upd(); });
+  const loop = MB.loop(document.getElementById("sim-ap-washer"), (dt) => {
+    if (!playing) return;
+    let d = phi * 180 / Math.PI + dt * 90;
+    if (d >= 360) { d = 360; playing = false; pb.set(false); }
+    phR.set(Math.round(d / 5) * 5 || 10, false); phi = d * Math.PI / 180; cv.redraw();
+  });
+  const pb = MB.playButton("ap-w-play", () => { phi = 10 * Math.PI / 180; playing = true; loop.start(); }, () => { playing = false; }, ["▶ 돌려 만들기", "■ 멈춤"]);
+  upd();
+})();
+
+/* ================================================================ 3. 원통 껍질 3D */
+(function () {
+  const PRE = {
+    para: { a: 0, b: 2, f: (x) => 2 * x - x * x, ex: 8 * Math.PI / 3, exS: "8π/3", tag: "y = 2x − x², y축 회전" },
+    sin: { a: 0, b: Math.PI, f: Math.sin, ex: 2 * Math.PI * Math.PI, exS: "2π²", tag: "y = sin x, y축 회전" },
+    cap: { a: 0, b: 1, f: (x) => 1 - x * x, ex: Math.PI / 2, exS: "π/2", tag: "y = 1 − x², y축 회전" },
+  };
+  let pre = PRE.para, n = 6, phi = 270 * Math.PI / 180, k = 3;
+  const view = { yaw: 0.5, pitch: 0.38, c: [0, 0.5, 0], s: 60 };
+  const kEl = document.getElementById("ap-s-k");
+  const cv = MB.canvas("#ap-cv-shells", (ctx, w, h) => {
+    const C = MB.palette(), cA = AP.rgb(C.accent2), cB = AP.rgb(C.ok), cH = AP.rgb(C.accent), faces = [];
+    const { a, b, f } = pre, dx = (b - a) / n, H = Math.max(...Array.from({ length: 41 }, (_, i) => f(a + (b - a) * i / 40)));
+    view.c = [0, H / 2, 0];
+    view.s = Math.min(w / (2 * b * 1.3 + 0.4), h / (Math.max(H, 0.6 * b) * 1.9 + 0.4));
+    for (let i = 0; i < n; i++) { const xm = a + (i + 0.5) * dx; AP3.ring(faces, 0, f(xm), a + i * dx, a + (i + 1) * dx, "y", phi, i === k - 1 ? cH : i % 2 ? cA : cB, 36); }
+    AP3.render(ctx, w, h, faces, view, (pj) => {
+      ctx.strokeStyle = C.text; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+      const p0 = pj([0, -0.2 * H, 0]), p1 = pj([0, H * 1.35, 0]);
+      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.text; ctx.font = "12px sans-serif"; ctx.fillText("y축", p1[0] + 4, p1[1]);
+      ctx.strokeStyle = C.warn; ctx.lineWidth = 2; ctx.beginPath();
+      for (let i = 0; i <= 80; i++) { const x = a + (b - a) * i / 80, p = pj([x, f(x), 0]); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+      ctx.stroke();
+    });
+  }, { aspect: 0.66, minHeight: 250, maxHeight: 440 });
+  AP3.drag(cv.canvas, view, () => cv.redraw());
+  function upd() {
+    const { a, b, f } = pre, dx = (b - a) / n;
+    let s = 0; for (let i = 0; i < n; i++) { const xm = a + (i + 0.5) * dx; s += 2 * Math.PI * xm * f(xm) * dx; }
+    const xk = a + (k - 0.5) * dx;
+    MB.stat("ap-s-one", `2π·${AP.num(xk, 3)}·${AP.num(f(xk), 3)}·${AP.num(dx, 3)} = ${AP.num(2 * Math.PI * xk * f(xk) * dx, 4)}`);
+    MB.stat("ap-s-sum", AP.num(s, 4)); MB.stat("ap-s-ex", `${pre.exS} ≈ ${AP.num(pre.ex, 4)}`);
+    document.getElementById("ap-s-tag").textContent = pre.tag;
+    cv.redraw();
+  }
+  const kR = MB.range("ap-s-k", String, (v) => { k = v; upd(); });
+  MB.range("ap-s-n", String, (v) => { n = v; kEl.max = n; if (k > n) { k = n; } kR.set(k, false); upd(); });
+  MB.range("ap-s-phi", (v) => v + "°", (v) => { phi = v * Math.PI / 180; cv.redraw(); });
+  document.getElementById("ap-s-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; upd(); });
+  upd();
+})();
+
+/* ================================================================ 4. 곡선 길이 */
+(function () {
+  const FN = {
+    x2: { f: (x) => x * x, a: 0, b: 2, L: Math.sqrt(17) + 0.25 * Math.log(4 + Math.sqrt(17)), view: { x: [-0.3, 2.4], y: [-0.4, 4.4] }, tag: "y = x², [0, 2]" },
+    pow: { f: (x) => (2 / 3) * Math.pow(x, 1.5), a: 0, b: 3, L: 14 / 3, view: { x: [-0.3, 3.4], y: [-0.4, 3.9] }, tag: "y = (2/3)x^(3/2), [0, 3]" },
+    cosh: { f: Math.cosh, a: -1, b: 1, L: 2 * Math.sinh(1), view: { x: [-1.4, 1.4], y: [-0.2, 1.8] }, tag: "y = cosh x, [−1, 1]" },
+    sin: { f: Math.sin, a: 0, b: Math.PI, L: null, view: { x: [-0.3, 3.5], y: [-0.4, 1.4] }, tag: "y = sin x, [0, π]" },
+    circ: { f: (x) => Math.sqrt(Math.max(0, 1 - x * x)), a: -1, b: 1, L: Math.PI, view: { x: [-1.4, 1.4], y: [-0.3, 1.3] }, tag: "y = √(1 − x²), [−1, 1]" },
+  };
+  FN.sin.L = AP.simpson((x) => Math.sqrt(1 + Math.cos(x) ** 2), 0, Math.PI, 2000);
+  let F = FN.x2, n = 4;
+  const poly = (nn) => { const { f, a, b } = F, h = (b - a) / nn; let s = 0; for (let i = 0; i < nn; i++) { const x0 = a + i * h; s += Math.hypot(h, f(x0 + h) - f(x0)); } return s; };
+  const pl = MB.plane("#ap-cv-arc", {
+    x: F.view.x, y: F.view.y, aspect: 0.62, maxHeight: 420, minHeight: 230, gridStep: 1,
+    draw(P) {
+      const C = P.P, { f, a, b } = F, h = (b - a) / n;
+      P.curve(f, { from: a, to: b, color: C.dim, width: 4, alpha: 0.5 });
+      const pts = []; for (let i = 0; i <= n; i++) pts.push([a + i * h, f(a + i * h)]);
+      P.poly(pts, { close: false, color: C.accent, width: 2.4 });
+      pts.forEach(([x, y]) => P.dot(x, y, { color: C.accent, r: n > 32 ? 2 : 4 }));
+    },
+  });
+  function upd() {
+    const Ln = poly(n), e = F.L - Ln, e2 = F.L - poly(2 * n);
+    MB.stat("ap-a-Ln", AP.num(Ln, 6)); MB.stat("ap-a-L", AP.num(F.L, 6)); MB.stat("ap-a-err", AP.sci(e, 2)); MB.stat("ap-a-ratio", AP.num(e / e2, 2));
+    document.getElementById("ap-a-tag").textContent = F.tag;
+    pl.redraw();
+  }
+  const nR = MB.range("ap-a-n", String, (v) => { n = v; upd(); });
+  document.getElementById("ap-a-f").addEventListener("change", (e) => { F = FN[e.target.value]; pl.view(F.view); upd(); });
+  document.getElementById("ap-a-dbl").addEventListener("click", () => nR.set(Math.min(64, n * 2)));
+  document.getElementById("ap-a-half").addEventListener("click", () => nR.set(Math.max(1, Math.round(n / 2))));
+  upd();
+})();
+
+/* ================================================================ 5. 물 퍼 올리기 */
+(function () {
+  const H = 4, RHO = 1000, G = 9.8;
+  const SH = {
+    cone: { r: (y) => y / 2 }, cyl: { r: () => 2 }, sph: { r: (y) => Math.sqrt(Math.max(0, 4 - (y - 2) ** 2)) },
+  };
+  let shape = "cone", d = 4, e = 0, scan = 2, playing = false;
+  const A = (y) => Math.PI * SH[shape].r(y) ** 2;
+  const dW = (y) => RHO * G * A(y) * (H + e - y);
+  const tank = MB.canvas("#ap-cv-pump", (ctx, w, h) => {
+    const C = MB.palette(), s = Math.min((h - 30) / (H + 3.4), w / 7), cx = w / 2, y0 = h - 14;
+    const X = (x) => cx + x * s, Y = (y) => y0 - y * s, r = SH[shape].r;
+    const wat = []; for (let i = 0; i <= 60; i++) { const y = d * i / 60; wat.push([X(r(y)), Y(y)]); } for (let i = 60; i >= 0; i--) { const y = d * i / 60; wat.push([X(-r(y)), Y(y)]); }
+    AP.fillPx(ctx, wat, C.accent2, 0.3);
+    const out = []; for (let i = 0; i <= 80; i++) { const y = H * i / 80; out.push([X(r(y)), Y(y)]); } const outL = out.map(([x, y]) => [2 * cx - x, y]);
+    AP.linePx(ctx, out, C.text, 2); AP.linePx(ctx, outL, C.text, 2);
+    if (shape !== "sph") AP.linePx(ctx, [[X(-r(0)), Y(0)], [X(r(0)), Y(0)]], C.text, 2);
+    // 배출구 관
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(0.9), Y(H)); ctx.lineTo(X(0.9), Y(H + e) - 10); ctx.lineTo(X(2.6), Y(H + e) - 10); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = "12px sans-serif"; ctx.fillText(`배출구 (꼭대기 + ${e.toFixed(1)} m)`, X(0.9) - 30, Y(H + e) - 18);
+    if (scan <= d) {
+      const ys = scan, rr = r(ys);
+      AP.fillPx(ctx, [[X(-rr), Y(ys) - 3], [X(rr), Y(ys) - 3], [X(rr), Y(ys) + 3], [X(-rr), Y(ys) + 3]], C.accent, 0.85);
+      ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(X(-2.6), Y(ys)); ctx.lineTo(X(-2.6), Y(H + e)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.accent; ctx.textAlign = "right"; ctx.fillText(`거리 ${(H + e - ys).toFixed(2)} m`, X(-2.7), (Y(ys) + Y(H + e)) / 2);
+      ctx.fillText(`y = ${ys.toFixed(2)}`, X(-2.7), Y(ys) + 4); ctx.textAlign = "left";
+    }
+  }, { aspect: 0.6, minHeight: 230, maxHeight: 330 });
+  const chart = MB.canvas("#ap-cv-pumpW", (ctx) => {
+    const C = MB.palette(), data = [], all = [];
+    for (let i = 0; i <= 120; i++) { const y = H * i / 120; all.push([y, dW(y) / 1000]); if (y <= d + 1e-9) data.push([y, dW(y) / 1000]); }
+    const ym = Math.max(10, ...all.map((q) => q[1])) * 1.1;
+    const R = MB.chart(ctx, null, { x: [0, H], y: [0, ym], xLabel: "층의 높이 y (m)", series: [{ data: all, color: C.faint, width: 1.2, dash: [4, 4] }, { data, color: C.accent, width: 2.4 }], vlines: scan <= d ? [{ x: scan, color: C.accent }] : [], hlines: [] });
+    AP.fillPx(ctx, [[R.X(0), R.Y(0)]].concat(data.map(([x, y]) => [R.X(x), R.Y(y)]), [[R.X(Math.min(d, H)), R.Y(0)]]), C.accent, 0.2);
+  }, { aspect: 0.38, minHeight: 160, maxHeight: 220 });
+  function upd() {
+    const V = AP.simpson(A, 0, d, 400), W = AP.simpson(dW, 0, d, 400), m = RHO * V;
+    MB.stat("ap-p-m", `${AP.num(m / 1000, 2)} t (${AP.num(V, 2)} m³)`);
+    MB.stat("ap-p-W", `${AP.num(W / 1000, 1)} kJ`);
+    MB.stat("ap-p-h", `${AP.num(W / (m * G), 3)} m`);
+    tank.redraw(); chart.redraw();
+  }
+  MB.seg("ap-p-shape", (v) => { shape = v; upd(); });
+  MB.range("ap-p-d", (v) => v.toFixed(2) + " m", (v) => { d = v; scan = Math.min(scan, d); upd(); });
+  MB.range("ap-p-e", (v) => v.toFixed(1) + " m", (v) => { e = v; upd(); });
+  const loop = MB.loop(document.getElementById("sim-ap-pump"), (dt) => {
+    if (!playing) return;
+    scan += dt * 0.8; if (scan > d) scan = 0;
+    tank.redraw(); chart.redraw();
+  });
+  MB.playButton("ap-p-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 층 훑기", "■ 멈춤"]);
+  upd();
+})();
+
+/* ================================================================ 6. 수압 */
+(function () {
+  const SH = {
+    rect: { hgt: 1.5, w: () => 2 },
+    tri: { hgt: 1.5, w: (s) => 2 * (1 - s / 1.5) },
+    circ: { hgt: 1.5, w: (s) => 2 * Math.sqrt(Math.max(0, 0.5625 - (s - 0.75) ** 2)) },
+  };
+  let shape = "rect", top = 0.5, rho = 1000;
+  const G = 9.8;
+  const cv = MB.canvas("#ap-cv-press", (ctx, w, h) => {
+    const C = MB.palette(), D = 6.2, s = (h - 20) / D, y0 = 12, X = (x) => w * 0.55 + x * s, Y = (dep) => y0 + dep * s, sh = SH[shape];
+    AP.fillPx(ctx, [[0, Y(0)], [w, Y(0)], [w, h], [0, h]], C.accent2, 0.14);
+    AP.linePx(ctx, [[0, Y(0)], [w, Y(0)]], C.accent2, 2);
+    ctx.fillStyle = C.dim; ctx.font = "12px sans-serif"; ctx.fillText("수면", 8, Y(0) + 14);
+    for (let k = 1; k <= 6; k++) { ctx.fillText(`${k} m`, 8, Y(k) + 4); AP.linePx(ctx, [[34, Y(k)], [44, Y(k)]], C.dim, 1); }
+    const L = [], R = []; for (let i = 0; i <= 60; i++) { const sd = sh.hgt * i / 60, ww = sh.w(sd); L.push([X(-ww / 2), Y(top + sd)]); R.push([X(ww / 2), Y(top + sd)]); }
+    const outline = L.concat(R.reverse());
+    AP.fillPx(ctx, outline, C.accent, 0.35); AP.linePx(ctx, outline.concat([outline[0]]), C.accent, 2);
+    // 압력 화살표: 깊이에 비례
+    const pmax = top + sh.hgt, kpx = Math.min(w * 0.3, 120) / 6.2;
+    ctx.strokeStyle = C.warn; ctx.fillStyle = C.warn; ctx.lineWidth = 1.6;
+    for (let i = 0; i <= 8; i++) {
+      const sd = sh.hgt * i / 8, dep = top + sd, ww = sh.w(sd); if (ww < 0.02) continue;
+      const xe = X(-ww / 2) - 3, len = dep * kpx, yy = Y(dep);
+      ctx.beginPath(); ctx.moveTo(xe - len, yy); ctx.lineTo(xe, yy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xe, yy); ctx.lineTo(xe - 6, yy - 3.5); ctx.lineTo(xe - 6, yy + 3.5); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillText(`압력 ρgh (최대 ${AP.num(rho * G * pmax / 1000, 1)} kPa)`, 8, Y(Math.min(6, pmax)) + 18);
+    const Aa = AP.simpson(sh.w, 0, sh.hgt, 400), M1 = AP.simpson((sd) => (top + sd) * sh.w(sd), 0, sh.hgt, 400), M2 = AP.simpson((sd) => (top + sd) ** 2 * sh.w(sd), 0, sh.hgt, 400);
+    const hc = M1 / Aa, hp = M1 > 1e-12 ? M2 / M1 : top;
+    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(X(0), Y(hc), 4.5, 0, 7); ctx.fill(); ctx.fillText("도심", X(0) + 8, Y(hc) - 2);
+    ctx.fillStyle = C.bad; ctx.beginPath(); ctx.arc(X(0), Y(hp), 4.5, 0, 7); ctx.fill(); ctx.fillText("압력 중심", X(0) + 8, Y(hp) + 12);
+  }, { aspect: 0.62, minHeight: 250, maxHeight: 400 });
+  function upd() {
+    const sh = SH[shape], Aa = AP.simpson(sh.w, 0, sh.hgt, 400), M1 = AP.simpson((sd) => (top + sd) * sh.w(sd), 0, sh.hgt, 400), M2 = AP.simpson((sd) => (top + sd) ** 2 * sh.w(sd), 0, sh.hgt, 400);
+    const hc = M1 / Aa;
+    MB.stat("ap-q-F", `${AP.num(rho * G * M1 / 1000, 2)} kN`);
+    MB.stat("ap-q-F2", `${AP.num(rho * G * hc * Aa / 1000, 2)} kN (A = ${AP.num(Aa, 3)} m²)`);
+    MB.stat("ap-q-hc", `${AP.num(hc, 3)} m`);
+    MB.stat("ap-q-hp", M1 > 1e-12 ? `${AP.num(M2 / M1, 3)} m` : "—");
+    cv.redraw();
+  }
+  MB.seg("ap-q-shape", (v) => { shape = v; upd(); });
+  MB.seg("ap-q-fluid", (v) => { rho = Number(v); upd(); });
+  MB.range("ap-q-top", (v) => v.toFixed(2) + " m", (v) => { top = v; upd(); });
+  upd();
+})();
+
+/* ================================================================ 7. 무게 중심 균형 */
+(function () {
+  const PRE = {
+    x2: { a: 0, b: 1, f: (x) => x * x }, tri: { a: 0, b: 2, f: (x) => x }, semi: { a: -1, b: 1, f: (x) => Math.sqrt(Math.max(0, 1 - x * x)) },
+    sin: { a: 0, b: Math.PI, f: Math.sin }, exp: { a: 0, b: 3, f: (x) => Math.exp(-x) },
+  };
+  let pre = PRE.x2, show = false, alpha = 0, geo = null;
+  const msg = document.getElementById("ap-c-msg");
+  const calc = () => {
+    const { a, b, f } = pre, A = AP.simpson(f, a, b, 800);
+    return { A, xb: AP.simpson((x) => x * f(x), a, b, 800) / A, yb: AP.simpson((x) => 0.5 * f(x) ** 2, a, b, 800) / A };
+  };
+  geo = calc();
+  const pts = [{ x: 0.5, y: 0, lock: "y", r: 8, label: "받침점" }];
+  const viewOf = () => { const H = Math.max(...Array.from({ length: 41 }, (_, i) => pre.f(pre.a + (pre.b - pre.a) * i / 40))); const span = pre.b - pre.a; return { x: [pre.a - 0.35 * span - 0.2, pre.b + 0.35 * span + 0.2], y: [-0.55 * Math.max(1, span * 0.4), H + 0.45 * Math.max(1, span * 0.4)] }; };
+  const v0 = viewOf();
+  const pl = MB.plane("#ap-cv-bal", {
+    x: v0.x, y: v0.y, aspect: 0.6, maxHeight: 420, minHeight: 230, grid: false, axes: false, points: pts,
+    draw(P, api) {
+      const C = P.P, c = api.points[0].x, { a, b, f } = pre, ca = Math.cos(alpha), sa = Math.sin(alpha);
+      api.points[0].color = C.text;
+      const rot = ([x, y]) => [c + (x - c) * ca - y * sa, (x - c) * sa + y * ca];
+      P.line(P.x0, 0, P.x1, 0, { color: C.faint, width: 1, dash: [3, 5] });
+      const sc = (P.y1 - P.y0) * 0.07;
+      P.poly([[c, 0], [c - sc * 0.6, -sc * 1.6], [c + sc * 0.6, -sc * 1.6]], { fill: C.dim, color: C.dim, alpha: 0.8 });
+      const out = []; for (let i = 0; i <= 120; i++) { const x = a + (b - a) * i / 120; out.push([x, f(x)]); } out.push([b, 0], [a, 0]);
+      P.poly(out.map(rot), { fill: C.accent, color: C.accent, alpha: 0.4, width: 2 });
+      P.poly(out.map(rot), { color: C.accent, width: 2 });
+      if (show) {
+        const g = rot([geo.xb, geo.yb]);
+        P.line(g[0], g[1], g[0], P.y0, { color: C.bad, width: 1.5, dash: [5, 4] });
+        P.dot(g[0], g[1], { color: C.bad, r: 6, label: "도심 (무게)" });
+      }
+    },
+    onDrag(p) { p.x = MB.clamp(p.x, pre.a, pre.b); upd(); },
+  });
+  function upd() {
+    const c = pts[0].x, tq = geo.A * (geo.xb - c);
+    MB.stat("ap-c-c", AP.num(c, 3));
+    MB.stat("ap-c-tq", AP.num(tq, 4));
+    MB.stat("ap-c-cen", show ? `(${AP.num(geo.xb, 4)}, ${AP.num(geo.yb, 4)})` : "숨김");
+    const Vx = 2 * Math.PI * geo.yb * geo.A, Vy = pre.a >= 0 ? 2 * Math.PI * geo.xb * geo.A : null;
+    MB.stat("ap-c-pap", `${AP.num(Vx, 4)} / ${Vy === null ? "—" : AP.num(Vy, 4)}`);
+    const ok = Math.abs(geo.xb - c) < 0.015 * (pre.b - pre.a);
+    msg.className = "ap-msg" + (ok ? " ok" : "");
+    msg.innerHTML = ok ? `균형! 받침점 c = ${AP.num(c, 3)} ≈ x̄ = ∫x f dx / ∫f dx` : `${geo.xb > c ? "오른쪽" : "왼쪽"}으로 기웁니다. 받침점을 ${geo.xb > c ? "오른쪽" : "왼쪽"}으로 옮겨 보세요.`;
+  }
+  const target = () => MB.clamp(-1.4 * geo.A * (geo.xb - pts[0].x) / Math.max(0.3, (pre.b - pre.a) ** 2 * 0.25), -0.38, 0.38);
+  MB.loop(document.getElementById("sim-ap-balance"), (dt) => {
+    const t = target(), na = alpha + (t - alpha) * Math.min(1, dt * 5);
+    if (Math.abs(na - alpha) > 1e-5) { alpha = na; pl.redraw(); }
+  });
+  document.getElementById("ap-c-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; geo = calc(); pts[0].x = (pre.a + pre.b) / 2; alpha = 0; pl.view(viewOf()); upd(); });
+  MB.check("ap-c-show", (v) => { show = v; upd(); pl.redraw(); });
+  document.getElementById("ap-c-snap").addEventListener("click", () => { pts[0].x = geo.xb; upd(); pl.redraw(); });
+  upd();
+})();
+
+/* ================================================================ 8. 확률 밀도 */
+(function () {
+  const DIST = {
+    exp: { lab: "평균 m", min: 0.5, max: 4, step: 0.05, val: 2, pdf: (x, m) => (x < 0 ? 0 : Math.exp(-x / m) / m), sup: (m) => [0, 40 * m], med: (m) => m * Math.LN2, ab: [0, 2] },
+    unif: { lab: "폭 (가운데 4)", min: 1, max: 8, step: 0.1, val: 4, pdf: (x, wd) => (Math.abs(x - 4) <= wd / 2 ? 1 / wd : 0), sup: (wd) => [4 - wd / 2, 4 + wd / 2], med: () => 4, ab: [3, 5] },
+    tri: { lab: "꼭짓점 c ([0, 8])", min: 0.2, max: 7.8, step: 0.1, val: 2, pdf: (x, c) => (x < 0 || x > 8 ? 0 : x <= c ? x / (4 * c) : (8 - x) / (4 * (8 - c))), sup: () => [0, 8], med: (c) => (c >= 4 ? Math.sqrt(4 * c) : 8 - Math.sqrt(4 * (8 - c))), ab: [1, 4] },
+    norm: { lab: "표준편차 σ (평균 4)", min: 0.4, max: 2, step: 0.05, val: 1, pdf: (x, s) => MB.normPdf(x, 4, s), sup: (s) => [4 - 9 * s, 4 + 9 * s], med: () => 4, ab: [3, 5] },
+  };
+  let key = "exp", D = DIST.exp, par = 2;
+  const st = { E: 2, s: 2 };
+  const pts = [{ x: 0, y: 0, lock: "y", r: 8, label: "a" }, { x: 2, y: 0, lock: "y", r: 8, label: "b" }];
+  const yTop = () => { let m = 0; for (let i = 0; i <= 400; i++) m = Math.max(m, D.pdf(-0.5 + 9 * i / 400, par)); return m * 1.3 + 0.02; };
+  const pl = MB.plane("#ap-cv-pdf", {
+    x: [-0.5, 8.5], y: [-0.1, 0.65], aspect: 0.55, maxHeight: 400, minHeight: 230, grid: false, points: pts,
+    draw(P, api) {
+      const C = P.P, [p, q] = api.points, a = Math.min(p.x, q.x), b = Math.max(p.x, q.x), f = (x) => D.pdf(x, par);
+      p.color = C.accent2; q.color = C.accent2;
+      const sh = [[a, 0]]; for (let i = 0; i <= 160; i++) { const x = a + (b - a) * i / 160; sh.push([x, f(x)]); } sh.push([b, 0]);
+      P.poly(sh, { fill: C.accent2, color: C.accent2, alpha: 0.3, width: 1 });
+      P.curve(f, { color: C.accent, width: 2.8, n: 600 });
+      const mu = st.E, md = D.med(par), u = (P.y1 - P.y0) * 0.09;
+      P.poly([[mu, 0], [mu - u * 0.5, -u], [mu + u * 0.5, -u]], { fill: C.text, color: C.text });
+      P.line(md, 0, md, f(md), { color: C.dim, width: 1.5, dash: [5, 4] });
+      P.text("중앙값", md, f(md) + u * 0.35, { color: C.dim, size: 11, align: "center" });
+    },
+    onDrag() { upd(); },
+  });
+  function stats() {
+    const [lo, hi] = D.sup(par), f = (x) => D.pdf(x, par), n = 4000;
+    // 불연속이 있는 균등·삼각은 지지 구간 안에서만 적분한다
+    const E = AP.simpson((x) => x * f(x), lo, hi, n), V = AP.simpson((x) => (x - E) ** 2 * f(x), lo, hi, n);
+    st.E = E; st.s = Math.sqrt(Math.max(0, V));
+  }
+  function upd() {
+    const a = Math.min(pts[0].x, pts[1].x), b = Math.max(pts[0].x, pts[1].x), [lo, hi] = D.sup(par);
+    const a2 = Math.max(a, lo), b2 = Math.min(b, hi);
+    const P = b2 > a2 ? AP.simpson((x) => D.pdf(x, par), a2, b2, 800) : 0;
+    MB.stat("ap-d-P", AP.num(P, 4)); MB.stat("ap-d-E", AP.num(st.E, 4)); MB.stat("ap-d-s", AP.num(st.s, 4)); MB.stat("ap-d-med", AP.num(D.med(par), 4));
+    pl.redraw();
+  }
+  const parEl = document.getElementById("ap-d-par");
+  const parR = MB.range("ap-d-par", (v) => String(v), (v) => { par = v; stats(); pl.view({ x: [-0.5, 8.5], y: [-0.12 * yTop(), yTop()] }); upd(); });
+  MB.seg("ap-d-dist", (v) => {
+    key = v; D = DIST[v]; parEl.min = D.min; parEl.max = D.max; parEl.step = D.step; par = D.val;
+    document.getElementById("ap-d-plab").textContent = D.lab;
+    pts[0].x = D.ab[0]; pts[1].x = D.ab[1]; parR.set(par);
+  });
+  stats(); pl.view({ x: [-0.5, 8.5], y: [-0.12 * yTop(), yTop()] }); upd();
+})();
+</script>
+</body>
+</html>

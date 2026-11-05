@@ -1,0 +1,1286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>다변수 함수와 편미분 · CalculusBook</title>
+<meta name="description" content="입력이 둘 이상인 함수를 곡면과 등고선으로 보고, 경로마다 다른 극한, 단면의 기울기인 편도함수, 클레로 정리, 접평면과 미분 가능성, 전미분과 오차 전파, 다변수 연쇄 법칙과 음함수 미분, 열·파동 방정식까지 돌리고 자르며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .pd-two { display: grid; grid-template-columns: 1fr; }
+  .pd-two > div { position: relative; min-width: 0; }
+  .pd-two > div + div { border-top: 1px solid var(--border); }
+  .pd-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 75%, transparent); padding: 1px 6px; border-radius: 5px; }
+  .pd-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .pd-msg b { color: var(--text); }
+  .pd-msg.ok { color: var(--ok); font-weight: 600; }
+  .pd-msg.bad { color: var(--bad); font-weight: 600; }
+  .pd-tbl td, .pd-tbl th { font-family: var(--mono); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="partial">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 13</div>
+    <h1 data-no-glossary>다변수 함수와 편미분</h1>
+    <p class="lead">지금까지 다룬 함수는 수 하나를 받아 수 하나를 내놓았습니다. 하지만 공학에서 만나는 양은 대개 여러 원인에 동시에 달려 있습니다. 금속판의 온도는 위치 \((x, y)\)에, 기체의 압력은 온도와 부피에, 신경망의 오차는 수백만 개의 가중치에 달려 있습니다. 이런 <span class="term">다변수 함수</span>의 그래프는 곡선이 아니라 <b>곡면</b>이고, "기울기"도 하나가 아닙니다. 동쪽으로 걸을 때와 북쪽으로 걸을 때 산의 경사가 다르니까요. 이 장은 곡면을 등고선 지도로 읽고, 한 번에 한 변수만 움직여 기울기를 재는 <b>편도함수</b>를 만들고, 곡면을 아주 가까이서 보면 평면이 된다는 사실(접평면)에서 일변수 미분의 모든 도구를 다시 세웁니다.</p>
+    <ul class="objectives">
+      <li>2변수 함수를 곡면과 등고선도로 그리고, 등고선의 간격에서 경사를 읽는다.</li>
+      <li>다변수 극한이 "모든 경로에서 같은 값"을 요구한다는 것을 이해하고, 두 경로로 극한이 없음을 보인다.</li>
+      <li>편도함수를 단면 곡선의 기울기로 해석하고, 다른 변수를 상수로 두어 계산한다.</li>
+      <li>고계 편도함수를 계산하고, 클레로 정리(혼합 편도함수의 대칭)와 그 조건을 설명한다.</li>
+      <li>접평면과 선형 근사를 세우고, "편도함수가 있다"와 "미분 가능하다"의 차이를 구분한다.</li>
+      <li>전미분으로 측정 오차가 결과에 얼마나 퍼지는지 추정하고, 다변수 연쇄 법칙과 음함수 미분을 쓴다.</li>
+      <li>열 방정식과 파동 방정식이 편도함수로 무엇을 말하는지 읽는다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>타지 않는 반도체 칩</b></div>
+      <div class="o-body"><p>손톱만 한 프로세서 칩은 작동하는 동안 수십~수백 와트의 열을 냅니다. 칩 위의 온도는 위치와 시간에 따라 달라지는 함수 \(u(x, y, t)\)이고, 설계자가 알고 싶은 것은 "이 지점은 시간이 지나면 얼마나 빨리 뜨거워지는가", "이 방향으로 열이 얼마나 세게 흘러 나가는가"입니다. 둘 다 <b>다른 변수는 그대로 두고 한 변수만 바꿀 때의 변화율</b>, 즉 편도함수입니다.</p>
+        <p>푸리에는 1822년 『열의 해석적 이론』에서 열의 흐름을 편도함수로 적은 열 방정식 \(\partial u/\partial t = \alpha\,(\partial^2 u/\partial x^2 + \partial^2 u/\partial y^2)\)을 세우고 푸는 방법을 내놓았습니다. 오늘날 방열판, 배터리 팩, 엔진 블록의 열 해석 소프트웨어는 모두 이런 편미분 방정식을 격자 위에서 수치로 풉니다. 이 장은 그 언어의 알파벳인 편도함수에서 출발합니다.</p>
+        <div class="o-chain"><span>위치·시간마다 다른 온도</span><i>→</i><span>변화율이 여러 개</span><i>→</i><span class="tool">편도함수 ∂u/∂t, ∂²u/∂x²</span><i>→</i><span>열 방정식으로 방열 설계</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="surfaces">
+    <h2>곡면과 등고선: 2변수 함수를 보는 두 방법</h2>
+    <div class="problem"><strong>종이 한 장에 산을 그리려면</strong>
+      <p>등산 지도는 평면 종이에 3차원 산을 담습니다. 높이를 숫자로 일일이 적는 대신, 같은 높이의 점을 이은 선을 일정한 간격으로 그립니다. 이 선들만 보고도 우리는 봉우리와 골짜기, 가파른 비탈과 완만한 능선을 알아봅니다. 함수 \(z = f(x, y)\)도 똑같이 볼 수 있을까요?</p></div>
+    <div class="callout deep"><strong>정의 13.1 (2변수 함수와 그래프)</strong> 평면의 집합 \(D \subset \mathbb{R}^2\)의 각 점 \((x, y)\)에 실수 \(f(x, y)\)를 하나씩 대응시키는 규칙 \(f\)를 <span class="term">2변수 함수</span><span class="en">(function of two variables)</span>라 하고, \(D\)를 정의역, 함숫값의 모임을 치역이라 한다. \(f\)의 그래프는 3차원 공간의 점들의 모임
+      <div class="formula">$$\{(x, y, z) : (x, y) \in D,\; z = f(x, y)\}$$</div>
+      이며 보통 곡면이다. 변수가 셋 이상인 \(f(x_1, \dots, x_n)\)도 같은 방식으로 정의한다.</div>
+    <div class="callout deep"><strong>정의 13.2 (등위선과 등위면)</strong> 상수 \(k\)에 대해 \(f(x, y) = k\)를 만족하는 점들의 모임을 \(f\)의 <span class="term">등위선</span><span class="en">(level curve)</span>이라 한다. 여러 \(k\)의 등위선을 한 평면에 겹쳐 그린 그림이 <span class="term">등고선도</span><span class="en">(contour map)</span>다. 3변수 함수에서는 \(f(x, y, z) = k\)가 곡면이 되고, 이것을 <span class="term">등위면</span><span class="en">(level surface)</span>이라 한다.</div>
+    <p>등위선은 곡면을 높이 \(z = k\)인 수평면으로 잘라 생긴 단면을 바닥에 내려 그린 것입니다. 높이 간격을 일정하게 잡으면 <b>등고선이 촘촘한 곳일수록 가파릅니다</b>. 같은 높이 차를 짧은 수평 거리에서 오르내리기 때문입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="곡면을 수평면으로 잘라 등고선을 얻는 과정">
+        <rect x="10" y="14" width="360" height="276" rx="10" class="f-surface"/>
+        <rect x="390" y="14" width="360" height="276" rx="10" class="f-surface"/>
+        <text x="24" y="38" class="t" style="font-weight:700">옆에서 본 곡면: 높이 k로 자른다</text>
+        <text x="404" y="38" class="t" style="font-weight:700">위에서 본 등고선도</text>
+        <line x1="30" y1="250" x2="352" y2="250" class="s-axis"/>
+        <path d="M34 248 C 74 246 112 70 150 68 C 210 66 296 238 348 246" fill="none" class="s-acc" style="stroke-width:3"/>
+        <line x1="30" y1="200" x2="352" y2="200" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:6 5"/>
+        <line x1="30" y1="150" x2="352" y2="150" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:6 5"/>
+        <line x1="30" y1="100" x2="352" y2="100" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:6 5"/>
+        <text x="300" y="194" class="t-mono">k = 1</text><text x="300" y="144" class="t-mono">k = 2</text><text x="300" y="94" class="t-mono">k = 3</text>
+        <circle cx="96" cy="200" r="4" style="fill:var(--accent-2)"/><circle cx="257" cy="200" r="4" style="fill:var(--accent-2)"/>
+        <circle cx="111" cy="150" r="4" style="fill:var(--accent-2)"/><circle cx="215" cy="150" r="4" style="fill:var(--accent-2)"/>
+        <circle cx="125" cy="100" r="4" style="fill:var(--accent-2)"/><circle cx="182" cy="100" r="4" style="fill:var(--accent-2)"/>
+        <text x="40" y="276" class="t-dim">왼쪽 비탈은 가파르고, 오른쪽은 완만하다</text>
+        <ellipse cx="575" cy="160" rx="150" ry="96" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+        <ellipse cx="545" cy="160" rx="100" ry="66" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+        <ellipse cx="518" cy="160" rx="48" ry="34" fill="none" style="stroke:var(--accent-2);stroke-width:2"/>
+        <circle cx="500" cy="160" r="4" style="fill:var(--accent)"/>
+        <text x="690" y="104" class="t-mono">1</text><text x="620" y="116" class="t-mono">2</text><text x="560" y="136" class="t-mono">3</text>
+        <text x="404" y="276" class="t-dim">왼쪽: 간격이 좁다(가파름) · 오른쪽: 넓다(완만)</text>
+      </svg>
+      <figcaption><b>그림 13-1.</b> 곡면을 일정한 높이 간격 k = 1, 2, 3으로 잘라 위에서 내려다보면 등고선도가 된다. 같은 높이 차를 짧은 수평 거리에서 오르는 왼쪽 비탈은 등고선이 촘촘하고, 완만한 오른쪽은 듬성듬성하다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 13.1 (반구의 정의역·치역·등고선)</strong> \(f(x, y) = \sqrt{9 - x^2 - y^2}\)를 분석하라.
+      <ol>
+        <li>정의역: 제곱근 안이 0 이상이어야 하므로 \(x^2 + y^2 \le 9\), 반지름 3인 닫힌 원판.</li>
+        <li>치역: \(x^2 + y^2\)이 0에서 9까지 움직이므로 \(f\)는 3에서 0까지, 치역은 \([0, 3]\).</li>
+        <li>그래프: \(z = \sqrt{9 - x^2 - y^2}\)를 제곱하면 \(x^2 + y^2 + z^2 = 9\) (\(z \ge 0\)), 반지름 3인 위쪽 반구.</li>
+        <li>등위선: \(f = k\)이면 \(x^2 + y^2 = 9 - k^2\), 반지름 \(\sqrt{9 - k^2}\)인 원. \(k = 0, 1, 2, 3\)에서 반지름은 \(3,\ \sqrt8 \approx 2.83,\ \sqrt5 \approx 2.24,\ 0\).</li>
+        <li>해석: \(k = 0\)과 1 사이의 원은 0.17만큼, 2와 3 사이는 2.24만큼 떨어져 있다. 가장자리(적도)로 갈수록 등고선이 촘촘해지는 것은 반구의 옆면이 수직에 가까워지기 때문이다.</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 곡면을 끌어 돌려 보세요. 반투명한 평면이 높이 \(z = c\)이고, 그 평면이 곡면을 자르는 곡선(진한 선)을 위에서 내려다본 것이 아래 등고선도의 강조된 선입니다.</p>
+
+    <div class="sim" id="sim-pd-surface">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>곡면과 등고선도: 높이 c로 자르기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pd-two">
+          <div><canvas id="pd-cv-surf"></canvas><span class="pd-cap">곡면 z = f(x, y)</span><span class="hint">끌어서 돌리기</span></div>
+          <div><canvas id="pd-cv-map"></canvas><span class="pd-cap">위에서 본 등고선도</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="pd-s-fn">
+            <option value="hill">언덕 3e^(−(x²+y²)/3)</option>
+            <option value="twin">두 봉우리</option>
+            <option value="hemi">반구 √(9 − x² − y²) (예제 13.1)</option>
+            <option value="saddle">안장 (x² − y²)/3</option>
+            <option value="wave">물결 sin x · cos y</option>
+            <option value="cone">원뿔 √(x² + y²)</option>
+          </select></label>
+          <label class="ctrl"><span>자르는 높이 c <output id="pd-s-c-out"></output></span><input type="range" id="pd-s-c" min="0" max="1" step="0.01" value="0.5"></label>
+          <label class="check"><input type="checkbox" id="pd-s-floor" checked> 바닥에 등고선 그리기</label>
+          <div class="btn-row"><button class="btn primary" id="pd-s-spin">▶ 자동 회전</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">높이 범위</span><span class="v" id="pd-s-zr">—</span></div>
+        <div class="stat"><span class="k">높이 c</span><span class="v" id="pd-s-cv">—</span></div>
+        <div class="stat"><span class="k">등고선 간격</span><span class="v" id="pd-s-dz">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '반구'에서 c를 0에서 3으로 올리며 원이 줄어드는 속도를 보세요. 예제 13.1의 결론처럼 가장자리 근처의 등고선이 촘촘합니다. ② '안장'에서 c = 0의 등고선은 두 직선 y = ±x로 갈라집니다. c의 부호에 따라 쌍곡선이 좌우·상하로 바뀝니다. ③ '원뿔'은 등고선 간격이 일정합니다. 경사가 어디서나 같기 때문입니다. 모델: 정사영(원근 없음), 곡면은 32×32 조각을 먼 것부터 칠해 가립니다. 바닥 등고선은 높이를 10등분한 9개입니다.</div>
+    </div>
+    <p>변수가 셋인 함수 \(T(x, y, z)\), 예컨대 방 안의 온도 분포는 그래프를 그리려면 4차원이 필요합니다. 그때는 등위면 \(T = k\), 즉 <b>등온면</b>을 그립니다. 기상도의 등압선, 전기장의 등전위면, 지도의 등고선이 모두 같은 생각입니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="limits">
+    <h2>다변수 극한: 다가가는 길이 무한히 많다</h2>
+    <div class="problem"><strong>원점으로 들어오는 길</strong>
+      <p>일변수에서 \(x \to a\)는 왼쪽과 오른쪽, 두 방향만 확인하면 됐습니다. 평면의 점 \((x, y) \to (0, 0)\)은 직선으로, 포물선으로, 나선으로, 무한히 많은 길로 다가갈 수 있습니다. 극한이 "있다"고 말하려면 무엇을 확인해야 할까요?</p></div>
+    <div class="callout deep"><strong>정의 13.3 (2변수 함수의 극한)</strong> 모든 \(\varepsilon > 0\)에 대해 \(\delta > 0\)가 있어서
+      <div class="formula">$$0 \lt \sqrt{(x - a)^2 + (y - b)^2} \lt \delta \;\Longrightarrow\; |f(x, y) - L| \lt \varepsilon$$</div>
+      이면 \(\displaystyle\lim_{(x, y) \to (a, b)} f(x, y) = L\)이라 쓴다. 일변수의 ε–δ 정의(<a href="limits.html">1장</a>)에서 \(|x - a|\)를 평면 위의 거리로 바꾼 것이다.</div>
+    <p>조건 "\((a, b)\)를 중심으로 한 반지름 \(\delta\)인 원 안의 <b>모든</b> 점"이 핵심입니다. 어떤 길로 다가가든 그 길은 결국 이 원 안으로 들어오므로, 극한이 있으면 모든 경로를 따라 같은 값 \(L\)로 가야 합니다. 이것을 뒤집으면 극한이 없음을 보이는 가장 쉬운 방법이 됩니다.</p>
+    <div class="callout deep"><strong>정리 13.4 (두 경로 판정)</strong> \((a, b)\)로 가는 두 경로를 따라 \(f\)가 서로 다른 값으로 가면(또는 한 경로에서라도 극한이 없으면) \(\displaystyle\lim_{(x, y) \to (a, b)} f(x, y)\)는 존재하지 않는다.
+      <p style="margin:8px 0 0"><b>증명.</b> 극한 \(L\)이 있다고 하자. 경로 \(\mathbf{r}(t) \to (a, b)\) (\(\mathbf{r}(t) \ne (a, b)\))를 따라가면 충분히 큰 \(t\)부터 \(\mathbf{r}(t)\)가 반지름 \(\delta\)인 원 안에 들어오므로 \(|f(\mathbf{r}(t)) - L| \lt \varepsilon\). 즉 모든 경로에서 극한이 \(L\)이어야 하는데 두 값이 다르니 모순이다. ∎</p></div>
+    <div class="callout"><strong>예제 13.2 (세 함수, 세 가지 결말)</strong>
+      <ol>
+        <li>\(f(x, y) = \dfrac{xy}{x^2 + y^2}\). 직선 \(y = mx\)를 따라가면 \(f = \dfrac{mx^2}{x^2 + m^2x^2} = \dfrac{m}{1 + m^2}\)로 <b>기울기 \(m\)마다 다른 상수</b>다. \(m = 0\)이면 0, \(m = 1\)이면 \(\tfrac12\). 정리 13.4에 따라 극한이 없다.</li>
+        <li>\(g(x, y) = \dfrac{x^2y}{x^4 + y^2}\). 직선 \(y = mx\)에서는 \(g = \dfrac{mx^3}{x^4 + m^2x^2} = \dfrac{mx}{x^2 + m^2} \to 0\) (\(m = 0\)이나 \(y\)축을 따라가도 0). 그런데 포물선 \(y = x^2\)에서는 \(g = \dfrac{x^4}{x^4 + x^4} = \tfrac12\). <b>모든 직선에서 같아도 극한이 있다는 보장은 없다.</b></li>
+        <li>\(h(x, y) = \dfrac{x^2y}{x^2 + y^2}\). \(x^2 \le x^2 + y^2\)이므로 \(|h| \le |y| \le \sqrt{x^2 + y^2}\). 조임 정리로 \(h \to 0\)이다. 극좌표로 쓰면 \(h = r\cos^2\theta\sin\theta\), \(|h| \le r\)이 \(\theta\)와 상관없이 성립한다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>극좌표 판정의 함정</strong> "\(r \to 0\)일 때 0으로 간다"를 보이려면 \(\theta\)에 상관없는 상한 \(|f - L| \le B(r) \to 0\)이 필요합니다. 예제 13.2의 \(g\)를 극좌표로 쓰면 \(g = \dfrac{r\cos^2\theta\sin\theta}{r^2\cos^4\theta + \sin^2\theta}\)인데, \(\theta\)를 고정하면 \(r \to 0\)에서 0으로 가지만, \(\sin\theta \approx r\cos^2\theta\)처럼 \(\theta\)가 \(r\)과 함께 움직이면(포물선 경로) \(\tfrac12\)이 나옵니다. 고정된 \(\theta\)마다 확인하는 것은 직선 경로만 확인하는 것과 같습니다.</div>
+    <div class="callout deep"><strong>정의 13.5 (연속)</strong> \(\displaystyle\lim_{(x, y) \to (a, b)} f(x, y) = f(a, b)\)이면 \(f\)는 \((a, b)\)에서 <b>연속</b><span class="en">(continuous)</span>이다. 다항식은 어디서나 연속이고, 유리 함수는 분모가 0이 아닌 곳에서 연속이며, 연속 함수의 합·곱·합성은 연속이다(증명은 일변수와 같다).</div>
+    <p>그래서 \(e^{x - y}\cos(xy)\)나 \(\ln(1 + x^2 + y^2)\) 같은 식은 정의된 곳 어디서나 값을 대입하면 극한이 나옵니다. 문제는 예제 13.2처럼 분모가 0이 되는 점뿐입니다. 아래 시뮬레이터에서 직선 경로와 포물선 경로를 동시에 원점으로 보내 보세요.</p>
+
+    <div class="sim" id="sim-pd-paths">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>경로마다 다른 극한: 직선 vs 포물선</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pd-two">
+          <div><canvas id="pd-cv-paths"></canvas><span class="pd-cap">색 = f의 값(파랑 −1 … 빨강 +1)</span></div>
+          <div><canvas id="pd-cv-along"></canvas><span class="pd-cap">경로를 따라 본 f (가로: 원점까지의 x, 로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="pd-p-fn">
+            <option value="a">xy/(x² + y²) (예제 ①)</option>
+            <option value="b">x²y/(x⁴ + y²) (예제 ②)</option>
+            <option value="c">x²y/(x² + y²) (예제 ③)</option>
+            <option value="d">(x² − y²)/(x² + y²)</option>
+          </select></label>
+          <label class="ctrl"><span>직선 y = mx의 m <output id="pd-p-m-out"></output></span><input type="range" id="pd-p-m" min="-3" max="3" step="0.05" value="1"></label>
+          <label class="ctrl"><span>포물선 y = kx²의 k <output id="pd-p-k-out"></output></span><input type="range" id="pd-p-k" min="-3" max="3" step="0.05" value="1"></label>
+          <label class="ctrl"><span>원점까지 x <output id="pd-p-x-out"></output></span><input type="range" id="pd-p-x" min="-3" max="0" step="0.01" value="-0.3"></label>
+          <div class="btn-row"><button class="btn primary" id="pd-p-play">▶ 원점으로 보내기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">직선 위 f</span><span class="v" id="pd-p-lv">—</span></div>
+        <div class="stat"><span class="k">포물선 위 f</span><span class="v" id="pd-p-pv">—</span></div>
+        <div class="stat"><span class="k">직선 경로 극한</span><span class="v" id="pd-p-ll">—</span></div>
+        <div class="stat"><span class="k">포물선 경로 극한</span><span class="v" id="pd-p-pl">—</span></div>
+      </div>
+      <div class="pd-msg" id="pd-p-msg"></div>
+      <div class="sim-note">해볼 것: ① 함수 ①에서 m을 바꾸면 직선 경로의 극한이 m/(1 + m²)로 바뀝니다. 색 지도에서 원점을 중심으로 색이 부채꼴로 갈라지는 것이 그 이유입니다. ② 함수 ②에서는 어떤 m을 골라도 직선 극한이 0인데, 포물선 극한은 k/(1 + k²)입니다. 지도에서 포물선 모양의 빨간 띠를 찾아보세요. ③ 함수 ③은 모든 경로가 0으로 모입니다. 모델: 경로 극한은 x = 10<sup>−7</sup>에서 계산한 값으로 표시합니다. 원점 자체에서는 함수가 정의되지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="partials">
+    <h2>편도함수: 단면의 기울기</h2>
+    <div class="problem"><strong>온도만 올리면 압력은 얼마나 오를까</strong>
+      <p>밀폐된 용기 속 기체의 압력 \(P\)는 온도 \(T\)와 부피 \(V\)에 달려 있습니다. 부피를 고정한 채 온도만 1 K 올리면 압력이 얼마나 오르는지, 온도를 고정한 채 부피만 1 L 줄이면 얼마나 오르는지는 서로 다른 질문입니다. 변수가 둘이면 "변화율"이 적어도 둘입니다.</p></div>
+    <p>요령은 간단합니다. 변수 하나만 움직이고 나머지는 얼려 두면 일변수 함수가 되므로, 그 함수를 미분하면 됩니다. 기하적으로는 곡면 \(z = f(x, y)\)를 수직 평면 \(y = b\)로 자른 단면 곡선 \(z = f(x, b)\)의 기울기입니다.</p>
+    <div class="callout deep"><strong>정의 13.6 (편도함수)</strong> \(f\)의 점 \((a, b)\)에서 \(x\)에 대한 <span class="term">편도함수</span><span class="en">(partial derivative)</span>는
+      <div class="formula">$$f_x(a, b) = \frac{\partial f}{\partial x}(a, b) = \lim_{h \to 0}\frac{f(a + h, b) - f(a, b)}{h},$$</div>
+      \(y\)에 대한 편도함수는 \(f_y(a, b) = \displaystyle\lim_{h \to 0}\frac{f(a, b + h) - f(a, b)}{h}\)이다. 극한이 있을 때 정의된다. 기호 \(\partial\)("라운드 디" 또는 "파셜")는 다른 변수가 고정되어 있음을 알리는 표시다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="곡면을 두 방향으로 자른 단면과 그 기울기">
+        <rect x="10" y="10" width="360" height="250" rx="10" class="f-surface"/>
+        <rect x="390" y="10" width="360" height="250" rx="10" class="f-surface"/>
+        <text x="24" y="34" class="t" style="font-weight:700">y = b로 자른 단면: z = f(x, b)</text>
+        <text x="404" y="34" class="t" style="font-weight:700">x = a로 자른 단면: z = f(a, y)</text>
+        <line x1="40" y1="220" x2="350" y2="220" class="s-axis"/><line x1="50" y1="230" x2="50" y2="50" class="s-axis"/>
+        <text x="338" y="240" class="t-mono">x</text><text x="58" y="60" class="t-mono">z</text>
+        <path d="M60 200 C 120 190 170 80 230 90 C 280 98 310 160 345 175" fill="none" class="s-acc" style="stroke-width:3"/>
+        <line x1="120" y1="196" x2="260" y2="58" style="stroke:var(--warn);stroke-width:2"/>
+        <circle cx="180" cy="137" r="5" style="fill:var(--accent)"/>
+        <line x1="180" y1="137" x2="180" y2="220" style="stroke:var(--text-faint);stroke-dasharray:3 4"/>
+        <text x="172" y="240" class="t-mono">a</text>
+        <text x="200" y="70" class="t" style="fill:var(--warn);font-weight:700">기울기 = fₓ(a, b)</text>
+        <line x1="420" y1="220" x2="730" y2="220" class="s-axis"/><line x1="430" y1="230" x2="430" y2="50" class="s-axis"/>
+        <text x="718" y="240" class="t-mono">y</text><text x="438" y="60" class="t-mono">z</text>
+        <path d="M440 90 C 500 96 560 120 610 160 C 650 190 690 200 725 205" fill="none" style="stroke:var(--accent-2);stroke-width:3"/>
+        <line x1="500" y1="96" x2="680" y2="214" style="stroke:var(--warn);stroke-width:2"/>
+        <circle cx="575" cy="135" r="5" style="fill:var(--accent-2)"/>
+        <line x1="575" y1="135" x2="575" y2="220" style="stroke:var(--text-faint);stroke-dasharray:3 4"/>
+        <text x="569" y="240" class="t-mono">b</text>
+        <text x="600" y="118" class="t" style="fill:var(--warn);font-weight:700">기울기 = f_y(a, b) &lt; 0</text>
+      </svg>
+      <figcaption><b>그림 13-2.</b> 같은 점 (a, b)에서도 x 방향 단면(왼쪽)은 오르막이고 y 방향 단면(오른쪽)은 내리막일 수 있다. 편도함수 fₓ와 f_y는 각 단면 곡선의 접선 기울기다. 두 숫자로는 곡면의 경사를 다 말할 수 없고, 다른 방향의 기울기는 14장의 방향 도함수가 다룬다.</figcaption>
+    </figure>
+    <p>계산 규칙은 일변수와 똑같습니다. \(f_x\)를 구할 때는 \(y\)를 숫자처럼 다루고 \(x\)로 미분하면 됩니다. 곱·몫·연쇄 법칙이 모두 그대로 통합니다.</p>
+    <div class="callout"><strong>예제 13.3 (편도함수 계산)</strong> \(f(x, y) = x^2y - 3xy^2 + e^{x - y}\)의 \(f_x\), \(f_y\)와 점 \((1, 1)\)에서의 값을 구하라.
+      <ol>
+        <li>\(y\)를 상수로: \(f_x = 2xy - 3y^2 + e^{x - y}\). (\(e^{x-y}\)를 \(x\)로 미분하면 연쇄 법칙으로 \(e^{x-y}\cdot 1\).)</li>
+        <li>\(x\)를 상수로: \(f_y = x^2 - 6xy - e^{x - y}\). (\(\partial(x - y)/\partial y = -1\).)</li>
+        <li>\((1, 1)\)에서: \(f(1, 1) = 1 - 3 + 1 = -1\), \(f_x = 2 - 3 + 1 = 0\), \(f_y = 1 - 6 - 1 = -6\).</li>
+        <li>해석: 이 점에서 \(x\) 방향 단면은 수평이고(접선 기울기 0), \(y\) 방향으로는 1만큼 갈 때 약 6만큼 내려간다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 13.4 (편도함수의 단위: 이상 기체)</strong> 1 mol의 이상 기체는 \(P = RT/V\) (\(R = 8.314\ \mathrm{J/(mol\cdot K)}\))를 따른다. \(T = 300\ \mathrm{K}\), \(V = 0.025\ \mathrm{m^3}\)에서
+      <ol>
+        <li>\(P = 8.314 \times 300 / 0.025 \approx 99\,770\ \mathrm{Pa}\), 대략 1기압.</li>
+        <li>\(\partial P/\partial T = R/V = 8.314/0.025 \approx 332.6\ \mathrm{Pa/K}\). 부피를 고정하고 1 K 데우면 약 333 Pa 오른다.</li>
+        <li>\(\partial P/\partial V = -RT/V^2 \approx -3.99\times 10^6\ \mathrm{Pa/m^3}\), 즉 1 L(\(10^{-3}\,\mathrm{m^3}\))당 약 \(-3.99\ \mathrm{kPa}\). 온도를 고정하고 1 L 줄이면 약 4 kPa 오른다.</li>
+      </ol>
+      편도함수의 단위는 언제나 (함수의 단위)/(그 변수의 단위)다. 열역학 교과서가 \((\partial P/\partial T)_V\)처럼 고정한 변수를 아래 첨자로 적는 것은, 무엇을 고정하느냐에 따라 값이 달라지기 때문이다.</div>
+
+    <div class="sim" id="sim-pd-slice">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>단면 자르기: x 고정, y 고정</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pd-two">
+          <div><canvas id="pd-cv-slice3"></canvas><span class="pd-cap">곡면과 자르는 평면</span><span class="hint">끌어서 돌리기</span></div>
+          <div><canvas id="pd-cv-slice2"></canvas><span class="pd-cap" id="pd-sl-cap">단면 곡선과 접선</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="pd-sl-fn">
+            <option value="ex">x²y − 3xy² + e^(x−y) (예제 13.3)</option>
+            <option value="para">4 − x² − 2y²</option>
+            <option value="hill">2e^(−(x²+y²)/2) + 0.3x</option>
+            <option value="wave">sin x · cos y</option>
+          </select></label>
+          <div class="ctrl"><span>자르는 방향</span><div class="seg" id="pd-sl-dir"><button data-value="x" class="on">y = b 고정 → ∂f/∂x</button><button data-value="y">x = a 고정 → ∂f/∂y</button></div></div>
+          <label class="ctrl"><span>a <output id="pd-sl-a-out"></output></span><input type="range" id="pd-sl-a" min="-1.8" max="1.8" step="0.05" value="1"></label>
+          <label class="ctrl"><span>b <output id="pd-sl-b-out"></output></span><input type="range" id="pd-sl-b" min="-1.8" max="1.8" step="0.05" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">f(a, b)</span><span class="v" id="pd-sl-f">—</span></div>
+        <div class="stat"><span class="k">∂f/∂x (a, b)</span><span class="v" id="pd-sl-fx">—</span></div>
+        <div class="stat"><span class="k">∂f/∂y (a, b)</span><span class="v" id="pd-sl-fy">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 13.3의 점 (1, 1)에서 두 방향을 번갈아 보세요. x 방향 접선은 수평(0), y 방향은 −6입니다. ② '4 − x² − 2y²'에서 ∂f/∂x = −2a는 b와 상관이 없습니다. b를 움직여도 x 방향 기울기가 그대로인지 확인해 보세요. ③ 곡면을 돌려 자르는 평면을 정면에서 보면 아래 그래프와 같은 모양이 됩니다. 모델: 편도함수는 중심 차분 (f(a + h, b) − f(a − h, b))/2h, h = 10<sup>−5</sup>로 계산합니다.</div>
+    </div>
+    <div class="callout warn"><strong>편도함수가 있어도 연속이 아닐 수 있다</strong> 예제 13.2의 \(f = xy/(x^2 + y^2)\)에 \(f(0, 0) = 0\)을 붙여 정의하면, \(x\)축 위에서 \(f(h, 0) = 0\)이므로 \(f_x(0, 0) = 0\), 마찬가지로 \(f_y(0, 0) = 0\)입니다. 두 편도함수가 다 있는데도 \(f\)는 원점에서 극한조차 없습니다. 편도함수는 <b>두 축 방향의 정보만</b> 보기 때문입니다. 일변수에서 "미분 가능하면 연속"이었던 것을 되찾으려면 더 강한 개념이 필요합니다. 그것이 5절의 미분 가능성입니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="higher">
+    <h2>고계 편도함수와 클레로 정리</h2>
+    <p>\(f_x\)와 \(f_y\)도 다시 2변수 함수이므로 또 편미분할 수 있습니다. 2계 편도함수는 네 개입니다.</p>
+    <div class="formula">$$f_{xx} = \frac{\partial^2 f}{\partial x^2},\qquad f_{yy} = \frac{\partial^2 f}{\partial y^2},\qquad f_{xy} = (f_x)_y = \frac{\partial^2 f}{\partial y\,\partial x},\qquad f_{yx} = (f_y)_x = \frac{\partial^2 f}{\partial x\,\partial y}.$$
+      <div class="where">아래 첨자 표기는 <b>왼쪽부터</b> 미분하고, \(\partial\) 표기는 <b>오른쪽(분모 쪽 가까운 것)부터</b> 미분한다. \(f_{xy}\)와 \(f_{yx}\)를 <span class="term">혼합 편도함수</span><span class="en">(mixed partial derivatives)</span>라 한다.</div></div>
+    <p>\(f_{xx}\)는 \(x\) 방향 단면의 오목·볼록(휘어짐)이고, 혼합 편도함수 \(f_{xy}\)는 "\(y\)로 옮겨 갈수록 \(x\) 방향 기울기가 얼마나 변하는가", 즉 곡면의 <b>비틀림</b>입니다.</p>
+    <div class="callout"><strong>예제 13.5 (2계 편도함수 넷)</strong> \(f(x, y) = x^3 + x^2y^3 - 2y^2\).
+      <ol>
+        <li>1계: \(f_x = 3x^2 + 2xy^3\), \(f_y = 3x^2y^2 - 4y\).</li>
+        <li>2계: \(f_{xx} = 6x + 2y^3\), \(f_{yy} = 6x^2y - 4\).</li>
+        <li>혼합: \(f_{xy} = \partial_y(3x^2 + 2xy^3) = 6xy^2\), \(f_{yx} = \partial_x(3x^2y^2 - 4y) = 6xy^2\). <b>두 값이 같다.</b></li>
+        <li>점 \((1, 2)\)에서: \(f_{xx} = 22\), \(f_{yy} = 4\), \(f_{xy} = f_{yx} = 24\).</li>
+      </ol></div>
+    <p>혼합 편도함수가 같은 것은 우연이 아닙니다. 웬만큼 매끄러운 함수에서는 언제나 그렇습니다.</p>
+    <div class="callout deep"><strong>정리 13.7 (클레로 정리)</strong> \(f_{xy}\)와 \(f_{yx}\)가 점 \((a, b)\)를 포함하는 열린 원판에서 연속이면 \(f_{xy}(a, b) = f_{yx}(a, b)\)이다. 이를 <span class="term">클레로 정리</span><span class="en">(Clairaut's theorem)</span> 또는 슈바르츠 정리라 부른다.
+      <p style="margin:8px 0 0"><b>증명 아이디어.</b> 네 점에서의 값으로 만든 <b>혼합 차분</b>
+        \(\Delta(h, k) = f(a + h, b + k) - f(a + h, b) - f(a, b + k) + f(a, b)\)을 보자. \(g(x) = f(x, b + k) - f(x, b)\)로 두면 \(\Delta = g(a + h) - g(a)\)이고, 평균값 정리를 \(x\)에 한 번, 그다음 \(f_x\)에 \(y\)로 한 번 쓰면 \(\Delta = hk\,f_{xy}(\xi, \eta)\)인 점 \((\xi, \eta)\)가 사각형 안에 있다. 순서를 바꿔 \(y\)를 먼저 하면 \(\Delta = hk\,f_{yx}(\xi', \eta')\). 따라서 \(f_{xy}(\xi, \eta) = f_{yx}(\xi', \eta')\)이고, \(h, k \to 0\)일 때 두 점이 모두 \((a, b)\)로 가므로 연속성에서 결론이 나온다. ∎</p></div>
+    <p>증명의 \(\Delta(h, k)/(hk)\)는 \(f_{xy}\)와 \(f_{yx}\) 어느 쪽의 근사이기도 합니다. 그런데 연속성 조건이 깨지면 \(h\)를 먼저 0으로 보내느냐, \(k\)를 먼저 보내느냐에 따라 다른 값이 나올 수 있습니다.</p>
+    <div class="callout warn"><strong>반례</strong> \(f(x, y) = \dfrac{xy(x^2 - y^2)}{x^2 + y^2}\), \(f(0, 0) = 0\). 원점 밖에서 계산하면 \(f_x(0, y) = -y\)이므로 \(f_{xy}(0, 0) = -1\), \(f_y(x, 0) = x\)이므로 \(f_{yx}(0, 0) = 1\)입니다. 두 혼합 편도함수가 다릅니다. 이 함수는 두 축 위에서 0이라 \(\Delta(h, k) = f(h, k)\)이고, \(\Delta/(hk) = (h^2 - k^2)/(h^2 + k^2)\)는 \(k \ll h\)이면 1, \(h \ll k\)이면 −1에 가깝습니다. \(f_{xy}\)는 \(h\)를 먼저 0으로 보낸 뒤 \(k\)를 보내는 반복 극한(\(h \ll k\) 쪽)이라 −1, \(f_{yx}\)는 그 반대라 +1이 됩니다. 혼합 편도함수가 원점에서 연속이 아닌 것입니다.</div>
+
+    <div class="sim" id="sim-pd-mixed">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>혼합 차분 Δ(h, k)/(hk): 확대하면 한 값으로 모이나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pd-cv-mixed"></canvas><span class="tag-tl" id="pd-m-tag">(h, k) 평면 · 색 = Δ/(hk)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 기준점</span><select id="pd-m-fn">
+            <option value="bad">xy(x² − y²)/(x² + y²), (0, 0) (반례)</option>
+            <option value="exp">e^(xy), (0, 0)</option>
+            <option value="poly">x³y + xy², (0.5, 0.5)</option>
+          </select></label>
+          <label class="ctrl"><span>확대: 창 크기 r <output id="pd-m-r-out"></output></span><input type="range" id="pd-m-r" min="-3" max="0" step="0.05" value="0"></label>
+          <div class="btn-row"><button class="btn primary" id="pd-m-zoom">▶ 계속 확대</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">끈 점의 Δ/(hk)</span><span class="v" id="pd-m-q">—</span></div>
+        <div class="stat"><span class="k">k ≪ h 쪽 (h를 나중에 → f<sub>yx</sub>)</span><span class="v" id="pd-m-qh">—</span></div>
+        <div class="stat"><span class="k">h ≪ k 쪽 (h를 먼저 → f<sub>xy</sub>)</span><span class="v" id="pd-m-qk">—</span></div>
+        <div class="stat"><span class="k">f<sub>xy</sub>, f<sub>yx</sub> (정확값)</span><span class="v" id="pd-m-ex">—</span></div>
+      </div>
+      <div class="pd-msg" id="pd-m-msg"></div>
+      <div class="sim-note">해볼 것: ① 'e^(xy)'에서 r을 줄이면 색이 한 가지(값 1)로 고르게 바뀝니다. 혼합 편도함수가 연속이면 어느 방향으로 다가가도 같은 값입니다. ② '반례'는 아무리 확대해도 무늬가 그대로입니다. 가로축 근처는 +1(빨강), 세로축 근처는 −1(파랑)이고, 확대는 무늬를 바꾸지 못합니다. ③ 점을 끌면 사각형 네 꼭짓점(+, −, −, +)이 혼합 차분에 들어가는 네 함숫값입니다. 모델: 색 범위는 기준값 ± 1.5, 축 위(h = 0 또는 k = 0)는 정의되지 않습니다.</div>
+    </div>
+    <div class="callout tip"><strong>쓰이는 곳: 열역학의 맥스웰 관계식</strong> 내부 에너지 \(U(S, V)\)의 전미분이 \(dU = T\,dS - P\,dV\)라는 것은 \(\partial U/\partial S = T\), \(\partial U/\partial V = -P\)라는 뜻입니다. 클레로 정리 \(U_{SV} = U_{VS}\)를 쓰면 곧바로 \((\partial T/\partial V)_S = -(\partial P/\partial S)_V\)가 나옵니다. 재기 어려운 양(엔트로피의 변화)을 재기 쉬운 양(온도·압력)으로 바꾸는 맥스웰 관계식들은 모두 이런 식으로 혼합 편도함수의 대칭에서 나옵니다.</div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="tangent-plane">
+    <h2>접평면과 선형 근사: 확대하면 평면이 된다</h2>
+    <div class="problem"><strong>곡면을 아주 가까이서 보면</strong>
+      <p>일변수에서 매끄러운 곡선은 확대할수록 직선(접선)처럼 보였고, 그것이 미분의 기하적 뜻이었습니다(<a href="derivative.html">3장</a>). 지구 표면이 우리 발밑에서 평평해 보이듯, 매끄러운 곡면은 확대하면 평면처럼 보일까요? 그 평면은 무엇일까요?</p></div>
+    <p>점 \((a, b, f(a, b))\)를 지나는 두 단면 곡선의 접선을 생각합니다. \(x\) 방향 접선의 방향은 \((1, 0, f_x)\), \(y\) 방향 접선의 방향은 \((0, 1, f_y)\)입니다. 두 직선을 모두 품는 평면은 하나뿐이고, 그것이 후보입니다.</p>
+    <div class="formula">$$z = f(a, b) + f_x(a, b)\,(x - a) + f_y(a, b)\,(y - b).$$
+      <div class="where">이 평면을 점 \((a, b)\)에서의 <span class="term">접평면</span><span class="en">(tangent plane)</span>이라 하고, 우변의 1차식 \(L(x, y)\)를 \(f\)의 <span class="term">선형화</span><span class="en">(linearization)</span>라 한다. 법선 벡터는 \((f_x, f_y, -1)\)이다.</div></div>
+    <p>그런데 3절의 경고가 말하듯, 두 편도함수가 있다고 해서 곡면이 정말 이 평면에 붙어 있는 것은 아닙니다. 편도함수는 두 축 방향만 보니까요. 그래서 다변수에서는 "확대하면 평면이 된다"를 직접 정의로 삼습니다.</p>
+    <div class="callout deep"><strong>정의 13.8 (미분 가능성)</strong> \(f_x(a, b)\), \(f_y(a, b)\)가 있고
+      <div class="formula">$$\lim_{(h, k) \to (0, 0)}\frac{f(a + h, b + k) - f(a, b) - f_x(a, b)\,h - f_y(a, b)\,k}{\sqrt{h^2 + k^2}} = 0$$</div>
+      이면 \(f\)는 \((a, b)\)에서 <b>미분 가능</b><span class="en">(differentiable)</span>하다고 한다. 즉 선형 근사의 오차가 거리 \(\sqrt{h^2 + k^2}\)보다 <b>빨리</b> 0으로 가야 한다.</div>
+    <div class="callout deep"><strong>정리 13.9 (미분 가능성의 두 얼굴)</strong>
+      <ol style="margin:6px 0 0">
+        <li>\(f\)가 \((a, b)\)에서 미분 가능하면 그 점에서 연속이다.</li>
+        <li>\(f_x\)와 \(f_y\)가 \((a, b)\) 근처에서 존재하고 \((a, b)\)에서 연속이면 \(f\)는 \((a, b)\)에서 미분 가능하다.</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명.</b> ① 정의의 분자를 \(E(h, k)\)라 하면 \(E = \sqrt{h^2 + k^2}\cdot\bigl(E/\sqrt{h^2 + k^2}\bigr) \to 0\cdot 0\)이므로 \(f(a + h, b + k) \to f(a, b)\). ② \(f(a + h, b + k) - f(a, b) = [f(a + h, b + k) - f(a, b + k)] + [f(a, b + k) - f(a, b)]\)로 쪼개 각 괄호에 평균값 정리를 쓰면 \(= f_x(a + \theta_1 h, b + k)\,h + f_y(a, b + \theta_2 k)\,k\) (\(0 \lt \theta_i \lt 1\)). 편도함수가 연속이므로 \(f_x(a + \theta_1h, b + k) = f_x(a, b) + \varepsilon_1\), \(f_y(\cdot) = f_y(a, b) + \varepsilon_2\) (\(\varepsilon_i \to 0\))이고, 오차는 \(|\varepsilon_1 h + \varepsilon_2 k| \le (|\varepsilon_1| + |\varepsilon_2|)\sqrt{h^2 + k^2}\). ∎</p></div>
+    <p>정리 13.9 ②의 조건(편도함수가 연속, 이른바 \(C^1\) 함수)은 다항식, 지수·삼각 함수의 조합처럼 우리가 쓰는 거의 모든 식에서 성립합니다. 그래서 실제 계산에서는 "편도함수를 구하고, 그것이 연속인지 본다"가 미분 가능성 판정의 표준 절차입니다.</p>
+    <div class="callout"><strong>예제 13.6 (선형 근사로 어림하기)</strong> \(f(x, y) = x\,e^{xy}\)의 \((1, 0)\)에서 선형화를 구하고 \(f(1.1, -0.1)\)를 어림하라.
+      <ol>
+        <li>\(f(1, 0) = 1\). \(f_x = e^{xy} + xy\,e^{xy}\)이므로 \(f_x(1, 0) = 1\). \(f_y = x^2e^{xy}\)이므로 \(f_y(1, 0) = 1\). 편도함수가 모두 연속이니 미분 가능하다.</li>
+        <li>\(L(x, y) = 1 + (x - 1) + y = x + y\).</li>
+        <li>\(f(1.1, -0.1) \approx L(1.1, -0.1) = 1.0\). 참값은 \(1.1\,e^{-0.11} \approx 0.9854\), 오차 약 0.015.</li>
+        <li>오차의 크기: 거리 \(\sqrt{0.1^2 + 0.1^2} \approx 0.141\)에 대해 오차/거리 ≈ 0.10. 거리를 절반으로 줄이면 이 비도 대략 절반으로 준다(다음 시뮬레이터).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pd-tangent">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>접평면 확대경: 곡면이 평면에 붙는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pd-two">
+          <div><canvas id="pd-cv-tan3"></canvas><span class="pd-cap" id="pd-t-cap">곡면과 접평면</span><span class="hint">끌어서 돌리기</span></div>
+          <div><canvas id="pd-cv-tanerr"></canvas><span class="pd-cap">최대 오차 / 창 크기 (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="pd-t-fn">
+            <option value="ex">x·e^(xy) (예제 13.6)</option>
+            <option value="hill">2e^(−(x²+y²)/2)</option>
+            <option value="cone">원뿔 √(x² + y²)</option>
+            <option value="bad">xy/(x² + y²), f(0, 0) = 0</option>
+          </select></label>
+          <label class="ctrl"><span>점 a <output id="pd-t-a-out"></output></span><input type="range" id="pd-t-a" min="-1.5" max="1.5" step="0.05" value="1"></label>
+          <label class="ctrl"><span>점 b <output id="pd-t-b-out"></output></span><input type="range" id="pd-t-b" min="-1.5" max="1.5" step="0.05" value="0"></label>
+          <label class="ctrl"><span>창 반폭 w (확대) <output id="pd-t-w-out"></output></span><input type="range" id="pd-t-w" min="-2" max="0.3" step="0.02" value="0"></label>
+          <div class="btn-row"><button class="btn" id="pd-t-origin">원점으로</button><button class="btn primary" id="pd-t-zoom">▶ 확대</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">선형화 L(x, y)</span><span class="v" id="pd-t-L">—</span></div>
+        <div class="stat"><span class="k">창 안 최대 오차 E</span><span class="v" id="pd-t-E">—</span></div>
+        <div class="stat"><span class="k">E / w</span><span class="v" id="pd-t-Ew">—</span></div>
+      </div>
+      <div class="pd-msg" id="pd-t-msg"></div>
+      <div class="sim-note">해볼 것: ① 예제 13.6에서 w를 줄이면 곡면과 평면이 구별되지 않을 만큼 붙고, 아래 그래프의 E/w가 기울기 1의 직선으로 줄어듭니다(오차 ∝ w²). ② '원뿔'의 원점에서는 아무리 확대해도 뾰족한 모양이 그대로이고 E/w가 상수입니다. 편도함수가 없습니다. ③ 'xy/(x² + y²)'의 원점에서는 두 편도함수가 0이라 평면 z = 0이 나오지만, 곡면이 그 평면에서 계속 떨어져 있어 E/w가 오히려 커집니다. 모델: 높이 축은 창 안의 값에 맞춰 늘립니다. E는 창 안 25×25 격자의 최대 |f − L|입니다.</div>
+    </div>
+    <p>선형 근사는 벡터로 쓰면 더 간결합니다. \(\mathbf{h} = (h, k)\)라 하면 \(f(\mathbf{a} + \mathbf{h}) \approx f(\mathbf{a}) + (f_x, f_y)\cdot\mathbf{h}\). 편도함수를 모은 벡터 \((f_x, f_y)\)가 바로 <a href="gradient.html">14장</a>의 주인공 그래디언트 \(\nabla f\)이고, 그 장에서 이 내적이 모든 방향의 기울기를 한꺼번에 준다는 것을 봅니다.</p>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="differential">
+    <h2>전미분과 오차 전파</h2>
+    <div class="problem"><strong>자로 잰 치수, 계산한 부피</strong>
+      <p>원기둥 탱크의 반지름과 높이를 줄자로 쟀습니다. 두 측정 모두 오차가 있습니다. 계산한 부피는 얼마나 틀릴 수 있을까요? 그리고 정밀도를 높이려면 반지름과 높이 중 어느 쪽을 더 잘 재야 할까요?</p></div>
+    <p>선형 근사의 변화량 부분만 떼어 이름을 붙인 것이 전미분입니다. <a href="optimization.html">6장</a>의 일변수 미분 \(dy = f'(x)\,dx\)를 변수마다 더한 것입니다.</p>
+    <div class="callout deep"><strong>정의 13.10 (전미분)</strong> 미분 가능한 \(z = f(x, y)\)의 <span class="term">전미분</span><span class="en">(total differential)</span>은
+      <div class="formula">$$dz = \frac{\partial f}{\partial x}\,dx + \frac{\partial f}{\partial y}\,dy$$</div>
+      이다. \(dx = \Delta x\), \(dy = \Delta y\)가 작으면 실제 변화량 \(\Delta z\)는 \(dz\)로 근사된다. 변수가 \(n\)개이면 \(dz = \sum_i (\partial f/\partial x_i)\,dx_i\).</div>
+    <p>측정 오차에 적용하면 두 가지 어림이 나옵니다. 오차의 부호를 모르고 최악의 경우를 대비하면 절댓값을 더하고, 두 오차가 서로 독립인 우연 오차(표준 편차 \(\sigma_x, \sigma_y\))이면 제곱해서 더합니다.</p>
+    <div class="formula">$$|\Delta z| \lesssim \left|f_x\right||\Delta x| + \left|f_y\right||\Delta y| \quad(\text{최악}), \qquad \sigma_z \approx \sqrt{f_x^2\,\sigma_x^2 + f_y^2\,\sigma_y^2} \quad(\text{독립 오차}).$$
+      <div class="where">두 번째 식은 1차 근사 \(\Delta z \approx f_x\Delta x + f_y\Delta y\)의 분산에서 나온다. 상관이 있을 때의 공식과 유도는 <a href="../../probability/chapters/joint.html#propagation">확률과 통계 6장 오차 전파</a>.</div></div>
+    <p>곱과 거듭제곱 꼴 \(z = C\,x^p y^q\)에서는 로그를 취해 미분하면 <b>상대 오차</b>가 지수만큼의 가중치로 더해집니다: \(\dfrac{dz}{z} = p\,\dfrac{dx}{x} + q\,\dfrac{dy}{y}\). 지수가 큰 변수의 측정이 가장 중요합니다.</p>
+    <div class="callout"><strong>예제 13.7 (원기둥 부피의 오차)</strong> 반지름 \(r = 5\ \mathrm{cm}\) (오차 ±0.1 cm), 높이 \(h = 12\ \mathrm{cm}\) (오차 ±0.2 cm)로 잰 원기둥의 부피 \(V = \pi r^2h\)의 오차를 어림하라.
+      <ol>
+        <li>명목값: \(V = \pi\cdot 25\cdot 12 = 300\pi \approx 942.5\ \mathrm{cm^3}\).</li>
+        <li>편도함수: \(V_r = 2\pi rh = 120\pi\), \(V_h = \pi r^2 = 25\pi\).</li>
+        <li>최악의 경우: \(|dV| \le 120\pi(0.1) + 25\pi(0.2) = 12\pi + 5\pi = 17\pi \approx 53.4\ \mathrm{cm^3}\), 상대 오차 \(17/300 \approx 5.7\%\). 상대 오차 공식으로도 \(2(0.1/5) + 0.2/12 = 4\% + 1.67\% \approx 5.7\%\).</li>
+        <li>독립 우연 오차로 보면: \(\sqrt{(12\pi)^2 + (5\pi)^2} = 13\pi \approx 40.8\ \mathrm{cm^3}\).</li>
+        <li>결론: 반지름 항(12π)이 높이 항(5π)보다 두 배 넘게 크다. 반지름을 지수 2로 쓰기 때문이다. 정밀도를 높이려면 반지름을 더 잘 재야 한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pd-error">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차 전파 계산기: 전미분 vs 몬테카를로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pd-cv-err"></canvas><span class="tag-tl">계산값의 분포 (입력에 정규 오차 4000번)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>공식</span><select id="pd-e-fn">
+            <option value="cyl">원기둥 V = πr²h (예제 13.7)</option>
+            <option value="pend">진자로 잰 중력 g = 4π²L/T²</option>
+            <option value="pow">저항 전력 P = V²/R</option>
+          </select></label>
+          <label class="ctrl"><span><b id="pd-e-l1" style="font-weight:inherit">x</b> <output id="pd-e-x-out"></output></span><input type="range" id="pd-e-x" min="0" max="1" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span><b id="pd-e-l2" style="font-weight:inherit">dx</b> <output id="pd-e-dx-out"></output></span><input type="range" id="pd-e-dx" min="0" max="1" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span><b id="pd-e-l3" style="font-weight:inherit">y</b> <output id="pd-e-y-out"></output></span><input type="range" id="pd-e-y" min="0" max="1" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span><b id="pd-e-l4" style="font-weight:inherit">dy</b> <output id="pd-e-dy-out"></output></span><input type="range" id="pd-e-dy" min="0" max="1" step="0.01" value="0.5"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">명목값</span><span class="v" id="pd-e-z">—</span></div>
+        <div class="stat"><span class="k">기여 |f₁|Δ₁, |f₂|Δ₂</span><span class="v" id="pd-e-terms">—</span></div>
+        <div class="stat"><span class="k">최악 합 (상대)</span><span class="v" id="pd-e-worst">—</span></div>
+        <div class="stat"><span class="k">제곱합 √ vs 몬테카를로 σ</span><span class="v" id="pd-e-rss">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 13.7의 값에서 반지름 오차를 절반으로 줄여 보세요. 높이 오차를 절반으로 줄일 때보다 분포가 훨씬 좁아집니다. ② 진자 공식에서 주기 T의 오차는 지수 2로 들어갑니다. 상대 오차 2ΔT/T + ΔL/L을 확인하세요. ③ 오차를 크게 키우면 몬테카를로 분포가 비대칭이 되고 σ가 제곱합 어림에서 벗어납니다. 1차 근사의 한계입니다. 모델: 입력은 서로 독립인 정규 분포(표준 편차 = Δ), 고정 시드 난수. 빨간 점선은 ±최악 합, 파란 점선은 ±제곱합.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="chain-rule">
+    <h2>다변수 연쇄 법칙과 음함수 미분</h2>
+    <div class="problem"><strong>움직이는 센서가 느끼는 온도 변화</strong>
+      <p>공장 바닥의 온도 분포 \(T(x, y)\)는 알고, 드론이 정해진 경로 \((x(t), y(t))\)를 따라 날며 온도를 잽니다. 드론의 센서가 느끼는 온도 변화율 \(dT/dt\)는 얼마일까요? \(T\)를 \(t\)의 식으로 다 대입해서 미분할 수도 있지만, 공간의 기울기와 드론의 속도를 따로 알고 있다면 그 둘로 곧장 계산할 수 있어야 합니다.</p></div>
+    <div class="callout deep"><strong>정리 13.11 (연쇄 법칙: 경로를 따라)</strong> \(z = f(x, y)\)가 미분 가능하고 \(x = x(t)\), \(y = y(t)\)가 미분 가능하면
+      <div class="formula">$$\frac{dz}{dt} = \frac{\partial z}{\partial x}\frac{dx}{dt} + \frac{\partial z}{\partial y}\frac{dy}{dt}.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(t\)가 \(\Delta t\)만큼 변할 때 \(\Delta x\), \(\Delta y\)가 생긴다. 미분 가능성(정의 13.8)으로 \(\Delta z = f_x\Delta x + f_y\Delta y + \varepsilon\sqrt{\Delta x^2 + \Delta y^2}\), \(\varepsilon \to 0\). 양변을 \(\Delta t\)로 나누고 \(\Delta t \to 0\)으로 보내면 \(\Delta x/\Delta t \to x'(t)\), \(\Delta y/\Delta t \to y'(t)\)이고 마지막 항은 \(\varepsilon\sqrt{(\Delta x/\Delta t)^2 + (\Delta y/\Delta t)^2} \to 0\cdot\sqrt{x'^2 + y'^2} = 0\). ∎</p></div>
+    <p>이 증명에서 미분 가능성이 필요한 이유가 드러납니다. 편도함수만 있으면 축 방향으로 움직일 때만 기울기를 알 수 있는데, 경로는 비스듬히 움직이니까요. 일변수 연쇄 법칙(<a href="chain-rule.html">4장</a>)이 "배율의 곱"이었다면, 다변수 연쇄 법칙은 <b>경로마다 배율을 곱하고, 경로끼리 더하는</b> 규칙입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="연쇄 법칙의 나무 그림">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <g style="font-weight:700">
+          <circle cx="150" cy="50" r="20" class="f-acc-soft"/><text x="150" y="55" text-anchor="middle" class="t">z</text>
+          <circle cx="80" cy="130" r="20" class="f-acc2-soft"/><text x="80" y="135" text-anchor="middle" class="t">x</text>
+          <circle cx="220" cy="130" r="20" class="f-acc2-soft"/><text x="220" y="135" text-anchor="middle" class="t">y</text>
+          <circle cx="80" cy="210" r="18" class="f-elev"/><text x="80" y="215" text-anchor="middle" class="t">t</text>
+          <circle cx="220" cy="210" r="18" class="f-elev"/><text x="220" y="215" text-anchor="middle" class="t">t</text>
+        </g>
+        <line x1="138" y1="66" x2="92" y2="113" class="s-line"/><line x1="162" y1="66" x2="208" y2="113" class="s-line"/>
+        <line x1="80" y1="150" x2="80" y2="192" class="s-line"/><line x1="220" y1="150" x2="220" y2="192" class="s-line"/>
+        <text x="62" y="88" class="t-mono" text-anchor="end">∂z/∂x</text><text x="238" y="88" class="t-mono">∂z/∂y</text>
+        <text x="90" y="176" class="t-mono">dx/dt</text><text x="230" y="176" class="t-mono">dy/dt</text>
+        <text x="300" y="60" class="t" style="font-weight:700">z에서 t까지 가는 길이 두 갈래</text>
+        <text x="300" y="92" class="t-mono">dz/dt = (∂z/∂x)(dx/dt) + (∂z/∂y)(dy/dt)</text>
+        <text x="300" y="124" class="t-dim">한 갈래 안에서는 배율을 곱하고, 갈래끼리는 더한다.</text>
+        <text x="300" y="164" class="t" style="font-weight:700">변수가 s, t 둘이면</text>
+        <text x="300" y="194" class="t-mono">∂z/∂s = (∂z/∂x)(∂x/∂s) + (∂z/∂y)(∂y/∂s)</text>
+        <text x="300" y="220" class="t-dim">나무의 맨 아래 잎을 s로 바꾸고, t는 고정한다.</text>
+      </svg>
+      <figcaption><b>그림 13-3.</b> 연쇄 법칙의 나무 그림. 위에서 아래로 의존 관계를 그리고, z에서 원하는 변수까지 가는 모든 길에 대해 가지의 도함수를 곱해 더한다. 중간 변수가 몇 개든, 층이 몇 단이든 같은 규칙이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 13.8 (드론이 느끼는 온도)</strong> \(T(x, y) = 100 - x^2 - 2y^2\) (°C), 드론의 경로는 타원 \(x = 2\cos t\), \(y = \sin t\). \(t = \pi/4\)에서 \(dT/dt\)를 구하라.
+      <ol>
+        <li>위치: \(x = \sqrt2\), \(y = \sqrt2/2\). 속도: \(x' = -2\sin t = -\sqrt2\), \(y' = \cos t = \sqrt2/2\).</li>
+        <li>공간 기울기: \(T_x = -2x = -2\sqrt2\), \(T_y = -4y = -2\sqrt2\).</li>
+        <li>연쇄 법칙: \(dT/dt = (-2\sqrt2)(-\sqrt2) + (-2\sqrt2)(\sqrt2/2) = 4 - 2 = 2\) °C/단위시간.</li>
+        <li>검산: 대입하면 \(T(t) = 100 - 4\cos^2t - 2\sin^2t\), \(T'(t) = 8\cos t\sin t - 4\sin t\cos t = 4\sin t\cos t\). \(t = \pi/4\)에서 \(4\cdot\tfrac12 = 2\). ✓</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pd-chain">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>경로 위의 변화율: 기울기와 속도의 내적</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pd-two">
+          <div><canvas id="pd-cv-chain"></canvas><span class="pd-cap">T(x, y)의 등고선과 경로</span></div>
+          <div><canvas id="pd-cv-chaint"></canvas><span class="pd-cap">T(x(t), y(t))와 접선</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>온도 분포 T</span><select id="pd-c-fn">
+            <option value="ex">100 − x² − 2y² (예제 13.8)</option>
+            <option value="hills">두 열원</option>
+            <option value="xy">50 + 10xy</option>
+          </select></label>
+          <label class="ctrl"><span>경로</span><select id="pd-c-path">
+            <option value="ell">타원 (2cos t, sin t)</option>
+            <option value="circ">원 (1.5cos t, 1.5sin t)</option>
+            <option value="eight">8자 (2sin t, sin 2t)</option>
+            <option value="line">직선 (−2 + 0.64t, −1 + 0.32t)</option>
+          </select></label>
+          <label class="ctrl"><span>시각 t <output id="pd-c-t-out"></output></span><input type="range" id="pd-c-t" min="0" max="6.283" step="0.005" value="0.785"></label>
+          <div class="btn-row"><button class="btn primary" id="pd-c-play">▶ 날리기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">T<sub>x</sub>·x′</span><span class="v" id="pd-c-a">—</span></div>
+        <div class="stat"><span class="k">T<sub>y</sub>·y′</span><span class="v" id="pd-c-b">—</span></div>
+        <div class="stat"><span class="k">dT/dt (연쇄 법칙)</span><span class="v" id="pd-c-sum">—</span></div>
+        <div class="stat"><span class="k">dT/dt (수치 차분)</span><span class="v" id="pd-c-num">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 13.8의 t = π/4 ≈ 0.785에서 두 항 4와 −2, 합 2를 확인하세요. ② 경로가 등고선에 접하는 순간 dT/dt = 0입니다. 그때 분홍 화살표(∇T)와 파란 화살표(속도)가 수직입니다. ③ 아래 그래프의 접선 기울기가 연쇄 법칙의 합과 늘 같습니다. 모델: 그림의 ∇T는 길이를 줄여 그립니다(방향만 비교). 수치 차분은 (T(t + h) − T(t − h))/2h, h = 10<sup>−4</sup>.</div>
+    </div>
+    <p>변수가 \(s\)와 \(t\) 둘이면 각 변수에 대해 따로 연쇄 법칙을 씁니다. 예컨대 극좌표 \(x = r\cos\theta\), \(y = r\sin\theta\)로 쓴 함수 \(u\)는 \(u_r = u_x\cos\theta + u_y\sin\theta\), \(u_\theta = -u_x r\sin\theta + u_y r\cos\theta\)입니다. 이것을 행렬로 모으면 \([\,u_r\;\; u_\theta\,] = [\,u_x\;\; u_y\,]\,J\)이고, \(J = \partial(x, y)/\partial(r, \theta)\)가 <a href="../../linear/chapters/determinants.html#jacobian">야코비 행렬</a>입니다. 다변수 연쇄 법칙은 <b>야코비 행렬의 곱</b>이고, 이것이 신경망의 역전파가 하는 계산입니다.</p>
+    <div class="callout deep"><strong>정리 13.12 (음함수 미분)</strong> \(F(x, y) = 0\)이 \(y\)를 \(x\)의 미분 가능한 함수로 정하고 \(F_y \ne 0\)이면
+      <div class="formula">$$\frac{dy}{dx} = -\frac{F_x}{F_y}.$$</div>
+      마찬가지로 \(F(x, y, z) = 0\)이 \(z = z(x, y)\)를 정하고 \(F_z \ne 0\)이면 \(\dfrac{\partial z}{\partial x} = -\dfrac{F_x}{F_z}\), \(\dfrac{\partial z}{\partial y} = -\dfrac{F_y}{F_z}\).
+      <p style="margin:8px 0 0"><b>증명.</b> 항등식 \(F(x, y(x)) = 0\)을 \(x\)로 미분하면 정리 13.11로 \(F_x\cdot 1 + F_y\cdot y'(x) = 0\). ∎ 조건 \(F_y \ne 0\)이면 \(F = 0\) 근처에서 \(y(x)\)가 실제로 존재한다는 것이 <span class="term">음함수 정리</span><span class="en">(implicit function theorem)</span>이고, 그 증명은 해석학에서 다룬다.</p></div>
+    <div class="callout"><strong>예제 13.9 (데카르트의 엽선)</strong> 곡선 \(x^3 + y^3 = 6xy\) 위의 점 \((3, 3)\)에서 접선의 기울기를 구하라.
+      <ol>
+        <li>점 확인: \(27 + 27 = 54 = 6\cdot 9\). ✓</li>
+        <li>\(F = x^3 + y^3 - 6xy\): \(F_x = 3x^2 - 6y = 27 - 18 = 9\), \(F_y = 3y^2 - 6x = 9\).</li>
+        <li>\(dy/dx = -9/9 = -1\). 4장에서 양변을 미분해 \(y'\)에 대해 정리하던 계산을 한 줄로 끝냈다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="pde">
+    <h2>열 방정식과 파동 방정식 맛보기</h2>
+    <div class="problem"><strong>막대의 온도는 어떻게 고르게 퍼지나</strong>
+      <p>가운데만 뜨겁게 달군 금속 막대를 놓아두면 열이 양옆으로 퍼지며 온도가 고르게 됩니다. 각 점의 온도가 얼마나 빨리 변하는지는 무엇이 정할까요? 편도함수가 있으면 이 질문을 한 줄의 방정식으로 쓸 수 있습니다.</p></div>
+    <p>막대 위치 \(x\), 시각 \(t\)의 온도를 \(u(x, t)\)라 합시다. 한 점의 온도는 이웃이 자기보다 평균적으로 뜨거우면 오르고, 차가우면 내립니다. "이웃의 평균 − 자기 값"은 \(\Delta x\)가 작을 때 \(\tfrac12\bigl[u(x + \Delta x) + u(x - \Delta x)\bigr] - u(x) \approx \tfrac12 u_{xx}\,\Delta x^2\)이므로, 온도 변화율은 2계 편도함수 \(u_{xx}\)에 비례합니다.</p>
+    <div class="formula">$$\underbrace{\frac{\partial u}{\partial t} = \alpha\,\frac{\partial^2 u}{\partial x^2}}_{\text{열 방정식}}, \qquad \underbrace{\frac{\partial^2 u}{\partial t^2} = c^2\,\frac{\partial^2 u}{\partial x^2}}_{\text{파동 방정식}}, \qquad \underbrace{\frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{\partial y^2} = 0}_{\text{라플라스 방정식}}.$$
+      <div class="where">\(\alpha\)는 열확산 계수, \(c\)는 파동의 속력. 편도함수가 들어간 방정식을 <span class="term">편미분 방정식</span><span class="en">(partial differential equation, PDE)</span>이라 한다.</div></div>
+    <ul>
+      <li><span class="term">열 방정식</span><span class="en">(heat equation)</span>: 그래프가 아래로 오목한 곳(\(u_{xx} \lt 0\), 봉우리)은 식고, 위로 볼록한 곳(골짜기)은 데워진다. 울퉁불퉁함이 지워진다.</li>
+      <li><span class="term">파동 방정식</span><span class="en">(wave equation)</span>: 휘어짐이 속도가 아니라 <b>가속도</b>를 정한다. 휘어진 줄은 펴지는 방향으로 가속되고, 지나쳐 반대로 휜다. 그래서 진동한다.</li>
+      <li><span class="term">라플라스 방정식</span><span class="en">(Laplace's equation)</span>: 시간이 충분히 지나 \(u_t = 0\)이 된 평판의 정상 온도 분포. 각 점의 값이 주변의 평균과 같다.</li>
+    </ul>
+    <div class="callout"><strong>예제 13.10 (해인지 확인하기)</strong>
+      <ol>
+        <li>\(u = e^{-\alpha k^2 t}\sin kx\): \(u_t = -\alpha k^2 u\), \(u_{xx} = -k^2u\)이므로 \(u_t = \alpha u_{xx}\). ✓ 파수 \(k\)가 클수록(잘게 출렁일수록) \(e^{-\alpha k^2t}\)로 <b>훨씬 빨리</b> 사라진다. \(k\)가 3배면 감쇠율은 9배다.</li>
+        <li>\(u = f(x - ct)\) (\(f\)는 아무 매끄러운 함수): 연쇄 법칙으로 \(u_t = -c f'\), \(u_{tt} = c^2f''\), \(u_{xx} = f''\)이므로 \(u_{tt} = c^2u_{xx}\). ✓ 모양 \(f\)를 유지한 채 속력 \(c\)로 오른쪽으로 가는 파동이다. \(g(x + ct)\)는 왼쪽으로 가고, 둘의 합이 일반해다(달랑베르 해).</li>
+        <li>\(u = x^2 - y^2\)와 \(u = e^x\sin y\): 각각 \(2 + (-2) = 0\), \(e^x\sin y - e^x\sin y = 0\)으로 라플라스 방정식을 만족한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-pd-heat">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>막대 위의 열과 줄 위의 파동: u<sub>xx</sub>가 움직임을 정한다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pd-cv-heat"></canvas><span class="tag-tl" id="pd-h-tag">u(x, t) · 화살표 = u<sub>xx</sub>의 방향</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방정식</span><div class="seg" id="pd-h-eq"><button data-value="heat" class="on">열 u<sub>t</sub> = u<sub>xx</sub></button><button data-value="wave">파동 u<sub>tt</sub> = u<sub>xx</sub></button></div></div>
+          <label class="ctrl"><span>처음 모양</span><select id="pd-h-init">
+            <option value="step">가운데만 뜨거운 막대</option>
+            <option value="tri">가운데를 당긴 줄(삼각형)</option>
+            <option value="mode">사인 모드 sin πx</option>
+            <option value="mix">sin πx + 0.5 sin 5πx</option>
+          </select></label>
+          <label class="ctrl"><span>시간 간격 수 s = Δt/Δx² (열), (Δt/Δx)² (파동) <output id="pd-h-s-out"></output></span><input type="range" id="pd-h-s" min="0.1" max="1.2" step="0.01" value="0.4"></label>
+          <div class="btn-row"><button class="btn primary" id="pd-h-play">▶ 시작</button><button class="btn" id="pd-h-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">시각 t</span><span class="v" id="pd-h-t">—</span></div>
+        <div class="stat"><span class="k">max |u|</span><span class="v" id="pd-h-max">—</span></div>
+        <div class="stat"><span class="k">수치 안정성</span><span class="v" id="pd-h-stab">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '열'에서 sin πx + 0.5 sin 5πx를 돌리면 잔물결(5πx)이 먼저 사라지고 큰 물결만 남습니다. 감쇠율이 k²에 비례하기 때문입니다(예제 13.10). ② '파동'에서 삼각형은 두 조각으로 갈라져 양쪽으로 갔다가 벽에서 뒤집혀 돌아옵니다(달랑베르 해). ③ s를 열은 0.5, 파동은 1보다 크게 하면 수치해가 톱니 모양으로 폭발합니다. 방정식이 아니라 계산법의 문제입니다. 모델: 양 끝 u = 0 고정, 격자 50칸, 열은 양해법 u<sub>i</sub> += s(u<sub>i+1</sub> − 2u<sub>i</sub> + u<sub>i−1</sub>), 파동은 중심 차분(립프로그).</div>
+    </div>
+    <p>시뮬레이터의 계산은 \(u_{xx}\)를 세 점의 차분 \((u_{i+1} - 2u_i + u_{i-1})/\Delta x^2\)로 바꾼 것뿐입니다. 이 단순한 대체가 \(\Delta t \le \Delta x^2/(2\alpha)\)일 때만 안정하다는 것은 수치 해석의 고전적인 결과이고, 격자를 두 배로 촘촘히 하면 시간 간격은 네 배로 줄여야 한다는 뜻입니다. 2차원·3차원의 열 방정식, 그리고 그것을 적분으로 다루는 발산 정리는 <a href="vector-calculus.html">16장</a>에서 다시 만납니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>편도함수는 "여러 원인 중 하나만 바꾸면"이라는 공학의 가장 흔한 질문에 대한 답입니다.</p>
+    <div class="callout"><strong>민감도 분석: 어느 공차를 조여야 하나</strong> 설계 성능 \(J(p_1, \dots, p_n)\)이 부품 치수나 재료 상수 \(p_i\)에 달려 있을 때, 편도함수 \(\partial J/\partial p_i\)를 <b>민감도</b>라 부릅니다. 더 쓸모 있는 것은 무차원 민감도 \(\dfrac{p_i}{J}\dfrac{\partial J}{\partial p_i}\)(1% 바뀌면 몇 % 바뀌나)입니다. 예제 13.7의 원기둥에서 반지름의 무차원 민감도는 2, 높이는 1이었습니다. 공차 예산을 나눌 때 민감도가 큰 치수에 비싼 가공을 쓰는 것이 합리적입니다.</div>
+    <div class="uses">
+      <a href="gradient.html"><small>14장 · 그래디언트</small>가장 가파른 방향<br><span>편도함수를 모은 벡터 ∇f, 방향 도함수, 극값 판정, 라그랑주 승수, 경사 하강법.</span></a>
+      <a href="multiple.html"><small>15장 · 중적분</small>곡면 아래의 부피<br><span>2변수 함수를 한 변수씩 적분하는 반복 적분. 편미분의 거울상.</span></a>
+      <a href="vector-calculus.html"><small>16장 · 벡터 미적분</small>발산과 회전<br><span>벡터장의 편도함수를 조합한 div, curl과 발산 정리, 열 방정식의 유도.</span></a>
+      <a href="../../linear/chapters/determinants.html#jacobian"><small>LINEARBOOK</small>야코비안<br><span>다변수 연쇄 법칙의 행렬 판, 휘어진 좌표 변환의 국소 넓이 배율.</span></a>
+      <a href="../../probability/chapters/joint.html#propagation"><small>확률과 통계</small>오차 전파와 델타 방법<br><span>입력의 분산과 공분산이 함수값의 분산으로 옮겨 가는 1차 근사.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식<br><span>변수가 시간 하나뿐인 상미분 방정식. 편미분 방정식을 격자로 쪼개면 상미분 방정식 묶음이 된다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>2변수 함수의 그래프는 곡면이고, 등위선 \(f = k\)를 겹친 등고선도로 평면에 그린다. 높이 간격이 일정하면 등고선이 촘촘한 곳이 가파르다.</li>
+      <li>다변수 극한은 모든 경로에서 같은 값이어야 한다. 두 경로에서 값이 다르면 극한이 없다. 모든 직선 경로가 같아도 극한이 없을 수 있다(\(x^2y/(x^4 + y^2)\)).</li>
+      <li>편도함수 \(f_x\)는 \(y\)를 고정한 단면 곡선의 기울기이고, 다른 변수를 상수로 보고 미분해 구한다. 편도함수가 있어도 연속이 아닐 수 있다.</li>
+      <li>혼합 편도함수가 연속이면 \(f_{xy} = f_{yx}\) (클레로 정리). 연속이 아니면 다를 수 있다.</li>
+      <li>접평면 \(z = f(a, b) + f_x(x - a) + f_y(y - b)\). 미분 가능성은 선형 근사의 오차가 거리보다 빨리 0으로 가는 것이고, 편도함수가 연속이면 보장된다. 미분 가능하면 연속이다.</li>
+      <li>전미분 \(dz = f_x\,dx + f_y\,dy\)로 오차를 어림한다. 최악은 절댓값의 합, 독립 우연 오차는 제곱합의 제곱근. 곱·거듭제곱 꼴은 상대 오차가 지수배로 더해진다.</li>
+      <li>연쇄 법칙 \(dz/dt = f_x x' + f_y y'\): 경로마다 곱하고 더한다. 음함수 미분 \(dy/dx = -F_x/F_y\). 열·파동·라플라스 방정식은 편도함수로 쓴 자연 법칙이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(f(x, y) = \dfrac{xy}{x^2 + y^2}\)에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">직선 y = x를 따라가면 0이므로 극한은 0이다</button>
+        <button class="opt">극좌표로 쓰면 r이 약분되어 극한은 1/2이다</button>
+        <button class="opt" data-correct>y = x를 따라가면 1/2, y = 0을 따라가면 0이라 원점에서 극한이 없다</button>
+        <button class="opt">분모가 0이 되므로 극한은 무한대다</button>
+      </div><div class="quiz-exp">\(y = mx\)에서 \(f = m/(1 + m^2)\)로 기울기마다 값이 다르다. \(m = 1\)이면 1/2, \(m = 0\)이면 0. 극좌표로는 \(f = \cos\theta\sin\theta\)로 r이 사라지지만 θ에 따라 달라지므로 극한이 없다(정리 13.4).</div></div>
+
+      <div class="quiz-q"><p>Q2. \(f(x, y) = x^2y^3\)의 \(f_{xy}\)는?</p><div class="opts">
+        <button class="opt">\(2xy^3\)</button>
+        <button class="opt" data-correct>\(6xy^2\)</button>
+        <button class="opt">\(6x^2y\)</button>
+        <button class="opt">\(2y^3\)</button>
+      </div><div class="quiz-exp">\(f_x = 2xy^3\)을 \(y\)로 미분하면 \(6xy^2\). 반대 순서 \(f_y = 3x^2y^2\)을 \(x\)로 미분해도 \(6xy^2\)으로 같다(클레로 정리). \(2y^3\)은 \(f_{xx}\), \(6x^2y\)는 \(f_{yy}\)다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 곡면 \(z = x^2 + y^2\) 위의 점 \((1, 2, 5)\)에서의 접평면은?</p><div class="opts">
+        <button class="opt">\(z = 2x + 4y\)</button>
+        <button class="opt" data-correct>\(z = 2x + 4y - 5\)</button>
+        <button class="opt">\(z = x + 2y + 5\)</button>
+        <button class="opt">\(z = 5 + 2x + 4y\)</button>
+      </div><div class="quiz-exp">\(f_x = 2x = 2\), \(f_y = 2y = 4\)이므로 \(z = 5 + 2(x - 1) + 4(y - 2) = 2x + 4y - 5\). 점 (1, 2)를 넣으면 2 + 8 − 5 = 5로 곡면 위의 점을 지난다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 어떤 점에서 \(f_x\)와 \(f_y\)가 모두 존재한다. 그 점에 대해 반드시 참인 것은?</p><div class="opts">
+        <button class="opt">f는 그 점에서 미분 가능하다</button>
+        <button class="opt">f는 그 점에서 연속이다</button>
+        <button class="opt">접평면이 곡면을 잘 근사한다</button>
+        <button class="opt" data-correct>위의 어느 것도 보장되지 않는다</button>
+      </div><div class="quiz-exp">\(xy/(x^2 + y^2)\) (\(f(0,0) = 0\))은 원점에서 두 편도함수가 0인데 극한조차 없다. 편도함수는 축 방향만 본다. 편도함수가 그 점 근처에서 <b>연속</b>이면 미분 가능하고(정리 13.9), 그러면 연속이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 전력 \(P = I^2R\)를 잴 때 전류의 상대 오차가 1%, 저항의 상대 오차가 2%다. 전미분으로 어림한 P의 최악 상대 오차는?</p><div class="opts">
+        <button class="opt">3%</button>
+        <button class="opt" data-correct>4%</button>
+        <button class="opt">2.2%</button>
+        <button class="opt">5%</button>
+      </div><div class="quiz-exp">\(\ln P = 2\ln I + \ln R\)을 미분하면 \(dP/P = 2\,dI/I + dR/R\). 최악의 경우 \(2(1\%) + 2\% = 4\%\). 두 오차가 독립인 우연 오차라면 \(\sqrt{2^2 + 2^2}\% \approx 2.8\%\)로 어림한다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(z = x^2y\), \(x = t^2\), \(y = t^3\)일 때 \(t = 1\)에서 \(dz/dt\)는?</p><div class="opts">
+        <button class="opt">5</button>
+        <button class="opt">6</button>
+        <button class="opt" data-correct>7</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">연쇄 법칙: \(z_x x' + z_y y' = (2xy)(2t) + (x^2)(3t^2)\). \(t = 1\)에서 \(x = y = 1\)이므로 \(2\cdot 2 + 1\cdot 3 = 7\). 대입해서 \(z = t^7\), \(dz/dt = 7t^6 = 7\)로 검산된다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 구면 \(x^2 + y^2 + z^2 = 9\)가 점 \((1, 2, 2)\) 근처에서 \(z = z(x, y)\)를 정한다. \(\partial z/\partial x\)는?</p><div class="opts">
+        <button class="opt">\(-2\)</button>
+        <button class="opt" data-correct>\(-1/2\)</button>
+        <button class="opt">\(1/2\)</button>
+        <button class="opt">\(-1\)</button>
+      </div><div class="quiz-exp">\(F = x^2 + y^2 + z^2 - 9\)에서 \(z_x = -F_x/F_z = -2x/(2z) = -x/z = -1/2\). 위쪽 반구에서 x가 커지면 높이가 줄어드니 음수인 것이 맞다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 다음 중 열 방정식 \(u_t = u_{xx}\)의 해는?</p><div class="opts">
+        <button class="opt">\(e^{-t}\sin 2x\)</button>
+        <button class="opt" data-correct>\(e^{-4t}\sin 2x\)</button>
+        <button class="opt">\(e^{t}\sin x\)</button>
+        <button class="opt">\(e^{-4t}\sin x\)</button>
+      </div><div class="quiz-exp">\(u = e^{-k^2t}\sin kx\)꼴이어야 한다. \(e^{-4t}\sin 2x\)는 \(u_t = -4u\), \(u_{xx} = -4u\)로 같다. \(e^{-t}\sin 2x\)는 \(u_t = -u\)인데 \(u_{xx} = -4u\)라 맞지 않는다. 잘게 출렁이는 모드(\(k = 2\))는 \(k = 1\)보다 4배 빨리 사라진다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미: 수치 미분·히트맵·등고선·3D 사영 */
+const PD = {
+  num(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return String(r).replace("-", "−");
+  },
+  vec(a, d = 2) { return "(" + a.map((v) => PD.num(v, d)).join(", ") + ")"; },
+  fx(f, x, y, h = 1e-5) { return (f(x + h, y) - f(x - h, y)) / (2 * h); },
+  fy(f, x, y, h = 1e-5) { return (f(x, y + h) - f(x, y - h)) / (2 * h); },
+  grad(f, x, y, h = 1e-5) { return [PD.fx(f, x, y, h), PD.fy(f, x, y, h)]; },
+  hess(f, x, y, h = 1e-4) {
+    const c = f(x, y);
+    const xx = (f(x + h, y) - 2 * c + f(x - h, y)) / (h * h), yy = (f(x, y + h) - 2 * c + f(x, y - h)) / (h * h);
+    const xy = (f(x + h, y + h) - f(x + h, y - h) - f(x - h, y + h) + f(x - h, y - h)) / (4 * h * h);
+    return [[xx, xy], [xy, yy]];
+  },
+  /** 격자에서 함수값의 최소·최대 */
+  span(f, xr, yr, n = 40) {
+    let lo = Infinity, hi = -Infinity;
+    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
+      const z = f(xr[0] + (xr[1] - xr[0]) * i / n, yr[0] + (yr[1] - yr[0]) * j / n);
+      if (isFinite(z)) { if (z < lo) lo = z; if (z > hi) hi = z; }
+    }
+    if (!isFinite(lo)) return [-1, 1];
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    return [lo, hi];
+  },
+  levels(lo, hi, n) { const out = []; for (let i = 1; i < n; i++) out.push(lo + (hi - lo) * i / n); return out; },
+  _hc: new Map(),
+  /** MB.plane의 P 위, 직사각형 xr×yr에 히트맵(오프스크린 캐시) */
+  heat(P, key, f, xr, yr, tOf, o = {}) {
+    const x0 = P.X(xr[0]), x1 = P.X(xr[1]), y0 = P.Y(yr[1]), y1 = P.Y(yr[0]);
+    const pw = x1 - x0, ph = y1 - y0;
+    if (pw < 2 || ph < 2) return;
+    const nx = o.res || 150, ny = Math.max(16, Math.min(400, Math.round(nx * ph / pw)));
+    const k = key + "|" + xr.map((v) => v.toFixed(5)).join() + "|" + yr.map((v) => v.toFixed(5)).join() + "|" + nx + "x" + ny;
+    let c = PD._hc.get(k);
+    if (!c) {
+      c = document.createElement("canvas"); c.width = nx; c.height = ny;
+      const g = c.getContext("2d"), img = g.createImageData(nx, ny);
+      for (let j = 0; j < ny; j++) {
+        const y = yr[1] - (yr[1] - yr[0]) * (j + 0.5) / ny;
+        for (let i = 0; i < nx; i++) {
+          const x = xr[0] + (xr[1] - xr[0]) * (i + 0.5) / nx, z = f(x, y), q = 4 * (j * nx + i);
+          if (!isFinite(z)) continue;
+          const col = MB.colormap(tOf(z), o.map || "viridis");
+          img.data[q] = col[0]; img.data[q + 1] = col[1]; img.data[q + 2] = col[2]; img.data[q + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+      if (PD._hc.size > 48) PD._hc.delete(PD._hc.keys().next().value);
+      PD._hc.set(k, c);
+    }
+    const ctx = P.ctx; ctx.save();
+    ctx.globalAlpha = o.alpha != null ? o.alpha : (MB.isDark() ? 0.6 : 0.75);
+    ctx.imageSmoothingEnabled = true; ctx.drawImage(c, x0, y0, pw, ph); ctx.restore();
+  },
+  /** 마칭 스퀘어 등고선. toPx(x, y) → [px, py] */
+  contour(ctx, f, xr, yr, levels, toPx, o = {}) {
+    const n = o.n || 64, m = o.m || n, G = [];
+    for (let j = 0; j <= m; j++) { const row = [], y = yr[0] + (yr[1] - yr[0]) * j / m; for (let i = 0; i <= n; i++) row.push(f(xr[0] + (xr[1] - xr[0]) * i / n, y)); G.push(row); }
+    const X = (i) => xr[0] + (xr[1] - xr[0]) * i / n, Y = (j) => yr[0] + (yr[1] - yr[0]) * j / m;
+    ctx.save(); ctx.lineWidth = o.width || 1; ctx.strokeStyle = o.color || MB.color("text-dim");
+    ctx.globalAlpha = o.alpha != null ? o.alpha : 0.6; ctx.setLineDash(o.dash || []); ctx.lineCap = "round";
+    levels.forEach((L, li) => {
+      if (o.colorOf) ctx.strokeStyle = o.colorOf(L, li);
+      ctx.beginPath();
+      for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
+        const v = [G[j][i], G[j][i + 1], G[j + 1][i + 1], G[j + 1][i]];
+        if (!(isFinite(v[0]) && isFinite(v[1]) && isFinite(v[2]) && isFinite(v[3]))) continue;
+        const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], pts = [];
+        for (let e = 0; e < 4; e++) {
+          const a = v[e] - L, b = v[(e + 1) % 4] - L;
+          if ((a < 0) !== (b < 0)) { const t = a / (a - b), p = c[e], q = c[(e + 1) % 4]; pts.push([X(p[0] + (q[0] - p[0]) * t), Y(p[1] + (q[1] - p[1]) * t)]); }
+        }
+        for (let k = 0; k + 1 < pts.length; k += 2) { const A = toPx(pts[k][0], pts[k][1]), B = toPx(pts[k + 1][0], pts[k + 1][1]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); }
+      }
+      ctx.stroke();
+    });
+    ctx.restore();
+  },
+  /** 캔버스를 끌어 3D 시점을 돌린다 */
+  rotate(cv, view, redraw) {
+    const el = cv.canvas || cv;
+    el.style.touchAction = "none"; el.style.cursor = "grab";
+    let st = null;
+    el.addEventListener("pointerdown", (e) => { st = { x: e.clientX, y: e.clientY, yaw: view.yaw, elev: view.elev }; el.setPointerCapture(e.pointerId); el.style.cursor = "grabbing"; view.user = true; });
+    el.addEventListener("pointermove", (e) => {
+      if (!st) return;
+      view.yaw = st.yaw - (e.clientX - st.x) * 0.01;
+      view.elev = MB.clamp(st.elev + (e.clientY - st.y) * 0.008, 0.06, 1.5);
+      redraw();
+    });
+    const up = () => { st = null; el.style.cursor = "grab"; };
+    el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  },
+  /**
+   * 정사영 3D 장면. o = {xr, yr, zr, view:{yaw, elev}, zs(높이 비율)}
+   * 곡면은 사각형 조각으로 쪼개 깊이순(먼 것부터)으로 칠한다.
+   */
+  scene(ctx, w, h, o) {
+    const [xa, xb] = o.xr, [ya, yb] = o.yr, [za, zb] = o.zr, zs = o.zs || 0.72, view = o.view;
+    const ca = Math.cos(view.yaw), sa = Math.sin(view.yaw), ce = Math.cos(view.elev), se = Math.sin(view.elev);
+    const s = Math.min(w / 2.95, h / 3.2) * (o.scale || 1), cx = w / 2, cy = h / 2 + h * 0.03;
+    const nrm = (x, y, z) => [2 * (x - xa) / (xb - xa) - 1, 2 * (y - ya) / (yb - ya) - 1, zs * (2 * (MB.clamp(z, za, zb) - za) / (zb - za) - 1)];
+    const prN = (X, Y, Z) => { const x1 = X * ca - Y * sa, y1 = X * sa + Y * ca; return [cx + s * x1, cy - s * (Z * ce + y1 * se), y1 * ce - Z * se]; };
+    const pr = (x, y, z) => { const n = nrm(x, y, z); return prN(n[0], n[1], n[2]); };
+    const C = MB.palette(), quads = [], L = [-0.35, -0.5, 0.8], Ln = Math.hypot(L[0], L[1], L[2]);
+    const font = getComputedStyle(document.body).getPropertyValue("--font");
+    const S = { ctx, w, h, pr, C, za, zb, xr: o.xr, yr: o.yr };
+    S.pmesh = (fn, ur, vr, nu, nv, mo = {}) => {
+      const V = [];
+      for (let j = 0; j <= nv; j++) {
+        const row = [];
+        for (let i = 0; i <= nu; i++) {
+          const p = fn(ur[0] + (ur[1] - ur[0]) * i / nu, vr[0] + (vr[1] - vr[0]) * j / nv);
+          if (!p || !(isFinite(p[0]) && isFinite(p[1]) && isFinite(p[2])) || (mo.clip && (p[2] < za || p[2] > zb))) { row.push(null); continue; }
+          const n = nrm(p[0], p[1], p[2]); row.push({ p, n, q: prN(n[0], n[1], n[2]) });
+        }
+        V.push(row);
+      }
+      for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+        const a = V[j][i], b = V[j][i + 1], c = V[j + 1][i + 1], d = V[j + 1][i];
+        if (!a || !b || !c || !d) continue;
+        let fill;
+        if (mo.fill) fill = mo.fill;
+        else {
+          const zAvg = (a.p[2] + b.p[2] + c.p[2] + d.p[2]) / 4;
+          const base = mo.rgb || MB.colormap(mo.tOf ? mo.tOf(zAvg, (a.p[0] + c.p[0]) / 2, (a.p[1] + c.p[1]) / 2) : (zAvg - za) / (zb - za), mo.map || "viridis");
+          const u = [c.n[0] - a.n[0], c.n[1] - a.n[1], c.n[2] - a.n[2]], v = [d.n[0] - b.n[0], d.n[1] - b.n[1], d.n[2] - b.n[2]];
+          const nn = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+          const len = Math.hypot(nn[0], nn[1], nn[2]) || 1, k = 0.5 + 0.5 * Math.abs(nn[0] * L[0] + nn[1] * L[1] + nn[2] * L[2]) / (len * Ln);
+          fill = `rgb(${Math.round(base[0] * k)},${Math.round(base[1] * k)},${Math.round(base[2] * k)})`;
+        }
+        quads.push({ q: [a.q, b.q, c.q, d.q], d: (a.q[2] + b.q[2] + c.q[2] + d.q[2]) / 4 + (mo.bias || 0), fill, alpha: mo.alpha != null ? mo.alpha : 1, edge: mo.edge !== false });
+      }
+    };
+    S.mesh = (f, mo = {}) => S.pmesh((u, v) => [u, v, f(u, v)], mo.xr || o.xr, mo.yr || o.yr, mo.n || 30, mo.n || 30, mo);
+    S.flush = () => {
+      quads.sort((A, B) => B.d - A.d);
+      ctx.save(); ctx.lineJoin = "round";
+      quads.forEach((Q) => {
+        ctx.globalAlpha = Q.alpha; ctx.beginPath();
+        ctx.moveTo(Q.q[0][0], Q.q[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(Q.q[k][0], Q.q[k][1]); ctx.closePath();
+        ctx.fillStyle = Q.fill; ctx.fill();
+        if (Q.edge) { ctx.strokeStyle = C.bg; ctx.globalAlpha = Q.alpha * 0.4; ctx.lineWidth = 0.7; ctx.stroke(); }
+      });
+      ctx.restore(); quads.length = 0;
+    };
+    const style = (lo, def) => { ctx.strokeStyle = lo.color || def; ctx.fillStyle = lo.color || def; ctx.lineWidth = lo.width || 2; ctx.globalAlpha = lo.alpha != null ? lo.alpha : 1; ctx.setLineDash(lo.dash || []); };
+    S.path3 = (pts, lo = {}) => {
+      ctx.save(); style(lo, C.text); ctx.lineJoin = "round"; ctx.beginPath(); let on = false;
+      pts.forEach((p) => { if (!p || !isFinite(p[2])) { on = false; return; } const q = pr(p[0], p[1], p[2]); on ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); on = true; });
+      ctx.stroke(); ctx.restore();
+    };
+    S.line3 = (p, q, lo = {}) => S.path3([p, q], lo);
+    S.arrow3 = (p, q, lo = {}) => {
+      const A = pr(p[0], p[1], p[2]), B = pr(q[0], q[1], q[2]), Lp = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      ctx.save(); style(lo, C.accent);
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+      if (Lp > 4) {
+        const ux = (B[0] - A[0]) / Lp, uy = (B[1] - A[1]) / Lp, hd = Math.min(10, Lp * 0.45);
+        ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(B[0], B[1]);
+        ctx.lineTo(B[0] - ux * hd - uy * hd * 0.45, B[1] - uy * hd + ux * hd * 0.45); ctx.lineTo(B[0] - ux * hd + uy * hd * 0.45, B[1] - uy * hd - ux * hd * 0.45); ctx.closePath(); ctx.fill();
+      }
+      if (lo.label) { ctx.font = `700 13px ${font}`; ctx.fillText(lo.label, B[0] + 6, B[1] - 6); }
+      ctx.restore();
+    };
+    S.dot3 = (p, lo = {}) => {
+      const q = pr(p[0], p[1], p[2]);
+      ctx.save(); ctx.fillStyle = lo.color || C.accent; ctx.beginPath(); ctx.arc(q[0], q[1], lo.r || 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = C.bg; ctx.lineWidth = 1.5; ctx.stroke();
+      if (lo.label) { ctx.fillStyle = lo.labelColor || C.text; ctx.font = `600 12.5px ${font}`; ctx.fillText(lo.label, q[0] + 8, q[1] - 8); }
+      ctx.restore();
+    };
+    S.text3 = (str, p, lo = {}) => {
+      const q = pr(p[0], p[1], p[2]);
+      ctx.save(); ctx.fillStyle = lo.color || C.dim; ctx.font = `${lo.bold ? "700 " : ""}${lo.size || 12}px ${font}`; ctx.textAlign = lo.align || "center"; ctx.textBaseline = "middle";
+      ctx.fillText(str, q[0] + (lo.dx || 0), q[1] + (lo.dy || 0)); ctx.restore();
+    };
+    /** 바닥 사각형과 z축(뒤에 깔린다) */
+    S.box = () => {
+      S.path3([[xa, ya, za], [xb, ya, za], [xb, yb, za], [xa, yb, za], [xa, ya, za]], { color: C.axis, width: 1, alpha: 0.7 });
+      const corners = [[xa, ya], [xb, ya], [xb, yb], [xa, yb]];
+      let far = corners[0], fd = -Infinity;
+      corners.forEach((c) => { const d = pr(c[0], c[1], za)[2]; if (d > fd) { fd = d; far = c; } });
+      S.line3([far[0], far[1], za], [far[0], far[1], zb], { color: C.axis, width: 1, alpha: 0.5, dash: [3, 4] });
+    };
+    /** 축 이름(앞에 그린다) */
+    S.labels = (lo = {}) => {
+      const dx = (xb - xa) * 0.1, dy = (yb - ya) * 0.1;
+      S.text3(lo.x || "x", [xb + dx, ya, za], { bold: true });
+      S.text3(lo.y || "y", [xa, yb + dy, za], { bold: true });
+      const corners = [[xa, ya], [xb, ya], [xb, yb], [xa, yb]];
+      let far = corners[0], fd = -Infinity;
+      corners.forEach((c) => { const d = pr(c[0], c[1], za)[2]; if (d > fd) { fd = d; far = c; } });
+      S.text3(lo.z || "z", [far[0], far[1], zb], { bold: true, dy: -10 });
+    };
+    return S;
+  },
+};
+
+/* ================================================================ 1. 곡면과 등고선도 */
+(function () {
+  const SURF = {
+    hill: { f: (x, y) => 3 * Math.exp(-(x * x + y * y) / 3) },
+    twin: { f: (x, y) => 3 * Math.exp(-((x - 1.2) ** 2 + (y - 0.6) ** 2) / 1.2) + 2 * Math.exp(-((x + 1.3) ** 2 + (y + 0.9) ** 2) / 1.5) },
+    hemi: { f: (x, y) => { const q = 9 - x * x - y * y; return q >= -1e-9 ? Math.sqrt(Math.max(0, q)) : NaN; }, polar: true },
+    saddle: { f: (x, y) => (x * x - y * y) / 3 },
+    wave: { f: (x, y) => Math.sin(x) * Math.cos(y) },
+    cone: { f: (x, y) => Math.sqrt(x * x + y * y) },
+  };
+  const XR = [-3, 3], view = { yaw: -0.75, elev: 0.6 };
+  let key = "hill", zr = PD.span(SURF.hill.f, XR, XR), spin = false, map = null;
+  const cEl = document.getElementById("pd-s-c");
+  const lev = () => zr[0] + (zr[1] - zr[0]) * Number(cEl.value);
+  const cR = MB.range("pd-s-c", () => PD.num(lev(), 2), () => redraw());
+  const floor = MB.check("pd-s-floor", () => redraw());
+  const cv = MB.canvas("#pd-cv-surf", (ctx, w, h) => {
+    const F = SURF[key], f = F.f, c = lev();
+    const S = PD.scene(ctx, w, h, { xr: XR, yr: XR, zr, view });
+    S.box();
+    if (floor()) {
+      PD.contour(ctx, f, XR, XR, PD.levels(zr[0], zr[1], 10), (x, y) => S.pr(x, y, zr[0]), { color: S.C.dim, alpha: 0.55, n: 48 });
+      PD.contour(ctx, f, XR, XR, [c], (x, y) => S.pr(x, y, zr[0]), { color: S.C.accent, width: 2, alpha: 0.9, n: 64 });
+    }
+    if (F.polar) S.pmesh((r, t) => [r * Math.cos(t), r * Math.sin(t), f(r * Math.cos(t), r * Math.sin(t))], [0, 3], [0, 2 * Math.PI], 14, 40);
+    else S.mesh(f, { n: 32 });
+    S.pmesh((u, v) => [u, v, c], XR, XR, 8, 8, { fill: S.C.accent, alpha: 0.18, edge: false });
+    S.flush();
+    PD.contour(ctx, f, XR, XR, [c], (x, y) => S.pr(x, y, c), { color: S.C.accent, width: 2.8, alpha: 1, n: 72 });
+    S.labels();
+  }, { aspect: 0.72, minHeight: 250, maxHeight: 420 });
+  PD.rotate(cv, view, () => cv.redraw());
+  map = MB.plane("#pd-cv-map", {
+    x: [-5.2, 5.2], aspect: 0.6, maxHeight: 440, minHeight: 220, grid: false, axes: false,
+    draw(P) {
+      const f = SURF[key].f, c = lev(), toPx = (x, y) => [P.X(x), P.Y(y)];
+      PD.heat(P, "pd-s-" + key, f, XR, XR, (z) => (z - zr[0]) / (zr[1] - zr[0]));
+      P.axes({ step: 1 });
+      PD.contour(P.ctx, f, XR, XR, PD.levels(zr[0], zr[1], 10), toPx, { color: P.P.text, alpha: 0.45, n: 72 });
+      PD.contour(P.ctx, f, XR, XR, [c], toPx, { color: P.P.accent, width: 3, alpha: 1, n: 96 });
+    },
+  });
+  function upd() {
+    MB.stat("pd-s-zr", `${PD.num(zr[0])} ~ ${PD.num(zr[1])}`);
+    MB.stat("pd-s-cv", PD.num(lev(), 2));
+    MB.stat("pd-s-dz", PD.num((zr[1] - zr[0]) / 10, 3));
+  }
+  function redraw() { cv.redraw(); map.redraw(); upd(); }
+  document.getElementById("pd-s-fn").addEventListener("change", (e) => {
+    key = e.target.value; zr = key === "hemi" ? [0, 3] : PD.span(SURF[key].f, XR, XR); cR.set(cR(), false); redraw();
+  });
+  const loop = MB.loop(document.getElementById("sim-pd-surface"), (dt) => { if (!spin) return; view.yaw += dt * 0.45; cv.redraw(); });
+  MB.playButton("pd-s-spin", () => { spin = true; loop.start(); }, () => { spin = false; }, ["▶ 자동 회전", "■ 멈춤"]);
+  upd();
+})();
+
+/* ================================================================ 2. 경로 극한 */
+(function () {
+  const FN = {
+    a: (x, y) => x * y / (x * x + y * y),
+    b: (x, y) => x * x * y / (x ** 4 + y * y),
+    c: (x, y) => x * x * y / (x * x + y * y),
+    d: (x, y) => (x * x - y * y) / (x * x + y * y),
+  };
+  let key = "a", playing = false, ch = null;
+  const msg = document.getElementById("pd-p-msg");
+  const mR = MB.range("pd-p-m", (v) => PD.num(v, 2), () => redraw());
+  const kR = MB.range("pd-p-k", (v) => PD.num(v, 2), () => redraw());
+  const xR = MB.range("pd-p-x", (v) => MB.fmt(Math.pow(10, v), 3), () => redraw());
+  const pl = MB.plane("#pd-cv-paths", {
+    x: [-1.25, 1.25], aspect: 0.62, maxHeight: 400, minHeight: 220, grid: false, axes: false,
+    draw(P) {
+      const f = FN[key], C = P.P, m = mR(), k = kR(), x = Math.pow(10, xR());
+      PD.heat(P, "pd-p-" + key, f, [P.x0, P.x1], [P.y0, P.y1], (z) => 0.5 + z / 2, { map: "diverge", res: 180 });
+      P.axes({ step: 0.5 });
+      P.curve((t) => m * t, { color: C.accent2, width: 1.4, dash: [5, 5], to: 0 });
+      P.curve((t) => m * t, { color: C.accent2, width: 3, from: 0 });
+      P.curve((t) => k * t * t, { color: C.warn, width: 1.4, dash: [5, 5], to: 0 });
+      P.curve((t) => k * t * t, { color: C.warn, width: 3, from: 0 });
+      P.circle(0, 0, 0.03, { color: C.text, width: 2 });
+      P.dot(x, m * x, { color: C.accent2, r: 6, stroke: C.bg });
+      P.dot(x, k * x * x, { color: C.warn, r: 6, stroke: C.bg });
+      P.text("y = mx", 1.0, m * 1.0, { color: C.accent2, bold: true, dx: 6, dy: -10 });
+      P.text("y = kx²", 0.85, k * 0.72, { color: C.warn, bold: true, dx: 6, dy: 12 });
+      if (ch) ch.redraw();
+    },
+  });
+  ch = MB.canvas("#pd-cv-along", (ctx) => {
+    const f = FN[key], C = MB.palette(), m = mR(), k = kR(), x = Math.pow(10, xR());
+    const L = [], Q = [];
+    for (let i = 0; i <= 200; i++) { const t = Math.pow(10, -3 + 3 * i / 200); L.push([t, f(t, m * t)]); Q.push([t, f(t, k * t * t)]); }
+    const ll = f(1e-7, m * 1e-7), qq = f(1e-7, k * 1e-14);
+    MB.chart(ctx, null, {
+      x: [1e-3, 1], y: [-1.15, 1.15], logX: true, xLabel: "x (작을수록 원점에 가깝다)",
+      series: [{ data: L, color: C.accent2, width: 2.4 }, { data: Q, color: C.warn, width: 2.4 }],
+      hlines: [{ y: ll, color: C.accent2, dash: [3, 4] }, { y: qq, color: C.warn, dash: [3, 4] }],
+      vlines: [{ x, color: C.dim }],
+      points: [{ x, y: f(x, m * x), color: C.accent2, r: 5 }, { x, y: f(x, k * x * x), color: C.warn, r: 5 }],
+    });
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 220 });
+  function redraw() {
+    pl.redraw();
+    const f = FN[key], m = mR(), k = kR(), x = Math.pow(10, xR());
+    const ll = f(1e-7, m * 1e-7), qq = f(1e-7, k * 1e-14);
+    MB.stat("pd-p-lv", PD.num(f(x, m * x), 4)); MB.stat("pd-p-pv", PD.num(f(x, k * x * x), 4));
+    MB.stat("pd-p-ll", PD.num(ll, 4)); MB.stat("pd-p-pl", PD.num(qq, 4));
+    if (Math.abs(ll - qq) > 1e-3) { msg.className = "pd-msg bad"; msg.innerHTML = `두 경로의 극한이 ${PD.num(ll, 3)}과 ${PD.num(qq, 3)}로 다릅니다 → 원점에서 극한이 <b>없습니다</b> (정리 13.4).`; }
+    else if (key === "c") { msg.className = "pd-msg ok"; msg.innerHTML = "어느 경로든 0으로 갑니다. 실제로 |f| ≤ |y| ≤ √(x² + y²)이므로 조임 정리로 극한은 0입니다."; }
+    else { msg.className = "pd-msg"; msg.innerHTML = `이 두 경로에서는 같은 값(${PD.num(ll, 3)})입니다. 그래도 극한이 있다는 증명은 아닙니다. m이나 k를 바꿔 다른 경로를 찾아보세요.`; }
+  }
+  document.getElementById("pd-p-fn").addEventListener("change", (e) => { key = e.target.value; redraw(); });
+  const loop = MB.loop(document.getElementById("sim-pd-paths"), (dt) => {
+    if (!playing) return;
+    let v = xR() - dt * 0.9; if (v < -3) v = 0; xR.set(v);
+  });
+  MB.playButton("pd-p-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 원점으로 보내기", "■ 멈춤"]);
+  redraw();
+})();
+
+/* ================================================================ 3. 단면 자르기 */
+(function () {
+  const FN = {
+    ex: (x, y) => x * x * y - 3 * x * y * y + Math.exp(x - y),
+    para: (x, y) => 4 - x * x - 2 * y * y,
+    hill: (x, y) => 2 * Math.exp(-(x * x + y * y) / 2) + 0.3 * x,
+    wave: (x, y) => Math.sin(x) * Math.cos(y),
+  };
+  const XR = [-2, 2], view = { yaw: -0.85, elev: 0.55 };
+  let key = "ex", zr = PD.span(FN.ex, XR, XR), dir = "x", ch = null;
+  const cap = document.getElementById("pd-sl-cap");
+  const aR = MB.range("pd-sl-a", (v) => PD.num(v, 2), () => redraw());
+  const bR = MB.range("pd-sl-b", (v) => PD.num(v, 2), () => redraw());
+  MB.seg("pd-sl-dir", (v) => { dir = v; redraw(); });
+  const cv = MB.canvas("#pd-cv-slice3", (ctx, w, h) => {
+    const f = FN[key], a = aR(), b = bR(), C = MB.palette();
+    const S = PD.scene(ctx, w, h, { xr: XR, yr: XR, zr, view });
+    S.box();
+    S.mesh(f, { n: 28, alpha: 0.92 });
+    if (dir === "x") S.pmesh((u, v) => [u, b, v], XR, zr, 8, 6, { fill: C.accent2, alpha: 0.16, edge: false });
+    else S.pmesh((u, v) => [a, u, v], XR, zr, 8, 6, { fill: C.accent2, alpha: 0.16, edge: false });
+    S.flush();
+    const pts = [];
+    for (let i = 0; i <= 120; i++) { const t = XR[0] + (XR[1] - XR[0]) * i / 120; pts.push(dir === "x" ? [t, b, f(t, b)] : [a, t, f(a, t)]); }
+    S.path3(pts, { color: C.accent2, width: 3 });
+    const z0 = f(a, b), s = dir === "x" ? PD.fx(f, a, b) : PD.fy(f, a, b), L = 0.6;
+    S.line3(dir === "x" ? [a - L, b, z0 - L * s] : [a, b - L, z0 - L * s], dir === "x" ? [a + L, b, z0 + L * s] : [a, b + L, z0 + L * s], { color: C.warn, width: 2.6 });
+    S.dot3([a, b, z0], { color: C.accent, r: 5.5 });
+    S.labels();
+  }, { aspect: 0.7, minHeight: 250, maxHeight: 400 });
+  PD.rotate(cv, view, () => cv.redraw());
+  ch = MB.canvas("#pd-cv-slice2", (ctx) => {
+    const f = FN[key], a = aR(), b = bR(), C = MB.palette(), data = [];
+    const g = dir === "x" ? (t) => f(t, b) : (t) => f(a, t), t0 = dir === "x" ? a : b, s = dir === "x" ? PD.fx(f, a, b) : PD.fy(f, a, b);
+    for (let i = 0; i <= 160; i++) { const t = XR[0] + (XR[1] - XR[0]) * i / 160; data.push([t, g(t)]); }
+    const z0 = g(t0), pad = (zr[1] - zr[0]) * 0.08;
+    MB.chart(ctx, null, {
+      x: XR, y: [zr[0] - pad, zr[1] + pad], xLabel: dir === "x" ? "x (y = b 고정)" : "y (x = a 고정)",
+      series: [{ data, color: C.accent2, width: 2.6 }, { data: [[t0 - 0.9, z0 - 0.9 * s], [t0 + 0.9, z0 + 0.9 * s]], color: C.warn, width: 2 }],
+      points: [{ x: t0, y: z0, color: C.accent, r: 5, label: "기울기 " + PD.num(s, 3) }],
+    });
+  }, { aspect: 0.4, minHeight: 170, maxHeight: 240 });
+  function redraw() {
+    cv.redraw(); ch.redraw();
+    const f = FN[key], a = aR(), b = bR();
+    cap.textContent = dir === "x" ? "단면 z = f(x, b)와 접선" : "단면 z = f(a, y)와 접선";
+    MB.stat("pd-sl-f", PD.num(f(a, b), 3)); MB.stat("pd-sl-fx", PD.num(PD.fx(f, a, b), 3)); MB.stat("pd-sl-fy", PD.num(PD.fy(f, a, b), 3));
+  }
+  document.getElementById("pd-sl-fn").addEventListener("change", (e) => { key = e.target.value; zr = PD.span(FN[key], XR, XR); redraw(); });
+  redraw();
+})();
+
+/* ================================================================ 4. 혼합 차분 */
+(function () {
+  const FN = {
+    bad: { f: (x, y) => (x === 0 && y === 0) ? 0 : x * y * (x * x - y * y) / (x * x + y * y), a: 0, b: 0, ref: 0, ex: "−1, +1 (다르다)" },
+    exp: { f: (x, y) => Math.exp(x * y), a: 0, b: 0, ref: 1, ex: "1, 1" },
+    poly: { f: (x, y) => x ** 3 * y + x * y * y, a: 0.5, b: 0.5, ref: 1.75, ex: "1.75, 1.75 (= 3x² + 2y)" },
+  };
+  let key = "bad", zooming = false;
+  const msg = document.getElementById("pd-m-msg");
+  const rR = MB.range("pd-m-r", (v) => MB.fmt(Math.pow(10, v), 3), () => { pl.redraw(); upd(); });
+  const Q = (h, k) => { const F = FN[key], f = F.f, a = F.a, b = F.b; return (f(a + h, b + k) - f(a + h, b) - f(a, b + k) + f(a, b)) / (h * k); };
+  const pts = [{ x: 0.7, y: 0.45, label: "(h, k)" }];
+  const pl = MB.plane("#pd-cv-mixed", {
+    x: [-1.25, 1.25], y: [-1.25, 1.25], aspect: 0.72, maxHeight: 440, minHeight: 250, grid: false, axes: false, points: pts,
+    draw(P, api) {
+      const C = P.P, r = Math.pow(10, rR()), F = FN[key], p = api.points[0];
+      p.color = C.accent;
+      PD.heat(P, "pd-m-" + key + r.toPrecision(4), (u, v) => Q(r * u, r * v), [-1, 1], [-1, 1], (z) => 0.5 + (z - F.ref) / 3, { map: "diverge", res: 140, alpha: 0.85 });
+      P.axes({ labels: false });
+      P.text("h", 1.18, 0, { color: C.dim, bold: true, dy: -10 }); P.text("k", 0, 1.18, { color: C.dim, bold: true, dx: 8 });
+      P.text("±" + MB.fmt(r, 3), 1.0, -1.12, { color: C.dim, size: 12, align: "center" });
+      P.poly([[0, 0], [p.x, 0], [p.x, p.y], [0, p.y]], { color: C.text, width: 1.5, dash: [4, 3] });
+      [[0, 0, "+"], [p.x, 0, "−"], [0, p.y, "−"], [p.x, p.y, "+"]].forEach(([x, y, s]) => { P.dot(x, y, { color: C.text, r: 3 }); P.text(s, x, y, { color: C.text, bold: true, size: 15, dx: -14, dy: -10 }); });
+    },
+    onDrag() { upd(); },
+  });
+  function upd() {
+    const r = Math.pow(10, rR()), F = FN[key], p = pts[0];
+    const qh = Q(r, r / 100), qk = Q(r / 100, r);
+    MB.stat("pd-m-q", PD.num(Q(r * p.x, r * p.y), 4)); MB.stat("pd-m-qh", PD.num(qh, 4)); MB.stat("pd-m-qk", PD.num(qk, 4)); MB.stat("pd-m-ex", F.ex);
+    if (key === "bad") { msg.className = "pd-msg bad"; msg.innerHTML = `창을 ${MB.fmt(r, 3)}까지 줄여도 가로축 쪽은 ${PD.num(qh, 2)}, 세로축 쪽은 ${PD.num(qk, 2)}입니다. Δ/(hk)는 (h² − k²)/(h² + k²)라서 크기가 아니라 <b>방향</b>에만 달려 있습니다.`; }
+    else { const e = Math.max(Math.abs(qh - F.ref), Math.abs(qk - F.ref)); msg.className = e < 0.01 ? "pd-msg ok" : "pd-msg"; msg.innerHTML = `어느 방향이든 기준값 ${F.ref}에서 ${PD.num(e, 4)} 이내입니다. 확대할수록 한 값으로 모입니다.`; }
+  }
+  document.getElementById("pd-m-fn").addEventListener("change", (e) => { key = e.target.value; pl.redraw(); upd(); });
+  const loop = MB.loop(document.getElementById("sim-pd-mixed"), (dt) => {
+    if (!zooming) return;
+    let v = rR() - dt * 0.6; if (v < -3) v = 0; rR.set(v);
+  });
+  MB.playButton("pd-m-zoom", () => { zooming = true; loop.start(); }, () => { zooming = false; }, ["▶ 계속 확대", "■ 멈춤"]);
+  upd();
+})();
+
+/* ================================================================ 5. 접평면 확대경 */
+(function () {
+  const FN = {
+    ex: (x, y) => x * Math.exp(x * y),
+    hill: (x, y) => 2 * Math.exp(-(x * x + y * y) / 2),
+    cone: (x, y) => Math.sqrt(x * x + y * y),
+    bad: (x, y) => (x === 0 && y === 0) ? 0 : x * y / (x * x + y * y),
+  };
+  const view = { yaw: -0.8, elev: 0.5 };
+  let key = "ex", zooming = false, ch = null;
+  const msg = document.getElementById("pd-t-msg");
+  const aR = MB.range("pd-t-a", (v) => PD.num(v, 2), () => redraw());
+  const bR = MB.range("pd-t-b", (v) => PD.num(v, 2), () => redraw());
+  const wR = MB.range("pd-t-w", (v) => MB.fmt(Math.pow(10, v), 3), () => redraw());
+  const lin = (f, a, b) => { const z0 = f(a, b), fx = PD.fx(f, a, b, 1e-6), fy = PD.fy(f, a, b, 1e-6); return { z0, fx, fy, L: (x, y) => z0 + fx * (x - a) + fy * (y - b) }; };
+  const maxErr = (f, L, a, b, w, n = 24) => { let E = 0; for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) { const x = a - w + 2 * w * i / n, y = b - w + 2 * w * j / n, e = Math.abs(f(x, y) - L(x, y)); if (isFinite(e) && e > E) E = e; } return E; };
+  const cv = MB.canvas("#pd-cv-tan3", (ctx, w, h) => {
+    const f = FN[key], a = aR(), b = bR(), W = Math.pow(10, wR()), C = MB.palette(), T = lin(f, a, b);
+    const xr = [a - W, a + W], yr = [b - W, b + W], s1 = PD.span(f, xr, yr, 20), s2 = PD.span(T.L, xr, yr, 4);
+    let zr = [Math.min(s1[0], s2[0]), Math.max(s1[1], s2[1])]; const pad = (zr[1] - zr[0]) * 0.08 || 0.01; zr = [zr[0] - pad, zr[1] + pad];
+    const S = PD.scene(ctx, w, h, { xr, yr, zr, view });
+    S.box();
+    S.mesh(f, { n: 26 });
+    S.mesh(T.L, { n: 13, fill: C.accent, alpha: 0.38, edge: false });
+    S.flush();
+    S.dot3([a, b, T.z0], { color: C.accent, r: 5.5 });
+    S.labels();
+  }, { aspect: 0.7, minHeight: 250, maxHeight: 400 });
+  PD.rotate(cv, view, () => cv.redraw());
+  ch = MB.canvas("#pd-cv-tanerr", (ctx) => {
+    const f = FN[key], a = aR(), b = bR(), W = Math.pow(10, wR()), C = MB.palette(), T = lin(f, a, b), data = [];
+    for (let i = 0; i <= 28; i++) { const ww = Math.pow(10, -2 + 2.3 * i / 28); data.push([ww, Math.max(1e-9, maxErr(f, T.L, a, b, ww, 14) / ww)]); }
+    const ys = data.map((d) => d[1]); let lo = Math.log10(Math.min(...ys)), hi = Math.log10(Math.max(...ys));
+    lo = Math.floor(lo - 0.2); hi = Math.ceil(hi + 0.2); if (hi - lo < 2) hi = lo + 2;
+    const cur = Math.max(1e-9, maxErr(f, T.L, a, b, W, 14) / W);
+    MB.chart(ctx, null, {
+      x: [0.01, 2], y: [Math.pow(10, lo), Math.pow(10, hi)], logX: true, logY: true, xLabel: "창 반폭 w",
+      series: [{ data, color: C.accent, width: 2.4 }],
+      vlines: [{ x: W, color: C.dim }], points: [{ x: W, y: cur, color: C.accent, r: 5, label: "E/w" }],
+    });
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 220 });
+  const sg = (v) => (v < 0 ? " − " : " + ") + PD.num(Math.abs(v), 3), sm = (v) => (v < 0 ? " + " : " − ") + PD.num(Math.abs(v), 2);
+  function redraw() {
+    cv.redraw(); ch.redraw();
+    const f = FN[key], a = aR(), b = bR(), W = Math.pow(10, wR()), T = lin(f, a, b), E = maxErr(f, T.L, a, b, W);
+    MB.stat("pd-t-L", `${PD.num(T.z0, 3)}${sg(T.fx)}(x${sm(a)})${sg(T.fy)}(y${sm(b)})`);
+    MB.stat("pd-t-E", MB.fmt(E, 3)); MB.stat("pd-t-Ew", MB.fmt(E / W, 3));
+    const h = 1e-6, oneX = (f(a + h, b) - f(a, b)) / h - (f(a, b) - f(a - h, b)) / h, oneY = (f(a, b + h) - f(a, b)) / h - (f(a, b) - f(a, b - h)) / h;
+    const r1 = maxErr(f, T.L, a, b, 0.002) / 0.002, r2 = maxErr(f, T.L, a, b, 0.02) / 0.02;
+    if (Math.abs(oneX) > 1e-3 || Math.abs(oneY) > 1e-3) { msg.className = "pd-msg bad"; msg.innerHTML = "이 점에서는 왼쪽 기울기와 오른쪽 기울기가 달라 <b>편도함수가 없습니다</b>. 그림의 평면은 중심 차분이 준 0 기울기일 뿐이고, 확대해도 E/w가 줄지 않습니다."; }
+    else if (r1 > 0.5 * r2) { msg.className = "pd-msg bad"; msg.innerHTML = `편도함수는 있지만 확대해도 E/w가 0으로 가지 않습니다(w = 0.02에서 ${MB.fmt(r2, 3)}, 0.002에서 ${MB.fmt(r1, 3)}). <b>미분 불가능</b>합니다.`; }
+    else { msg.className = "pd-msg ok"; msg.innerHTML = `미분 가능: w를 10배 줄이면 E/w가 약 ${PD.num(r2 / Math.max(r1, 1e-12), 1)}배 줄어듭니다. 곡면이 접평면에 붙습니다.`; }
+  }
+  document.getElementById("pd-t-fn").addEventListener("change", (e) => { key = e.target.value; redraw(); });
+  document.getElementById("pd-t-origin").addEventListener("click", () => { aR.set(0, false); bR.set(0, false); redraw(); });
+  const loop = MB.loop(document.getElementById("sim-pd-tangent"), (dt) => {
+    if (!zooming) return;
+    let v = wR() - dt * 0.6; if (v < -2) v = 0.3; wR.set(v);
+  });
+  MB.playButton("pd-t-zoom", () => { zooming = true; loop.start(); }, () => { zooming = false; }, ["▶ 확대", "■ 멈춤"]);
+  redraw();
+})();
+
+/* ================================================================ 6. 오차 전파 */
+(function () {
+  const FN = {
+    cyl: { f: (r, h) => Math.PI * r * r * h, g: (r, h) => [2 * Math.PI * r * h, Math.PI * r * r], l: ["반지름 r (cm)", "Δr (cm)", "높이 h (cm)", "Δh (cm)"], x: [1, 10, 0.1, 5], dx: [0, 0.5, 0.01, 0.1], y: [1, 20, 0.1, 12], dy: [0, 1, 0.01, 0.2], unit: "cm³" },
+    pend: { f: (L, T) => 4 * Math.PI ** 2 * L / (T * T), g: (L, T) => [4 * Math.PI ** 2 / (T * T), -8 * Math.PI ** 2 * L / T ** 3], l: ["줄 길이 L (m)", "ΔL (m)", "주기 T (s)", "ΔT (s)"], x: [0.2, 2, 0.01, 1], dx: [0, 0.05, 0.001, 0.005], y: [0.8, 3, 0.001, 2.006], dy: [0, 0.1, 0.001, 0.01], unit: "m/s²" },
+    pow: { f: (V, R) => V * V / R, g: (V, R) => [2 * V / R, -V * V / (R * R)], l: ["전압 V (V)", "ΔV (V)", "저항 R (Ω)", "ΔR (Ω)"], x: [1, 24, 0.1, 12], dx: [0, 1, 0.01, 0.1], y: [1, 20, 0.1, 8], dy: [0, 1, 0.01, 0.2], unit: "W" },
+  };
+  let key = "cyl";
+  const ids = ["x", "dx", "y", "dy"];
+  const R = {};
+  ids.forEach((id) => { R[id] = MB.range("pd-e-" + id, (v) => String(+v.toFixed(3)), () => cv.redraw()); });
+  function setFn(k) {
+    key = k; const F = FN[k];
+    ids.forEach((id, i) => {
+      const el = document.getElementById("pd-e-" + id), c = F[id];
+      el.min = c[0]; el.max = c[1]; el.step = c[2]; R[id].set(c[3], false);
+      document.getElementById("pd-e-l" + (i + 1)).textContent = F.l[i];
+    });
+  }
+  const cv = MB.canvas("#pd-cv-err", (ctx) => {
+    const F = FN[key], C = MB.palette(), x = R.x(), dx = R.dx(), y = R.y(), dy = R.dy();
+    const z0 = F.f(x, y), [gx, gy] = F.g(x, y), t1 = Math.abs(gx) * dx, t2 = Math.abs(gy) * dy, worst = t1 + t2, rss = Math.hypot(t1, t2);
+    const rng = MB.rng(12345), N = 4000, zs = [];
+    for (let i = 0; i < N / 2; i++) {
+      const u1 = Math.max(1e-12, rng()), u2 = rng(), rr = Math.sqrt(-2 * Math.log(u1));
+      const n1 = rr * Math.cos(2 * Math.PI * u2), n2 = rr * Math.sin(2 * Math.PI * u2);
+      const u3 = Math.max(1e-12, rng()), u4 = rng(), r2 = Math.sqrt(-2 * Math.log(u3));
+      const n3 = r2 * Math.cos(2 * Math.PI * u4), n4 = r2 * Math.sin(2 * Math.PI * u4);
+      zs.push(F.f(x + dx * n1, y + dy * n3), F.f(x + dx * n2, y + dy * n4));
+    }
+    const ok = zs.filter(isFinite), mean = MB.mean(ok), sd = MB.std(ok);
+    const halfW = Math.max(4 * Math.max(rss, sd), worst * 1.3, Math.abs(z0) * 0.01, 1e-9);
+    const lo = z0 - halfW, hi = z0 + halfW, H = MB.histogram(ok, 50, [lo, hi]), maxC = Math.max(1, ...H.counts);
+    const R2 = MB.chart(ctx, null, {
+      x: [lo, hi], y: [0, maxC * 1.18], xLabel: `계산값 (${F.unit})`, yTicks: [],
+      vlines: [{ x: z0, color: C.text, dash: [] }, { x: z0 - worst, color: C.bad }, { x: z0 + worst, color: C.bad }, { x: z0 - rss, color: C.accent2 }, { x: z0 + rss, color: C.accent2 }],
+    });
+    ctx.save(); ctx.fillStyle = C.accent; ctx.globalAlpha = 0.45;
+    H.counts.forEach((c, i) => { const xa = R2.X(H.edges[i]), xb = R2.X(H.edges[i + 1]); ctx.fillRect(xa, R2.Y(c), Math.max(1, xb - xa - 1), R2.Y(0) - R2.Y(c)); });
+    ctx.globalAlpha = 1; ctx.strokeStyle = C.accent2; ctx.lineWidth = 2; ctx.beginPath();
+    if (rss > 0) for (let i = 0; i <= 160; i++) { const z = lo + (hi - lo) * i / 160, v = MB.normPdf(z, z0, rss) * ok.length * H.width, px = R2.X(z), py = R2.Y(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.stroke(); ctx.restore();
+    const rel = (v) => PD.num(100 * v / Math.abs(z0), 2) + "%";
+    MB.stat("pd-e-z", `${MB.fmt(z0, 4)} ${F.unit}`);
+    MB.stat("pd-e-terms", `${MB.fmt(t1, 3)}, ${MB.fmt(t2, 3)}`);
+    MB.stat("pd-e-worst", `±${MB.fmt(worst, 3)} (${rel(worst)})`);
+    MB.stat("pd-e-rss", `${MB.fmt(rss, 3)} vs ${MB.fmt(sd, 3)}`);
+    void mean;
+  }, { aspect: 0.5, minHeight: 220, maxHeight: 340 });
+  document.getElementById("pd-e-fn").addEventListener("change", (e) => { setFn(e.target.value); cv.redraw(); });
+  setFn("cyl"); cv.redraw();
+})();
+
+/* ================================================================ 7. 연쇄 법칙 */
+(function () {
+  const FN = {
+    ex: (x, y) => 100 - x * x - 2 * y * y,
+    hills: (x, y) => 20 + 60 * Math.exp(-((x - 1) ** 2 + (y - 0.5) ** 2)) + 40 * Math.exp(-((x + 1.2) ** 2 + (y + 0.4) ** 2) / 0.6),
+    xy: (x, y) => 50 + 10 * x * y,
+  };
+  const PATH = {
+    ell: [(t) => [2 * Math.cos(t), Math.sin(t)], (t) => [-2 * Math.sin(t), Math.cos(t)]],
+    circ: [(t) => [1.5 * Math.cos(t), 1.5 * Math.sin(t)], (t) => [-1.5 * Math.sin(t), 1.5 * Math.cos(t)]],
+    eight: [(t) => [2 * Math.sin(t), Math.sin(2 * t)], (t) => [2 * Math.cos(t), 2 * Math.cos(2 * t)]],
+    line: [(t) => [-2 + 0.64 * t, -1 + 0.32 * t], () => [0.64, 0.32]],
+  };
+  let key = "ex", path = "ell", playing = false, ch = null;
+  const tR = MB.range("pd-c-t", (v) => v.toFixed(3), () => redraw());
+  const pl = MB.plane("#pd-cv-chain", {
+    x: [-3, 3], aspect: 0.62, maxHeight: 400, minHeight: 220, grid: false, axes: false,
+    draw(P) {
+      const f = FN[key], C = P.P, [r, v] = PATH[path], t = tR();
+      const zr = PD.span(f, [P.x0, P.x1], [P.y0, P.y1], 30);
+      PD.heat(P, "pd-c-" + key, f, [P.x0, P.x1], [P.y0, P.y1], (z) => (z - zr[0]) / (zr[1] - zr[0]));
+      PD.contour(P.ctx, f, [P.x0, P.x1], [P.y0, P.y1], PD.levels(zr[0], zr[1], 14), (x, y) => [P.X(x), P.Y(y)], { color: P.P.text, alpha: 0.4, n: 70 });
+      P.axes({ step: 1 });
+      P.param(r, 0, 2 * Math.PI, { color: C.text, width: 2.2 });
+      const [x, y] = r(t), [vx, vy] = v(t), g = PD.grad(f, x, y), gn = Math.hypot(g[0], g[1]) || 1;
+      P.arrow(x, y, x + g[0] / gn, y + g[1] / gn, { color: C.accent, width: 3, label: "∇T" });
+      P.arrow(x, y, x + 0.6 * vx, y + 0.6 * vy, { color: C.accent2, width: 3, label: "r′(t)" });
+      P.dot(x, y, { color: C.text, r: 6, stroke: C.bg });
+      if (ch) ch.redraw();
+    },
+  });
+  ch = MB.canvas("#pd-cv-chaint", (ctx) => {
+    const f = FN[key], C = MB.palette(), [r, v] = PATH[path], t = tR(), data = [];
+    for (let i = 0; i <= 240; i++) { const s = 2 * Math.PI * i / 240, p = r(s); data.push([s, f(p[0], p[1])]); }
+    const ys = data.map((d) => d[1]); let lo = Math.min(...ys), hi = Math.max(...ys); const pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
+    const p = r(t), q = v(t), g = PD.grad(f, p[0], p[1]), s = g[0] * q[0] + g[1] * q[1], z = f(p[0], p[1]);
+    MB.chart(ctx, null, {
+      x: [0, 2 * Math.PI], y: [lo, hi], xLabel: "t",
+      series: [{ data, color: C.text, width: 2.2 }, { data: [[t - 0.6, z - 0.6 * s], [t + 0.6, z + 0.6 * s]], color: C.warn, width: 2.4 }],
+      points: [{ x: t, y: z, color: C.accent, r: 5, label: "기울기 " + PD.num(s, 3) }],
+    });
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 220 });
+  function redraw() {
+    pl.redraw();
+    const f = FN[key], [r, v] = PATH[path], t = tR(), p = r(t), q = v(t), g = PD.grad(f, p[0], p[1]), h = 1e-4;
+    const a = g[0] * q[0], b = g[1] * q[1], pa = r(t + h), pb = r(t - h);
+    MB.stat("pd-c-a", PD.num(a, 3)); MB.stat("pd-c-b", PD.num(b, 3)); MB.stat("pd-c-sum", PD.num(a + b, 3));
+    MB.stat("pd-c-num", PD.num((f(pa[0], pa[1]) - f(pb[0], pb[1])) / (2 * h), 3));
+  }
+  document.getElementById("pd-c-fn").addEventListener("change", (e) => { key = e.target.value; redraw(); });
+  document.getElementById("pd-c-path").addEventListener("change", (e) => { path = e.target.value; redraw(); });
+  const loop = MB.loop(document.getElementById("sim-pd-chain"), (dt) => {
+    if (!playing) return;
+    let v = tR() + dt * 0.7; if (v > 2 * Math.PI) v -= 2 * Math.PI; tR.set(v);
+  });
+  MB.playButton("pd-c-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 날리기", "■ 멈춤"]);
+  redraw();
+})();
+
+/* ================================================================ 8. 열·파동 방정식 */
+(function () {
+  const N = 50;
+  let u = new Float64Array(N + 1), up = new Float64Array(N + 1), u0 = new Float64Array(N + 1), t = 0, eq = "heat", running = false, first = true, blown = false;
+  const initSel = document.getElementById("pd-h-init");
+  const sR = MB.range("pd-h-s", (v) => v.toFixed(2), () => { cv.redraw(); });
+  function init() {
+    const k = initSel.value;
+    for (let i = 0; i <= N; i++) {
+      const x = i / N;
+      u[i] = k === "step" ? (x >= 0.4 && x <= 0.6 ? 1 : 0) : k === "tri" ? 1 - Math.abs(x - 0.5) / 0.5 : k === "mode" ? Math.sin(Math.PI * x) : 0.75 * (Math.sin(Math.PI * x) + 0.5 * Math.sin(5 * Math.PI * x));
+    }
+    u[0] = u[N] = 0; up = Float64Array.from(u); u0 = Float64Array.from(u); t = 0; first = true; blown = false;
+  }
+  function step() {
+    const s = sR(), n = new Float64Array(N + 1);
+    for (let i = 1; i < N; i++) {
+      const lap = u[i + 1] - 2 * u[i] + u[i - 1];
+      n[i] = eq === "heat" ? u[i] + s * lap : first ? u[i] + 0.5 * s * lap : 2 * u[i] - up[i] + s * lap;
+    }
+    first = false; up = u; u = n;
+    t += eq === "heat" ? s / (N * N) : Math.sqrt(s) / N;
+  }
+  const cv = MB.canvas("#pd-cv-heat", (ctx) => {
+    const C = MB.palette(), cur = [], ini = [];
+    for (let i = 0; i <= N; i++) { cur.push([i / N, MB.clamp(u[i], -5, 5)]); ini.push([i / N, u0[i]]); }
+    const R = MB.chart(ctx, null, {
+      x: [0, 1], y: [-1.3, 1.3], xLabel: "x",
+      series: [{ data: ini, color: C.dim, width: 1.4, dash: [4, 4] }, { data: cur, color: eq === "heat" ? C.accent : C.accent2, width: 2.8 }],
+      hlines: [{ y: 0, color: C.faint }],
+    });
+    ctx.save(); ctx.strokeStyle = C.warn; ctx.fillStyle = C.warn; ctx.lineWidth = 1.8;
+    for (let i = 2; i < N - 1; i += 3) {
+      const lap = (u[i + 1] - 2 * u[i] + u[i - 1]) * N * N;
+      if (!isFinite(lap) || Math.abs(lap) < 0.05) continue;
+      const px = R.X(i / N), py = R.Y(MB.clamp(u[i], -1.3, 1.3)), L = MB.clamp(Math.abs(lap) * (eq === "heat" ? 0.6 : 1.5), 5, 34) * -Math.sign(lap);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + L); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py + L); ctx.lineTo(px - 4, py + L + 5 * Math.sign(L)); ctx.lineTo(px + 4, py + L + 5 * Math.sign(L)); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    let mx = 0; for (let i = 0; i <= N; i++) mx = Math.max(mx, Math.abs(u[i]));
+    const s = sR(), lim = eq === "heat" ? 0.5 : 1;
+    MB.stat("pd-h-t", t.toFixed(4)); MB.stat("pd-h-max", blown ? "발산" : mx.toFixed(4));
+    MB.stat("pd-h-stab", s <= lim + 1e-9 ? `안정 (s ≤ ${lim})` : `<span style="color:var(--bad)">불안정 (s &gt; ${lim})</span>`);
+  }, { aspect: 0.45, minHeight: 220, maxHeight: 340 });
+  MB.seg("pd-h-eq", (v) => { eq = v; if (v === "wave" && initSel.value === "step") initSel.value = "tri"; init(); cv.redraw(); });
+  initSel.addEventListener("change", () => { init(); cv.redraw(); });
+  document.getElementById("pd-h-reset").addEventListener("click", () => { init(); cv.redraw(); });
+  const loop = MB.loop(document.getElementById("sim-pd-heat"), () => {
+    if (!running || blown) return;
+    const k = eq === "heat" ? 8 : 1;
+    for (let i = 0; i < k; i++) step();
+    let mx = 0; for (let i = 0; i <= N; i++) mx = Math.max(mx, Math.abs(u[i]));
+    if (!isFinite(mx) || mx > 50) blown = true;
+    cv.redraw();
+  });
+  MB.playButton("pd-h-play", () => { running = true; loop.start(); }, () => { running = false; }, ["▶ 시작", "■ 멈춤"]);
+  init(); cv.redraw();
+})();
+</script>
+</body>
+</html>

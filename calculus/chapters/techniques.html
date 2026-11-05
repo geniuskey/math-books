@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>적분 기법 · CalculusBook</title>
+<meta name="description" content="부분 적분과 표 방법, 삼각 적분과 직교성, 삼각 치환, 부분 분수, 적분 전략, 이상 적분과 p-적분·비교 판정, 사다리꼴·중점·심프슨 공식의 오차 차수, 닫힌 꼴이 없는 적분까지 그림을 끌고 숫자를 바꾸며 익힌다.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .tq-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .tq-two > div { position: relative; min-width: 0; }
+  .tq-two > div + div { border-top: 1px solid var(--border); }
+  .tq-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 75%, transparent); padding: 1px 6px; border-radius: 5px; }
+  .tq-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .tq-msg b { color: var(--text); }
+  .tq-msg.ok { color: var(--ok); font-weight: 600; }
+  .tq-msg.bad { color: var(--bad); font-weight: 600; }
+  .tq-tab { overflow-x: auto; padding: 10px 18px; border-top: 1px solid var(--border); }
+  .tq-tab table { border-collapse: collapse; font: 600 13.5px var(--mono); margin: 0; }
+  .tq-tab th, .tq-tab td { padding: 4px 14px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+  .tq-tab th { color: var(--text-dim); font-weight: 600; }
+  .tq-tab td.sg { color: var(--accent); }
+  .tq-tab tr.dead td { color: var(--text-faint); }
+  .tq-in { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .tq-in input { width: 100%; min-width: 0; box-sizing: border-box; padding: 5px 6px; font: 600 13px var(--mono); border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); text-align: center; }
+  .tq-in small { display: block; font-size: 11px; color: var(--text-faint); text-align: center; }
+  .tq-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .tq-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="calculus"></script>
+</head>
+<body data-chapter="techniques">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 09</div>
+    <h1 data-no-glossary>적분 기법</h1>
+    <p class="lead">미적분의 기본 정리는 정적분을 "역도함수를 찾아 양 끝 값을 빼는 일"로 바꿔 주었습니다. 문제는 역도함수를 찾는 일이 미분처럼 기계적이지 않다는 것입니다. 곱의 미분은 공식 한 줄이지만 곱의 적분에는 공식이 없고, \(\sqrt{1-x^2}\)이나 \(\frac{1}{x^2-1}\)처럼 단순해 보이는 함수도 그대로는 적분표에 없습니다. 이 장은 적분을 아는 꼴로 바꾸는 네 가지 도구, <b>부분 적분·삼각 적분·삼각 치환·부분 분수</b>를 익히고, 구간이 무한하거나 함수가 폭발하는 <b>이상 적분</b>을 다룬 다음, 어떤 기법으로도 닫힌 꼴이 나오지 않을 때 쓰는 <b>수치 적분</b>과 그 오차까지 갑니다.</p>
+    <ul class="objectives">
+      <li>\(\int u\,dv = uv - \int v\,du\)를 넓이 그림으로 이해하고, LIATE 순서·표 방법·순환형으로 부분 적분을 빠르게 한다.</li>
+      <li>\(\sin^m x\cos^n x\)와 \(\tan, \sec\)의 적분을 지수의 홀짝으로 분류해 풀고, 삼각 함수의 직교성을 확인한다.</li>
+      <li>\(\sqrt{a^2-x^2}, \sqrt{a^2+x^2}, \sqrt{x^2-a^2}\)를 기준 삼각형으로 치환하고, 결과를 다시 \(x\)로 되돌린다.</li>
+      <li>유리 함수를 부분 분수로 쪼개(서로 다른 일차 인수·중근·기약 이차 인수) 로그와 arctan으로 적분한다.</li>
+      <li>무한 구간과 무한 불연속의 이상 적분을 극한으로 정의하고, p-적분과 비교 판정으로 수렴·발산을 가린다.</li>
+      <li>사다리꼴·중점·심프슨 공식을 쓰고, 오차가 \(n^{-2}\)와 \(n^{-4}\)로 줄어드는 이유와 오차 한계로 필요한 \(n\)을 정한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>종 모양 곡선 아래의 넓이</b></div>
+      <div class="o-body"><p>공장에서 깎은 축의 지름이 정규분포를 따른다면, 공차 ±1σ 안에 들어오는 부품의 비율은 종 모양 곡선 \(e^{-x^2/2}\) 아래 넓이입니다. 그런데 이 함수의 역도함수는 다항식·지수·로그·삼각 함수를 유한 번 조합한 어떤 식으로도 쓸 수 없습니다. 19세기에 리우빌<span class="en">(Joseph Liouville)</span>이 이런 "초등 함수로 적분되지 않는 함수"를 판정하는 이론을 세웠고, \(e^{-x^2}\)은 그 대표 예입니다.</p>
+        <p>그래서 공학은 두 갈래 길을 갑니다. 하나는 적분을 <b>아는 꼴로 바꾸는 기법</b>입니다. 부분 적분·치환·부분 분수로 바꿀 수 있는 적분은 정확한 식이 나오고, 그 식이 설계 공식이 됩니다. 다른 하나는 바꿀 수 없는 적분을 <b>정해진 정확도의 숫자로</b> 계산하는 수치 적분입니다. 정규분포표, 계산기의 erf 버튼, 유한 요소 해석의 강성 행렬 적분이 모두 그 결과입니다. 이 장은 두 길을 다 걷습니다.</p>
+        <div class="o-chain"><span>측정값의 분포</span><i>→</i><span>곡선 아래 넓이</span><i>→</i><span class="tool">적분 기법 + 수치 적분</span><i>→</i><span>공차·수율 설계</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="by-parts">
+    <h2>부분 적분: 곱의 법칙을 거꾸로</h2>
+    <div class="problem"><strong>곱의 적분에는 공식이 없다</strong>
+      <p>축전기에 지수적으로 줄어드는 전류 \(i(t) = I_0\,e^{-t/\tau}\)가 흐를 때, 시간 가중 평균 \(\int_0^\infty t\,e^{-t/\tau}\,dt\)는 전하가 평균적으로 언제 빠져나가는지 알려 줍니다. 그런데 \(t\)와 \(e^{-t/\tau}\)의 곱을 적분하는 공식은 없습니다. 미분에는 곱의 법칙이 있는데 적분에는 무엇이 대응할까요?</p></div>
+    <p>곱의 법칙 \((uv)' = u'v + uv'\)을 양변 적분하면 \(uv = \int u'v\,dx + \int uv'\,dx\)입니다. 이것을 정리하면 곱의 적분 하나를 <b>다른 곱의 적분</b>으로 바꾸는 식이 나옵니다. 바꾼 적분이 더 쉬우면 이긴 것입니다.</p>
+    <div class="callout deep"><strong>정리 9.1 (부분 적분)</strong> \(u, v\)가 \([a, b]\)에서 연속 미분 가능하면
+      <div class="formula">$$\int u\,dv = uv - \int v\,du, \qquad \int_a^b u(x)v'(x)\,dx = \Big[u(x)v(x)\Big]_a^b - \int_a^b v(x)u'(x)\,dx.$$
+        <div class="where">\(du = u'(x)\,dx\), \(dv = v'(x)\,dx\). 적분할 곱을 "미분할 쪽 \(u\)"와 "적분할 쪽 \(dv\)"로 나누는 것이 전부다.</div></div>
+      <p style="margin:8px 0 0"><b>증명.</b> \((uv)' = u'v + uv'\)은 연속이므로 미적분의 기본 정리(<a href="fundamental.html">8장</a>)에 의해 \(\int_a^b (uv)'\,dx = u(b)v(b) - u(a)v(a)\). 좌변을 둘로 나누고 \(\int_a^b u'v\,dx\)를 이항하면 된다. ∎</p></div>
+    <p>이름 그대로 <span class="term">부분 적분</span><span class="en">(integration by parts)</span>은 피적분 함수의 일부만 적분합니다. 그림으로 보면 더 분명합니다. 가로축을 \(u\), 세로축을 \(v\)로 하는 평면에 \(x\)가 \(a\)에서 \(b\)로 갈 때의 점 \((u(x), v(x))\)을 찍으면 곡선이 하나 생깁니다. 곡선과 \(v\)축 사이 넓이가 \(\int u\,dv\), 곡선과 \(u\)축 사이 넓이가 \(\int v\,du\)이고, 둘을 합치면 큰 직사각형 \(u(b)v(b)\)에서 작은 직사각형 \(u(a)v(a)\)를 뺀 것입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="부분 적분의 넓이 그림">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="90" y1="250" x2="470" y2="250" class="s-axis"/><line x1="90" y1="250" x2="90" y2="30" class="s-axis"/>
+        <text x="476" y="254" class="t-mono">u</text><text x="84" y="26" class="t-mono" text-anchor="end">v</text>
+        <path d="M90 250 L90 190 C 190 182 300 140 420 60 L420 250 Z" class="f-acc2-soft"/>
+        <path d="M90 190 C 190 182 300 140 420 60 L90 60 Z" class="f-acc-soft"/>
+        <path d="M90 190 C 190 182 300 140 420 60" fill="none" class="s-acc" style="stroke-width:3"/>
+        <rect x="90" y="60" width="330" height="190" fill="none" class="s-line" style="stroke-dasharray:6 5"/>
+        <circle cx="90" cy="190" r="5" style="fill:var(--accent)"/><circle cx="420" cy="60" r="5" style="fill:var(--accent)"/>
+        <text x="100" y="206" class="t-mono">(u(a), v(a))</text><text x="428" y="56" class="t-mono">(u(b), v(b))</text>
+        <text x="170" y="110" class="t" style="font-weight:700">∫ u dv</text><text x="170" y="130" class="t-dim">곡선 왼쪽(가로 띠)</text>
+        <text x="300" y="215" class="t" style="font-weight:700">∫ v du</text><text x="300" y="235" class="t-dim">곡선 아래(세로 띠)</text>
+        <g transform="translate(510,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">두 넓이의 합 = 큰 직사각형</text>
+          <text x="0" y="30" class="t-mono">∫u dv + ∫v du</text>
+          <text x="0" y="54" class="t-mono">= u(b)v(b) − u(a)v(a)</text>
+          <text x="0" y="90" class="t-dim">그림에서는 u(a) = 0이라</text>
+          <text x="0" y="112" class="t-dim">작은 직사각형이 없다.</text>
+          <text x="0" y="146" class="t-dim">한쪽 넓이를 알면</text>
+          <text x="0" y="168" class="t-dim">다른 쪽은 빼기로 나온다.</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 9-1.</b> (u, v) 평면에서 본 부분 적분. 곡선의 왼쪽 넓이 ∫u dv와 아래쪽 넓이 ∫v du는 함께 직사각형을 채운다. 어려운 쪽 넓이를 쉬운 쪽 넓이로 바꾸는 것이 부분 적분이다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-tq-parts">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부분 적분 넓이 그림: 두 넓이가 직사각형을 채운다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-parts"></canvas><span class="tag-tl" id="tq-p-tag">u = ln x, v = x</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>적분</span><select id="tq-p-pre">
+            <option value="ln">∫ ln x dx (u = ln x, dv = dx)</option>
+            <option value="xe">∫ x eˣ dx (u = x, dv = eˣ dx)</option>
+            <option value="atan">∫ arctan x dx (u = arctan x, dv = dx)</option>
+            <option value="xln">∫ x ln x dx (u = ln x, dv = x dx)</option>
+          </select></label>
+          <label class="ctrl"><span>위 끝 b <output id="tq-p-b-out"></output></span><input type="range" id="tq-p-b" min="1.1" max="4" step="0.01" value="2.72"></label>
+          <label class="check"><input type="checkbox" id="tq-p-rect" checked> 직사각형 uv 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫ u dv (구하려는 적분)</span><span class="v" id="tq-p-udv">—</span></div>
+        <div class="stat"><span class="k">∫ v du (바꾼 적분)</span><span class="v" id="tq-p-vdu">—</span></div>
+        <div class="stat"><span class="k">[uv] 양 끝 차</span><span class="v" id="tq-p-uv">—</span></div>
+        <div class="stat"><span class="k">∫u dv + ∫v du − [uv]</span><span class="v" id="tq-p-chk">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '∫ ln x dx'에서 b = e로 두면 분홍 넓이가 정확히 1입니다. 파란 넓이 ∫v du = ∫x·(1/x)dx = b − 1이 너무 쉬운 적분이라 ln x를 적분할 수 있었던 것입니다. ② '∫ x eˣ dx'에서 b를 키우면 두 넓이가 모두 빠르게 자라지만 합은 늘 직사각형 넓이입니다. ③ 마지막 줄이 늘 0인지 확인하세요. 모델: 두 넓이는 심프슨 공식(n = 400)으로 계산합니다. 모든 예에서 u(a) = 0입니다.</div>
+    </div>
+
+    <p>어느 쪽을 \(u\)로 고를지에는 경험칙이 있습니다. <b>미분하면 단순해지는 쪽</b>을 \(u\)로, <b>적분해도 복잡해지지 않는 쪽</b>을 \(dv\)로 고릅니다. 흔히 쓰는 순서는 LIATE(로그 → 역삼각 → 대수(다항식) → 삼각 → 지수)로, 앞에 있는 것일수록 \(u\)로 고릅니다. 로그와 역삼각 함수는 미분하면 유리 함수가 되어 단순해지고, 지수와 삼각 함수는 적분해도 모양이 그대로이기 때문입니다.</p>
+    <div class="callout"><strong>예제 9.1 (기본형 두 개)</strong>
+      <ol>
+        <li>\(\int x e^x\,dx\): 다항식 \(x\)를 \(u\)로. \(u = x,\ dv = e^x dx\)이면 \(du = dx,\ v = e^x\). 따라서 \(\int xe^x\,dx = xe^x - \int e^x\,dx = (x-1)e^x + C\). 정적분 \(\int_0^1 xe^x\,dx = [(x-1)e^x]_0^1 = 0 - (-1) = 1\).</li>
+        <li>\(\int \ln x\,dx\): 곱이 아닌 것 같지만 \(\ln x \cdot 1\)로 봅니다. \(u = \ln x,\ dv = dx\)이면 \(du = dx/x,\ v = x\). \(\int \ln x\,dx = x\ln x - \int x\cdot\tfrac{1}{x}\,dx = x\ln x - x + C\).</li>
+        <li>검산은 언제나 미분으로: \(\tfrac{d}{dx}(x\ln x - x) = \ln x + 1 - 1 = \ln x\). ✓ 같은 방법으로 \(\int \arctan x\,dx = x\arctan x - \tfrac12\ln(1+x^2) + C\)입니다.</li>
+      </ol></div>
+    <p>다항식 차수가 높으면 부분 적분을 여러 번 해야 합니다. \(x^3e^x\)이라면 세 번입니다. 매번 \(u\)는 미분하고 \(dv\)는 적분하며 부호가 번갈아 바뀌므로, 이것을 표로 정리한 것이 <span class="term">표 방법</span><span class="en">(tabular integration)</span>입니다. 왼쪽 열에 \(u\)를 0이 될 때까지 미분해 적고, 오른쪽 열에 \(dv\)를 거듭 적분해 적은 다음, 대각선으로 곱하며 부호 \(+, -, +, \dots\)를 붙여 더합니다.</p>
+    <div class="callout"><strong>예제 9.2 (표 방법)</strong> \(\int x^2\sin x\,dx\)와 \(\int_0^\pi x^2\sin x\,dx\)를 구하라.
+      <ol>
+        <li>미분 열: \(x^2 \to 2x \to 2 \to 0\). 적분 열: \(\sin x \to -\cos x \to -\sin x \to \cos x\).</li>
+        <li>대각선 곱에 부호 \(+,-,+\): \(+x^2(-\cos x) - 2x(-\sin x) + 2\cos x\). 따라서 \(\int x^2\sin x\,dx = -x^2\cos x + 2x\sin x + 2\cos x + C\).</li>
+        <li>정적분: \(x = \pi\)에서 \(\pi^2 + 0 - 2\), \(x = 0\)에서 \(0 + 0 + 2\). 답은 \(\pi^2 - 4 \approx 5.870\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-tq-tabular">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>표 방법 계산기: xᵏ · g(x)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-tab"></canvas><span class="tag-tl">f = xᵏg(x) (분홍), 표로 얻은 F (파랑)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식 차수 k <output id="tq-t-k-out"></output></span><input type="range" id="tq-t-k" min="1" max="5" step="1" value="2"></label>
+          <div class="ctrl"><span>짝 함수 g(x)</span><div class="seg" id="tq-t-g"><button data-value="sin" class="on">sin x</button><button data-value="cos">cos x</button><button data-value="exp">eˣ</button><button data-value="expn">e⁻ˣ</button></div></div>
+        </div>
+      </div>
+      <div class="tq-tab" id="tq-t-table"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">∫ f dx</span><span class="v" id="tq-t-res">—</span></div>
+        <div class="stat"><span class="k">미분 검산 max |F′ − f|</span><span class="v" id="tq-t-chk">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k = 2, sin x가 예제 9.2입니다. ② k를 하나 올릴 때마다 표가 한 줄 늘어납니다. 미분 열이 0에 닿는 순간 표가 끝나므로 다항식이 반드시 u입니다. ③ eˣ에서는 모든 항에 eˣ이 붙어 결과가 (다항식)·eˣ 꼴입니다. 모델: 결과는 표를 그대로 기호 계산한 것이고, 검산은 F를 중앙 차분으로 미분해 f와 비교합니다.</div>
+    </div>
+
+    <p>어떤 적분은 부분 적분을 두 번 하면 <b>원래 적분이 다시 나타납니다</b>. 이때 포기하지 말고 방정식으로 풉니다. 이것이 순환형입니다.</p>
+    <div class="callout"><strong>예제 9.3 (순환형)</strong> \(I = \int e^x\sin x\,dx\)를 구하라.
+      <ol>
+        <li>\(u = \sin x,\ dv = e^xdx\): \(I = e^x\sin x - \int e^x\cos x\,dx\).</li>
+        <li>다시 \(u = \cos x,\ dv = e^xdx\): \(\int e^x\cos x\,dx = e^x\cos x + \int e^x\sin x\,dx = e^x\cos x + I\).</li>
+        <li>대입하면 \(I = e^x\sin x - e^x\cos x - I\), 즉 \(2I = e^x(\sin x - \cos x)\). 답: \(I = \tfrac12 e^x(\sin x - \cos x) + C\).</li>
+        <li>주의: 두 번째 단계에서 \(u\)와 \(dv\)의 역할을 바꾸면(\(u = e^x\)) 첫 단계를 되돌려 \(I = I\)라는 쓸모없는 식만 남습니다. 같은 종류를 계속 \(u\)로 고르세요.</li>
+      </ol></div>
+    <div class="callout deep"><strong>정리 9.2 (축소 공식)</strong> \(n \ge 2\)이면
+      <div class="formula">$$\int \sin^n x\,dx = -\frac{1}{n}\sin^{n-1}x\cos x + \frac{n-1}{n}\int\sin^{n-2}x\,dx.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(u = \sin^{n-1}x,\ dv = \sin x\,dx\)로 부분 적분하면 \(\int\sin^n x\,dx = -\sin^{n-1}x\cos x + (n-1)\int\sin^{n-2}x\cos^2x\,dx\). \(\cos^2 x = 1 - \sin^2 x\)를 넣으면 우변에 \(-(n-1)\int\sin^n x\,dx\)가 생기고, 이항해 \(n\)으로 나눈다. ∎</p></div>
+    <p>이런 <span class="term">축소 공식</span><span class="en">(reduction formula)</span>은 지수를 2씩 낮춰 결국 \(\int dx\)나 \(\int\sin x\,dx\)에 닿게 합니다. 정적분 \(\int_0^{\pi/2}\sin^n x\,dx\)에서는 첫 항이 양 끝에서 0이 되어 \(\frac{n-1}{n}\)을 곱하는 일만 남습니다. 예를 들어 \(\int_0^{\pi/2}\sin^4 x\,dx = \frac34\cdot\frac12\cdot\frac{\pi}{2} = \frac{3\pi}{16}\)입니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="trig-integrals">
+    <h2>삼각 적분: 홀수 지수는 떼어 내고, 짝수 지수는 반각으로</h2>
+    <div class="problem"><strong>교류 전력의 평균</strong>
+      <p>저항 \(R\)에 전압 \(V_0\sin\omega t\)를 걸면 순간 전력은 \(\frac{V_0^2}{R}\sin^2\omega t\)입니다. 한 주기 평균 전력을 알려면 \(\int_0^{2\pi}\sin^2\theta\,d\theta\)가 필요합니다. 가정용 전기의 "220 V"가 최댓값이 아니라 실효값이라는 말도 이 적분에서 나옵니다.</p></div>
+    <p>\(\int\sin^m x\cos^n x\,dx\) 꼴은 지수의 홀짝으로 갈립니다. 핵심 도구는 피타고라스 항등식 \(\sin^2 + \cos^2 = 1\)과 반각 공식입니다.</p>
+    <div class="formula">$$\sin^2 x = \frac{1 - \cos 2x}{2}, \qquad \cos^2 x = \frac{1 + \cos 2x}{2}, \qquad \sin x\cos x = \frac{\sin 2x}{2}.$$</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>꼴</th><th>방법</th><th>치환</th></tr></thead>
+      <tbody>
+        <tr><td>\(\sin x\)의 지수가 홀수</td><td>\(\sin x\) 하나를 떼고 나머지를 \(1-\cos^2x\)로</td><td>\(u = \cos x\)</td></tr>
+        <tr><td>\(\cos x\)의 지수가 홀수</td><td>\(\cos x\) 하나를 떼고 나머지를 \(1-\sin^2x\)로</td><td>\(u = \sin x\)</td></tr>
+        <tr><td>둘 다 짝수</td><td>반각 공식으로 지수를 반으로 낮춘다</td><td>(반복)</td></tr>
+        <tr><td>\(\tan^m x\sec^n x\), \(n\) 짝수</td><td>\(\sec^2x\) 하나를 떼고 나머지를 \(1+\tan^2x\)로</td><td>\(u = \tan x\)</td></tr>
+        <tr><td>\(\tan^m x\sec^n x\), \(m\) 홀수</td><td>\(\sec x\tan x\)를 떼고 나머지 \(\tan^2x\)를 \(\sec^2x - 1\)로</td><td>\(u = \sec x\)</td></tr>
+      </tbody></table></div>
+    <div class="callout"><strong>예제 9.4 (홀수·짝수 지수)</strong>
+      <ol>
+        <li>\(\int\sin^3 x\,dx = \int(1-\cos^2x)\sin x\,dx\). \(u = \cos x,\ du = -\sin x\,dx\)이면 \(-\int(1-u^2)\,du = -\cos x + \tfrac13\cos^3x + C\).</li>
+        <li>\(\int\sin^2x\cos^3x\,dx = \int\sin^2x(1-\sin^2x)\cos x\,dx\). \(u = \sin x\)이면 \(\int(u^2 - u^4)\,du = \tfrac13\sin^3x - \tfrac15\sin^5x + C\).</li>
+        <li>\(\int_0^{2\pi}\sin^2\theta\,d\theta = \int_0^{2\pi}\tfrac{1-\cos2\theta}{2}\,d\theta = \pi\). 한 주기 평균은 \(\pi/2\pi = 1/2\)이므로 평균 전력은 \(\frac{V_0^2}{2R}\), 실효값은 \(V_0/\sqrt2\)입니다. 220 V 실효값의 최댓값은 약 311 V입니다.</li>
+        <li>\(\int\sec x\,dx\): 분자·분모에 \(\sec x + \tan x\)를 곱하면 분자가 분모의 도함수가 되어 \(\ln|\sec x + \tan x| + C\). 처음 보면 기교 같지만, 미분으로 검산할 수 있습니다.</li>
+      </ol></div>
+    <p>삼각 적분에서 가장 쓸모 있는 결과는 서로 다른 진동수의 사인·코사인을 곱해 한 주기 적분하면 0이 된다는 사실입니다. 곱을 합으로 바꾸는 공식 \(\sin mx\sin nx = \tfrac12[\cos(m-n)x - \cos(m+n)x]\)를 쓰면 바로 증명됩니다.</p>
+    <div class="callout deep"><strong>정리 9.3 (삼각 함수의 직교성)</strong> 음이 아닌 정수 \(m, n\)에 대해
+      <div class="formula">$$\int_{-\pi}^{\pi}\sin mx\sin nx\,dx = \int_{-\pi}^{\pi}\cos mx\cos nx\,dx = \begin{cases}0 & m \ne n\\ \pi & m = n \ge 1\end{cases}, \qquad \int_{-\pi}^{\pi}\sin mx\cos nx\,dx = 0.$$
+        <div class="where">\(m = n = 0\)이면 \(\int\cos 0\cdot\cos 0\,dx = 2\pi\).</div></div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(m \ne n\)이면 \(\sin mx\sin nx = \tfrac12[\cos(m-n)x - \cos(m+n)x]\)이고, 0이 아닌 정수 \(k\)에 대해 \(\int_{-\pi}^{\pi}\cos kx\,dx = \big[\tfrac{\sin kx}{k}\big]_{-\pi}^{\pi} = 0\). \(m = n\ge1\)이면 \(\tfrac12[1 - \cos2mx]\)의 적분으로 \(\pi\). \(\sin mx\cos nx\)는 홀함수라 대칭 구간에서 0이다. ∎</p></div>
+    <p>이 <span class="term">직교성</span><span class="en">(orthogonality)</span>은 벡터의 내적이 0인 것과 같은 구조입니다. 함수 두 개의 "내적"을 \(\int f g\,dx\)로 정의하면 \(\sin x, \sin 2x, \dots\)는 서로 수직인 축이 되고, 신호를 이 축에 사영한 좌표가 푸리에 계수입니다(<a href="../../foundations/chapters/fourier.html">MathBook 푸리에</a>, <a href="../../linear/chapters/orthogonality.html">LinearBook 직교성</a>).</p>
+
+    <div class="sim" id="sim-tq-ortho">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>직교성: 곱의 부호 있는 넓이가 상쇄된다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-ortho"></canvas><span class="tag-tl" id="tq-o-tag">sin mx · sin nx, [−π, π]</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>곱의 종류</span><div class="seg" id="tq-o-type"><button data-value="ss" class="on">sin·sin</button><button data-value="cc">cos·cos</button><button data-value="sc">sin·cos</button></div></div>
+          <label class="ctrl"><span>m <output id="tq-o-m-out"></output></span><input type="range" id="tq-o-m" min="0" max="8" step="1" value="2"></label>
+          <label class="ctrl"><span>n <output id="tq-o-n-out"></output></span><input type="range" id="tq-o-n" min="0" max="8" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="tq-o-fac"> 두 인수도 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">양의 넓이</span><span class="v" id="tq-o-pos">—</span></div>
+        <div class="stat"><span class="k">음의 넓이</span><span class="v" id="tq-o-neg">—</span></div>
+        <div class="stat"><span class="k">∫<sub>−π</sub><sup>π</sup> (합)</span><span class="v" id="tq-o-int">—</span></div>
+        <div class="stat"><span class="k">정리 9.3의 값</span><span class="v" id="tq-o-th">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① m ≠ n이면 분홍(양)과 파랑(음) 넓이가 정확히 같아 합이 0입니다. ② m = n으로 맞추면 곱이 sin²이 되어 전부 0 이상이고, 합이 π로 뜁니다. ③ sin·cos는 m = n이어도 0입니다. 홀함수이기 때문입니다. 모델: 심프슨 공식(n = 800)으로 적분합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="trig-sub">
+    <h2>삼각 치환: 근호를 삼각형의 한 변으로</h2>
+    <div class="problem"><strong>원의 넓이를 적분으로</strong>
+      <p>반지름 \(a\)인 원의 넓이가 \(\pi a^2\)이라는 것은 알지만, 원의 위쪽 반 \(y = \sqrt{a^2 - x^2}\) 아래 넓이를 적분으로 구하려 하면 막힙니다. \(u = a^2 - x^2\)로 치환하면 \(du = -2x\,dx\)인데 피적분 함수에 \(x\)가 없습니다. 근호를 없앨 다른 방법이 필요합니다.</p></div>
+    <p>8장의 치환은 "안쪽 함수의 도함수가 바깥에 있을 때" 쓰는 방법이었습니다. <span class="term">삼각 치환</span><span class="en">(trigonometric substitution)</span>은 방향이 반대입니다. \(x\) 자체를 \(\theta\)의 함수로 놓아서 근호 안이 완전제곱이 되게 만듭니다. 피타고라스 항등식 \(1 - \sin^2\theta = \cos^2\theta\), \(1 + \tan^2\theta = \sec^2\theta\), \(\sec^2\theta - 1 = \tan^2\theta\)가 세 가지 경우에 대응합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="삼각 치환의 세 기준 삼각형">
+        <rect x="10" y="10" width="240" height="250" rx="10" class="f-surface"/>
+        <rect x="260" y="10" width="240" height="250" rx="10" class="f-surface"/>
+        <rect x="510" y="10" width="240" height="250" rx="10" class="f-surface"/>
+        <text x="130" y="36" text-anchor="middle" class="t" style="font-weight:700">√(a² − x²)</text>
+        <text x="130" y="56" text-anchor="middle" class="t-acc">x = a sin θ</text>
+        <path d="M40 210 L200 210 L200 90 Z" class="f-acc-soft" style="stroke:var(--accent);stroke-width:2"/>
+        <rect x="188" y="198" width="12" height="12" fill="none" class="s-line"/>
+        <text x="110" y="140" class="t" text-anchor="end">a</text><text x="208" y="154" class="t">x</text>
+        <text x="120" y="230" class="t-mono" text-anchor="middle">√(a² − x²)</text>
+        <path d="M72 210 A32 32 0 0 0 66 191" fill="none" class="s-line"/><text x="78" y="202" class="t">θ</text>
+        <text x="380" y="36" text-anchor="middle" class="t" style="font-weight:700">√(a² + x²)</text>
+        <text x="380" y="56" text-anchor="middle" class="t-acc">x = a tan θ</text>
+        <path d="M290 210 L450 210 L450 90 Z" class="f-acc2-soft" style="stroke:var(--accent-2);stroke-width:2"/>
+        <rect x="438" y="198" width="12" height="12" fill="none" class="s-line"/>
+        <text x="360" y="140" class="t-mono" text-anchor="end">√(a² + x²)</text><text x="458" y="154" class="t">x</text>
+        <text x="370" y="230" class="t" text-anchor="middle">a</text>
+        <path d="M322 210 A32 32 0 0 0 316 191" fill="none" class="s-line"/><text x="328" y="202" class="t">θ</text>
+        <text x="630" y="36" text-anchor="middle" class="t" style="font-weight:700">√(x² − a²)</text>
+        <text x="630" y="56" text-anchor="middle" class="t-acc">x = a sec θ</text>
+        <path d="M540 210 L700 210 L700 90 Z" class="f-acc-soft" style="stroke:var(--warn);stroke-width:2"/>
+        <rect x="688" y="198" width="12" height="12" fill="none" class="s-line"/>
+        <text x="610" y="140" class="t" text-anchor="end">x</text><text x="708" y="154" class="t-mono">√(x² − a²)</text>
+        <text x="620" y="230" class="t" text-anchor="middle">a</text>
+        <path d="M572 210 A32 32 0 0 0 566 191" fill="none" class="s-line"/><text x="578" y="202" class="t">θ</text>
+        <text x="130" y="252" text-anchor="middle" class="t-dim">a² − a²sin²θ = a²cos²θ</text>
+        <text x="380" y="252" text-anchor="middle" class="t-dim">a² + a²tan²θ = a²sec²θ</text>
+        <text x="630" y="252" text-anchor="middle" class="t-dim">a²sec²θ − a² = a²tan²θ</text>
+      </svg>
+      <figcaption><b>그림 9-2.</b> 삼각 치환의 기준 삼각형. 근호는 언제나 삼각형의 한 변이 되도록 놓는다. θ로 적분을 마친 뒤에는 이 삼각형에서 sin θ, cos θ, tan θ를 x로 읽어 되돌린다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 9.4 (삼각 치환)</strong> \(a > 0\)일 때
+      <ul style="margin:6px 0 0">
+        <li>\(\sqrt{a^2 - x^2}\): \(x = a\sin\theta\), \(-\tfrac{\pi}{2} \le \theta \le \tfrac{\pi}{2}\)이면 \(\sqrt{a^2-x^2} = a\cos\theta\), \(dx = a\cos\theta\,d\theta\).</li>
+        <li>\(\sqrt{a^2 + x^2}\): \(x = a\tan\theta\), \(-\tfrac{\pi}{2} \lt \theta \lt \tfrac{\pi}{2}\)이면 \(\sqrt{a^2+x^2} = a\sec\theta\), \(dx = a\sec^2\theta\,d\theta\).</li>
+        <li>\(\sqrt{x^2 - a^2}\): \(x = a\sec\theta\), \(0 \le \theta \lt \tfrac{\pi}{2}\) (\(x \ge a\))이면 \(\sqrt{x^2-a^2} = a\tan\theta\), \(dx = a\sec\theta\tan\theta\,d\theta\).</li>
+      </ul>
+      <p style="margin:6px 0 0">각 범위에서 치환은 일대일이고 \(\cos\theta \ge 0\) 또는 \(\tan\theta \ge 0\)이라 근호를 벗길 때 절댓값이 필요 없다. 이것이 \(\theta\)의 범위를 정해 두는 이유다.</p></div>
+    <div class="callout"><strong>예제 9.5 (원의 넓이)</strong> \(\int_0^a\sqrt{a^2 - x^2}\,dx\)를 구하라.
+      <ol>
+        <li>\(x = a\sin\theta\): \(x = 0 \to \theta = 0\), \(x = a \to \theta = \tfrac{\pi}{2}\). 피적분 함수는 \(a\cos\theta\cdot a\cos\theta\,d\theta\).</li>
+        <li>\(a^2\int_0^{\pi/2}\cos^2\theta\,d\theta = a^2\int_0^{\pi/2}\tfrac{1+\cos2\theta}{2}\,d\theta = a^2\cdot\tfrac{\pi}{4}\). 사분원 넓이 \(\tfrac{\pi a^2}{4}\), 네 배 하면 \(\pi a^2\). ✓</li>
+        <li>부정적분으로 되돌리면 \(\int\sqrt{a^2-x^2}\,dx = \tfrac{a^2}{2}\theta + \tfrac{a^2}{2}\sin\theta\cos\theta + C = \tfrac{a^2}{2}\arcsin\tfrac{x}{a} + \tfrac{x}{2}\sqrt{a^2-x^2} + C\). 첫 항은 부채꼴, 둘째 항은 삼각형의 넓이입니다(아래 시뮬레이터).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.6 (선전하의 전기장)</strong> 길이 무한한 직선 위에 전하가 고르게 퍼져 있을 때, 거리 \(d\)인 점의 전기장 수직 성분에는 \(\int\frac{dx}{(x^2+d^2)^{3/2}}\)이 나옵니다.
+      <ol>
+        <li>\(x = d\tan\theta\): \((x^2+d^2)^{3/2} = d^3\sec^3\theta\), \(dx = d\sec^2\theta\,d\theta\).</li>
+        <li>\(\int\frac{d\sec^2\theta}{d^3\sec^3\theta}\,d\theta = \frac{1}{d^2}\int\cos\theta\,d\theta = \frac{\sin\theta}{d^2} + C\).</li>
+        <li>기준 삼각형에서 \(\sin\theta = \frac{x}{\sqrt{x^2+d^2}}\). 답: \(\frac{x}{d^2\sqrt{x^2+d^2}} + C\). 전 구간 \((-\infty, \infty)\)이면 \(\theta\)가 \(-\tfrac{\pi}{2}\)에서 \(\tfrac{\pi}{2}\)까지 가서 값은 \(\frac{2}{d^2}\)이고, 전기장이 \(1/d\)로 줄어드는 이유가 여기서 나옵니다. 유한 구간 예: \(d = 1\), \(\int_0^1\frac{dx}{(x^2+1)^{3/2}} = \frac{1}{\sqrt2} \approx 0.707\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-tq-trigsub">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>삼각 치환 삼각형: x를 끌면 θ가 따라온다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-trig"></canvas><span class="tag-tl" id="tq-s-tag">x = a sin θ</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>근호의 꼴 (a = 2)</span><div class="seg" id="tq-s-form"><button data-value="sin" class="on">√(a²−x²)</button><button data-value="tan">√(a²+x²)</button><button data-value="sec">√(x²−a²)</button></div></div>
+          <label class="ctrl"><span>x <output id="tq-s-x-out"></output></span><input type="range" id="tq-s-x" min="0" max="1.99" step="0.01" value="1.2"></label>
+          <div class="btn-row"><button class="btn primary" id="tq-s-play">▶ 쓸기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">θ</span><span class="v" id="tq-s-th">—</span></div>
+        <div class="stat"><span class="k">근호 = 삼각형의 변</span><span class="v" id="tq-s-rad">—</span></div>
+        <div class="stat"><span class="k" id="tq-s-k3">부채꼴 a²θ/2</span><span class="v" id="tq-s-v3">—</span></div>
+        <div class="stat"><span class="k" id="tq-s-k4">삼각형 + 부채꼴 vs 수치 적분</span><span class="v" id="tq-s-v4">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① √(a²−x²)에서 x를 0부터 a까지 밀며 넓이가 부채꼴(분홍)과 삼각형(파랑)으로 나뉘는 것을 보세요. 예제 9.5의 두 항입니다. ② √(a²+x²)로 바꾸면 곡선의 높이가 삼각형의 빗변과 같습니다. x가 커지면 θ는 90°에 다가가기만 합니다. ③ √(x²−a²)는 x ≥ a에서만 정의되고, 빗변이 x입니다. 모델: a = 2로 고정, 각은 정리 9.4의 범위를 씁니다.</div>
+    </div>
+    <div class="callout tip"><strong>근호가 없어도 쓴다</strong> \(\int\frac{dx}{x^2+a^2}\)은 \(x = a\tan\theta\)로 \(\frac{1}{a}\arctan\frac{x}{a} + C\)가 되고, \(\sqrt{x^2 + 4x + 8}\)처럼 일차항이 있으면 먼저 완전제곱 \((x+2)^2 + 4\)로 바꾼 뒤 \(x + 2 = 2\tan\theta\)로 치환합니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="partial-fractions">
+    <h2>부분 분수: 유리 함수를 쪼개 적분하기</h2>
+    <div class="problem"><strong>회로의 응답을 시간 영역으로</strong>
+      <p>RLC 회로나 제어계의 응답을 라플라스 변환으로 풀면 \(\frac{s+5}{s^2+s-2}\) 같은 유리 함수가 나옵니다. 이것을 시간 함수로 되돌리려면, 또 로지스틱 방정식 \(\frac{dP}{P(1-P)} = r\,dt\)를 적분하려면, 분모가 인수분해된 유리 함수를 단순한 조각의 합으로 바꿔야 합니다.</p></div>
+    <p>통분의 역과정입니다. \(\frac{2}{x-1} - \frac{1}{x+2}\)을 통분하면 \(\frac{x+5}{(x-1)(x+2)}\)이므로, 거꾸로 오른쪽을 왼쪽처럼 쪼개면 각 조각은 \(\ln\)으로 바로 적분됩니다. 쪼갠 조각들을 <span class="term">부분 분수 분해</span><span class="en">(partial fraction decomposition)</span>라 합니다.</p>
+    <div class="callout deep"><strong>정리 9.5 (부분 분수 분해)</strong> 실수 계수 다항식 \(P, Q\)에서 \(\deg P \lt \deg Q\)이고 \(Q\)를 일차 인수와 기약 이차 인수(판별식이 음수)의 곱으로 인수분해하면, \(\frac{P}{Q}\)는 다음 꼴의 합으로 유일하게 쓸 수 있다.
+      <ul style="margin:6px 0 0">
+        <li>일차 인수 \((x - r)^k\)마다: \(\frac{A_1}{x-r} + \frac{A_2}{(x-r)^2} + \cdots + \frac{A_k}{(x-r)^k}\)</li>
+        <li>기약 이차 인수 \((x^2 + bx + c)^k\)마다: \(\frac{B_1x + C_1}{x^2+bx+c} + \cdots + \frac{B_kx + C_k}{(x^2+bx+c)^k}\)</li>
+      </ul>
+      <p style="margin:6px 0 0">\(\deg P \ge \deg Q\)이면 먼저 다항식 나눗셈으로 \(\frac{P}{Q} = S + \frac{R}{Q}\) (\(\deg R \lt \deg Q\))로 만든다. <b>증명 아이디어.</b> 미지 계수의 개수가 \(\deg Q\)와 같고, 양변에 \(Q\)를 곱해 얻는 선형 연립방정식이 언제나 유일한 해를 가짐을 보인다(대수학의 기본 정리와 다항식의 서로소 성질을 쓴다).</p></div>
+    <p>분모가 서로 다른 일차 인수 \((x - r_1)\cdots(x - r_n)\)의 곱이면 계수를 구하는 지름길이 있습니다. \(A_i\)를 구하려면 양변에 \((x - r_i)\)를 곱하고 \(x = r_i\)를 넣습니다. 다른 조각은 모두 0이 되므로 \(A_i = \frac{P(r_i)}{\prod_{j\ne i}(r_i - r_j)} = \frac{P(r_i)}{Q'(r_i)}\)입니다. 원래 식에서 \((x - r_i)\)를 손가락으로 가리고 나머지에 \(r_i\)를 넣는 셈이라 <span class="term">헤비사이드 가리기 방법</span><span class="en">(Heaviside cover-up method)</span>이라 부릅니다.</p>
+    <div class="callout"><strong>예제 9.7 (서로 다른 일차 인수)</strong> \(\int\frac{x+5}{x^2+x-2}\,dx\)를 구하라.
+      <ol>
+        <li>인수분해: \(x^2 + x - 2 = (x-1)(x+2)\). 분자 차수 1 \(\lt\) 분모 차수 2.</li>
+        <li>가리기: \(A = \frac{1+5}{1+2} = 2\) (\(x = 1\)), \(B = \frac{-2+5}{-2-1} = -1\) (\(x = -2\)).</li>
+        <li>\(\int\Big(\frac{2}{x-1} - \frac{1}{x+2}\Big)dx = 2\ln|x-1| - \ln|x+2| + C = \ln\frac{(x-1)^2}{|x+2|} + C\).</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.8 (중근과 기약 이차 인수)</strong>
+      <ol>
+        <li>\(\frac{2x+1}{(x-1)^2(x+2)} = \frac{A}{x-1} + \frac{B}{(x-1)^2} + \frac{C}{x+2}\). 양변에 분모를 곱하면 \(2x+1 = A(x-1)(x+2) + B(x+2) + C(x-1)^2\). \(x = 1\): \(3 = 3B\), \(B = 1\). \(x = -2\): \(-3 = 9C\), \(C = -\tfrac13\). \(x^2\)의 계수: \(0 = A + C\), \(A = \tfrac13\). 적분은 \(\tfrac13\ln|x-1| - \frac{1}{x-1} - \tfrac13\ln|x+2| + C\). 중근 조각 \(\frac{1}{(x-1)^2}\)은 로그가 아니라 \(-\frac{1}{x-1}\)이 됩니다.</li>
+        <li>\(\frac{1}{x(x^2+1)} = \frac{A}{x} + \frac{Bx + C}{x^2+1}\). \(1 = A(x^2+1) + (Bx+C)x\)에서 \(A = 1\), \(B = -1\), \(C = 0\). 적분은 \(\ln|x| - \tfrac12\ln(x^2+1) + C\). 기약 이차 조각의 분자가 \(x\)이면 로그, 상수이면 arctan이 됩니다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-tq-pf">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부분 분수 분해기: 그래프가 조각의 합이 된다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-pf"></canvas><span class="tag-tl">P(x)/Q(x) (굵은 선) = 조각들(점선)의 합</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>분자 P(x) = p₂x² + p₁x + p₀</span><div class="tq-in"><label><input id="tq-f-p2" value="0" inputmode="decimal" aria-label="p2"><small>p₂</small></label><label><input id="tq-f-p1" value="1" inputmode="decimal" aria-label="p1"><small>p₁</small></label><label><input id="tq-f-p0" value="5" inputmode="decimal" aria-label="p0"><small>p₀</small></label></div></div>
+          <div class="ctrl"><span>분모의 근 Q(x) = Π(x − rᵢ)</span><div class="tq-in"><label><input id="tq-f-r1" value="1" inputmode="decimal" aria-label="r1"><small>r₁</small></label><label><input id="tq-f-r2" value="-2" inputmode="decimal" aria-label="r2"><small>r₂</small></label><label><input id="tq-f-r3" value="" placeholder="없음" inputmode="decimal" aria-label="r3"><small>r₃ (비우면 2차)</small></label></div></div>
+          <div class="btn-row"><button class="btn" id="tq-f-ex1">예제 9.7</button><button class="btn" id="tq-f-ex2">1/(x²−1)</button><button class="btn" id="tq-f-ex3">3차</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">분해</span><span class="v" id="tq-f-dec">—</span></div>
+        <div class="stat"><span class="k">적분</span><span class="v" id="tq-f-int">—</span></div>
+      </div>
+      <div class="tq-msg" id="tq-f-msg"></div>
+      <div class="sim-note">해볼 것: ① 예제 9.7에서 굵은 곡선이 x = 1 근처에서는 2/(x−1)처럼, x = −2 근처에서는 −1/(x+2)처럼 폭발하는 것을 보세요. 각 근 근처의 행동은 그 근의 조각이 정합니다. ② 두 근을 서로 가깝게 하면 계수가 커지고 부호가 반대가 됩니다. 중근의 극한에서 1/(x−r)² 조각이 생기는 이유입니다. ③ 분자 차수를 분모 차수 이상으로 하면 나눗셈이 먼저라는 경고가 뜹니다. 모델: 서로 다른 실근만 다루고, 계수는 Aᵢ = P(rᵢ)/Q′(rᵢ)로 구합니다.</div>
+    </div>
+    <p>로지스틱 방정식 \(\frac{dP}{dt} = rP(1-P)\)도 \(\frac{1}{P(1-P)} = \frac1P + \frac{1}{1-P}\)로 쪼개면 \(\ln\frac{P}{1-P} = rt + C\)가 되어 S자 곡선 \(P(t) = \frac{1}{1 + Ce^{-rt}}\)이 나옵니다(<a href="../../foundations/chapters/ode.html">MathBook 미분방정식</a>).</p>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="strategy">
+    <h2>적분 전략: 무엇부터 시도할까</h2>
+    <div class="problem"><strong>공식이 아니라 순서</strong>
+      <p>지금까지 기법을 하나씩 따로 연습했지만, 실제 적분은 이름표를 달고 오지 않습니다. \(\int\frac{x}{\sqrt{1-x^2}}dx\)는 삼각 치환으로도 풀리지만 단순 치환이 훨씬 빠르고, \(\int\frac{x^3}{x^2+1}dx\)는 부분 분수 전에 나눗셈부터 해야 합니다. 어떤 순서로 생각해야 할까요?</p></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 330" role="img" aria-label="적분 전략 흐름도">
+        <defs><marker id="tq-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text-dim)"/></marker></defs>
+        <g transform="translate(20,20)"><rect width="200" height="60" rx="10" class="f-acc-soft"/><text x="100" y="26" text-anchor="middle" class="t" style="font-weight:700">① 정리하기</text><text x="100" y="46" text-anchor="middle" class="t-dim">전개·약분·항등식</text></g>
+        <g transform="translate(280,20)"><rect width="200" height="60" rx="10" class="f-surface"/><text x="100" y="26" text-anchor="middle" class="t" style="font-weight:700">② 기본 공식표</text><text x="100" y="46" text-anchor="middle" class="t-dim">이미 아는 꼴인가?</text></g>
+        <g transform="translate(540,20)"><rect width="200" height="60" rx="10" class="f-surface"/><text x="100" y="26" text-anchor="middle" class="t" style="font-weight:700">③ 단순 치환</text><text x="100" y="46" text-anchor="middle" class="t-dim">g′(x)가 곁에 있나?</text></g>
+        <path d="M222 50 H276" class="s-line" marker-end="url(#tq-ar)"/><path d="M482 50 H536" class="s-line" marker-end="url(#tq-ar)"/>
+        <path d="M640 82 V120" class="s-line" marker-end="url(#tq-ar)"/>
+        <text x="380" y="114" text-anchor="middle" class="t-dim">안 되면 ④ 피적분 함수의 '종류'를 본다</text>
+        <g transform="translate(20,130)"><rect width="170" height="84" rx="10" class="f-surface"/><text x="85" y="24" text-anchor="middle" class="t" style="font-weight:700">곱 (다항식·지수·</text><text x="85" y="42" text-anchor="middle" class="t" style="font-weight:700">삼각·로그)</text><text x="85" y="66" text-anchor="middle" class="t-acc">부분 적분 · LIATE</text></g>
+        <g transform="translate(205,130)"><rect width="170" height="84" rx="10" class="f-surface"/><text x="85" y="24" text-anchor="middle" class="t" style="font-weight:700">sinᵐ cosⁿ,</text><text x="85" y="42" text-anchor="middle" class="t" style="font-weight:700">tanᵐ secⁿ</text><text x="85" y="66" text-anchor="middle" class="t-acc">홀짝 규칙 · 반각</text></g>
+        <g transform="translate(390,130)"><rect width="170" height="84" rx="10" class="f-surface"/><text x="85" y="24" text-anchor="middle" class="t" style="font-weight:700">√(a² ± x²),</text><text x="85" y="42" text-anchor="middle" class="t" style="font-weight:700">√(x² − a²)</text><text x="85" y="66" text-anchor="middle" class="t-acc">삼각 치환</text></g>
+        <g transform="translate(575,130)"><rect width="165" height="84" rx="10" class="f-surface"/><text x="82" y="24" text-anchor="middle" class="t" style="font-weight:700">P(x)/Q(x)</text><text x="82" y="42" text-anchor="middle" class="t-dim">(나눗셈 먼저)</text><text x="82" y="66" text-anchor="middle" class="t-acc">부분 분수</text></g>
+        <path d="M380 220 V246" class="s-line" marker-end="url(#tq-ar)"/>
+        <g transform="translate(130,252)"><rect width="500" height="62" rx="10" class="f-acc2-soft"/><text x="250" y="26" text-anchor="middle" class="t" style="font-weight:700">⑤ 그래도 안 되면: 적분표·CAS, 급수 전개, 수치 적분</text><text x="250" y="46" text-anchor="middle" class="t-dim">닫힌 꼴이 아예 없을 수도 있다(e^(−x²), sin x / x, sin x²)</text></g>
+      </svg>
+      <figcaption><b>그림 9-3.</b> 적분 전략. 가장 싼 방법(정리, 공식표, 단순 치환)부터 시도하고, 피적분 함수의 구조로 기법을 고른다. 한 기법이 다른 기법으로 이어지는 일도 흔하다(삼각 치환 뒤 삼각 적분, 부분 적분 뒤 부분 분수).</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 9.9 (기법 고르기)</strong>
+      <ol>
+        <li>\(\int\frac{x}{\sqrt{1-x^2}}dx\): \(u = 1 - x^2\)이면 \(du = -2x\,dx\)가 곁에 있다. \(-\tfrac12\int u^{-1/2}du = -\sqrt{1-x^2} + C\). 삼각 치환도 되지만 돌아가는 길입니다.</li>
+        <li>\(\int\frac{x^3}{x^2+1}dx\): 나눗셈 \(\frac{x^3}{x^2+1} = x - \frac{x}{x^2+1}\). 답 \(\tfrac{x^2}{2} - \tfrac12\ln(x^2+1) + C\).</li>
+        <li>\(\int e^{\sqrt x}dx\): \(t = \sqrt x\), \(dx = 2t\,dt\)로 \(2\int te^t\,dt = 2(t-1)e^t + C = 2(\sqrt x - 1)e^{\sqrt x} + C\). 치환 뒤 부분 적분입니다.</li>
+        <li>\(\int\frac{dx}{x^2 + 4x + 8}\): 완전제곱 \((x+2)^2 + 4\)로 바꾸면 \(\tfrac12\arctan\frac{x+2}{2} + C\).</li>
+      </ol></div>
+    <div class="callout warn"><strong>세 가지 자주 하는 실수</strong> ① \(\int\frac{1}{x}dx = \ln|x|\)에서 절댓값을 빠뜨리면 음수 구간에서 틀립니다. ② 치환한 정적분에서 끝점을 바꾸지 않거나, 바꾼 뒤 다시 \(x\)로 되돌리는 이중 작업을 합니다. 둘 중 하나만 하세요. ③ 결과가 교재와 달라 보여도 상수만큼 다르면 둘 다 맞습니다. \(\int\sin x\cos x\,dx\)는 \(\tfrac12\sin^2x\), \(-\tfrac12\cos^2x\), \(-\tfrac14\cos2x\)로 모두 쓸 수 있고, 서로 상수만큼 다릅니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="improper">
+    <h2>이상 적분: 무한까지 쌓은 넓이</h2>
+    <div class="problem"><strong>지구를 떠나는 데 드는 일</strong>
+      <p>질량 \(m\)인 로켓을 지표면(반지름 \(R\))에서 무한히 먼 곳까지 끌어올리는 데 필요한 일은 \(\int_R^\infty\frac{GMm}{r^2}dr\)입니다. 구간이 끝없이 이어지는데 답이 유한할 수 있을까요? 유한하다면 그 값이 로켓이 지구 중력을 벗어나는 탈출 속도를 정합니다.</p></div>
+    <p>7장의 정적분은 <b>유한 구간</b>에서 <b>유계</b>인 함수에 대한 것이었습니다. 둘 중 하나가 깨지면 리만 합으로 정의할 수 없으므로, 유한한 경우의 극한으로 정의합니다.</p>
+    <div class="callout deep"><strong>정의 9.6 (이상 적분)</strong>
+      <ul style="margin:6px 0 0">
+        <li><b>무한 구간.</b> \(f\)가 모든 \([a, t]\)에서 적분 가능하면 \(\displaystyle\int_a^\infty f(x)\,dx = \lim_{t\to\infty}\int_a^t f(x)\,dx\). \(\int_{-\infty}^\infty f = \int_{-\infty}^c f + \int_c^\infty f\)이고 두 극한이 <b>각각</b> 존재해야 한다.</li>
+        <li><b>무한 불연속.</b> \(f\)가 \((a, b]\)에서 연속이고 \(x \to a^+\)에서 유계가 아니면 \(\displaystyle\int_a^b f(x)\,dx = \lim_{t\to a^+}\int_t^b f(x)\,dx\). 끝점 \(b\)나 구간 내부에서 폭발할 때도 같은 식으로, 내부라면 둘로 나눈다.</li>
+      </ul>
+      <p style="margin:6px 0 0">극한이 유한한 수로 존재하면 <span class="term">이상 적분</span><span class="en">(improper integral)</span>이 <b>수렴</b>한다고 하고, 그렇지 않으면 <b>발산</b>한다고 한다.</p></div>
+    <p>어떤 꼬리 넓이가 유한한지 가르는 기준이 되는 것이 거듭제곱 함수입니다. 결과는 단순하지만 놀랍습니다. \(\frac{1}{x}\)과 \(\frac{1}{x^2}\)은 그래프로는 비슷해 보이는데, 꼬리 넓이는 한쪽이 무한, 한쪽이 1입니다.</p>
+    <div class="callout deep"><strong>정리 9.7 (p-적분)</strong>
+      <div class="formula">$$\int_1^\infty\frac{dx}{x^p} = \begin{cases}\dfrac{1}{p-1} & p > 1\\[4pt] \infty & p \le 1\end{cases}, \qquad \int_0^1\frac{dx}{x^p} = \begin{cases}\dfrac{1}{1-p} & p \lt 1\\[4pt] \infty & p \ge 1\end{cases}.$$</div>
+      <p style="margin:6px 0 0"><b>증명.</b> \(p \ne 1\)이면 \(\int_1^t x^{-p}dx = \frac{t^{1-p} - 1}{1-p}\). \(t\to\infty\)일 때 \(t^{1-p}\)은 \(p > 1\)이면 0으로, \(p \lt 1\)이면 \(\infty\)로 간다. \(p = 1\)이면 \(\int_1^t\frac{dx}{x} = \ln t \to \infty\). 두 번째 식도 \(\int_t^1 x^{-p}dx = \frac{1 - t^{1-p}}{1-p}\)에서 \(t \to 0^+\)으로 같다. ∎</p></div>
+    <p>이 두 적분을 <span class="term">p-적분</span><span class="en">(p-integral)</span>이라 부릅니다. 두 식은 거울처럼 반대입니다. 무한대 쪽에서는 빨리 줄어드는 \(p > 1\)이, 0 쪽에서는 천천히 폭발하는 \(p \lt 1\)이 유한한 넓이를 줍니다. \(p = 1\)은 양쪽 모두 아슬아슬하게 발산합니다. 이 경계는 <a href="series.html">11장</a>에서 급수 \(\sum\frac{1}{n^p}\)의 수렴 판정으로 그대로 이어집니다.</p>
+
+    <div class="sim" id="sim-tq-tail">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>꼬리 넓이: 1/xᵖ는 어디서 유한해지나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tq-two">
+          <div><canvas id="tq-cv-tail"></canvas><span class="tq-cap" id="tq-i-cap1">y = 1/xᵖ, 칠한 넓이 = ∫₁ᵇ</span></div>
+          <div><canvas id="tq-cv-tailA"></canvas><span class="tq-cap" id="tq-i-cap2">누적 넓이 vs 끝점 (가로 로그 눈금)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>종류</span><div class="seg" id="tq-i-kind"><button data-value="inf" class="on">무한 구간 [1, b]</button><button data-value="zero">무한 불연속 [ε, 1]</button></div></div>
+          <label class="ctrl"><span>지수 p <output id="tq-i-p-out"></output></span><input type="range" id="tq-i-p" min="0.3" max="2.5" step="0.05" value="2"></label>
+          <label class="ctrl"><span>끝점 <output id="tq-i-t-out"></output></span><input type="range" id="tq-i-t" min="0" max="4" step="0.02" value="1.5"></label>
+          <div class="btn-row"><button class="btn" id="tq-i-p1">p = 1</button><button class="btn" id="tq-i-p2">p = 2</button><button class="btn" id="tq-i-ph">p = 1/2</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">지금까지 넓이</span><span class="v" id="tq-i-A">—</span></div>
+        <div class="stat"><span class="k">극한</span><span class="v" id="tq-i-lim">—</span></div>
+        <div class="stat"><span class="k">극한의 99%에 닿는 끝점</span><span class="v" id="tq-i-99">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① p = 2, '무한 구간'에서 끝점을 10⁴까지 밀어도 넓이는 1을 넘지 않습니다. ② p = 1로 바꾸면 넓이가 ln b로 끝없이 자랍니다. 아래 그래프에서 로그 눈금에 대해 직선입니다. ③ '무한 불연속'에서는 반대로 p = 1/2이 수렴(값 2)하고 p = 2가 발산합니다. ④ p를 1 근처(1.05)로 두면 수렴하긴 해도 99%에 닿는 끝점이 천문학적으로 멀어집니다. 모델: 넓이는 정리 9.7의 정확한 식으로 계산합니다.</div>
+    </div>
+    <div class="callout"><strong>예제 9.10 (이상 적분 계산)</strong>
+      <ol>
+        <li>\(\int_0^\infty e^{-x}dx = \lim_{t\to\infty}(1 - e^{-t}) = 1\). 부분 적분과 함께 쓰면 \(\int_0^\infty xe^{-x}dx = \lim_{t\to\infty}\big[-(x+1)e^{-x}\big]_0^t = 1\)입니다. 처음 문제의 축전기 평균 방전 시간은 같은 계산으로 \(\tau\)입니다.</li>
+        <li>\(\int_{-\infty}^\infty\frac{dx}{1+x^2} = \lim\arctan t - \lim\arctan s = \tfrac{\pi}{2} - (-\tfrac{\pi}{2}) = \pi\).</li>
+        <li>탈출 속도: \(\int_R^\infty\frac{GMm}{r^2}dr = \frac{GMm}{R}\). 이것을 운동 에너지 \(\tfrac12mv^2\)와 같게 놓으면 \(v = \sqrt{2GM/R}\). 지구는 \(GM \approx 3.986\times10^{14}\ \mathrm{m^3/s^2}\), \(R \approx 6.371\times10^6\ \mathrm{m}\)이라 \(v \approx 1.12\times10^4\ \mathrm{m/s}\), 약 11.2 km/s입니다.</li>
+        <li>함정: \(\int_{-1}^1\frac{dx}{x^2}\)에 기본 정리를 그대로 쓰면 \(\big[-\tfrac1x\big]_{-1}^1 = -2\)라는, 양수 함수의 넓이가 음수인 엉터리 답이 나옵니다. \(x = 0\)에서 폭발하므로 둘로 나눠야 하고, \(\int_0^1\frac{dx}{x^2}\)이 발산하므로 전체가 발산합니다.</li>
+      </ol></div>
+    <p>역도함수를 구할 수 없을 때도 수렴 여부는 알 수 있습니다. 더 큰 함수의 넓이가 유한하면 작은 함수의 넓이도 유한하고, 더 작은 함수의 넓이가 무한하면 큰 함수의 넓이도 무한합니다.</p>
+    <div class="callout deep"><strong>정리 9.8 (비교 판정과 극한 비교 판정)</strong> \(x \ge a\)에서 \(f, g\)가 연속이고 \(0 \le f(x) \le g(x)\)이면
+      <ul style="margin:6px 0 0">
+        <li>\(\int_a^\infty g\)가 수렴하면 \(\int_a^\infty f\)도 수렴하고, \(\int_a^\infty f\)가 발산하면 \(\int_a^\infty g\)도 발산한다(<span class="term">비교 판정</span><span class="en">(comparison test)</span>).</li>
+        <li>\(f, g > 0\)이고 \(\lim_{x\to\infty}\frac{f(x)}{g(x)} = L\), \(0 \lt L \lt \infty\)이면 두 적분은 함께 수렴하거나 함께 발산한다(<span class="term">극한 비교 판정</span><span class="en">(limit comparison test)</span>).</li>
+      </ul>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> \(F(t) = \int_a^t f\)는 \(f \ge 0\)이라 증가 함수이고, \(F(t) \le \int_a^\infty g\)로 위로 유계다. 위로 유계인 증가 함수는 극한을 가진다(실수의 완비성). 극한 비교는 충분히 큰 \(x\)에서 \(\tfrac{L}{2}g \le f \le 2Lg\)임을 써서 첫째로 돌린다. ∎</p></div>
+    <div class="callout"><strong>예제 9.11 (비교로 판정하기)</strong>
+      <ol>
+        <li>\(\int_1^\infty e^{-x^2}dx\): \(x \ge 1\)이면 \(x^2 \ge x\)이므로 \(e^{-x^2} \le e^{-x}\). \(\int_1^\infty e^{-x}dx = e^{-1}\)이 유한하므로 수렴하고, 값은 \(1/e \approx 0.368\)보다 작습니다(실제로는 약 0.1394).</li>
+        <li>\(\int_1^\infty\frac{1 + \sin^2x}{x^2}dx\): 분자가 2 이하이므로 \(\le\int_1^\infty\frac{2}{x^2}dx = 2\). 수렴.</li>
+        <li>\(\int_2^\infty\frac{dx}{\sqrt{x^3+1}}\): 큰 \(x\)에서 \(\frac{1}{\sqrt{x^3+1}}\big/\frac{1}{x^{3/2}} \to 1\). \(p = \tfrac32 > 1\)이므로 극한 비교로 수렴.</li>
+        <li>\(\int_1^\infty\frac{x}{x^2+1}dx\): \(\frac{x}{x^2+1}\big/\frac1x \to 1\)이고 \(\int\frac{dx}{x}\)가 발산하므로 발산합니다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>감마 함수</strong> \(\Gamma(s) = \int_0^\infty x^{s-1}e^{-x}dx\)는 \(s > 0\)에서 수렴하는 이상 적분입니다. 부분 적분 한 번으로 \(\Gamma(s+1) = s\Gamma(s)\)가 나오고 \(\Gamma(1) = 1\)이므로 \(\Gamma(n+1) = n!\)입니다. 팩토리얼을 정수가 아닌 수로 넓힌 이 함수는 확률 분포(감마·카이제곱·t 분포)의 정규화 상수에 등장합니다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="numerical">
+    <h2>수치 적분: 사다리꼴과 심프슨</h2>
+    <div class="problem"><strong>역도함수가 없을 때, 또는 함수가 표로만 있을 때</strong>
+      <p>\(\int_0^1 e^{-x^2}dx\)는 닫힌 꼴이 없습니다. 실험에서 1초마다 잰 유량 데이터로 총 유출량을 구할 때는 함수 식조차 없습니다. 두 경우 모두 유한 개의 함숫값으로 적분을 근사해야 하고, 중요한 질문은 "얼마나 정확한가, 점을 두 배로 늘리면 오차가 얼마나 줄어드는가"입니다.</p></div>
+    <p>구간 \([a, b]\)를 폭 \(h = \frac{b-a}{n}\)인 \(n\)개 조각으로 나누고 \(x_i = a + ih\), \(f_i = f(x_i)\)라 합시다. 7장의 리만 합은 조각마다 함수를 상수로 바꿨습니다. 조각마다 <b>직선</b>으로 바꾸면 사다리꼴 공식, 두 조각마다 <b>포물선</b>으로 바꾸면 심프슨 공식입니다.</p>
+    <div class="formula">$$T_n = \frac{h}{2}\big[f_0 + 2f_1 + 2f_2 + \cdots + 2f_{n-1} + f_n\big], \qquad M_n = h\big[f(\bar x_1) + \cdots + f(\bar x_n)\big],$$
+      $$S_n = \frac{h}{3}\big[f_0 + 4f_1 + 2f_2 + 4f_3 + \cdots + 2f_{n-2} + 4f_{n-1} + f_n\big]\quad(n\ \text{짝수}).$$
+      <div class="where">\(\bar x_i\)는 \(i\)번째 조각의 가운데 점. 심프슨 가중치는 1, 4, 2, 4, …, 2, 4, 1이다.</div></div>
+    <p><span class="term">사다리꼴 공식</span><span class="en">(trapezoidal rule)</span>은 이웃한 두 점을 이은 사다리꼴의 넓이 합이고, <span class="term">중점 공식</span><span class="en">(midpoint rule)</span>은 가운데 높이의 직사각형 합입니다. <span class="term">심프슨 공식</span><span class="en">(Simpson's rule)</span>의 계수는 세 점 \((-h, f_0), (0, f_1), (h, f_2)\)을 지나는 포물선 \(Ax^2 + Bx + C\)를 적분해서 나옵니다: \(\int_{-h}^h(Ax^2+Bx+C)dx = \frac{2Ah^3}{3} + 2Ch\)이고, \(f_0 + f_2 = 2Ah^2 + 2C\), \(f_1 = C\)를 쓰면 이것이 \(\frac{h}{3}(f_0 + 4f_1 + f_2)\)입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="사다리꼴 공식과 심프슨 공식의 비교">
+        <rect x="10" y="10" width="365" height="240" rx="10" class="f-surface"/>
+        <rect x="385" y="10" width="365" height="240" rx="10" class="f-surface"/>
+        <text x="24" y="32" class="t" style="font-weight:700">사다리꼴: 두 점을 직선으로</text>
+        <text x="399" y="32" class="t" style="font-weight:700">심프슨: 세 점을 포물선으로</text>
+        <line x1="40" y1="220" x2="350" y2="220" class="s-axis"/><line x1="415" y1="220" x2="725" y2="220" class="s-axis"/>
+        <path d="M60 220 L60 150 L180 70 L300 110 L300 220 Z" class="f-acc-soft"/>
+        <path d="M60 150 L180 70 L300 110" fill="none" style="stroke:var(--accent);stroke-width:2.2"/>
+        <path d="M60 150 C 100 92 140 64 180 64 C 225 64 265 84 300 110" fill="none" class="s-line" style="stroke-width:2.4"/>
+        <line x1="180" y1="70" x2="180" y2="220" class="s-line" style="stroke-dasharray:4 4"/>
+        <circle cx="60" cy="150" r="4.5" style="fill:var(--accent)"/><circle cx="180" cy="70" r="4.5" style="fill:var(--accent)"/><circle cx="300" cy="110" r="4.5" style="fill:var(--accent)"/>
+        <text x="120" y="80" class="t-dim">곡선이 위로 볼록하면</text><text x="120" y="98" class="t-dim">직선이 아래로 샌다</text>
+        <path d="M435 220 L435 150 C 475 92 515 64 555 64 C 600 64 640 84 675 110 L675 220 Z" class="f-acc2-soft"/>
+        <path d="M435 150 C 475 92 515 64 555 64 C 600 64 640 84 675 110" fill="none" class="s-line" style="stroke-width:2.4"/>
+        <path d="M435 150 C 475 95 515 66 555 66 C 600 67 640 86 675 110" fill="none" style="stroke:var(--accent-2);stroke-width:2.2;stroke-dasharray:6 4"/>
+        <circle cx="435" cy="150" r="4.5" style="fill:var(--accent-2)"/><circle cx="555" cy="66" r="4.5" style="fill:var(--accent-2)"/><circle cx="675" cy="110" r="4.5" style="fill:var(--accent-2)"/>
+        <text x="430" y="240" class="t-mono">x₀</text><text x="550" y="240" class="t-mono">x₁</text><text x="670" y="240" class="t-mono">x₂</text>
+        <text x="55" y="240" class="t-mono">x₀</text><text x="175" y="240" class="t-mono">x₁</text><text x="295" y="240" class="t-mono">x₂</text>
+        <text x="480" y="130" class="t-dim">곡률까지 따라가</text><text x="480" y="148" class="t-dim">오차가 거의 없다</text>
+        <text x="555" y="196" text-anchor="middle" class="t-mono">(h/3)(f₀ + 4f₁ + f₂)</text>
+        <text x="180" y="196" text-anchor="middle" class="t-mono">(h/2)(f₀ + 2f₁ + f₂)</text>
+      </svg>
+      <figcaption><b>그림 9-4.</b> 같은 세 점으로 만든 두 근사. 사다리꼴은 곡선을 꺾은선으로, 심프슨은 포물선으로 바꾼다. 포물선은 곡률까지 맞추므로 오차 차수가 두 단계 높다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 9.9 (오차 한계)</strong> 구간 \([a, b]\)에서 \(|f''| \le K_2\), \(|f^{(4)}| \le K_4\)이면
+      <div class="formula">$$|E_T| \le \frac{K_2(b-a)^3}{12n^2}, \qquad |E_M| \le \frac{K_2(b-a)^3}{24n^2}, \qquad |E_S| \le \frac{K_4(b-a)^5}{180n^4}.$$</div>
+      <p style="margin:6px 0 0"><b>증명 아이디어.</b> 한 조각 \([0, h]\)에서 \(f\)를 직선으로 바꾼 오차는 테일러 전개(<a href="taylor.html">12장</a>)로 \(-\frac{h^3}{12}f''(\xi)\)이고, 조각이 \(n\)개이므로 합치면 \(-\frac{(b-a)h^2}{12}f''(\bar\xi)\)다. 중점 공식은 같은 계산에서 \(+\frac{h^3}{24}f''\)로 부호가 반대이고 크기가 절반이다. 심프슨은 \(\tfrac{2M + T}{3}\)으로 두 \(h^2\) 오차를 상쇄한 것이라 \(h^4\) 항이 남는다. 그래서 심프슨은 3차 다항식까지 정확하다. ∎</p></div>
+    <p>여기서 중요한 것은 상수보다 <b>지수</b>입니다. 사다리꼴과 중점은 \(n\)을 2배로 늘리면 오차가 약 1/4로(<span class="term">오차 차수</span><span class="en">(order of accuracy)</span> 2), 심프슨은 약 1/16로(차수 4) 줄어듭니다. 같은 정확도를 원한다면 차수가 높은 방법이 훨씬 적은 함숫값으로 끝납니다. 단, 차수는 \(f\)가 충분히 매끄러울 때만의 약속입니다. \(\sqrt{x}\)처럼 끝점에서 도함수가 폭발하면 심프슨도 차수가 떨어집니다.</p>
+
+    <div class="sim" id="sim-tq-numeric">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>사다리꼴·중점·심프슨 오차 비교</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view tq-two">
+          <div><canvas id="tq-cv-num"></canvas><span class="tq-cap" id="tq-n-cap">근사 도형</span></div>
+          <div><canvas id="tq-cv-numerr"></canvas><span class="tq-cap">|오차| vs n (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 구간</span><select id="tq-n-f">
+            <option value="gauss">e^(−x²), [0, 2]</option>
+            <option value="sin">sin x, [0, π] (정답 2)</option>
+            <option value="cubic">x³ − x, [0, 2] (정답 2)</option>
+            <option value="sqrt">√x, [0, 1] (정답 2/3)</option>
+          </select></label>
+          <div class="ctrl"><span>방법</span><div class="seg" id="tq-n-m"><button data-value="T" class="on">사다리꼴</button><button data-value="M">중점</button><button data-value="S">심프슨</button></div></div>
+          <label class="ctrl"><span>조각 수 n <output id="tq-n-n-out"></output></span><input type="range" id="tq-n-n" min="2" max="32" step="2" value="4"></label>
+          <div class="btn-row"><button class="btn" id="tq-n-half">n ÷ 2</button><button class="btn primary" id="tq-n-dbl">n × 2</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">근삿값</span><span class="v" id="tq-n-val">—</span></div>
+        <div class="stat"><span class="k">정확한 값</span><span class="v" id="tq-n-ex">—</span></div>
+        <div class="stat"><span class="k">오차</span><span class="v" id="tq-n-err">—</span></div>
+        <div class="stat"><span class="k">오차(n) / 오차(2n)</span><span class="v" id="tq-n-ratio">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① e^(−x²)에서 사다리꼴과 중점의 오차가 부호가 반대이고 크기가 약 2:1인지 보세요. ② n × 2를 누르며 비율이 4(사다리꼴·중점)와 16(심프슨)에 다가가는 것을 확인하세요. 아래 그래프의 기울기가 −2와 −4입니다. ③ x³ − x에서는 심프슨 오차가 반올림 오차 수준(0)입니다. ④ √x는 세 방법 모두 기울기가 약 −1.5로 무뎌집니다. x = 0에서 도함수가 무한이기 때문입니다. 모델: 오차 그래프는 n = 2, 4, …, 1024에서 계산합니다.</div>
+    </div>
+    <div class="callout"><strong>예제 9.12 (\(\int_0^1 e^{-x^2}dx\), n = 4)</strong> \(h = 0.25\), 함숫값은 \(f(0) = 1\), \(f(0.25) \approx 0.939413\), \(f(0.5) \approx 0.778801\), \(f(0.75) \approx 0.569783\), \(f(1) \approx 0.367879\).
+      <ol>
+        <li>\(T_4 = 0.125\,[1 + 2(0.939413 + 0.778801 + 0.569783) + 0.367879] \approx 0.742984\).</li>
+        <li>\(M_4\)는 \(x = 0.125, 0.375, 0.625, 0.875\)에서 계산해 \(\approx 0.748747\).</li>
+        <li>\(S_4 = \tfrac{0.25}{3}\,[1 + 4(0.939413) + 2(0.778801) + 4(0.569783) + 0.367879] \approx 0.746855\).</li>
+        <li>정확한 값은 \(\tfrac{\sqrt\pi}{2}\operatorname{erf}(1) \approx 0.746824\). 오차는 \(T_4\): \(-0.00384\), \(M_4\): \(+0.00192\), \(S_4\): \(+0.000031\). 사다리꼴과 중점의 오차가 −2 : 1이고, \(S_8 = \frac{2M_4 + T_4}{3} \approx 0.746826\)으로 두 오차를 상쇄하면 오차가 \(2\times10^{-6}\)이 됩니다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 9.13 (필요한 n 정하기)</strong> \(\ln 2 = \int_1^2\frac{dx}{x}\)를 오차 \(10^{-4}\) 이하로 구하려면 \(n\)을 얼마로 해야 하나?
+      <ol>
+        <li>\(f'' = 2/x^3\)이므로 \([1, 2]\)에서 \(K_2 = 2\). 사다리꼴: \(\frac{2}{12n^2} \lt 10^{-4}\)에서 \(n^2 > 1666.7\), \(n \ge 41\).</li>
+        <li>\(f^{(4)} = 24/x^5\)이므로 \(K_4 = 24\). 심프슨: \(\frac{24}{180n^4} \lt 10^{-4}\)에서 \(n^4 > 1333.3\), \(n > 6.04\). 짝수여야 하므로 \(n = 8\).</li>
+        <li>실제 오차는 \(T_{41}\): \(3.7\times10^{-5}\), \(S_8\): \(7.4\times10^{-6}\). 오차 한계는 최악의 경우를 보장하는 값이라 실제 오차보다 큽니다. 실제로 \(S_6\)의 오차도 \(2.3\times10^{-5}\)이라 목표를 만족하지만, 한계만으로는 그것을 보장할 수 없습니다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="tables-cas">
+    <h2>적분표와 CAS: 닫힌 꼴이 없는 적분</h2>
+    <div class="problem"><strong>컴퓨터에 물어보면 끝일까</strong>
+      <p>오늘날 기호 계산 프로그램<span class="en">(CAS)</span>은 이 장의 거의 모든 적분을 순식간에 풉니다. 그런데 \(\int e^{-x^2}dx\)를 물으면 \(\frac{\sqrt\pi}{2}\operatorname{erf}(x)\)라는, 처음 보는 함수가 돌아옵니다. 이것은 답일까요, 답을 미룬 것일까요?</p></div>
+    <p>적분표와 CAS는 이 장의 기법을 체계적으로 모아 둔 것입니다. 표를 쓸 때는 먼저 피적분 함수를 표의 꼴로 맞추고(치환·완전제곱), CAS 결과는 언제나 <b>미분해서 검산</b>하고 <b>정의역을 확인</b>합니다. CAS가 \(\int\frac{dx}{x} = \ln x\)라고 답하는 것은 복소 로그를 쓰기 때문이고, 실수 음수 구간에서는 \(\ln|x|\)이 필요합니다.</p>
+    <p>더 근본적인 사실은 <b>모든 초등 함수의 역도함수가 초등 함수인 것은 아니라는 것</b>입니다. \(e^{-x^2}\), \(\frac{\sin x}{x}\), \(\sin(x^2)\), \(\frac{1}{\ln x}\)의 역도함수는 초등 함수로 쓸 수 없습니다. 이런 <span class="term">비초등 적분</span><span class="en">(nonelementary integral)</span>은 너무 자주 나오기 때문에 이름을 붙여 새 함수로 정의합니다.</p>
+    <div class="callout deep"><strong>정의 9.10 (적분으로 정의한 함수)</strong>
+      <div class="formula">$$\operatorname{erf}(x) = \frac{2}{\sqrt\pi}\int_0^x e^{-t^2}dt, \qquad \operatorname{Si}(x) = \int_0^x\frac{\sin t}{t}dt, \qquad S(x) = \int_0^x\sin(t^2)\,dt.$$
+        <div class="where"><span class="term">오차 함수</span><span class="en">(error function)</span> erf는 정규분포의 누적 확률, 사인 적분 Si는 신호의 깁스 현상과 안테나 해석, 프레넬 적분 \(S\)는 빛의 회절과 도로·철도의 완화 곡선(클로소이드)에 쓰인다.</div></div>
+      기본 정리 1부(<a href="fundamental.html">8장</a>)에 의해 이 함수들은 미분 가능하고 \(\operatorname{erf}'(x) = \frac{2}{\sqrt\pi}e^{-x^2}\)이다. 닫힌 꼴이 없다는 것은 값을 모른다는 뜻이 아니라, <b>계산하는 방법이 수치 적분이나 급수라는 뜻</b>이다.</div>
+    <p>값을 계산하는 한 가지 방법은 피적분 함수를 거듭제곱 급수로 펼쳐 항마다 적분하는 것입니다. \(e^{-t^2} = 1 - t^2 + \frac{t^4}{2!} - \cdots\)이므로</p>
+    <div class="formula">$$\int_0^x e^{-t^2}dt = x - \frac{x^3}{3} + \frac{x^5}{5\cdot2!} - \frac{x^7}{7\cdot3!} + \cdots = \sum_{k=0}^{\infty}\frac{(-1)^k x^{2k+1}}{(2k+1)\,k!}.$$
+      <div class="where">항마다 적분해도 되는 이유와 이 급수가 모든 \(x\)에서 수렴하는 이유는 <a href="taylor.html">12장</a>에서 다룬다.</div></div>
+
+    <div class="sim" id="sim-tq-series">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>닫힌 꼴이 없는 적분을 숫자로: 수치 적분 vs 급수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="tq-cv-ser"></canvas><span class="tag-tl">f (흐림) · F = ∫₀ˣ f (파랑) · 급수 N항 (분홍 점선)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피적분 함수</span><select id="tq-r-f">
+            <option value="gauss">e^(−t²) → (√π/2)·erf x</option>
+            <option value="si">sin t / t → Si(x)</option>
+            <option value="fres">sin(t²) → 프레넬 S(x)</option>
+          </select></label>
+          <label class="ctrl"><span>급수 항 수 N <output id="tq-r-N-out"></output></span><input type="range" id="tq-r-N" min="1" max="20" step="1" value="4"></label>
+          <label class="ctrl"><span>계산할 점 x <output id="tq-r-x-out"></output></span><input type="range" id="tq-r-x" min="0" max="4" step="0.01" value="1"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">F(x) (심프슨)</span><span class="v" id="tq-r-F">—</span></div>
+        <div class="stat"><span class="k">급수 N항</span><span class="v" id="tq-r-S">—</span></div>
+        <div class="stat"><span class="k">급수 오차</span><span class="v" id="tq-r-E">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① e^(−t²)에서 x = 1이면 4항의 오차가 약 4×10⁻³, 5항이면 7×10⁻⁴로 줄어듭니다. 0.746824…는 예제 9.12의 값입니다. ② x를 3 이상으로 밀면 같은 N에서는 급수가 크게 빗나갑니다. N을 키우면 다시 붙습니다. 큰 x에서는 급수보다 수치 적분이 유리합니다. ③ F(x) = (√π/2)·erf x는 x → ∞에서 √π/2 ≈ 0.886에 다가갑니다(15장에서 증명). 모델: F는 [0, x]를 400조각으로 나눈 심프슨 공식, 급수는 처음 N항의 합입니다.</div>
+    </div>
+    <div class="callout tip"><strong>수치 라이브러리는 무엇을 쓰나</strong> 실제 프로그램의 적분 함수(예: 과학 계산 라이브러리의 quad)는 이 장의 아이디어를 더 밀어붙인 것입니다. 구간을 자동으로 나누어 오차가 큰 곳만 잘게 쪼개고(적응형 적분), 점의 위치까지 최적으로 골라 같은 점 개수로 더 높은 차수를 얻습니다(가우스 구적법). 결과와 함께 추정 오차를 돌려주므로, 숫자를 쓰기 전에 그 오차를 꼭 확인하세요. 수치 미분·적분의 반올림 오차는 <a href="../../foundations/chapters/numerics.html">MathBook 수치 해석</a>에서 다룹니다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>적분 기법은 "식으로 풀 수 있는 모델"의 범위를 정하고, 수치 적분은 그 밖의 모든 것을 맡습니다.</p>
+    <div class="callout"><strong>정규분포 공차와 erf</strong> 축 지름이 평균 20.000 mm, 표준편차 0.005 mm인 정규분포를 따르고 공차가 ±0.010 mm라면, 합격률은 \(P(|Z| \le 2) = \operatorname{erf}(2/\sqrt2) = \operatorname{erf}(\sqrt2) \approx 0.9545\)입니다. 이 값은 닫힌 꼴이 없는 적분을 수치로 계산해 표로 만든 것이고, 공정 능력 지수와 수율 계산이 모두 여기서 출발합니다(<a href="../../probability/chapters/continuous.html">확률과 통계 연속 분포</a>).</div>
+    <div class="uses">
+      <a href="applications.html"><small>10장 · 적분의 응용</small>부피·길이·일<br><span>회전체 부피의 원통 껍질에서 부분 적분, 곡선 길이에서 삼각 치환과 수치 적분이 바로 쓰인다.</span></a>
+      <a href="series.html"><small>11장 · 수열과 급수</small>적분 판정<br><span>p-적분의 경계 p = 1이 급수 Σ1/nᵖ의 수렴 경계가 된다.</span></a>
+      <a href="taylor.html"><small>12장 · 테일러 전개</small>항별 적분<br><span>erf, Si, arctan을 급수로 계산하고, 수치 적분 오차를 테일러 나머지로 유도한다.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>푸리에 계수<br><span>삼각 함수의 직교성으로 신호를 주파수 성분으로 분해한다.</span></a>
+      <a href="../../foundations/chapters/ode.html"><small>MATHBOOK</small>미분방정식<br><span>변수 분리 뒤의 적분에서 부분 분수(로지스틱)와 부분 적분(적분 인자)이 나온다.</span></a>
+      <a href="../../probability/chapters/continuous.html"><small>확률과 통계</small>연속 분포<br><span>기댓값·분산은 부분 적분, 정규화 상수는 이상 적분과 감마 함수.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>수치 해석<br><span>유효 숫자, 반올림 오차와 절단 오차의 균형.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>부분 적분 \(\int u\,dv = uv - \int v\,du\)는 곱의 법칙의 적분형이다. 미분해 단순해지는 쪽을 \(u\)로(LIATE), 여러 번이면 표 방법, 원래 적분이 돌아오면 방정식으로 푼다.</li>
+      <li>\(\sin^m\cos^n\)은 홀수 지수 쪽에서 하나를 떼어 치환하고, 둘 다 짝수면 반각 공식으로 낮춘다. 서로 다른 진동수의 사인·코사인은 한 주기에서 직교한다.</li>
+      <li>삼각 치환은 \(\sqrt{a^2-x^2}, \sqrt{a^2+x^2}, \sqrt{x^2-a^2}\)를 각각 \(x = a\sin\theta, a\tan\theta, a\sec\theta\)로 바꿔 근호를 없애고, 기준 삼각형으로 \(x\)에 되돌린다.</li>
+      <li>유리 함수는 (필요하면 나눗셈 뒤) 부분 분수로 쪼갠다. 서로 다른 일차 인수의 계수는 가리기 방법 \(A_i = P(r_i)/Q'(r_i)\)로 바로 나온다.</li>
+      <li>이상 적분은 유한 적분의 극한이다. \(\int_1^\infty x^{-p}\)는 \(p > 1\)에서, \(\int_0^1 x^{-p}\)는 \(p \lt 1\)에서 수렴한다. 역도함수가 없어도 비교 판정으로 수렴을 가린다.</li>
+      <li>사다리꼴·중점 공식의 오차는 \(O(n^{-2})\), 심프슨은 \(O(n^{-4})\)이다. 오차 한계 \(\frac{K(b-a)^3}{12n^2}\), \(\frac{K_4(b-a)^5}{180n^4}\)로 필요한 \(n\)을 미리 정한다.</li>
+      <li>\(e^{-x^2}\), \(\frac{\sin x}{x}\) 같은 함수의 역도함수는 초등 함수가 아니다. erf·Si 같은 새 함수로 이름을 붙이고, 값은 수치 적분이나 급수로 계산한다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\int x\cos x\,dx\)는?</p><div class="opts">
+        <button class="opt">\(\tfrac{x^2}{2}\sin x + C\)</button>
+        <button class="opt">\(x\sin x - \cos x + C\)</button>
+        <button class="opt" data-correct>\(x\sin x + \cos x + C\)</button>
+        <button class="opt">\(-x\sin x + \cos x + C\)</button>
+      </div><div class="quiz-exp">\(u = x,\ dv = \cos x\,dx\)이면 \(v = \sin x\). \(x\sin x - \int\sin x\,dx = x\sin x + \cos x + C\). 미분 검산: \(\sin x + x\cos x - \sin x = x\cos x\). ✓ 첫째 보기처럼 "따로 적분해서 곱하기"는 틀린 방법이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\int_0^{2\pi}\sin 3x\,\sin 5x\,dx\)의 값은?</p><div class="opts">
+        <button class="opt" data-correct>0</button>
+        <button class="opt">\(\pi\)</button>
+        <button class="opt">\(2\pi\)</button>
+        <button class="opt">\(\pi/2\)</button>
+      </div><div class="quiz-exp">\(\sin3x\sin5x = \tfrac12[\cos2x - \cos8x]\)이고 각 항은 한 주기의 정수 배 구간에서 적분하면 0이다. 진동수가 다른 사인끼리는 직교한다(정리 9.3). 구간 [0, 2π]도 길이 2π인 한 주기라 같은 결과다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\int\frac{dx}{x^2\sqrt{9+x^2}}\)에 알맞은 치환은?</p><div class="opts">
+        <button class="opt">\(x = 3\sin\theta\)</button>
+        <button class="opt" data-correct>\(x = 3\tan\theta\)</button>
+        <button class="opt">\(x = 3\sec\theta\)</button>
+        <button class="opt">\(u = 9 + x^2\)</button>
+      </div><div class="quiz-exp">\(\sqrt{a^2 + x^2}\) 꼴(\(a = 3\))이므로 \(x = 3\tan\theta\)로 \(\sqrt{9 + 9\tan^2\theta} = 3\sec\theta\). \(u = 9 + x^2\)는 \(du = 2x\,dx\)인데 피적분 함수에 \(x\)가 분자로 없어서 맞지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(\frac{1}{x^2 - 1}\)의 부분 분수 분해는?</p><div class="opts">
+        <button class="opt">\(\frac{1}{x-1} + \frac{1}{x+1}\)</button>
+        <button class="opt">\(\frac{1}{x-1} - \frac{1}{x+1}\)</button>
+        <button class="opt" data-correct>\(\frac{1}{2}\Big(\frac{1}{x-1} - \frac{1}{x+1}\Big)\)</button>
+        <button class="opt">\(\frac{1}{2}\Big(\frac{1}{x+1} - \frac{1}{x-1}\Big)\)</button>
+      </div><div class="quiz-exp">가리기: \(x = 1\)에서 \(\frac{1}{1+1} = \tfrac12\), \(x = -1\)에서 \(\frac{1}{-1-1} = -\tfrac12\). 통분해 검산하면 \(\tfrac12\cdot\frac{(x+1) - (x-1)}{x^2-1} = \frac{1}{x^2-1}\). ✓</div></div>
+
+      <div class="quiz-q"><p>Q5. 다음 이상 적분 중 <b>수렴</b>하는 것은?</p><div class="opts">
+        <button class="opt">\(\int_1^\infty\frac{dx}{\sqrt x}\)</button>
+        <button class="opt">\(\int_0^1\frac{dx}{x}\)</button>
+        <button class="opt" data-correct>\(\int_1^\infty\frac{dx}{x^{1.01}}\)</button>
+        <button class="opt">\(\int_0^1\frac{dx}{x^{1.01}}\)</button>
+      </div><div class="quiz-exp">무한 구간은 \(p > 1\)에서 수렴: \(p = 1.01\)이면 값은 \(\frac{1}{0.01} = 100\). 0 근처는 \(p \lt 1\)에서만 수렴하므로 \(p = 1\)과 \(1.01\)은 발산, 무한 구간의 \(p = \tfrac12\)도 발산이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\int_{-1}^{1}\frac{dx}{x^2}\)에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">기본 정리에 의해 −2이다</button>
+        <button class="opt">홀함수라 0이다</button>
+        <button class="opt">2이다</button>
+        <button class="opt" data-correct>x = 0에서 폭발하는 이상 적분이고 발산한다</button>
+      </div><div class="quiz-exp">\(\frac{1}{x^2}\)은 [−1, 1]에서 연속이 아니라 기본 정리를 쓸 수 없다. \(\int_0^1 x^{-2}dx\)가 (\(p = 2 \ge 1\)) 발산하므로 전체가 발산한다. 양수 함수의 적분이 음수로 나온다면 무언가 잘못된 것이다. 또 \(1/x^2\)은 짝함수다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 매끄러운 함수를 심프슨 공식으로 적분했더니 n = 10에서 오차가 \(3.2\times10^{-5}\)이었다. n = 20이면 오차는 대략?</p><div class="opts">
+        <button class="opt">\(1.6\times10^{-5}\)</button>
+        <button class="opt">\(8\times10^{-6}\)</button>
+        <button class="opt" data-correct>\(2\times10^{-6}\)</button>
+        <button class="opt">\(3.2\times10^{-9}\)</button>
+      </div><div class="quiz-exp">심프슨의 오차는 \(n^{-4}\)에 비례하므로 n을 2배로 하면 \(2^4 = 16\)분의 1: \(3.2\times10^{-5}/16 = 2\times10^{-6}\). 사다리꼴이었다면 1/4인 \(8\times10^{-6}\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 학생 셋이 \(\int\sin x\cos x\,dx\)를 각각 \(\tfrac12\sin^2x + C\), \(-\tfrac12\cos^2x + C\), \(-\tfrac14\cos2x + C\)로 풀었다. 옳은 판단은?</p><div class="opts">
+        <button class="opt">첫째만 맞다</button>
+        <button class="opt">셋 다 틀렸다</button>
+        <button class="opt" data-correct>셋 다 맞다. 서로 상수만큼 차이 난다</button>
+        <button class="opt">셋째만 맞다</button>
+      </div><div class="quiz-exp">\(\tfrac12\sin^2x - (-\tfrac12\cos^2x) = \tfrac12\)이고 \(-\tfrac14\cos2x = -\tfrac14(1 - 2\sin^2x) = \tfrac12\sin^2x - \tfrac14\)이다. 역도함수는 상수만큼의 자유가 있으므로 미분해서 \(\sin x\cos x\)가 되면 모두 맞다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const TQ = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return v > 0 ? "∞" : "−∞";
+    let r = Number(v.toFixed(d));
+    if (Math.abs(r) < 0.5 * Math.pow(10, -d)) r = 0;
+    return String(r).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 1e-3 && a < 1e4) return TQ.num(v, Math.max(d, 3 - Math.floor(Math.log10(a))));
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return `${TQ.num(m, d)}×10<sup>${String(e).replace("-", "−")}</sup>`;
+  },
+  simpson(f, a, b, n = 400) {
+    if (n % 2) n++;
+    const h = (b - a) / n; let s = f(a) + f(b);
+    for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * f(a + i * h);
+    return (s * h) / 3;
+  },
+  /** 반투명 다각형(픽셀 좌표) */
+  fillPx(ctx, pts, color, alpha) {
+    if (pts.length < 3) return;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  },
+  linePx(ctx, pts, color, width = 2, dash = []) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash); ctx.beginPath();
+    let on = false;
+    pts.forEach(([x, y]) => { if (!isFinite(y)) { on = false; return; } on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; });
+    ctx.stroke(); ctx.restore();
+  },
+  parse(el) { const s = String(el.value).trim().replace("−", "-"); if (s === "") return null; const v = Number(s); return isFinite(v) ? v : NaN; },
+};
+
+/* ================================================================ 1. 부분 적분 넓이 그림 */
+(function () {
+  const PRE = {
+    ln:   { x0: 1, bmax: 4, b: Math.E, u: (x) => Math.log(x), v: (x) => x, du: (x) => 1 / x, dv: () => 1, tag: "u = ln x, v = x" },
+    xe:   { x0: 0, bmax: 2, b: 1.2, u: (x) => x, v: (x) => Math.exp(x), du: () => 1, dv: (x) => Math.exp(x), tag: "u = x, v = eˣ" },
+    atan: { x0: 0, bmax: 4, b: 2, u: (x) => Math.atan(x), v: (x) => x, du: (x) => 1 / (1 + x * x), dv: () => 1, tag: "u = arctan x, v = x" },
+    xln:  { x0: 1, bmax: 3.5, b: 2.5, u: (x) => Math.log(x), v: (x) => x * x / 2, du: (x) => 1 / x, dv: (x) => x, tag: "u = ln x, v = x²/2" },
+  };
+  let pre = PRE.ln, b = Math.E, showRect = true;
+  const bEl = document.getElementById("tq-p-b");
+  const pl = MB.plane("#tq-cv-parts", {
+    x: [-0.3, 3], y: [-0.3, 3], aspect: 0.72, maxHeight: 440, minHeight: 250, gridStep: 1,
+    draw(P) {
+      const C = P.P, N = 160, x0 = pre.x0, U = pre.u(b), V = pre.v(b), V0 = pre.v(x0);
+      const curve = []; for (let i = 0; i <= N; i++) { const x = x0 + (b - x0) * i / N; curve.push([pre.u(x), pre.v(x)]); }
+      const toPx = (pts) => pts.map(([a, c]) => [P.X(a), P.Y(c)]);
+      TQ.fillPx(P.ctx, toPx(curve.concat([[U, 0], [pre.u(x0), 0]])), C.accent2, 0.28);
+      TQ.fillPx(P.ctx, toPx(curve.concat([[0, V], [0, V0]])), C.accent, 0.28);
+      if (showRect) P.poly([[0, 0], [U, 0], [U, V], [0, V]], { color: C.text, width: 1.4, dash: [6, 5], alpha: 0.7 });
+      P.poly(curve, { close: false, color: C.accent, width: 3 });
+      P.dot(pre.u(x0), V0, { color: C.accent, r: 5 });
+      P.dot(U, V, { color: C.accent, r: 6 });
+      P.text(`(u(b), v(b)) = (${TQ.num(U, 2)}, ${TQ.num(V, 2)})`, U, V, { color: C.text, align: "right", dx: -10, dy: -12, size: 12 });
+      P.text("∫u dv", U * 0.25, (V + V0) / 2 + (V - V0) * 0.15, { color: C.accent, bold: true, size: 14, align: "center" });
+      P.text("∫v du", U * 0.7, Math.min(V0, pre.v(x0 + (b - x0) * 0.7)) * 0.45 + 0.02 * V, { color: C.accent2, bold: true, size: 14, align: "center" });
+    },
+  });
+  function upd() {
+    const U = pre.u(b), V = pre.v(b), x0 = pre.x0;
+    const udv = TQ.simpson((x) => pre.u(x) * pre.dv(x), x0, b), vdu = TQ.simpson((x) => pre.v(x) * pre.du(x), x0, b);
+    const uv = U * V - pre.u(x0) * pre.v(x0);
+    MB.stat("tq-p-udv", TQ.num(udv, 4)); MB.stat("tq-p-vdu", TQ.num(vdu, 4)); MB.stat("tq-p-uv", TQ.num(uv, 4));
+    MB.stat("tq-p-chk", TQ.num(udv + vdu - uv, 6));
+    document.getElementById("tq-p-tag").textContent = pre.tag;
+    const pad = (m) => Math.max(0.25, m * 0.12);
+    pl.view({ x: [-pad(U), U + pad(U) * 1.4], y: [-pad(V), V + pad(V)] });
+  }
+  const bR = MB.range("tq-p-b", (v) => v.toFixed(2), (v) => { b = v; upd(); });
+  document.getElementById("tq-p-pre").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; bEl.min = (pre.x0 + 0.1).toFixed(2); bEl.max = pre.bmax; b = pre.b; bR.set(b, false); upd();
+  });
+  MB.check("tq-p-rect", (v) => { showRect = v; pl.redraw(); });
+  upd();
+})();
+
+/* ================================================================ 2. 표 방법 */
+(function () {
+  const BASE = {
+    sin: { s: "sin x", f: Math.sin }, cos: { s: "cos x", f: Math.cos },
+    exp: { s: "e<sup>x</sup>", f: Math.exp }, expn: { s: "e<sup>−x</sup>", f: (x) => Math.exp(-x) },
+  };
+  // j번째 거듭 적분: [부호, 기저]
+  const INT = {
+    sin: (j) => [[1, "sin"], [-1, "cos"], [-1, "sin"], [1, "cos"]][j % 4],
+    cos: (j) => [[1, "cos"], [1, "sin"], [-1, "cos"], [-1, "sin"]][j % 4],
+    exp: () => [1, "exp"],
+    expn: (j) => [j % 2 ? -1 : 1, "expn"],
+  };
+  let k = 2, g = "sin";
+  const fall = (n, j) => { let r = 1; for (let i = 0; i < j; i++) r *= n - i; return r; };
+  const pw = (p) => (p === 0 ? "" : p === 1 ? "x" : `x<sup>${p}</sup>`);
+  const term = (c, p, s, first) => {
+    const sg = c < 0 ? (first ? "−" : " − ") : first ? "" : " + ";
+    const a = Math.abs(c), co = a === 1 ? "" : String(a);
+    return `${sg}${co}${pw(p)}${co || p ? " " : ""}${BASE[s].s}`;
+  };
+  function terms() {
+    const out = [];
+    for (let j = 0; j <= k; j++) { const [sg, base] = INT[g](j + 1); out.push({ c: (j % 2 ? -1 : 1) * fall(k, j) * sg, p: k - j, base }); }
+    return out;
+  }
+  const F = (x) => terms().reduce((s, t) => s + t.c * Math.pow(x, t.p) * BASE[t.base].f(x), 0);
+  const f = (x) => Math.pow(x, k) * BASE[g].f(x);
+  const cv = MB.canvas("#tq-cv-tab", (ctx) => {
+    const C = MB.palette(), L = g === "exp" || g === "expn" ? 2 : 3.5, N = 240, fd = [], Fd = [];
+    for (let i = 0; i <= N; i++) { const x = -L + 2 * L * i / N; fd.push([x, f(x)]); Fd.push([x, F(x)]); }
+    const all = fd.concat(Fd).map((q) => Math.abs(q[1])), M = Math.max(1, ...all) * 1.08;
+    MB.chart(ctx, null, { x: [-L, L], y: [-M, M], xLabel: "x", series: [{ data: fd, color: C.accent, width: 2.4 }, { data: Fd, color: C.accent2, width: 2.4 }], hlines: [{ y: 0, color: C.dim }], vlines: [{ x: 0, color: C.dim }] });
+  }, { aspect: 0.5, minHeight: 210, maxHeight: 320 });
+  function upd() {
+    let rows = "<table><thead><tr><th>부호</th><th>D: u를 미분</th><th>I: dv를 적분</th></tr></thead><tbody>";
+    for (let j = 0; j <= k + 1; j++) {
+      const D = j <= k ? `${fall(k, j) === 1 && k - j > 0 ? "" : fall(k, j)}${pw(k - j)}` : "0";
+      const [sg, base] = INT[g](j);
+      const I = `${sg < 0 ? "−" : ""}${BASE[base].s}`;
+      rows += `<tr class="${j > k ? "dead" : ""}"><td class="sg">${j > k ? "" : j % 2 ? "−" : "+"}</td><td>${D}</td><td>${I}</td></tr>`;
+    }
+    rows += "</tbody></table>";
+    document.getElementById("tq-t-table").innerHTML = rows;
+    const ts = terms();
+    MB.stat("tq-t-res", ts.map((t, i) => term(t.c, t.p, t.base, i === 0)).join("") + " + C");
+    let err = 0; const L = g === "exp" || g === "expn" ? 2 : 3.5, h = 1e-4;
+    for (let i = 0; i <= 50; i++) { const x = -L + 2 * L * i / 50; err = Math.max(err, Math.abs((F(x + h) - F(x - h)) / (2 * h) - f(x)) / Math.max(1, Math.abs(f(x)))); }
+    MB.stat("tq-t-chk", `${TQ.sci(err, 1)} ✓`);
+    cv.redraw();
+  }
+  MB.range("tq-t-k", (v) => String(v), (v) => { k = v; upd(); });
+  MB.seg("tq-t-g", (v) => { g = v; upd(); });
+  upd();
+})();
+
+/* ================================================================ 3. 직교성 */
+(function () {
+  let type = "ss", m = 2, n = 3, fac = false;
+  const A = (t, x, mm) => (t === "s" ? Math.sin(mm * x) : Math.cos(mm * x));
+  const prod = (x) => A(type[0], x, m) * A(type[1], x, n);
+  const cv = MB.canvas("#tq-cv-ortho", (ctx) => {
+    const C = MB.palette(), N = 600, d = [];
+    for (let i = 0; i <= N; i++) { const x = -Math.PI + 2 * Math.PI * i / N; d.push([x, prod(x)]); }
+    const R = MB.chart(ctx, null, { x: [-Math.PI, Math.PI], y: [-1.15, 1.15], xTicks: [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI], xFmt: (v) => ({ "-3.142": "−π", "-1.571": "−π/2", "0.000": "0", "1.571": "π/2", "3.142": "π" }[v.toFixed(3)] || ""), yTicks: [-1, -0.5, 0, 0.5, 1], series: [], hlines: [{ y: 0, color: C.dim }] });
+    const pos = [[R.X(-Math.PI), R.Y(0)]].concat(d.map(([x, y]) => [R.X(x), R.Y(Math.max(0, y))]), [[R.X(Math.PI), R.Y(0)]]);
+    const neg = [[R.X(-Math.PI), R.Y(0)]].concat(d.map(([x, y]) => [R.X(x), R.Y(Math.min(0, y))]), [[R.X(Math.PI), R.Y(0)]]);
+    TQ.fillPx(ctx, pos, C.accent, 0.3); TQ.fillPx(ctx, neg, C.accent2, 0.3);
+    if (fac) {
+      TQ.linePx(ctx, d.map(([x]) => [R.X(x), R.Y(A(type[0], x, m))]), C.warn, 1.3, [5, 4]);
+      TQ.linePx(ctx, d.map(([x]) => [R.X(x), R.Y(A(type[1], x, n))]), C.ok, 1.3, [5, 4]);
+    }
+    TQ.linePx(ctx, d.map(([x, y]) => [R.X(x), R.Y(y)]), C.text, 2);
+  }, { aspect: 0.5, minHeight: 210, maxHeight: 330 });
+  function upd() {
+    const nm = { s: "sin", c: "cos" };
+    document.getElementById("tq-o-tag").textContent = `${nm[type[0]]} ${m}x · ${nm[type[1]]} ${n}x, [−π, π]`;
+    const P = TQ.simpson((x) => Math.max(0, prod(x)), -Math.PI, Math.PI, 2000), Ng = TQ.simpson((x) => Math.min(0, prod(x)), -Math.PI, Math.PI, 2000);
+    let th;
+    if (type === "sc") th = "0";
+    else if (m !== n) th = "0";
+    else if (m === 0) th = type === "cc" ? "2π" : "0";
+    else th = "π";
+    MB.stat("tq-o-pos", TQ.num(P, 4)); MB.stat("tq-o-neg", TQ.num(Ng, 4)); MB.stat("tq-o-int", TQ.num(P + Ng, 4)); MB.stat("tq-o-th", th);
+    cv.redraw();
+  }
+  MB.seg("tq-o-type", (v) => { type = v; upd(); });
+  MB.range("tq-o-m", String, (v) => { m = v; upd(); });
+  MB.range("tq-o-n", String, (v) => { n = v; upd(); });
+  MB.check("tq-o-fac", (v) => { fac = v; cv.redraw(); });
+  upd();
+})();
+
+/* ================================================================ 4. 삼각 치환 삼각형 */
+(function () {
+  const a = 2;
+  let form = "sin", x = 1.2, playing = false;
+  const xEl = document.getElementById("tq-s-x");
+  const DOM = { sin: [0, 1.99, 1.2], tan: [0, 3.5, 1.5], sec: [2, 4.2, 3] };
+  const rad = (t) => (form === "sin" ? Math.sqrt(Math.max(0, a * a - t * t)) : form === "tan" ? Math.sqrt(a * a + t * t) : Math.sqrt(Math.max(0, t * t - a * a)));
+  const pl = MB.plane("#tq-cv-trig", {
+    x: [-0.5, 5.5], y: [-0.4, 4.1], aspect: 0.75, maxHeight: 430, minHeight: 250,
+    draw(P) {
+      const C = P.P, r = rad(x);
+      if (form === "sin") {
+        P.param((s) => [a * Math.cos(s), a * Math.sin(s)], 0, Math.PI / 2, { color: C.dim, width: 1, dash: [4, 4] });
+        const th = Math.asin(x / a), sector = [[0, 0]];
+        for (let i = 0; i <= 60; i++) { const s = Math.PI / 2 - th * i / 60; sector.push([a * Math.cos(s), a * Math.sin(s)]); }
+        P.poly(sector, { fill: C.accent, color: C.accent, alpha: 0.3, width: 1 });
+        P.poly([[0, 0], [x, 0], [x, r]], { fill: C.accent2, color: C.accent2, alpha: 0.3, width: 1 });
+        P.curve((t) => Math.sqrt(a * a - t * t), { from: 0, to: a, color: C.accent, width: 3 });
+        P.line(0, 0, x, r, { color: C.text, width: 2 });
+        P.line(x, 0, x, r, { color: C.accent2, width: 2 });
+        P.param((s) => [0.5 * Math.cos(s), 0.5 * Math.sin(s)], Math.PI / 2 - th, Math.PI / 2, { color: C.warn, width: 2 });
+        P.text("θ", 0.62 * Math.cos(Math.PI / 2 - th / 2), 0.62 * Math.sin(Math.PI / 2 - th / 2), { color: C.warn, bold: true, align: "center" });
+        P.text("a = 2", x / 2 - 0.15, r / 2 + 0.15, { color: C.text, align: "right", size: 12 });
+        P.text(`x = ${x.toFixed(2)}`, x / 2, -0.2, { color: C.text, align: "center", size: 12 });
+        P.text(`√(a²−x²) = ${r.toFixed(2)}`, x + 0.1, r / 2, { color: C.accent2, size: 12 });
+        P.text("부채꼴 a²θ/2", 0.25, a * 0.78, { color: C.accent, size: 12 });
+      } else {
+        const op = form === "tan" ? x : r, hyp = form === "tan" ? r : x;
+        P.curve(rad, { from: form === "sec" ? a : 0, to: 5.4, color: C.accent, width: 3 });
+        P.poly([[0, 0], [a, 0], [a, op]], { fill: C.accent2, color: C.accent2, alpha: 0.25, width: 2 });
+        P.line(0, 0, a, op, { color: C.text, width: 2.4 });
+        const th = Math.atan2(op, a);
+        P.param((s) => [0.5 * Math.cos(s), 0.5 * Math.sin(s)], 0, th, { color: C.warn, width: 2 });
+        P.text("θ", 0.65 * Math.cos(th / 2), 0.65 * Math.sin(th / 2), { color: C.warn, bold: true, align: "center" });
+        P.text("a = 2", a / 2, -0.2, { color: C.text, align: "center", size: 12 });
+        P.text(form === "tan" ? `x = ${x.toFixed(2)}` : `√(x²−a²) = ${r.toFixed(2)}`, a + 0.1, op / 2, { color: C.accent2, size: 12 });
+        P.text(form === "tan" ? `빗변 √(a²+x²) = ${hyp.toFixed(2)}` : `빗변 x = ${hyp.toFixed(2)}`, a / 2 - 0.1, op / 2 + 0.25, { color: C.text, size: 12, align: "right" });
+        P.line(x, 0, x, r, { color: C.accent, width: 1.5, dash: [5, 4] });
+        P.dot(x, r, { color: C.accent, r: 5, label: `y = ${form === "tan" ? "√(a²+x²)" : "√(x²−a²)"}` });
+        P.dot(x, 0, { color: C.warn, r: 6 });
+      }
+    },
+  });
+  function upd() {
+    const r = rad(x);
+    let th, s3k, s3v, s4k, s4v, tag;
+    if (form === "sin") {
+      th = Math.asin(x / a); tag = "x = a sin θ, √(a²−x²) = a cos θ";
+      s3k = "부채꼴 a²θ/2 + 삼각형 x√(a²−x²)/2"; s3v = `${TQ.num(a * a * th / 2, 4)} + ${TQ.num(x * r / 2, 4)}`;
+      s4k = "합 vs ∫₀ˣ √(a²−t²) dt (수치)"; s4v = `${TQ.num(a * a * th / 2 + x * r / 2, 4)} = ${TQ.num(TQ.simpson((t) => Math.sqrt(Math.max(0, a * a - t * t)), 0, x, 2000), 4)}`;
+      MB.stat("tq-s-rad", `a cos θ = ${TQ.num(a * Math.cos(th), 3)}`);
+    } else if (form === "tan") {
+      th = Math.atan(x / a); tag = "x = a tan θ, √(a²+x²) = a sec θ";
+      s3k = "∫₀ˣ dt/√(a²+t²) = ln(x+√(x²+a²)) − ln a"; s3v = TQ.num(Math.log((x + r) / a), 4);
+      s4k = "같은 값을 θ로: ln|sec θ + tan θ|"; s4v = TQ.num(Math.log(1 / Math.cos(th) + Math.tan(th)), 4);
+      MB.stat("tq-s-rad", `a sec θ = ${TQ.num(a / Math.cos(th), 3)}`);
+    } else {
+      th = Math.acos(a / x); tag = "x = a sec θ, √(x²−a²) = a tan θ";
+      s3k = "∫ₐˣ dt/√(t²−a²) = ln(x+√(x²−a²)) − ln a"; s3v = TQ.num(Math.log((x + r) / a), 4);
+      s4k = "같은 값을 θ로: ln|sec θ + tan θ|"; s4v = TQ.num(Math.log(1 / Math.cos(th) + Math.tan(th)), 4);
+      MB.stat("tq-s-rad", `a tan θ = ${TQ.num(a * Math.tan(th), 3)}`);
+    }
+    MB.stat("tq-s-th", `${(th * 180 / Math.PI).toFixed(1)}° = ${th.toFixed(3)} rad`);
+    document.getElementById("tq-s-k3").textContent = s3k; MB.stat("tq-s-v3", s3v);
+    document.getElementById("tq-s-k4").textContent = s4k; MB.stat("tq-s-v4", s4v);
+    document.getElementById("tq-s-tag").textContent = tag;
+    pl.redraw();
+  }
+  const xR = MB.range("tq-s-x", (v) => v.toFixed(2), (v) => { x = v; upd(); });
+  MB.seg("tq-s-form", (v) => { form = v; const d = DOM[v]; xEl.min = d[0]; xEl.max = d[1]; x = d[2]; xR.set(x, false); upd(); });
+  let dir = 1;
+  const loop = MB.loop(document.getElementById("sim-tq-trigsub"), (dt) => {
+    if (!playing) return;
+    const d = DOM[form]; x += dir * dt * (d[1] - d[0]) * 0.25;
+    if (x >= d[1]) { x = d[1]; dir = -1; } if (x <= d[0]) { x = d[0]; dir = 1; }
+    xR.set(x, false); upd();
+  });
+  MB.playButton("tq-s-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 쓸기", "■ 멈춤"]);
+  upd();
+})();
+
+/* ================================================================ 5. 부분 분수 분해기 */
+(function () {
+  const ids = ["p2", "p1", "p0", "r1", "r2", "r3"].map((s) => document.getElementById("tq-f-" + s));
+  const msg = document.getElementById("tq-f-msg");
+  let st = { ok: false };
+  const lin = (r) => (r === 0 ? "x" : r > 0 ? `(x − ${TQ.num(r, 3)})` : `(x + ${TQ.num(-r, 3)})`);
+  function read() {
+    const [p2, p1, p0, r1, r2, r3] = ids.map(TQ.parse);
+    const roots = [r1, r2, r3].filter((v) => v !== null);
+    if ([p2, p1, p0].some((v) => v === null || isNaN(v)) || roots.some((v) => isNaN(v)) || roots.length < 2) return { ok: false, why: "분자 계수 세 칸과 근을 두 개 이상 숫자로 넣으세요." };
+    const P = (x) => p2 * x * x + p1 * x + p0, deg = p2 !== 0 ? 2 : p1 !== 0 ? 1 : 0;
+    if (deg >= roots.length) return { ok: false, why: `분자 차수(${deg}) ≥ 분모 차수(${roots.length})입니다. 다항식 나눗셈을 먼저 해야 합니다(정리 9.5).`, roots, P };
+    for (let i = 0; i < roots.length; i++) for (let j = i + 1; j < roots.length; j++) if (Math.abs(roots[i] - roots[j]) < 1e-9) return { ok: false, why: "중근입니다. 이 분해기는 서로 다른 근만 다룹니다. 중근이면 A/(x−r) + B/(x−r)² 꼴이 필요합니다(예제 9.8).", roots, P };
+    const A = roots.map((r, i) => P(r) / roots.reduce((s, q, j) => (j === i ? s : s * (r - q)), 1));
+    return { ok: true, roots, P, A };
+  }
+  const pl = MB.plane("#tq-cv-pf", {
+    x: [-5, 5], y: [-6, 6], aspect: 0.66, maxHeight: 440, minHeight: 240, gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      if (!st.roots) return;
+      const Q = (x) => st.roots.reduce((s, r) => s * (x - r), 1);
+      st.roots.forEach((r) => P.line(r, -6, r, 6, { color: C.faint, width: 1, dash: [3, 4] }));
+      const cols = [C.warn, C.ok, C.accent2];
+      const clip = (y) => (Math.abs(y) > 50 ? NaN : y);
+      if (st.ok) st.A.forEach((A, i) => P.curve((x) => clip(A / (x - st.roots[i])), { color: cols[i], width: 1.6, dash: [6, 4] }));
+      P.curve((x) => clip(st.P(x) / Q(x)), { color: C.accent, width: 3 });
+    },
+  });
+  function upd() {
+    st = read();
+    if (!st.ok) {
+      msg.className = "tq-msg bad"; msg.textContent = st.why;
+      MB.stat("tq-f-dec", "—"); MB.stat("tq-f-int", "—"); pl.redraw(); return;
+    }
+    const dec = st.A.map((A, i) => `${i ? (A < 0 ? " − " : " + ") : A < 0 ? "−" : ""}${TQ.num(Math.abs(A), 3)}/${lin(st.roots[i])}`).join("");
+    const ints = st.A.map((A, i) => `${i ? (A < 0 ? " − " : " + ") : A < 0 ? "−" : ""}${Math.abs(Math.abs(A) - 1) < 1e-12 ? "" : TQ.num(Math.abs(A), 3) + " "}ln|${lin(st.roots[i]).replace(/[()]/g, "")}|`).join("") + " + C";
+    MB.stat("tq-f-dec", dec); MB.stat("tq-f-int", ints);
+    const x = 0.3137, Q = st.roots.reduce((s, r) => s * (x - r), 1), lhs = st.P(x) / Q, rhs = st.A.reduce((s, A, i) => s + A / (x - st.roots[i]), 0);
+    msg.className = "tq-msg ok";
+    msg.innerHTML = `검산: x = 0.3137에서 P/Q = ${TQ.num(lhs, 6)}, 조각의 합 = ${TQ.num(rhs, 6)} · 계수 Aᵢ = P(rᵢ)/Q′(rᵢ)`;
+    pl.redraw();
+  }
+  ids.forEach((el) => el.addEventListener("input", upd));
+  const set = (vals) => { ids.forEach((el, i) => (el.value = vals[i])); upd(); };
+  document.getElementById("tq-f-ex1").addEventListener("click", () => set(["0", "1", "5", "1", "-2", ""]));
+  document.getElementById("tq-f-ex2").addEventListener("click", () => set(["0", "0", "1", "1", "-1", ""]));
+  document.getElementById("tq-f-ex3").addEventListener("click", () => set(["1", "0", "-4", "-3", "1", "3"]));
+  upd();
+})();
+
+/* ================================================================ 6. 꼬리 넓이 */
+(function () {
+  let kind = "inf", p = 2, t = 1.5;
+  const area = (pp, e) => {   // inf: ∫₁ᵉ, zero: ∫ₑ¹
+    if (kind === "inf") return Math.abs(pp - 1) < 1e-9 ? Math.log(e) : (Math.pow(e, 1 - pp) - 1) / (1 - pp);
+    return Math.abs(pp - 1) < 1e-9 ? -Math.log(e) : (1 - Math.pow(e, 1 - pp)) / (1 - pp);
+  };
+  const lim = (pp) => (kind === "inf" ? (pp > 1 + 1e-9 ? 1 / (pp - 1) : Infinity) : pp < 1 - 1e-9 ? 1 / (1 - pp) : Infinity);
+  const end = () => (kind === "inf" ? Math.pow(10, t) : Math.pow(10, -t));
+  const top = MB.canvas("#tq-cv-tail", (ctx) => {
+    const C = MB.palette(), e = end(), fx = (x) => Math.pow(x, -p);
+    const xr = kind === "inf" ? [0, 10] : [0, 1.2], yr = kind === "inf" ? [0, 1.6] : [0, 12];
+    const R = MB.chart(ctx, null, { x: xr, y: yr, xLabel: "x", series: [] });
+    const a0 = kind === "inf" ? 1 : Math.max(e, 1e-6), a1 = kind === "inf" ? Math.min(e, 10) : 1;
+    const N = 200, sh = [[R.X(a0), R.Y(0)]];
+    for (let i = 0; i <= N; i++) { const x = a0 + (a1 - a0) * i / N; sh.push([R.X(x), R.Y(Math.min(yr[1], fx(x)))]); }
+    sh.push([R.X(a1), R.Y(0)]);
+    TQ.fillPx(ctx, sh, C.accent, 0.3);
+    const curve = (pp, col, w, dash) => { const d = []; for (let i = 1; i <= 400; i++) { const x = xr[1] * i / 400; d.push([R.X(x), R.Y(Math.min(yr[1] * 1.05, Math.pow(x, -pp)))]); } TQ.linePx(ctx, d, col, w, dash); };
+    curve(1, C.dim, 1.3, [5, 4]); curve(2, C.accent2, 1.3, [5, 4]);
+    curve(p, C.accent, 2.6, []);
+    ctx.fillStyle = C.dim; ctx.font = "12px sans-serif"; ctx.textAlign = "left";
+    if (kind === "inf") { ctx.fillText("1/x (점선)", R.X(6.5), R.Y(1 / 6.5) - 8); ctx.fillStyle = C.accent2; ctx.fillText("1/x² (점선)", R.X(2.2), R.Y(0.21) + 2); if (e > 10) { ctx.fillStyle = C.accent; ctx.fillText("→ b = " + TQ.num(e, 0) + "까지 계속", R.X(6.2), R.Y(0.5)); } }
+    else { ctx.fillText("1/x", R.X(0.15) + 6, R.Y(1 / 0.15)); ctx.fillStyle = C.accent2; ctx.fillText("1/x²", R.X(0.33) + 6, R.Y(1 / 0.1089)); }
+  }, { aspect: 0.4, minHeight: 170, maxHeight: 250 });
+  const bot = MB.canvas("#tq-cv-tailA", (ctx) => {
+    const C = MB.palette(), L = lim(p), data = (pp) => { const d = []; for (let i = 0; i <= 200; i++) { const s = 4 * i / 200, e = kind === "inf" ? Math.pow(10, s) : Math.pow(10, -s); d.push([Math.pow(10, s), area(pp, e)]); } return d; };
+    const ymax = Math.max(3, Math.min(12, isFinite(L) ? L * 1.3 : area(p, end()) * 1.2));
+    MB.chart(ctx, null, {
+      x: [1, 1e4], y: [0, ymax], logX: true, xLabel: kind === "inf" ? "끝점 b" : "1/ε",
+      series: [{ data: data(1), color: C.dim, width: 1.4, dash: [5, 4] }, { data: data(kind === "inf" ? 2 : 0.5), color: C.accent2, width: 1.4, dash: [5, 4] }, { data: data(p), color: C.accent, width: 2.6 }],
+      hlines: isFinite(L) ? [{ y: L, color: C.ok, label: "극한 " + TQ.num(L, 3) }] : [],
+      points: [{ x: Math.pow(10, t), y: Math.min(ymax, area(p, end())), color: C.accent, r: 5 }],
+    });
+  }, { aspect: 0.36, minHeight: 160, maxHeight: 230 });
+  function upd() {
+    const e = end(), A = area(p, e), L = lim(p);
+    MB.stat("tq-i-A", TQ.num(A, 4));
+    MB.stat("tq-i-lim", isFinite(L) ? `수렴: ${TQ.num(L, 4)}` : "발산 (∞)");
+    if (isFinite(L)) {
+      // 99%: inf → (b^(1−p) − 1)/(1−p) = 0.99/(p−1) → b^(1−p) = 0.01 → b = 100^(1/(p−1)); zero 대칭
+      const q = kind === "inf" ? Math.pow(100, 1 / (p - 1)) : Math.pow(0.01, 1 / (1 - p));
+      MB.stat("tq-i-99", kind === "inf" ? `b ≈ ${TQ.sci(q, 2)}` : `ε ≈ ${TQ.sci(q, 2)}`);
+    } else MB.stat("tq-i-99", "없음");
+    document.getElementById("tq-i-cap1").textContent = kind === "inf" ? "y = 1/xᵖ, 칠한 넓이 = ∫₁ᵇ (b > 10이면 오른쪽으로 이어짐)" : "y = 1/xᵖ, 칠한 넓이 = ∫ε¹";
+    top.redraw(); bot.redraw();
+  }
+  const pR = MB.range("tq-i-p", (v) => v.toFixed(2), (v) => { p = v; upd(); });
+  MB.range("tq-i-t", (v) => (kind === "inf" ? "b = " + TQ.num(Math.pow(10, v), v > 2 ? 0 : 2) : "ε = " + Math.pow(10, -v).toPrecision(2)), (v) => { t = v; upd(); });
+  const tEl = document.getElementById("tq-i-t");
+  MB.seg("tq-i-kind", (v) => { kind = v; tEl.dispatchEvent(new Event("input")); });
+  document.getElementById("tq-i-p1").addEventListener("click", () => pR.set(1));
+  document.getElementById("tq-i-p2").addEventListener("click", () => pR.set(2));
+  document.getElementById("tq-i-ph").addEventListener("click", () => pR.set(0.5));
+  upd();
+})();
+
+/* ================================================================ 7. 사다리꼴·중점·심프슨 */
+(function () {
+  const FN = {
+    gauss: { f: (x) => Math.exp(-x * x), a: 0, b: 2, ex: 0.8820813907624217, y: [0, 1.1] },
+    sin:   { f: Math.sin, a: 0, b: Math.PI, ex: 2, y: [0, 1.1] },
+    cubic: { f: (x) => x * x * x - x, a: 0, b: 2, ex: 2, y: [-0.6, 6.2] },
+    sqrt:  { f: Math.sqrt, a: 0, b: 1, ex: 2 / 3, y: [0, 1.1] },
+  };
+  let F = FN.gauss, method = "T", n = 4;
+  const rule = (m, nn) => {
+    const { f, a, b } = F, h = (b - a) / nn;
+    if (m === "T") { let s = (f(a) + f(b)) / 2; for (let i = 1; i < nn; i++) s += f(a + i * h); return s * h; }
+    if (m === "M") { let s = 0; for (let i = 0; i < nn; i++) s += f(a + (i + 0.5) * h); return s * h; }
+    let s = f(a) + f(b); for (let i = 1; i < nn; i++) s += (i % 2 ? 4 : 2) * f(a + i * h); return (s * h) / 3;
+  };
+  const top = MB.canvas("#tq-cv-num", (ctx) => {
+    const C = MB.palette(), { f, a, b } = F, h = (b - a) / n;
+    const R = MB.chart(ctx, null, { x: [a, b], y: F.y, xLabel: "x", series: [], hlines: [{ y: 0, color: C.dim }] });
+    const col = method === "S" ? C.accent2 : C.accent;
+    if (method === "T") for (let i = 0; i < n; i++) { const x0 = a + i * h, x1 = x0 + h; const q = [[R.X(x0), R.Y(0)], [R.X(x0), R.Y(f(x0))], [R.X(x1), R.Y(f(x1))], [R.X(x1), R.Y(0)]]; TQ.fillPx(ctx, q, col, 0.25); TQ.linePx(ctx, q, col, 1.2); }
+    if (method === "M") for (let i = 0; i < n; i++) { const x0 = a + i * h, x1 = x0 + h, y = f(x0 + h / 2); const q = [[R.X(x0), R.Y(0)], [R.X(x0), R.Y(y)], [R.X(x1), R.Y(y)], [R.X(x1), R.Y(0)]]; TQ.fillPx(ctx, q, col, 0.25); TQ.linePx(ctx, q, col, 1.2); }
+    if (method === "S") for (let i = 0; i < n; i += 2) {
+      const x0 = a + i * h, x1 = x0 + h, x2 = x0 + 2 * h, f0 = f(x0), f1 = f(x1), f2 = f(x2);
+      const L = (x) => f0 * (x - x1) * (x - x2) / (2 * h * h) - f1 * (x - x0) * (x - x2) / (h * h) + f2 * (x - x0) * (x - x1) / (2 * h * h);
+      const q = [[R.X(x0), R.Y(0)]]; for (let k = 0; k <= 30; k++) { const x = x0 + 2 * h * k / 30; q.push([R.X(x), R.Y(L(x))]); } q.push([R.X(x2), R.Y(0)]);
+      TQ.fillPx(ctx, q, col, 0.25); TQ.linePx(ctx, q.slice(1, -1), col, 1.6, [5, 3]);
+      TQ.linePx(ctx, [[R.X(x2), R.Y(0)], [R.X(x2), R.Y(f2)]], col, 1);
+    }
+    const d = []; for (let i = 0; i <= 300; i++) { const x = a + (b - a) * i / 300; d.push([R.X(x), R.Y(f(x))]); }
+    TQ.linePx(ctx, d, C.text, 2.2);
+    for (let i = 0; i <= n; i++) { const x = a + i * h; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(R.X(x), R.Y(method === "M" ? 0 : f(x)), method === "M" ? 0 : 3.5, 0, 7); ctx.fill(); }
+  }, { aspect: 0.42, minHeight: 180, maxHeight: 260 });
+  const bot = MB.canvas("#tq-cv-numerr", (ctx, w) => {
+    const C = MB.palette(), ns = []; for (let k = 2; k <= 1024; k *= 2) ns.push(k);
+    const ser = (m, col, w) => ({ data: ns.map((k) => [k, Math.max(1e-16, Math.abs(rule(m, k) - F.ex))]), color: col, width: w });
+    MB.chart(ctx, null, {
+      x: [2, 1024], y: [1e-16, 1], logX: true, logY: true, xLabel: "n",
+      xTicks: [2, 8, 32, 128, 512], xFmt: String, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [ser("T", C.accent, method === "T" ? 3 : 1.5), ser("M", C.warn, method === "M" ? 3 : 1.5), ser("S", C.accent2, method === "S" ? 3 : 1.5)],
+      vlines: [{ x: n, color: C.dim }],
+    });
+    const lg = [["사다리꼴", C.accent], ["중점", C.warn], ["심프슨", C.accent2]];
+    ctx.font = "12px sans-serif"; ctx.textAlign = "right";
+    lg.forEach(([s, c], i) => { ctx.fillStyle = c; ctx.fillText(s, w - 24, 30 + i * 16); });
+  }, { aspect: 0.4, minHeight: 180, maxHeight: 250 });
+  function upd() {
+    const v = rule(method, n), e = v - F.ex, e2 = rule(method, 2 * n) - F.ex;
+    MB.stat("tq-n-val", TQ.num(v, 8)); MB.stat("tq-n-ex", TQ.num(F.ex, 8)); MB.stat("tq-n-err", TQ.sci(e, 2));
+    MB.stat("tq-n-ratio", Math.abs(e2) < 1e-14 ? "— (오차 ≈ 0)" : TQ.num(e / e2, 2));
+    document.getElementById("tq-n-cap").textContent = { T: "사다리꼴: 조각마다 직선", M: "중점: 가운데 높이의 직사각형", S: "심프슨: 두 조각마다 포물선" }[method];
+    top.redraw(); bot.redraw();
+  }
+  const nR = MB.range("tq-n-n", String, (v) => { n = v; upd(); });
+  MB.seg("tq-n-m", (v) => { method = v; upd(); });
+  document.getElementById("tq-n-f").addEventListener("change", (e) => { F = FN[e.target.value]; upd(); });
+  document.getElementById("tq-n-dbl").addEventListener("click", () => nR.set(Math.min(32, n * 2)));
+  document.getElementById("tq-n-half").addEventListener("click", () => nR.set(Math.max(2, n / 2)));
+  upd();
+})();
+
+/* ================================================================ 8. 닫힌 꼴이 없는 적분 */
+(function () {
+  const fact = (k) => { let r = 1; for (let i = 2; i <= k; i++) r *= i; return r; };
+  const FN = {
+    gauss: { f: (t) => Math.exp(-t * t), term: (k, x) => (k % 2 ? -1 : 1) * Math.pow(x, 2 * k + 1) / ((2 * k + 1) * fact(k)) },
+    si:    { f: (t) => (t === 0 ? 1 : Math.sin(t) / t), term: (k, x) => (k % 2 ? -1 : 1) * Math.pow(x, 2 * k + 1) / ((2 * k + 1) * fact(2 * k + 1)) },
+    fres:  { f: (t) => Math.sin(t * t), term: (k, x) => (k % 2 ? -1 : 1) * Math.pow(x, 4 * k + 3) / ((4 * k + 3) * fact(2 * k + 1)) },
+  };
+  let F = FN.gauss, N = 4, x0 = 1;
+  const series = (x) => { let s = 0; for (let k = 0; k < N; k++) s += F.term(k, x); return s; };
+  const cv = MB.canvas("#tq-cv-ser", (ctx) => {
+    const C = MB.palette(), M = 240, fd = [], Fd = [], Sd = [];
+    let acc = 0; const h = 4 / M;
+    for (let i = 0; i <= M; i++) {
+      const x = i * h;
+      if (i) acc += (h / 6) * (F.f(x - h) + 4 * F.f(x - h / 2) + F.f(x));
+      fd.push([x, F.f(x)]); Fd.push([x, acc]); Sd.push([x, series(x)]);
+    }
+    MB.chart(ctx, null, {
+      x: [0, 4], y: [-0.6, 2], xLabel: "x",
+      series: [{ data: fd, color: C.faint, width: 1.6 }, { data: Fd, color: C.accent2, width: 2.8 }, { data: Sd, color: C.accent, width: 2, dash: [6, 4] }],
+      hlines: [{ y: 0, color: C.dim }], vlines: [{ x: x0, color: C.dim }],
+      points: [{ x: x0, y: TQ.simpson(F.f, 0, x0), color: C.accent2, r: 5 }],
+    });
+  }, { aspect: 0.5, minHeight: 210, maxHeight: 330 });
+  function upd() {
+    const Fv = TQ.simpson(F.f, 0, x0, 400), Sv = series(x0);
+    MB.stat("tq-r-F", TQ.num(Fv, 6)); MB.stat("tq-r-S", Math.abs(Sv) > 1e6 ? TQ.sci(Sv, 2) : TQ.num(Sv, 6)); MB.stat("tq-r-E", TQ.sci(Sv - Fv, 2));
+    cv.redraw();
+  }
+  MB.range("tq-r-N", String, (v) => { N = v; upd(); });
+  MB.range("tq-r-x", (v) => v.toFixed(2), (v) => { x0 = v; upd(); });
+  document.getElementById("tq-r-f").addEventListener("change", (e) => { F = FN[e.target.value]; upd(); });
+  upd();
+})();
+</script>
+</body>
+</html>

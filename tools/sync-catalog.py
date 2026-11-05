@@ -13,6 +13,14 @@ LOCAL_BOOKS = [{
     'status': 'published', 'level': '공대 1–2학년', 'stage': 'core', 'slug': 'linear', 'legacyUrl': None,
     'color': '#5f3dc4', 'colorDark': '#b197fc', 'motif': 'linear',
     'topics': ['벡터·행렬', '가우스 소거·LU', '부분공간·계수', '직교성·최소제곱', '고유값', 'SVD·PCA'],
+}, {
+    'id': 'calculusbook', 'code': 'CAL', 'title': 'CalculusBook', 'subtitle': '미적분 교과서',
+    'headline': '변화율과 누적, 두 개의 눈으로 보는 세계',
+    'description': '극한과 연속에서 시작해 도함수와 연쇄 법칙, 평균값 정리와 최적화, 정적분과 미적분의 기본 정리, 적분 기법과 응용, 수열과 급수, 테일러 전개, 편미분과 그래디언트, 중적분과 벡터 미적분까지 — 접선을 끌고 직사각형을 쌓으며 1년 미적분을 익히는 교과서.',
+    'url': 'https://math.euiyun.com/calculus/', 'repo': 'https://github.com/geniuskey/math-books', 'field': 'math',
+    'status': 'published', 'level': '공대 1학년', 'stage': 'core', 'slug': 'calculus', 'legacyUrl': None,
+    'color': '#c2255c', 'colorDark': '#f783ac', 'motif': 'calculus',
+    'topics': ['극한·연속', '미분·최적화', '적분·기본 정리', '급수·테일러', '편미분·그래디언트', '중적분·벡터 미적분'],
 }]
 books = books + LOCAL_BOOKS
 catalog = []
