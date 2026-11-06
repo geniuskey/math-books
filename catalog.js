@@ -134,25 +134,28 @@ window.MATH_BOOKS = [
   },
   {
     "id": "numericalbook",
-    "code": "NUM",
     "title": "NumericalBook",
     "subtitle": "수치해석 교과서",
     "headline": "컴퓨터가 수학을 근사하는 방법",
-    "description": "부동소수점과 오차, 방정식의 근 찾기, 보간과 근사, 수치 미분과 적분, 상미분방정식의 수치 해법, 연립방정식과 고유값의 수치 계산, 최적화까지 알고리즘을 직접 돌려 보며 익히는 수치해석 교과서.",
+    "description": "부동소수점과 오차, 조건수와 안정성, 근 찾기, 보간·스플라인·최소제곱과 FFT, 수치 미분과 적분, 미분방정식 해법, 직접·반복 선형 해법과 고유값 계산, 수치 최적화, 편미분방정식의 수치 해법까지 — 알고리즘을 한 단계씩 돌려 보며 오차를 재는 수치해석 교과서.",
     "stage": "computing",
-    "status": "planned",
+    "status": "published",
     "color": "#2b8a3e",
     "colorDark": "#8ce99a",
-    "motif": "numerical",
     "topics": [
-      "오차",
+      "오차·조건수",
       "근 찾기",
-      "보간",
-      "수치 적분",
-      "ODE 해법",
-      "수치 선형대수"
+      "보간·근사·FFT",
+      "수치 미적분",
+      "수치 선형대수",
+      "최적화·PDE"
     ],
+    "motif": "numerical",
+    "code": "NUM",
+    "legacyUrl": null,
     "slug": "numerical",
-    "legacyUrl": null
+    "url": "numerical/",
+    "chapters": 17,
+    "simulators": 127
   }
 ];

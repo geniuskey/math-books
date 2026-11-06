@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>수치 미분 · NumericalBook</title>
+<meta name="description" content="함숫값만으로 도함수를 구하는 법. 전진·후진·중앙 차분의 오차 차수, 절단 오차와 반올림 오차가 만드는 V자와 최적 간격, 차분 스텐실, 리처드슨 외삽, 잡음 데이터의 미분, 복소 스텝, 이중수와 역전파로 하는 자동 미분.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .df-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .df-two > div { position: relative; min-width: 0; }
+  .df-two > div + div { border-top: 1px solid var(--border); }
+  .df-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .df-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .df-msg b { color: var(--text); }
+  .df-msg.ok { color: var(--ok); font-weight: 600; }
+  .df-msg.bad { color: var(--bad); font-weight: 600; }
+  .df-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .df-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .df-tbl { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; max-height: 300px; overflow: auto; }
+  .df-tbl table { font-size: 12.5px; }
+  .df-tbl td, .df-tbl th { font-family: var(--mono); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  .df-tbl td:first-child, .df-tbl th:first-child { text-align: center; }
+  .df-tbl tr.cur td { color: var(--accent); font-weight: 700; }
+  .df-tbl td.dim { color: var(--text-faint); }
+  .df-tbl td small { display: block; font-size: 11px; color: var(--text-faint); }
+  .df-tbl td.best { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .df-num td, .df-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .df-num td:first-child, .df-num th:first-child { text-align: center; }
+  .df-offs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .df-offs button { font: 600 13px var(--mono); min-width: 40px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); cursor: pointer; }
+  .df-offs button.on { background: var(--accent); border-color: var(--accent); color: var(--canvas-bg); }
+  .df-formula { padding: 12px 18px; border-top: 1px solid var(--border); font: 14px/1.8 var(--mono); color: var(--text); overflow-wrap: anywhere; }
+  .df-formula .dim { color: var(--text-dim); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="differentiation">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 09</div>
+    <h1 data-no-glossary>수치 미분</h1>
+    <p class="lead">미분은 극한 \(\lim_{h\to0}\bigl(f(x+h) - f(x)\bigr)/h\)입니다. 컴퓨터는 극한을 계산할 수 없으니 작은 \(h\) 하나를 골라 몫을 계산합니다. 그런데 \(h\)를 작게 할수록 좋아지는 것은 처음 몇 자리뿐이고, 어느 순간부터 결과가 <b>나빠집니다</b>. 이 장은 그 이유를 테일러 전개(절단 오차)와 부동소수점(반올림 오차)의 줄다리기로 설명하고, 최적의 \(h\)를 계산합니다. 그다음 차수를 올리는 세 가지 길, 곧 점을 더 쓰는 스텐실, 서로 다른 \(h\)의 결과를 섞는 리처드슨 외삽, 뺄셈 자체를 없애는 복소 스텝을 보고, 잡음 섞인 측정 데이터를 미분할 때의 함정을 다룹니다. 마지막으로 차분 없이 기계 정밀도의 도함수를 주는 <b>자동 미분</b>, 곧 신경망 학습의 역전파를 만납니다.</p>
+    <ul class="objectives">
+      <li>전진·후진·중앙 차분을 테일러 전개로 유도하고 각각의 절단 오차 차수 \(O(h)\), \(O(h^2)\)를 보인다.</li>
+      <li>절단 오차와 반올림 오차의 합을 최소화해 최적 간격 \(h^* \sim \sqrt{\varepsilon}\), \(\sqrt[3]{\varepsilon}\)를 구하고, 오차–간격 그래프의 V자를 해석한다.</li>
+      <li>미정 계수법으로 임의의 점 배치에 대한 차분 스텐실의 계수와 차수를 계산한다.</li>
+      <li>리처드슨 외삽으로 낮은 차수의 근사를 섞어 차수를 올리고, 외삽 표를 만든다.</li>
+      <li>잡음 데이터에서 차분이 잡음을 \(1/h\)로 키우는 이유를 알고, 국소 다항식 맞춤으로 평활화한다.</li>
+      <li>복소 스텝 미분과 자동 미분(전진 모드의 이중수, 후진 모드의 역전파)의 원리와 비용을 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>신경망 학습과 설계 민감도 해석</b></div>
+      <div class="o-body"><p>자동차의 바퀴 속도 센서는 일정한 간격으로 회전 각도를 세고, 제어기는 그 차이를 시간으로 나눠 속도와 가속도를 얻습니다. 항공기 날개 설계 프로그램은 날개 단면의 매개변수 수백 개를 조금씩 바꿀 때 양력이 얼마나 변하는지, 곧 도함수를 알아야 최적화를 할 수 있습니다. 수억 개의 가중치를 가진 신경망은 손실 함수의 기울기를 매 걸음 계산해야 학습됩니다. 함수가 공식이 아니라 <b>프로그램</b>이나 <b>측정값</b>으로만 주어질 때 도함수를 얻는 일이 수치 미분입니다.</p>
+        <p>차분 몫의 생각은 미적분 이전부터 있었지만, 그 오차를 정량적으로 다루는 일은 컴퓨터와 함께 중요해졌습니다. 1967년 라이니스<span class="en">(J. N. Lyness)</span>와 몰러<span class="en">(C. B. Moler)</span>가 복소수를 써서 도함수를 구하는 방법을 발표했고, 1998년 스콰이어<span class="en">(William Squire)</span>와 트랩<span class="en">(George Trapp)</span>이 이를 한 줄짜리 복소 스텝 공식으로 정리해 널리 알렸습니다. 같은 시기 발전한 자동 미분의 후진 모드는 오늘날 딥러닝 프레임워크의 핵심인 역전파와 같은 알고리즘입니다.</p>
+        <div class="o-chain"><span>f(x)만 계산할 수 있다</span><i>→</i><span>차분 몫의 오차 분석</span><i>→</i><span class="tool">h* ≈ √ε, 외삽, 복소 스텝, 자동 미분</span><i>→</i><span>속도 추정·민감도·역전파</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="difference-quotients">
+    <h2>차분 몫: 할선의 기울기로 접선을 어림하기</h2>
+    <div class="problem"><strong>함수를 프로그램으로만 받았을 때</strong>
+      <p>유체 해석 프로그램이 받음각 \(\alpha\)를 넣으면 양력 계수 \(C_L(\alpha)\)를 돌려줍니다. 한 번 실행에 몇 분이 걸리고, 공식은 없습니다. 설계자는 \(dC_L/d\alpha\)를 알고 싶습니다. 할 수 있는 일은 \(\alpha\)를 조금 바꿔 다시 실행하는 것뿐입니다. 얼마나 조금 바꿔야 할까요? 그리고 몇 번 실행해야 몇 자리를 믿을 수 있을까요?</p></div>
+    <p>도함수의 정의(<a href="../../calculus/chapters/derivative.html">CalculusBook 3장</a>)에서 극한을 떼어 내면 가장 간단한 근사가 나옵니다. 오른쪽 점을 쓰면 전진, 왼쪽 점을 쓰면 후진, 양쪽을 대칭으로 쓰면 중앙 차분입니다.</p>
+    <div class="callout deep"><strong>정의 9.1 (차분 몫)</strong> 간격 \(h \gt 0\)에 대해
+      <div class="formula">$$D_+f(x) = \frac{f(x+h) - f(x)}{h},\qquad D_-f(x) = \frac{f(x) - f(x-h)}{h},\qquad D_0f(x) = \frac{f(x+h) - f(x-h)}{2h}$$</div>
+      를 각각 <span class="term">전진 차분</span><span class="en">(forward difference)</span>, <span class="term">후진 차분</span><span class="en">(backward difference)</span>, <span class="term">중앙 차분</span><span class="en">(central difference)</span> 몫이라 한다. 셋 다 \(f\)를 두 번 계산한다(\(f(x)\)를 이미 알고 있으면 전진·후진은 한 번).</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="전진 후진 중앙 차분의 할선과 접선">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <line x1="40" y1="260" x2="500" y2="260" class="s-axis"/>
+        <path d="M60 240 C160 230 260 200 330 160 S440 70 480 30" fill="none" class="s-line" style="stroke-width:2.6"/>
+        <line x1="130" y1="222" x2="420" y2="98" style="stroke:var(--text);stroke-width:1.6;stroke-dasharray:6 4"/>
+        <line x1="270" y1="193" x2="390" y2="105" style="stroke:var(--bad);stroke-width:2.4"/>
+        <line x1="150" y1="223" x2="270" y2="193" style="stroke:var(--warn);stroke-width:2.4"/>
+        <line x1="150" y1="223" x2="390" y2="105" style="stroke:var(--accent-2);stroke-width:2.6"/>
+        <circle cx="270" cy="193" r="5.5" style="fill:var(--text)"/>
+        <circle cx="390" cy="105" r="4.5" style="fill:var(--bad)"/><circle cx="150" cy="223" r="4.5" style="fill:var(--warn)"/>
+        <line x1="150" y1="260" x2="150" y2="223" style="stroke:var(--text-faint);stroke-dasharray:3 3"/>
+        <line x1="270" y1="260" x2="270" y2="193" style="stroke:var(--text-faint);stroke-dasharray:3 3"/>
+        <line x1="390" y1="260" x2="390" y2="105" style="stroke:var(--text-faint);stroke-dasharray:3 3"/>
+        <text x="150" y="278" text-anchor="middle" class="t-mono">x − h</text><text x="270" y="278" text-anchor="middle" class="t-mono">x</text><text x="390" y="278" text-anchor="middle" class="t-mono">x + h</text>
+        <g transform="translate(520,60)">
+          <rect x="0" y="0" width="16" height="3" style="fill:var(--text)"/><text x="24" y="6" class="t">접선 (참 기울기)</text>
+          <rect x="0" y="30" width="16" height="3" style="fill:var(--bad)"/><text x="24" y="36" class="t">전진 D₊: 너무 가파름</text>
+          <rect x="0" y="60" width="16" height="3" style="fill:var(--warn)"/><text x="24" y="66" class="t">후진 D₋: 너무 완만함</text>
+          <rect x="0" y="90" width="16" height="3" style="fill:var(--accent-2)"/><text x="24" y="96" class="t">중앙 D₀: 거의 평행</text>
+          <text x="0" y="136" class="t-dim">볼록한 곡선에서 D₊와 D₋의</text>
+          <text x="0" y="156" class="t-dim">오차는 부호가 반대이고,</text>
+          <text x="0" y="176" class="t-dim">평균 D₀에서 상쇄된다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 9-1.</b> 아래로 볼록한 곡선에서 전진 차분의 할선은 접선보다 가파르고, 후진 차분은 완만하다. 두 몫의 평균이 중앙 차분이며, 그 할선(청록)은 접선(점선)과 거의 평행하다. 같은 두 번의 계산으로 정확도가 훨씬 좋아지는 이유가 다음 절의 테일러 전개다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 9.1 (세 차분 비교)</strong> \(f(x) = e^x\), \(x = 1\)에서 \(f'(1) = e = 2.718281828\)을 근사하라.
+      <div class="table-wrap"><table class="df-num">
+        <thead><tr><th>\(h\)</th><th>\(D_+\)</th><th>오차</th><th>\(D_-\)</th><th>오차</th><th>\(D_0\)</th><th>오차</th></tr></thead>
+        <tbody>
+          <tr><td>0.1</td><td>2.858842</td><td>1.41×10⁻¹</td><td>2.586787</td><td>−1.31×10⁻¹</td><td>2.722815</td><td>4.53×10⁻³</td></tr>
+          <tr><td>0.05</td><td>2.787386</td><td>6.91×10⁻²</td><td>2.651443</td><td>−6.68×10⁻²</td><td>2.719415</td><td>1.13×10⁻³</td></tr>
+          <tr><td>0.01</td><td>2.731919</td><td>1.36×10⁻²</td><td>2.704736</td><td>−1.35×10⁻²</td><td>2.718327</td><td>4.53×10⁻⁵</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0">\(h\)를 반으로 줄이면 전진·후진의 오차는 약 반(\(0.141 \to 0.0691\)), 중앙의 오차는 약 4분의 1(\(4.53\times10^{-3} \to 1.13\times10^{-3}\))이 된다. 전진과 후진의 오차는 부호가 반대이고 크기가 비슷하다. 그림 9-1의 상쇄가 숫자로 보인다.</p></div>
+    <p>아래 시뮬레이터에서 점을 곡선 위로 끌고 \(h\)를 줄여 보세요. 할선이 접선으로 돌아 들어가는 속도가 방법마다 다릅니다.</p>
+
+    <div class="sim" id="sim-df-secant">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>할선에서 접선으로: h를 줄이면 무엇이 얼마나 빨리 맞는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-sc-cv"></canvas><span class="tag-tl">곡선 위의 점 x를 좌우로 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="df-sc-f">
+            <option value="exp">f(x) = eˣ</option>
+            <option value="sin">f(x) = sin 2x</option>
+            <option value="cub">f(x) = x³ − 2x</option>
+          </select></label>
+          <label class="ctrl"><span>간격 h <output id="df-sc-h-out"></output></span><input type="range" id="df-sc-h"></label>
+          <div class="ctrl"><span>보일 할선</span><div class="seg" id="df-sc-m"><button data-value="all" class="on">셋 다</button><button data-value="fwd">전진</button><button data-value="bwd">후진</button><button data-value="ctr">중앙</button></div></div>
+        </div>
+      </div>
+      <div class="df-legend"><span><i style="background:var(--text)"></i>접선</span><span><i style="background:var(--bad)"></i>전진 D₊</span><span><i style="background:var(--warn)"></i>후진 D₋</span><span><i style="background:var(--accent-2)"></i>중앙 D₀</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">참 f′(x)</span><span class="v" id="df-sc-ex">—</span></div>
+        <div class="stat"><span class="k">D₊ 오차 · 오차/h</span><span class="v" id="df-sc-ef">—</span></div>
+        <div class="stat"><span class="k">D₋ 오차 · 오차/h</span><span class="v" id="df-sc-eb">—</span></div>
+        <div class="stat"><span class="k">D₀ 오차 · 오차/h²</span><span class="v" id="df-sc-ec">—</span></div>
+      </div>
+      <div class="df-msg" id="df-sc-msg"></div>
+      <div class="sim-note">해볼 것: ① h를 0.4 → 0.2 → 0.1로 줄이며 '오차/h'(전진·후진)와 '오차/h²'(중앙)가 거의 일정한 것을 보세요. 그 상수가 다음 절의 f″/2와 f‴/6입니다. ② sin 2x에서 점을 변곡점 x = 0으로 끌면 f″ = 0이라 전진 차분도 갑자기 정확해집니다. ③ x³ − 2x는 f‴ = 6으로 일정하므로 중앙 차분의 오차가 정확히 h²입니다. 모델: 정확한 산술(반올림 오차는 다음 절).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="taylor-order">
+    <h2>테일러 전개로 읽는 오차 차수</h2>
+    <p>예제 9.1의 "반으로 줄이면 반", "반으로 줄이면 4분의 1"은 테일러 전개(<a href="../../calculus/chapters/taylor.html#remainder">CalculusBook 12장: 나머지 항</a>)에서 바로 나옵니다. \(f\)가 충분히 매끄러우면</p>
+    <div class="formula">$$f(x \pm h) = f(x) \pm hf'(x) + \frac{h^2}{2}f''(x) \pm \frac{h^3}{6}f'''(x) + \frac{h^4}{24}f^{(4)}(x) \pm \cdots$$</div>
+    <p>첫 식에서 \(f(x)\)를 빼고 \(h\)로 나누면 \(D_+f = f' + \frac h2 f'' + O(h^2)\)입니다. 두 식을 빼면 짝수 차 항이 모두 지워져 \(f(x+h) - f(x-h) = 2hf' + \frac{h^3}{3}f''' + O(h^5)\), 곧 \(D_0 f = f' + \frac{h^2}{6}f''' + O(h^4)\)입니다. 대칭으로 놓은 점이 \(h\)의 홀수 거듭제곱 항을 지운 것이 중앙 차분의 비밀입니다.</p>
+    <div class="callout deep"><strong>정리 9.2 (차분 몫의 절단 오차)</strong> \(f\)가 \([x-h, x+h]\)에서 필요한 만큼 연속 미분 가능하면, 어떤 \(\xi\), \(\eta\)가 그 구간에 있어
+      <div class="formula">$$D_+f(x) - f'(x) = \frac{h}{2}f''(\xi),\qquad D_-f(x) - f'(x) = -\frac{h}{2}f''(\xi'),\qquad D_0f(x) - f'(x) = \frac{h^2}{6}f'''(\eta).$$</div>
+      즉 전진·후진 차분은 <b>1차</b>, 중앙 차분은 <b>2차</b> 정확도를 가진다. 이렇게 방법이 버린 항에서 생기는 오차를 <span class="term">절단 오차</span><span class="en">(truncation error)</span>라 한다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 라그랑주 나머지로 \(f(x+h) = f(x) + hf'(x) + \frac{h^2}{2}f''(\xi)\)를 쓰면 첫 식이다. 중앙 차분은 \(f(x\pm h)\)를 3차 나머지까지 써서 빼면 \(\frac{h^3}{6}\bigl(f'''(\eta_+) + f'''(\eta_-)\bigr)\)이 남고, 중간값 정리로 두 값의 평균을 한 점 \(\eta\)의 \(f'''\)로 바꾼다. ∎</p></div>
+    <p>예제 9.1로 확인해 봅시다. \(h = 0.01\)에서 전진 오차 예측은 \(\frac{0.01}{2}e^{\xi} \approx 0.005\times 2.73 = 0.0136\)이고 실제 \(0.01364\)입니다. 중앙 오차 예측은 \(\frac{10^{-4}}{6}e \approx 4.53\times10^{-5}\), 실제와 세 자리가 맞습니다. 오차의 <b>상수</b>까지 예측된다는 점이 중요합니다. 다음 절의 최적 간격 계산과 리처드슨 외삽이 모두 이 상수를 이용합니다.</p>
+    <div class="callout tip"><strong>홀짝의 효과</strong> 중앙 차분의 오차 전개에는 \(h^2, h^4, h^6, \dots\)처럼 <b>짝수 거듭제곱만</b> 나타납니다. 그래서 \(h\)를 반으로 줄인 결과와 섞으면 한 번에 두 차수씩 오릅니다(리처드슨 외삽 절). 전진 차분은 \(h, h^2, h^3, \dots\)이 모두 있어 한 차수씩만 오릅니다.</div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="roundoff">
+    <h2>절단 오차 대 반올림 오차: 최적의 h</h2>
+    <div class="problem"><strong>h = 10⁻¹²이면 더 정확할까</strong>
+      <p>정리 9.2만 보면 \(h\)는 작을수록 좋습니다. 그래서 \(e^x\)의 \(x = 1\)에서 전진 차분을 \(h = 10^{-12}\)로 계산하면 \(2.71871\ldots\), 오차가 \(4.3\times10^{-4}\)입니다. \(h = 10^{-3}\)일 때의 오차 \(1.4\times10^{-3}\)과 별 차이가 없고, \(h = 10^{-8}\)일 때의 \(6.6\times10^{-9}\)보다는 5만 배 나쁩니다. \(h = 10^{-16}\)이면 답이 0입니다. 무엇이 잘못된 걸까요?</p></div>
+    <p>범인은 <a href="floating-point.html">1장</a>의 <b>자릿수 상쇄</b>입니다. \(f(x+h)\)와 \(f(x)\)는 각각 상대 오차 \(u = \varepsilon/2 \approx 1.1\times10^{-16}\) 정도로 저장됩니다. \(h\)가 작으면 두 값이 거의 같아서 뺄셈의 결과에는 믿을 수 있는 자리가 몇 개 남지 않고, 그 작은 차이를 다시 작은 \(h\)로 나누면 남은 오차가 \(1/h\)배로 커집니다. \(f\)를 계산하는 프로그램 자체의 오차가 \(\delta\)라면 그 효과는 더 큽니다.</p>
+    <div class="callout deep"><strong>정리 9.3 (최적 간격)</strong> 계산된 함숫값이 \(\hat f(x) = f(x)(1 + \delta_x)\), \(|\delta_x| \le u\)를 만족한다고 하자(\(u = \varepsilon/2\), \(\varepsilon\)은 <span class="term">기계 엡실론</span>). \(M_2 = |f''|\), \(M_3 = |f'''|\)를 \(x\) 근처의 상한이라 하면 계산된 차분 몫의 전체 오차는
+      <div class="formula">$$|\hat D_+ - f'| \le \underbrace{\frac{M_2}{2}h}_{\text{절단}} + \underbrace{\frac{\varepsilon|f|}{h}}_{\text{반올림}},\qquad |\hat D_0 - f'| \le \frac{M_3}{6}h^2 + \frac{\varepsilon|f|}{2h}.$$</div>
+      우변을 최소화하는 간격과 그때의 오차는
+      <div class="formula">$$h_+^* = \sqrt{\frac{2\varepsilon|f|}{M_2}},\quad E_+^* = \sqrt{2\varepsilon|f|M_2}\ ;\qquad h_0^* = \left(\frac{3\varepsilon|f|}{2M_3}\right)^{1/3},\quad E_0^* \sim \varepsilon^{2/3}.$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 분자의 두 함숫값 오차는 각각 \(u|f|\) 이하라 차이의 오차가 \(2u|f| = \varepsilon|f|\) 이하이고, 이를 \(h\)(중앙은 \(2h\))로 나눈다. \(Ah + B/h\)는 \(h = \sqrt{B/A}\)에서 최소 \(2\sqrt{AB}\), \(Ah^2 + B/h\)는 \(h^3 = B/(2A)\)에서 최소다. ∎</p></div>
+    <p>\(f = e^x\), \(x = 1\)이면 \(|f| = M_2 = M_3 = e\)라서 \(h_+^* = \sqrt{2\varepsilon} = 2.1\times10^{-8}\), \(E_+^* \approx 5.7\times10^{-8}\), \(h_0^* = (1.5\varepsilon)^{1/3} = 6.9\times10^{-6}\), \(E_0^* \approx 6.5\times10^{-11}\)입니다. 경험칙으로 기억하면 <b>1차 공식은 \(h \approx \sqrt{\varepsilon} \approx 10^{-8}\)에서 유효 숫자 약 8자리, 2차 공식은 \(h \approx \sqrt[3]{\varepsilon} \approx 6\times10^{-6}\)에서 약 10~11자리</b>를 얻습니다(\(x\)와 \(f\)의 크기에 맞춰 \(h\)를 \(\sqrt{\varepsilon}\,\max(1, |x|)\)처럼 비례시킵니다). 배정밀도 16자리를 다 얻지는 못한다는 것이 차분 몫의 본질적 한계입니다. 2계 도함수 \(\bigl(f(x+h) - 2f(x) + f(x-h)\bigr)/h^2\)은 반올림 오차가 \(1/h^2\)로 커지므로 \(h^* \sim \varepsilon^{1/4} \approx 10^{-4}\)이고 8자리 정도가 한계입니다.</p>
+    <div class="callout warn"><strong>h를 이진수로 고르기</strong> \(x + h\)도 부동소수점 수라서 실제로 더해지는 간격은 \(h\)가 아니라 \((x + h) - x\)를 반올림한 값입니다. 실무 코드는 <code>temp = x + h; h = temp - x</code>로 실제 간격을 다시 계산하거나, \(h\)를 2의 거듭제곱으로 고릅니다. 그러면 \(x + h\)가 정확히 표현되어 오차 하나가 사라집니다.</div>
+    <p>아래 그래프의 가로축은 \(h\), 세로축은 오차, 둘 다 로그 눈금입니다. 오른쪽에서는 절단 오차가 기울기 1(또는 2)로 줄고, 왼쪽에서는 반올림 오차가 기울기 −1로 커집니다. 둘이 만나는 바닥이 최적 \(h\)입니다.</p>
+
+    <div class="sim" id="sim-df-vshape">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차–간격 V자: 절단 오차와 반올림 오차의 줄다리기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-vs-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 점</span><select id="df-vs-f">
+            <option value="exp">eˣ, x = 1</option>
+            <option value="sin">sin x, x = 1</option>
+            <option value="log">ln x, x = 2</option>
+            <option value="big">eˣ, x = 20 (|f| 큼)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="df-vs-fw" checked> 전진 D₊ (1차)</label>
+          <label class="check"><input type="checkbox" id="df-vs-ct" checked> 중앙 D₀ (2차)</label>
+          <label class="check"><input type="checkbox" id="df-vs-sd"> 2계 도함수 (f(x+h) − 2f + f(x−h))/h²</label>
+          <label class="check"><input type="checkbox" id="df-vs-md" checked> 오차 모형 (정리 9.3, 점선)</label>
+        </div>
+      </div>
+      <div class="df-legend"><span><i style="background:var(--bad)"></i>전진 D₊</span><span><i style="background:var(--accent-2)"></i>중앙 D₀</span><span><i style="background:var(--warn)"></i>2계 차분</span><span><i style="background:var(--text-faint)"></i>모형 · √ε, ∛ε</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">D₊ 최적 h · 최소 오차</span><span class="v" id="df-vs-of">—</span></div>
+        <div class="stat"><span class="k">D₀ 최적 h · 최소 오차</span><span class="v" id="df-vs-oc">—</span></div>
+        <div class="stat"><span class="k">2계 최적 h · 최소 오차</span><span class="v" id="df-vs-os">—</span></div>
+        <div class="stat"><span class="k">모형의 h₊*, h₀*</span><span class="v" id="df-vs-th">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 오른쪽 가지의 기울기가 1(전진)과 2(중앙), 왼쪽 가지의 기울기가 −1인 것을 보세요. 왼쪽은 들쭉날쭉합니다. 반올림 오차는 우연에 가까운 값이라서입니다. ② 'eˣ, x = 20'으로 바꾸면 |f|가 4.9×10⁸이라 오차의 절대 크기가 커지지만 상대 오차로 보면 같습니다. 세로축은 상대 오차 |D − f′|/|f′|입니다. ③ 2계 차분을 켜면 바닥이 h ≈ 10⁻⁴로 올라가고 왼쪽 기울기가 −2입니다. 모델: IEEE 754 배정밀도로 실제 계산, h = 10<sup>−k/8</sup>.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="stencils">
+    <h2>고계 도함수와 차분 스텐실</h2>
+    <div class="problem"><strong>경계에서는 대칭으로 못 놓는다</strong>
+      <p>막대의 열전도 문제에서 왼쪽 끝 \(x = 0\)의 열유속 \(-k\,T'(0)\)을 알고 싶습니다. 온도는 격자점 \(x = 0, h, 2h, \dots\)에서만 압니다. 왼쪽에는 점이 없으니 중앙 차분을 쓸 수 없고, 전진 차분은 1차뿐입니다. 한쪽 점만 써서 2차 정확도를 얻을 수 있을까요? 일반적으로, 주어진 점들로 \(k\)계 도함수를 가장 정확하게 근사하는 계수는 어떻게 구할까요?</p></div>
+    <p>점의 배치를 \(x + s_jh\)(\(s_j\)는 정수 또는 실수 오프셋)라 하고 \(f^{(d)}(x) \approx h^{-d}\sum_j c_j f(x + s_jh)\)를 찾습니다. 각 \(f(x + s_jh)\)를 테일러 전개해 \(h^k f^{(k)}\)의 계수를 모으면 \(\sum_j c_j s_j^k/k!\)입니다. \(k = d\)일 때 1, 나머지 \(k\)일 때 0이 되게 하면 됩니다.</p>
+    <div class="callout deep"><strong>정리 9.4 (미정 계수법)</strong> 서로 다른 오프셋 \(s_1, \dots, s_m\)과 \(d \lt m\)에 대해 연립방정식
+      <div class="formula">$$\sum_{j=1}^{m} c_j\,s_j^{\,k} = k!\,\delta_{kd},\qquad k = 0, 1, \dots, m-1$$</div>
+      은 (반데르몽드 행렬이므로) 해가 유일하고, 그 \(c_j\)로 만든 <span class="term">차분 스텐실</span><span class="en">(finite-difference stencil)</span> \(h^{-d}\sum c_jf(x + s_jh)\)의 오차는 \(\dfrac{h^{q-d}}{q!}\Bigl(\sum_j c_j s_j^{\,q}\Bigr) f^{(q)}(x) + \cdots\)이다. 여기서 \(q \ge m\)은 \(\sum c_j s_j^q \ne 0\)인 첫 지수이고, 정확도 차수는 \(p = q - d \ge m - d\)다. 오프셋이 0에 대해 대칭이면 한 차수를 덤으로 얻는 경우가 많다.</div>
+    <p>이 연립방정식은 <a href="interpolation.html">5장</a>의 보간과 같은 이야기입니다. 점들을 지나는 보간 다항식을 만들어 그것을 \(d\)번 미분한 것이 바로 이 스텐실입니다. 그래서 점을 \(m\)개 쓰면 \(m - 1\)차 다항식까지 정확히 미분합니다.</p>
+    <div class="callout"><strong>예제 9.2 (한쪽 3점 공식과 5점 중앙 공식)</strong>
+      <ol>
+        <li>오프셋 \(\{0, 1, 2\}\), \(d = 1\): \(c_0 + c_1 + c_2 = 0\), \(c_1 + 2c_2 = 1\), \(c_1 + 4c_2 = 0\). 풀면 \(c_2 = -\frac12\), \(c_1 = 2\), \(c_0 = -\frac32\). 공식은 \(f'(x) \approx \dfrac{-3f(x) + 4f(x+h) - f(x+2h)}{2h}\).</li>
+        <li>오차: \(\sum c_js_j^3 = 2\cdot1 - \frac12\cdot8 = -2\)이므로 오차 항은 \(\frac{h^2}{3!}(-2)f''' = -\frac{h^2}{3}f'''\). <b>한쪽 점만으로 2차</b>다. 처음 문제의 경계 열유속에 쓰는 공식이다. 같은 차수의 중앙 차분 상수 \(\frac16\)보다 오차 상수가 두 배 크다.</li>
+        <li>오프셋 \(\{-2, -1, 0, 1, 2\}\), \(d = 1\): 계수 \(\frac{1}{12}(1, -8, 0, 8, -1)\). \(\sum c_js_j^5 = \frac{1}{12}(-32 + 8 + 8 - 32) = -4\)이라 오차 \(-\frac{h^4}{30}f^{(5)}\), <b>4차</b>다.</li>
+        <li>오프셋 \(\{-1, 0, 1\}\), \(d = 2\): 계수 \((1, -2, 1)\), 오차 \(\frac{h^2}{12}f^{(4)}\). 열 방정식·파동 방정식의 격자 계산(<a href="pde-numerics.html">16장</a>)에서 가장 많이 쓰는 스텐실이다.</li>
+      </ol></div>
+    <pre class="code"><span class="k">function</span> stencil(s[1..m], d)            <span class="c">// 오프셋 s, 도함수 차수 d &lt; m</span>
+  <span class="k">for</span> k = 0 .. m-1
+    <span class="k">for</span> j = 1 .. m:  V[k][j] = s[j]^k
+    rhs[k] = (k == d) ? k! : 0
+  c = solve(V, rhs)                     <span class="c">// 유리수로 풀면 정확한 분수 계수</span>
+  q = m
+  <span class="k">while</span> sum_j c[j] * s[j]^q == 0:  q = q + 1
+  <span class="k">return</span> c, order = q - d, lead = sum_j c[j] * s[j]^q / q!</pre>
+    <p>아래 계산기에서 오프셋을 골라 보세요. 분수 계수, 차수, 오차 상수를 구하고, \(f(x) = e^{x}\)에 적용한 실제 오차를 로그–로그로 그려 기울기를 확인합니다.</p>
+
+    <div class="sim" id="sim-df-stencil">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>스텐실 계수 계산기: 점을 고르면 공식과 차수가 나온다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-st-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>오프셋 s (점 x + s·h)</span><div class="df-offs" id="df-st-offs"></div></div>
+          <div class="ctrl"><span>도함수 차수 d</span><div class="seg" id="df-st-d"><button data-value="1" class="on">f′</button><button data-value="2">f″</button><button data-value="3">f‴</button><button data-value="4">f⁽⁴⁾</button></div></div>
+          <label class="ctrl"><span>프리셋</span><select id="df-st-pre">
+            <option value="">— 직접 고르기 —</option>
+            <option value="0,1">전진 2점</option>
+            <option value="-1,1">중앙 2점</option>
+            <option value="0,1,2">한쪽 3점</option>
+            <option value="-2,-1,1,2">중앙 5점 (4차)</option>
+            <option value="-3,-2,-1,1,2,3">중앙 7점 (6차)</option>
+          </select></label>
+        </div>
+      </div>
+      <div class="df-formula" id="df-st-out">—</div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">점 개수 m</span><span class="v" id="df-st-m">—</span></div>
+        <div class="stat"><span class="k">정확도 차수 p</span><span class="v" id="df-st-p">—</span></div>
+        <div class="stat"><span class="k">오차 주항</span><span class="v" id="df-st-lead">—</span></div>
+        <div class="stat"><span class="k">측정 기울기</span><span class="v" id="df-st-slope">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 프리셋 '중앙 2점'에서 오프셋 0을 추가해도 f′의 계수 c₀ = 0이라 공식이 그대로입니다. 대칭 덕분입니다. ② f″에 '중앙 5점'(−2, −1, 1, 2와 0)을 쓰면 4차 공식 (−1, 16, −30, 16, −1)/12가 나옵니다. ③ 차수가 높은 공식일수록 그래프 왼쪽의 반올림 바닥이 더 일찍(큰 h에서) 나타납니다. 계수의 절댓값 합이 커서 반올림 오차가 증폭되기 때문입니다. 모델: f = eˣ, x = 0.5에서 상대 오차, 계수는 BigInt 유리수로 정확히 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="richardson">
+    <h2>리처드슨 외삽: 서로 다른 h를 섞어 차수 올리기</h2>
+    <div class="problem"><strong>점을 늘리지 않고 정확도를 올리려면</strong>
+      <p>중앙 차분 \(D_0(h)\)의 오차는 \(\frac{h^2}{6}f''' + O(h^4)\)입니다. \(f'''\)를 모르니 오차를 빼 줄 수는 없습니다. 하지만 \(h\)와 \(h/2\)로 두 번 계산하면 오차가 대략 4 대 1이라는 것은 압니다. 두 결과를 적당히 섞으면 \(h^2\) 항이 사라지지 않을까요?</p></div>
+    <p>근사 \(A(h)\)가 참값 \(A\)에 대해 \(A(h) = A + c_1h^p + c_2h^{p'} + \cdots\)(\(p' \gt p\))로 전개된다고 합시다. \(A(h/2) = A + c_1h^p/2^p + \cdots\)이므로 \(2^pA(h/2) - A(h) = (2^p - 1)A + O(h^{p'})\). 양변을 \(2^p - 1\)로 나누면 \(c_1\)을 몰라도 주항이 지워집니다.</p>
+    <div class="callout deep"><strong>정리 9.5 (리처드슨 외삽)</strong> \(A(h) = A + c_1h^{p_1} + c_2h^{p_2} + \cdots\)이면
+      <div class="formula">$$A^{(1)}(h) = \frac{2^{p_1}A(h/2) - A(h)}{2^{p_1} - 1} = A + O(h^{p_2})$$</div>
+      이다. 이를 되풀이한 <span class="term">리처드슨 외삽</span><span class="en">(Richardson extrapolation)</span> 표에서 \(T_{i,0} = A(h/2^i)\), \(T_{i,j} = \dfrac{2^{p_j}T_{i,j-1} - T_{i-1,j-1}}{2^{p_j} - 1}\)이다. 중앙 차분은 \(p_j = 2j\)(짝수만)이라 열마다 두 차수씩, 전진 차분은 \(p_j = j\)라 한 차수씩 오른다.</div>
+    <p>이 생각은 영국의 기상학자 리처드슨<span class="en">(Lewis Fry Richardson)</span>이 20세기 초 미분방정식의 차분 해를 개선하려고 쓴 것으로 알려져 있고, 다음 장의 롬베르크 적분, 11장의 외삽 적분법이 모두 같은 구조입니다. 외삽값과 원래 값의 차이 \(|A^{(1)}(h) - A(h/2)|\)는 \(A(h/2)\)의 오차 추정으로도 쓰입니다.</p>
+    <div class="callout"><strong>예제 9.3 (중앙 차분의 리처드슨 표)</strong> \(f = e^x\), \(x = 1\), \(h_0 = 0.4\). 괄호 안은 오차.
+      <div class="table-wrap"><table class="df-num">
+        <thead><tr><th>\(h\)</th><th>\(T_{i,0}\) (2차)</th><th>\(T_{i,1}\) (4차)</th><th>\(T_{i,2}\) (6차)</th><th>\(T_{i,3}\) (8차)</th></tr></thead>
+        <tbody>
+          <tr><td>0.4</td><td>2.7913515 (7.3×10⁻²)</td><td></td><td></td><td></td></tr>
+          <tr><td>0.2</td><td>2.7364400 (1.8×10⁻²)</td><td>2.7181362 (−1.5×10⁻⁴)</td><td></td><td></td></tr>
+          <tr><td>0.1</td><td>2.7228146 (4.5×10⁻³)</td><td>2.7182728 (−9.1×10⁻⁶)</td><td>2.7182818631 (3.5×10⁻⁸)</td><td></td></tr>
+          <tr><td>0.05</td><td>2.7194146 (1.1×10⁻³)</td><td>2.7182813 (−5.7×10⁻⁷)</td><td>2.7182818290 (5.4×10⁻¹⁰)</td><td>2.718281828458 (−1.2×10⁻¹²)</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0">예를 들어 \(T_{1,1} = (4\times2.7364400 - 2.7913515)/3 = 2.7181362\). 함숫값 8개(\(h = 0.4, 0.2, 0.1, 0.05\)의 양쪽)만으로 오차 \(1.2\times10^{-12}\)을 얻었다. 같은 함숫값 개수에서 \(h = 0.05\)의 중앙 차분은 \(10^{-3}\)이고, 최적 \(h\)의 중앙 차분도 \(6.5\times10^{-11}\)이 한계였다. 큰 \(h\)를 쓰므로 반올림 오차가 거의 증폭되지 않는다는 것이 외삽의 숨은 장점이다.</p></div>
+
+    <div class="sim" id="sim-df-richardson">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>리처드슨 외삽 표: 한 행씩 쌓으며 대각선이 수렴하는 속도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-ri-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 점</span><select id="df-ri-f">
+            <option value="exp">eˣ, x = 1</option>
+            <option value="sin">sin x, x = 1</option>
+            <option value="atan">arctan x, x = 0.5</option>
+            <option value="sqrt">√x, x = 0.05 (특이점 근처)</option>
+          </select></label>
+          <div class="ctrl"><span>기본 근사</span><div class="seg" id="df-ri-b"><button data-value="ctr" class="on">중앙 D₀ (h², h⁴, …)</button><button data-value="fwd">전진 D₊ (h, h², …)</button></div></div>
+          <label class="ctrl"><span>처음 간격 h₀ <output id="df-ri-h-out"></output></span><input type="range" id="df-ri-h"></label>
+          <div class="btn-row"><button class="btn primary" id="df-ri-next">다음 행 (h/2)</button><button class="btn" id="df-ri-reset">처음부터</button></div>
+        </div>
+      </div>
+      <div class="table-wrap df-tbl"><table><thead id="df-ri-th"></thead><tbody id="df-ri-tb"></tbody></table></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">함숫값 계산 횟수</span><span class="v" id="df-ri-ev">—</span></div>
+        <div class="stat"><span class="k">마지막 대각 원소 오차</span><span class="v" id="df-ri-diag">—</span></div>
+        <div class="stat"><span class="k">같은 계산의 기본 근사 오차</span><span class="v" id="df-ri-base">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '다음 행'을 눌러 6행까지 쌓으며 그래프의 각 열(색)이 서로 다른 기울기로 떨어지는 것을 보세요. 중앙 차분은 2, 4, 6, 8입니다. ② 기본 근사를 전진 차분으로 바꾸면 열마다 기울기가 1씩만 오릅니다. ③ '√x, x = 0.05'에서 h₀ = 0.04로 두면 x − h가 0에 가까워 전개가 처음 몇 항에서 잘 맞지 않으므로 외삽이 오히려 나빠지는 칸이 생깁니다. 외삽은 전개의 가정이 맞을 때만 효과가 있습니다. 모델: 표의 칸 색이 진할수록 그 열에서 오차가 작음.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="noisy-data">
+    <h2>잡음 데이터의 미분: 차분은 잡음을 키운다</h2>
+    <div class="problem"><strong>엔코더 위치로 속도 구하기</strong>
+      <p>모터 축의 각도를 1 kHz(\(\Delta t = 1\) ms)로 재는 엔코더가 있습니다. 측정마다 \(\sigma = 10^{-3}\) rad 정도의 잡음이 섞입니다. 이웃한 두 측정의 차이를 \(\Delta t\)로 나눠 각속도를 구하면 잡음의 크기는 얼마일까요? 더 빨리(\(\Delta t\)를 줄여) 재면 좋아질까요, 나빠질까요?</p></div>
+    <p>측정값이 \(y_i = f(t_i) + e_i\), \(e_i\)가 서로 독립이고 표준편차 \(\sigma\)인 잡음이라 합시다. 중앙 차분 \((y_{i+1} - y_{i-1})/(2\Delta t)\)에서 잡음 부분의 표준편차는 \(\sqrt{2}\sigma/(2\Delta t) = 0.707\,\sigma/\Delta t\)입니다. 위 문제의 값을 넣으면 \(0.707\) rad/s, 각속도가 1 rad/s 정도라면 70%의 잡음입니다. 측정을 더 촘촘히 하면 오히려 \(1/\Delta t\)로 나빠집니다. 정리 9.3의 반올림 오차가 \(\varepsilon\)에서 \(\sigma\)로 커진 판입니다. 미분은 <b>나쁜 조건의 문제</b>입니다(<a href="conditioning.html">2장</a>). 진폭 \(\sigma\)인 고주파 잡음 \(\sigma\sin(\omega t)\)는 미분하면 진폭 \(\sigma\omega\)가 되기 때문입니다.</p>
+    <p>처방은 두 가지입니다. 첫째, 차분 간격을 <b>측정 간격보다 넓게</b> 잡습니다. 간격 \(H = m\Delta t\)의 중앙 차분은 잡음 \(\sigma/(\sqrt2 H)\), 절단 \(H^2|f'''|/6\)이라 정리 9.3과 같은 계산으로 \(H^* = (3\sigma/(\sqrt2 M_3))^{1/3}\) 근처가 최적입니다. 둘째, 두 점만 쓰지 않고 창 안의 <b>모든 점에 다항식을 최소제곱으로 맞춘 뒤</b>(<a href="approximation.html">7장</a>) 그 다항식을 미분합니다. 이를 <span class="term">사비츠키–골레이 필터</span><span class="en">(Savitzky–Golay filter)</span>라 부릅니다.</p>
+    <div class="callout deep"><strong>정리 9.6 (국소 직선 맞춤의 기울기)</strong> 등간격 점 \(t_i + k\Delta t\), \(k = -m, \dots, m\)에 직선을 최소제곱으로 맞추면 그 기울기는
+      <div class="formula">$$\hat f'(t_i) = \frac{\sum_{k=-m}^{m} k\,y_{i+k}}{\Delta t\,\sum_{k=-m}^{m}k^2},\qquad \sum_{k=-m}^m k^2 = \frac{m(m+1)(2m+1)}{3}$$</div>
+      이고, 잡음의 표준편차는 \(\sigma/(\Delta t\sqrt{\sum k^2})\), 절단 오차의 주항은 \(\dfrac{\sum k^4}{6\sum k^2}\Delta t^2 f'''\)이다(창이 대칭이라 2차 항은 지워진다).</div>
+    <p>\(m = 10\)(21점)이면 \(\sum k^2 = 770\)이라 잡음이 \(\sigma/(27.7\Delta t) = 0.036\,\sigma/\Delta t\), 2점 중앙 차분의 약 20분의 1입니다. 대신 \(\sum k^4/(6\sum k^2) = 50666/4620 = 11.0\)이라 \(\Delta t = 0.01\)에서 절단 오차가 \(1.1\times10^{-3}|f'''|\)로 늘어납니다. 잡음과 해상도(빠른 변화를 따라가는 능력)를 바꾸는 거래입니다.</p>
+
+    <div class="sim" id="sim-df-noise">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>잡음 데이터 미분: 차분 간격과 평활 창의 거래</h3></div>
+      <div class="df-two">
+        <div><canvas id="df-nz-cv1"></canvas><span class="df-cap">측정 y = f(t) + 잡음</span></div>
+        <div><canvas id="df-nz-cv2"></canvas><span class="df-cap">도함수: 참값 vs 추정</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>잡음 σ <output id="df-nz-s-out"></output></span><input type="range" id="df-nz-s"></label>
+          <label class="ctrl"><span>표본 간격 Δt <output id="df-nz-dt-out"></output></span><input type="range" id="df-nz-dt"></label>
+          <div class="ctrl"><span>추정 방법</span><div class="seg" id="df-nz-m"><button data-value="ctr" class="on">중앙 차분 (간격 mΔt)</button><button data-value="sg">직선 맞춤 (2m+1점)</button></div></div>
+          <label class="ctrl"><span>반폭 m <output id="df-nz-w-out"></output></span><input type="range" id="df-nz-w" min="1" max="40" step="1" value="1"></label>
+          <div class="btn-row"><button class="btn" id="df-nz-seed">잡음 다시 뽑기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">RMS 오차 (전체)</span><span class="v" id="df-nz-rms">—</span></div>
+        <div class="stat"><span class="k">잡음 이론값</span><span class="v" id="df-nz-th">—</span></div>
+        <div class="stat"><span class="k">절단 오차 크기 (잡음 없음)</span><span class="v" id="df-nz-tr">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① σ = 10⁻³, Δt = 0.002, m = 1에서 도함수가 잡음투성이입니다. m을 키우면 RMS 오차가 줄다가 다시 늘어납니다. 줄어드는 쪽은 잡음, 늘어나는 쪽은 절단(봉우리가 깎임)입니다. ② 같은 m에서 '직선 맞춤'이 중앙 차분보다 잡음이 훨씬 작습니다. 창의 모든 점을 쓰기 때문입니다. ③ Δt를 줄이면(더 촘촘한 측정) 같은 m에서 잡음이 커집니다. 모델: f(t) = sin t + 0.5 sin 3t, 독립 정규 잡음, 끝 근처 m개 점은 계산하지 않음.</div>
+    </div>
+    <div class="callout tip"><strong>실무 메모</strong> 제어기의 미분항(PID의 D)은 거의 항상 저역 통과 필터와 함께 씁니다. 같은 이유입니다. 측정 데이터의 도함수가 정말 필요하면, 데이터에 스플라인(<a href="splines.html">6장</a>)이나 다항식을 맞춘 뒤 미분하거나, 칼만 필터처럼 위치·속도를 모형으로 함께 추정합니다.</div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="complex-step">
+    <h2>복소 스텝 미분: 뺄셈 없는 차분</h2>
+    <div class="problem"><strong>상쇄를 아예 없앨 수는 없을까</strong>
+      <p>최적 \(h\)의 중앙 차분도 유효 숫자 10자리 근처가 한계였습니다. 원인은 거의 같은 두 수의 뺄셈입니다. 그런데 \(f\)를 계산하는 프로그램이 복소수도 받을 수 있다면, \(h\)를 <b>허수 방향</b>으로 주어 뺄셈을 피할 수 있습니다.</p></div>
+    <p>\(f\)가 실수에서 실숫값을 갖는 해석 함수라면 \(f(x + ih) = f(x) + ihf'(x) - \frac{h^2}{2}f''(x) - i\frac{h^3}{6}f'''(x) + \cdots\)입니다. 실수부와 허수부가 갈라지므로 허수부만 취하면 \(\operatorname{Im} f(x + ih) = hf'(x) - \frac{h^3}{6}f'''(x) + \cdots\).</p>
+    <div class="callout deep"><strong>정리 9.7 (복소 스텝 미분)</strong> \(f\)가 \(x\) 근처에서 해석적이고 실축에서 실숫값이면
+      <div class="formula">$$f'(x) = \frac{\operatorname{Im} f(x + ih)}{h} + \frac{h^2}{6}f'''(x) + O(h^4).$$</div>
+      이 <span class="term">복소 스텝 미분</span><span class="en">(complex-step derivative)</span>은 2차 정확도이고, 식에 뺄셈이 없으므로 반올림 오차가 \(h\)에 따라 커지지 않는다. 따라서 \(h = 10^{-20}\)처럼 아주 작은 \(h\)를 써서 절단 오차를 반올림 수준 아래로 내리면 <b>기계 정밀도의 도함수</b>를 얻는다.</div>
+    <p>\(f = e^x\), \(x = 1\)이면 \(\operatorname{Im} e^{1+ih}/h = e\sin h/h\)이고, \(h = 0.1\)에서 \(2.7137536\)(오차 \(-4.5\times10^{-3}\), 중앙 차분과 크기가 같고 부호가 반대), \(h = 10^{-8}\) 이하에서는 \(2.718281828459045\), 배정밀도의 \(e\)와 마지막 자리까지 같습니다. 스콰이어와 트랩의 시험 함수 \(f(x) = e^x/\sqrt{\sin^3x + \cos^3x}\)의 \(x = 1.5\)에서도 \(h = 10^{-20}\)의 복소 스텝은 \(4.05342789389862\)로 참값과 일치하고, 중앙 차분은 최적 \(h\)에서도 상대 오차 \(10^{-10}\) 근처에 머뭅니다.</p>
+    <div class="callout warn"><strong>조건과 함정</strong> ① \(f\)의 프로그램 전체가 복소수로 돌아가야 합니다. <code>abs</code>, <code>max</code>, 조건문처럼 해석적이지 않은 연산은 실수부만 보고 처리하도록 다시 정의해야 합니다. ② 복소 제곱근 같은 함수도 상쇄 없이 구현되어 있어야 합니다. \(\sqrt{a + ib}\)의 허수부를 \(\sqrt{(|z| - a)/2}\)로 계산하면 \(b\)가 아주 작을 때 \(|z| - a\)에서 상쇄가 일어나 허수부가 0이 되고, 복소 스텝이 통째로 틀립니다(이 장의 시뮬레이터는 \(b/(2\sqrt{(|z|+a)/2})\)로 계산합니다). ③ 비용은 복소 계산 한 번으로, 실수 계산의 대략 2~4배입니다. 변수가 많으면 변수마다 한 번씩 필요합니다.</div>
+
+    <div class="sim" id="sim-df-complex">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>복소 스텝 vs 차분: 바닥이 사라지는 오차 그래프</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-cs-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="df-cs-f">
+            <option value="st">eˣ / √(sin³x + cos³x), x = 1.5</option>
+            <option value="exp">eˣ, x = 1</option>
+            <option value="rat">1 / (1 + x²), x = 0.7</option>
+          </select></label>
+          <label class="ctrl"><span>표시할 간격의 지수 k (h = 10⁻ᵏ) <output id="df-cs-k-out"></output></span><input type="range" id="df-cs-k" min="1" max="20" step="1" value="8"></label>
+          <label class="check"><input type="checkbox" id="df-cs-bad"> 상쇄가 있는 복소 √ 구현으로 바꾸기</label>
+        </div>
+      </div>
+      <div class="df-legend"><span><i style="background:var(--bad)"></i>전진 D₊</span><span><i style="background:var(--accent-2)"></i>중앙 D₀</span><span><i style="background:var(--ok)"></i>복소 스텝</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">참 f′(x)</span><span class="v" id="df-cs-ex">—</span></div>
+        <div class="stat"><span class="k">D₀ (상대 오차)</span><span class="v" id="df-cs-c">—</span></div>
+        <div class="stat"><span class="k">복소 스텝 (상대 오차)</span><span class="v" id="df-cs-z">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① k를 키워 가며 중앙 차분은 k ≈ 5에서 바닥을 찍고 다시 나빠지지만 복소 스텝은 k ≥ 8에서 10⁻¹⁶ 아래(그래프 바닥선)에 붙어 있는 것을 보세요. ② 체크박스로 상쇄가 있는 복소 제곱근을 쓰면 첫 번째 함수에서 복소 스텝이 엉뚱한 값으로 떨어집니다. 구현이 해석적 연장을 정확히 계산해야 한다는 뜻입니다. ③ 1/(1 + x²)는 제곱근이 없어 체크박스와 상관없습니다. 모델: 복소 연산은 이 장 스크립트의 직접 구현, 오차 0은 바닥선(10⁻¹⁷)에 표시.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="automatic-differentiation">
+    <h2>자동 미분: 연쇄 법칙을 기계적으로</h2>
+    <div class="problem"><strong>근사가 아니라 정확한 도함수를, 프로그램에서</strong>
+      <p>함수가 수천 줄의 프로그램이라도 결국은 덧셈, 곱셈, \(\sin\), \(\exp\) 같은 기본 연산의 연쇄입니다. 각 기본 연산의 도함수는 압니다. 그렇다면 프로그램이 값을 계산하는 <b>바로 그 순서대로</b> 도함수도 함께 계산하면, \(h\)도 근사도 없이 정확한(반올림 수준의) 도함수를 얻을 수 있지 않을까요? 기호 미분처럼 식이 폭발하지도 않고요.</p></div>
+    <p><span class="term">자동 미분</span><span class="en">(automatic differentiation, AD)</span>은 기호 미분도 수치 미분도 아닙니다. 프로그램의 실행 기록(계산 그래프)에 연쇄 법칙(<a href="../../calculus/chapters/chain-rule.html">CalculusBook 4장</a>)을 한 연산씩 적용합니다. 방향이 두 가지입니다.</p>
+    <h3>전진 모드와 이중수</h3>
+    <p>모든 중간값 \(v\)에 그 도함수 \(\dot v = dv/dx\)를 짝지어 \((v, \dot v)\)로 들고 다닙니다. 덧셈은 \((a, \dot a) + (b, \dot b) = (a + b,\ \dot a + \dot b)\), 곱셈은 \((ab,\ \dot ab + a\dot b)\), 함수는 \(g(a, \dot a) = (g(a),\ g'(a)\dot a)\)입니다. 이 규칙은 \(\epsilon^2 = 0\)인 새 수 \(\epsilon\)을 도입해 \(a + \dot a\epsilon\)으로 쓰면 저절로 나옵니다. \((a + \dot a\epsilon)(b + \dot b\epsilon) = ab + (\dot ab + a\dot b)\epsilon\). 이런 수를 <span class="term">이중수</span><span class="en">(dual number)</span>라 합니다. 복소 스텝에서 \(i^2 = -1\) 때문에 남던 \(h^2\) 항이, \(\epsilon^2 = 0\)에서는 완전히 사라진다고 보면 됩니다.</p>
+    <div class="callout"><strong>예제 9.4 (이중수로 한 줄씩)</strong> \(f(x) = x\sin x + e^x\)의 \(x = 1\)에서 값과 도함수를 구하라. 시작은 \(v_1 = (1,\ 1)\)(\(dx/dx = 1\)).
+      <div class="table-wrap"><table class="df-num">
+        <thead><tr><th>단계</th><th>연산</th><th>값 \(v\)</th><th>도함수 \(\dot v\)</th></tr></thead>
+        <tbody>
+          <tr><td>\(v_1\)</td><td>\(x\)</td><td>1</td><td>1</td></tr>
+          <tr><td>\(v_2\)</td><td>\(\sin v_1\)</td><td>0.841471</td><td>\(\cos v_1\cdot\dot v_1 = 0.540302\)</td></tr>
+          <tr><td>\(v_3\)</td><td>\(v_1 v_2\)</td><td>0.841471</td><td>\(\dot v_1v_2 + v_1\dot v_2 = 1.381773\)</td></tr>
+          <tr><td>\(v_4\)</td><td>\(\exp v_1\)</td><td>2.718282</td><td>\(e^{v_1}\dot v_1 = 2.718282\)</td></tr>
+          <tr><td>\(v_5\)</td><td>\(v_3 + v_4\)</td><td>3.559753</td><td>4.100055</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0">손으로 미분한 \(f'(1) = \sin1 + \cos1 + e = 4.100055\)과 같다. 계산 비용은 원래 계산의 몇 배(상수)일 뿐이고, 오차는 반올림뿐이다.</p></div>
+    <div class="sim" id="sim-df-dual">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이중수 전진 모드 AD: 값과 도함수를 한 줄씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-du-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="df-du-f">
+            <option value="a">f(x) = x·sin x + eˣ</option>
+            <option value="b">f(x) = sin(x²) / (1 + x²)</option>
+            <option value="c">f(x) = √(1 + x²) · exp(−x/2)</option>
+          </select></label>
+          <label class="ctrl"><span>x <output id="df-du-x-out"></output></span><input type="range" id="df-du-x" min="-2.5" max="2.5" step="0.05" value="1"></label>
+          <div class="btn-row"><button class="btn primary" id="df-du-next">다음 연산 ▶</button><button class="btn" id="df-du-all">끝까지</button><button class="btn" id="df-du-reset">처음</button></div>
+        </div>
+      </div>
+      <div class="table-wrap df-tbl"><table><thead><tr><th>단계</th><th>연산</th><th>값 v</th><th>도함수 v̇ (규칙)</th></tr></thead><tbody id="df-du-tb"></tbody></table></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">AD f′(x)</span><span class="v" id="df-du-ad">—</span></div>
+        <div class="stat"><span class="k">손 공식 f′(x)</span><span class="v" id="df-du-ex">—</span></div>
+        <div class="stat"><span class="k">중앙 차분 (h = 10⁻⁵) 오차</span><span class="v" id="df-du-cd">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '다음 연산'을 눌러 표가 채워질 때마다 위 그래프에 그 중간값 vₖ(x)가 곡선으로 그려지고, 현재 x에서 접선이 표시됩니다. ② x 슬라이더를 움직이면 표 전체가 다시 계산됩니다. AD 값과 손 공식이 모든 자리에서 같습니다(차이는 기껏 마지막 자리). ③ 중앙 차분과의 차이는 10⁻¹⁰ 근처입니다. 모델: 각 연산은 (값, 도함수) 쌍 위의 규칙, 사칙연산·sin·cos·exp·√·제곱만 사용.</div>
+    </div>
+    <h3>후진 모드와 역전파</h3>
+    <p>입력이 \(n\)개, 출력이 하나인 함수 \(f: \mathbb{R}^n \to \mathbb{R}\)(신경망의 손실 함수가 그렇습니다)의 기울기를 전진 모드로 구하면 입력마다 한 번, \(n\)번 돌려야 합니다. 후진 모드는 반대로 갑니다. 먼저 값을 앞으로 계산해 그래프에 저장하고(전진 패스), 출력에서 시작해 각 중간값 \(v\)에 대한 <span class="term">수반 변수</span><span class="en">(adjoint)</span> \(\bar v = \partial f/\partial v\)를 연쇄 법칙으로 거꾸로 전파합니다(후진 패스). \(v\)가 여러 곳에 쓰였으면 각 경로의 기여를 더합니다: \(\bar v = \sum_{w\,:\,v \to w}\bar w\,\partial w/\partial v\).</p>
+    <div class="callout deep"><strong>정리 9.8 (자동 미분의 비용)</strong> 기본 연산 \(N\)개로 이루어진 \(f: \mathbb{R}^n \to \mathbb{R}^m\)에 대해, 전진 모드 한 번은 야코비 행렬의 한 열(방향 도함수 \(J\dot{\mathbf x}\))을, 후진 모드 한 번은 한 행(\(\bar{\mathbf y}^{\mathsf T}J\))을 원래 계산의 작은 상수배 비용으로 준다. 따라서 \(m = 1\)인 기울기 \(\nabla f\)는 후진 모드 한 번, 곧 <b>입력 개수 \(n\)에 무관하게</b> 함수 계산 몇 번 분의 비용으로 얻는다. 대가는 전진 패스의 중간값을 모두 저장할 메모리다.</div>
+    <div class="callout"><strong>예제 9.5 (후진 모드 손 계산)</strong> \(f(x_1, x_2) = \ln x_1 + x_1x_2 - \sin x_2\), \((x_1, x_2) = (2, 5)\).
+      <ol>
+        <li>전진 패스: \(v_1 = \ln 2 = 0.693147\), \(v_2 = x_1x_2 = 10\), \(v_3 = \sin 5 = -0.958924\), \(v_4 = v_1 + v_2 = 10.693147\), \(f = v_4 - v_3 = 11.652071\).</li>
+        <li>후진 패스: \(\bar f = 1\). \(\bar v_4 = 1\), \(\bar v_3 = -1\). \(\bar v_1 = \bar v_4 = 1\), \(\bar v_2 = \bar v_4 = 1\).</li>
+        <li>입력으로: \(x_1\)은 \(v_1\)과 \(v_2\) 두 곳에 쓰였으므로 \(\bar x_1 = \bar v_1\cdot\frac{1}{x_1} + \bar v_2\cdot x_2 = 0.5 + 5 = 5.5\). \(x_2\)도 두 곳: \(\bar x_2 = \bar v_2\cdot x_1 + \bar v_3\cos x_2 = 2 - 0.283662 = 1.716338\).</li>
+        <li>확인: \(\partial f/\partial x_1 = 1/x_1 + x_2 = 5.5\), \(\partial f/\partial x_2 = x_1 - \cos x_2 = 1.716338\). 한 번의 후진 패스로 두 편도함수를 모두 얻었다.</li>
+      </ol></div>
+    <div class="sim" id="sim-df-reverse">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>후진 모드(역전파): 계산 그래프를 앞으로, 그리고 거꾸로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="df-rv-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>x₁ <output id="df-rv-a-out"></output></span><input type="range" id="df-rv-a" min="0.5" max="4" step="0.1" value="2"></label>
+          <label class="ctrl"><span>x₂ <output id="df-rv-b-out"></output></span><input type="range" id="df-rv-b" min="-3" max="6" step="0.1" value="5"></label>
+          <div class="btn-row"><button class="btn primary" id="df-rv-next">다음 단계 ▶</button><button class="btn" id="df-rv-reset">처음</button></div>
+        </div>
+      </div>
+      <div class="df-msg" id="df-rv-msg"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">f(x₁, x₂)</span><span class="v" id="df-rv-f">—</span></div>
+        <div class="stat"><span class="k">∂f/∂x₁ (후진 결과)</span><span class="v" id="df-rv-g1">—</span></div>
+        <div class="stat"><span class="k">∂f/∂x₂ (후진 결과)</span><span class="v" id="df-rv-g2">—</span></div>
+        <div class="stat"><span class="k">손 공식 (1/x₁ + x₂, x₁ − cos x₂)</span><span class="v" id="df-rv-ex">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '다음 단계'를 눌러 전진 패스(노드 안의 값, 위에서 아래로)를 끝까지 보고, 이어서 후진 패스(노드 아래의 수반 변수 v̄, 출력에서 입력으로)를 보세요. ② x₁ 노드에 화살표 두 개가 모이는 순간 두 기여가 더해집니다(다변수 연쇄 법칙). ③ 입력이 백만 개여도 후진 패스는 한 번입니다. 전진 모드라면 백만 번입니다. 신경망 학습이 후진 모드를 쓰는 이유입니다. 모델: 예제 9.5의 그래프.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방법</th><th>정확도</th><th>\(\nabla f\)(입력 \(n\)개) 비용</th><th>필요한 것</th></tr></thead>
+      <tbody>
+        <tr><td>전진 차분</td><td>\(\sim\sqrt\varepsilon\) (8자리)</td><td>\(n + 1\)번 계산</td><td>\(f\)만</td></tr>
+        <tr><td>중앙 차분</td><td>\(\sim\varepsilon^{2/3}\) (10자리)</td><td>\(2n\)번</td><td>\(f\)만</td></tr>
+        <tr><td>복소 스텝</td><td>기계 정밀도</td><td>복소 계산 \(n\)번</td><td>복소수로 도는 코드</td></tr>
+        <tr><td>전진 모드 AD</td><td>기계 정밀도</td><td>약 \(n\)배</td><td>연산자 오버로딩 또는 코드 변환</td></tr>
+        <tr><td>후진 모드 AD</td><td>기계 정밀도</td><td>상수배(\(n\)에 무관)</td><td>중간값 저장 메모리</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>세 가지 대표 상황에서 고르는 도구가 다릅니다. <b>속도 추정</b>(엔코더, GPS, 영상 추적)은 잡음 데이터의 미분이라 평활화와 필터가 핵심입니다. <b>민감도 해석</b>(설계 변수에 대한 출력의 도함수, 불확실성 전파)은 함수가 비싼 시뮬레이션이라 계산 횟수가 중요하고, 변수가 적으면 중앙 차분이나 복소 스텝, 많으면 수반(adjoint) 방법이나 후진 모드 AD를 씁니다. <b>신경망 학습</b>은 입력(가중치)이 수십억 개, 출력(손실)이 하나인 극단적인 경우라 후진 모드 AD, 곧 역전파 외에는 선택지가 없습니다.</p>
+    <div class="uses">
+      <a href="interpolation.html"><small>5장 · 다항식 보간</small>스텐실 = 보간 다항식의 도함수<br><span>m개의 점으로 만든 차분 공식은 그 점들의 보간 다항식을 미분한 것이다.</span></a>
+      <a href="integration.html"><small>10장 · 수치 적분</small>롬베르크 적분<br><span>사다리꼴 공식에 리처드슨 외삽을 되풀이하면 같은 표가 적분에서도 나온다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · 미분방정식의 수치 해법</small>음적 방법의 야코비안<br><span>뉴턴 반복에 필요한 야코비안을 차분이나 AD로 만든다.</span></a>
+      <a href="optimization.html"><small>15장 · 수치 최적화</small>경사 하강과 BFGS<br><span>모든 기울기 기반 최적화는 이 장의 도함수 계산 위에 서 있다.</span></a>
+      <a href="pde-numerics.html"><small>16장 · PDE의 수치 해법</small>5점 스텐실<br><span>(1, −2, 1)/h² 스텐실을 두 방향으로 쓰면 라플라시안의 5점 공식이다.</span></a>
+      <a href="../../foundations/chapters/numerics.html#numerical-derivative"><small>MATHBOOK</small>컴퓨터는 어떻게 틀리는가<br><span>수치 미분의 V자 오차를 처음 만나는 곳. 이 장은 그 상수와 처방을 정량화했다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>전진·후진 차분의 절단 오차는 \(\frac h2 f''\)(1차), 중앙 차분은 \(\frac{h^2}{6}f'''\)(2차)이다. 대칭 배치가 홀수 차 항을 지운다.</li>
+      <li>함숫값의 반올림 오차는 차분에서 \(\varepsilon|f|/h\)로 커진다. 절단과 반올림의 합이 최소인 \(h^* \approx \sqrt\varepsilon\)(1차), \(\sqrt[3]\varepsilon\)(2차)에서 각각 약 8자리, 10자리가 한계다. 오차–간격 로그 그래프는 V자다.</li>
+      <li>오프셋 \(s_j\)의 스텐실 계수는 \(\sum c_js_j^k = k!\,\delta_{kd}\)(반데르몽드 계)로 정해지고, 첫 0이 아닌 모멘트가 차수와 오차 상수를 준다.</li>
+      <li>리처드슨 외삽 \((2^pA(h/2) - A(h))/(2^p - 1)\)은 오차 전개의 주항을 지운다. 중앙 차분에서는 열마다 두 차수씩 오르고, 큰 h를 쓰므로 반올림에도 강하다.</li>
+      <li>잡음 \(\sigma\)인 데이터의 차분은 잡음을 \(\sigma/h\)로 키운다. 간격을 넓히거나 창 안의 점에 다항식을 최소제곱으로 맞춰(사비츠키–골레이) 잡음과 해상도를 바꾼다.</li>
+      <li>복소 스텝 \(\operatorname{Im}f(x + ih)/h\)는 뺄셈이 없어 \(h = 10^{-20}\)에서도 반올림이 커지지 않는다. 해석적인 복소 구현이 필요하다.</li>
+      <li>자동 미분은 계산 그래프에 연쇄 법칙을 적용해 기계 정밀도의 도함수를 준다. 전진 모드(이중수)는 입력 하나당 한 번, 후진 모드(역전파)는 출력 하나당 한 번으로 기울기 전체를 준다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 어떤 매끄러운 함수의 중앙 차분 오차가 \(h = 0.02\)에서 \(8\times10^{-5}\)이었다. \(h = 0.01\)이면 오차는 대략?</p><div class="opts">
+        <button class="opt">\(4\times10^{-5}\)</button>
+        <button class="opt" data-correct>\(2\times10^{-5}\)</button>
+        <button class="opt">\(5\times10^{-6}\)</button>
+        <button class="opt">\(8\times10^{-5}\) (그대로)</button>
+      </div><div class="quiz-exp">중앙 차분의 절단 오차는 \(\frac{h^2}{6}f'''\), 2차다. h를 반으로 줄이면 오차는 4분의 1, \(2\times10^{-5}\). 반올림 바닥(h ≈ 10⁻⁵ 근처)보다 훨씬 큰 h라 절단 오차가 지배한다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 배정밀도(\(\varepsilon \approx 2.2\times10^{-16}\))에서 \(f(x) = e^x\)의 \(x = 1\)에서 전진 차분으로 얻을 수 있는 가장 작은 오차의 크기는 대략?</p><div class="opts">
+        <button class="opt">\(10^{-16}\)</button>
+        <button class="opt">\(10^{-11}\)</button>
+        <button class="opt" data-correct>\(10^{-8}\)</button>
+        <button class="opt">\(10^{-4}\)</button>
+      </div><div class="quiz-exp">최소 오차 \(E^* = \sqrt{2\varepsilon|f|M_2} = \sqrt{2\varepsilon}\,e \approx 5.7\times10^{-8}\), \(h^* \approx 2\times10^{-8}\)에서다. \(10^{-11}\)은 중앙 차분(\(\varepsilon^{2/3}\))의 한계에 가깝다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 오프셋 \(\{0, 1, 2\}\)로 만든 \(f'(x)\)의 3점 공식은?</p><div class="opts">
+        <button class="opt">\(\dfrac{f(x+2h) - f(x)}{2h}\)</button>
+        <button class="opt" data-correct>\(\dfrac{-3f(x) + 4f(x+h) - f(x+2h)}{2h}\)</button>
+        <button class="opt">\(\dfrac{f(x) - 2f(x+h) + f(x+2h)}{h}\)</button>
+        <button class="opt">\(\dfrac{3f(x) - 4f(x+h) + f(x+2h)}{2h}\)</button>
+      </div><div class="quiz-exp">\(\sum c_j = 0\), \(\sum c_js_j = 1\), \(\sum c_js_j^2 = 0\)을 풀면 \((c_0, c_1, c_2) = (-3/2, 2, -1/2)\). 오차는 \(-\frac{h^2}{3}f'''\)로 2차다. 첫 보기는 간격 2h의 전진 차분(1차), 세 번째는 2계 도함수 차분에 h를 곱한 꼴이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 중앙 차분으로 \(D(0.1) = 2.7228146\), \(D(0.05) = 2.7194146\)을 얻었다. 한 번의 리처드슨 외삽값은?</p><div class="opts">
+        <button class="opt">\(2.7177146\)</button>
+        <button class="opt" data-correct>\(2.7182813\)</button>
+        <button class="opt">\(2.7211146\)</button>
+        <button class="opt">\(2.7160146\)</button>
+      </div><div class="quiz-exp">중앙 차분의 주항은 \(h^2\)이므로 \((4D(0.05) - D(0.1))/3 = (10.8776584 - 2.7228146)/3 = 2.7182813\). 참값 \(e = 2.7182818\)과 \(6\times10^{-7}\) 차이다. 첫 보기는 \(2D(h/2) - D(h)\)(1차 가정)로 잘못 섞은 값이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 잡음 표준편차 \(\sigma\)인 위치 측정을 간격 \(\Delta t\)로 얻어 이웃 점 중앙 차분 \((y_{i+1} - y_{i-1})/(2\Delta t)\)로 속도를 구한다. 측정 간격을 절반으로 줄이면 속도 추정의 잡음은?</p><div class="opts">
+        <button class="opt">절반이 된다</button>
+        <button class="opt">그대로다</button>
+        <button class="opt" data-correct>두 배가 된다</button>
+        <button class="opt">네 배가 된다</button>
+      </div><div class="quiz-exp">잡음 부분의 표준편차는 \(\sqrt2\sigma/(2\Delta t)\)로 \(1/\Delta t\)에 비례한다. 더 촘촘히 재면 차분이 잡음을 더 키운다. 처방은 차분 간격을 넓히거나 여러 점에 맞춤을 하는 것이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 복소 스텝 미분에서 \(h = 10^{-20}\)을 써도 되는 이유는?</p><div class="opts">
+        <button class="opt">복소수는 실수보다 정밀도가 두 배라서</button>
+        <button class="opt" data-correct>허수부를 직접 읽으므로 거의 같은 두 수의 뺄셈이 없어서</button>
+        <button class="opt">절단 오차가 0이라서</button>
+        <button class="opt">\(h\)가 작을수록 반올림 오차도 작아지는 것이 부동소수점의 성질이라서</button>
+      </div><div class="quiz-exp">\(\operatorname{Im}f(x + ih) = hf'(x) - \frac{h^3}{6}f''' + \cdots\)를 h로 나누기만 하므로 상쇄가 없다. 절단 오차는 \(\frac{h^2}{6}f'''\)로 0이 아니지만 h = 10⁻²⁰이면 10⁻⁴⁰ 수준이라 보이지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 이중수 \(a + b\epsilon\)(\(\epsilon^2 = 0\))에서 \((3 + 2\epsilon)(1 + 4\epsilon)\)은?</p><div class="opts">
+        <button class="opt">\(3 + 6\epsilon\)</button>
+        <button class="opt" data-correct>\(3 + 14\epsilon\)</button>
+        <button class="opt">\(3 + 14\epsilon + 8\epsilon^2\), 곧 \(11 + 14\epsilon\)</button>
+        <button class="opt">\(4 + 6\epsilon\)</button>
+      </div><div class="quiz-exp">\(3\cdot1 + (3\cdot4 + 2\cdot1)\epsilon + 8\epsilon^2 = 3 + 14\epsilon\). 곱의 미분 법칙 \((uv)' = u'v + uv'\)이 이중수의 곱셈에 그대로 들어 있다. 세 번째 보기는 \(\epsilon^2 = 1\)로 잘못 본 것이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 가중치 \(10^8\)개를 가진 신경망의 손실 함수(스칼라) 기울기를 구할 때 후진 모드 AD를 쓰는 가장 큰 이유는?</p><div class="opts">
+        <button class="opt">전진 모드보다 정확해서</button>
+        <button class="opt">메모리를 덜 써서</button>
+        <button class="opt" data-correct>입력 개수와 무관하게 후진 패스 한 번으로 기울기 전체를 얻어서</button>
+        <button class="opt">차분 간격 h를 고를 필요가 없어서</button>
+      </div><div class="quiz-exp">전진·후진 모드 모두 기계 정밀도이고 h도 없다. 차이는 비용이다. 전진 모드는 입력마다 한 번(10⁸번), 후진 모드는 출력마다 한 번(1번) 필요하다. 대신 후진 모드는 전진 패스의 중간값을 저장해야 해서 메모리를 더 쓴다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const DF = {
+  EPS: Number.EPSILON,
+  num(v, d = 4) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  font(px, mono) { return px + "px " + getComputedStyle(document.body).getPropertyValue(mono ? "--mono" : "--font"); },
+  slope(pts) {
+    if (pts.length < 2) return NaN;
+    const xs = pts.map((p) => Math.log10(p[0])), ys = pts.map((p) => Math.log10(p[1])), mx = MB.mean(xs), my = MB.mean(ys);
+    let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; });
+    return a / b;
+  },
+};
+
+/* ================================================================ 1. 할선 → 접선 */
+(function () {
+  const PRE = {
+    exp: { f: Math.exp, d: Math.exp, x: [-1.6, 2.6], y: [-0.6, 8.2], x0: 1 },
+    sin: { f: (x) => Math.sin(2 * x), d: (x) => 2 * Math.cos(2 * x), x: [-1.8, 1.8], y: [-1.5, 1.5], x0: 0.5 },
+    cub: { f: (x) => x * x * x - 2 * x, d: (x) => 3 * x * x - 2, x: [-2.2, 2.2], y: [-3, 3], x0: 1 },
+  };
+  const HS = [0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01];
+  let pre = PRE.exp, h = 0.4, mode = "all", prev = null;
+  const msg = document.getElementById("df-sc-msg");
+  const pl = MB.plane("#df-sc-cv", {
+    x: pre.x, y: pre.y, aspect: 0.62, minHeight: 260,
+    points: [{ x: pre.x0, y: pre.f(pre.x0), color: MB.palette().text, constrain(p) { p.x = MB.clamp(p.x, pre.x[0] + 0.9, pre.x[1] - 0.9); p.y = pre.f(p.x); } }],
+    draw(P, api) {
+      const C = P.P, x = api.points[0].x, fx = pre.f(x), d = pre.d(x);
+      P.curve(pre.f, { color: C.dim, width: 2.4 });
+      const L = (P.x1 - P.x0);
+      P.line(x - L, fx - L * d, x + L, fx + L * d, { color: C.text, width: 1.5, dash: [6, 4] });
+      const sec = (xa, xb, col) => { const s = (pre.f(xb) - pre.f(xa)) / (xb - xa); P.line(xa - L, pre.f(xa) - L * s, xb + L, pre.f(xb) + L * s, { color: col, width: 2.2, alpha: 0.95 }); P.dot(xa, pre.f(xa), { r: 4, color: col }); P.dot(xb, pre.f(xb), { r: 4, color: col }); };
+      if (mode === "all" || mode === "fwd") sec(x, x + h, C.bad);
+      if (mode === "all" || mode === "bwd") sec(x - h, x, C.warn);
+      if (mode === "all" || mode === "ctr") sec(x - h, x + h, C.accent2);
+      P.dot(x, fx, { r: 6, color: C.text });
+    },
+    onDrag() { update(); },
+  });
+  function update() {
+    const x = pl.points[0].x, d = pre.d(x), f = pre.f;
+    const ef = (f(x + h) - f(x)) / h - d, eb = (f(x) - f(x - h)) / h - d, ec = (f(x + h) - f(x - h)) / (2 * h) - d;
+    MB.stat("df-sc-ex", DF.num(d, 5) + " <small>(x = " + DF.num(x, 2) + ")</small>");
+    MB.stat("df-sc-ef", DF.sci(ef, 3) + " · " + DF.num(ef / h, 3));
+    MB.stat("df-sc-eb", DF.sci(eb, 3) + " · " + DF.num(eb / h, 3));
+    MB.stat("df-sc-ec", DF.sci(ec, 3) + " · " + DF.num(ec / (h * h), 3));
+    const cur = { h, ef, ec, x };
+    if (prev && prev.h !== h && Math.abs(prev.x - x) < 1e-9) {
+      const k = prev.h / h;
+      msg.innerHTML = `h를 ${prev.h} → ${h}(<b>${DF.num(k, 2)}배</b> 작게)로 바꾸자 전진 오차는 <b>${DF.num(Math.abs(prev.ef / ef), 2)}배</b>, 중앙 오차는 <b>${DF.num(Math.abs(prev.ec / ec), 2)}배</b> 작아졌습니다. 1차라면 ${DF.num(k, 2)}배, 2차라면 ${DF.num(k * k, 2)}배가 기대값입니다.`;
+    } else msg.innerHTML = `f″(x)/2 = <b>${DF.num(numD2(x) / 2, 3)}</b>, f‴(x)/6 = <b>${DF.num(numD3(x) / 6, 3)}</b>. h가 작을 때 '오차/h'와 '오차/h²'가 이 값에 다가갑니다. h를 바꾸면 오차 비율을 알려 줍니다.`;
+    prev = cur; pl.redraw();
+  }
+  const numD2 = (x) => (pre.d(x + 1e-4) - pre.d(x - 1e-4)) / 2e-4;
+  const numD3 = (x) => (pre.d(x + 1e-3) - 2 * pre.d(x) + pre.d(x - 1e-3)) / 1e-6;
+  MB.steps("df-sc-h", HS, (v) => String(v), 0.4, (v) => { h = v; update(); });
+  MB.seg("df-sc-m", (v) => { mode = v; pl.redraw(); });
+  document.getElementById("df-sc-f").addEventListener("change", (e) => {
+    pre = PRE[e.target.value]; prev = null; pl.points[0].x = pre.x0; pl.points[0].y = pre.f(pre.x0); pl.view({ x: pre.x, y: pre.y }); update();
+  });
+  update();
+})();
+
+/* ================================================================ 2. V자 */
+(function () {
+  const PRE = {
+    exp: { f: Math.exp, x: 1, d1: Math.exp(1), d2: Math.exp(1), d3: Math.exp(1), d4: Math.exp(1) },
+    sin: { f: Math.sin, x: 1, d1: Math.cos(1), d2: -Math.sin(1), d3: -Math.cos(1), d4: Math.sin(1) },
+    log: { f: Math.log, x: 2, d1: 0.5, d2: -0.25, d3: 0.25, d4: -6 / 16 },
+    big: { f: Math.exp, x: 20, d1: Math.exp(20), d2: Math.exp(20), d3: Math.exp(20), d4: Math.exp(20) },
+  };
+  let pre = PRE.exp, sh = { fw: true, ct: true, sd: false, md: true };
+  const HS = []; for (let k = 0; k <= 128; k++) HS.push(Math.pow(10, -k / 8));
+  const FL = 1e-17;
+  let data = null;
+  const compute = () => {
+    const f = pre.f, x = pre.x, fx = f(x);
+    const fw = [], ct = [], sd = [];
+    HS.forEach((h) => {
+      fw.push([h, Math.max(FL, Math.abs(((f(x + h) - fx) / h - pre.d1) / pre.d1))]);
+      ct.push([h, Math.max(FL, Math.abs(((f(x + h) - f(x - h)) / (2 * h) - pre.d1) / pre.d1))]);
+      sd.push([h, Math.max(FL, Math.abs(((f(x + h) - 2 * fx + f(x - h)) / (h * h) - pre.d2) / pre.d2))]);
+    });
+    const E = DF.EPS, af = Math.abs(fx);
+    const mf = HS.map((h) => [h, (Math.abs(pre.d2) * h / 2 + E * af / h) / Math.abs(pre.d1)]);
+    const mc = HS.map((h) => [h, (Math.abs(pre.d3) * h * h / 6 + E * af / (2 * h)) / Math.abs(pre.d1)]);
+    const ms = HS.map((h) => [h, (Math.abs(pre.d4) * h * h / 12 + 4 * E * af / (h * h)) / Math.abs(pre.d2)]);
+    data = { fw, ct, sd, mf, mc, ms, hf: Math.sqrt(2 * E * af / Math.abs(pre.d2)), hc: Math.cbrt(1.5 * E * af / Math.abs(pre.d3)) };
+  };
+  const best = (arr) => arr.reduce((b, p) => (p[1] < b[1] ? p : b), [1, Infinity]);
+  const cv = MB.canvas("#df-vs-cv", (ctx, w, h) => {
+    if (!data) return;
+    const C = MB.palette(), s = [];
+    if (sh.md) {
+      if (sh.fw) s.push({ data: data.mf, color: C.faint, width: 1.3, dash: [5, 4] });
+      if (sh.ct) s.push({ data: data.mc, color: C.faint, width: 1.3, dash: [5, 4] });
+      if (sh.sd) s.push({ data: data.ms, color: C.faint, width: 1.3, dash: [5, 4] });
+    }
+    if (sh.sd) s.push({ data: data.sd, color: C.warn, width: 1.8 });
+    if (sh.fw) s.push({ data: data.fw, color: C.bad, width: 1.8 });
+    if (sh.ct) s.push({ data: data.ct, color: C.accent2, width: 1.8 });
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [1e-16, 1], y: [1e-17, 1e2], logX: true, logY: true, xLabel: "간격 h", yLabel: "상대 오차",
+      xTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: s,
+      vlines: [{ x: Math.sqrt(DF.EPS), label: "√ε", color: C.faint }, { x: Math.cbrt(DF.EPS), label: "∛ε", color: C.faint }],
+    });
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 460 });
+  const update = () => {
+    compute(); cv.redraw();
+    const f = (p) => "h = " + DF.sci(p[0], 2) + " · " + DF.sci(p[1], 2);
+    MB.stat("df-vs-of", f(best(data.fw))); MB.stat("df-vs-oc", f(best(data.ct))); MB.stat("df-vs-os", f(best(data.sd)));
+    MB.stat("df-vs-th", DF.sci(data.hf, 2) + ", " + DF.sci(data.hc, 2));
+  };
+  ["fw", "ct", "sd", "md"].forEach((k) => MB.check("df-vs-" + k, (v) => { sh[k] = v; cv.redraw(); }));
+  document.getElementById("df-vs-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  update();
+})();
+
+/* ================================================================ 3. 스텐실 계산기 (BigInt 유리수) */
+(function () {
+  const gcd = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) { [a, b] = [b, a % b]; } return a; };
+  const R = (n, d = 1n) => { if (d < 0n) { n = -n; d = -d; } const g = gcd(n, d) || 1n; return [n / g, d / g]; };
+  const add = (a, b) => R(a[0] * b[1] + b[0] * a[1], a[1] * b[1]);
+  const sub = (a, b) => R(a[0] * b[1] - b[0] * a[1], a[1] * b[1]);
+  const mul = (a, b) => R(a[0] * b[0], a[1] * b[1]);
+  const div = (a, b) => R(a[0] * b[1], a[1] * b[0]);
+  const isZ = (a) => a[0] === 0n;
+  const fact = (k) => { let r = 1n; for (let i = 2n; i <= BigInt(k); i++) r *= i; return r; };
+  const fstr = (a) => (a[1] === 1n ? String(a[0]) : a[0] + "/" + a[1]).replace("-", "−");
+  const toNum = (a) => Number(a[0]) / Number(a[1]);
+  const OFFS = [-3, -2, -1, 0, 1, 2, 3];
+  let on = new Set([-1, 1]), d = 1;
+  const box = document.getElementById("df-st-offs");
+  OFFS.forEach((s) => { const b = document.createElement("button"); b.textContent = (s > 0 ? "+" : s < 0 ? "−" : "") + Math.abs(s); b.dataset.s = s; b.addEventListener("click", () => { on.has(s) ? on.delete(s) : on.add(s); document.getElementById("df-st-pre").value = ""; update(); }); box.appendChild(b); });
+  const solve = (s, d) => {
+    const m = s.length; const A = [];
+    for (let k = 0; k < m; k++) { const row = s.map((sj) => R(BigInt(sj) ** BigInt(k))); row.push(R(k === d ? fact(k) : 0n)); A.push(row); }
+    for (let i = 0; i < m; i++) {
+      let p = i; while (p < m && isZ(A[p][i])) p++; if (p === m) return null;
+      [A[i], A[p]] = [A[p], A[i]];
+      for (let r = 0; r < m; r++) if (r !== i && !isZ(A[r][i])) { const f = div(A[r][i], A[i][i]); for (let c = i; c <= m; c++) A[r][c] = sub(A[r][c], mul(f, A[i][c])); }
+    }
+    return A.map((row, i) => div(row[m], row[i]));
+  };
+  let res = null;
+  const cv = MB.canvas("#df-st-cv", (ctx, w, h) => {
+    const C = MB.palette();
+    if (!res) { ctx.fillStyle = C.dim; ctx.font = DF.font(14); ctx.textAlign = "center"; ctx.fillText("점이 d + 1개 이상 필요합니다", w / 2, h / 2); return; }
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [1e-8, 1], y: [1e-17, 10], logX: true, logY: true, xLabel: "간격 h", yLabel: "상대 오차",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: [{ data: res.err, color: C.accent, width: 2 }, res.ref ? { data: res.ref, color: C.faint, width: 1.2, dash: [5, 4] } : {}],
+      points: res.err.map(([x, y]) => ({ x, y, color: C.accent, r: 2.5 })),
+    });
+  }, { aspect: 0.6, minHeight: 260, maxHeight: 420 });
+  function update() {
+    [...box.children].forEach((b) => b.classList.toggle("on", on.has(+b.dataset.s)));
+    const s = [...on].sort((a, b) => a - b), m = s.length;
+    MB.stat("df-st-m", String(m));
+    if (m <= d) { res = null; MB.stat("df-st-out", "점을 더 고르세요 (d + 1개 이상)."); ["df-st-p", "df-st-lead", "df-st-slope"].forEach((id) => MB.stat(id, "—")); cv.redraw(); return; }
+    const c = solve(s, d);
+    let q = m, mom = null;
+    for (; q < m + 8; q++) { mom = R(0n); s.forEach((sj, j) => { mom = add(mom, mul(c[j], R(BigInt(sj) ** BigInt(q)))); }); if (!isZ(mom)) break; }
+    const p = q - d, lead = div(mom, R(fact(q)));
+    const sup = ["", "′", "″", "‴", "⁽⁴⁾"][d];
+    const terms = s.map((sj, j) => isZ(c[j]) ? null : `${fstr(c[j])}·f(x${sj === 0 ? "" : (sj > 0 ? "+" : "−") + (Math.abs(sj) === 1 ? "" : Math.abs(sj)) + "h"})`).filter(Boolean);
+    MB.stat("df-st-out", `f${sup}(x) ≈ <b>[ ${terms.join(" + ").replace(/\+ −/g, "− ")} ]</b> / h${d > 1 ? "<sup>" + d + "</sup>" : ""}<br><span class="dim">Σ|c<sub>j</sub>| = ${DF.num(c.reduce((a, v) => a + Math.abs(toNum(v)), 0), 3)} (반올림 오차 증폭 인자)</span>`);
+    MB.stat("df-st-p", "O(h<sup>" + p + "</sup>)");
+    MB.stat("df-st-lead", fstr(lead) + " · h<sup>" + p + "</sup> f<sup>(" + q + ")</sup>");
+    const x = 0.5, ex = Math.exp(x), err = [];
+    for (let k = 0; k <= 64; k++) { const hh = Math.pow(10, -k / 8); let v = 0; s.forEach((sj, j) => { v += toNum(c[j]) * Math.exp(x + sj * hh); }); v /= Math.pow(hh, d); err.push([hh, Math.max(1e-17, Math.abs(v - ex) / ex)]); }
+    const lv = Math.abs(toNum(lead));
+    const ref = err.map(([hh]) => [hh, lv * Math.pow(hh, p)]);
+    const fit = err.filter(([hh, e], i) => e > 1e-12 && e < 1e-2 && e > 30 * (Math.pow(2, d) * 1e-16 / Math.pow(hh, d)));
+    res = { err, ref };
+    const sl = DF.slope(fit);
+    MB.stat("df-st-slope", isFinite(sl) ? DF.num(sl, 2) : "—");
+    cv.redraw();
+  }
+  MB.seg("df-st-d", (v) => { d = +v; update(); });
+  document.getElementById("df-st-pre").addEventListener("change", (e) => { if (!e.target.value) return; on = new Set(e.target.value.split(",").map(Number)); update(); });
+  update();
+})();
+
+/* ================================================================ 4. 리처드슨 표 */
+(function () {
+  const PRE = {
+    exp: { f: Math.exp, x: 1, d: Math.exp(1) },
+    sin: { f: Math.sin, x: 1, d: Math.cos(1) },
+    atan: { f: Math.atan, x: 0.5, d: 1 / 1.25 },
+    sqrt: { f: Math.sqrt, x: 0.05, d: 0.5 / Math.sqrt(0.05) },
+  };
+  const H0 = [0.8, 0.4, 0.2, 0.1, 0.04];
+  let pre = PRE.exp, base = "ctr", h0 = 0.4, rows = 1;
+  const MAXR = 6;
+  let T = [];
+  const A = (h) => base === "ctr" ? (pre.f(pre.x + h) - pre.f(pre.x - h)) / (2 * h) : (pre.f(pre.x + h) - pre.f(pre.x)) / h;
+  const build = () => {
+    T = [];
+    for (let i = 0; i < rows; i++) {
+      T[i] = [A(h0 / Math.pow(2, i))];
+      for (let j = 1; j <= i; j++) { const p = Math.pow(2, base === "ctr" ? 2 * j : j); T[i][j] = (p * T[i][j - 1] - T[i - 1][j - 1]) / (p - 1); }
+    }
+  };
+  const cv = MB.canvas("#df-ri-cv", (ctx, w, h) => {
+    if (T.length < rows) return;
+    const C = MB.palette(), cols = [C.bad, C.warn, C.ok, C.accent2, C.blue, C.accent], s = [], pts = [];
+    for (let j = 0; j < rows; j++) {
+      const d = []; for (let i = j; i < rows; i++) d.push([h0 / Math.pow(2, i), Math.max(1e-17, Math.abs(T[i][j] - pre.d))]);
+      s.push({ data: d, color: cols[j], width: 2 }); d.forEach(([x, y]) => pts.push({ x, y, color: cols[j], r: 3.5 }));
+    }
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [h0 / Math.pow(2, MAXR - 1) / 1.5, h0 * 1.5], y: [1e-17, 10], logX: true, logY: true, xLabel: "그 행의 간격 h", yLabel: "|오차|",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: s, points: pts,
+    });
+  }, { aspect: 0.5, minHeight: 230, maxHeight: 360 });
+  const update = () => {
+    build();
+    const ord = (j) => base === "ctr" ? 2 * j + 2 : j + 1;
+    let th = "<tr><th>h</th>"; for (let j = 0; j < rows; j++) th += `<th>T<sub>i,${j}</sub> · O(h<sup>${ord(j)}</sup>)</th>`; th += "</tr>";
+    document.getElementById("df-ri-th").innerHTML = th;
+    let bestE = Infinity, bi = 0, bj = 0;
+    T.forEach((r, i) => r.forEach((v, j) => { const e = Math.abs(v - pre.d); if (e < bestE) { bestE = e; bi = i; bj = j; } }));
+    let tb = "";
+    T.forEach((r, i) => {
+      tb += `<tr class="${i === rows - 1 ? "cur" : ""}"><td>${DF.num(h0 / Math.pow(2, i), 5).replace(/0+$/, "")}</td>`;
+      for (let j = 0; j < rows; j++) {
+        if (j > i) { tb += "<td></td>"; continue; }
+        const e = r[j] - pre.d;
+        tb += `<td class="${i === bi && j === bj ? "best" : ""}">${r[j].toFixed(12)}<small>${DF.sci(e, 2)}</small></td>`;
+      }
+      tb += "</tr>";
+    });
+    document.getElementById("df-ri-tb").innerHTML = tb;
+    const ev = base === "ctr" ? 2 * rows : rows + 1;
+    MB.stat("df-ri-ev", String(ev));
+    MB.stat("df-ri-diag", DF.sci(Math.abs(T[rows - 1][rows - 1] - pre.d), 2));
+    MB.stat("df-ri-base", DF.sci(Math.abs(T[rows - 1][0] - pre.d), 2));
+    document.getElementById("df-ri-next").disabled = rows >= MAXR;
+    cv.redraw();
+  };
+  const H = MB.steps("df-ri-h", H0, (v) => String(v), 0.4, (v) => { h0 = (pre === PRE.sqrt) ? Math.min(v, 0.04) : v; if (h0 !== v) H.set(h0, false); update(); });
+  MB.seg("df-ri-b", (v) => { base = v; update(); });
+  document.getElementById("df-ri-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; if (e.target.value === "sqrt" && h0 > 0.04) { h0 = 0.04; H.set(0.04, false); } update(); });
+  document.getElementById("df-ri-next").addEventListener("click", () => { if (rows < MAXR) { rows++; update(); } });
+  document.getElementById("df-ri-reset").addEventListener("click", () => { rows = 1; update(); });
+  rows = 4; update();
+})();
+
+/* ================================================================ 5. 잡음 데이터 */
+(function () {
+  const f = (t) => Math.sin(t) + 0.5 * Math.sin(3 * t), df = (t) => Math.cos(t) + 1.5 * Math.cos(3 * t), d3 = 1 + 13.5;
+  const SG = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2], DT = [0.002, 0.005, 0.01, 0.02, 0.05];
+  let sig = 1e-3, dt = 0.005, mode = "ctr", m = 1, seed = 7;
+  let T = [], Y = [], est = [];
+  const gauss = (r) => { let u = 0, v = 0; while (u === 0) u = r(); v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const sample = () => {
+    const r = MB.rng(seed), n = Math.floor(2 * Math.PI / dt) + 1; T = []; Y = [];
+    for (let i = 0; i < n; i++) { const t = i * dt; T.push(t); Y.push(f(t) + sig * gauss(r)); }
+  };
+  const estimate = (Yv) => {
+    const out = []; const n = T.length;
+    let S2 = 0; for (let k = -m; k <= m; k++) S2 += k * k;
+    for (let i = m; i < n - m; i++) {
+      let v;
+      if (mode === "ctr") v = (Yv[i + m] - Yv[i - m]) / (2 * m * dt);
+      else { let s = 0; for (let k = -m; k <= m; k++) s += k * Yv[i + k]; v = s / (dt * S2); }
+      out.push([T[i], v]);
+    }
+    return out;
+  };
+  const cv1 = MB.canvas("#df-nz-cv1", (ctx, w, h) => {
+    const C = MB.palette();
+    const ch = MB.chart(ctx, { x: 50, y: 26, w: w - 50 - 14, h: h - 26 - 30 }, { x: [0, 2 * Math.PI], y: [-1.7, 1.7], series: [] });
+    ctx.fillStyle = C.accent; const st = Math.max(1, Math.floor(T.length / 700));
+    for (let i = 0; i < T.length; i += st) { ctx.fillRect(ch.X(T[i]) - 1, ch.Y(Y[i]) - 1, 2, 2); }
+    // 확대창
+    const zx = w - 150, zy = 30, zw = 136, zh = 80, t0 = 1.0, t1 = t0 + 12 * dt;
+    ctx.fillStyle = C.surface; ctx.strokeStyle = C.border; ctx.fillRect(zx, zy, zw, zh); ctx.strokeRect(zx, zy, zw, zh);
+    const i0 = Math.round(t0 / dt), i1 = Math.min(T.length - 1, Math.round(t1 / dt));
+    let lo = Infinity, hi = -Infinity; for (let i = i0; i <= i1; i++) { lo = Math.min(lo, Y[i], f(T[i])); hi = Math.max(hi, Y[i], f(T[i])); }
+    const pad = (hi - lo) * 0.15 + 1e-9; lo -= pad; hi += pad;
+    const ZX = (t) => zx + 6 + ((t - t0) / (t1 - t0)) * (zw - 12), ZY = (y) => zy + zh - 6 - ((y - lo) / (hi - lo)) * (zh - 12);
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = i0; i <= i1; i++) { const p = [ZX(T[i]), ZY(f(T[i]))]; i === i0 ? ctx.moveTo(...p) : ctx.lineTo(...p); } ctx.stroke();
+    ctx.fillStyle = C.accent; for (let i = i0; i <= i1; i++) { ctx.beginPath(); ctx.arc(ZX(T[i]), ZY(Y[i]), 2.6, 0, 7); ctx.fill(); }
+    ctx.fillStyle = C.dim; ctx.font = DF.font(10.5, true); ctx.textAlign = "left"; ctx.fillText("확대: 13개 표본", zx + 2, zy + zh + 13);
+  }, { aspect: (w) => (w < 500 ? 0.5 : 0.3), minHeight: 160, maxHeight: 260 });
+  const cv2 = MB.canvas("#df-nz-cv2", (ctx, w, h) => {
+    const C = MB.palette(), ex = []; for (let i = 0; i <= 400; i++) { const t = (i / 400) * 2 * Math.PI; ex.push([t, df(t)]); }
+    MB.chart(ctx, { x: 50, y: 26, w: w - 50 - 14, h: h - 26 - 30 }, { x: [0, 2 * Math.PI], y: [-3.2, 3.2], series: [{ data: est, color: C.bad, width: 1.3 }, { data: ex, color: C.text, width: 2 }] });
+  }, { aspect: (w) => (w < 500 ? 0.55 : 0.34), minHeight: 180, maxHeight: 300 });
+  const update = () => {
+    sample(); est = estimate(Y);
+    let s2 = 0; est.forEach(([t, v]) => { s2 += (v - df(t)) ** 2; }); const rms = Math.sqrt(s2 / est.length);
+    const clean = estimate(T.map(f)); let c2 = 0; clean.forEach(([t, v]) => { c2 += (v - df(t)) ** 2; });
+    let S2 = 0; for (let k = -m; k <= m; k++) S2 += k * k;
+    const th = mode === "ctr" ? sig / (Math.SQRT2 * m * dt) : sig / (dt * Math.sqrt(S2));
+    MB.stat("df-nz-rms", DF.sci(rms, 2)); MB.stat("df-nz-th", DF.sci(th, 2)); MB.stat("df-nz-tr", DF.sci(Math.sqrt(c2 / clean.length), 2));
+    cv1.redraw(); cv2.redraw();
+  };
+  const SGL = { 0: "0", 1e-4: "10⁻⁴", 3e-4: "3×10⁻⁴", 1e-3: "10⁻³", 3e-3: "3×10⁻³", 1e-2: "10⁻²" };
+  MB.steps("df-nz-s", SG, (v) => SGL[v], 1e-3, (v) => { sig = v; update(); });
+  MB.steps("df-nz-dt", DT, (v) => String(v), 0.005, (v) => { dt = v; update(); });
+  MB.range("df-nz-w", (v) => String(v) + (mode === "sg" ? " (" + (2 * v + 1) + "점)" : ""), (v) => { m = v; update(); });
+  MB.seg("df-nz-m", (v) => { mode = v; document.getElementById("df-nz-w-out").textContent = m + (mode === "sg" ? " (" + (2 * m + 1) + "점)" : ""); update(); });
+  document.getElementById("df-nz-seed").addEventListener("click", () => { seed = (seed * 7919 + 13) % 100003; update(); });
+  update();
+})();
+
+/* ================================================================ 6. 복소 스텝 */
+(function () {
+  const Z = {
+    add: (p, q) => [p[0] + q[0], p[1] + q[1]],
+    mul: (p, q) => [p[0] * q[0] - p[1] * q[1], p[0] * q[1] + p[1] * q[0]],
+    div: (p, q) => { const d = q[0] * q[0] + q[1] * q[1]; return [(p[0] * q[0] + p[1] * q[1]) / d, (p[1] * q[0] - p[0] * q[1]) / d]; },
+    exp: (p) => [Math.exp(p[0]) * Math.cos(p[1]), Math.exp(p[0]) * Math.sin(p[1])],
+    sin: (p) => [Math.sin(p[0]) * Math.cosh(p[1]), Math.cos(p[0]) * Math.sinh(p[1])],
+    cos: (p) => [Math.cos(p[0]) * Math.cosh(p[1]), -Math.sin(p[0]) * Math.sinh(p[1])],
+    sqrtGood: (p) => { const r = Math.hypot(p[0], p[1]), s = Math.sqrt((r + p[0]) / 2); return [s, p[1] / (2 * s)]; },
+    sqrtBad: (p) => { const r = Math.hypot(p[0], p[1]); return [Math.sqrt((r + p[0]) / 2), Math.sign(p[1]) * Math.sqrt(Math.max(0, r - p[0]) / 2)]; },
+  };
+  let bad = false;
+  const PRE = {
+    st: {
+      f: (x) => Math.exp(x) / Math.sqrt(Math.sin(x) ** 3 + Math.cos(x) ** 3),
+      z: (p) => { const s = Z.sin(p), c = Z.cos(p), g = Z.add(Z.mul(Z.mul(s, s), s), Z.mul(Z.mul(c, c), c)); return Z.div(Z.exp(p), (bad ? Z.sqrtBad : Z.sqrtGood)(g)); },
+      d: (x) => { const s = Math.sin(x), c = Math.cos(x), g = s ** 3 + c ** 3, gp = 3 * s * s * c - 3 * c * c * s; return Math.exp(x) / Math.sqrt(g) * (1 - gp / (2 * g)); },
+      x: 1.5,
+    },
+    exp: { f: Math.exp, z: Z.exp, d: Math.exp, x: 1 },
+    rat: { f: (x) => 1 / (1 + x * x), z: (p) => Z.div([1, 0], Z.add([1, 0], Z.mul(p, p))), d: (x) => -2 * x / (1 + x * x) ** 2, x: 0.7 },
+  };
+  let pre = PRE.st, k = 8;
+  const FL = 1e-17;
+  let data;
+  const compute = () => {
+    const x = pre.x, ex = pre.d(x), fw = [], ct = [], cs = [];
+    for (let j = 0; j <= 160; j++) {
+      const h = Math.pow(10, -j / 8);
+      fw.push([h, Math.max(FL, Math.abs(((pre.f(x + h) - pre.f(x)) / h - ex) / ex))]);
+      ct.push([h, Math.max(FL, Math.abs(((pre.f(x + h) - pre.f(x - h)) / (2 * h) - ex) / ex))]);
+      cs.push([h, Math.max(FL, Math.abs((pre.z([x, h])[1] / h - ex) / ex))]);
+    }
+    data = { fw, ct, cs, ex };
+  };
+  const cv = MB.canvas("#df-cs-cv", (ctx, w, h) => {
+    if (!data) return;
+    const C = MB.palette(), hh = Math.pow(10, -k);
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [1e-20, 1], y: [1e-17, 10], logX: true, logY: true, xLabel: "간격 h", yLabel: "상대 오차",
+      xTicks: [1e-20, 1e-16, 1e-12, 1e-8, 1e-4, 1], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [{ data: data.fw, color: C.bad, width: 1.6 }, { data: data.ct, color: C.accent2, width: 1.8 }, { data: data.cs, color: C.ok, width: 2.4 }],
+      vlines: [{ x: hh, color: C.dim, label: "h = 10⁻" + k }],
+    });
+  }, { aspect: 0.6, minHeight: 270, maxHeight: 440 });
+  const update = () => {
+    compute(); cv.redraw();
+    const x = pre.x, h = Math.pow(10, -k), ex = data.ex;
+    const c = (pre.f(x + h) - pre.f(x - h)) / (2 * h), z = pre.z([x, h])[1] / h;
+    MB.stat("df-cs-ex", ex.toPrecision(15));
+    MB.stat("df-cs-c", c.toPrecision(12) + " <small>(" + DF.sci(Math.abs((c - ex) / ex), 1) + ")</small>");
+    MB.stat("df-cs-z", z.toPrecision(15) + " <small>(" + DF.sci(Math.abs((z - ex) / ex), 1) + ")</small>");
+  };
+  MB.range("df-cs-k", (v) => String(v), (v) => { k = v; update(); });
+  MB.check("df-cs-bad", (v) => { bad = v; update(); });
+  document.getElementById("df-cs-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  update();
+})();
+
+/* ================================================================ 7. 이중수 전진 모드 */
+(function () {
+  /* 이중수 [값, 도함수] 연산 */
+  const D = {
+    add: (a, b) => [a[0] + b[0], a[1] + b[1]], mul: (a, b) => [a[0] * b[0], a[1] * b[0] + a[0] * b[1]],
+    div: (a, b) => [a[0] / b[0], (a[1] * b[0] - a[0] * b[1]) / (b[0] * b[0])],
+    sin: (a) => [Math.sin(a[0]), Math.cos(a[0]) * a[1]], exp: (a) => [Math.exp(a[0]), Math.exp(a[0]) * a[1]],
+    sqrt: (a) => [Math.sqrt(a[0]), a[1] / (2 * Math.sqrt(a[0]))], sq: (a) => [a[0] * a[0], 2 * a[0] * a[1]],
+    scale: (a, c) => [c * a[0], c * a[1]], plus1: (a) => [a[0] + 1, a[1]],
+  };
+  /* 프로그램: [라벨, 연산 함수(v 배열) → 이중수, 규칙 설명 함수] */
+  const F = {
+    a: { prog: [
+        ["x", (v, x) => [x, 1], () => "시작: ẋ = 1"],
+        ["sin v₁", (v) => D.sin(v[0]), (v) => "cos v₁ · v̇₁"],
+        ["v₁ · v₂", (v) => D.mul(v[0], v[1]), () => "v̇₁v₂ + v₁v̇₂"],
+        ["exp v₁", (v) => D.exp(v[0]), () => "e<sup>v₁</sup> · v̇₁"],
+        ["v₃ + v₄", (v) => D.add(v[2], v[3]), () => "v̇₃ + v̇₄"]],
+      ex: (x) => Math.sin(x) + x * Math.cos(x) + Math.exp(x), f: (x) => x * Math.sin(x) + Math.exp(x), y: [-2, 14] },
+    b: { prog: [
+        ["x", (v, x) => [x, 1], () => "시작: ẋ = 1"],
+        ["v₁²", (v) => D.sq(v[0]), () => "2v₁ · v̇₁"],
+        ["sin v₂", (v) => D.sin(v[1]), () => "cos v₂ · v̇₂"],
+        ["1 + v₂", (v) => D.plus1(v[1]), () => "v̇₂"],
+        ["v₃ / v₄", (v) => D.div(v[2], v[3]), () => "(v̇₃v₄ − v₃v̇₄) / v₄²"]],
+      ex: (x) => (2 * x * Math.cos(x * x) * (1 + x * x) - Math.sin(x * x) * 2 * x) / (1 + x * x) ** 2, f: (x) => Math.sin(x * x) / (1 + x * x), y: [-1.5, 3] },
+    c: { prog: [
+        ["x", (v, x) => [x, 1], () => "시작: ẋ = 1"],
+        ["v₁²", (v) => D.sq(v[0]), () => "2v₁ · v̇₁"],
+        ["1 + v₂", (v) => D.plus1(v[1]), () => "v̇₂"],
+        ["√v₃", (v) => D.sqrt(v[2]), () => "v̇₃ / (2√v₃)"],
+        ["−v₁ / 2", (v) => D.scale(v[0], -0.5), () => "−v̇₁ / 2"],
+        ["exp v₅", (v) => D.exp(v[4]), () => "e<sup>v₅</sup> · v̇₅"],
+        ["v₄ · v₆", (v) => D.mul(v[3], v[5]), () => "v̇₄v₆ + v₄v̇₆"]],
+      ex: (x) => Math.exp(-x / 2) * (x / Math.sqrt(1 + x * x) - 0.5 * Math.sqrt(1 + x * x)), f: (x) => Math.sqrt(1 + x * x) * Math.exp(-x / 2), y: [-1.5, 5.5] },
+  };
+  let fn = F.a, x = 1, shown = 1;
+  const run = (xx) => { const v = []; fn.prog.forEach((p) => v.push(p[1](v, xx))); return v; };
+  const evalAt = (j, xx) => run(xx)[j][0];
+  const cols = () => { const C = MB.palette(); return [C.faint, C.warn, C.ok, C.accent2, C.blue, C.bad, C.accent]; };
+  const pl = MB.plane("#df-du-cv", {
+    x: [-2.6, 2.6], y: fn.y, aspect: 0.6, minHeight: 240,
+    draw(P) {
+      const C = P.P, cs = cols(), v = run(x);
+      for (let j = 1; j < Math.min(shown, fn.prog.length - 1); j++) P.curve((t) => evalAt(j, t), { color: cs[j % cs.length], width: 1.3, dash: [4, 3] });
+      P.curve(fn.f, { color: C.dim, width: 2.2 });
+      const j = Math.min(shown, fn.prog.length) - 1, cur = v[j];
+      if (j > 0) P.curve((t) => evalAt(j, t), { color: C.accent, width: 2.6 });
+      P.line(x - 0.8, cur[0] - 0.8 * cur[1], x + 0.8, cur[0] + 0.8 * cur[1], { color: C.bad, width: 2.4 });
+      P.dot(x, cur[0], { r: 5, color: C.accent });
+      P.text("v" + "₁₂₃₄₅₆₇"[j] + "(x), 기울기 v̇" + "₁₂₃₄₅₆₇"[j], x + 0.1, cur[0], { color: C.accent, dy: -14, size: 12 });
+    },
+  });
+  const update = () => {
+    const v = run(x); let tb = "";
+    fn.prog.forEach((p, j) => {
+      if (j >= shown) return;
+      tb += `<tr class="${j === shown - 1 ? "cur" : ""}"><td>v${"₁₂₃₄₅₆₇"[j]}</td><td>${p[0]}</td><td>${DF.num(v[j][0], 6)}</td><td>${DF.num(v[j][1], 6)} <small>${p[2]()}</small></td></tr>`;
+    });
+    document.getElementById("df-du-tb").innerHTML = tb;
+    const done = shown >= fn.prog.length, last = v[v.length - 1];
+    MB.stat("df-du-ad", done ? last[1].toPrecision(15) : "…");
+    MB.stat("df-du-ex", fn.ex(x).toPrecision(15));
+    const h = 1e-5, cd = (fn.f(x + h) - fn.f(x - h)) / (2 * h);
+    MB.stat("df-du-cd", DF.sci(cd - fn.ex(x), 2));
+    document.getElementById("df-du-next").disabled = done;
+    pl.redraw();
+  };
+  MB.range("df-du-x", (v) => v.toFixed(2), (v) => { x = v; update(); });
+  document.getElementById("df-du-f").addEventListener("change", (e) => { fn = F[e.target.value]; shown = 1; pl.view({ y: fn.y }); update(); });
+  document.getElementById("df-du-next").addEventListener("click", () => { shown = Math.min(fn.prog.length, shown + 1); update(); });
+  document.getElementById("df-du-all").addEventListener("click", () => { shown = fn.prog.length; update(); });
+  document.getElementById("df-du-reset").addEventListener("click", () => { shown = 1; update(); });
+  shown = 3; update();
+})();
+
+/* ================================================================ 8. 후진 모드 */
+(function () {
+  let x1 = 2, x2 = 5, step = 0;
+  /* 노드: id, 라벨, 위치(0..1), 부모 */
+  const N = [
+    { k: "x1", lab: "x₁", p: [0.12, 0.2] }, { k: "x2", lab: "x₂", p: [0.12, 0.8] },
+    { k: "v1", lab: "v₁ = ln x₁", p: [0.42, 0.12] }, { k: "v2", lab: "v₂ = x₁x₂", p: [0.42, 0.5] }, { k: "v3", lab: "v₃ = sin x₂", p: [0.42, 0.88] },
+    { k: "v4", lab: "v₄ = v₁ + v₂", p: [0.68, 0.3] }, { k: "f", lab: "f = v₄ − v₃", p: [0.88, 0.6] },
+  ];
+  const E = [["x1", "v1"], ["x1", "v2"], ["x2", "v2"], ["x2", "v3"], ["v1", "v4"], ["v2", "v4"], ["v4", "f"], ["v3", "f"]];
+  const FWD = ["x1", "x2", "v1", "v2", "v3", "v4", "f"], BWD = ["f", "v4", "v3", "v1", "v2", "x2", "x1"];
+  const TOTAL = FWD.length + BWD.length;
+  const vals = () => { const v1 = Math.log(x1), v2 = x1 * x2, v3 = Math.sin(x2), v4 = v1 + v2; return { x1, x2, v1, v2, v3, v4, f: v4 - v3 }; };
+  const adj = () => ({ f: 1, v4: 1, v3: -1, v1: 1, v2: 1, x2: x1 - Math.cos(x2), x1: 1 / x1 + x2 });
+  const NOTE = {
+    f: "f̄ = ∂f/∂f = 1에서 출발", v4: "v̄₄ = f̄ · ∂f/∂v₄ = 1", v3: "v̄₃ = f̄ · ∂f/∂v₃ = −1", v1: "v̄₁ = v̄₄ · 1", v2: "v̄₂ = v̄₄ · 1",
+    x2: "x̄₂ = v̄₂ · x₁ + v̄₃ · cos x₂ (두 경로의 합)", x1: "x̄₁ = v̄₁ / x₁ + v̄₂ · x₂ (두 경로의 합)",
+  };
+  const cv = MB.canvas("#df-rv-cv", (ctx, w, h) => {
+    const C = MB.palette(), V = vals(), A = adj(), small = w < 520;
+    const pos = (n) => [20 + n.p[0] * (w - 40), 18 + n.p[1] * (h - 50)];
+    const byK = {}; N.forEach((n) => (byK[n.k] = n));
+    const fdone = new Set(FWD.slice(0, Math.min(step, FWD.length))), bdone = new Set(BWD.slice(0, Math.max(0, step - FWD.length)));
+    const curF = step >= 1 && step <= FWD.length ? FWD[step - 1] : null, curB = step > FWD.length ? BWD[step - FWD.length - 1] : null;
+    E.forEach(([a, b]) => {
+      const [ax, ay] = pos(byK[a]), [bx, by] = pos(byK[b]);
+      const back = bdone.has(b) && (curB === a);
+      ctx.strokeStyle = back ? C.accent2 : fdone.has(b) ? C.dim : C.faint; ctx.lineWidth = back ? 3 : 1.5;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      const t = 0.62, mx = ax + (bx - ax) * t, my = ay + (by - ay) * t, an = Math.atan2(by - ay, bx - ax);
+      ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.moveTo(mx + 7 * Math.cos(an), my + 7 * Math.sin(an)); ctx.lineTo(mx - 6 * Math.cos(an - 0.5), my - 6 * Math.sin(an - 0.5)); ctx.lineTo(mx - 6 * Math.cos(an + 0.5), my - 6 * Math.sin(an + 0.5)); ctx.fill();
+    });
+    N.forEach((n) => {
+      const [x, y] = pos(n), bw = small ? 78 : 118, bh = small ? 40 : 44;
+      const cur = n.k === curF || n.k === curB;
+      ctx.fillStyle = C.surface; ctx.strokeStyle = cur ? C.accent : fdone.has(n.k) ? C.dim : C.border; ctx.lineWidth = cur ? 2.6 : 1.3;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - bw / 2, y - bh / 2, bw, bh, 8) : ctx.rect(x - bw / 2, y - bh / 2, bw, bh); ctx.fill(); ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = C.text; ctx.font = DF.font(small ? 10.5 : 12.5);
+      ctx.fillText(small ? n.lab.split(" =")[0] : n.lab, x, y - 9);
+      ctx.font = DF.font(small ? 10.5 : 12, true); ctx.fillStyle = fdone.has(n.k) ? C.accent : C.faint;
+      ctx.fillText(fdone.has(n.k) ? DF.num(V[n.k], small ? 3 : 4) : "?", x, y + 9);
+      if (bdone.has(n.k)) { ctx.fillStyle = C.accent2; ctx.font = DF.font(small ? 10.5 : 12); ctx.fillText((n.k === "f" ? "∂f/∂f" : "∂f/∂" + n.lab.split(" =")[0]) + " = " + DF.num(A[n.k], small ? 3 : 4), x, y + bh / 2 + 10); }
+    });
+  }, { aspect: (w) => (w < 520 ? 0.95 : 0.6), minHeight: 280, maxHeight: 440 });
+  const msg = document.getElementById("df-rv-msg");
+  const update = () => {
+    const V = vals(), A = adj();
+    if (step === 0) msg.innerHTML = "'다음 단계'를 누르면 전진 패스가 시작됩니다. 입력에서 출력으로 값을 계산하고 그래프에 저장합니다.";
+    else if (step <= FWD.length) msg.innerHTML = `전진 ${step}/${FWD.length}: <b>${N.find((n) => n.k === FWD[step - 1]).lab}</b> = ${DF.num(V[FWD[step - 1]], 6)}`;
+    else { const k = BWD[step - FWD.length - 1]; msg.innerHTML = `후진 ${step - FWD.length}/${BWD.length}: <b>${NOTE[k]}</b> = ${DF.num(A[k], 6)}`; }
+    const done = step >= TOTAL;
+    MB.stat("df-rv-f", step >= FWD.length ? DF.num(V.f, 6) : "…");
+    MB.stat("df-rv-g1", done ? DF.num(A.x1, 6) : "…");
+    MB.stat("df-rv-g2", step >= TOTAL - 1 ? DF.num(A.x2, 6) : "…");
+    MB.stat("df-rv-ex", DF.num(1 / x1 + x2, 6) + ", " + DF.num(x1 - Math.cos(x2), 6));
+    document.getElementById("df-rv-next").disabled = done;
+    cv.redraw();
+  };
+  MB.range("df-rv-a", (v) => v.toFixed(1), (v) => { x1 = v; update(); });
+  MB.range("df-rv-b", (v) => v.toFixed(1), (v) => { x2 = v; update(); });
+  document.getElementById("df-rv-next").addEventListener("click", () => { step = Math.min(TOTAL, step + 1); update(); });
+  document.getElementById("df-rv-reset").addEventListener("click", () => { step = 0; update(); });
+  step = 9; update();
+})();
+</script>
+</body>
+</html>

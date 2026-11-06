@@ -1,0 +1,1352 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>미분방정식의 수치 해법 · NumericalBook</title>
+<meta name="description" content="일단계 방법의 일관성·안정성·수렴, 부처 표와 룽게–쿠타 차수 조건, 임베디드 쌍의 오차 제어, 애덤스 예측–수정, 안정성 영역과 A-안정, 강성 문제와 BDF, 스퇴르머–베를레의 장기 에너지, 슈팅과 유한 차분 경계값 문제.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .od-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .od-two > div { position: relative; min-width: 0; }
+  .od-two > div + div { border-top: 1px solid var(--border); }
+  .od-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .od-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .od-msg b { color: var(--text); }
+  .od-msg.ok { color: var(--ok); font-weight: 600; }
+  .od-msg.bad { color: var(--bad); font-weight: 600; }
+  .od-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .od-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .od-tbl td, .od-tbl th { font-family: var(--mono); text-align: right; }
+  .od-tbl td:first-child, .od-tbl th:first-child { text-align: left; font-family: inherit; }
+  .od-tw { max-height: 230px; overflow: auto; border-top: 1px solid var(--border); }
+  .od-tw table { width: 100%; border-collapse: collapse; font: 12.5px var(--mono); }
+  .od-tw th, .od-tw td { padding: 4px 10px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .od-tw th { position: sticky; top: 0; background: var(--bg-elev); color: var(--text-dim); font-weight: 600; }
+  .od-tab { display: grid; grid-template-columns: 44px repeat(4, minmax(0, 1fr)); gap: 4px; align-items: center; font: 12.5px var(--mono); }
+  .od-tab input { width: 100%; min-width: 0; font: 12.5px var(--mono); text-align: center; padding: 4px 2px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .od-tab input:disabled { opacity: 0.35; }
+  .od-tab .od-c { color: var(--text-dim); text-align: right; padding-right: 4px; border-right: 2px solid var(--text-dim); }
+  .od-tab .od-bline { border-top: 2px solid var(--text-dim); padding-top: 4px; }
+  .od-cond { list-style: none; margin: 0; padding: 8px 18px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 14px; font: 12.5px var(--mono); color: var(--text-dim); }
+  .od-cond li.ok::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+  .od-cond li.no::before { content: "✗ "; color: var(--bad); font-weight: 700; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="ode-solvers">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 11</div>
+    <h1 data-no-glossary>미분방정식의 수치 해법</h1>
+    <p class="lead"><a href="../../ode/chapters/numerical.html">ODEBook 5장</a>에서 오일러·호인·RK4, 내장 쌍의 걸음 조절, 안정성 영역, 음적 오일러, 심플렉틱 오일러를 만났습니다. 이 장은 그 도구들을 <b>설계하고 검증하는</b> 쪽에서 다시 봅니다. 왜 "일관성 + 안정성 = 수렴"인지, 부처 표 한 장으로 룽게–쿠타 방법을 정의하고 차수 조건을 확인하는 법, 지난 걸음의 기울기를 재활용하는 다단계 방법(애덤스·BDF), 다단계 방법의 안정성 영역과 달퀴스트 장벽, 강성 문제에서 매 걸음 뉴턴 반복을 돌리는 실제 구현, 수백만 걸음 동안 에너지를 지키는 스퇴르머–베를레, 그리고 끝 조건이 주어진 경계값 문제를 다룹니다. 이 장의 공통 언어는 <b>차수 p, 안정성 영역, 그리고 f 계산 횟수</b>입니다.</p>
+    <ul class="objectives">
+      <li>일단계·다단계 방법의 일관성, 영 안정성(근 조건), 수렴을 정의하고 "일관성 + 안정성 ⇔ 수렴"의 뜻을 예로 설명한다.</li>
+      <li>부처 표로 명시적 룽게–쿠타 방법을 정의하고, 4차까지의 차수 조건을 손으로 확인하며, 로그–로그 기울기로 검증한다.</li>
+      <li>임베디드 쌍의 오차 추정, 허용 오차의 척도(atol·rtol), 걸음 조절 공식과 안전 계수를 구현 수준에서 안다.</li>
+      <li>애덤스–배시포스·애덤스–몰턴을 보간 다항식의 적분으로 유도하고, 예측–수정(PECE)의 비용과 정확도를 비교한다.</li>
+      <li>선형 다단계 방법의 안정성 영역을 그리고, A-안정·A(α)-안정과 달퀴스트 제2 장벽의 의미를 안다.</li>
+      <li>BDF와 뉴턴 반복으로 강성 문제(로버트슨 반응)를 풀고, 명시적 방법과 걸음 수를 비교한다.</li>
+      <li>스퇴르머–베를레가 위상 공간의 넓이를 보존하고 에너지 오차를 유계로 묶는 이유를 안다.</li>
+      <li>경계값 문제를 슈팅(할선법)과 유한 차분(뉴턴 + 삼중대각 풀이)으로 푼다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>회로 시뮬레이터와 화학 반응 모델</b></div>
+      <div class="o-body"><p>칩 설계자는 실리콘을 굽기 전에 수만 개의 트랜지스터가 얽힌 회로의 과도 응답을 시뮬레이션합니다. 연소 엔진이나 대기 화학 모델에는 나노초 단위로 끝나는 반응과 몇 시간에 걸친 반응이 한 방정식 안에 섞여 있습니다. 이런 방정식은 RK4로 돌리면 걸음 폭이 가장 빠른 시상수에 묶여 사실상 끝나지 않습니다. 해결책은 1950년대에 커티스<span class="en">(C. F. Curtiss)</span>와 허시펠더<span class="en">(J. O. Hirschfelder)</span>가 화학 반응 계산에서 제안한 후방 차분 공식(BDF)이었고, 기어<span class="en">(C. W. Gear)</span>가 1970년대 초에 차수와 걸음을 함께 바꾸는 실용 프로그램으로 만들었습니다. 오늘날 SPICE 계열 회로 시뮬레이터, MATLAB의 <code>ode15s</code>, SciPy의 <code>BDF</code>가 모두 이 계보에 있습니다.</p>
+        <div class="o-chain"><span>y′ = f(t, y), 강성</span><i>→</i><span>음적 공식 + 뉴턴 반복</span><i>→</i><span class="tool">BDF: Σ αⱼ yₙ₊ⱼ = h β f(yₙ₊ₖ)</span><i>→</i><span>회로·반응·격자 PDE</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="convergence">
+    <h2>일관성 + 안정성 = 수렴</h2>
+    <div class="problem"><strong>3차 정확한 공식이 왜 터지는가</strong>
+      <p>두 걸음짜리 명시적 공식 \(y_{n+2} + 4y_{n+1} - 5y_n = h(4f_{n+1} + 2f_n)\)을 생각해 봅시다. 테일러 전개로 확인하면 국소 절단 오차가 \(O(h^4)\), 즉 <b>3차</b> 정확합니다. 애덤스–배시포스 2단계(2차)보다 한 차수 높고 계산량은 같습니다. 그런데 \(y' = -y\)에 \(h = 0.1\)로 돌리면 \(y(1)\)의 오차가 7, \(h = 0.05\)로 줄이면 \(4.7\times10^{6}\)입니다. 걸음을 줄일수록 더 틀립니다. 무엇이 빠졌을까요?</p></div>
+    <p>ODEBook 5장의 정리 5.3은 오일러 방법에 대해 "국소 오차 \(O(h^2)\)가 쌓여 전역 오차 \(O(h)\)"라는 것을 보였습니다. 그 증명에서 몰래 쓴 성질이 하나 있습니다. 앞선 오차가 다음 걸음에서 많아야 \(1 + hL\)배로 커진다는 것, 곧 <b>오차가 걸음마다 폭발하지 않는다는 성질</b>입니다. 수렴하려면 이것과 "한 걸음이 맞다"는 성질이 둘 다 필요합니다.</p>
+    <div class="callout deep"><strong>정의 11.1 (일관성·차수, 일단계 방법)</strong> 일단계 방법을 \(y_{n+1} = y_n + h\,\Phi(t_n, y_n; h)\)로 쓰자(\(\Phi\)를 <span class="term">증분 함수</span><span class="en">(increment function)</span>라 한다). 참 해 \(y(t)\)를 대입했을 때 남는 양
+      <div class="formula">$$\tau_{n+1} = \frac{y(t_{n+1}) - y(t_n)}{h} - \Phi(t_n, y(t_n); h)$$</div>
+      를 (단위 걸음당) 국소 절단 오차라 한다. \(h \to 0\)에서 \(\tau \to 0\)이면 <span class="term">일관성</span><span class="en">(consistency)</span>이 있다고 하고, \(\tau = O(h^p)\)이면 p차라 한다. 일관성은 \(\Phi(t, y; 0) = f(t, y)\)와 같다.</div>
+    <div class="callout deep"><strong>정리 11.2 (일단계 방법의 수렴)</strong> \(\Phi\)가 \(y\)에 대해 립시츠 상수 \(L_\Phi\)를 가지고 방법이 p차로 일관적이면, 유한 구간 \([t_0, T]\)에서 전역 오차는
+      <div class="formula">$$\max_n |y(t_n) - y_n| \le \frac{e^{L_\Phi (T - t_0)} - 1}{L_\Phi}\,\max_n|\tau_n| = O(h^p).$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(E_{n+1} = E_n + h\bigl(\Phi(y(t_n)) - \Phi(y_n)\bigr) + h\tau_{n+1}\)이므로 \(|E_{n+1}| \le (1 + hL_\Phi)|E_n| + h|\tau|\). 오일러 때와 똑같이 등비급수로 더하면 된다. 룽게–쿠타 방법의 \(\Phi\)는 \(f\)를 유한 번 합성한 것이라 \(f\)가 립시츠이면 \(\Phi\)도 립시츠다. 따라서 <b>일단계 방법은 일관적이기만 하면 언제나 수렴한다</b>. ∎</p></div>
+    <p>다단계 방법은 사정이 다릅니다. \(k\)단계 <span class="term">선형 다단계 방법</span><span class="en">(linear multistep method)</span>은</p>
+    <div class="formula">$$\sum_{j=0}^{k} \alpha_j\, y_{n+j} = h \sum_{j=0}^{k} \beta_j\, f_{n+j}, \qquad f_{n+j} = f(t_{n+j}, y_{n+j}),\quad \alpha_k = 1$$
+      <div class="where">\(\beta_k = 0\)이면 명시적, \(\beta_k \ne 0\)이면 음적이다. 특성 다항식 \(\rho(\zeta) = \sum \alpha_j\zeta^j\), \(\sigma(\zeta) = \sum\beta_j\zeta^j\)로 방법을 요약한다.</div></div>
+    <p>꼴이고, 다음 값이 <b>\(k\)개의 이전 값</b>으로 정해지는 차분 방정식입니다. \(h = 0\)으로 두면 \(\sum\alpha_j y_{n+j} = 0\), 해는 \(\rho\)의 근 \(\zeta_i\)에 대해 \(\zeta_i^n\) 꼴입니다. 참 해에 해당하는 근은 \(\zeta = 1\)(일관성 조건 \(\rho(1) = 0\))이고 나머지는 계산이 만들어 낸 <b>기생 해</b>입니다. 반올림 오차나 출발값 오차가 이 기생 해를 조금이라도 깨우면, \(|\zeta_i| > 1\)일 때 그것이 \(|\zeta_i|^n\)으로 자랍니다. \(n = (T - t_0)/h\)이므로 걸음을 줄일수록 <b>더 많이</b> 자랍니다.</p>
+    <div class="callout deep"><strong>정의 11.3 (근 조건과 영 안정성)</strong> \(\rho(\zeta)\)의 모든 근이 \(|\zeta| \le 1\)이고, \(|\zeta| = 1\)인 근은 모두 단근이면 방법이 <span class="term">근 조건</span><span class="en">(root condition)</span>을 만족한다고 하고, 이런 방법을 <span class="term">영 안정</span><span class="en">(zero-stable)</span>이라 한다. 일단계 방법은 \(\rho(\zeta) = \zeta - 1\)이라 언제나 영 안정이다.</div>
+    <div class="callout deep"><strong>정리 11.4 (달퀴스트 동등성 정리)</strong> 출발값 오차가 \(h \to 0\)에서 0으로 가는 선형 다단계 방법이 수렴할 필요충분조건은 <b>일관성과 영 안정성</b>이다. 또한 영 안정인 \(k\)단계 방법의 차수는 \(k\)가 홀수면 \(k + 1\), 짝수면 \(k + 2\)를 넘지 못하고, 명시적이면 \(k\)를 넘지 못한다(달퀴스트 제1 장벽).</div>
+    <p>이 "일관성 + 안정성 ⇔ 수렴"은 수치해석 전체를 꿰는 원리입니다. 16장에서 편미분방정식의 격자 방법에 대해 같은 모양의 <b>랙스 동등성 정리</b>를 다시 만납니다(<a href="pde-numerics.html">16장</a>). 문제 상자의 공식은 \(\rho(\zeta) = \zeta^2 + 4\zeta - 5 = (\zeta - 1)(\zeta + 5)\)이라 기생 근 \(-5\)가 있습니다. 2단계 명시적 공식이 3차라는 것 자체가 제1 장벽(명시적이면 차수 ≤ 2)을 넘었으니, 영 안정일 수가 없었던 것입니다.</p>
+    <div class="callout"><strong>예제 11.1 (기생 근이 깨어나는 속도)</strong> \(y' = -y\), \(y(0) = 1\), \(h = 0.1\), 출발값 \(y_1 = e^{-0.1}\)(정확한 값)으로 문제 상자의 공식을 돌려라.
+      <ol>
+        <li>\(f = -y\)를 넣어 정리하면 \(y_{n+2} = -4.4\,y_{n+1} + 4.8\,y_n\).</li>
+        <li>\(y_2 = -4.4(0.904837) + 4.8(1) = 0.818715\). 참값 \(e^{-0.2} = 0.818731\), 오차 \(-1.5\times10^{-5}\). 3차 공식답게 아주 정확하다.</li>
+        <li>그런데 오차가 \(5.4\times10^{-5},\ -3.2\times10^{-4},\ 1.7\times10^{-3},\ -8.9\times10^{-3},\ 4.7\times10^{-2}\)로 부호를 바꾸며 걸음마다 약 5.3배씩 커진다. \(h\lambda = -0.1\)에서 기생 근은 \(-5\) 근처의 \(-5.3\)이다.</li>
+        <li>\(t = 1\)까지 10걸음이면 오차 약 7, \(h = 0.05\)면 20걸음이라 \(4.7\times10^{6}\), \(h = 0.025\)면 \(2.9\times10^{19}\). 같은 조건에서 애덤스–배시포스 2단계의 오차는 \(1.46\times10^{-3},\ 3.75\times10^{-4},\ 9.48\times10^{-5}\)으로 \(h^2\)에 비례해 준다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-od-zero">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>영 안정성: 걸음을 줄일수록 터지는 공식</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-zr-cv"></canvas><span class="od-cap">y′ = −y의 수치 해 (점) vs 참 해 e^(−t)</span></div>
+          <div><canvas id="od-zr-rt"></canvas><span class="od-cap">ρ(ζ)의 근과 단위원</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="od-zr-m"><button data-value="ab2" class="on">AB2</button><button data-value="bad">불안정 3차</button><button data-value="leap">도약(중점 2단계)</button></div></div>
+          <label class="ctrl"><span>걸음 폭 h <output id="od-zr-h-out"></output></span><input type="range" id="od-zr-h"></label>
+          <label class="ctrl"><span>출발값 y₁의 교란 <output id="od-zr-d-out"></output></span><input type="range" id="od-zr-d"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ρ(ζ)의 근</span><span class="v" id="od-zr-r">—</span></div>
+        <div class="stat"><span class="k">걸음 수 N</span><span class="v" id="od-zr-n">—</span></div>
+        <div class="stat"><span class="k">|오차| at t = 3</span><span class="v" id="od-zr-e">—</span></div>
+      </div>
+      <div class="od-msg" id="od-zr-msg"></div>
+      <div class="sim-note">해볼 것: ① '불안정 3차'에서 h를 0.2 → 0.1 → 0.05로 줄이며 오차가 오히려 폭발하는 것을 보세요. 근 하나가 단위원 밖(−5)에 있습니다. ② 'AB2'는 기생 근이 0이라 h를 줄이면 오차가 4분의 1씩 줄어듭니다. ③ '도약' y<sub>n+2</sub> = y<sub>n</sub> + 2h f<sub>n+1</sub>은 근이 ±1로 영 안정이지만, λ &lt; 0에서는 기생 근이 −(1 + h)쯤이라 오래 돌리면 진동이 서서히 자랍니다(약한 불안정). 모델: 출발값 y₀ = 1, y₁ = e<sup>−h</sup>(1 + 교란), t ∈ [0, 3].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="butcher">
+    <h2>룽게–쿠타 계열과 부처 표</h2>
+    <div class="problem"><strong>기울기 계산 네 번으로 4차, 그다음은?</strong>
+      <p>RK4는 기울기를 네 번 재서 4차를 얻습니다. 그럼 다섯 번 재면 5차가 될까요? 그렇지 않습니다. 5차를 얻으려면 최소 여섯 번이 필요합니다. 계수가 수십 개인 공식을 설계하고 검증하려면 공식을 적는 표준 형식과 차수를 확인하는 체계적인 조건이 필요합니다.</p></div>
+    <p>\(s\)단 명시적 룽게–쿠타 방법은 단계 기울기 \(k_i\)를 앞선 기울기의 조합으로 차례로 계산하고, 마지막에 가중 평균으로 걷습니다.</p>
+    <div class="callout deep"><strong>정의 11.5 (룽게–쿠타 방법과 부처 표)</strong>
+      <div class="formula">$$k_i = f\Bigl(t_n + c_i h,\ y_n + h\sum_{j=1}^{i-1} a_{ij}k_j\Bigr),\quad i = 1, \dots, s, \qquad y_{n+1} = y_n + h\sum_{i=1}^{s} b_i k_i.$$</div>
+      계수를 \(\begin{array}{c|c} \mathbf c & A \\ \hline & \mathbf b^{\mathsf T}\end{array}\) 꼴의 표로 적은 것을 <span class="term">부처 표</span><span class="en">(Butcher tableau)</span>라 한다. 명시적 방법은 \(A\)가 순하삼각(대각 포함 위쪽이 0)이다. 보통 \(c_i = \sum_j a_{ij}\)로 둔다(행 합 조건).</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="오일러, 중점법, RK4의 부처 표">
+        <rect x="10" y="10" width="740" height="210" rx="10" class="f-surface"/>
+        <g class="t-mono" style="font-size:14px">
+          <text x="60" y="40" class="t" style="font-weight:700">오일러</text>
+          <line x1="80" y1="56" x2="80" y2="112" class="s-line"/><line x1="54" y1="90" x2="130" y2="90" class="s-line"/>
+          <text x="64" y="78" class="t-mono">0</text><text x="96" y="78" class="t-mono">0</text><text x="96" y="110" class="t-mono">1</text>
+          <text x="200" y="40" class="t" style="font-weight:700">중점법</text>
+          <line x1="230" y1="56" x2="230" y2="140" class="s-line"/><line x1="200" y1="116" x2="320" y2="116" class="s-line"/>
+          <text x="206" y="78" class="t-mono">0</text><text x="206" y="104" class="t-mono">½</text>
+          <text x="246" y="104" class="t-mono">½</text>
+          <text x="246" y="136" class="t-mono">0</text><text x="282" y="136" class="t-mono">1</text>
+          <text x="400" y="40" class="t" style="font-weight:700">고전 RK4</text>
+          <line x1="430" y1="56" x2="430" y2="200" class="s-line"/><line x1="400" y1="174" x2="600" y2="174" class="s-line"/>
+          <text x="406" y="78" class="t-mono">0</text><text x="406" y="104" class="t-mono">½</text><text x="406" y="130" class="t-mono">½</text><text x="406" y="156" class="t-mono">1</text>
+          <text x="446" y="104" class="t-mono">½</text>
+          <text x="446" y="130" class="t-mono">0</text><text x="488" y="130" class="t-mono">½</text>
+          <text x="446" y="156" class="t-mono">0</text><text x="488" y="156" class="t-mono">0</text><text x="530" y="156" class="t-mono">1</text>
+          <text x="446" y="194" class="t-mono">⅙</text><text x="488" y="194" class="t-mono">⅓</text><text x="530" y="194" class="t-mono">⅓</text><text x="572" y="194" class="t-mono">⅙</text>
+        </g>
+        <text x="620" y="80" class="t-dim">왼쪽 열: cᵢ</text>
+        <text x="620" y="104" class="t-dim">(언제 재나)</text>
+        <text x="620" y="140" class="t-dim">가운데: aᵢⱼ</text>
+        <text x="620" y="164" class="t-dim">(어디서 재나)</text>
+        <text x="620" y="196" class="t-dim">아래: bᵢ (가중치)</text>
+      </svg>
+      <figcaption><b>그림 11-1.</b> 부처 표. \(i\)행은 \(k_i\)를 잴 시각 \(t_n + c_ih\)와, 그 점의 \(y\)를 만들 때 앞선 \(k_j\)에 곱할 계수 \(a_{ij}\)를 적는다. 맨 아래 행은 마지막 가중 평균의 가중치다.</figcaption>
+    </figure>
+    <p>차수 조건은 방법의 한 걸음과 참 해의 테일러 전개를 \(h\)의 거듭제곱별로 맞춘 것입니다. 스칼라 자율 방정식만 보면 조건이 실제보다 적게 보이므로, 부처는 연립 방정식의 전개에 나타나는 항을 <b>뿌리 있는 나무</b><span class="en">(rooted tree)</span>로 분류했습니다. 차수 \(q\)의 나무 하나가 조건 하나이고, 나무의 개수는 \(q = 1, 2, 3, 4, 5\)에서 1, 1, 2, 4, 9개입니다.</p>
+    <div class="callout deep"><strong>정리 11.6 (4차까지의 차수 조건)</strong> \(c_i = \sum_j a_{ij}\)일 때 명시적 룽게–쿠타 방법이 p차일 필요충분조건은 아래 표에서 차수 \(\le p\)인 조건이 모두 성립하는 것이다.
+      <div class="table-wrap"><table>
+        <thead><tr><th>차수</th><th>조건</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>\(\sum b_i = 1\)</td></tr>
+          <tr><td>2</td><td>\(\sum b_ic_i = \tfrac12\)</td></tr>
+          <tr><td>3</td><td>\(\sum b_ic_i^2 = \tfrac13,\quad \sum b_ia_{ij}c_j = \tfrac16\)</td></tr>
+          <tr><td>4</td><td>\(\sum b_ic_i^3 = \tfrac14,\ \ \sum b_ic_ia_{ij}c_j = \tfrac18,\ \ \sum b_ia_{ij}c_j^2 = \tfrac1{12},\ \ \sum b_ia_{ij}a_{jk}c_k = \tfrac1{24}\)</td></tr>
+        </tbody></table></div>
+      누적 조건 수는 p = 1, …, 8에서 1, 2, 4, 8, 17, 37, 85, 200개로 빠르게 늘어난다. 또한 <b>부처 장벽</b>에 따라 명시적 방법에서 \(s = p\)는 \(p \le 4\)까지만 가능하고, 5차는 6단, 6차는 7단, 7차는 9단이 필요하다.</div>
+    <div class="callout"><strong>예제 11.2 (고전 RK4가 4차임을 표로 확인)</strong> \(\mathbf b = (\tfrac16, \tfrac13, \tfrac13, \tfrac16)\), \(\mathbf c = (0, \tfrac12, \tfrac12, 1)\), \(a_{21} = a_{32} = \tfrac12\), \(a_{43} = 1\).
+      <ol>
+        <li>\(\sum b_i = \tfrac16 + \tfrac13 + \tfrac13 + \tfrac16 = 1\). \(\sum b_ic_i = \tfrac13\cdot\tfrac12 + \tfrac13\cdot\tfrac12 + \tfrac16 = \tfrac12\).</li>
+        <li>\(\sum b_ic_i^2 = \tfrac13\cdot\tfrac14\cdot 2 + \tfrac16 = \tfrac13\). \(\sum b_ia_{ij}c_j\): \(a_{32}c_2 = \tfrac14\), \(a_{43}c_3 = \tfrac12\)이므로 \(\tfrac13\cdot\tfrac14 + \tfrac16\cdot\tfrac12 = \tfrac16\).</li>
+        <li>\(\sum b_ic_i^3 = \tfrac23\cdot\tfrac18 + \tfrac16 = \tfrac14\). \(\sum b_ic_ia_{ij}c_j = \tfrac13\cdot\tfrac12\cdot\tfrac14 + \tfrac16\cdot 1\cdot\tfrac12 = \tfrac18\).</li>
+        <li>\(\sum b_ia_{ij}c_j^2 = \tfrac13\cdot\tfrac12\cdot\tfrac14 + \tfrac16\cdot\tfrac14 = \tfrac1{12}\). \(\sum b_ia_{ij}a_{jk}c_k\): 유일한 사슬 \(4 \to 3 \to 2\)가 \(\tfrac16\cdot 1\cdot\tfrac12\cdot\tfrac12 = \tfrac1{24}\).</li>
+        <li>여덟 조건이 모두 성립하므로 4차다. 5차 조건(9개 중 하나 \(\sum b_ic_i^4 = \tfrac15\))은 \(\tfrac23\cdot\tfrac1{16} + \tfrac16 = \tfrac5{24} \ne \tfrac15\)라 깨진다.</li>
+      </ol></div>
+    <div class="callout"><strong>예제 11.3 (쿠타 3차 한 걸음)</strong> 쿠타의 3차 방법 \(k_1 = f(t, y)\), \(k_2 = f(t + \tfrac h2, y + \tfrac h2k_1)\), \(k_3 = f(t + h, y - hk_1 + 2hk_2)\), \(y_{n+1} = y_n + \tfrac h6(k_1 + 4k_2 + k_3)\)로 \(y' = y^2\), \(y(0) = 1\), \(h = 0.1\)을 한 걸음 계산하라(참 해 \(1/(1 - t)\)).
+      <ol>
+        <li>\(k_1 = 1\), \(k_2 = (1.05)^2 = 1.1025\), \(k_3 = (1 - 0.1 + 0.2205)^2 = 1.1205^2 = 1.255520\).</li>
+        <li>\(y_1 = 1 + \tfrac{0.1}{6}(1 + 4.41 + 1.255520) = 1.1110920\). 참값 \(1.1111111\), 오차 \(-1.9\times10^{-5}\).</li>
+        <li>비교: 오일러 오차 \(-1.1\times10^{-2}\), RK4 오차 \(-6.2\times10^{-7}\). \(y' = f(t)\)이면 이 방법도 심프슨 공식이 된다(\(\mathbf b\)가 \(\tfrac16, \tfrac46, \tfrac16\)).</li>
+      </ol></div>
+    <p>아래 시뮬레이터에서 부처 표의 칸을 직접 고쳐 보세요. 분수(<code>1/6</code>)로 입력할 수 있고, 차수 조건이 하나씩 켜지고 꺼집니다. 그와 동시에 \(y' = y\cos t\)를 여러 걸음 폭으로 풀어 로그–로그 기울기를 측정합니다. 조건으로 예측한 차수와 측정한 기울기가 일치하는지가 핵심입니다.</p>
+
+    <div class="sim" id="sim-od-butcher">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>부처 표 → 방법 실행: 차수 조건과 측정 기울기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="od-bt-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>프리셋</span><select id="od-bt-pre">
+            <option value="euler">오일러 (1단)</option>
+            <option value="mid">중점법 (2단)</option>
+            <option value="heun">호인 (2단)</option>
+            <option value="ral">랄스턴 2차 (2단)</option>
+            <option value="k3">쿠타 3차 (3단)</option>
+            <option value="rk4" selected>고전 RK4 (4단)</option>
+            <option value="r38">3/8 규칙 (4단)</option>
+            <option value="bug">버그: k₂를 t에서 잼 (4단)</option>
+          </select></label>
+          <div class="ctrl"><span>부처 표: 왼쪽 열 c, 가운데 A, 아래 b</span>
+            <div class="od-tab" id="od-bt-tab"></div></div>
+        </div>
+      </div>
+      <ul class="od-cond" id="od-bt-cond"></ul>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">조건으로 본 차수</span><span class="v" id="od-bt-p">—</span></div>
+        <div class="stat"><span class="k">측정한 기울기</span><span class="v" id="od-bt-s">—</span></div>
+        <div class="stat"><span class="k">오차 (h = 1/16)</span><span class="v" id="od-bt-e">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① RK4에서 b₂를 1/3에서 0.3으로 바꾸면 ∑bᵢ = 1이 깨져 기울기가 0, 즉 수렴하지 않습니다. ② '버그' 프리셋은 c₂ = 0인데 a₂₁ = 1/2인 경우로, 비자율 방정식에서 차수가 1로 떨어집니다(행 합 조건 위반). ③ 3/8 규칙과 RK4는 다른 표인데 둘 다 기울기 4입니다. 모델: y′ = y cos t, y(0) = 1, t ∈ [0, 3], h = 2<sup>−1</sup> … 2<sup>−9</sup>. 기울기는 오차가 10<sup>−12</sup>보다 큰 점으로 최소제곱 맞춤. 시각 cᵢ는 행 합에서 자동으로 계산하지 않고 왼쪽 열에 적힌 값을 그대로 씁니다(그래서 버그를 흉내 낼 수 있습니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="embedded">
+    <h2>임베디드 룽게–쿠타와 오차 제어</h2>
+    <div class="problem"><strong>사용자는 h가 아니라 정확도를 말하고 싶다</strong>
+      <p>반데르폴 진동자 \(y'' - \mu(1 - y^2)y' + y = 0\)은 \(\mu = 5\)에서 천천히 기어가다 순식간에 뒤집히는 이완 진동을 합니다. 뒤집히는 구간에 맞춘 고정 \(h\)는 나머지 구간에서 낭비이고, 기어가는 구간에 맞춘 \(h\)는 뒤집히는 곳에서 틀립니다. 라이브러리는 <code>rtol=1e-6</code> 하나만 받고 나머지를 알아서 합니다. 그 "알아서"의 내부를 구현 수준에서 봅시다.</p></div>
+    <p>ODEBook 5장 6절은 내장 쌍의 원리를 소개했습니다. 같은 단계 기울기에 두 벌의 가중치 \(\mathbf b\)(p차)와 \(\hat{\mathbf b}\)(\(\hat p\)차)를 주면 추가 비용 없이 두 근사의 차이 \(\mathbf{e} = h\sum(b_i - \hat b_i)k_i\)가 낮은 쪽의 국소 오차 추정이 됩니다. 실제 구현에는 세 가지 결정이 더 들어갑니다.</p>
+    <ol>
+      <li><b>어느 쪽으로 걸을까.</b> 추정한 것은 낮은 차수 쪽 오차지만, 채택된 걸음은 높은 차수 쪽 값으로 진행합니다. 이것을 <span class="term">국소 외삽</span><span class="en">(local extrapolation)</span>이라 합니다. 도르만드–프린스 5(4)는 5차로, 보가키–샴핀 3(2)는 3차로 걷습니다.</li>
+      <li><b>오차를 무엇과 비교할까.</b> 성분마다 크기가 다르므로 척도 \(\mathrm{sc}_i = \mathrm{atol} + \mathrm{rtol}\cdot\max(|y_i|, |y_{n+1,i}|)\)로 나눈 노름 \(\mathrm{err} = \max_i |e_i| / \mathrm{sc}_i\)(또는 RMS)를 쓰고, \(\mathrm{err} \le 1\)이면 채택합니다.</li>
+      <li><b>다음 h는.</b> 국소 오차가 \(Ch^{q+1}\)(\(q = \min(p, \hat p)\))에 비례하므로 \(h_{\text{new}} = h\cdot\min\bigl(f_{\max},\ \max(f_{\min},\ 0.9\,\mathrm{err}^{-1/(q+1)})\bigr)\). 0.9는 안전 계수, \(f_{\min} = 0.2\), \(f_{\max} = 5\)는 한 번에 너무 크게 바뀌지 않게 하는 제한입니다.</li>
+    </ol>
+    <pre class="code"><span class="k">function</span> adaptive_rk(f, t0, y0, T, rtol, atol, tableau)
+  t ← t0;  y ← y0;  h ← 초기 추정        <span class="c">// 예: 0.01·|y0| / |f(t0, y0)|</span>
+  <span class="k">while</span> t &lt; T
+    h ← min(h, T − t)
+    k[1..s] ← 단계 기울기 (부처 표 A, c)
+    y_hi ← y + h·Σ bᵢ kᵢ                  <span class="c">// 높은 차수: 채택되면 이 값으로 진행</span>
+    e    ← h·Σ (bᵢ − b̂ᵢ) kᵢ               <span class="c">// 오차 추정 (추가 f 계산 없음)</span>
+    err  ← max over i of |eᵢ| / (atol + rtol·max(|yᵢ|, |y_hiᵢ|))
+    <span class="k">if</span> err ≤ 1 <span class="k">then</span>  t ← t + h;  y ← y_hi    <span class="c">// 채택</span>
+    <span class="k">end if</span>                                <span class="c">// 아니면 버리고 같은 t에서 다시</span>
+    h ← h · min(5, max(0.2, 0.9 · err^(−1/(q+1))))
+  <span class="k">end while</span></pre>
+    <div class="callout deep"><strong>정의 11.7 (허용 오차 비례성)</strong> 국소 오차를 걸음마다 \(\mathrm{tol}\) 이하로 맞추는 제어는 전역 오차를 직접 보장하지 않는다. 그러나 매끄러운 문제에서 전역 오차가 대략 \(\mathrm{tol}\)에 비례하면(tol을 10배 줄이면 전역 오차도 약 10배 준다) 그 구현이 <span class="term">허용 오차 비례성</span><span class="en">(tolerance proportionality)</span>을 가진다고 한다. 이때 걸음 수는 \(\mathrm{tol}^{-1/(q+1)}\)에 비례해 늘어나므로 차수가 높은 쌍일수록 엄격한 tol에서 유리하다.</div>
+    <div class="callout"><strong>예제 11.4 (보가키–샴핀 3(2) 한 걸음과 다음 h)</strong> \(y' = -2ty\), \(y(0) = 1\), \(h = 0.5\). 표: \(c = (0, \tfrac12, \tfrac34, 1)\), \(a_{21} = \tfrac12\), \(a_{32} = \tfrac34\), 3차 가중치 \((\tfrac29, \tfrac13, \tfrac49, 0)\), 2차 가중치 \((\tfrac7{24}, \tfrac14, \tfrac13, \tfrac18)\). \(k_4\)는 3차 결과에서 잰 기울기다.
+      <ol>
+        <li>\(k_1 = 0\), \(k_2 = f(0.25, 1) = -0.5\), \(k_3 = f(0.375,\ 1 + 0.375(-0.5)) = -0.75\cdot 0.8125 = -0.609375\).</li>
+        <li>3차: \(y_3 = 1 + 0.5(\tfrac13(-0.5) + \tfrac49(-0.609375)) = 0.781250\). \(k_4 = f(0.5, 0.78125) = -0.78125\).</li>
+        <li>2차: \(y_2 = 1 + 0.5(\tfrac14(-0.5) + \tfrac13(-0.609375) + \tfrac18(-0.78125)) = 0.787109\).</li>
+        <li>추정 \(|y_3 - y_2| = 5.86\times10^{-3}\). 참값 \(e^{-0.25} = 0.778801\)이므로 실제 오차는 3차 \(2.4\times10^{-3}\), 2차 \(8.3\times10^{-3}\). 추정값은 2차 쪽 오차의 크기를 제대로 잡는다.</li>
+        <li>\(\mathrm{tol} = 10^{-3}\)(절대)이면 \(\mathrm{err} = 5.86 > 1\): 버린다. 다음 시도 \(h = 0.9\cdot 0.5\cdot(10^{-3}/5.86\times10^{-3})^{1/3} = 0.250\). \(\mathrm{tol} = 10^{-2}\)이면 채택하고 다음 \(h = 0.538\).</li>
+        <li>이 쌍의 \(k_4\)는 다음 걸음의 \(k_1\)과 같다(FSAL: first same as last). 그래서 실제 비용은 걸음당 3회다.</li>
+      </ol></div>
+    <p>시뮬레이터는 세 쌍(호인–오일러 2(1), 보가키–샴핀 3(2), 도르만드–프린스 5(4))을 같은 문제에 돌립니다. 아래쪽 그래프는 tol을 \(10^{-3}\)에서 \(10^{-8}\)까지 바꾸며 얻은 <b>전역 오차 대 f 계산 횟수</b>, 이른바 작업–정밀도 그림입니다. 반데르폴(\(\mu = 5\), \(t \in [0, 20]\))에서 tol = \(10^{-6}\)이면 f 계산 횟수가 호인–오일러 36,944회, 보가키–샴핀 4,308회, 도르만드–프린스 1,960회이고(FSAL 절약은 세지 않음), 전역 오차는 각각 \(9.1\times10^{-7}\), \(2.9\times10^{-6}\), \(3.1\times10^{-7}\)입니다.</p>
+
+    <div class="sim" id="sim-od-adaptive">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>적응 간격 오차 제어: 세 임베디드 쌍의 걸음과 작업–정밀도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-ad-cv"></canvas><span class="od-cap">y₁(t)과 채택된 걸음 (× = 버린 시도)</span></div>
+          <div><canvas id="od-ad-hh"></canvas><span class="od-cap">걸음 폭 h(t), 로그 눈금</span></div>
+          <div><canvas id="od-ad-wp"></canvas><span class="od-cap">작업–정밀도: 전역 오차 vs f 계산 횟수</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="od-ad-pre">
+            <option value="vdp">반데르폴 μ = 5, t ∈ [0, 20]</option>
+            <option value="bru">브뤼셀레이터 A = 1, B = 3</option>
+            <option value="stf">y′ = −60(y − cos t), 약한 강성</option>
+          </select></label>
+          <div class="ctrl"><span>임베디드 쌍</span><div class="seg" id="od-ad-pair"><button data-value="he">HE 2(1)</button><button data-value="bs" class="on">BS 3(2)</button><button data-value="dp">DP 5(4)</button></div></div>
+          <label class="ctrl"><span>허용 오차 tol <output id="od-ad-tol-out"></output></span><input type="range" id="od-ad-tol"></label>
+        </div>
+      </div>
+      <div class="od-legend"><span><i style="background:var(--warn)"></i>HE 2(1)</span><span><i style="background:var(--accent)"></i>BS 3(2)</span><span><i style="background:var(--blue)"></i>DP 5(4)</span><span><i style="background:var(--text-faint)"></i>기준 해</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">채택 / 버림</span><span class="v" id="od-ad-n">—</span></div>
+        <div class="stat"><span class="k">f 계산 횟수</span><span class="v" id="od-ad-ev">—</span></div>
+        <div class="stat"><span class="k">끝점 전역 오차</span><span class="v" id="od-ad-err">—</span></div>
+        <div class="stat"><span class="k">최소 h · 최대 h</span><span class="v" id="od-ad-h">—</span></div>
+      </div>
+      <div class="od-msg" id="od-ad-msg"></div>
+      <div class="sim-note">해볼 것: ① 반데르폴에서 h(t)가 뒤집히는 순간마다 깊게 꺼지는 것을 보세요. ② 작업–정밀도 그림에서 tol이 작아질수록 DP 5(4)의 선이 가장 아래·왼쪽에 놓입니다. 느슨한 tol(10<sup>−3</sup>)에서는 BS 3(2)도 경쟁력이 있습니다. ③ '약한 강성'에서는 해가 매끄러운데도 h가 안정 경계(hλ ≈ −2.51(BS), −3.31(DP), −2(HE)) 근처에서 오르내리고 버린 걸음이 많습니다. 정확도가 아니라 안정성이 걸음을 정하는 강성의 신호입니다(5절). 모델: 척도 tol·(1 + |y|), 처음 h = 0.01, 기준 해는 DP 5(4), tol = 10<sup>−13</sup>.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="multistep">
+    <h2>다단계 방법: 애덤스–배시포스, 애덤스–몰턴, 예측–수정</h2>
+    <div class="problem"><strong>이미 잰 기울기를 버리지 말자</strong>
+      <p>RK4는 한 걸음에 기울기를 네 번 재고, 다음 걸음에서는 그것을 모두 버립니다. \(f\) 한 번 계산이 유체 시뮬레이션 한 판처럼 비싸다면 아깝습니다. 지난 몇 걸음의 기울기 \(f_{n}, f_{n-1}, \dots\)는 이미 손에 있습니다. 그것으로 다음 걸음을 4차로 걸을 수 있을까요?</p></div>
+    <p>\(y(t_{n+1}) = y(t_n) + \int_{t_n}^{t_{n+1}} f(t, y(t))\,dt\)에서 피적분 함수를 <b>이미 아는 점들을 지나는 보간 다항식</b>(<a href="interpolation.html">5장</a>)으로 바꾸고 정확히 적분합니다. 보간점으로 \(t_n, t_{n-1}, \dots, t_{n-k+1}\)을 쓰면 구간 밖으로 외삽하는 명시적 공식, \(t_{n+1}\)까지 넣으면 음적 공식이 됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="애덤스 방법은 과거 기울기의 보간 다항식을 다음 구간에서 적분한다">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <line x1="40" y1="210" x2="560" y2="210" class="s-axis"/>
+        <path d="M430 210 L430 98 C460 84 490 74 520 70 L520 210 Z" class="f-acc-soft"/>
+        <path d="M70 170 C150 150 250 128 340 112 C380 105 420 99 430 98" fill="none" class="s-line" style="stroke-width:2"/>
+        <path d="M430 98 C460 84 490 74 520 70" fill="none" class="s-acc" style="stroke-width:2.6;stroke-dasharray:6 4"/>
+        <circle cx="160" cy="146" r="5" style="fill:var(--accent-2)"/><circle cx="250" cy="128" r="5" style="fill:var(--accent-2)"/><circle cx="340" cy="112" r="5" style="fill:var(--accent-2)"/><circle cx="430" cy="98" r="5" style="fill:var(--accent-2)"/>
+        <text x="160" y="230" text-anchor="middle" class="t-mono">tₙ₋₃</text><text x="250" y="230" text-anchor="middle" class="t-mono">tₙ₋₂</text><text x="340" y="230" text-anchor="middle" class="t-mono">tₙ₋₁</text><text x="430" y="230" text-anchor="middle" class="t-mono">tₙ</text><text x="520" y="230" text-anchor="middle" class="t-mono">tₙ₊₁</text>
+        <text x="300" y="92" class="t" style="fill:var(--accent-2)">이미 계산한 fₙ₋ⱼ</text>
+        <text x="476" y="160" text-anchor="middle" class="t" style="fill:var(--accent)">∫ p(t) dt</text>
+        <g transform="translate(580,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">AB4</text>
+          <text x="0" y="22" class="t-dim">f 계산: 걸음당 1회</text>
+          <text x="0" y="44" class="t-dim">차수 4</text>
+          <text x="0" y="86" class="t" style="font-weight:700">RK4</text>
+          <text x="0" y="108" class="t-dim">f 계산: 걸음당 4회</text>
+          <text x="0" y="130" class="t-dim">차수 4</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 11-2.</b> 애덤스–배시포스 4단계. 과거 네 점의 기울기를 지나는 3차 다항식 \(p(t)\)를 다음 구간 \([t_n, t_{n+1}]\)까지 연장해 적분한다(색칠한 넓이). 새로 계산할 것은 \(f_{n+1}\) 하나뿐이다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 11.8 (애덤스 방법)</strong> \(k\)단계 <span class="term">애덤스–배시포스</span><span class="en">(Adams–Bashforth, AB)</span> 방법(명시적, 차수 \(k\))과 <span class="term">애덤스–몰턴</span><span class="en">(Adams–Moulton, AM)</span> 방법(음적, 차수 \(k + 1\)):
+      <div class="formula">$$\begin{aligned}
+        \text{AB2: } & y_{n+1} = y_n + \tfrac{h}{2}(3f_n - f_{n-1}), \\
+        \text{AB4: } & y_{n+1} = y_n + \tfrac{h}{24}(55f_n - 59f_{n-1} + 37f_{n-2} - 9f_{n-3}), \\
+        \text{AM2 (사다리꼴): } & y_{n+1} = y_n + \tfrac{h}{2}(f_{n+1} + f_n), \\
+        \text{AM4: } & y_{n+1} = y_n + \tfrac{h}{24}(9f_{n+1} + 19f_n - 5f_{n-1} + f_{n-2}).
+      \end{aligned}$$</div>
+      국소 오차의 주항은 \(C_{p+1}h^{p+1}y^{(p+1)}\)이고 오차 상수는 AB2 \(\tfrac5{12}\), AM2 \(-\tfrac1{12}\), AB4 \(\tfrac{251}{720}\), AM4 \(-\tfrac{19}{720}\)이다. 같은 차수에서 음적 공식의 오차 상수가 훨씬 작다.</div>
+    <p>AB2의 계수는 \(f_{n-1}, f_n\)을 지나는 직선 \(p(t) = f_n + (t - t_n)(f_n - f_{n-1})/h\)를 \([t_n, t_n + h]\)에서 적분하면 \(h f_n + \tfrac h2(f_n - f_{n-1}) = \tfrac h2(3f_n - f_{n-1})\)으로 바로 나옵니다. 다단계 방법에는 실무상 두 가지 일이 따라붙습니다. 첫째, <b>출발</b>: 처음 \(k - 1\)개의 값은 RK4 같은 일단계 방법으로 만듭니다. 둘째, <b>걸음 폭 바꾸기</b>: 계수가 등간격을 가정하므로 \(h\)를 바꾸려면 보간을 다시 하거나 계수를 다시 계산해야 합니다.</p>
+    <p>음적인 AM은 \(y_{n+1}\)을 풀어야 합니다. 강성이 없는 문제에서는 뉴턴 반복까지 필요 없고, AB로 <b>예측</b>한 값을 AM의 우변에 넣어 한 번 <b>수정</b>하는 것으로 충분합니다.</p>
+    <pre class="code"><span class="c">// PECE: AB(k) 예측 → f 계산 → AM 수정 → f 계산</span>
+<span class="k">for</span> n = k−1, k, …
+  y_p ← yₙ + h·Σ βⱼᴬᴮ fₙ₋ⱼ              <span class="c">// P: 예측 (외삽)</span>
+  f_p ← f(tₙ₊₁, y_p)                    <span class="c">// E: 계산</span>
+  yₙ₊₁ ← yₙ + h·(β₀ᴬᴹ f_p + Σ βⱼᴬᴹ fₙ₊₁₋ⱼ)  <span class="c">// C: 수정</span>
+  fₙ₊₁ ← f(tₙ₊₁, yₙ₊₁)                  <span class="c">// E: 다음 걸음용</span>
+  est ← |yₙ₊₁ − y_p| · |C_AM| / |C_AB − C_AM|   <span class="c">// 밀른의 오차 추정</span>
+<span class="k">end for</span></pre>
+    <p>마지막 줄이 다단계 방법의 공짜 오차 추정입니다. 예측자와 수정자의 국소 오차가 각각 \(C_{AB}h^{p+1}y^{(p+1)}\), \(C_{AM}h^{p+1}y^{(p+1)}\)이면(같은 차수의 쌍을 쓸 때) 두 값의 차이에서 \(y^{(p+1)}\)을 소거해 수정자의 오차를 추정할 수 있습니다. 이것을 <span class="term">밀른 장치</span><span class="en">(Milne's device)</span>라 하며 임베디드 RK의 오차 추정과 같은 역할을 합니다.</p>
+    <div class="callout"><strong>예제 11.5 (AB2와 사다리꼴 PECE 한 걸음)</strong> \(y' = -y\), \(h = 0.1\), \(y_0 = 1\), \(y_1 = e^{-0.1} = 0.904837\)에서 \(y_2\)를 구하라.
+      <ol>
+        <li>AB2 예측: \(y_p = 0.904837 + 0.05(3(-0.904837) - (-1)) = 0.819112\). 참값 \(e^{-0.2} = 0.818731\), 오차 \(3.8\times10^{-4}\).</li>
+        <li>사다리꼴 수정: \(y_2 = 0.904837 + 0.05(-0.904837 - 0.819112) = 0.818640\). 오차 \(-9.1\times10^{-5}\), 예측의 4분의 1 이하.</li>
+        <li>밀른 추정: \(|y_2 - y_p|\cdot\frac{1/12}{5/12 + 1/12} = 4.72\times10^{-4}/6 = 7.9\times10^{-5}\). 실제 오차 \(9.1\times10^{-5}\)과 크기가 맞는다.</li>
+        <li>비용: f 계산 2회(예측점 1, 수정점 1). AB2 단독은 1회다.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="od-tbl">
+      <thead><tr><th>\(y' = y\cos t\), \(t \in [0, 3]\) 최대 오차</th><th>\(h = 0.1\)</th><th>\(h = 0.05\)</th><th>\(h = 0.025\)</th><th>관측 차수</th><th>f / 걸음</th></tr></thead>
+      <tbody>
+        <tr><td>AB1 (오일러)</td><td>8.26×10⁻²</td><td>4.10×10⁻²</td><td>2.05×10⁻²</td><td>1.00</td><td>1</td></tr>
+        <tr><td>AB2</td><td>2.00×10⁻²</td><td>5.09×10⁻³</td><td>1.29×10⁻³</td><td>1.99</td><td>1</td></tr>
+        <tr><td>AB4</td><td>5.27×10⁻⁴</td><td>3.13×10⁻⁵</td><td>1.88×10⁻⁶</td><td>4.05</td><td>1</td></tr>
+        <tr><td>PECE AB2–AM2</td><td>3.44×10⁻³</td><td>9.43×10⁻⁴</td><td>2.47×10⁻⁴</td><td>1.93</td><td>2</td></tr>
+        <tr><td>PECE AB4–AM4</td><td>3.94×10⁻⁵</td><td>2.36×10⁻⁶</td><td>1.42×10⁻⁷</td><td>4.05</td><td>2</td></tr>
+      </tbody></table></div>
+    <p>표의 출발값은 정확한 해로 주었습니다. 같은 4차라도 PECE 4는 AB4보다 13배 정확하고, f 계산은 두 배입니다. 오차 상수의 비 \(\tfrac{251}{19} \approx 13\)이 그대로 드러납니다.</p>
+
+    <div class="sim" id="sim-od-adams">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>애덤스 예측–수정: 과거 기울기의 다항식을 한 걸음씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-am-y"></canvas><span class="od-cap">y(t): 수치 해(점)와 참 해 e^(sin t)</span></div>
+          <div><canvas id="od-am-f"></canvas><span class="od-cap">f(t, y) = y cos t: 보간 다항식과 적분 넓이</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="od-am-m"><button data-value="ab2">AB2</button><button data-value="ab4" class="on">AB4</button><button data-value="pc2">PECE 2</button><button data-value="pc4">PECE 4</button></div></div>
+          <label class="ctrl"><span>걸음 폭 h <output id="od-am-h-out"></output></span><input type="range" id="od-am-h"></label>
+          <div class="btn-row"><button class="btn primary" id="od-am-step">다음 단계</button><button class="btn" id="od-am-play">▶ 자동</button><button class="btn" id="od-am-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="od-legend"><span><i style="background:var(--text-dim)"></i>참 해 / 참 f</span><span><i style="background:var(--accent-2)"></i>쓰이는 과거 fₙ₋ⱼ</span><span><i style="background:var(--accent)"></i>예측 다항식 (AB)</span><span><i style="background:var(--blue)"></i>수정 다항식 (AM)</span><span><i style="background:var(--warn)"></i>예측점의 기울기</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="od-am-t">—</span></div>
+        <div class="stat"><span class="k">예측 y<sub>p</sub> · 수정 y</span><span class="v" id="od-am-y1">—</span></div>
+        <div class="stat"><span class="k">밀른 추정 · 실제 오차</span><span class="v" id="od-am-est">—</span></div>
+        <div class="stat"><span class="k">f 계산 누계</span><span class="v" id="od-am-ev">—</span></div>
+      </div>
+      <div class="od-tw"><table><thead><tr><th>n</th><th>tₙ</th><th>yₙ</th><th>참값</th><th>오차</th></tr></thead><tbody id="od-am-tb"></tbody></table></div>
+      <div class="sim-note">해볼 것: ① '다음 단계'를 누르며 과거 점(보라)을 지나는 다항식이 다음 구간으로 연장되고 그 아래 넓이가 yₙ₊₁ − yₙ이 되는 것을 보세요. ② PECE에서는 예측점의 기울기(주황 원)를 포함한 두 번째 다항식(파란 점선)으로 다시 적분합니다. 밀른 추정과 실제 오차가 비슷한 크기로 움직입니다. ③ h = 0.4로 키우면 AB4의 외삽 다항식이 크게 빗나갑니다. 모델: 출발값 y₀ … y<sub>k−1</sub>은 참 해, t ∈ [0, 6].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="stability">
+    <h2>안정성 영역과 A-안정</h2>
+    <div class="problem"><strong>정확한 공식이 안정한 공식은 아니다</strong>
+      <p>AB4는 AB2보다 두 차수 높지만, \(y' = -y\)처럼 단순한 감쇠 문제에서 \(h = 0.5\)로 돌리면 AB2는 줄어드는데 AB4는 진동하며 커집니다. 차수가 높을수록 외삽이 공격적이라 안정 영역이 좁아집니다. 방법을 고를 때 차수만큼 중요한 것이 안정성 영역의 모양입니다.</p></div>
+    <p>시험 방정식 \(y' = \lambda y\)에 선형 다단계 방법을 쓰면 \(\sum(\alpha_j - z\beta_j)y_{n+j} = 0\)(\(z = h\lambda\))입니다. 이 차분 방정식의 해는 <span class="term">안정성 다항식</span><span class="en">(stability polynomial)</span> \(\pi(\zeta; z) = \rho(\zeta) - z\sigma(\zeta)\)의 근 \(\zeta_i(z)\)의 거듭제곱입니다. 룽게–쿠타의 \(|R(z)| \le 1\)에 해당하는 조건이 "모든 근이 단위원 안"입니다.</p>
+    <div class="callout deep"><strong>정의 11.9 (다단계 방법의 절대 안정 영역)</strong> \(\pi(\zeta; z)\)의 모든 근이 \(|\zeta| \le 1\)이고 \(|\zeta| = 1\)인 근은 단근인 \(z \in \mathbb C\)의 집합을 절대 안정 영역이라 한다. 영역의 경계는 \(\zeta = e^{i\theta}\)를 대입한 <b>경계 궤적</b> \(z(\theta) = \rho(e^{i\theta})/\sigma(e^{i\theta})\), \(0 \le \theta \lt 2\pi\) 위에 있다.</div>
+    <div class="callout deep"><strong>정의 11.10 (A-안정, A(α)-안정, L-안정)</strong> 절대 안정 영역이 왼쪽 반평면 전체를 포함하면 <b>A-안정</b>, 음의 실수축을 중심으로 반각 \(\alpha\)인 쐐기 \(\{|\arg(-z)| \lt \alpha\}\)를 포함하면 <span class="term">A(α)-안정</span>, A-안정이면서 \(|R(z)| \to 0\)(\(z \to -\infty\))이면 <span class="term">L-안정</span><span class="en">(L-stable)</span>이라 한다. L-안정 방법은 아주 빠른 성분을 한 걸음 만에 지운다.</div>
+    <div class="callout deep"><strong>정리 11.11 (달퀴스트 제2 장벽)</strong> A-안정인 선형 다단계 방법은 음적이어야 하고 차수가 2 이하이다. 2차 A-안정 방법 중 오차 상수의 절댓값이 가장 작은 것은 사다리꼴 공식(\(C_3 = -\tfrac1{12}\))이다.</div>
+    <p>사다리꼴 공식은 A-안정이지만 \(R(z) = \frac{1 + z/2}{1 - z/2} \to -1\)(\(z \to -\infty\))이라 L-안정은 아닙니다. 아주 빠른 성분이 지워지지 않고 부호만 바꾸며 남아 회로 시뮬레이터에서 "링잉"이라 불리는 가짜 진동을 만듭니다. BDF1(음적 오일러)과 BDF2는 L-안정입니다. 3차 이상의 BDF는 제2 장벽 때문에 A-안정일 수 없지만 큰 각도의 A(α)-안정을 가집니다.</p>
+    <div class="table-wrap"><table class="od-tbl">
+      <thead><tr><th>방법</th><th>차수</th><th>음의 실수축 안정 구간</th><th>성격</th></tr></thead>
+      <tbody>
+        <tr><td>AB2 · AB3 · AB4</td><td>2 · 3 · 4</td><td>(−1, 0) · (−0.545, 0) · (−0.300, 0)</td><td>명시적, 차수가 오를수록 좁아짐</td></tr>
+        <tr><td>RK4 · DP5</td><td>4 · 5</td><td>(−2.785, 0) · (−3.306, 0)</td><td>명시적, 단당 비용 고려 시 AB와 비슷</td></tr>
+        <tr><td>AM3 · AM4</td><td>3 · 4</td><td>(−6, 0) · (−3, 0)</td><td>음적이지만 유한 영역</td></tr>
+        <tr><td>사다리꼴 (AM2)</td><td>2</td><td>(−∞, 0)</td><td>A-안정, L-안정 아님</td></tr>
+        <tr><td>BDF1 · BDF2</td><td>1 · 2</td><td>(−∞, 0)</td><td>A-안정 + L-안정</td></tr>
+        <tr><td>BDF3 · 4 · 5 · 6</td><td>3 · 4 · 5 · 6</td><td>(−∞, 0)</td><td>A(α): α = 86.03°, 73.35°, 51.84°, 17.84°</td></tr>
+      </tbody></table></div>
+    <p>표의 수치는 시뮬레이터와 같은 방법(격자 위에서 안정성 다항식의 근을 직접 계산하고, BDF의 α는 경계 궤적에서 최소 각을 찾음)으로 계산했습니다. BDF7 이상은 영 안정성마저 잃으므로 실용 BDF 코드는 차수 5 또는 6까지만 씁니다.</p>
+
+    <div class="sim" id="sim-od-stability">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>안정성 영역 지도: 복소 hλ 평면과 특성근</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-st-cv"></canvas><span class="od-cap">z = hλ 평면: 칠한 곳이 안정 (점을 끌기)</span></div>
+          <div><canvas id="od-st-rt"></canvas><span class="od-cap">현재 z에서 안정성 다항식의 근 ζᵢ</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>방법</span><select id="od-st-m">
+            <option value="rk4">RK4 (명시적 일단계)</option>
+            <option value="ab2">AB2</option>
+            <option value="ab3">AB3</option>
+            <option value="ab4">AB4</option>
+            <option value="am4">AM4 (음적)</option>
+            <option value="trap">사다리꼴 AM2</option>
+            <option value="bdf2" selected>BDF2</option>
+            <option value="bdf3">BDF3</option>
+            <option value="bdf4">BDF4</option>
+            <option value="bdf5">BDF5</option>
+            <option value="bdf6">BDF6</option>
+          </select></label>
+          <div class="ctrl"><span>보기 범위</span><div class="seg" id="od-st-zoom"><button data-value="s">좁게 (±3)</button><button data-value="w" class="on">넓게 (±12)</button></div></div>
+          <label class="check"><input type="checkbox" id="od-st-locus" checked> 경계 궤적 ρ(e<sup>iθ</sup>)/σ(e<sup>iθ</sup>)</label>
+          <label class="check"><input type="checkbox" id="od-st-wedge"> A(α) 쐐기 표시 (BDF)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">z = hλ</span><span class="v" id="od-st-z">—</span></div>
+        <div class="stat"><span class="k">max |ζᵢ|</span><span class="v" id="od-st-r">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="od-st-v">—</span></div>
+        <div class="stat"><span class="k">실수축 안정 구간</span><span class="v" id="od-st-int">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① AB2 → AB3 → AB4로 바꾸며 영역이 원점 근처로 오그라드는 것을 보세요. ② BDF2의 칠하지 않은 부분은 오른쪽 반평면 안의 작은 섬뿐입니다(A-안정). BDF5에서 쐐기를 켜면 허수축 근처가 잘려 나간 것이 보입니다. ③ z를 영역 경계 밖으로 끌면 오른쪽 그림에서 근 하나가 단위원을 뚫고 나갑니다. 다단계 방법은 근이 여러 개라 "어느 근이 먼저 나가는가"가 안정성을 정합니다. 모델: RK4는 |R(z)| ≤ 1, 다단계는 π(ζ; z) = ρ(ζ) − zσ(ζ)의 근을 칸마다 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="stiff-bdf">
+    <h2>강성과 BDF: 음적 방법의 뉴턴 반복</h2>
+    <div class="problem"><strong>세 물질의 반응을 40초 동안</strong>
+      <p>로버트슨의 화학 반응 모형은 강성 문제의 시험대로 널리 쓰입니다. \(A \to B\)(속도 0.04), \(B + C \to A + C\)(속도 \(10^4\)), \(2B \to B + C\)(속도 \(3\times10^7\)). 농도 \(y_1, y_2, y_3\)은</p>
+      <p style="text-align:center">\(y_1' = -0.04y_1 + 10^4y_2y_3,\quad y_2' = 0.04y_1 - 10^4y_2y_3 - 3\times10^7y_2^2,\quad y_3' = 3\times10^7y_2^2\)</p>
+      <p>을 따르고 \(y(0) = (1, 0, 0)\)입니다. 중간 물질 \(y_2\)는 \(t \approx 0.005\)에서 최댓값 \(3.6\times10^{-5}\)에 닿은 뒤 아주 천천히 줄어듭니다. 해가 이렇게 느린데 도르만드–프린스 5(4)(tol = \(10^{-4}\))로 \(t = 40\)까지 가는 데 34,557걸음(버린 걸음 1,550)이 걸립니다. 같은 tol의 BDF2는 154걸음입니다.</p></div>
+    <p>원인은 야코비안 \(J = \partial f/\partial y\)의 고유값입니다. \(t = 40\) 부근에서 \(J\)의 고유값은 \(0\)(질량 보존 \(y_1 + y_2 + y_3 = 1\)), \(-0.0214\), \(-3393\)입니다. 해의 변화는 \(-0.02\)짜리 느린 모드가 정하지만, 명시적 방법의 걸음은 \(h|\lambda_{\max}| \lesssim 3.3\)(DP5의 실수축 안정 경계)에 묶여 \(h \approx 10^{-3}\)을 넘지 못합니다. \(40/10^{-3} = 4\times10^4\)걸음, 관찰한 걸음 수와 맞습니다. 강성비 \(3393/0.0214 \approx 1.6\times10^5\)가 걸음 수의 비가 됩니다.</p>
+    <div class="callout deep"><strong>정의 11.12 (후방 차분 공식, BDF)</strong> \(k\)단계 <span class="term">BDF</span><span class="en">(backward differentiation formula)</span>는 \(y_{n+1}, y_n, \dots, y_{n+1-k}\)를 지나는 보간 다항식의 도함수를 \(t_{n+1}\)에서 \(f(t_{n+1}, y_{n+1})\)과 같게 놓은 음적 공식이다.
+      <div class="formula">$$\begin{aligned}
+        \text{BDF1: } & y_{n+1} - y_n = hf_{n+1}, \\
+        \text{BDF2: } & y_{n+1} - \tfrac43y_n + \tfrac13y_{n-1} = \tfrac23hf_{n+1}, \\
+        \text{BDF3: } & y_{n+1} - \tfrac{18}{11}y_n + \tfrac9{11}y_{n-1} - \tfrac2{11}y_{n-2} = \tfrac6{11}hf_{n+1}.
+      \end{aligned}$$</div>
+      애덤스가 \(f\)를 보간해 적분한다면, BDF는 \(y\)를 보간해 미분한다. 차수는 \(k\)이고 \(k \le 6\)에서 영 안정이다.</div>
+    <p>음적 공식은 매 걸음 비선형 방정식 \(G(y_{n+1}) = y_{n+1} - \gamma h f(t_{n+1}, y_{n+1}) - \psi_n = 0\)(\(\psi_n\)은 과거 값의 조합, BDF2에서 \(\gamma = \tfrac23\))을 풉니다. 강성 문제에서는 단순 고정점 반복 \(y \leftarrow \psi + \gamma hf(y)\)가 \(\gamma h\|J\| \lt 1\)일 때만 수렴하므로, 바로 그 걸음 제한을 다시 불러옵니다. 그래서 <b>뉴턴 반복</b>(<a href="roots.html">3장</a>, <a href="nonlinear-systems.html">4장</a>)을 씁니다.</p>
+    <pre class="code"><span class="k">function</span> bdf_step(f, J, t, ψ, γh, y_guess)
+  y ← y_guess                         <span class="c">// 과거 값의 외삽(예측자)</span>
+  M ← I − γh·J(t, y)                   <span class="c">// 반복 행렬: 걸음마다 한 번만</span>
+  LU ← factor(M)                       <span class="c">// 12장의 LU 분해, 여러 반복에서 재사용</span>
+  <span class="k">for</span> it = 1, 2, …, maxit
+    G ← y − γh·f(t, y) − ψ
+    Δ ← solve(LU, −G)                  <span class="c">// 전진·후진 대입만: O(m²)</span>
+    y ← y + Δ
+    <span class="k">if</span> ‖Δ‖ ≤ 작은 수·‖y‖ <span class="k">then return</span> y
+  <span class="k">end for</span>
+  <span class="k">return</span> 실패 → h를 줄여 다시</pre>
+    <p>위 구현은 반복 행렬을 걸음마다 한 번만 분해하는 <b>단순화 뉴턴</b>입니다. 수렴은 1차로 떨어지지만 \(m\)차원 계에서 분해 \(O(m^3)\)를 반복마다 하지 않아도 되어 훨씬 싸고, 실제 코드는 야코비안을 여러 걸음 동안 재사용하기도 합니다. 큰 계에서 이 분해가 비용의 대부분이라 희소 LU(<a href="direct-solvers.html">12장</a>)나 반복 해법(<a href="iterative.html">13장</a>)이 강성 ODE 풀이기의 심장이 됩니다.</p>
+    <div class="callout"><strong>예제 11.6 (강성 스칼라 문제의 BDF2 한 걸음)</strong> \(y' = -1000(y - \cos t)\), \(y(0) = 1\), \(h = 0.1\)(\(h\lambda = -100\)). 출발값 \(y_0 = 1\), \(y_1 = y(0.1) = 0.995103\)(정확한 값)에서 \(y_2\)를 구하라.
+      <ol>
+        <li>BDF2: \(y_2 - \tfrac43y_1 + \tfrac13y_0 = \tfrac23(0.1)(-1000)(y_2 - \cos 0.2)\). 우변이 \(y_2\)에 대해 1차식이라 뉴턴 한 번에 정확히 풀린다.</li>
+        <li>\(\gamma h\lambda\)의 크기 \(\tfrac23\cdot 100 = 66.667\)을 써서 \(y_2(1 + 66.667) = \tfrac43(0.995103) - \tfrac13 + 66.667(0.980067)\), \(y_2 = 0.980265\).</li>
+        <li>참값 \(y(0.2) = 0.980264\)(과도 성분 \(e^{-1000t}\)은 이미 사라졌고 해는 \(\cos t + \sin t/1000\)에 가깝다). 오차 \(4.0\times10^{-7}\). 명시적 오일러라면 증폭률 \(|1 - 100| = 99\)로 즉시 폭발한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-od-robertson">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>강성 로버트슨 반응: 명시적 DP 5(4) vs BDF2 + 뉴턴</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-rb-cv"></canvas><span class="od-cap">농도 (로그 시간축): y₁, 10⁴·y₂, y₃</span></div>
+          <div><canvas id="od-rb-ns"></canvas><span class="od-cap">누적 걸음 수 vs t (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>끝 시각 T</span><div class="seg" id="od-rb-T"><button data-value="0.3">0.3</button><button data-value="4">4</button><button data-value="40" class="on">40</button><button data-value="400">400</button><button data-value="40000">4·10⁴</button></div></div>
+          <div class="ctrl"><span>허용 오차</span><div class="seg" id="od-rb-tol"><button data-value="1e-3">10⁻³</button><button data-value="1e-4" class="on">10⁻⁴</button><button data-value="1e-5">10⁻⁵</button></div></div>
+          <label class="check"><input type="checkbox" id="od-rb-ex" checked> 명시적 DP 5(4) 돌리기</label>
+        </div>
+      </div>
+      <div class="od-legend"><span><i style="background:var(--blue)"></i>y₁</span><span><i style="background:var(--warn)"></i>10⁴·y₂</span><span><i style="background:var(--accent-2)"></i>y₃</span><span><i style="background:var(--bad)"></i>DP 5(4) 걸음 수</span><span><i style="background:var(--accent)"></i>BDF2 걸음 수</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">DP 5(4) 채택/버림</span><span class="v" id="od-rb-dp">—</span></div>
+        <div class="stat"><span class="k">BDF2 채택/버림 · 뉴턴 반복</span><span class="v" id="od-rb-bd">—</span></div>
+        <div class="stat"><span class="k">y(T) (BDF2)</span><span class="v" id="od-rb-y">—</span></div>
+        <div class="stat"><span class="k">J의 가장 빠른 고유값 at T</span><span class="v" id="od-rb-lam">—</span></div>
+      </div>
+      <div class="od-msg" id="od-rb-msg"></div>
+      <div class="sim-note">해볼 것: ① T를 0.3 → 40으로 늘리면 DP 5(4)의 걸음 수는 t에 비례해(기울기 1) 늘고, BDF2는 로그 시간축에서 거의 일정한 간격으로 걸어 수백 걸음에 그칩니다. ② T = 4·10⁴에서는 명시적 방법이 20만 걸음 한도에서 멈춥니다. ③ 아래 그래프의 DP 곡선이 기울기 1의 직선이라는 것은 h가 상수(안정 경계)에 묶였다는 뜻입니다. 모델: 가변 걸음 BDF2(걸음 비 ω에 맞춘 계수), 2차 외삽 예측자, 오차 추정 |y − y<sub>p</sub>|/3, 걸음마다 뉴턴 반복과 3×3 부분 피벗팅 소거. 척도 tol·(|yᵢ| + 10<sup>−6</sup>).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="symplectic">
+    <h2>심플렉틱 적분: 스퇴르머–베를레와 장기 에너지</h2>
+    <div class="problem"><strong>정확한 방법이 오래 돌리면 진다</strong>
+      <p>진자 \(\theta'' = -\sin\theta\)를 진폭 2 rad에서 놓고 \(h = 0.2\)로 적분합니다. RK4의 에너지 오차는 \(t = 100\)에서 \(3.2\times10^{-4}\), \(t = 1000\)에서 \(3.2\times10^{-3}\), \(t = 10^4\)에서 \(3.2\times10^{-2}\)으로 시간에 비례해 쌓입니다. 2차밖에 안 되는 스퇴르머–베를레는 처음부터 최대 \(1.1\times10^{-2}\)이지만, \(t = 10^4\)에서도 여전히 \(1.1\times10^{-2}\)입니다. 긴 시간에서는 2차 방법이 4차 방법을 이깁니다.</p></div>
+    <p>ODEBook 5장 8절에서 심플렉틱 오일러가 용수철의 수정된 에너지를 정확히 지킨다는 것을 보았습니다. 실무에서 가장 많이 쓰는 심플렉틱 방법은 그것을 대칭으로 만든 2차 방법입니다.</p>
+    <div class="callout deep"><strong>정의 11.13 (스퇴르머–베를레 / 속도 베를레)</strong> \(q'' = a(q)\)(해밀토니언 \(H = \tfrac12p^2 + V(q)\), \(a = -V'\))에 대해
+      <div class="formula">$$p_{n+1/2} = p_n + \tfrac h2a(q_n),\qquad q_{n+1} = q_n + hp_{n+1/2},\qquad p_{n+1} = p_{n+1/2} + \tfrac h2a(q_{n+1}).$$</div>
+      걸음당 힘 계산은 1회(\(a(q_{n+1})\)을 다음 걸음에 재사용)이고 2차이다. 위치만 쓰면 \(q_{n+1} - 2q_n + q_{n-1} = h^2a(q_n)\), 곧 2계 도함수의 중앙 차분이며 이 꼴을 <span class="term">립프로그</span><span class="en">(leapfrog)</span>라고도 한다.</div>
+    <div class="callout deep"><strong>정리 11.14 (베를레의 기하학적 성질)</strong> 스퇴르머–베를레의 한 걸음 사상 \(\Phi_h: (q_n, p_n) \mapsto (q_{n+1}, p_{n+1})\)은 (1) <span class="term">심플렉틱</span><span class="en">(symplectic)</span>이고(2차원에서는 야코비 행렬식이 1, 곧 위상 공간 넓이 보존), (2) 시간 가역적이다(\(\Phi_{-h} = \Phi_h^{-1}\)). 후방 오차 해석에 따르면 \(\Phi_h\)는 \(\tilde H = H + h^2H_2 + h^4H_4 + \cdots\)라는 <b>수정된 해밀토니언</b>의 정확한 흐름에 지수적으로 작은 오차까지 가깝다. 따라서 에너지 오차 \(|H(q_n, p_n) - H_0| = O(h^2)\)가 지수적으로 긴 시간 동안 유계로 머문다.
+      <p style="margin:8px 0 0"><b>넓이 보존의 이유.</b> 세 단계 각각이 "한 변수만 다른 변수의 함수만큼 민다"는 전단 사상이다. 예를 들어 \((q, p) \mapsto (q, p + \tfrac h2a(q))\)의 야코비 행렬은 \(\begin{bmatrix}1 & 0\\ \tfrac h2a'(q) & 1\end{bmatrix}\)이고 행렬식이 1이다. 행렬식 1인 사상의 합성도 행렬식이 1이다. ∎</p></div>
+    <p>RK4가 에너지를 잃는 이유는 반대로 설명됩니다. RK4의 한 걸음은 넓이를 아주 조금 줄이는 사상이라(선형 진동자에서 걸음당 넓이 비가 \(1 - h^6/72 + h^8/576\)), 그 작은 수축이 매 걸음 같은 방향으로 쌓입니다. 베를레의 오차는 크지만 <b>한 방향으로 쌓이지 않습니다</b>. 그래서 분자 동역학(수십억 걸음), 행성계의 장기 안정성 연구, 입자 가속기의 궤도 추적, 게임 물리 엔진이 베를레나 그 고차 합성(요시다 4차 등)을 씁니다.</p>
+    <div class="table-wrap"><table class="od-tbl">
+      <thead><tr><th>진자 θ₀ = 2, t ∈ [0, 1000]</th><th>h = 0.2</th><th>h = 0.1</th><th>h = 0.05</th></tr></thead>
+      <tbody>
+        <tr><td>베를레: 최대 |ΔH|</td><td>1.08×10⁻²</td><td>2.71×10⁻³</td><td>6.76×10⁻⁴</td></tr>
+        <tr><td>RK4: t = 1000의 ΔH</td><td>−3.24×10⁻³</td><td>−1.02×10⁻⁴</td><td>−3.18×10⁻⁶</td></tr>
+      </tbody></table></div>
+    <p>베를레의 오차는 \(h\)를 반으로 줄일 때마다 4분의 1(2차)이고, RK4는 32분의 1입니다. RK4의 표류는 \(t \cdot h^4\)에 비례하는데, 이 계수가 작아서 \(t = 1000\) 정도에서는 RK4가 여전히 낫습니다. 승부는 적분 시간과 h로 정해지고, 시간이 충분히 길면 반드시 베를레가 이깁니다.</p>
+
+    <div class="sim" id="sim-od-verlet">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>위상 공간의 넓이: 오일러 · RK4 · 스퇴르머–베를레</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-vl-cv"></canvas><span class="od-cap">진자 위상 평면 (θ, p): 초기값 원판의 변형</span></div>
+          <div><canvas id="od-vl-en"></canvas><span class="od-cap">|에너지 오차| vs t (로그–로그), 원판 중심 궤도</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>걸음 폭 h <output id="od-vl-h-out"></output></span><input type="range" id="od-vl-h"></label>
+          <label class="check"><input type="checkbox" id="od-vl-e" checked> 명시적 오일러</label>
+          <label class="check"><input type="checkbox" id="od-vl-r" checked> RK4</label>
+          <label class="check"><input type="checkbox" id="od-vl-v" checked> 스퇴르머–베를레</label>
+          <div class="btn-row"><button class="btn primary" id="od-vl-play">▶ 돌리기</button><button class="btn" id="od-vl-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="od-legend"><span><i style="background:var(--bad)"></i>오일러</span><span><i style="background:var(--blue)"></i>RK4</span><span><i style="background:var(--ok)"></i>베를레</span><span><i style="background:var(--text-faint)"></i>에너지 등고선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">t</span><span class="v" id="od-vl-t">—</span></div>
+        <div class="stat"><span class="k">넓이 / 처음 넓이: 오일러</span><span class="v" id="od-vl-a0">—</span></div>
+        <div class="stat"><span class="k">RK4</span><span class="v" id="od-vl-a1">—</span></div>
+        <div class="stat"><span class="k">베를레</span><span class="v" id="od-vl-a2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶를 누르면 원판이 진자의 흐름을 따라 늘어나며 휘어집니다. 참 흐름은 넓이를 보존합니다(리우빌 정리). 오일러 원판은 부풀고, 베를레 원판의 넓이는 반올림 수준까지 1입니다. ② h = 0.3에서 RK4의 넓이 비가 1보다 조금씩 작아지는 것을 보세요. ③ 오른쪽 그래프에서 RK4 에너지 오차는 기울기 1로 자라고 베를레는 수평 띠에 머뭅니다. 모델: θ″ = −sin θ, 원판 중심 (θ, p) = (1.2, 0), 반지름 0.35, 경계점 160개의 다각형 넓이(신발끈 공식).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="bvp">
+    <h2>경계값 문제: 슈팅 방법과 유한 차분</h2>
+    <div class="problem"><strong>끝 조건이 양쪽에 있다</strong>
+      <p>연소 이론의 브라투 문제 \(y'' + \lambda e^{y} = 0\), \(y(0) = y(1) = 0\)은 열이 온도에 대해 지수적으로 발생하는 판의 정상 온도입니다. 지금까지의 방법은 모두 \(t_0\)에서 \(y\)와 \(y'\)을 알고 앞으로 걷는 초기값 문제용입니다. 여기서는 \(y'(0)\)을 모르고 대신 \(y(1)\)을 압니다. 그리고 \(\lambda = 1\)이면 해가 두 개, \(\lambda \gt 3.5138\)이면 하나도 없습니다(<a href="../../ode/chapters/boundary.html">ODEBook: 경계값 문제</a>).</p></div>
+    <p>첫 번째 방법은 모르는 기울기 \(s = y'(0)\)을 맞힐 때까지 쏘아 보는 것입니다. 초기값 문제 \(y'' = -\lambda e^y\), \(y(0) = 0\), \(y'(0) = s\)를 RK4로 풀어 끝값 \(y(1; s)\)를 얻고, <b>빗나간 정도</b> \(F(s) = y(1; s) - 0\)의 근을 3장의 근 찾기로 구합니다.</p>
+    <div class="callout deep"><strong>정의 11.15 (슈팅 방법)</strong> 경계값 문제 \(y'' = g(x, y, y')\), \(y(a) = \alpha\), \(y(b) = \beta\)에 대해 \(F(s) = y(b; s) - \beta\)로 두고 \(F(s) = 0\)을 할선법 \(s_{k+1} = s_k - F(s_k)\dfrac{s_k - s_{k-1}}{F(s_k) - F(s_{k-1})}\)이나 뉴턴 방법(\(F'(s)\)는 변분 방정식 \(w'' = g_y w + g_{y'}w'\), \(w(a) = 0\), \(w'(a) = 1\)의 \(w(b)\))으로 푸는 방법을 <span class="term">슈팅 방법</span><span class="en">(shooting method)</span>이라 한다.</div>
+    <div class="callout"><strong>예제 11.7 (브라투 λ = 1의 슈팅)</strong> RK4(200걸음)로 \(F(0) = -0.46316\), \(F(1) = 0.36270\)이다.
+      <ol>
+        <li>할선 1회: \(s_2 = 1 - 0.36270\cdot\frac{1 - 0}{0.36270 + 0.46316} = 0.560826\), \(F = 9.4\times10^{-3}\).</li>
+        <li>할선 2회: \(s_3 = 0.549085\), \(F = -2.2\times10^{-4}\). 3회: \(s_4 = 0.5493529\), \(F = 1.2\times10^{-7}\). 4회: \(F = 1.5\times10^{-12}\).</li>
+        <li>정확한 해 \(y = -2\ln\dfrac{\cosh((x - \frac12)\theta/2)}{\cosh(\theta/4)}\)(\(\theta = \sqrt{2\lambda}\cosh(\theta/4)\), \(\theta = 1.51716\))의 \(y'(0) = 0.549353\)과 일치한다. 최고 온도 \(y(0.5) = 0.140539\).</li>
+        <li>다른 근 \(\theta = 10.9387\)에 해당하는 두 번째 해는 \(y'(0) = 10.8469\), \(y(0.5) = 4.0915\)이다. 할선법을 \(s = 10, 11\)에서 출발하면 그쪽으로 간다.</li>
+      </ol></div>
+    <p>슈팅은 간단하지만 약점이 있습니다. 초기값 문제가 불안정하면(해가 \(e^{Lx}\)로 벌어지면) \(F(s)\)가 \(s\)에 극도로 민감해져 반올림 오차만으로도 맞출 수 없습니다. 구간을 여러 조각으로 나눠 조각마다 쏘고 이음매를 맞추는 <b>다중 슈팅</b>이 처방입니다. 두 번째 방법은 구간 전체를 한꺼번에 푸는 것입니다.</p>
+    <div class="callout deep"><strong>정의 11.16 (유한 차분 방법)</strong> \(x_i = ih\), \(h = 1/N\)에서 \(y''(x_i) \approx (y_{i-1} - 2y_i + y_{i+1})/h^2\)(<a href="differentiation.html">9장</a>의 중앙 차분, 오차 \(O(h^2)\))로 바꾸면 미지수 \(y_1, \dots, y_{N-1}\)에 대한 비선형 연립방정식
+      <div class="formula">$$G_i(\mathbf y) = \frac{y_{i-1} - 2y_i + y_{i+1}}{h^2} + \lambda e^{y_i} = 0,\qquad y_0 = y_N = 0$$</div>
+      을 얻는다. 야코비안 \(\partial G_i/\partial y_j\)는 대각 \(-2/h^2 + \lambda e^{y_i}\), 비대각 \(1/h^2\)인 <b>삼중대각</b> 행렬이라 뉴턴 한 번이 토머스 알고리즘(<a href="direct-solvers.html#thomas">12장</a>)으로 \(O(N)\)에 끝난다.</div>
+    <div class="table-wrap"><table class="od-tbl">
+      <thead><tr><th>브라투 λ = 1, 유한 차분</th><th>N = 4</th><th>N = 8</th><th>N = 16</th><th>N = 32</th><th>N = 64</th></tr></thead>
+      <tbody>
+        <tr><td>최대 오차</td><td>9.08×10⁻⁴</td><td>2.23×10⁻⁴</td><td>5.57×10⁻⁵</td><td>1.39×10⁻⁵</td><td>3.47×10⁻⁶</td></tr>
+        <tr><td>뉴턴 반복 (y = 0에서 출발)</td><td>4</td><td>4</td><td>4</td><td>4</td><td>4</td></tr>
+      </tbody></table></div>
+    <p>N을 두 배로 할 때마다 오차가 정확히 4분의 1, 2차 수렴입니다. 뉴턴 반복 수는 격자 크기와 무관합니다. 유한 차분은 불안정한 초기값 문제를 거치지 않으므로 슈팅이 실패하는 문제에서도 잘 동작하고, 같은 아이디어가 2차원 푸아송 방정식(<a href="pde-numerics.html">16장</a>)으로 그대로 확장됩니다.</p>
+
+    <div class="sim" id="sim-od-bvp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>브라투 경계값 문제: 슈팅(할선법) vs 유한 차분(뉴턴)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view od-two">
+          <div><canvas id="od-bv-cv"></canvas><span class="od-cap">y(x): 시도한 궤적과 경계 조건 y(1) = 0</span></div>
+          <div><canvas id="od-bv-f"></canvas><span class="od-cap">슈팅: 빗나감 F(s) = y(1; s) · 유한 차분: 뉴턴 잔차</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="od-bv-m"><button data-value="shoot" class="on">슈팅</button><button data-value="fd">유한 차분</button></div></div>
+          <label class="ctrl"><span>λ <output id="od-bv-l-out"></output></span><input type="range" id="od-bv-l" min="0.2" max="3.8" step="0.1" value="1"></label>
+          <label class="ctrl"><span>슈팅 기울기 s = y′(0) <output id="od-bv-s-out"></output></span><input type="range" id="od-bv-s" min="0" max="14" step="0.05" value="1"></label>
+          <label class="ctrl"><span>격자 N (유한 차분) <output id="od-bv-n-out"></output></span><input type="range" id="od-bv-n"></label>
+          <div class="btn-row"><button class="btn primary" id="od-bv-step">반복 한 번</button><button class="btn" id="od-bv-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="od-bv-k">—</span></div>
+        <div class="stat"><span class="k">s 또는 y(½)</span><span class="v" id="od-bv-v">—</span></div>
+        <div class="stat"><span class="k">|F| 또는 ‖Δy‖</span><span class="v" id="od-bv-r">—</span></div>
+        <div class="stat"><span class="k">정확한 해와 최대 차이</span><span class="v" id="od-bv-e">—</span></div>
+      </div>
+      <div class="od-msg" id="od-bv-msg"></div>
+      <div class="sim-note">해볼 것: ① 슈팅에서 s 슬라이더를 움직여 끝점이 0을 지나는 s를 손으로 찾아보세요. 아래 그래프 F(s)가 0을 두 번 지납니다(해 두 개). ② '반복 한 번'은 할선법 한 걸음입니다. s = 10 근처에서 시작하면 두 번째 해로 갑니다. ③ λ를 3.6 이상으로 올리면 F(s)가 0에 닿지 않습니다. 해가 없습니다. ④ 유한 차분으로 바꾸면 y = 0에서 출발한 뉴턴 반복이 4~5번 만에 수렴하고, N을 두 배로 하면 오차가 약 4분의 1이 됩니다. 모델: 슈팅은 RK4 200걸음, 정확한 해는 θ = √(2λ) cosh(θ/4)의 작은 근으로 만든 공식.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>문제의 성격</th><th>쓰이는 방법</th></tr></thead>
+      <tbody>
+        <tr><td>궤도 역학·천체 역학</td><td>매끄럽고 긴 시간, 보존량</td><td>고차 임베디드 RK(DP8 등), 다단계(애덤스), 장기 적분은 심플렉틱</td></tr>
+        <tr><td>화학 반응·연소·대기 화학</td><td>반응 속도가 수십 자릿수에 걸침(강성)</td><td>BDF(가변 차수), 로젠브록 방법, 희소 야코비안</td></tr>
+        <tr><td>회로 시뮬레이터(SPICE 계열)</td><td>강성 + 불연속 스위칭</td><td>사다리꼴과 BDF2(링잉 억제), 뉴턴 반복과 희소 LU</td></tr>
+        <tr><td>분자 동역학·입자 가속기·게임 물리</td><td>수십억 걸음, 에너지 표류 금지</td><td>속도 베를레, 반음적 오일러</td></tr>
+        <tr><td>구조물의 처짐·열전달·반도체 소자 단면</td><td>경계값 문제</td><td>유한 차분·유한 요소 + 뉴턴, 다중 슈팅·콜로케이션(<code>solve_bvp</code>)</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="../../ode/chapters/numerical.html"><small>ODEBOOK 5장</small>수치 해법의 기초<br><span>오일러의 오차, RK4, 안정성 영역, 음적 오일러, 심플렉틱 오일러. 이 장의 출발점.</span></a>
+      <a href="../../ode/chapters/boundary.html"><small>ODEBOOK</small>경계값 문제<br><span>슈팅과 유한 차분이 푸는 방정식의 고유값과 해의 존재.</span></a>
+      <a href="roots.html"><small>3장</small>뉴턴 방법과 할선법<br><span>음적 공식의 비선형 방정식과 슈팅의 빗나감 함수를 푸는 도구.</span></a>
+      <a href="interpolation.html"><small>5장</small>다항식 보간<br><span>애덤스는 f를, BDF는 y를 보간한다. 다단계 공식의 계수가 나오는 곳.</span></a>
+      <a href="direct-solvers.html"><small>12장</small>연립방정식의 직접 해법<br><span>강성 풀이기의 비용 대부분은 I − γhJ의 LU 분해다.</span></a>
+      <a href="pde-numerics.html"><small>16장</small>편미분방정식의 수치 해법<br><span>선의 방법: 공간을 격자로 나누면 거대한 강성 ODE가 되고, 랙스 동등성 정리가 기다린다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>수렴 = 일관성 + 안정성. 일단계 방법은 일관적이면 수렴한다(정리 11.2). 다단계 방법은 \(\rho(\zeta)\)의 근이 단위원 안에 있고 경계의 근이 단근이어야(영 안정) 수렴한다(달퀴스트 동등성 정리).</li>
+      <li>룽게–쿠타 방법은 부처 표 \((A, \mathbf b, \mathbf c)\)로 정의된다. p차 조건은 뿌리 있는 나무마다 하나씩, 4차까지 8개이며, 5차에는 6단이 필요하다(부처 장벽).</li>
+      <li>임베디드 쌍은 두 가중치의 차이로 국소 오차를 공짜로 추정하고, 높은 차수 쪽으로 진행하며, \(h \leftarrow h\cdot\min(5, \max(0.2, 0.9\,\mathrm{err}^{-1/(q+1)}))\)로 걸음을 조절한다. 척도는 atol + rtol·|y|.</li>
+      <li>애덤스–배시포스(명시적, k차)와 애덤스–몰턴(음적, k+1차)은 f의 보간 다항식을 적분한다. 걸음당 f 계산 1~2회로 고차를 얻고, PECE의 예측–수정 차이가 오차 추정(밀른 장치)이 된다.</li>
+      <li>다단계 방법의 안정 영역은 \(\rho(\zeta) - z\sigma(\zeta)\)의 근이 단위원 안인 z의 집합이다. 명시적 방법은 차수가 높을수록 영역이 좁다. A-안정 다단계 방법은 2차가 한계다(달퀴스트 제2 장벽).</li>
+      <li>강성 문제에서 명시적 방법의 걸음은 \(h|\lambda_{\max}|\)의 안정 경계에 묶인다. BDF(\(k \le 6\), BDF1·2는 L-안정)는 \(I - \gamma hJ\)의 LU 분해를 재사용하는 단순화 뉴턴으로 걸음마다 음적 방정식을 푼다. 로버트슨 문제에서 걸음 수가 200배 이상 준다.</li>
+      <li>스퇴르머–베를레는 전단 사상의 합성이라 넓이를 보존하고 시간 가역적이다. 수정된 해밀토니언 덕에 에너지 오차가 \(O(h^2)\) 띠 안에 머물러, 긴 시간에서는 표류가 \(t\)에 비례하는 RK4를 이긴다.</li>
+      <li>경계값 문제는 슈팅(초기값 문제 + 할선/뉴턴)이나 유한 차분(삼중대각 뉴턴, \(O(h^2)\))으로 푼다. 초기값 문제가 불안정하면 유한 차분이나 다중 슈팅이 필요하다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 2단계 방법 \(y_{n+2} - 3y_{n+1} + 2y_n = h(\dots)\)의 \(\rho(\zeta)\)의 근은 1과 2이다. 이 방법에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">일관적이면 수렴한다</button>
+        <button class="opt" data-correct>영 안정이 아니므로 차수와 관계없이 수렴하지 않는다</button>
+        <button class="opt">h가 충분히 작으면 안정하다</button>
+        <button class="opt">음적 공식으로 바꾸면 수렴한다</button>
+      </div><div class="quiz-exp">기생 근 2가 단위원 밖에 있어 근 조건이 깨진다. 오차의 기생 성분이 2ⁿ으로 자라고 n = (T − t₀)/h이므로 h를 줄일수록 더 나빠진다. 달퀴스트 동등성 정리에 따라 수렴하지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 3단 명시적 RK의 가중치가 \(\mathbf b = (\tfrac14, 0, \tfrac34)\), \(\mathbf c = (0, \tfrac13, \tfrac23)\)이다. \(\sum b_ic_i\)와 \(\sum b_ic_i^2\)의 값은?</p><div class="opts">
+        <button class="opt">1/2, 1/4</button>
+        <button class="opt" data-correct>1/2, 1/3</button>
+        <button class="opt">1/3, 1/3</button>
+        <button class="opt">1/2, 1/6</button>
+      </div><div class="quiz-exp">\(\sum b_ic_i = \tfrac34\cdot\tfrac23 = \tfrac12\), \(\sum b_ic_i^2 = \tfrac34\cdot\tfrac49 = \tfrac13\). 2차 조건과 3차 조건 하나가 맞는다(이것은 호인의 3차 방법이며 \(a_{32} = \tfrac23\)이면 나머지 조건 \(\sum b_ia_{ij}c_j = \tfrac34\cdot\tfrac23\cdot\tfrac13 = \tfrac16\)도 성립한다).</div></div>
+
+      <div class="quiz-q"><p>Q3. 3(2) 임베디드 쌍에서 오차 추정이 허용 오차의 8배였다(err = 8). 안전 계수 0.9를 쓰면 다음 시도의 h는 지금의 몇 배인가?</p><div class="opts">
+        <button class="opt">0.9/8 ≈ 0.11</button>
+        <button class="opt">0.9/√8 ≈ 0.32</button>
+        <button class="opt" data-correct>0.9/2 = 0.45</button>
+        <button class="opt">0.9</button>
+      </div><div class="quiz-exp">낮은 차수 q = 2이므로 국소 오차 ∝ h³, 지수는 1/(q + 1) = 1/3. 0.9·8<sup>−1/3</sup> = 0.9/2 = 0.45. 이 걸음은 버리고 0.45h로 다시 계산한다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 비싼 f를 쓰는 강성 없는 문제에서, 4차 정확도를 원할 때 걸음당 f 계산이 가장 적은 방법은?</p><div class="opts">
+        <button class="opt">고전 RK4</button>
+        <button class="opt" data-correct>애덤스–배시포스 4단계</button>
+        <button class="opt">BDF4</button>
+        <button class="opt">스퇴르머–베를레</button>
+      </div><div class="quiz-exp">AB4는 과거 기울기 네 개를 재활용해 걸음당 f를 1회만 계산한다. RK4는 4회. BDF4는 음적이라 뉴턴 반복이 필요하고 강성 문제용이다. 베를레는 2차다.</div></div>
+
+      <div class="quiz-q"><p>Q5. A-안정이면서 3차인 선형 다단계 방법에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">BDF3가 그런 방법이다</button>
+        <button class="opt">AM3가 그런 방법이다</button>
+        <button class="opt" data-correct>존재하지 않는다(달퀴스트 제2 장벽)</button>
+        <button class="opt">명시적 방법 중에 있다</button>
+      </div><div class="quiz-exp">A-안정 선형 다단계 방법의 차수는 2 이하다. BDF3는 A(86.03°)-안정일 뿐이고, AM3의 실수축 안정 구간은 (−6, 0)이다. 3차 이상의 A-안정 방법을 원하면 음적 룽게–쿠타(가우스, 라다우)로 가야 한다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 강성 계 \(y' = f(y)\)(차원 m)를 BDF로 풀 때 단순 고정점 반복 대신 뉴턴 반복을 쓰는 이유는?</p><div class="opts">
+        <button class="opt">고정점 반복은 차수를 떨어뜨리기 때문</button>
+        <button class="opt" data-correct>고정점 반복은 γh‖J‖ &lt; 1일 때만 수렴해, 피하려던 걸음 제한이 다시 생기기 때문</button>
+        <button class="opt">뉴턴 반복은 LU 분해가 필요 없기 때문</button>
+        <button class="opt">고정점 반복은 음적 공식에 쓸 수 없기 때문</button>
+      </div><div class="quiz-exp">y ← ψ + γh f(y)는 축소 사상일 때, 곧 γh·‖J‖ &lt; 1일 때 수렴한다. 강성 문제의 ‖J‖가 크므로 이는 명시적 방법의 안정 조건과 같은 제한이다. 뉴턴 반복은 (I − γhJ)의 LU 분해로 이 제한을 없앤다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 진자를 h = 0.1로 10⁶ 걸음 적분해 에너지를 지켜야 한다. 가장 알맞은 선택과 이유는?</p><div class="opts">
+        <button class="opt">RK4: 차수가 높아서 오차가 가장 작다</button>
+        <button class="opt">명시적 오일러: 걸음당 비용이 가장 싸다</button>
+        <button class="opt" data-correct>스퇴르머–베를레: 에너지 오차가 O(h²) 띠에 머물고 시간에 따라 쌓이지 않는다</button>
+        <button class="opt">음적 오일러: A-안정이라 에너지를 보존한다</button>
+      </div><div class="quiz-exp">RK4의 에너지 표류는 시간에 비례해 쌓인다. 베를레는 심플렉틱이라 수정된 해밀토니언을 따라가며 에너지 오차가 유계다. 음적 오일러는 오히려 에너지를 인위적으로 소산시킨다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 유한 차분으로 2점 경계값 문제를 푸는데 N = 20에서 최대 오차가 \(8\times10^{-4}\)였다. 중앙 차분을 쓸 때 N = 80이면 오차는 대략?</p><div class="opts">
+        <button class="opt">2×10⁻⁴</button>
+        <button class="opt" data-correct>5×10⁻⁵</button>
+        <button class="opt">1×10⁻⁵</button>
+        <button class="opt">3×10⁻⁶</button>
+      </div><div class="quiz-exp">중앙 차분은 O(h²). h가 1/4이 되면 오차는 1/16: 8×10⁻⁴/16 = 5×10⁻⁵. 브라투 표에서도 N을 두 배로 할 때마다 정확히 1/4씩 줄었다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const OD = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v) || Math.abs(v) > 1e60) return "발산";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  sup(v) { return "10" + String(Math.round(Math.log10(v))).replace("-", "⁻").replace(/[0-9]/g, (c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]); },
+  /* 복소 다항식 p[0] + p[1]ζ + … 의 근 (뒤랑–케르너) */
+  roots(p, iters = 60) {
+    const cx = MB.cx; let n = p.length - 1;
+    while (n > 0 && cx.abs(p[n]) < 1e-13) n--;
+    if (n === 0) return [];
+    const q = p.slice(0, n + 1).map((c) => cx.div(c, p[n]));
+    const z = []; for (let i = 0; i < n; i++) z.push(cx.scale(cx.cis(2 * Math.PI * i / n + 0.4), 0.9 + 0.2 * i / n));
+    for (let it = 0; it < iters; it++) {
+      let moved = 0;
+      for (let i = 0; i < n; i++) {
+        let v = [0, 0]; for (let j = n; j >= 0; j--) v = cx.add(cx.mul(v, z[i]), q[j]);
+        let d = [1, 0]; for (let j = 0; j < n; j++) if (j !== i) d = cx.mul(d, cx.sub(z[i], z[j]));
+        const dz = cx.div(v, d); z[i] = cx.sub(z[i], dz); moved = Math.max(moved, cx.abs(dz));
+      }
+      if (moved < 1e-12) break;
+    }
+    return z;
+  },
+  /* 선형 다단계 방법: a[j], b[j]는 ζ^j의 계수 */
+  LMM: {
+    ab2: { a: [0, -1, 1], b: [-1 / 2, 3 / 2, 0], name: "AB2" },
+    ab3: { a: [0, 0, -1, 1], b: [5 / 12, -16 / 12, 23 / 12, 0], name: "AB3" },
+    ab4: { a: [0, 0, 0, -1, 1], b: [-9 / 24, 37 / 24, -59 / 24, 55 / 24, 0], name: "AB4" },
+    am4: { a: [0, 0, -1, 1], b: [1 / 24, -5 / 24, 19 / 24, 9 / 24], name: "AM4" },
+    trap: { a: [-1, 1], b: [1 / 2, 1 / 2], name: "사다리꼴" },
+    bdf2: { a: [1 / 2, -2, 3 / 2], b: [0, 0, 1], name: "BDF2" },
+    bdf3: { a: [-1 / 3, 3 / 2, -3, 11 / 6], b: [0, 0, 0, 1], name: "BDF3" },
+    bdf4: { a: [1 / 4, -4 / 3, 3, -4, 25 / 12], b: [0, 0, 0, 0, 1], name: "BDF4" },
+    bdf5: { a: [-1 / 5, 5 / 4, -10 / 3, 5, -5, 137 / 60], b: [0, 0, 0, 0, 0, 1], name: "BDF5" },
+    bdf6: { a: [1 / 6, -6 / 5, 15 / 4, -20 / 3, 15 / 2, -6, 49 / 20], b: [0, 0, 0, 0, 0, 0, 1], name: "BDF6" },
+  },
+  piRoots(m, z) { const cx = MB.cx; return OD.roots(m.a.map((a, j) => cx.sub([a, 0], cx.scale(z, m.b[j])))); },
+  rk4: (f, t, y, h) => { const ad = (u, k, c) => u.map((v, i) => v + c * k[i]); const k1 = f(t, y), k2 = f(t + h / 2, ad(y, k1, h / 2)), k3 = f(t + h / 2, ad(y, k2, h / 2)), k4 = f(t + h, ad(y, k3, h)); return y.map((v, i) => v + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])); },
+  /* 작은 연립방정식 (부분 피벗팅 소거) */
+  solve(A, b) {
+    const n = b.length; A = A.map((r) => r.slice()); b = b.slice();
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[p][k])) p = i;
+      [A[k], A[p]] = [A[p], A[k]]; [b[k], b[p]] = [b[p], b[k]];
+      for (let i = k + 1; i < n; i++) { const l = A[i][k] / A[k][k]; for (let j = k; j < n; j++) A[i][j] -= l * A[k][j]; b[i] -= l * b[k]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j]; x[i] = s / A[i][i]; }
+    return x;
+  },
+  alpha(c, a) {
+    c = String(c).trim();
+    if (c[0] === "#") { const v = c.length === 4 ? c.slice(1).split("").map((x) => parseInt(x + x, 16)) : [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)); return `rgba(${v[0]},${v[1]},${v[2]},${a})`; }
+    const m = c.match(/[\d.]+/g); return m ? `rgba(${m[0]},${m[1]},${m[2]},${a})` : c;
+  },
+  box(w, h, l = 58, t = 26, r = 16, b = 40) { return { x: l, y: t, w: w - l - r, h: h - t - b }; },
+};
+
+/* ================================================================ 1. 영 안정성 */
+(function () {
+  const HS = [0.2, 0.1, 0.05, 0.025, 0.0125], DS = [0, 1e-10, 1e-6, 1e-3], T = 3;
+  const RHO = { ab2: [[1, 0], [0, 0]], bad: [[1, 0], [-5, 0]], leap: [[1, 0], [-1, 0]] };
+  let m = "ab2", h = 0.1, d = 0, prev = null, R = null;
+  const msg = document.getElementById("od-zr-msg");
+  const step = (n, y, h) => {
+    const f0 = -y[n], f1 = -y[n + 1];
+    if (m === "ab2") return y[n + 1] + h * (1.5 * f1 - 0.5 * f0);
+    if (m === "bad") return -4 * y[n + 1] + 5 * y[n] + h * (4 * f1 + 2 * f0);
+    return y[n] + 2 * h * f1;
+  };
+  const run = () => {
+    const N = Math.round(T / h), y = [1, Math.exp(-h) * (1 + d)];
+    for (let n = 0; n + 2 <= N; n++) y.push(step(n, y, h));
+    return { N, y, err: Math.abs(y[N] - Math.exp(-T)) };
+  };
+  R = run();
+  const cv = MB.canvas("#od-zr-cv", (ctx, w, hh) => {
+    const C = MB.palette(), ex = [];
+    for (let i = 0; i <= 200; i++) { const t = T * i / 200; ex.push([t, Math.exp(-t)]); }
+    const pts = R.y.map((v, i) => [i * h, MB.clamp(v, -1.6, 2.6)]);
+    MB.chart(ctx, OD.box(w, hh, 46, 26, 14, 44), {
+      x: [0, T], y: [-1.5, 2.5], xLabel: "t", series: [{ data: ex, color: C.dim, width: 2.4 }, { data: pts, color: C.accent, width: 1.2 }],
+      points: R.y.length <= 70 ? pts.map(([x, y]) => ({ x, y, r: 3, color: C.accent })) : [], hlines: [{ y: 0, color: C.axis, dash: [] }],
+    });
+  }, { aspect: 0.5, minHeight: 220, maxHeight: 340 });
+  const rt = MB.plane("#od-zr-rt", {
+    x: [-6.2, 2.2], y: [-1.6, 1.6], aspect: 0.36, minHeight: 130, maxHeight: 190, gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      P.param((s) => [Math.cos(s), Math.sin(s)], 0, 2 * Math.PI, { color: C.ok, width: 1.6 });
+      RHO[m].forEach(([a]) => P.dot(a, 0, { r: 6, color: Math.abs(a) > 1 + 1e-9 ? C.bad : C.text }));
+      const z = -h, cof = m === "ab2" ? [[0.5 * z, 0], [-1 - 1.5 * z, 0], [1, 0]] : m === "bad" ? [[-5 - 2 * z, 0], [4 - 4 * z, 0], [1, 0]] : [[-1, 0], [-2 * z, 0], [1, 0]];
+      OD.roots(cof).forEach((r) => P.dot(r[0], r[1], { r: 4, color: C.bg, stroke: C.accent }));
+      P.text("단위원", 0, 1, { color: C.ok, dy: -8, align: "center", size: 11 });
+    },
+  });
+  const update = () => {
+    R = run(); cv.redraw(); rt.redraw();
+    MB.stat("od-zr-r", m === "ab2" ? "1, 0" : m === "bad" ? "1, <span style='color:var(--bad)'>−5</span>" : "1, −1");
+    MB.stat("od-zr-n", String(R.N));
+    MB.stat("od-zr-e", OD.sci(R.err, 2));
+    if (prev && prev.m === m && prev.d === d && prev.h !== h) {
+      const r = prev.err / R.err;
+      msg.className = "od-msg" + (r < 1 ? " bad" : "");
+      msg.innerHTML = r < 1 ? `h를 ${prev.h} → ${h}로 줄였더니 오차가 <b>${OD.sci(1 / r, 2)}배 커졌습니다</b>. 기생 근이 단위원 밖에 있어 걸음 수 N이 늘수록 |ζ|<sup>N</sup>이 커집니다.` : `h를 ${prev.h} → ${h}로 바꾸자 오차가 <b>${OD.num(r, 2)}배</b> 작아졌습니다${m === "ab2" ? " (2차 방법이면 h를 반으로 할 때 약 4배)" : ""}.`;
+    } else { msg.className = "od-msg"; msg.innerHTML = `검은 점: ρ(ζ)의 근(h = 0), 빈 원: 실제 걸음의 특성근(hλ = −h). 한 근은 언제나 e<sup>−h</sup> ≈ 1 근처에 있고, 나머지가 기생 근입니다.`; }
+    prev = { m, h, d, err: R.err };
+  };
+  update();
+  MB.seg("od-zr-m", (v) => { m = v; prev = null; update(); });
+  MB.steps("od-zr-h", HS, (v) => String(v), 0.1, (v) => { h = v; update(); });
+  MB.steps("od-zr-d", DS, (v) => (v === 0 ? "0" : OD.sup(v)), 0, (v) => { d = v; prev = null; update(); });
+})();
+
+/* ================================================================ 2. 부처 표 */
+(function () {
+  const S = 4, h2 = (x) => x;
+  const PRE = {
+    euler: { c: [0, 0, 0, 0], A: [[], [0], [0, 0], [0, 0, 0]], b: ["1", "0", "0", "0"] },
+    mid: { c: ["0", "1/2", "0", "0"], A: [[], ["1/2"], [0, 0], [0, 0, 0]], b: ["0", "1", "0", "0"] },
+    heun: { c: ["0", "1", "0", "0"], A: [[], ["1"], [0, 0], [0, 0, 0]], b: ["1/2", "1/2", "0", "0"] },
+    ral: { c: ["0", "2/3", "0", "0"], A: [[], ["2/3"], [0, 0], [0, 0, 0]], b: ["1/4", "3/4", "0", "0"] },
+    k3: { c: ["0", "1/2", "1", "0"], A: [[], ["1/2"], ["-1", "2"], [0, 0, 0]], b: ["1/6", "2/3", "1/6", "0"] },
+    rk4: { c: ["0", "1/2", "1/2", "1"], A: [[], ["1/2"], ["0", "1/2"], ["0", "0", "1"]], b: ["1/6", "1/3", "1/3", "1/6"] },
+    r38: { c: ["0", "1/3", "2/3", "1"], A: [[], ["1/3"], ["-1/3", "1"], ["1", "-1", "1"]], b: ["1/8", "3/8", "3/8", "1/8"] },
+    bug: { c: ["0", "0", "1/2", "1"], A: [[], ["1/2"], ["0", "1/2"], ["0", "0", "1"]], b: ["1/6", "1/3", "1/3", "1/6"] },
+  };
+  const tab = document.getElementById("od-bt-tab"), inp = { c: [], A: [], b: [] };
+  const mk = (cls) => { const e = document.createElement("input"); e.type = "text"; e.inputMode = "decimal"; if (cls) e.className = cls; return e; };
+  for (let i = 0; i < S; i++) {
+    const cell = document.createElement("div"); cell.className = "od-c"; const ci = mk(); cell.appendChild(ci); tab.appendChild(cell); inp.c.push(ci);
+    inp.A.push([]);
+    for (let j = 0; j < S; j++) { const e = mk(); if (j >= i) { e.disabled = true; e.value = ""; } tab.appendChild(e); inp.A[i].push(e); }
+  }
+  const lab = document.createElement("div"); lab.className = "od-c od-bline"; lab.textContent = "b"; lab.style.textAlign = "center"; tab.appendChild(lab);
+  for (let j = 0; j < S; j++) { const e = mk(); const w = document.createElement("div"); w.className = "od-bline"; w.appendChild(e); tab.appendChild(w); inp.b.push(e); }
+  const parse = (s) => {
+    s = String(s).trim().replace("−", "-"); if (s === "") return 0;
+    const m = s.match(/^(-?\d*\.?\d+)\s*(?:\/\s*(\d*\.?\d+))?$/); if (!m) return NaN;
+    return m[2] ? Number(m[1]) / Number(m[2]) : Number(m[1]);
+  };
+  const read = () => {
+    const c = inp.c.map((e) => parse(e.value)), b = inp.b.map((e) => parse(e.value));
+    const A = inp.A.map((r, i) => r.map((e, j) => (j < i ? parse(e.value) : 0)));
+    return { c, A, b };
+  };
+  const load = (k) => { const p = PRE[k]; for (let i = 0; i < S; i++) { inp.c[i].value = String(p.c[i]); inp.b[i].value = String(p.b[i]); for (let j = 0; j < i; j++) inp.A[i][j].value = String(p.A[i][j] ?? 0); } };
+  const f = (t, y) => y * Math.cos(t), ex = Math.exp(Math.sin(3)), T = 3;
+  const HS = []; for (let k = 1; k <= 9; k++) HS.push(Math.pow(2, -k));
+  let data = [], pPred = 0;
+  const runAll = (M) => HS.map((h) => {
+    const N = Math.round(T / h); let y = 1;
+    for (let n = 0; n < N; n++) {
+      const t = n * h, k = [];
+      for (let i = 0; i < S; i++) { let s = y; for (let j = 0; j < i; j++) s += h * M.A[i][j] * k[j]; k.push(f(t + M.c[i] * h, s)); }
+      let s = 0; for (let i = 0; i < S; i++) s += M.b[i] * k[i]; y += h * s;
+      if (!isFinite(y) || Math.abs(y) > 1e30) break;
+    }
+    return { h, e: Math.max(Math.abs(y - ex), 1e-17) };
+  });
+  const slope = (arr) => {
+    const pts = arr.filter((p) => p.h <= 0.26 && p.e > 1e-12 && isFinite(p.e));
+    if (pts.length < 2) return NaN;
+    const xs = pts.map((p) => Math.log(p.h)), ys = pts.map((p) => Math.log(p.e)), mx = MB.mean(xs), my = MB.mean(ys);
+    let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; });
+    return a / b;
+  };
+  const cv = MB.canvas("#od-bt-cv", (ctx, w, hh) => {
+    const C = MB.palette(), d = data.map((p) => [p.h, p.e]), series = [];
+    const mid = data[4];
+    if (pPred > 0 && mid && mid.e > 1e-15) { const c = mid.e / Math.pow(mid.h, pPred); series.push({ data: [[1.5e-3, c * Math.pow(1.5e-3, pPred)], [0.6, c * Math.pow(0.6, pPred)]], color: C.faint, width: 1.4, dash: [5, 4] }); }
+    series.push({ data: d, color: C.accent, width: 2.4 });
+    const ch = MB.chart(ctx, OD.box(w, hh, 62, 14, 16, 46), {
+      x: [1.5e-3, 0.6], y: [1e-16, 10], logX: true, logY: true, xLabel: "걸음 폭 h", yLabel: "|y(3) 오차|",
+      yTicks: [1e-15, 1e-12, 1e-9, 1e-6, 1e-3, 1], series, points: d.map(([x, y]) => ({ x, y, r: 3.5, color: C.accent })),
+    });
+    if (pPred > 0) { ctx.save(); ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.fillText("점선: 기울기 " + pPred + " (조건으로 예측)", ch.box.x + 10, ch.box.y + 16); ctx.restore(); }
+  }, { aspect: 0.62, minHeight: 260, maxHeight: 420 });
+  const condEl = document.getElementById("od-bt-cond");
+  const update = () => {
+    const M = read();
+    const bad = [M.c, M.b].flat().concat(M.A.flat()).some((v) => !isFinite(v));
+    if (bad) { MB.stat("od-bt-p", "입력 오류"); return; }
+    const { A, b, c } = M, sum = (fn) => { let s = 0; for (let i = 0; i < S; i++) s += fn(i); return s; };
+    const ac = (i) => sum((j) => A[i][j] * c[j]), ac2 = (i) => sum((j) => A[i][j] * c[j] * c[j]), aac = (i) => sum((j) => A[i][j] * ac(j));
+    const conds = [
+      [1, "∑bᵢ = 1", sum((i) => b[i]), 1],
+      [2, "∑bᵢcᵢ = 1/2", sum((i) => b[i] * c[i]), 1 / 2],
+      [3, "∑bᵢcᵢ² = 1/3", sum((i) => b[i] * c[i] ** 2), 1 / 3],
+      [3, "∑bᵢaᵢⱼcⱼ = 1/6", sum((i) => b[i] * ac(i)), 1 / 6],
+      [4, "∑bᵢcᵢ³ = 1/4", sum((i) => b[i] * c[i] ** 3), 1 / 4],
+      [4, "∑bᵢcᵢaᵢⱼcⱼ = 1/8", sum((i) => b[i] * c[i] * ac(i)), 1 / 8],
+      [4, "∑bᵢaᵢⱼcⱼ² = 1/12", sum((i) => b[i] * ac2(i)), 1 / 12],
+      [4, "∑bᵢaᵢⱼaⱼₖcₖ = 1/24", sum((i) => b[i] * aac(i)), 1 / 24],
+    ];
+    const rowOK = c.every((ci, i) => Math.abs(ci - sum((j) => A[i][j])) < 1e-9);
+    let p = 0; for (let q = 1; q <= 4; q++) { if (conds.filter((x) => x[0] === q).every((x) => Math.abs(x[2] - x[3]) < 1e-9)) p = q; else break; }
+    condEl.innerHTML = conds.map(([q, s, v, t]) => `<li class="${Math.abs(v - t) < 1e-9 ? "ok" : "no"}">${s} <small>(${OD.num(v, 4)})</small></li>`).join("") + `<li class="${rowOK ? "ok" : "no"}">행 합 cᵢ = ∑ⱼaᵢⱼ</li>`;
+    pPred = p; data = runAll(M); cv.redraw();
+    MB.stat("od-bt-p", p + (rowOK ? "" : " <small>(행 합 위반)</small>"));
+    const s = slope(data); MB.stat("od-bt-s", isFinite(s) ? OD.num(s, 2) : "—");
+    MB.stat("od-bt-e", OD.sci(data[3].e, 2));
+  };
+  load("rk4"); update();
+  document.getElementById("od-bt-pre").addEventListener("change", (e) => { load(e.target.value); update(); });
+  tab.addEventListener("input", MB.throttle(update));
+})();
+
+/* ================================================================ 3. 임베디드 쌍 */
+(function () {
+  const PAIRS = {
+    he: { A: [[], [1]], c: [0, 1], b: [1 / 2, 1 / 2], bh: [1, 0], q: 1, col: "warn" },
+    bs: { A: [[], [1 / 2], [0, 3 / 4], [2 / 9, 1 / 3, 4 / 9]], c: [0, 1 / 2, 3 / 4, 1], b: [2 / 9, 1 / 3, 4 / 9, 0], bh: [7 / 24, 1 / 4, 1 / 3, 1 / 8], q: 2, col: "accent" },
+    dp: { A: [[], [1 / 5], [3 / 40, 9 / 40], [44 / 45, -56 / 15, 32 / 9], [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729], [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656], [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]], c: [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1], b: [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0], bh: [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40], q: 4, col: "blue" },
+  };
+  const PROB = {
+    vdp: { f: (t, y) => [y[1], 5 * (1 - y[0] * y[0]) * y[1] - y[0]], y0: [2, 0], T: 20, yr: [-2.6, 2.6] },
+    bru: { f: (t, y) => [1 + y[0] * y[0] * y[1] - 4 * y[0], 3 * y[0] - y[0] * y[0] * y[1]], y0: [1.5, 3], T: 20, yr: [0, 4.2] },
+    stf: { f: (t, y) => [-60 * (y[0] - Math.cos(t))], y0: [0], T: 10, yr: [-1.3, 1.3] },
+  };
+  const TOLS = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8];
+  let pk = "vdp", key = "bs", tol = 1e-5, R = null; const cache = {};
+  const adapt = (P, pr, tol, rec) => {
+    const f = pr.f; let t = 0, y = pr.y0.slice(), h = 0.01, acc = 0, rej = 0, ev = 0;
+    const st = rec ? [{ t: 0, y: y.slice(), h: 0 }] : null, rj = rec ? [] : null;
+    while (t < pr.T - 1e-12 && acc + rej < 400000) {
+      if (t + h > pr.T) h = pr.T - t;
+      const k = [];
+      for (let s = 0; s < P.c.length; s++) { const ys = y.map((v, i) => { let a = v; for (let j = 0; j < s; j++) a += h * P.A[s][j] * k[j][i]; return a; }); k.push(f(t + P.c[s] * h, ys)); ev++; }
+      const yn = y.map((v, i) => { let a = v; for (let j = 0; j < k.length; j++) a += h * P.b[j] * k[j][i]; return a; });
+      let err = 0;
+      for (let i = 0; i < y.length; i++) { let e = 0; for (let j = 0; j < k.length; j++) e += h * (P.b[j] - P.bh[j]) * k[j][i]; err = Math.max(err, Math.abs(e) / (tol * (1 + Math.max(Math.abs(y[i]), Math.abs(yn[i]))))); }
+      if (err <= 1) { t += h; y = yn; acc++; if (rec) st.push({ t, y: y.slice(), h }); } else { rej++; if (rec) rj.push({ t, y: y.slice(), h }); }
+      h *= Math.min(5, Math.max(0.2, 0.9 * Math.pow(err || 1e-12, -1 / (P.q + 1))));
+    }
+    return { y, acc, rej, ev, st, rj };
+  };
+  const prep = () => {
+    if (cache[pk]) return cache[pk];
+    const pr = PROB[pk], ref = adapt(PAIRS.dp, pr, 1e-13, true);
+    const wp = {}; Object.keys(PAIRS).forEach((k) => { wp[k] = TOLS.map((tl) => { const r = adapt(PAIRS[k], pr, tl, false); return { ev: r.ev, e: Math.max(1e-16, Math.hypot(...r.y.map((v, i) => v - ref.y[i]))) }; }); });
+    return (cache[pk] = { ref, wp });
+  };
+  R = adapt(PAIRS[key], PROB[pk], tol, true);
+  const cvY = MB.canvas("#od-ad-cv", (ctx, w, hh) => {
+    const C = MB.palette(), pr = PROB[pk], D = prep(), col = C[PAIRS[key].col];
+    const refl = D.ref.st.filter((_, i) => i % 2 === 0).map((s) => [s.t, s.y[0]]);
+    MB.chart(ctx, OD.box(w, hh, 48, 26, 14, 44), {
+      x: [0, pr.T], y: pr.yr, xLabel: "t", series: [{ data: refl, color: C.faint, width: 2.2 }],
+      points: R.st.slice(1).map((s) => ({ x: s.t, y: s.y[0], r: 2.8, color: col })).concat(R.rj.map((s) => ({ x: s.t, y: MB.clamp(s.y[0], pr.yr[0], pr.yr[1]), r: 3, color: C.bad, label: "×" }))),
+    });
+  }, { aspect: 0.4, minHeight: 180, maxHeight: 280 });
+  const cvH = MB.canvas("#od-ad-hh", (ctx, w, hh) => {
+    const C = MB.palette(), pr = PROB[pk], col = C[PAIRS[key].col];
+    const d = R.st.slice(1).map((s) => [s.t, s.h]);
+    MB.chart(ctx, OD.box(w, hh, 48, 26, 14, 44), { x: [0, pr.T], y: [1e-4, 2], logY: true, xLabel: "t", series: [{ data: d, color: col, width: 1.6 }] });
+  }, { aspect: 0.28, minHeight: 140, maxHeight: 200 });
+  const cvW = MB.canvas("#od-ad-wp", (ctx, w, hh) => {
+    const C = MB.palette(), D = prep(), series = [], points = [];
+    Object.keys(PAIRS).forEach((k) => {
+      const c = C[PAIRS[k].col], d = D.wp[k].map((p) => [p.ev, p.e]);
+      series.push({ data: d, color: c, width: k === key ? 2.6 : 1.4 });
+      d.forEach(([x, y], i) => points.push({ x, y, r: k === key && TOLS[i] === tol ? 6 : 3, color: c }));
+    });
+    MB.chart(ctx, OD.box(w, hh, 58, 26, 16, 40), { x: [100, 1e6], y: [1e-10, 1e-1], logX: true, logY: true, xLabel: "f 계산 횟수", yLabel: "전역 오차", series, points });
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 290 });
+  const update = () => {
+    R = adapt(PAIRS[key], PROB[pk], tol, true);
+    cvY.redraw(); cvH.redraw(); cvW.redraw();
+    const D = prep(), e = Math.hypot(...R.y.map((v, i) => v - D.ref.y[i]));
+    const hs = R.st.slice(1).map((s) => s.h); let mn = Infinity, mx = 0; hs.forEach((v) => { mn = Math.min(mn, v); mx = Math.max(mx, v); });
+    MB.stat("od-ad-n", R.acc.toLocaleString() + " / " + R.rej.toLocaleString());
+    MB.stat("od-ad-ev", R.ev.toLocaleString());
+    MB.stat("od-ad-err", OD.sci(e, 2));
+    MB.stat("od-ad-h", OD.sci(mn, 2) + " · " + OD.num(mx, 3));
+    const m = document.getElementById("od-ad-msg");
+    m.innerHTML = `tol = ${OD.sup(tol)}: 전역 오차 / tol = <b>${OD.num(e / tol, 2)}</b>. 버린 걸음 비율 ${OD.num(100 * R.rej / Math.max(1, R.acc + R.rej), 1)}%. ${pk === "stf" ? "해는 매끄럽지만 h가 안정 경계 근처에 머물며 채택·버림을 되풀이합니다." : "tol을 10배 줄이면 걸음 수는 약 10<sup>1/(q+1)</sup>배 늘어납니다."}`;
+  };
+  update();
+  document.getElementById("od-ad-pre").addEventListener("change", (e) => { pk = e.target.value; update(); });
+  MB.seg("od-ad-pair", (v) => { key = v; update(); });
+  MB.steps("od-ad-tol", TOLS, (v) => OD.sup(v), 1e-5, (v) => { tol = v; update(); });
+})();
+
+/* ================================================================ 4. 애덤스 예측–수정 */
+(function () {
+  const f = (t, y) => y * Math.cos(t), ex = (t) => Math.exp(Math.sin(t)), T = 6;
+  const AB = { 2: [3 / 2, -1 / 2], 4: [55 / 24, -59 / 24, 37 / 24, -9 / 24] };
+  const AM = { 2: [1 / 2, 1 / 2], 4: [9 / 24, 19 / 24, -5 / 24, 1 / 24] };
+  const MILNE = { 2: 1 / 6, 4: 19 / 270 };
+  const HS = [0.4, 0.2, 0.1, 0.05];
+  let m = "ab4", h = 0.2, ys = [], Fs = [], ev = 0, playing = false, acc = 0;
+  const K = () => (m === "ab2" || m === "pc2" ? 2 : 4), pc = () => m[0] === "p";
+  const tb = document.getElementById("od-am-tb");
+  const reset = () => {
+    ys = []; Fs = []; ev = 0;
+    for (let i = 0; i < K(); i++) { ys.push(ex(i * h)); Fs.push(f(i * h, ys[i])); }
+    tb.innerHTML = ys.map((y, i) => `<tr><td>${i}</td><td>${OD.num(i * h, 2)}</td><td>${OD.num(y, 6)}</td><td>${OD.num(ex(i * h), 6)}</td><td>출발값</td></tr>`).join("");
+  };
+  const lag = (xs, vs, x) => { let s = 0; for (let a = 0; a < xs.length; a++) { let L = 1; for (let b = 0; b < xs.length; b++) if (b !== a) L *= (x - xs[b]) / (xs[a] - xs[b]); s += L * vs[a]; } return s; };
+  /* n에서 n+1로 가는 한 걸음의 정보 */
+  const info = (n) => {
+    const k = K(), tn = n * h, tp = [], fp = [];
+    for (let j = 0; j < k; j++) { tp.push((n - j) * h); fp.push(Fs[n - j]); }
+    let s = 0; for (let j = 0; j < k; j++) s += AB[k][j] * Fs[n - j];
+    const yp = ys[n] + h * s; let y = yp, fpred = null, tc = null, fc = null;
+    if (pc()) {
+      fpred = f(tn + h, yp); let c = AM[k][0] * fpred; for (let j = 1; j < k; j++) c += AM[k][j] * Fs[n + 1 - j]; y = ys[n] + h * c;
+      tc = [tn + h]; fc = [fpred]; for (let j = 1; j < k; j++) { tc.push((n + 1 - j) * h); fc.push(Fs[n + 1 - j]); }
+    }
+    return { n, tn, tp, fp, yp, y, fpred, tc, fc, est: pc() ? Math.abs(y - yp) * MILNE[k] : NaN };
+  };
+  const step = () => {
+    const n = ys.length - 1; if ((n + 1) * h > T + 1e-9) return false;
+    const I = info(n); ys.push(I.y); Fs.push(f((n + 1) * h, I.y)); ev += pc() ? 2 : 1;
+    const t1 = (n + 1) * h, e = I.y - ex(t1);
+    tb.insertAdjacentHTML("beforeend", `<tr><td>${n + 1}</td><td>${OD.num(t1, 2)}</td><td>${OD.num(I.y, 6)}</td><td>${OD.num(ex(t1), 6)}</td><td>${OD.sci(e, 2)}</td></tr>`);
+    tb.parentElement.parentElement.scrollTop = 1e6;
+    return true;
+  };
+  reset();
+  const cur = () => { const n = ys.length - 1; return n >= K() ? info(n - 1) : info(n); };
+  const cvY = MB.canvas("#od-am-y", (ctx, w, hh) => {
+    const C = MB.palette(), d = []; for (let i = 0; i <= 300; i++) { const t = T * i / 300; d.push([t, ex(t)]); }
+    const pts = ys.map((y, i) => ({ x: i * h, y, r: 3.2, color: i < K() ? C.dim : C.accent2 }));
+    const I = cur(); pts.push({ x: I.tn + h, y: I.y, r: 5, color: C.ok });
+    MB.chart(ctx, OD.box(w, hh, 44, 26, 14, 44), { x: [0, T], y: [0, 3], xLabel: "t", series: [{ data: d, color: C.dim, width: 2 }], points: pts });
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 250 });
+  const cvF = MB.canvas("#od-am-f", (ctx, w, hh) => {
+    const C = MB.palette(), I = cur(), d = []; for (let i = 0; i <= 300; i++) { const t = T * i / 300; d.push([t, f(t, ex(t))]); }
+    const a0 = Math.max(0, I.tp[I.tp.length - 1] - 0.3), a1 = Math.min(T, I.tn + h + 0.3);
+    const poly = []; for (let i = 0; i <= 80; i++) { const t = I.tp[I.tp.length - 1] + (I.tn + h - I.tp[I.tp.length - 1]) * i / 80; poly.push([t, lag(I.tp, I.fp, t)]); }
+    const area = []; for (let i = 0; i <= 40; i++) { const t = I.tn + h * i / 40; area.push([t, lag(I.tp, I.fp, t)]); }
+    const series = [{ data: d, color: C.dim, width: 1.6 }, { data: area, color: C.accent, width: 1, fill: OD.alpha(C.accent, 0.25) }, { data: poly, color: C.accent, width: 2.4 }];
+    const points = I.tp.map((t, i) => ({ x: t, y: I.fp[i], r: 5, color: C.accent2 }));
+    if (pc()) {
+      const pc2 = []; for (let i = 0; i <= 60; i++) { const t = I.tc[I.tc.length - 1] + (I.tn + h - I.tc[I.tc.length - 1]) * i / 60; pc2.push([t, lag(I.tc, I.fc, t)]); }
+      series.push({ data: pc2, color: C.blue, width: 2.2, dash: [6, 3] }); points.push({ x: I.tn + h, y: I.fpred, r: 5.5, color: C.warn });
+    }
+    let lo = Infinity, hi = -Infinity; d.forEach(([t, v]) => { if (t >= a0 && t <= a1) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }); poly.forEach(([, v]) => { lo = Math.min(lo, v); hi = Math.max(hi, v); });
+    const pad = 0.15 * (hi - lo + 0.2);
+    MB.chart(ctx, OD.box(w, hh, 50, 26, 14, 44), { x: [a0, a1], y: [Math.min(lo - pad, -0.05), hi + pad], xLabel: "t", series, points, hlines: [{ y: 0, color: C.axis, dash: [] }], vlines: [{ x: I.tn, color: C.faint }, { x: I.tn + h, color: C.faint }] });
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 290 });
+  const show = () => {
+    cvY.redraw(); cvF.redraw(); const I = cur(), t1 = I.tn + h;
+    MB.stat("od-am-t", OD.num(t1, 2));
+    MB.stat("od-am-y1", OD.num(I.yp, 6) + (pc() ? " · " + OD.num(I.y, 6) : ""));
+    MB.stat("od-am-est", (pc() ? OD.sci(I.est, 2) : "—") + " · " + OD.sci(Math.abs(I.y - ex(t1)), 2));
+    MB.stat("od-am-ev", String(ev));
+  };
+  show();
+  const btn = MB.playButton("od-am-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 자동", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-od-adams"), (dt) => {
+    if (!playing) return; acc += dt; if (acc < 0.45) return; acc = 0;
+    if (!step()) { playing = false; btn.set(false); } show();
+  });
+  document.getElementById("od-am-step").addEventListener("click", () => { step(); show(); });
+  document.getElementById("od-am-reset").addEventListener("click", () => { reset(); show(); });
+  MB.seg("od-am-m", (v) => { m = v; reset(); show(); });
+  MB.steps("od-am-h", HS, (v) => String(v), 0.2, (v) => { h = v; reset(); show(); });
+})();
+
+/* ================================================================ 5. 안정성 영역 */
+(function () {
+  const cx = MB.cx;
+  const R4 = (z) => { const z2 = cx.mul(z, z), z3 = cx.mul(z2, z), z4 = cx.mul(z3, z); return cx.add(cx.add(cx.add([1, 0], z), cx.scale(z2, 0.5)), cx.add(cx.scale(z3, 1 / 6), cx.scale(z4, 1 / 24))); };
+  let key = "bdf2", zoom = "w", locus = true, wedge = false, cache = {};
+  const pz = { x: -1.5, y: 1, r: 8 };
+  const rmax = (z) => {
+    if (key === "rk4") return cx.abs(R4(z));
+    const M = OD.LMM[key]; if (cx.abs(cx.sub([M.a[M.a.length - 1], 0], cx.scale(z, M.b[M.b.length - 1]))) < 1e-9) return Infinity;
+    const r = OD.piRoots(M, z); let m = 0; r.forEach((q) => { m = Math.max(m, cx.abs(q)); }); return m;
+  };
+  const alpha = () => {
+    if (!/^bdf[3-6]$/.test(key)) return null; const M = OD.LMM[key]; let amin = Infinity;
+    for (let i = 1; i < 4000; i++) { const th = Math.PI * i / 4000, zeta = cx.cis(th); let rho = [0, 0], sig = [0, 0], pw = [1, 0]; for (let j = 0; j < M.a.length; j++) { rho = cx.add(rho, cx.scale(pw, M.a[j])); sig = cx.add(sig, cx.scale(pw, M.b[j])); pw = cx.mul(pw, zeta); } const z = cx.div(rho, sig); if (z[0] < 0) amin = Math.min(amin, Math.atan2(Math.abs(z[1]), -z[0])); }
+    return amin;
+  };
+  const interval = () => {
+    let x = 0; for (let i = 1; i <= 3000; i++) { const xx = -0.01 * i; if (rmax([xx, 0]) > 1 + 1e-9) return "(" + OD.num(x, 2) + ", 0)"; x = xx; }
+    return "(−∞, 0)";
+  };
+  let rt = null;
+  const pl = MB.plane("#od-st-cv", {
+    x: [-14, 14], y: null, aspect: 0.62, minHeight: 240, maxHeight: 430, gridStep: 2, points: [pz],
+    onDrag() { readout(); },
+    draw(P) {
+      const C = P.P, ctx = P.ctx, cell = 4, ck = key + zoom + P.w + "x" + P.h;
+      if (!cache[ck]) {
+        const g = []; for (let px = 0; px < P.w; px += cell) for (let py = 0; py < P.h; py += cell) { const z = [P.ix(px + cell / 2), P.iy(py + cell / 2)]; if (rmax(z) <= 1 + 1e-9) g.push([px, py]); }
+        cache[ck] = g;
+      }
+      ctx.save(); ctx.fillStyle = C.accent; ctx.globalAlpha = 0.26; cache[ck].forEach(([px, py]) => ctx.fillRect(px, py, cell, cell)); ctx.restore();
+      if (locus && key !== "rk4") {
+        const M = OD.LMM[key], pts = [];
+        for (let i = 0; i <= 720; i++) { const zeta = cx.cis(2 * Math.PI * i / 720); let rho = [0, 0], sig = [0, 0], pw = [1, 0]; for (let j = 0; j < M.a.length; j++) { rho = cx.add(rho, cx.scale(pw, M.a[j])); sig = cx.add(sig, cx.scale(pw, M.b[j])); pw = cx.mul(pw, zeta); } const z = cx.div(rho, sig); pts.push(cx.abs(z) < 1e3 ? z : null); }
+        for (let i = 1; i < pts.length; i++) if (pts[i] && pts[i - 1] && Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) < 3) P.line(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], { color: C.accent2, width: 1.8 });
+      }
+      if (wedge) { const a = alpha(); if (a) { const L = 40; P.line(0, 0, -L * Math.cos(a), L * Math.sin(a), { color: C.warn, width: 2, dash: [6, 4] }); P.line(0, 0, -L * Math.cos(a), -L * Math.sin(a), { color: C.warn, width: 2, dash: [6, 4] }); P.text("α = " + OD.num(a * 180 / Math.PI, 2) + "°", P.x0, 0, { color: C.warn, dx: 8, dy: -24, size: 12, bold: true }); } }
+      P.line(0, P.y0, 0, P.y1, { color: C.axis, width: 1.4 });
+      P.text("Re z", P.x1, 0, { color: C.dim, dx: -36, dy: 14, size: 12 }); P.text("Im z", 0, P.y1, { color: C.dim, dx: 6, dy: 12, size: 12 });
+      pz.color = C.text;
+      if (rt) rt.redraw();
+    },
+  });
+  rt = MB.plane("#od-st-rt", {
+    x: [-2.4, 2.4], y: null, aspect: 0.5, minHeight: 140, maxHeight: 210, gridStep: 1,
+    draw(P) {
+      const C = P.P, z = [pz.x, pz.y];
+      P.param((s) => [Math.cos(s), Math.sin(s)], 0, 2 * Math.PI, { color: C.ok, width: 1.6 });
+      const rs = key === "rk4" ? [R4(z)] : OD.piRoots(OD.LMM[key], z);
+      rs.forEach((r) => { const a = cx.abs(r), s = a > 2.3 ? 2.3 / a : 1; P.dot(r[0] * s, r[1] * s, { r: 5, color: a > 1 + 1e-9 ? C.bad : C.accent }); });
+      P.text(key === "rk4" ? "R(z) 한 점" : "근 " + rs.length + "개", -2.3, 1.4, { color: C.dim, size: 11, dy: 10 });
+    },
+  });
+  function readout() {
+    const z = [pz.x, pz.y], r = rmax(z);
+    MB.stat("od-st-z", OD.num(pz.x, 2) + (pz.y >= 0 ? " + " : " − ") + OD.num(Math.abs(pz.y), 2) + "i");
+    MB.stat("od-st-r", isFinite(r) ? OD.num(r, 4) : "∞");
+    MB.stat("od-st-v", r <= 1 + 1e-9 ? "<span style='color:var(--ok)'>안정</span>" : "<span style='color:var(--bad)'>불안정</span>");
+    rt.redraw();
+  }
+  const update = () => { pl.view({ x: zoom === "s" ? [-4, 2.5] : [-14, 14] }); MB.stat("od-st-int", interval()); readout(); };
+  update();
+  document.getElementById("od-st-m").addEventListener("change", (e) => { key = e.target.value; update(); });
+  MB.seg("od-st-zoom", (v) => { zoom = v; if (v === "s") { pz.x = MB.clamp(pz.x, -3.8, 2.3); pz.y = MB.clamp(pz.y, -2, 2); } update(); });
+  MB.check("od-st-locus", (v) => { locus = v; pl.redraw(); });
+  MB.check("od-st-wedge", (v) => { wedge = v; pl.redraw(); });
+})();
+
+/* ================================================================ 6. 로버트슨 */
+(function () {
+  const F = (y) => [-0.04 * y[0] + 1e4 * y[1] * y[2], 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] * y[1], 3e7 * y[1] * y[1]];
+  const J = (y) => [[-0.04, 1e4 * y[2], 1e4 * y[1]], [0.04, -1e4 * y[2] - 6e7 * y[1], -1e4 * y[1]], [0, 6e7 * y[1], 0]];
+  const A = [[], [1 / 5], [3 / 40, 9 / 40], [44 / 45, -56 / 15, 32 / 9], [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729], [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656], [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]];
+  const B5 = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0], B4 = [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40];
+  const CAP = 200000;
+  let T = 40, tol = 1e-4, runEx = true, BD = null, DP = null;
+  const dp = () => {
+    let t = 0, y = [1, 0, 0], h = 1e-6, acc = 0, rej = 0; const rec = [[1e-6, 0]], sol = [];
+    let nextLog = -6;
+    while (t < T && acc + rej < CAP) {
+      if (t + h > T) h = T - t; const k = [];
+      for (let s = 0; s < 7; s++) { const ys = y.map((v, i) => { let a = v; for (let j = 0; j < s; j++) a += h * A[s][j] * k[j][i]; return a; }); k.push(F(ys)); }
+      const y5 = y.map((v, i) => { let a = v; for (let j = 0; j < 7; j++) a += h * B5[j] * k[j][i]; return a; });
+      let err = 0; for (let i = 0; i < 3; i++) { let e = 0; for (let j = 0; j < 7; j++) e += h * (B5[j] - B4[j]) * k[j][i]; err = Math.max(err, Math.abs(e) / (tol * (Math.abs(y5[i]) + 1e-6))); }
+      if (err <= 1) { t += h; y = y5; acc++; if (Math.log10(t) >= nextLog) { rec.push([t, acc]); sol.push([t, y.slice()]); nextLog = Math.log10(t) + 0.05; } } else rej++;
+      h *= Math.min(5, Math.max(0.2, 0.9 * Math.pow(err || 1e-10, -0.2)));
+    }
+    rec.push([Math.max(t, 1e-6), acc]);
+    return { t, y, acc, rej, rec, sol, done: t >= T * (1 - 1e-12) };
+  };
+  const bdf2 = () => {
+    let t = 0, y = [1, 0, 0], h = 1e-6, acc = 0, rej = 0, newt = 0; const hist = [], rec = [[1e-6, 0]], sol = [];
+    while (t < T && acc < 1e5) {
+      if (t + h > T) h = T - t;
+      let a1, a2, beta, yp;
+      if (!hist.length) { a1 = 1; a2 = 0; beta = 1; yp = y.slice(); }
+      else {
+        const [tp, ypv] = hist[hist.length - 1], w = h / (t - tp);
+        a1 = (1 + w) * (1 + w) / (1 + 2 * w); a2 = -w * w / (1 + 2 * w); beta = (1 + w) / (1 + 2 * w);
+        if (hist.length >= 2) { const [tq, yq] = hist[hist.length - 2], ts = [tq, tp, t], yv = [yq, ypv, y], tt = t + h; yp = [0, 1, 2].map((i) => { let s = 0; for (let a = 0; a < 3; a++) { let L = 1; for (let b = 0; b < 3; b++) if (b !== a) L *= (tt - ts[b]) / (ts[a] - ts[b]); s += L * yv[a][i]; } return s; }); }
+        else yp = y.map((v, i) => v + (v - ypv[i]) * w);
+      }
+      const prev = hist.length ? hist[hist.length - 1][1] : y;
+      let z = yp.slice(), ok = false;
+      for (let it = 0; it < 8; it++) {
+        newt++; const f = F(z), Jz = J(z);
+        const G = z.map((v, i) => v - a1 * y[i] - a2 * prev[i] - h * beta * f[i]);
+        const M = Jz.map((r, i) => r.map((v, j) => (i === j ? 1 : 0) - h * beta * v));
+        const d = OD.solve(M, G.map((v) => -v)); z = z.map((v, i) => v + d[i]);
+        if (Math.max(...d.map((v, i) => Math.abs(v) / (Math.abs(z[i]) + 1e-6))) < 1e-6) { ok = true; break; }
+      }
+      if (!ok) { h /= 4; rej++; continue; }
+      let err = 0; for (let i = 0; i < 3; i++) err = Math.max(err, Math.abs(z[i] - yp[i]) / 3 / (tol * (Math.abs(z[i]) + 1e-6)));
+      if (!hist.length) err = 0.5;
+      if (err <= 1) { hist.push([t, y]); if (hist.length > 2) hist.shift(); t += h; y = z; acc++; rec.push([t, acc]); sol.push([t, y.slice()]); } else rej++;
+      h *= Math.min(3, Math.max(0.2, 0.9 * Math.pow(err || 1e-10, -1 / 3)));
+    }
+    return { t, y, acc, rej, newt, rec, sol };
+  };
+  BD = bdf2(); DP = dp();
+  const cvC = MB.canvas("#od-rb-cv", (ctx, w, hh) => {
+    const C = MB.palette(), s = BD.sol.filter(([t]) => t >= 1e-5), comp = [[C.blue, (y) => y[0]], [C.warn, (y) => 1e4 * y[1]], [C.accent2, (y) => y[2]]];
+    const series = [], points = [];
+    if (runEx && DP) comp.forEach(([c, g]) => series.push({ data: DP.sol.filter(([t]) => t >= 1e-5).map(([t, y]) => [t, g(y)]), color: C.faint, width: 3.5 }));
+    comp.forEach(([c, g]) => { const d = s.map(([t, y]) => [t, g(y)]); series.push({ data: d, color: c, width: 2 }); d.forEach(([x, y]) => points.push({ x, y, r: 2.4, color: c })); });
+    MB.chart(ctx, OD.box(w, hh, 46, 26, 16, 38), { x: [1e-5, Math.max(T, 1e-4)], y: [0, 1.05], logX: true, xLabel: "t (로그)", series, points });
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 290 });
+  const cvN = MB.canvas("#od-rb-ns", (ctx, w, hh) => {
+    const C = MB.palette(), series = [];
+    if (runEx && DP) series.push({ data: DP.rec.map(([t, n]) => [t, Math.max(n, 1)]), color: C.bad, width: 2.2 });
+    series.push({ data: BD.rec.map(([t, n]) => [t, Math.max(n, 1)]), color: C.accent, width: 2.2 });
+    MB.chart(ctx, OD.box(w, hh, 58, 26, 16, 38), { x: [1e-6, Math.max(T, 1e-4)], y: [1, 1e6], logX: true, logY: true, xLabel: "t", yLabel: "누적 걸음", series, hlines: [{ y: CAP, color: C.faint, label: "명시적 한도" }] });
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 250 });
+  const update = () => {
+    BD = bdf2(); DP = runEx ? dp() : null;
+    cvC.redraw(); cvN.redraw();
+    MB.stat("od-rb-dp", runEx ? DP.acc.toLocaleString() + " / " + DP.rej.toLocaleString() + (DP.done ? "" : " <small>(중단)</small>") : "—");
+    MB.stat("od-rb-bd", BD.acc + " / " + BD.rej + " · " + BD.newt);
+    MB.stat("od-rb-y", BD.y.map((v) => OD.sci(v, 3)).join(", "));
+    const Jm = J(BD.y), tr = Jm[0][0] + Jm[1][1] + Jm[2][2], m2 = Jm[0][0] * Jm[1][1] - Jm[0][1] * Jm[1][0] + Jm[0][0] * Jm[2][2] - Jm[0][2] * Jm[2][0] + Jm[1][1] * Jm[2][2] - Jm[1][2] * Jm[2][1];
+    const disc = tr * tr - 4 * m2, lam = disc >= 0 ? (tr - Math.sqrt(disc)) / 2 : tr / 2;
+    MB.stat("od-rb-lam", OD.num(lam, 1));
+    const m = document.getElementById("od-rb-msg");
+    if (runEx) { m.className = "od-msg"; m.innerHTML = DP.done ? `t = ${T}까지 걸음 수 비 DP/BDF2 = <b>${OD.num(DP.acc / BD.acc, 0)}배</b>. DP 5(4)의 평균 걸음 폭 ${OD.sci(T / DP.acc, 2)}은 안정 경계 3.3/|λ| ≈ ${OD.sci(3.3 / Math.abs(lam), 2)}에 묶여 있습니다.` : `명시적 DP 5(4)는 ${CAP.toLocaleString()}번 시도 한도에서 t = ${OD.sci(DP.t, 2)}에 멈췄습니다. BDF2는 ${BD.acc}걸음에 T = ${T}에 도착했습니다.`; }
+    else { m.className = "od-msg"; m.innerHTML = `BDF2만 돌렸습니다: ${BD.acc}걸음, 뉴턴 반복 ${BD.newt}번. 걸음 폭이 t와 함께 커집니다(마지막 걸음 ${OD.sci(BD.t - BD.sol[BD.sol.length - 2][0], 2)}).`; }
+  };
+  update();
+  MB.seg("od-rb-T", (v) => { T = Number(v); update(); });
+  MB.seg("od-rb-tol", (v) => { tol = Number(v); update(); });
+  MB.check("od-rb-ex", (v) => { runEx = v; update(); });
+})();
+
+/* ================================================================ 7. 베를레와 넓이 */
+(function () {
+  const HS = [0.05, 0.1, 0.2, 0.3], KEYS = ["euler", "rk4", "verlet"], NB = 160, c0 = [1.2, 0], r0 = 0.35;
+  const a = (q) => -Math.sin(q), H = (q, p) => p * p / 2 - Math.cos(q);
+  let h = 0.2, S = null, t = 0, acc = 0, playing = false, area0 = 0, EN = null;
+  const show = { euler: true, rk4: true, verlet: true };
+  const step = (k, u) => {
+    const q = u[0], p = u[1];
+    if (k === "euler") return [q + h * p, p + h * a(q)];
+    if (k === "verlet") { const ph = p + h / 2 * a(q), qn = q + h * ph; return [qn, ph + h / 2 * a(qn)]; }
+    return OD.rk4((s, v) => [v[1], a(v[0])], 0, u, h);
+  };
+  const area = (pts) => { let s = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]; s += x1 * y2 - x2 * y1; } return Math.abs(s) / 2; };
+  const energyRun = () => {
+    EN = {}; const T = 1e4;
+    KEYS.forEach((k) => { let u = c0.slice(); const E0 = H(u[0], u[1]), N = Math.round(T / h), d = []; let next = 0;
+      for (let n = 1; n <= N; n++) { u = step(k, u); const tt = n * h; if (Math.log10(tt) >= next) { const e = Math.abs(H(u[0], u[1]) - E0); d.push([tt, Math.max(e, 1e-16)]); next = Math.log10(tt) + 0.04; } if (!isFinite(u[0]) || Math.abs(u[1]) > 1e3) break; }
+      EN[k] = d; });
+  };
+  const reset = () => {
+    t = 0; acc = 0; S = {};
+    const blob = []; for (let i = 0; i < NB; i++) { const s = 2 * Math.PI * i / NB; blob.push([c0[0] + r0 * Math.cos(s), c0[1] + r0 * Math.sin(s)]); }
+    area0 = area(blob); KEYS.forEach((k) => { S[k] = blob.map((p) => p.slice()); });
+    energyRun();
+  };
+  reset();
+  const COL = (C) => ({ euler: C.bad, rk4: C.blue, verlet: C.ok });
+  let en = null;
+  const pl = MB.plane("#od-vl-cv", {
+    x: [-3.4, 3.4], y: [-2.4, 2.4], aspect: 0.66, minHeight: 240, maxHeight: 420, gridStep: 1,
+    draw(P) {
+      const C = P.P, col = COL(C);
+      [-0.8, -0.4, 0, 0.4, 0.8, 1, 1.4].forEach((E) => {
+        [1, -1].forEach((sg) => { let seg = []; for (let i = 0; i <= 240; i++) { const q = -3.4 + 6.8 * i / 240, v = 2 * (E + Math.cos(q)); if (v >= 0) seg.push([q, sg * Math.sqrt(v)]); else { if (seg.length > 1) P.poly(seg, { color: C.faint, width: 1, close: false }); seg = []; } } if (seg.length > 1) P.poly(seg, { color: C.faint, width: 1, close: false }); });
+      });
+      KEYS.forEach((k) => { if (!show[k]) return; const pts = S[k].map(([q, p]) => [MB.clamp(q, -50, 50), MB.clamp(p, -50, 50)]); P.poly(pts, { color: col[k], width: 2, close: true, fill: col[k], alpha: 0.85 }); });
+      P.text("θ", P.x1, 0, { color: C.dim, dx: -14, dy: 14, size: 12 }); P.text("p", 0, P.y1, { color: C.dim, dx: 6, dy: 12, size: 12 });
+      if (en) en.redraw();
+    },
+  });
+  en = MB.canvas("#od-vl-en", (ctx, w, hh) => {
+    const C = MB.palette(), col = COL(C), series = [];
+    KEYS.forEach((k) => { if (show[k]) series.push({ data: EN[k], color: col[k], width: 2 }); });
+    MB.chart(ctx, OD.box(w, hh, 58, 26, 16, 38), { x: [h, 1e4], y: [1e-10, 10], logX: true, logY: true, xLabel: "t", yLabel: "|ΔH|", series, vlines: t > h ? [{ x: t, color: C.dim, label: "지금" }] : [] });
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 250 });
+  const stats = () => {
+    MB.stat("od-vl-t", OD.num(t, 1));
+    KEYS.forEach((k, i) => { const A = area(S[k]) / area0; MB.stat("od-vl-a" + i, isFinite(A) && A < 1e6 ? OD.num(A, 6) : "발산"); });
+  };
+  const advance = (dts) => {
+    acc += dts; let n = 0;
+    while (acc >= h && n < 400) { acc -= h; n++; t += h; KEYS.forEach((k) => { S[k] = S[k].map((u) => step(k, u)); }); }
+  };
+  advance(3); pl.redraw(); stats();
+  const btn = MB.playButton("od-vl-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 돌리기", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-od-verlet"), (dt) => {
+    if (!playing) return; advance(dt * 1.5); pl.redraw(); stats();
+    if (t > 120) { playing = false; btn.set(false); }
+  });
+  const restart = () => { reset(); pl.redraw(); stats(); };
+  MB.steps("od-vl-h", HS, (v) => String(v), 0.2, (v) => { h = v; restart(); });
+  MB.check("od-vl-e", (v) => { show.euler = v; pl.redraw(); });
+  MB.check("od-vl-r", (v) => { show.rk4 = v; pl.redraw(); });
+  MB.check("od-vl-v", (v) => { show.verlet = v; pl.redraw(); });
+  document.getElementById("od-vl-reset").addEventListener("click", restart);
+})();
+
+/* ================================================================ 8. 브라투 경계값 문제 */
+(function () {
+  const NS = [4, 8, 16, 32, 64];
+  let mode = "shoot", lam = 1, s = 1, N = 16, k = 0, sPrev = null, tried = [], fdIt = [], fdRes = [], y = null;
+  const msg = document.getElementById("od-bv-msg");
+  const theta = () => {
+    const g = (t) => t - Math.sqrt(2 * lam) * Math.cosh(t / 4), tm = 4 * Math.asinh(4 / Math.sqrt(2 * lam));
+    if (g(tm) < 0) return null; let a = 0, b = tm; for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (g(m) < 0) a = m; else b = m; } return (a + b) / 2;
+  };
+  const exact = (x) => { const th = theta(); if (th === null) return NaN; return -2 * Math.log(Math.cosh((x - 0.5) * th / 2) / Math.cosh(th / 4)); };
+  const shoot = (s, keep) => {
+    let u = [0, s]; const M = 200, h = 1 / M, path = keep ? [[0, 0]] : null;
+    for (let n = 0; n < M; n++) { u = OD.rk4((x, v) => [v[1], -lam * Math.exp(v[0])], n * h, u, h); if (keep && n % 4 === 3) path.push([(n + 1) * h, u[0]]); }
+    return keep ? { F: u[0], path } : u[0];
+  };
+  const fdInit = () => { y = new Array(N - 1).fill(0); fdIt = [y.slice()]; fdRes = []; k = 0; };
+  const fdStep = () => {
+    const h = 1 / N, n = N - 1, a = [], b = [], c = [], d = [];
+    for (let i = 0; i < n; i++) { const yl = i ? y[i - 1] : 0, yr = i < n - 1 ? y[i + 1] : 0; d.push(-((yl - 2 * y[i] + yr) / (h * h) + lam * Math.exp(y[i]))); a.push(1 / (h * h)); b.push(-2 / (h * h) + lam * Math.exp(y[i])); c.push(1 / (h * h)); }
+    const cp = [], dp = []; for (let i = 0; i < n; i++) { const m = b[i] - (i ? a[i] * cp[i - 1] : 0); cp.push(c[i] / m); dp.push((d[i] - (i ? a[i] * dp[i - 1] : 0)) / m); }
+    const dl = new Array(n); for (let i = n - 1; i >= 0; i--) dl[i] = dp[i] - (i < n - 1 ? cp[i] * dl[i + 1] : 0);
+    y = y.map((v, i) => v + dl[i]); k++; fdIt.push(y.slice()); let r = 0; dl.forEach((v) => { r = Math.max(r, Math.abs(v)); }); fdRes.push([k, Math.max(r, 1e-17)]);
+  };
+  const cv = MB.canvas("#od-bv-cv", (ctx, w, hh) => {
+    const C = MB.palette(), series = [], points = [], ex = [];
+    if (theta() !== null) for (let i = 0; i <= 100; i++) ex.push([i / 100, exact(i / 100)]);
+    if (ex.length) series.push({ data: ex, color: C.faint, width: 4 });
+    let top = 0.6;
+    if (mode === "shoot") {
+      tried.forEach((q, i) => { const r = shoot(q, true); series.push({ data: r.path, color: C.dim, width: 1, dash: [4, 3] }); });
+      const r = shoot(s, true); series.push({ data: r.path, color: C.accent, width: 2.6 }); points.push({ x: 1, y: MB.clamp(r.F, -3, 6), r: 6, color: Math.abs(r.F) < 1e-3 ? C.ok : C.bad });
+      r.path.forEach(([, v]) => { top = Math.max(top, v); });
+    } else {
+      fdIt.forEach((yy, i) => { const d = [[0, 0]].concat(yy.map((v, j) => [(j + 1) / N, v])).concat([[1, 0]]); series.push({ data: d, color: i === fdIt.length - 1 ? C.accent : C.dim, width: i === fdIt.length - 1 ? 2.6 : 1, dash: i === fdIt.length - 1 ? [] : [4, 3] }); if (i === fdIt.length - 1) d.forEach(([x, v]) => { points.push({ x, y: v, r: 3.2, color: C.accent }); top = Math.max(top, v); }); });
+    }
+    MB.chart(ctx, OD.box(w, hh, 46, 26, 14, 44), { x: [0, 1], y: [-1.2, Math.min(6, top * 1.15 + 0.1)], xLabel: "x", series, points, hlines: [{ y: 0, color: C.axis, dash: [] }] });
+  }, { aspect: 0.46, minHeight: 200, maxHeight: 320 });
+  const cf = MB.canvas("#od-bv-f", (ctx, w, hh) => {
+    const C = MB.palette();
+    if (mode === "shoot") {
+      const d = []; for (let i = 0; i <= 140; i++) { const q = 14 * i / 140; d.push([q, MB.clamp(shoot(q), -3, 3)]); }
+      const pts = tried.map((q) => ({ x: q, y: MB.clamp(shoot(q), -3, 3), r: 3.5, color: C.dim })); pts.push({ x: s, y: MB.clamp(shoot(s), -3, 3), r: 6, color: C.accent });
+      MB.chart(ctx, OD.box(w, hh, 46, 26, 14, 44), { x: [0, 14], y: [-3, 3], xLabel: "s = y′(0)", series: [{ data: d, color: C.text, width: 2 }], points: pts, hlines: [{ y: 0, color: C.ok, dash: [], label: "F = 0" }] });
+    } else {
+      MB.chart(ctx, OD.box(w, hh, 58, 26, 14, 44), { x: [0, 10], y: [1e-16, 10], logY: true, xLabel: "뉴턴 반복", yLabel: "‖Δy‖∞", series: [{ data: fdRes, color: C.accent, width: 2 }], points: fdRes.map(([x, v]) => ({ x, y: v, r: 4, color: C.accent })) });
+    }
+  }, { aspect: 0.34, minHeight: 160, maxHeight: 230 });
+  const stats = () => {
+    const th = theta();
+    MB.stat("od-bv-k", String(k));
+    if (mode === "shoot") {
+      const F = shoot(s); MB.stat("od-bv-v", OD.num(s, 6)); MB.stat("od-bv-r", OD.sci(Math.abs(F), 2));
+      if (th !== null) { const r = shoot(s, true); let e = 0; r.path.forEach(([x, v]) => { e = Math.max(e, Math.abs(v - exact(x))); }); MB.stat("od-bv-e", OD.sci(e, 2) + " <small>(작은 해 기준)</small>"); } else MB.stat("od-bv-e", "해 없음");
+      msg.className = "od-msg" + (th === null ? " bad" : ""); msg.innerHTML = th === null ? `λ = ${OD.num(lam, 1)} > 3.5138: F(s)가 0에 닿지 않습니다. 어떤 기울기로 쏘아도 y(1) = 0이 되지 않으니 해가 없습니다.` : `작은 해의 y′(0) = ${OD.num(derivAt0(), 6)}. '반복 한 번'으로 할선법을 진행하세요.`;
+    } else {
+      MB.stat("od-bv-v", fdIt.length ? OD.num(y[Math.floor((N - 1) / 2)], 6) : "—"); MB.stat("od-bv-r", fdRes.length ? OD.sci(fdRes[fdRes.length - 1][1], 2) : "—");
+      if (th !== null) { let e = 0; y.forEach((v, j) => { e = Math.max(e, Math.abs(v - exact((j + 1) / N))); }); MB.stat("od-bv-e", OD.sci(e, 2)); } else MB.stat("od-bv-e", "해 없음");
+      msg.className = "od-msg"; msg.innerHTML = `N = ${N}: 미지수 ${N - 1}개, 뉴턴 반복마다 삼중대각계를 토머스 알고리즘으로 풉니다(연산 약 8N).`;
+    }
+  };
+  const derivAt0 = () => { const e = 1e-6; return (exact(e) - exact(-e)) / (2 * e); };
+  const redraw = () => { cv.redraw(); cf.redraw(); stats(); };
+  const sIn = MB.range("od-bv-s", (v) => v.toFixed(2), (v) => { s = v; k = 0; tried = []; sPrev = null; redraw(); });
+  MB.range("od-bv-l", (v) => v.toFixed(1), (v) => { lam = v; tried = []; sPrev = null; k = 0; fdInit(); redraw(); });
+  MB.steps("od-bv-n", NS, (v) => String(v), 16, (v) => { N = v; fdInit(); redraw(); });
+  MB.seg("od-bv-m", (v) => { mode = v; k = 0; tried = []; sPrev = null; fdInit(); redraw(); });
+  document.getElementById("od-bv-step").addEventListener("click", () => {
+    if (mode === "fd") { if (k < 12) fdStep(); redraw(); return; }
+    if (sPrev === null) { sPrev = s; tried.push(s); s = s + 1; }
+    const F1 = shoot(s), F0 = shoot(sPrev);
+    if (Math.abs(F1 - F0) < 1e-300 || Math.abs(F1) < 1e-15) { redraw(); return; }
+    const s2 = s - F1 * (s - sPrev) / (F1 - F0); tried.push(s); sPrev = s; s = MB.clamp(s2, -2, 20); k++;
+    sIn.set(MB.clamp(s, 0, 14), false); redraw();
+  });
+  document.getElementById("od-bv-reset").addEventListener("click", () => { k = 0; tried = []; sPrev = null; fdInit(); redraw(); });
+  fdInit(); redraw();
+})();
+</script>
+</body>
+</html>

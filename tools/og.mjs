@@ -1,4 +1,4 @@
-// Render the 1200×630 share images: og.png (shelf home), linear/og.png (LinearBook), calculus/og.png (CalculusBook) and ode/og.png (ODEBook).
+// Render the 1200×630 share images: og.png (shelf home), linear/og.png (LinearBook), calculus/og.png (CalculusBook), ode/og.png (ODEBook) and numerical/og.png (NumericalBook).
 // Usage: node tools/og.mjs   (rerun after books, chapters or simulators change). Needs Playwright.
 // Covers use the same shelf.css and covers.js as the home page; stats are counted like shared/js/shelf.js.
 import { chromium } from 'playwright';
@@ -163,9 +163,48 @@ const odePage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><sty
   <div class="art">${odeArt}</div>
 </body></html>`;
 
+// NumericalBook: Newton's method on f(x) = x³ − 2x − 2 — tangent steps falling onto the root, with the error halving its digits each step.
+const numArt = (() => {
+  const X = (x) => 60 + (x + 0.4) * 480 / 3.6, Y = (y) => 300 - y * 11;
+  const f = (x) => x * x * x - 2 * x - 2, df = (x) => 3 * x * x - 2;
+  let s = '';
+  for (let k = 0; k <= 6; k++) s += `<line x1="${X(-0.2 + k * 0.5)}" y1="50" x2="${X(-0.2 + k * 0.5)}" y2="360" stroke="#ffffff10"/>`;
+  s += `<line x1="40" y1="${Y(0)}" x2="560" y2="${Y(0)}" stroke="#ffffff70" stroke-width="2"/>`;
+  let d = ''; for (let i = 0; i <= 240; i++) { const x = -0.4 + 3.6 * i / 240; d += (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(f(x)).toFixed(1); }
+  s += `<path d="${d}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`;
+  let x = 3.0; const errs = [];
+  for (let n = 0; n < 4; n++) {
+    const y = f(x), x1 = x - y / df(x);
+    s += `<line x1="${X(x)}" y1="${Y(0)}" x2="${X(x)}" y2="${Y(y)}" stroke="#e599f7" stroke-width="2" stroke-dasharray="6 6" opacity=".8"/>`;
+    s += `<line x1="${X(x)}" y1="${Y(y)}" x2="${X(x1)}" y2="${Y(0)}" stroke="#8ce99a" stroke-width="3.5" stroke-linecap="round"/>`;
+    s += `<circle cx="${X(x)}" cy="${Y(y)}" r="8" fill="#8ce99a" stroke="#0f1228" stroke-width="3"/>`;
+    x = x1;
+  }
+  s += `<circle cx="${X(x)}" cy="${Y(0)}" r="9" fill="#fff" stroke="#0f1228" stroke-width="3"/>`;
+  s += `<text x="44" y="404" fill="#8ce99a" font-family="monospace" font-size="27" font-weight="700">xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ)</text>`;
+  const r = 1.7692923542386314; let z = 3.0, row = 450;
+  for (let n = 0; n < 4; n++) { s += `<text x="44" y="${row}" fill="#ffffffb0" font-family="monospace" font-size="21">x${'₀₁₂₃'[n]} = ${z.toFixed(12)}   |e| = ${Math.abs(z - r).toExponential(1)}</text>`; z = z - f(z) / df(z); row += 32; }
+  return `<svg viewBox="0 0 600 600" width="600" height="600"><defs><clipPath id="c"><rect x="20" y="20" width="560" height="560" rx="28"/></clipPath></defs><rect x="20" y="20" width="560" height="560" rx="28" fill="#0f1228" stroke="#2a2f55"/><g clip-path="url(#c)">${s}</g></svg>`;
+})();
+const numerical = books.find((b) => b.id === 'numericalbook');
+const numericalPage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>${read('shelf.css')}</style><style>${base}
+  .art { position:absolute; right:40px; top:15px; }
+  .eyebrow, .url, h1 .warm { color:#8ce99a; } h1 .soft { color:#e599f7; }
+</style></head><body>
+  <div class="left">
+    <div class="brand">${read('numerical/favicon.svg')}<span>NumericalBook</span></div>
+    <div class="eyebrow">INTERACTIVE NUMERICAL ANALYSIS</div>
+    <h1>컴퓨터가<br><span class="soft">수학을 근사하는</span><br><span class="warm">방법</span></h1>
+    <p class="lead">오차와 근 찾기, 보간과 FFT, 수치 미적분,<br>선형대수와 최적화를 한 단계씩 돌려 보는 수치해석.</p>
+    <div class="stats"><span><b>5</b>부</span><span><b>16</b>개 장</span><span><b>${Math.floor(numerical.simulators / 10) * 10}+</b>시뮬레이터</span></div>
+  </div>
+  <div class="url">math.euiyun.com/numerical/</div>
+  <div class="art">${numArt}</div>
+</body></html>`;
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [calculusPage, 'calculus/og.png'], [odePage, 'ode/og.png']]) {
+for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [calculusPage, 'calculus/og.png'], [odePage, 'ode/og.png'], [numericalPage, 'numerical/og.png']]) {
   await page.setContent(html, { waitUntil: 'networkidle' });
   await page.addScriptTag({ content: read('shared/js/covers.js') });
   await page.evaluate(async () => {
@@ -175,4 +214,4 @@ for (const [html, out] of [[shelf, 'og.png'], [linearPage, 'linear/og.png'], [ca
   await page.screenshot({ path: join(root, out) });
 }
 await browser.close();
-console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.simulators} simulators; calculus/og.png: ${calculus.simulators} simulators; ode/og.png: ${ode.simulators} simulators`);
+console.log(`og.png: ${live.length} books, ${chapters} chapters, ${simulators}+ simulators; linear/og.png: ${linear.simulators} simulators; calculus/og.png: ${calculus.simulators} simulators; ode/og.png: ${ode.simulators} simulators; numerical/og.png: ${numerical.simulators} simulators`);

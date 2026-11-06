@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>스플라인과 곡선 · NumericalBook</title>
+<meta name="description" content="고차 보간 대신 조각별 다항식으로. 조각별 선형과 O(h²), PCHIP와 단조성, 3차 스플라인의 삼중대각계와 경계 조건, 최소 굽힘 에너지, 베지에 곡선과 드 카스텔조 알고리즘, B-스플라인의 국소 제어.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .sl-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .sl-two > div { position: relative; min-width: 0; }
+  .sl-two > div + div { border-top: 1px solid var(--border); }
+  .sl-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .sl-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .sl-msg b { color: var(--text); }
+  .sl-msg.ok { color: var(--ok); font-weight: 600; }
+  .sl-msg.bad { color: var(--bad); font-weight: 600; }
+  .sl-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .sl-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sl-tbl td, .sl-tbl th { font-family: var(--mono); text-align: right; }
+  .sl-tbl td:first-child, .sl-tbl th:first-child { text-align: left; font-family: inherit; }
+  .sl-sys { padding: 10px 18px; border-top: 1px solid var(--border); overflow-x: auto; }
+  .sl-sys table { width: auto; border-collapse: collapse; font: 12.5px var(--mono); margin: 0; }
+  .sl-sys th, .sl-sys td { padding: 4px 8px; border: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .sl-sys th { color: var(--text-dim); font-weight: 600; background: var(--surface); }
+  .sl-sys td.sl-off { color: var(--text-faint); }
+  .sl-sys tr.sl-cur td { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .sl-sys td.sl-new { color: var(--accent-2); font-weight: 700; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="splines">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 06</div>
+    <h1 data-no-glossary>스플라인과 곡선</h1>
+    <p class="lead">5장의 결론은 "등간격 데이터에 고차 다항식을 쓰지 말라"였습니다. 그렇다면 점이 수백 개인 측정 데이터나 글자의 윤곽선은 무엇으로 이어야 할까요? 답은 <b>낮은 차수의 다항식을 조각조각 이어 붙이고, 이음매에서 매끄러움을 맞추는 것</b>입니다. 이 장은 가장 단순한 꺾은선에서 시작해, 오버슈트 없이 단조성을 지키는 PCHIP, 곡률까지 연속인 3차 스플라인과 그 삼중대각 선형계, 경계 조건의 선택, 스플라인이 "가장 덜 휜 곡선"이라는 정리를 다룹니다. 후반부는 함수의 그래프가 아닌 <b>곡선</b>, 곧 글꼴과 CAD와 애니메이션 경로를 그리는 베지에 곡선과 B-스플라인입니다.</p>
+    <ul class="objectives">
+      <li>조각별 선형 보간의 오차 \(\frac{h^2}{8}\max|f''|\)를 유도하고, 차수를 올리는 대신 간격을 줄이는 전략을 설명한다.</li>
+      <li>조각별 3차 에르미트 보간에서 기울기를 고르는 방법(PCHIP)이 단조성을 지키는 이유를 안다.</li>
+      <li>3차 스플라인의 연속 조건에서 이차 도함수에 대한 삼중대각계를 유도하고 토머스 알고리즘으로 \(O(n)\)에 푼다.</li>
+      <li>자연·고정·not-a-knot 경계 조건의 차이와 수렴 차수(\(O(h^2)\) 대 \(O(h^4)\))를 실험으로 확인한다.</li>
+      <li>자연 스플라인이 굽힘 에너지 \(\int s''^2\)를 최소로 하는 보간 함수임을 증명한다.</li>
+      <li>베지에 곡선을 드 카스텔조 알고리즘으로 계산하고, B-스플라인이 국소 제어를 주는 이유를 기저 함수의 받침으로 설명한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>자동차 차체와 화면의 글꼴</b></div>
+      <div class="o-body"><p>컴퓨터 이전의 조선소와 항공기 공장에서는 길고 얇은 나무 자를 <b>스플라인</b>이라 불렀습니다. 자를 바닥의 못이나 무거운 추 사이에 끼우면 자는 탄성 에너지가 가장 작은 모양으로 휘어 점들을 매끄럽게 잇습니다. 1946년 쇤베르크<span class="en">(Isaac Schoenberg)</span>가 이 이름을 빌려 조각별 다항식 이론을 세웠고, 그 3차 스플라인이 실제로 "굽힘 에너지 최소" 성질을 가진다는 것이 이 장의 정리 6.8입니다.</p>
+        <p>1950년대 말~1960년대에 프랑스 자동차 회사의 두 엔지니어, 시트로엥의 드 카스텔조<span class="en">(Paul de Casteljau)</span>와 르노의 베지에<span class="en">(Pierre Bézier)</span>는 차체의 곡면을 도면 대신 숫자로 전달하는 방법을 각자 만들었습니다. 오늘날 이 글을 표시하는 글꼴의 윤곽선(TrueType은 2차, PostScript·CFF 글꼴은 3차 베지에), 벡터 그림, CSS 애니메이션의 <code>cubic-bezier()</code> 곡선, CAD의 NURBS가 모두 그 후손입니다.</p>
+        <div class="o-chain"><span>점 수백 개·윤곽선</span><i>→</i><span>고차 다항식은 출렁임</span><i>→</i><span class="tool">조각별 3차 + 이음매 연속</span><i>→</i><span>스플라인·베지에·B-스플라인</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="piecewise">
+    <h2>고차 보간의 대안: 조각별 다항식</h2>
+    <div class="problem"><strong>점 50개를 한 다항식으로 이을 수는 없다</strong>
+      <p>온도 센서가 1초마다 값을 기록해 50개의 점을 얻었습니다. 5장의 결과대로 49차 보간 다항식은 양 끝에서 폭발하고, 점 하나만 바꿔도 곡선 전체가 흔들립니다. 노드를 체비쇼프 점으로 옮길 수도 없습니다. 측정 시각은 이미 정해져 있으니까요.</p></div>
+    <p>해결책은 전체 구간을 노드로 나눈 각 <b>작은 구간마다</b> 낮은 차수의 다항식을 쓰는 것입니다. 노드 \(a = x_0 \lt x_1 \lt \dots \lt x_n = b\)로 나누고 \(h_i = x_{i+1} - x_i\), \(h = \max h_i\)라 합시다. 가장 단순한 것은 이웃한 두 점을 직선으로 잇는 <span class="term">조각별 선형 보간</span><span class="en">(piecewise linear interpolation)</span>입니다.</p>
+    <div class="callout deep"><strong>정리 6.1 (조각별 선형 보간의 오차)</strong> \(f \in C^2[a, b]\)이고 \(\ell\)이 노드에서 \(f\)와 같은 조각별 선형 함수면
+      <div class="formula">$$\max_{[a,b]}|f - \ell| \le \frac{h^2}{8}\max_{[a,b]}|f''|.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> 한 구간 \([x_i, x_{i+1}]\)에서 \(\ell\)은 두 점의 1차 보간이므로 5장 정리 5.6에서 \(f(x) - \ell(x) = \frac{f''(\xi)}{2}(x - x_i)(x - x_{i+1})\). \(|(x - x_i)(x - x_{i+1})|\)의 최댓값은 가운데에서 \(h_i^2/4\)이다. ∎</p></div>
+    <p>다항식 보간과 결정적으로 다른 점은 <b>오차가 \(f''\)에만 의존하고 차수가 고정</b>이라는 것입니다. \(n\)을 늘리면 \(h \to 0\)이므로 오차는 \(O(h^2)\)로 반드시 줄어듭니다. 룽게 현상이 없습니다. 또 한 점의 값을 바꾸면 이웃한 두 구간만 바뀝니다(국소성).</p>
+    <div class="callout"><strong>예제 6.1 (사인의 꺾은선 근사)</strong> \([0, \pi]\)를 10등분해 \(\sin x\)를 조각별 선형 보간하라. 최대 오차는?
+      <ol>
+        <li>\(h = \pi/10 = 0.314159\), \(|\sin''| \le 1\)이므로 한계 \(h^2/8 = 0.012337\).</li>
+        <li>실제 최대 오차는 \(\pi/2\)를 가운데에 둔 구간에서 생긴다. 노드가 \(0.4\pi, 0.5\pi, 0.6\pi\)이므로 \(\pi/2\)가 노드이고, 최대는 \(x \approx 1.4143\)(구간 \([0.4\pi, 0.5\pi]\)의 가운데 근처)에서 \(0.012160\)이다.</li>
+        <li>한계와 거의 같다. \(f''\)이 구간 안에서 거의 일정할 때 한계는 날카롭다. 오차 \(10^{-6}\)을 원하면 \(h \approx \sqrt{8\times10^{-6}} = 0.0028\), 약 1100개 구간이 필요하다. 1차는 단순하지만 느리다. 더 높은 정확도는 구간 안의 다항식을 3차로 올려서 얻는다.</li>
+      </ol></div>
+    <p>그런데 꺾은선은 노드에서 기울기가 끊깁니다. 자동차 차체나 로봇 궤적에서 기울기의 불연속은 반사광의 꺾임이나 가속도의 충격으로 나타납니다. 그래서 구간마다 3차 다항식을 쓰고 이음매에서 기울기(\(C^1\))나 곡률(\(C^2\))까지 맞춥니다. 아래 시뮬레이터에서 세 가지를 비교해 보세요. 3차 스플라인은 3절에서 유도합니다.</p>
+
+    <div class="sim" id="sim-sl-drag">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점을 끌어 비교하기: 다항식 vs 꺾은선 vs 3차 스플라인</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-dr-cv"></canvas><span class="tag-tl">점을 끌기 · 빈 곳 클릭으로 점 추가</span></div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="sl-dr-poly" checked> 보간 다항식 (한 개)</label>
+          <label class="check"><input type="checkbox" id="sl-dr-lin" checked> 조각별 선형</label>
+          <label class="check"><input type="checkbox" id="sl-dr-spl" checked> 자연 3차 스플라인</label>
+          <div class="btn-row"><button class="btn" id="sl-dr-del">마지막 점 지우기</button><button class="btn" id="sl-dr-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sl-legend"><span><i style="background:var(--bad)"></i>다항식</span><span><i style="background:var(--text-faint)"></i>조각별 선형</span><span><i style="background:var(--accent)"></i>자연 스플라인</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">점 수</span><span class="v" id="sl-dr-n">—</span></div>
+        <div class="stat"><span class="k">굽힘 에너지 ∫s″² (스플라인)</span><span class="v" id="sl-dr-es">—</span></div>
+        <div class="stat"><span class="k">∫p″² (다항식)</span><span class="v" id="sl-dr-ep">—</span></div>
+        <div class="stat"><span class="k">데이터 범위 밖 최대 초과 (다항식)</span><span class="v" id="sl-dr-ov">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 가운데 점 하나를 위아래로 끌어 보세요. 스플라인은 근처 몇 구간만 크게 변하고 멀리서는 거의 그대로인데, 다항식은 양 끝까지 흔들립니다. ② 빈 곳을 클릭해 점을 12개 이상으로 늘리면 다항식은 양 끝에서 폭발하지만 스플라인은 차분합니다. ③ 굽힘 에너지를 비교하세요. 어떻게 점을 놓아도 스플라인의 값이 다항식보다 작습니다(정리 6.8). 모델: 자연 경계 조건 s″ = 0, 에너지는 [x₀, xₙ]에서의 적분.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="pchip">
+    <h2>조각별 3차 에르미트와 단조성(PCHIP)</h2>
+    <div class="problem"><strong>센서 보정표가 거꾸로 꺾이면 안 된다</strong>
+      <p>열전대의 전압–온도 보정표는 단조 증가합니다. 그런데 보정점이 고르지 않게 놓여 있으면 매끄러운 보간 곡선이 데이터 사이에서 살짝 <b>내려갔다가</b> 올라갈 수 있습니다. 그러면 같은 전압에 온도 두 개가 대응해 역함수가 망가집니다. 매끄러우면서도 데이터의 모양(단조성)을 지키는 보간이 필요합니다.</p></div>
+    <p>5장 8절의 에르미트 보간을 구간마다 씁니다. 각 노드에서 값 \(y_i\)와 기울기 \(d_i\)를 정하면 구간 \([x_i, x_{i+1}]\)의 3차식은 \(s = (x - x_i)/h_i\)로</p>
+    <div class="formula">$$p_i(x) = y_i H_{00}(s) + h_i d_i H_{10}(s) + y_{i+1}H_{01}(s) + h_i d_{i+1}H_{11}(s),$$
+      <div class="where">\(H_{00} = 2s^3 - 3s^2 + 1\), \(H_{10} = s^3 - 2s^2 + s\), \(H_{01} = -2s^3 + 3s^2\), \(H_{11} = s^3 - s^2\)(에르미트 기저). 값과 기울기가 이웃 구간과 공유되므로 결과는 \(C^1\)이다.</div></div>
+    <p>남은 문제는 기저 \(d_i\)를 어떻게 정하느냐입니다. \(f'\)을 안다면 그대로 쓰고(에르미트 데이터), 모른다면 데이터에서 추정해야 합니다. 구간의 기울기 \(\delta_i = (y_{i+1} - y_i)/h_i\)를 쓰는 다음 규칙이 프리치–칼슨<span class="en">(Fritsch–Carlson, 1980)</span> 계열의 <span class="term">PCHIP</span><span class="en">(Piecewise Cubic Hermite Interpolating Polynomial)</span>입니다.</p>
+    <div class="callout deep"><strong>정의 6.2 (PCHIP 기울기)</strong> 내부 노드 \(x_k\)에서
+      <div class="formula">$$d_k = \begin{cases} 0, & \delta_{k-1}\delta_k \le 0 \ \ (\text{극값이거나 평평함}),\\[2pt] \dfrac{w_1 + w_2}{\dfrac{w_1}{\delta_{k-1}} + \dfrac{w_2}{\delta_k}}, & \text{그 밖}, \end{cases}\qquad w_1 = 2h_k + h_{k-1},\ w_2 = h_k + 2h_{k-1}.$$
+      <div class="where">가중 <b>조화 평균</b>이다. 한쪽 기울기가 작으면 \(d_k\)도 작아져 곡선이 급히 꺾이지 않는다. 등간격이면 \(\frac{2}{d_k} = \frac{1}{\delta_{k-1}} + \frac{1}{\delta_k}\). 끝점은 세 점 공식 \(((2h_0 + h_1)\delta_0 - h_0\delta_1)/(h_0 + h_1)\)을 쓰되 부호가 \(\delta_0\)와 다르면 0으로, 너무 크면 \(3\delta_0\)으로 자른다(MATLAB <code>pchip</code>, SciPy <code>PchipInterpolator</code>의 방식).</div></div></div>
+    <div class="callout deep"><strong>정리 6.3 (단조성 조건, 프리치–칼슨)</strong> 구간에서 \(\delta_i \ne 0\)이고 \(\alpha = d_i/\delta_i\), \(\beta = d_{i+1}/\delta_i\)라 하자. \(\alpha, \beta \ge 0\)이고 \(\alpha^2 + \beta^2 \le 9\)이면 그 구간의 3차 에르미트 보간은 단조다. \(\delta_i = 0\)이면 \(d_i = d_{i+1} = 0\)일 때 상수다.
+      <p style="margin:8px 0 0"><b>핵심 아이디어.</b> \(p_i'\)은 \(s\)의 2차식이고, \(p_i'/\delta_i\)가 \([0, 1]\)에서 음이 되지 않을 조건을 \((\alpha, \beta)\) 평면에 그리면 원 \(\alpha^2 + \beta^2 \le 9\)를 품는 영역이 된다. 조화 평균 규칙은 \(\alpha, \beta\)를 0 이상 3 이하로 두어 이 영역 안에 머문다(등간격이면 \(\alpha, \beta \le 2\)). ∎</p></div>
+    <div class="callout"><strong>예제 6.2 (계단 모양 데이터)</strong> \(x = 0, 1, \dots, 5\), \(y = 0,\ 0.1,\ 0.2,\ 3,\ 3.1,\ 3.2\). 구간 기울기는 \(\delta = 0.1,\ 0.1,\ 2.8,\ 0.1,\ 0.1\).
+      <ol>
+        <li>\(d_1\): \(0.1\)과 \(0.1\)의 조화 평균 \(= 0.1\). \(d_2\): \(2/d_2 = 1/0.1 + 1/2.8 = 10.357\), \(d_2 = 0.1931\). 대칭으로 \(d_3 = 0.1931\), \(d_4 = 0.1\). 끝점 \(d_0 = (3\cdot0.1 - 0.1)/2 = 0.1\), \(d_5 = 0.1\).</li>
+        <li>가파른 구간 \([2, 3]\)의 양 끝 기울기가 \(0.19\)로 작게 잡혔다. 곡선은 평평하게 들어와서 구간 안에서 가파르게 오르고 다시 평평하게 나간다. PCHIP의 범위는 정확히 \([0, 3.2]\)이다.</li>
+        <li>같은 데이터의 자연 3차 스플라인은 \(x \approx 1.58\)에서 \(-0.135\)로 내려가고 \(x \approx 3.42\)에서 \(3.335\)로 넘친다. 데이터 범위를 벗어나는 <b>오버슈트</b>이고, 단조성도 깨진다.</li>
+      </ol></div>
+    <p>대가도 있습니다. PCHIP는 \(C^1\)일 뿐 곡률이 이음매에서 끊기고, 매끄러운 함수에 대한 정확도는 3차 스플라인보다 낮습니다(4절의 표에서 \(O(h^3)\) 근처). 모양을 지키는 것이 중요하면 PCHIP, 매끄러운 함수의 정확도가 중요하면 스플라인입니다.</p>
+
+    <div class="sim" id="sim-sl-pchip">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>PCHIP는 넘치지 않는다: 스플라인과의 비교</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-pc-cv"></canvas><span class="tag-tl">점을 위아래로 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>데이터</span><select id="sl-pc-pre">
+            <option value="step">계단 (예제 6.2)</option>
+            <option value="ramp">포화 곡선 (센서 보정)</option>
+            <option value="peak">날카로운 봉우리</option>
+            <option value="uneven">고르지 않은 간격</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="sl-pc-spl" checked> 자연 3차 스플라인</label>
+          <label class="check"><input type="checkbox" id="sl-pc-pc" checked> PCHIP</label>
+          <label class="check"><input type="checkbox" id="sl-pc-d" checked> PCHIP 기울기 dₖ 표시</label>
+        </div>
+      </div>
+      <div class="sl-legend"><span><i style="background:var(--bad)"></i>자연 스플라인</span><span><i style="background:var(--accent)"></i>PCHIP</span><span><i style="background:var(--text-faint)"></i>데이터 범위</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">데이터 범위</span><span class="v" id="sl-pc-r0">—</span></div>
+        <div class="stat"><span class="k">스플라인 범위</span><span class="v" id="sl-pc-r1">—</span></div>
+        <div class="stat"><span class="k">PCHIP 범위</span><span class="v" id="sl-pc-r2">—</span></div>
+        <div class="stat"><span class="k">단조성을 깬 구간 (스플라인 / PCHIP)</span><span class="v" id="sl-pc-m">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '계단'에서 스플라인(빨강)이 계단 앞에서 아래로, 뒤에서 위로 넘치는 것을 보세요. PCHIP(초록)는 데이터 범위(점선) 안에 머뭅니다. ② '날카로운 봉우리'에서 PCHIP는 봉우리 점에서 기울기를 0으로 두어 봉우리를 넘지 않습니다. 스플라인은 봉우리를 지나쳐 더 높이 솟습니다. ③ 점을 끌어 단조성을 깨는 데이터를 만들면, 그 구간에서는 PCHIP도 데이터를 따라 방향을 바꿀 뿐 추가 진동을 만들지 않습니다. 모델: 기울기는 정의 6.2(조화 평균, 끝점 세 점 공식).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="cubic-spline">
+    <h2>3차 스플라인의 유도: 삼중대각계</h2>
+    <div class="problem"><strong>곡률까지 이어 붙이려면 기울기를 어떻게 골라야 하나</strong>
+      <p>PCHIP는 기울기를 각 노드에서 <b>따로</b> 정했습니다. 이음매에서 이차 도함수(곡률)까지 연속이 되도록 기울기를 <b>함께</b> 정하면 나무 자 스플라인처럼 매끄러운 곡선이 됩니다. 이 조건은 모든 구간을 한꺼번에 엮는 연립방정식이 됩니다.</p></div>
+    <div class="callout deep"><strong>정의 6.4 (3차 스플라인)</strong> 노드 \(x_0 \lt \dots \lt x_n\)에서 함수 \(s\)가 (1) 각 구간 \([x_i, x_{i+1}]\)에서 3차 다항식이고, (2) \(s(x_i) = y_i\)이며, (3) \(s, s', s''\)이 \([x_0, x_n]\)에서 연속이면 \(s\)를 <span class="term">3차 스플라인</span><span class="en">(cubic spline)</span>이라 한다.</div>
+    <p>미지수를 셉시다. 구간 \(n\)개에 3차식 하나당 계수 4개, 모두 \(4n\)개입니다. 조건은 보간 \(2n\)개(각 구간의 양 끝), 내부 노드 \(n - 1\)개에서 \(s'\), \(s''\) 연속 \(2(n - 1)\)개, 합 \(4n - 2\)개. <b>두 개가 모자랍니다.</b> 이 두 자유도를 정하는 것이 4절의 경계 조건입니다.</p>
+    <p>미지수를 노드의 이차 도함수 \(M_i = s''(x_i)\)(<span class="term">모멘트</span><span class="en">(moment)</span>, 보의 굽힘 모멘트에서 온 이름)로 잡으면 계산이 깔끔해집니다. \(s''\)은 각 구간에서 1차식이므로 \(M_i\)와 \(M_{i+1}\)을 잇는 직선이고, 두 번 적분해 보간 조건을 넣으면</p>
+    <div class="formula">$$s(x) = M_i\frac{(x_{i+1} - x)^3}{6h_i} + M_{i+1}\frac{(x - x_i)^3}{6h_i} + \Bigl(y_i - \frac{M_ih_i^2}{6}\Bigr)\frac{x_{i+1} - x}{h_i} + \Bigl(y_{i+1} - \frac{M_{i+1}h_i^2}{6}\Bigr)\frac{x - x_i}{h_i}.$$
+      <div class="where">이 꼴은 \(s\)의 보간과 \(s''\)의 연속을 저절로 만족한다. 남은 조건은 \(s'\)의 연속뿐이다.</div></div>
+    <p>이 식을 미분해 \(x_i\)에서 왼쪽 구간과 오른쪽 구간의 \(s'\)을 같게 놓으면 내부 노드마다 방정식 하나가 나옵니다.</p>
+    <div class="callout deep"><strong>정리 6.5 (모멘트 방정식)</strong> \(\delta_i = (y_{i+1} - y_i)/h_i\)라 하면 \(i = 1, \dots, n-1\)에 대해
+      <div class="formula">$$h_{i-1}M_{i-1} + 2(h_{i-1} + h_i)M_i + h_iM_{i+1} = 6(\delta_i - \delta_{i-1}).$$</div>
+      경계 조건 두 개를 더하면 계수 행렬은 <b>삼중대각</b>이고 각 행에서 대각 원소 \(2(h_{i-1} + h_i)\)가 비대각 원소의 합 \(h_{i-1} + h_i\)의 두 배라 <b>엄격한 대각 우세</b>다. 따라서 해는 유일하고, 피벗팅 없는 가우스 소거가 안정적이다.</div>
+    <p>삼중대각계는 \(O(n)\)에 풀립니다. 소거할 원소가 행마다 하나뿐이기 때문입니다. 이 방법을 <span class="term">토머스 알고리즘</span><span class="en">(Thomas algorithm)</span>이라 부르고, 12장 <a href="direct-solvers.html">직접 해법</a>에서 띠 행렬의 일반 이론으로 다시 다룹니다.</p>
+    <pre class="code"><span class="c">// 토머스 알고리즘: a[i] M[i−1] + b[i] M[i] + c[i] M[i+1] = d[i],  i = 1..m</span>
+c′[1] ← c[1] / b[1];   d′[1] ← d[1] / b[1]
+<span class="k">for</span> i = 2 <span class="k">to</span> m                          <span class="c">// 전진 소거: a[i]를 지운다</span>
+  w ← b[i] − a[i] · c′[i−1]
+  c′[i] ← c[i] / w
+  d′[i] ← (d[i] − a[i] · d′[i−1]) / w
+M[m] ← d′[m]
+<span class="k">for</span> i = m−1 <span class="k">downto</span> 1                    <span class="c">// 후진 대입</span>
+  M[i] ← d′[i] − c′[i] · M[i+1]</pre>
+    <p class="code-cap">연산 약 \(8m\)번. 일반 가우스 소거의 \(m^3/3\)과 비교하면 점 1000개에서 수만 배 빠르다.</p>
+    <div class="callout"><strong>예제 6.3 (자연 스플라인 손계산)</strong> \((0, 0)\), \((1, 1)\), \((2, 0)\), \((3, 1)\)을 지나는 자연 스플라인(\(M_0 = M_3 = 0\))을 구하라.
+      <ol>
+        <li>\(h_i = 1\), \(\delta = 1, -1, 1\). 방정식: \(i = 1\): \(4M_1 + M_2 = 6(-1 - 1) = -12\). \(i = 2\): \(M_1 + 4M_2 = 6(1 + 1) = 12\).</li>
+        <li>토머스: \(c'_1 = 1/4\), \(d'_1 = -3\). \(w = 4 - 1\cdot\tfrac14 = 3.75\), \(d'_2 = (12 + 3)/3.75 = 4\). 후진: \(M_2 = 4\), \(M_1 = -3 - \tfrac14\cdot 4 = -4\).</li>
+        <li>\([0, 1]\)에서 \(s(x) = -4\frac{x^3}{6} + \bigl(1 + \tfrac46\bigr)x\), \(s(0.5) = -0.0833 + 0.8333 = 0.75\). 같은 방법으로 \(s(1.5) = 0.5\), \(s(2.5) = 0.25\).</li>
+        <li>네 점을 지나는 3차 다항식 \(p(x) = x - x(x-1) + \tfrac23x(x-1)(x-2)\)은 \(p(0.5) = 1\), \(p(1.5) = 0.5\), \(p(2.5) = 0\)이다. 스플라인이 데이터의 지그재그를 더 얌전하게 따른다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-sl-system">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>삼중대각계를 토머스 알고리즘으로 한 줄씩 풀기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-sy-cv"></canvas><span class="tag-tl">점을 위아래로 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>점 수 n+1 <output id="sl-sy-n-out"></output></span><input type="range" id="sl-sy-n" min="4" max="8" step="1" value="6"></label>
+          <div class="btn-row"><button class="btn primary" id="sl-sy-step">다음 단계</button><button class="btn" id="sl-sy-all">끝까지</button></div>
+          <div class="btn-row"><button class="btn" id="sl-sy-reset">처음부터</button></div>
+          <label class="check"><input type="checkbox" id="sl-sy-curv"> 곡률 s″ 막대 보기</label>
+        </div>
+      </div>
+      <div class="sl-sys" id="sl-sy-tbl"></div>
+      <div class="sl-msg" id="sl-sy-msg"></div>
+      <div class="sim-note">해볼 것: ① '다음 단계'로 전진 소거를 한 행씩 진행하세요. 각 행은 바로 위 행의 c′, d′만 씁니다. 후진 대입에서는 아래에서 위로 M이 하나씩 정해집니다. 모든 M이 정해지면 스플라인이 그려집니다. ② 표의 w(소거 후 대각)가 언제나 b보다 조금 작을 뿐 0 근처로 가지 않는 것을 보세요. 대각 우세 덕분에 피벗팅이 필요 없습니다. ③ '곡률' 막대를 켜고 점 하나를 끌면, M이 그 점 근처에서 크게 변하고 멀어질수록 부호를 바꾸며 빠르게(대략 한 칸에 −0.27배) 줄어듭니다. 모델: 자연 경계 M₀ = Mₙ = 0, 미지수는 M₁ … Mₙ₋₁, 등간격 h = 1.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="boundary">
+    <h2>경계 조건: 자연·고정·not-a-knot</h2>
+    <div class="problem"><strong>모자란 두 조건을 어떻게 채울까</strong>
+      <p>미지수 \(4n\)개에 조건 \(4n - 2\)개였습니다. 양 끝에서 하나씩 조건을 더해야 하는데, 선택에 따라 끝 근처의 곡선 모양과 <b>정확도의 차수</b>가 달라집니다. 라이브러리의 기본값도 제각각입니다.</p></div>
+    <div class="callout deep"><strong>정의 6.6 (경계 조건)</strong>
+      <ul style="margin:6px 0 0">
+        <li><b>자연</b><span class="en">(natural)</span>: \(M_0 = M_n = 0\). 끝에서 자가 곧게 풀려 있는 상태. 방정식 첫 행과 끝 행이 \(M_0 = 0\), \(M_n = 0\).</li>
+        <li><b>고정</b><span class="en">(clamped, complete)</span>: \(s'(x_0) = f'(a)\), \(s'(x_n) = f'(b)\)를 지정. 첫 행 \(2h_0M_0 + h_0M_1 = 6(\delta_0 - f'(a))\), 끝 행 \(h_{n-1}M_{n-1} + 2h_{n-1}M_n = 6(f'(b) - \delta_{n-1})\).</li>
+        <li><b>not-a-knot</b>: 첫 두 구간과 마지막 두 구간이 <b>같은 3차식</b>이 되도록 \(s'''\)을 \(x_1\)과 \(x_{n-1}\)에서 연속으로. \(x_1, x_{n-1}\)이 사실상 이음매(knot)가 아니게 된다. 노드가 4개면 결과는 3차 보간 다항식 자체다. MATLAB <code>spline</code>과 SciPy <code>CubicSpline</code>의 기본값이다.</li>
+        <li><b>주기</b><span class="en">(periodic)</span>: \(s'\), \(s''\)이 \(x_0\)과 \(x_n\)에서 같도록. 닫힌 곡선이나 주기 신호에 쓴다(행렬 모서리에 원소가 생기는 순환 삼중대각계).</li>
+      </ul></div>
+    <div class="callout deep"><strong>정리 6.7 (스플라인의 수렴 차수)</strong> \(f \in C^4[a, b]\)이고 노드가 등간격(또는 간격 비가 유계)이면, 고정 스플라인은
+      <div class="formula">$$\max|f - s| \le \frac{5}{384}h^4\max|f^{(4)}|$$
+      를 만족하고, not-a-knot 스플라인도 \(O(h^4)\)이다. 자연 스플라인은 \(f''(a) = f''(b) = 0\)이 아니면 끝 근처에서 \(M_0 = 0\)이라는 <b>틀린</b> 정보 때문에 오차가 \(O(h^2)\)로 떨어진다(내부에서는 그 영향이 지수적으로 줄어든다).</div></div>
+    <p>\(f = e^x\), \([0, 2]\)에서 실제로 잰 최대 오차입니다(\(n\) = 구간 수). 자연 스플라인은 \(e^x\)의 끝 곡률 \(f''(2) = e^2 \ne 0\)을 0으로 강제하므로 끝에서 틀립니다.</p>
+    <div class="table-wrap"><table class="sl-tbl">
+      <thead><tr><th>방법</th><th>\(n = 8\)</th><th>\(n = 16\)</th><th>\(n = 32\)</th><th>\(n = 64\)</th><th>비율(32→64)</th><th>차수</th></tr></thead>
+      <tbody>
+        <tr><td>조각별 선형</td><td>5.10×10⁻²</td><td>1.36×10⁻²</td><td>3.50×10⁻³</td><td>8.88×10⁻⁴</td><td>3.9</td><td>2</td></tr>
+        <tr><td>PCHIP</td><td>4.19×10⁻³</td><td>5.75×10⁻⁴</td><td>7.53×10⁻⁵</td><td>9.64×10⁻⁶</td><td>7.8</td><td>≈ 3</td></tr>
+        <tr><td>자연 스플라인</td><td>2.25×10⁻²</td><td>5.66×10⁻³</td><td>1.42×10⁻³</td><td>3.54×10⁻⁴</td><td>4.0</td><td>2</td></tr>
+        <tr><td>not-a-knot</td><td>6.31×10⁻⁴</td><td>4.48×10⁻⁵</td><td>2.99×10⁻⁶</td><td>1.93×10⁻⁷</td><td>15.5</td><td>4</td></tr>
+        <tr><td>고정 스플라인</td><td>7.16×10⁻⁵</td><td>4.59×10⁻⁶</td><td>2.91×10⁻⁷</td><td>1.83×10⁻⁸</td><td>15.9</td><td>4</td></tr>
+      </tbody></table></div>
+    <p>고정 스플라인의 \(n = 16\) 오차 \(4.59\times10^{-6}\)은 한계 \(\frac{5}{384}(0.125)^4e^2 = 2.35\times10^{-5}\) 안에 있습니다. 모든 방법에서 최대 오차는 \(x \approx 1.9\) 이상, 곧 \(|f|\)와 \(|f''|\)가 큰 오른쪽 끝 근처에서 생깁니다. 도함수를 알면 고정 조건이 가장 정확하고, 모르면 not-a-knot이 거의 같은 차수를 줍니다. 자연 조건은 끝에서 곡선이 직선처럼 풀려야 하는 경우(실제 나무 자, 외삽이 직선이어야 하는 경우)에 씁니다.</p>
+
+    <div class="sim" id="sim-sl-bc">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>경계 조건 비교: 끝에서 생기는 오차</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view sl-two">
+          <div><canvas id="sl-bc-cv"></canvas><span class="sl-cap">f 와 스플라인</span></div>
+          <div><canvas id="sl-bc-cv2"></canvas><span class="sl-cap">|f − s| (로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="sl-bc-f">
+            <option value="exp">eˣ, [0, 2]</option>
+            <option value="cos">cos 3x, [0, 2]</option>
+            <option value="sin">sin x, [0, π] (끝 곡률 0)</option>
+          </select></label>
+          <label class="ctrl"><span>구간 수 n <output id="sl-bc-n-out"></output></span><input type="range" id="sl-bc-n" min="3" max="24" step="1" value="6"></label>
+          <div class="ctrl"><span>위 그림의 경계 조건</span><div class="seg" id="sl-bc-bc"><button data-value="natural" class="on">자연</button><button data-value="clamped">고정</button><button data-value="notaknot">not-a-knot</button></div></div>
+        </div>
+      </div>
+      <div class="sl-legend"><span><i style="background:var(--bad)"></i>자연</span><span><i style="background:var(--accent)"></i>고정</span><span><i style="background:var(--warn)"></i>not-a-knot</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">자연 max |f − s|</span><span class="v" id="sl-bc-o0">—</span></div>
+        <div class="stat"><span class="k">고정</span><span class="v" id="sl-bc-o1">—</span></div>
+        <div class="stat"><span class="k">not-a-knot</span><span class="v" id="sl-bc-o2">—</span></div>
+        <div class="stat"><span class="k">자연: 끝 M₀, Mₙ vs 참 f″</span><span class="v" id="sl-bc-m">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① eˣ에서 아래 그림의 자연 스플라인 오차(빨강)가 오른쪽 끝에서 다른 둘보다 한두 자릿수 큰 것을 보세요. 끝 곡률을 0으로 강제한 탓입니다. ② sin x, [0, π]로 바꾸면 끝 곡률이 정말 0이라 자연 조건이 고정 조건만큼 정확해집니다. ③ n을 두 배로 늘리면 자연은 약 4배, 고정·not-a-knot은 약 16배 줄어듭니다. 모델: 등간격 노드, 고정 조건은 참 도함수 f′(a), f′(b) 사용.</div>
+    </div>
+
+    <p>다음 시뮬레이터는 같은 실험을 \(n = 4\)부터 \(256\)까지 로그–로그 그래프로 모은 것입니다. 5장 오차 공식의 \(h^{p}\) 기울기를 직선의 기울기로 읽을 수 있습니다.</p>
+
+    <div class="sim" id="sim-sl-order">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차–간격 로그–로그 그래프: 방법별 차수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-or-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="sl-or-f">
+            <option value="exp">eˣ, [0, 2]</option>
+            <option value="runge">1/(1 + 25x²), [−1, 1]</option>
+            <option value="abs3">|x − 0.3|³, [−1, 1] (f‴ 불연속)</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="sl-or-ref" checked> 기준선 h², h⁴</label>
+        </div>
+      </div>
+      <div class="sl-legend"><span><i style="background:var(--text-faint)"></i>조각별 선형</span><span><i style="background:var(--blue)"></i>PCHIP</span><span><i style="background:var(--bad)"></i>자연</span><span><i style="background:var(--warn)"></i>not-a-knot</span><span><i style="background:var(--accent)"></i>고정</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">선형 기울기</span><span class="v" id="sl-or-s0">—</span></div>
+        <div class="stat"><span class="k">PCHIP</span><span class="v" id="sl-or-s1">—</span></div>
+        <div class="stat"><span class="k">자연</span><span class="v" id="sl-or-s2">—</span></div>
+        <div class="stat"><span class="k">not-a-knot</span><span class="v" id="sl-or-s3">—</span></div>
+        <div class="stat"><span class="k">고정</span><span class="v" id="sl-or-s4">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① eˣ에서 기울기가 2, 3, 2, 4, 4 근처인 것을 확인하세요(작은 h 쪽 네 점으로 맞춘 값). ② 룽게 함수에서는 5장의 다항식 보간이 발산했지만 모든 조각별 방법이 수렴합니다. 처음 몇 점은 h가 특이점까지의 거리 0.2보다 커서 아직 점근 영역이 아닙니다. ③ |x − 0.3|³은 f‴이 x = 0.3에서 끊겨 f⁽⁴⁾가 없으므로, 스플라인도 4차를 다 내지 못합니다. 정리의 가정(f ∈ C⁴)이 왜 필요한지 보여 줍니다. 모델: n = 4, 8, …, 256 등간격 구간, 오차는 4000개 점의 최댓값.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="energy">
+    <h2>최소 굽힘 에너지: 스플라인은 가장 덜 휜다</h2>
+    <div class="problem"><strong>나무 자는 왜 그 모양이 되는가</strong>
+      <p>얇은 탄성 막대의 굽힘 에너지는 곡률의 제곱을 길이에 대해 적분한 것에 비례하고, 기울기가 작으면 곡률은 \(y''\)과 거의 같습니다. 못(데이터 점)에 걸린 자는 이 에너지를 최소로 하는 모양을 택합니다. 수학적으로 그 모양이 3차 스플라인일까요?</p></div>
+    <div class="callout deep"><strong>정리 6.8 (최소 굽힘 에너지, 홀러데이)</strong> \(s\)를 데이터 \((x_i, y_i)\)의 자연 3차 스플라인이라 하자. 같은 점을 지나는 임의의 \(g \in C^2[a, b]\)에 대해
+      <div class="formula">$$\int_a^b s''(x)^2\,dx \le \int_a^b g''(x)^2\,dx$$
+      이고, 등호는 \(g = s\)일 때만 성립한다. 고정 스플라인은 끝 기울기가 같은 \(g\)들 가운데 같은 성질을 가진다.</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(e = g - s\)라 하면 \(e(x_i) = 0\)이고 \(\int g''^2 = \int s''^2 + 2\int s''e'' + \int e''^2\). 가운데 항이 0임을 보이면 된다. 부분적분하면 \(\int_a^b s''e'' = [s''e']_a^b - \int_a^b s'''e'\). 자연 조건 \(s''(a) = s''(b) = 0\)으로 첫 항이 사라진다. 각 구간에서 \(s'''\)은 상수 \(c_i\)이므로 \(\int s'''e' = \sum_i c_i\bigl(e(x_{i+1}) - e(x_i)\bigr) = 0\). 그러므로 \(\int g''^2 = \int s''^2 + \int e''^2 \ge \int s''^2\)이고, 등호는 \(e'' \equiv 0\), 곧 \(e\)가 일차식이면서 노드에서 0일 때, 즉 \(e \equiv 0\)일 때뿐이다. ∎</p></div>
+    <p>예제 6.3의 데이터로 확인해 봅시다. 자연 스플라인의 \(s''\)은 각 구간에서 \(M_i\)와 \(M_{i+1}\)을 잇는 직선이므로 한 구간의 적분은 \(h(M_i^2 + M_iM_{i+1} + M_{i+1}^2)/3\)입니다. \(M = (0, -4, 4, 0)\)이면 \(\tfrac{16}{3} + \tfrac{16}{3} + \tfrac{16}{3} = 16\). 같은 네 점을 지나는 3차 다항식은 \(p'' = 4x - 6\)이라 \(\int_0^3(4x - 6)^2dx = 36\). 스플라인이 절반 이하로 덜 휩니다. 1절 시뮬레이터의 두 에너지 값이 바로 이것입니다.</p>
+    <div class="callout tip"><strong>이 정리의 뜻</strong> 스플라인은 "우연히 매끄러운" 곡선이 아니라 <b>변분 문제의 해</b>다. 이 관점은 7장의 평활 스플라인(데이터와의 거리 + λ·굽힘 에너지 최소화)과 16장 유한 요소법의 약형식(에너지 최소화 → 연립방정식)으로 이어진다. 실제 탄성 막대의 에너지는 \(\int\kappa^2\,ds\)이고 \(y''\)과 다르므로, 기울기가 클 때는 물리적인 자와 스플라인이 조금 다르다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="bezier">
+    <h2>매개변수 곡선, 베지에 곡선과 드 카스텔조 알고리즘</h2>
+    <div class="problem"><strong>글자 'S'는 함수의 그래프가 아니다</strong>
+      <p>지금까지의 보간은 \(y = f(x)\) 꼴이었습니다. 하지만 글자 윤곽, 자동차 측면 선, 카메라 경로는 되돌아오고 수직으로 서고 고리를 만듭니다. 이런 모양은 \(x\)와 \(y\)를 모두 매개변수 \(t\)의 함수로 쓰는 <b>매개변수 곡선</b> \(\mathbf B(t) = (x(t), y(t))\)로만 그릴 수 있습니다. 또 디자이너는 곡선이 지날 점보다 <b>모양을 당기는 손잡이</b>를 원합니다.</p></div>
+    <div class="callout deep"><strong>정의 6.9 (베지에 곡선)</strong> <span class="term">제어점</span><span class="en">(control point)</span> \(\mathbf P_0, \dots, \mathbf P_n\)에 대해
+      <div class="formula">$$\mathbf B(t) = \sum_{k=0}^{n}\binom{n}{k}t^k(1 - t)^{n-k}\,\mathbf P_k, \qquad 0 \le t \le 1$$
+      <div class="where">를 \(n\)차 <span class="term">베지에 곡선</span><span class="en">(Bézier curve)</span>이라 한다. 가중치 \(b_{k,n}(t) = \binom nk t^k(1-t)^{n-k}\)는 <b>번스타인 다항식</b>이다. 모두 0 이상이고 합이 \((t + 1 - t)^n = 1\)이다.</div></div></div>
+    <p>여기서 바로 성질 세 가지가 나옵니다. (1) <b>끝점 보간</b>: \(\mathbf B(0) = \mathbf P_0\), \(\mathbf B(1) = \mathbf P_n\). 가운데 제어점은 지나지 않고 당기기만 합니다. (2) <b>끝 접선</b>: \(\mathbf B'(0) = n(\mathbf P_1 - \mathbf P_0)\), \(\mathbf B'(1) = n(\mathbf P_n - \mathbf P_{n-1}).\) 그래서 그림 프로그램의 "손잡이"가 곧 \(\mathbf P_1\), \(\mathbf P_2\)입니다. (3) <b>볼록 껍질</b>: 가중치가 음이 아니고 합이 1이므로 곡선은 제어점의 볼록 껍질 안에 있습니다. 충돌 검사나 화면 잘라내기에서 곡선 대신 제어 다각형을 검사할 수 있습니다.</p>
+    <p>계산은 번스타인 다항식을 직접 쓰지 않고 <b>선분의 내분을 되풀이</b>합니다.</p>
+    <div class="callout deep"><strong>정리 6.10 (드 카스텔조 알고리즘)</strong> \(\mathbf P_k^{(0)} = \mathbf P_k\)라 하고 \(r = 1, \dots, n\)에 대해
+      <div class="formula">$$\mathbf P_k^{(r)} = (1 - t)\,\mathbf P_k^{(r-1)} + t\,\mathbf P_{k+1}^{(r-1)}, \qquad k = 0, \dots, n - r$$
+      로 두면 \(\mathbf P_0^{(n)} = \mathbf B(t)\)이다. 또 이때 \(\mathbf P_0^{(0)}, \mathbf P_0^{(1)}, \dots, \mathbf P_0^{(n)}\)과 \(\mathbf P_0^{(n)}, \mathbf P_1^{(n-1)}, \dots, \mathbf P_n^{(0)}\)은 각각 \([0, t]\)와 \([t, 1]\) 부분의 베지에 제어점이다(분할).
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 귀납법. \(\mathbf P_k^{(r)}\)이 \(\mathbf P_k, \dots, \mathbf P_{k+r}\)의 \(r\)차 베지에 곡선이라 가정하면, 파스칼 항등식 \(b_{j,r}(t) = (1-t)b_{j,r-1}(t) + t\,b_{j-1,r-1}(t)\)이 점화식과 정확히 같은 꼴이다. ∎</p></div>
+    <pre class="code"><span class="c">// 드 카스텔조: 제어점 P[0..n], 매개변수 t  (O(n²), 덧셈과 내분만)</span>
+Q ← P                                   <span class="c">// 복사</span>
+<span class="k">for</span> r = 1 <span class="k">to</span> n
+  <span class="k">for</span> k = 0 <span class="k">to</span> n − r
+    Q[k] ← (1 − t) · Q[k] + t · Q[k+1]
+<span class="k">return</span> Q[0]</pre>
+    <p class="code-cap">볼록 결합만 쓰므로 반올림 오차에 강하다. 계수 \(\binom nk\)를 만들 필요도 없다.</p>
+    <div class="callout"><strong>예제 6.4 (3차 베지에 한 점)</strong> \(\mathbf P_0 = (0, 0)\), \(\mathbf P_1 = (1, 2)\), \(\mathbf P_2 = (3, 2)\), \(\mathbf P_3 = (4, 0)\)에서 \(\mathbf B(0.5)\)와 \(\mathbf B(0.25)\)를 구하라.
+      <ol>
+        <li>\(t = 0.5\), 1단계(중점): \((0.5, 1)\), \((2, 2)\), \((3.5, 1)\). 2단계: \((1.25, 1.5)\), \((2.75, 1.5)\). 3단계: \(\mathbf B(0.5) = (2, 1.5)\).</li>
+        <li>번스타인으로 확인: \((\mathbf P_0 + 3\mathbf P_1 + 3\mathbf P_2 + \mathbf P_3)/8 = ((0 + 3 + 9 + 4)/8,\ (0 + 6 + 6 + 0)/8) = (2, 1.5)\).</li>
+        <li>\(t = 0.25\): 1단계 \((0.25, 0.5)\), \((1.5, 2)\), \((3.25, 1.5)\). 2단계 \((0.5625, 0.875)\), \((1.9375, 1.875)\). 3단계 \(\mathbf B(0.25) = (0.90625, 1.125)\).</li>
+        <li>끝 접선: \(\mathbf B'(0) = 3(\mathbf P_1 - \mathbf P_0) = (3, 6)\). 곡선은 손잡이 \(\mathbf P_1\) 쪽으로 출발한다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-sl-casteljau">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>드 카스텔조 알고리즘 단계별로 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-dc-cv"></canvas><span class="tag-tl">제어점을 끌기</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>차수 n</span><div class="seg" id="sl-dc-deg"><button data-value="2">2</button><button data-value="3" class="on">3</button><button data-value="4">4</button><button data-value="5">5</button></div></div>
+          <label class="ctrl"><span>매개변수 t <output id="sl-dc-t-out"></output></span><input type="range" id="sl-dc-t" min="0" max="1" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span>보일 단계 r <output id="sl-dc-r-out"></output></span><input type="range" id="sl-dc-r" min="0" max="3" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="sl-dc-split"> t에서 둘로 나눈 제어 다각형</label>
+          <div class="btn-row"><button class="btn primary" id="sl-dc-play">▶ t 움직이기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">B(t)</span><span class="v" id="sl-dc-b">—</span></div>
+        <div class="stat"><span class="k">번스타인 가중치 bₖ,ₙ(t)</span><span class="v" id="sl-dc-w">—</span></div>
+        <div class="stat"><span class="k">접선 B′(t)</span><span class="v" id="sl-dc-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 단계 r을 0 → n으로 올리며 선분마다 같은 비율 t로 내분한 점이 하나씩 줄어 마지막 한 점 B(t)가 되는 것을 보세요. ② 마지막 단계의 선분(가장 짧은 선분)은 곡선의 접선입니다. B′(t) = n·(그 선분의 벡터). ③ '둘로 나눈 제어 다각형'을 켜면 중간 단계의 맨 왼쪽·맨 오른쪽 점들이 두 반쪽 곡선의 제어점이 됩니다. 이 분할을 되풀이하면 제어 다각형이 곡선으로 빠르게 수렴하며, 화면에 곡선을 그릴 때 쓰입니다. 모델: 좌표는 화면 단위, 가중치는 k = 0 … n 순서.</div>
+    </div>
+
+    <p>한 개의 고차 베지에 곡선은 5장의 고차 다항식과 같은 약점을 가집니다. 제어점 하나가 곡선 전체를 움직이고, 복잡한 모양에는 차수가 너무 높아집니다. 그래서 실제로는 <b>3차 베지에 조각을 이어 붙입니다</b>(글꼴, SVG의 <code>C</code> 명령). 이음매의 매끄러움은 손잡이의 배치로 정해집니다.</p>
+    <ul>
+      <li><b>\(C^0\)</b>: 앞 조각의 \(\mathbf P_3\)과 뒤 조각의 \(\mathbf Q_0\)이 같다(이어지기만 한다, 모서리 가능).</li>
+      <li><b>\(G^1\)</b>(기하적 연속): 이음점 양쪽의 손잡이가 한 직선 위에 반대 방향으로 놓인다. 접선의 <b>방향</b>이 같다.</li>
+      <li><b>\(C^1\)</b>: 게다가 길이도 같다, \(\mathbf P_3 - \mathbf P_2 = \mathbf Q_1 - \mathbf Q_0\). 매개변수 속도까지 연속이라 애니메이션 경로에서 속도가 튀지 않는다.</li>
+    </ul>
+    <p>\(G^1\)과 \(C^1\)이어도 <b>곡률</b>은 이음매에서 끊길 수 있습니다. 자동차 디자인에서는 반사광의 띠가 이음매에서 꺾이는 것으로 곡률 불연속이 눈에 보이므로 \(G^2\)(곡률 연속)를 요구합니다. 아래 시뮬레이터의 <b>곡률 빗</b><span class="en">(curvature comb)</span>은 곡선의 법선 방향으로 곡률에 비례하는 길이의 선을 그려 이것을 보여 줍니다. CAD 프로그램에도 같은 도구가 있습니다.</p>
+
+    <div class="sim" id="sim-sl-bezier">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>베지에 경로 편집기: 이음매의 연속성</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="sl-bz-cv"></canvas><span class="tag-tl">검은 점 = 지나는 점 · 보라 점 = 손잡이</span></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>손잡이 규칙</span><div class="seg" id="sl-bz-mode"><button data-value="free">자유 (C⁰)</button><button data-value="g1">정렬 (G¹)</button><button data-value="c1" class="on">대칭 (C¹)</button></div></div>
+          <label class="check"><input type="checkbox" id="sl-bz-comb" checked> 곡률 빗</label>
+          <label class="check"><input type="checkbox" id="sl-bz-poly" checked> 제어 다각형</label>
+          <div class="btn-row"><button class="btn" id="sl-bz-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이음매 접선 각 차이 (최대)</span><span class="v" id="sl-bz-a">—</span></div>
+        <div class="stat"><span class="k">손잡이 길이 비 (최대)</span><span class="v" id="sl-bz-l">—</span></div>
+        <div class="stat"><span class="k">이음매 곡률 점프 (최대)</span><span class="v" id="sl-bz-k">—</span></div>
+      </div>
+      <div class="sl-msg" id="sl-bz-msg"></div>
+      <div class="sim-note">해볼 것: ① '자유'에서 손잡이 하나를 끌어 모서리를 만들어 보세요. 접선 각 차이가 0이 아닙니다(C⁰만). ② '정렬'로 바꾸고 손잡이를 끌면 반대쪽 손잡이가 같은 직선 위로 따라 돌지만 길이는 그대로입니다. 곡선은 매끄러워 보여도 곡률 빗의 길이가 이음매에서 뚝 끊깁니다. ③ '대칭'에서도 곡률 점프가 남는 경우가 많습니다. C¹은 곡률 연속(G²)을 보장하지 않습니다. 모델: 3차 베지에 조각 4개로 만든 닫힌 경로, 곡률 κ = (x′y″ − y′x″)/|B′|³.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="bspline">
+    <h2>B-스플라인과 국소 제어</h2>
+    <div class="problem"><strong>손잡이 규칙을 일일이 지키지 않고 매끄러운 곡선을</strong>
+      <p>베지에 조각을 \(C^2\)로 이으려면 이음매마다 손잡이 위치에 제약이 붙고, 디자이너가 점 하나를 옮길 때마다 이웃 손잡이를 다시 맞춰야 합니다. 반대로 3절의 보간 스플라인은 \(C^2\)이지만 한 점을 옮기면 (빠르게 줄긴 해도) 전체가 움직입니다. 매끄러움이 <b>저절로</b> 보장되면서 제어점 하나가 <b>근처만</b> 움직이는 곡선이 있을까요?</p></div>
+    <p>답은 기저 함수 자체를 조각별 다항식으로 만들고, 그 기저가 짧은 구간에서만 0이 아니게 하는 것입니다. <span class="term">매듭</span><span class="en">(knot)</span> 열 \(t_0 \le t_1 \le \dots\)에서 다음 점화식으로 기저를 정의합니다.</p>
+    <div class="callout deep"><strong>정의 6.11 (B-스플라인 기저, 콕스–드 부어 점화식)</strong>
+      <div class="formula">$$N_{j,0}(t) = \begin{cases}1, & t_j \le t \lt t_{j+1}\\ 0, & \text{그 밖}\end{cases}, \qquad N_{j,p}(t) = \frac{t - t_j}{t_{j+p} - t_j}N_{j,p-1}(t) + \frac{t_{j+p+1} - t}{t_{j+p+1} - t_{j+1}}N_{j+1,p-1}(t).$$
+      <div class="where">분모가 0이면 그 항을 0으로 둔다. \(p\)차 <span class="term">B-스플라인</span><span class="en">(B-spline)</span> 곡선은 \(\mathbf C(t) = \sum_j N_{j,p}(t)\,\mathbf P_j\)이다. 이 장에서는 \(p = 3\)(3차)을 쓴다.</div></div></div>
+    <div class="callout deep"><strong>정리 6.12 (B-스플라인 기저의 성질)</strong> (가) <b>국소 받침</b>: \(N_{j,p}\)는 \([t_j, t_{j+p+1})\) 밖에서 0이다. 따라서 3차에서 제어점 \(\mathbf P_j\)는 매듭 구간 4개에만 영향을 준다. (나) <b>단위 분할</b>: 유효 구간에서 \(N_{j,p} \ge 0\), \(\sum_j N_{j,p} = 1\)이므로 곡선은 볼록 껍질 안에 있다. (다) <b>매끄러움</b>: 매듭이 겹치지 않으면 \(N_{j,p}\)는 \(C^{p-1}\)이다. 3차면 제어점을 어디에 두어도 곡선은 저절로 \(C^2\)다.
+      <p style="margin:8px 0 0"><b>핵심 아이디어.</b> (가)와 (나)는 \(p\)에 대한 귀납법으로, 점화식의 두 가중치가 0 이상이고 이웃 항끼리 합이 1이 되는 데서 나온다. (다)는 \(N_{j,p}\)가 상자 함수를 \(p\)번 "번지게" 한(등간격이면 상자 함수의 \(p+1\)중 합성곱) 함수라서 한 번 번질 때마다 매끄러움이 하나씩 오르는 데서 나온다. ∎</p></div>
+    <p>등간격 매듭(\(t_j = j\))의 3차 B-스플라인 한 조각은 행렬로 간단히 쓸 수 있습니다. \(u \in [0, 1]\)에서</p>
+    <div class="formula">$$\mathbf C(u) = \frac16\Bigl[(1-u)^3\mathbf P_0 + (3u^3 - 6u^2 + 4)\mathbf P_1 + (-3u^3 + 3u^2 + 3u + 1)\mathbf P_2 + u^3\mathbf P_3\Bigr].$$
+      <div class="where">조각의 시작점은 \((\mathbf P_0 + 4\mathbf P_1 + \mathbf P_2)/6\)로, 제어점을 지나지 않고 그 근처를 지난다. 끝점을 지나게 하려면 매듭 열의 양 끝을 네 번 겹친다(clamped). 이때 첫 조각과 끝 조각은 베지에 곡선과 같아진다.</div></div>
+    <p>B-스플라인에 가중치를 붙여 유리 함수로 만든 것이 NURBS<span class="en">(Non-Uniform Rational B-Spline)</span>로, 원과 원뿔 곡선을 정확히 표현할 수 있어 CAD 데이터 교환의 표준 표현이 되었습니다. 3절의 보간 스플라인도 B-스플라인 기저로 쓸 수 있습니다. 보간 조건 \(\mathbf C(x_i) = y_i\)가 제어점에 대한 띠 행렬 계가 되고, 이것이 라이브러리들의 내부 구현 방식 중 하나입니다.</p>
+
+    <div class="sim" id="sim-sl-bspline">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>B-스플라인 국소 제어 vs 베지에 전역 제어</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view sl-two">
+          <div><canvas id="sl-bs-cv"></canvas><span class="sl-cap">제어점을 끌기</span></div>
+          <div><canvas id="sl-bs-cv2"></canvas><span class="sl-cap">기저 함수 Nⱼ,₃(t)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="check"><input type="checkbox" id="sl-bs-clamp" checked> 끝점 고정 (매듭 4중)</label>
+          <label class="check"><input type="checkbox" id="sl-bs-bez"> 같은 제어점의 베지에 곡선 (7차)</label>
+          <label class="check"><input type="checkbox" id="sl-bs-ghost" checked> 끌기 전 곡선 남기기</label>
+          <div class="btn-row"><button class="btn" id="sl-bs-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="sl-legend"><span><i style="background:var(--accent)"></i>B-스플라인</span><span><i style="background:var(--warn)"></i>영향받는 구간</span><span><i style="background:var(--bad)"></i>베지에</span><span><i style="background:var(--text-faint)"></i>끌기 전</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">마지막에 끈 점</span><span class="v" id="sl-bs-j">—</span></div>
+        <div class="stat"><span class="k">영향받는 매듭 구간</span><span class="v" id="sl-bs-sp">—</span></div>
+        <div class="stat"><span class="k">B-스플라인 이동 / 베지에 이동 (먼 끝)</span><span class="v" id="sl-bs-mv">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 가운데 제어점 하나를 끌어 보세요. 노란 구간(매듭 구간 4개)만 움직이고 나머지 B-스플라인은 끌기 전 곡선(회색)과 정확히 겹칩니다. ② 베지에를 켜고 같은 점을 끌면 베지에 곡선은 끝점을 뺀 <b>모든 곳</b>이 움직입니다. ③ 아래 기저 그림에서 끈 점의 기저 Nⱼ(굵은 선)가 0이 아닌 구간이 바로 노란 구간입니다. '끝점 고정'을 끄면 곡선이 끝 제어점에 닿지 않습니다. 모델: 3차, 제어점 8개, 내부 매듭 등간격.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>"구간마다 낮은 차수 + 이음매 조건"은 데이터 처리와 기하 설계 모두의 기본 문법입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>쓰는 곡선</th><th>왜</th></tr></thead>
+      <tbody>
+        <tr><td>글꼴·벡터 그래픽</td><td>2차(TrueType)·3차(PostScript/CFF, SVG) 베지에</td><td>확대해도 매끄럽고, 드 카스텔조 분할로 빠르게 그린다</td></tr>
+        <tr><td>CAD·자동차·항공기 외형</td><td>NURBS(유리 B-스플라인)</td><td>국소 제어, 원뿔 곡선의 정확한 표현, 곡률 연속 검사</td></tr>
+        <tr><td>애니메이션·UI</td><td>CSS <code>cubic-bezier()</code> 감속 곡선, 키프레임 에르미트</td><td>시작·끝 기울기(속도)를 직접 지정</td></tr>
+        <tr><td>카메라·로봇 궤적</td><td>3차 스플라인, 캣멀–롬(에르미트 변형)</td><td>위치·속도·가속도가 연속이라 흔들림과 충격이 없다</td></tr>
+        <tr><td>측정 데이터·보정표</td><td>PCHIP, 3차 스플라인</td><td>단조성 보존(PCHIP), 매끄러운 미분(스플라인)</td></tr>
+        <tr><td>수치 해법의 부품</td><td>스플라인 보간·조밀 출력</td><td>ODE 해법의 걸음 사이 값, 표로 주어진 계수 함수</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="interpolation.html"><small>5장 · 다항식 보간</small>룽게 현상과 에르미트 보간<br><span>이 장의 출발점. 조각마다 쓰는 3차식은 5장의 에르미트 보간이다.</span></a>
+      <a href="approximation.html"><small>7장 · 최소제곱 근사</small>평활 스플라인과 회귀<br><span>잡음이 있으면 모든 점을 지나지 않고, 오차 제곱합 + 굽힘 에너지를 최소화한다.</span></a>
+      <a href="direct-solvers.html"><small>12장 · 직접 해법</small>토머스 알고리즘과 띠 행렬<br><span>스플라인의 삼중대각계는 띠 행렬의 가장 단순한 예다. 대각 우세와 피벗팅.</span></a>
+      <a href="pde-numerics.html"><small>16장 · PDE 수치 해법</small>유한 요소법<br><span>모자 함수(1차 B-스플라인)를 기저로 쓰고, 에너지 최소화에서 강성 행렬이 나온다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · ODE 수치 해법</small>조밀 출력<br><span>적응 간격 해법은 걸음 사이의 값을 에르미트 3차식으로 채워 준다.</span></a>
+      <a href="../../calculus/chapters/techniques.html"><small>CALCULUSBOOK</small>적분 기법과 수치 적분<br><span>스플라인과 조각별 다항식은 구간별로 정확히 적분된다. 사다리꼴 공식은 꺾은선의 적분이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>고차 다항식 대신 구간마다 낮은 차수를 쓰면 차수는 고정, 간격 \(h\)만 줄이므로 룽게 현상이 없다. 조각별 선형은 \(\frac{h^2}{8}\max|f''|\).</li>
+      <li>조각별 3차 에르미트는 값과 기울기를 이웃과 공유해 \(C^1\)이다. PCHIP는 기울기를 조화 평균(극값에서는 0)으로 골라 오버슈트 없이 단조성을 지킨다.</li>
+      <li>3차 스플라인은 \(C^2\) 조각별 3차식이다. 모멘트 \(M_i = s''(x_i)\)에 대한 방정식 \(h_{i-1}M_{i-1} + 2(h_{i-1} + h_i)M_i + h_iM_{i+1} = 6(\delta_i - \delta_{i-1})\)은 대각 우세 삼중대각계로, 토머스 알고리즘으로 \(O(n)\)에 풀린다.</li>
+      <li>미지수 \(4n\)개에 조건 \(4n - 2\)개, 모자란 둘이 경계 조건이다. 고정·not-a-knot은 \(O(h^4)\), 자연 조건은 끝 곡률이 0이 아니면 \(O(h^2)\).</li>
+      <li>자연 스플라인은 같은 점을 지나는 모든 \(C^2\) 함수 가운데 \(\int g''^2\)이 가장 작다(부분적분 한 번의 증명).</li>
+      <li>베지에 곡선은 번스타인 가중치의 볼록 결합이다. 끝점을 지나고 끝 접선이 \(n(\mathbf P_1 - \mathbf P_0)\)이며, 드 카스텔조의 내분 반복으로 안정적으로 계산하고 분할한다.</li>
+      <li>조각 베지에의 이음매는 손잡이 배치로 \(C^0\), \(G^1\), \(C^1\)이 정해지며, \(C^1\)도 곡률 연속을 보장하지 않는다.</li>
+      <li>B-스플라인 기저는 콕스–드 부어 점화식으로 만들고, 받침이 매듭 구간 \(p+1\)개라 국소 제어를 주며 3차면 저절로 \(C^2\)이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 조각별 선형 보간의 간격을 \(h\)에서 \(h/3\)으로 줄이면 오차 한계는 몇 배가 되는가?</p><div class="opts">
+        <button class="opt">1/3</button>
+        <button class="opt" data-correct>1/9</button>
+        <button class="opt">1/27</button>
+        <button class="opt">1/81</button>
+      </div><div class="quiz-exp">한계 (h²/8)·max|f″|이 h²에 비례하므로 (1/3)² = 1/9. 1/81은 고정 3차 스플라인(h⁴)의 경우다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 노드 \(n+1\)개(구간 \(n\)개)의 3차 스플라인에서 보간과 연속 조건만으로는 몇 개의 조건이 모자라는가?</p><div class="opts">
+        <button class="opt">0개</button>
+        <button class="opt">1개</button>
+        <button class="opt" data-correct>2개</button>
+        <button class="opt">n − 1개</button>
+      </div><div class="quiz-exp">미지수 4n개, 조건은 보간 2n + 내부 노드의 s′·s″ 연속 2(n − 1) = 4n − 2개. 모자란 2개를 양 끝의 경계 조건으로 채운다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 등간격 \(h = 1\)인 네 점 \((0,0)\), \((1,1)\), \((2,0)\), \((3,1)\)의 자연 스플라인에서 \(M_1\)은?</p><div class="opts">
+        <button class="opt">−12</button>
+        <button class="opt" data-correct>−4</button>
+        <button class="opt">−3</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">4M₁ + M₂ = −12, M₁ + 4M₂ = 12를 풀면 M₁ = −4, M₂ = 4. 토머스 알고리즘의 d′₁ = −3은 중간값일 뿐이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 스플라인 모멘트 방정식을 피벗팅 없이 풀어도 안정적인 이유는?</p><div class="opts">
+        <button class="opt">행렬이 대칭이라서</button>
+        <button class="opt" data-correct>각 행의 대각 원소가 비대각 원소 합의 두 배인 엄격한 대각 우세라서</button>
+        <button class="opt">행렬의 조건수가 정확히 1이라서</button>
+        <button class="opt">미지수가 2개뿐이라서</button>
+      </div><div class="quiz-exp">2(hᵢ₋₁ + hᵢ) > hᵢ₋₁ + hᵢ. 엄격한 대각 우세 행렬은 가역이고 소거 중 피벗이 작아지지 않는다. 대칭(등간격 등)이지만 대칭만으로는 충분하지 않다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 데이터 \(y = 0, 0.1, 0.2, 3, 3.1, 3.2\)를 보간할 때 결과가 데이터 범위 \([0, 3.2]\)를 벗어나지 않는 방법은?</p><div class="opts">
+        <button class="opt">자연 3차 스플라인</button>
+        <button class="opt">not-a-knot 스플라인</button>
+        <button class="opt" data-correct>PCHIP</button>
+        <button class="opt">5차 보간 다항식</button>
+      </div><div class="quiz-exp">PCHIP는 조화 평균 기울기로 단조 구간에서 단조성을 지켜 범위가 정확히 [0, 3.2]다. 자연 스플라인은 −0.135까지 내려가고 3.335까지 올라간다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 자연 스플라인이 같은 점을 지나는 \(C^2\) 함수 가운데 최소로 만드는 양은?</p><div class="opts">
+        <button class="opt">곡선의 길이 ∫√(1 + g′²)dx</button>
+        <button class="opt" data-correct>굽힘 에너지 ∫g″²dx</button>
+        <button class="opt">최대 기울기 max|g′|</button>
+        <button class="opt">∫g′²dx</button>
+      </div><div class="quiz-exp">정리 6.8(홀러데이). ∫g′²를 최소로 하는 것은 조각별 선형 보간이다. 길이를 최소로 하는 것도 꺾은선이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 제어점 \((0,0), (1,2), (3,2), (4,0)\)인 3차 베지에 곡선의 \(\mathbf B(0.5)\)는?</p><div class="opts">
+        <button class="opt">(2, 2)</button>
+        <button class="opt" data-correct>(2, 1.5)</button>
+        <button class="opt">(2, 1)</button>
+        <button class="opt">(1.25, 1.5)</button>
+      </div><div class="quiz-exp">(P₀ + 3P₁ + 3P₂ + P₃)/8 = (16/8, 12/8) = (2, 1.5). 드 카스텔조로 중점을 세 번 잡아도 같다. (1.25, 1.5)는 2단계의 중간점이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 3차 B-스플라인 곡선에서 제어점 하나를 옮기면 곡선의 어느 부분이 바뀌는가?</p><div class="opts">
+        <button class="opt">곡선 전체</button>
+        <button class="opt">그 제어점에 가장 가까운 한 구간</button>
+        <button class="opt" data-correct>매듭 구간 4개</button>
+        <button class="opt">양 끝점을 뺀 전체</button>
+      </div><div class="quiz-exp">기저 Nⱼ,₃의 받침이 [tⱼ, tⱼ₊₄), 곧 매듭 구간 p + 1 = 4개다. 제어점이 같은 하나의 베지에 곡선이라면 끝점을 뺀 전체가 바뀐다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const SL = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "∞";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  equi: (n, a, b) => Array.from({ length: n }, (_, i) => a + ((b - a) * i) / (n - 1)),
+  seg(x, t) { const n = x.length - 1; if (t >= x[n]) return n - 1; let lo = 0, hi = n - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (x[m] <= t) lo = m; else hi = m - 1; } return lo; },
+  /** 삼중대각 토머스 알고리즘 */
+  thomas(a, b, c, d) {
+    const n = b.length, cp = Array(n), dp = Array(n);
+    cp[0] = c[0] / b[0]; dp[0] = d[0] / b[0];
+    for (let i = 1; i < n; i++) { const w = b[i] - a[i] * cp[i - 1]; cp[i] = c[i] / w; dp[i] = (d[i] - a[i] * dp[i - 1]) / w; }
+    const x = Array(n); x[n - 1] = dp[n - 1];
+    for (let i = n - 2; i >= 0; i--) x[i] = dp[i] - cp[i] * x[i + 1];
+    return x;
+  },
+  /** 3차 스플라인 (모멘트 형식). bc: natural | clamped | notaknot. 반환 함수에 .M 첨부 */
+  spline(x, y, bc = "natural", s0 = 0, sn = 0) {
+    const n = x.length - 1, h = [], del = [];
+    for (let i = 0; i < n; i++) { h.push(x[i + 1] - x[i]); del.push((y[i + 1] - y[i]) / h[i]); }
+    if (n < 2) { const f = (t) => y[0] + del[0] * (t - x[0]); f.M = [0, 0]; return f; }
+    if (bc === "notaknot" && n < 3) bc = "natural";
+    const a = Array(n + 1).fill(0), b = Array(n + 1).fill(0), c = Array(n + 1).fill(0), d = Array(n + 1).fill(0);
+    for (let i = 1; i < n; i++) { a[i] = h[i - 1]; b[i] = 2 * (h[i - 1] + h[i]); c[i] = h[i]; d[i] = 6 * (del[i] - del[i - 1]); }
+    let M;
+    if (bc === "natural") { b[0] = 1; b[n] = 1; M = SL.thomas(a, b, c, d); }
+    else if (bc === "clamped") { b[0] = 2 * h[0]; c[0] = h[0]; d[0] = 6 * (del[0] - s0); a[n] = h[n - 1]; b[n] = 2 * h[n - 1]; d[n] = 6 * (sn - del[n - 1]); M = SL.thomas(a, b, c, d); }
+    else {
+      const A = a.slice(1, n), B = b.slice(1, n), C = c.slice(1, n), D = d.slice(1, n), k = B.length - 1, h0 = h[0], h1 = h[1], hm = h[n - 1], hm2 = h[n - 2];
+      if (k === 0) { // n = 2 은 위에서 natural 로 처리. n = 3 이상
+        B[0] += (h0 * (h0 + h1)) / h1 + (hm * (hm + hm2)) / hm2;
+      } else {
+        B[0] += (h0 * (h0 + h1)) / h1; C[0] -= (h0 * h0) / h1; A[0] = 0;
+        B[k] += (hm * (hm + hm2)) / hm2; A[k] -= (hm * hm) / hm2; C[k] = 0;
+      }
+      const Mi = SL.thomas(A, B, C, D);
+      M = [((h0 + h1) * Mi[0] - h0 * Mi[Math.min(1, k)]) / h1, ...Mi, ((hm + hm2) * Mi[k] - hm * Mi[Math.max(k - 1, 0)]) / hm2];
+    }
+    const f = (t) => {
+      const i = SL.seg(x, t), A = x[i + 1] - t, Bq = t - x[i], H = h[i];
+      return (M[i] * A * A * A) / (6 * H) + (M[i + 1] * Bq * Bq * Bq) / (6 * H) + (y[i] - (M[i] * H * H) / 6) * (A / H) + (y[i + 1] - (M[i + 1] * H * H) / 6) * (Bq / H);
+    };
+    f.M = M; f.h = h;
+    return f;
+  },
+  energy(s) { let E = 0; for (let i = 0; i < s.h.length; i++) E += (s.h[i] * (s.M[i] ** 2 + s.M[i] * s.M[i + 1] + s.M[i + 1] ** 2)) / 3; return E; },
+  pchipSlopes(x, y) {
+    const n = x.length - 1, h = [], del = [];
+    for (let i = 0; i < n; i++) { h.push(x[i + 1] - x[i]); del.push((y[i + 1] - y[i]) / h[i]); }
+    const d = Array(n + 1).fill(0);
+    if (n === 1) { d[0] = d[1] = del[0]; return d; }
+    for (let k = 1; k < n; k++) if (del[k - 1] * del[k] > 0) { const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1]; d[k] = (w1 + w2) / (w1 / del[k - 1] + w2 / del[k]); }
+    const end = (h0, h1, d0, d1) => { let s = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1); if (Math.sign(s) !== Math.sign(d0)) s = 0; else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(s) > Math.abs(3 * d0)) s = 3 * d0; return s; };
+    d[0] = end(h[0], h[1], del[0], del[1]); d[n] = end(h[n - 1], h[n - 2], del[n - 1], del[n - 2]);
+    return d;
+  },
+  hermite(x, y, d) {
+    return (t) => {
+      const i = SL.seg(x, t), H = x[i + 1] - x[i], s = (t - x[i]) / H;
+      return (2 * s ** 3 - 3 * s * s + 1) * y[i] + (s ** 3 - 2 * s * s + s) * H * d[i] + (-2 * s ** 3 + 3 * s * s) * y[i + 1] + (s ** 3 - s * s) * H * d[i + 1];
+    };
+  },
+  linear(x, y) { return (t) => { const i = SL.seg(x, t), s = (t - x[i]) / (x[i + 1] - x[i]); return y[i] + (y[i + 1] - y[i]) * s; }; },
+  bary(x, y, t) {
+    let N = 0, D = 0;
+    for (let k = 0; k < x.length; k++) { const d = t - x[k]; if (d === 0) return y[k]; let w = 1; for (let j = 0; j < x.length; j++) if (j !== k) w /= x[k] - x[j]; N += (w / d) * y[k]; D += w / d; }
+    return N / D;
+  },
+  maxErr(f, g, a, b, N = 2000) { let m = 0; for (let i = 0; i <= N; i++) { const t = a + ((b - a) * i) / N; m = Math.max(m, Math.abs(f(t) - g(t))); } return m; },
+  sub: (k) => String(k).split("").map((c) => "₀₁₂₃₄₅₆₇₈₉"[+c]).join(""),
+};
+
+/* ================================================================ 1. 다항식 vs 꺾은선 vs 스플라인 */
+(function () {
+  const INIT = [[0, 1], [1.5, 3], [3, 2], [4.5, 4.5], [6, 2.5], [7.5, 3], [9, 1.5]];
+  let show = [true, true, true];
+  const mk = (p) => ({ x: p[0], y: p[1], color: MB.palette().accent });
+  const sorted = (pts) => pts.map((p) => [p.x, p.y]).sort((a, b) => a[0] - b[0]);
+  const valid = (x) => { for (let i = 1; i < x.length; i++) if (x[i] - x[i - 1] < 1e-3) return false; return x.length >= 2; };
+  const pl = MB.plane("#sl-dr-cv", {
+    x: [-0.6, 9.6], y: [-1.5, 6.5], aspect: 0.6, minHeight: 260,
+    points: INIT.map(mk),
+    draw(P, api) {
+      const C = P.P, s = sorted(api.points), x = s.map((p) => p[0]), y = s.map((p) => p[1]);
+      if (!valid(x)) return;
+      if (show[1]) P.poly(s, { color: C.faint, width: 1.8, dash: [5, 4], close: false });
+      if (show[0]) P.curve((t) => SL.bary(x, y, t), { color: C.bad, width: 2 });
+      if (show[2]) { const sp = SL.spline(x, y); P.curve(sp, { color: C.accent, width: 2.8, from: x[0], to: x[x.length - 1] }); }
+      api.points.forEach((p) => (p.color = C.accent));
+    },
+    onDrag: () => stats(),
+    onPointer(x, y, ev) { if (ev !== "down" || pl.points.length >= 16) return; pl.points.push(mk([x, y])); stats(); pl.redraw(); },
+  });
+  function stats() {
+    const s = sorted(pl.points), x = s.map((p) => p[0]), y = s.map((p) => p[1]);
+    MB.stat("sl-dr-n", String(x.length));
+    if (!valid(x)) { ["sl-dr-es", "sl-dr-ep", "sl-dr-ov"].forEach((id) => MB.stat(id, "—")); return; }
+    const sp = SL.spline(x, y); MB.stat("sl-dr-es", SL.num(SL.energy(sp), 2));
+    const a = x[0], b = x[x.length - 1], N = 1600, hh = (b - a) / N, p = (t) => SL.bary(x, y, t);
+    let E = 0, ov = 0; const lo = Math.min(...y), hi = Math.max(...y);
+    const vals = []; for (let i = 0; i <= N + 2; i++) vals.push(p(a + (i - 1) * hh));
+    for (let i = 1; i <= N + 1; i++) { const d2 = (vals[i + 1] - 2 * vals[i] + vals[i - 1]) / (hh * hh), wgt = i === 1 || i === N + 1 ? 0.5 : 1; E += wgt * d2 * d2 * hh; const v = vals[i]; ov = Math.max(ov, v - hi, lo - v); }
+    MB.stat("sl-dr-ep", SL.sci(E, 3)); MB.stat("sl-dr-ov", SL.num(Math.max(0, ov), 2));
+  }
+  ["sl-dr-poly", "sl-dr-lin", "sl-dr-spl"].forEach((id, i) => MB.check(id, (v) => { show[i] = v; pl.redraw(); }));
+  document.getElementById("sl-dr-del").addEventListener("click", () => { if (pl.points.length > 2) pl.points.pop(); pl.redraw(); stats(); });
+  document.getElementById("sl-dr-reset").addEventListener("click", () => { pl.points = INIT.map(mk); pl.redraw(); stats(); });
+  stats();
+})();
+
+/* ================================================================ 2. PCHIP */
+(function () {
+  const PRE = {
+    step: { x: [0, 1, 2, 3, 4, 5], y: [0, 0.1, 0.2, 3, 3.1, 3.2], v: [-0.5, 5.5, -0.8, 4] },
+    ramp: { x: [0, 0.5, 1, 2, 3, 5, 7, 9], y: [0, 1.6, 2.4, 3.1, 3.4, 3.6, 3.65, 3.7], v: [-0.5, 9.5, -0.6, 4.6] },
+    peak: { x: [0, 1, 2, 3, 3.5, 4, 5, 6, 7], y: [0.5, 0.6, 0.8, 1.2, 3.5, 1.2, 0.8, 0.6, 0.5], v: [-0.4, 7.4, -0.6, 4.4] },
+    uneven: { x: [0, 0.3, 0.6, 3, 3.3, 6, 6.2, 6.4], y: [0, 0.5, 1, 1.2, 2.8, 3, 3.6, 4], v: [-0.4, 6.8, -0.8, 5] },
+  };
+  let pre = PRE.step, show = [true, true, true];
+  const mk = () => pre.x.map((x, i) => ({ x, y: pre.y[i], lock: "x", color: MB.palette().text }));
+  const range = (g, a, b) => { let lo = Infinity, hi = -Infinity; for (let i = 0; i <= 2000; i++) { const v = g(a + ((b - a) * i) / 2000); lo = Math.min(lo, v); hi = Math.max(hi, v); } return [lo, hi]; };
+  const viol = (g, x, y) => { let c = 0; for (let i = 0; i < x.length - 1; i++) { const s = Math.sign(y[i + 1] - y[i]); let bad = false, prev = g(x[i]); for (let k = 1; k <= 60; k++) { const v = g(x[i] + ((x[i + 1] - x[i]) * k) / 60); if (s !== 0 && (v - prev) * s < -1e-9) bad = true; if (s === 0 && Math.abs(v - y[i]) > 1e-9) bad = true; prev = v; } if (bad) c++; } return c; };
+  const cur = () => { const x = pl ? pl.points.map((p) => p.x) : pre.x, y = pl ? pl.points.map((p) => p.y) : pre.y, d = SL.pchipSlopes(x, y); return { x, y, d, sp: SL.spline(x, y), pc: SL.hermite(x, y, d) }; };
+  let pl = null;
+  pl = MB.plane("#sl-pc-cv", {
+    x: [pre.v[0], pre.v[1]], y: [pre.v[2], pre.v[3]], aspect: 0.6, minHeight: 260,
+    points: mk(),
+    draw(P, api) {
+      const C = P.P, x = api.points.map((p) => p.x), y = api.points.map((p) => p.y), d = SL.pchipSlopes(x, y), a = x[0], b = x[x.length - 1];
+      const lo = Math.min(...y), hi = Math.max(...y);
+      P.line(P.x0, lo, P.x1, lo, { color: C.faint, width: 1, dash: [4, 4] }); P.line(P.x0, hi, P.x1, hi, { color: C.faint, width: 1, dash: [4, 4] });
+      if (show[0]) P.curve(SL.spline(x, y), { color: C.bad, width: 2.2, from: a, to: b });
+      if (show[1]) P.curve(SL.hermite(x, y, d), { color: C.accent, width: 2.8, from: a, to: b });
+      if (show[2]) { const L = (b - a) * 0.035; x.forEach((xi, i) => { const k = d[i], dx = L / Math.sqrt(1 + k * k); P.line(xi - dx, y[i] - k * dx, xi + dx, y[i] + k * dx, { color: C.accent2, width: 3 }); }); }
+      api.points.forEach((p) => (p.color = C.text));
+    },
+    onDrag: () => stats(),
+  });
+  function stats() {
+    const R = cur(), a = R.x[0], b = R.x[R.x.length - 1];
+    const fr = (r) => "[" + SL.num(r[0], 3) + ", " + SL.num(r[1], 3) + "]";
+    MB.stat("sl-pc-r0", fr([Math.min(...R.y), Math.max(...R.y)]));
+    MB.stat("sl-pc-r1", fr(range(R.sp, a, b))); MB.stat("sl-pc-r2", fr(range(R.pc, a, b)));
+    MB.stat("sl-pc-m", viol(R.sp, R.x, R.y) + " / " + viol(R.pc, R.x, R.y));
+  }
+  ["sl-pc-spl", "sl-pc-pc", "sl-pc-d"].forEach((id, i) => MB.check(id, (v) => { show[i] = v; pl.redraw(); }));
+  document.getElementById("sl-pc-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; pl.points = mk(); pl.view({ x: [pre.v[0], pre.v[1]], y: [pre.v[2], pre.v[3]] }); stats(); });
+  stats();
+})();
+
+/* ================================================================ 3. 삼중대각계와 토머스 */
+(function () {
+  const BASE = [0, 1, 0, 1, 2.2, 1.2, 1.8, 0.6, 1.5];
+  let n = 5, stepNo = 0, curv = false; // n = 구간 수, 미지수 m = n − 1
+  const mk = () => Array.from({ length: n + 1 }, (_, i) => ({ x: i, y: BASE[i], lock: "x", color: MB.palette().accent }));
+  const tbl = document.getElementById("sl-sy-tbl"), msg = document.getElementById("sl-sy-msg");
+  let pl = null;
+  const sys = () => {
+    const y = pl.points.map((p) => p.y), m = n - 1, a = [], b = [], c = [], d = [];
+    for (let i = 1; i <= m; i++) { a.push(i === 1 ? 0 : 1); b.push(4); c.push(i === m ? 0 : 1); d.push(6 * (y[i + 1] - 2 * y[i] + y[i - 1])); }
+    const cp = Array(m), dp = Array(m), w = Array(m), M = Array(m);
+    for (let i = 0; i < m; i++) { w[i] = i === 0 ? b[0] : b[i] - a[i] * cp[i - 1]; cp[i] = c[i] / w[i]; dp[i] = i === 0 ? d[0] / w[0] : (d[i] - a[i] * dp[i - 1]) / w[i]; }
+    M[m - 1] = dp[m - 1]; for (let i = m - 2; i >= 0; i--) M[i] = dp[i] - cp[i] * M[i + 1];
+    return { y, m, a, b, c, d, cp, dp, w, M };
+  };
+  const total = () => 2 * (n - 1);
+  function render() {
+    const S = sys(), m = S.m, fwd = Math.min(stepNo, m), back = Math.max(0, stepNo - m);
+    const f = (v) => SL.num(v, 3);
+    let h = "<table><thead><tr><th>행 i</th><th>a</th><th>b</th><th>c</th><th>d = 6Δ²y</th><th>w</th><th>c′</th><th>d′</th><th>Mᵢ</th></tr></thead><tbody>";
+    let curRow = -1;
+    if (stepNo > 0 && stepNo <= m) curRow = stepNo - 1; else if (stepNo > m) curRow = m - back;
+    for (let i = 0; i < m; i++) {
+      const doneF = i < fwd, doneB = i >= m - back;
+      h += "<tr class='" + (i === curRow ? "sl-cur" : "") + "'><td>" + (i + 1) + "</td><td>" + f(S.a[i]) + "</td><td>" + f(S.b[i]) + "</td><td>" + f(S.c[i]) + "</td><td>" + f(S.d[i]) + "</td>";
+      h += doneF ? "<td" + (i === curRow && stepNo <= m ? " class='sl-new'" : "") + ">" + f(S.w[i]) + "</td><td>" + f(S.cp[i]) + "</td><td>" + f(S.dp[i]) + "</td>" : "<td class='sl-off'>·</td><td class='sl-off'>·</td><td class='sl-off'>·</td>";
+      h += doneB ? "<td" + (i === curRow && stepNo > m ? " class='sl-new'" : "") + ">" + f(S.M[i]) + "</td>" : "<td class='sl-off'>·</td>";
+      h += "</tr>";
+    }
+    tbl.innerHTML = h + "</tbody></table>";
+    if (stepNo === 0) msg.innerHTML = "자연 경계(M₀ = M" + SL.sub(n) + " = 0)에서 미지수 M₁ … M" + SL.sub(n - 1) + "에 대한 " + m + "×" + m + " 삼중대각계입니다. ‘다음 단계’로 전진 소거를 시작하세요.";
+    else if (stepNo <= m) { const i = stepNo - 1; msg.innerHTML = i === 0 ? "1행: w = b = 4, c′ = c/w, d′ = d/w." : `${i + 1}행 소거: w = b − a·c′<sub>${i}</sub> = 4 − ${f(S.cp[i - 1])} = <b>${f(S.w[i])}</b>, d′ = (d − a·d′<sub>${i}</sub>)/w = <b>${f(S.dp[i])}</b>`; }
+    else { const i = m - back; msg.innerHTML = i === m - 1 ? `후진 대입 시작: M<sub>${m}</sub> = d′<sub>${m}</sub> = <b>${f(S.M[i])}</b>` : `M<sub>${i + 1}</sub> = d′ − c′·M<sub>${i + 2}</sub> = ${f(S.dp[i])} − ${f(S.cp[i])}·${f(S.M[i + 1])} = <b>${f(S.M[i])}</b>` + (stepNo === total() ? " · 완료! 스플라인이 그려졌습니다." : ""); }
+    msg.className = "sl-msg" + (stepNo === total() ? " ok" : "");
+    pl.redraw();
+  }
+  pl = MB.plane("#sl-sy-cv", {
+    x: [-0.5, 8.5], y: [-1.5, 3.5], aspect: 0.55, minHeight: 230,
+    points: mk(),
+    draw(P, api) {
+      const C = P.P, pts = api.points, x = pts.map((p) => p.x), y = pts.map((p) => p.y);
+      P.poly(pts.map((p) => [p.x, p.y]), { color: C.faint, width: 1.4, dash: [4, 4], close: false });
+      if (stepNo === total()) {
+        const sp = SL.spline(x, y); P.curve(sp, { color: C.accent, width: 2.8, from: 0, to: n });
+        if (curv) sp.M.forEach((Mi, i) => P.line(i, 0, i, Mi * 0.25, { color: C.accent2, width: 5 }));
+      }
+      pts.forEach((p) => (p.color = C.accent));
+    },
+    onDrag: () => { render(); },
+  });
+  document.getElementById("sl-sy-step").addEventListener("click", () => { stepNo = Math.min(total(), stepNo + 1); render(); });
+  document.getElementById("sl-sy-all").addEventListener("click", () => { stepNo = total(); render(); });
+  document.getElementById("sl-sy-reset").addEventListener("click", () => { stepNo = 0; render(); });
+  MB.check("sl-sy-curv", (v) => { curv = v; pl.redraw(); });
+  MB.range("sl-sy-n", (v) => String(v), (v) => { n = v - 1; stepNo = 0; pl.points = mk(); pl.view({ x: [-0.5, n + 0.5] }); render(); });
+  pl.view({ x: [-0.5, n + 0.5] });
+  render();
+})();
+
+/* ================================================================ 4. 경계 조건 비교 */
+(function () {
+  const F = {
+    exp: { f: Math.exp, d: Math.exp, a: 0, b: 2, y: [0.5, 8] },
+    cos: { f: (t) => Math.cos(3 * t), d: (t) => -3 * Math.sin(3 * t), a: 0, b: 2, y: [-1.4, 1.4] },
+    sin: { f: Math.sin, d: Math.cos, a: 0, b: Math.PI, y: [-0.3, 1.3] },
+  };
+  const BC = ["natural", "clamped", "notaknot"];
+  let F0 = F.exp, n = 6, bc = "natural", S = null;
+  const calc = () => { const x = SL.equi(n + 1, F0.a, F0.b), y = x.map(F0.f); S = { x, s: BC.map((k) => SL.spline(x, y, k, F0.d(F0.a), F0.d(F0.b))) }; S.e = S.s.map((g) => SL.maxErr(F0.f, g, F0.a, F0.b)); };
+  calc();
+  const pl = MB.plane("#sl-bc-cv", {
+    x: [F0.a - 0.1, F0.b + 0.1], y: F0.y, aspect: 0.42, minHeight: 200,
+    draw(P) {
+      const C = P.P, col = [C.bad, C.accent, C.warn], k = BC.indexOf(bc);
+      P.curve(F0.f, { color: C.dim, width: 2, from: F0.a, to: F0.b });
+      P.curve(S.s[k], { color: col[k], width: 2.6, dash: [6, 3], from: F0.a, to: F0.b });
+      S.x.forEach((v) => P.dot(v, F0.f(v), { r: 3.5, color: C.text }));
+    },
+  });
+  const cv2 = MB.canvas("#sl-bc-cv2", (ctx, w, h) => {
+    const C = MB.palette(), col = [C.bad, C.accent, C.warn], N = 500;
+    const series = S.s.map((g, i) => { const d = []; for (let j = 0; j <= N; j++) { const t = F0.a + ((F0.b - F0.a) * j) / N; d.push([t, Math.max(Math.abs(F0.f(t) - g(t)), 1e-16)]); } return { data: d, color: col[i], width: BC[i] === bc ? 2.6 : 1.5 }; });
+    const top = Math.max(...S.e) * 3, lo = Math.max(top * 1e-6, 1e-15);
+    MB.chart(ctx, { x: 58, y: 24, w: w - 76, h: h - 50 }, { x: [F0.a - 0.1, F0.b + 0.1], y: [lo, top], logY: true, series, yFmt: (v) => "1e" + Math.round(Math.log10(v)) });
+  }, { aspect: 0.34, minHeight: 170 });
+  const stats = () => {
+    ["sl-bc-o0", "sl-bc-o1", "sl-bc-o2"].forEach((id, i) => MB.stat(id, SL.sci(S.e[i], 2)));
+    const M = S.s[0].M, h2 = (t) => (F0.f(t + 1e-4) - 2 * F0.f(t) + F0.f(t - 1e-4)) / 1e-8;
+    MB.stat("sl-bc-m", "0, 0 vs " + SL.num(h2(F0.a), 2) + ", " + SL.num(h2(F0.b), 2));
+  };
+  const upd = () => { calc(); pl.redraw(); cv2.redraw(); stats(); };
+  MB.range("sl-bc-n", (v) => String(v), (v) => { n = v; upd(); });
+  MB.seg("sl-bc-bc", (v) => { bc = v; pl.redraw(); cv2.redraw(); });
+  document.getElementById("sl-bc-f").addEventListener("change", (e) => { F0 = F[e.target.value]; pl.view({ x: [F0.a - 0.1, F0.b + 0.1], y: F0.y }); upd(); });
+  stats();
+})();
+
+/* ================================================================ 5. 로그–로그 차수 */
+(function () {
+  const F = {
+    exp: { f: Math.exp, d: Math.exp, a: 0, b: 2 },
+    runge: { f: (t) => 1 / (1 + 25 * t * t), d: (t) => (-50 * t) / Math.pow(1 + 25 * t * t, 2), a: -1, b: 1 },
+    abs3: { f: (t) => Math.pow(Math.abs(t - 0.3), 3), d: (t) => 3 * (t - 0.3) * Math.abs(t - 0.3), a: -1, b: 1 },
+  };
+  const NS = [4, 8, 16, 32, 64, 128, 256];
+  let F0 = F.exp, ref = true, data = null;
+  const compute = () => {
+    data = [[], [], [], [], []];
+    NS.forEach((n) => {
+      const x = SL.equi(n + 1, F0.a, F0.b), y = x.map(F0.f), h = (F0.b - F0.a) / n;
+      const g = [SL.linear(x, y), SL.hermite(x, y, SL.pchipSlopes(x, y)), SL.spline(x, y), SL.spline(x, y, "notaknot"), SL.spline(x, y, "clamped", F0.d(F0.a), F0.d(F0.b))];
+      g.forEach((fn, i) => data[i].push([h, Math.max(SL.maxErr(F0.f, fn, F0.a, F0.b, 4000), 1e-17)]));
+    });
+  };
+  const slope = (d) => { const p = d.slice(-4).filter((q) => q[1] > 1e-13); if (p.length < 2) return NaN; const xs = p.map((q) => Math.log(q[0])), ys = p.map((q) => Math.log(q[1])), mx = MB.mean(xs), my = MB.mean(ys); let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; }); return a / b; };
+  compute();
+  const cv = MB.canvas("#sl-or-cv", (ctx, w, h) => {
+    const C = MB.palette(), col = [C.faint, C.blue, C.bad, C.warn, C.accent], hs = data[0].map((p) => p[0]);
+    const series = data.map((d, i) => ({ data: d, color: col[i], width: 2.4 }));
+    if (ref) {
+      const anchor = (d, p) => { const q = d[3]; const c = (q[1] / Math.pow(q[0], p)) * 2.5; return { data: [[hs[hs.length - 1], c * Math.pow(hs[hs.length - 1], p)], [hs[0], c * Math.pow(hs[0], p)]], color: C.faint, width: 1.2, dash: [5, 4] }; };
+      series.unshift(anchor(data[0], 2), anchor(data[4], 4));
+    }
+    const pts = []; data.forEach((d, i) => d.forEach(([x, y]) => pts.push({ x, y, r: 3, color: col[i] })));
+    MB.chart(ctx, null, { x: [hs[hs.length - 1] * 0.7, hs[0] * 1.4], y: [1e-13, 1], logX: true, logY: true, xLabel: "간격 h", yLabel: "최대 오차", series, points: pts, yFmt: (v) => "1e" + Math.round(Math.log10(v)), xFmt: (v) => "1e" + Math.round(Math.log10(v)) });
+  }, { aspect: 0.58, minHeight: 260, maxHeight: 460 });
+  const stats = () => data.forEach((d, i) => MB.stat("sl-or-s" + i, SL.num(slope(d), 2)));
+  MB.check("sl-or-ref", (v) => { ref = v; cv.redraw(); });
+  document.getElementById("sl-or-f").addEventListener("change", (e) => { F0 = F[e.target.value]; compute(); cv.redraw(); stats(); });
+  stats();
+})();
+
+/* ================================================================ 6. 드 카스텔조 */
+(function () {
+  const INIT = {
+    2: [[0.5, 0.5], [3, 4.5], [6.5, 0.8]],
+    3: [[0.5, 0.5], [1.5, 4.2], [5.2, 4.4], [6.5, 0.8]],
+    4: [[0.4, 0.6], [1, 4.3], [3.5, 0.6], [5.5, 4.6], [6.6, 1]],
+    5: [[0.3, 0.5], [0.8, 4], [2.6, 4.6], [3.8, 0.3], [5.8, 1.2], [6.6, 4.2]],
+  };
+  let deg = 3, t = 0.5, r = 3, split = false;
+  const C0 = MB.palette();
+  const mk = () => INIT[deg].map(([x, y], i) => ({ x, y, color: C0.text, label: "P" + SL.sub(i) }));
+  const levels = (P, t) => { const L = [P.map((p) => [p.x, p.y])]; for (let k = 1; k <= P.length - 1; k++) { const prev = L[k - 1], nx = []; for (let i = 0; i < prev.length - 1; i++) nx.push([(1 - t) * prev[i][0] + t * prev[i + 1][0], (1 - t) * prev[i][1] + t * prev[i + 1][1]]); L.push(nx); } return L; };
+  const evalB = (P, t) => levels(P, t)[P.length - 1][0];
+  const pl = MB.plane("#sl-dc-cv", {
+    x: [-0.3, 7.3], y: [-0.5, 5.3], aspect: 0.62, minHeight: 260, grid: false, axes: false,
+    points: mk(),
+    draw(P, api) {
+      const C = P.P, pts = api.points, L = levels(pts, t), colL = [C.dim, C.blue, C.warn, C.ok, C.accent2, C.bad];
+      P.param((s) => evalB(pts, s), 0, 1, { color: C.faint, width: 2, n: 200 });
+      P.param((s) => evalB(pts, s), 0, Math.max(t, 1e-4), { color: C.accent, width: 3.2, n: 200 });
+      for (let k = 0; k <= Math.min(r, deg); k++) {
+        const lv = L[k];
+        if (lv.length > 1) P.poly(lv, { color: colL[k % colL.length], width: k === 0 ? 1.6 : 2, close: false, dash: k === 0 ? [5, 4] : [] });
+        if (k > 0) lv.forEach(([x, y]) => P.dot(x, y, { r: k === deg ? 6.5 : 4, color: k === deg ? C.accent : colL[k % colL.length] }));
+      }
+      if (split) {
+        const left = L.map((lv) => lv[0]), right = L.map((lv) => lv[lv.length - 1]).reverse();
+        P.poly(left, { color: C.ok, width: 3, close: false, alpha: 0.6 }); P.poly(right, { color: C.bad, width: 3, close: false, alpha: 0.6 });
+      }
+      pts.forEach((p) => (p.color = C.text));
+    },
+    onDrag: () => stats(),
+  });
+  const binom = (n, k) => { let c = 1; for (let i = 1; i <= k; i++) c = (c * (n - k + i)) / i; return c; };
+  function stats() {
+    const pts = pl.points, B = evalB(pts, t), L = levels(pts, t), last = L[deg - 1];
+    MB.stat("sl-dc-b", "(" + SL.num(B[0], 3) + ", " + SL.num(B[1], 3) + ")");
+    MB.stat("sl-dc-w", Array.from({ length: deg + 1 }, (_, k) => SL.num(binom(deg, k) * Math.pow(t, k) * Math.pow(1 - t, deg - k), 3)).join(", "));
+    MB.stat("sl-dc-d", "(" + SL.num(deg * (last[1][0] - last[0][0]), 2) + ", " + SL.num(deg * (last[1][1] - last[0][1]), 2) + ")");
+  }
+  const tr = MB.range("sl-dc-t", (v) => v.toFixed(2), (v) => { t = v; pl.redraw(); stats(); });
+  const rr = MB.range("sl-dc-r", (v) => String(v), (v) => { r = v; pl.redraw(); });
+  MB.seg("sl-dc-deg", (v) => { deg = +v; const el = document.getElementById("sl-dc-r"); el.max = deg; r = deg; rr.set(deg, false); pl.points = mk(); pl.redraw(); stats(); });
+  MB.check("sl-dc-split", (v) => { split = v; pl.redraw(); });
+  let dir = 1;
+  const loop = MB.loop(document.getElementById("sim-sl-casteljau"), (dt) => { let v = t + dir * dt * 0.35; if (v > 1) { v = 1; dir = -1; } if (v < 0) { v = 0; dir = 1; } tr.set(v); });
+  loop.stop();
+  MB.playButton("sl-dc-play", () => loop.start(), () => loop.stop(), ["▶ t 움직이기", "■ 멈춤"]);
+  stats();
+})();
+
+/* ================================================================ 7. 베지에 경로 편집기 */
+(function () {
+  // 닫힌 경로: 이음점 A_k (k = 0..3), 손잡이 in_k, out_k. 점 배열 [A0,out0,in1,A1,out1,in2,A2,out2,in3,A3,out3,in0]
+  const INIT = [[1, 2.5], [1, 4.2], [3, 4.8], [4.4, 4.4], [5.6, 4], [7.4, 3.6], [7.2, 2], [7, 0.6], [5, 0.4], [3.6, 0.8], [2.4, 1.2], [1, 1]];
+  let mode = "c1", comb = true, poly = true, last = null;
+  const isAnchor = (i) => i % 3 === 0;
+  const C0 = MB.palette();
+  const mk = () => { const P = INIT.map(([x, y], i) => ({ x, y, color: isAnchor(i) ? C0.text : C0.accent2, r: isAnchor(i) ? 7 : 6 })); for (let k = 0; k < 4; k++) { const A = P[3 * k], o = P[3 * k + 1], inn = P[(3 * k + 11) % 12]; inn.x = 2 * A.x - o.x; inn.y = 2 * A.y - o.y; } return P; };
+  const seg = (P, k) => [P[3 * k], P[3 * k + 1], P[3 * k + 2], P[(3 * k + 3) % 12]].map((p) => [p.x, p.y]);
+  const bez = (S, t) => { const u = 1 - t; return [u * u * u * S[0][0] + 3 * u * u * t * S[1][0] + 3 * u * t * t * S[2][0] + t * t * t * S[3][0], u * u * u * S[0][1] + 3 * u * u * t * S[1][1] + 3 * u * t * t * S[2][1] + t * t * t * S[3][1]]; };
+  const d1 = (S, t) => { const u = 1 - t; return [0, 1].map((j) => 3 * (u * u * (S[1][j] - S[0][j]) + 2 * u * t * (S[2][j] - S[1][j]) + t * t * (S[3][j] - S[2][j]))); };
+  const d2 = (S, t) => [0, 1].map((j) => 6 * ((1 - t) * (S[2][j] - 2 * S[1][j] + S[0][j]) + t * (S[3][j] - 2 * S[2][j] + S[1][j])));
+  const kap = (S, t) => { const a = d1(S, t), b = d2(S, t), v = Math.hypot(a[0], a[1]); return v < 1e-9 ? 0 : (a[0] * b[1] - a[1] * b[0]) / (v * v * v); };
+  const msg = document.getElementById("sl-bz-msg");
+  const pl = MB.plane("#sl-bz-cv", {
+    x: [-0.6, 9], y: null, cy: 2.6, aspect: 0.62, minHeight: 260, grid: false, axes: false,
+    points: mk(),
+    draw(P, api) {
+      const C = P.P, pts = api.points;
+      for (let k = 0; k < 4; k++) {
+        const S = seg(pts, k);
+        if (comb) { const ctx = P.ctx; ctx.save(); ctx.strokeStyle = C.warn; ctx.globalAlpha = 0.7; ctx.lineWidth = 1; ctx.beginPath(); let tip = []; for (let i = 0; i <= 40; i++) { const t = i / 40, p = bez(S, t), a = d1(S, t), v = Math.hypot(a[0], a[1]) || 1, nx = -a[1] / v, ny = a[0] / v, kk = -kap(S, t) * 0.6, q = [p[0] + nx * kk, p[1] + ny * kk]; ctx.moveTo(P.X(p[0]), P.Y(p[1])); ctx.lineTo(P.X(q[0]), P.Y(q[1])); tip.push(q); } ctx.stroke(); ctx.globalAlpha = 1; ctx.beginPath(); tip.forEach((q, i) => (i ? ctx.lineTo(P.X(q[0]), P.Y(q[1])) : ctx.moveTo(P.X(q[0]), P.Y(q[1])))); ctx.stroke(); ctx.restore(); }
+        P.param((t) => bez(S, t), 0, 1, { color: C.accent, width: 3, n: 120 });
+      }
+      if (poly) for (let k = 0; k < 4; k++) { const A = pts[3 * k], o = pts[3 * k + 1], inn = pts[(3 * k + 11) % 12]; P.line(A.x, A.y, o.x, o.y, { color: C.accent2, width: 1.4 }); P.line(A.x, A.y, inn.x, inn.y, { color: C.accent2, width: 1.4 }); }
+      pts.forEach((p, i) => (p.color = isAnchor(i) ? C.text : C.accent2));
+    },
+    onDrag(p, i) {
+      const pts = pl.points, prev = last || pts.map((q) => [q.x, q.y]);
+      if (isAnchor(i)) { const dx = p.x - prev[i][0], dy = p.y - prev[i][1]; [(i + 1) % 12, (i + 11) % 12].forEach((j) => { pts[j].x += dx; pts[j].y += dy; }); }
+      else if (mode !== "free") {
+        const A = i % 3 === 1 ? i - 1 : (i + 1) % 12, other = i % 3 === 1 ? (i + 10) % 12 : (i + 2) % 12;
+        const ax = pts[A].x, ay = pts[A].y, vx = p.x - ax, vy = p.y - ay, L = Math.hypot(vx, vy) || 1;
+        const Lo = mode === "c1" ? L : Math.hypot(pts[other].x - ax, pts[other].y - ay);
+        pts[other].x = ax - (vx / L) * Lo; pts[other].y = ay - (vy / L) * Lo;
+      }
+      last = pts.map((q) => [q.x, q.y]);
+      stats();
+    },
+    onDragEnd() { last = null; },
+  });
+  function stats() {
+    const pts = pl.points; let ang = 0, rat = 1, jump = 0;
+    for (let k = 0; k < 4; k++) {
+      const A = pts[3 * k], o = pts[3 * k + 1], inn = pts[(3 * k + 11) % 12];
+      const a1 = Math.atan2(A.y - inn.y, A.x - inn.x), a2 = Math.atan2(o.y - A.y, o.x - A.x);
+      let da = Math.abs(a1 - a2) * 180 / Math.PI; if (da > 180) da = 360 - da; ang = Math.max(ang, da);
+      const l1 = Math.hypot(A.x - inn.x, A.y - inn.y), l2 = Math.hypot(o.x - A.x, o.y - A.y); rat = Math.max(rat, Math.max(l1, l2) / Math.max(1e-9, Math.min(l1, l2)));
+      jump = Math.max(jump, Math.abs(kap(seg(pts, (k + 3) % 4), 1) - kap(seg(pts, k), 0)));
+    }
+    MB.stat("sl-bz-a", SL.num(ang, 1) + "°"); MB.stat("sl-bz-l", SL.num(rat, 2)); MB.stat("sl-bz-k", SL.num(jump, 3));
+    msg.className = "sl-msg";
+    msg.innerHTML = ang > 0.5 ? "<b>C⁰</b>: 어떤 이음매에서 접선 방향이 꺾여 모서리가 생겼습니다." : rat > 1.001 ? "<b>G¹</b>: 접선 방향은 모두 이어지지만 손잡이 길이가 달라 매개변수 속도가 튑니다." + (jump > 0.05 ? " 곡률도 끊깁니다." : "") : "<b>C¹</b>: 접선 방향과 길이가 모두 이어집니다." + (jump > 0.05 ? " 그래도 곡률 점프 " + SL.num(jump, 3) + "이 남아 G²는 아닙니다." : " 곡률 점프도 거의 없습니다.");
+  }
+  MB.seg("sl-bz-mode", (v) => { mode = v; });
+  MB.check("sl-bz-comb", (v) => { comb = v; pl.redraw(); });
+  MB.check("sl-bz-poly", (v) => { poly = v; pl.redraw(); });
+  document.getElementById("sl-bz-reset").addEventListener("click", () => { pl.points = mk(); pl.redraw(); stats(); });
+  stats();
+})();
+
+/* ================================================================ 8. B-스플라인 국소 제어 */
+(function () {
+  const INIT = [[0.4, 0.8], [1.2, 3.8], [2.4, 4.4], [3.4, 1.4], [4.6, 1], [5.6, 4.2], [6.8, 4.4], [7.6, 1.2]];
+  const N = INIT.length, p = 3;
+  let clamp = true, bezOn = false, ghostOn = true, jSel = -1, ghost = null, ghostB = null;
+  const knots = () => { if (!clamp) return Array.from({ length: N + p + 1 }, (_, i) => i); const k = []; const inner = N - p; for (let i = 0; i <= p; i++) k.push(0); for (let i = 1; i < inner; i++) k.push(i); for (let i = 0; i <= p; i++) k.push(inner); return k; };
+  const basis = (T, j, q, t) => {
+    if (q === 0) { const last = t === T[T.length - 1] && T[j] < T[j + 1] && T[j + 1] === T[T.length - 1]; return (T[j] <= t && t < T[j + 1]) || last ? 1 : 0; }
+    let v = 0; const d1 = T[j + q] - T[j], d2 = T[j + q + 1] - T[j + 1];
+    if (d1 > 0) v += ((t - T[j]) / d1) * basis(T, j, q - 1, t);
+    if (d2 > 0) v += ((T[j + q + 1] - t) / d2) * basis(T, j + 1, q - 1, t);
+    return v;
+  };
+  const dom = (T) => [T[p], T[N]];
+  const curve = (P, T, M = 300) => { const [a, b] = dom(T), out = []; for (let i = 0; i <= M; i++) { const t = a + ((b - a) * i) / M; let x = 0, y = 0; for (let j = 0; j < N; j++) { const B = basis(T, j, p, t); x += B * P[j][0]; y += B * P[j][1]; } out.push([x, y, t]); } return out; };
+  const bezier = (P, M = 300) => { const out = []; for (let i = 0; i <= M; i++) { const t = i / M; let Q = P.map((q) => q.slice()); for (let r = 1; r < N; r++) for (let k = 0; k < N - r; k++) Q[k] = [(1 - t) * Q[k][0] + t * Q[k + 1][0], (1 - t) * Q[k][1] + t * Q[k + 1][1]]; out.push(Q[0]); } return out; };
+  const C0 = MB.palette();
+  const mk = () => INIT.map(([x, y], i) => ({ x, y, color: C0.text, label: "P" + SL.sub(i) }));
+  const cps = () => pl.points.map((q) => [q.x, q.y]);
+  let pl = null;
+  pl = MB.plane("#sl-bs-cv", {
+    x: [-0.2, 8.2], y: null, cy: 2.6, aspect: 0.58, minHeight: 240, grid: false, axes: false,
+    points: mk(),
+    draw(P, api) {
+      const C = P.P, Pp = api.points.map((q) => [q.x, q.y]), T = knots();
+      P.poly(Pp, { color: C.faint, width: 1.2, dash: [4, 4], close: false });
+      if (ghostOn && ghost) P.poly(ghost.map((q) => [q[0], q[1]]), { color: C.faint, width: 4, close: false, alpha: 0.6 });
+      if (bezOn && ghostOn && ghostB) P.poly(ghostB, { color: C.faint, width: 4, close: false, alpha: 0.4 });
+      const cu = curve(Pp, T);
+      P.poly(cu.map((q) => [q[0], q[1]]), { color: C.accent, width: 3, close: false });
+      if (jSel >= 0) { const a = T[jSel], b = T[jSel + p + 1]; const part = cu.filter((q) => q[2] >= a - 1e-9 && q[2] <= b + 1e-9).map((q) => [q[0], q[1]]); if (part.length > 1) P.poly(part, { color: C.warn, width: 4.5, close: false }); }
+      if (bezOn) P.poly(bezier(Pp), { color: C.bad, width: 2.2, close: false });
+      api.points.forEach((q, i) => (q.color = i === jSel ? C.warn : C.text));
+    },
+    onDrag(q, i) {
+      if (jSel !== i || !ghost) { jSel = i; }
+      cv2.redraw(); stats();
+    },
+    onDragEnd() { stats(); },
+  });
+  const canvas = document.getElementById("sl-bs-cv");
+  canvas.addEventListener("pointerdown", () => { const Pp = cps(); ghost = curve(Pp, knots()).map((q) => [q[0], q[1]]); ghostB = bezier(Pp); }, true);
+  const cv2 = MB.canvas("#sl-bs-cv2", (ctx, w, h) => {
+    const C = MB.palette(), T = knots(), [a, b] = dom(T), M = 240;
+    const series = [];
+    for (let j = 0; j < N; j++) { const d = []; for (let i = 0; i <= M; i++) { const t = a + ((b - a) * i) / M; d.push([t, basis(T, j, p, t)]); } series.push({ data: d, color: j === jSel ? C.warn : C.series[j % 5], width: j === jSel ? 3.2 : 1.4 }); }
+    const vlines = T.filter((t, i) => t >= a && t <= b && (i === 0 || T[i - 1] !== t)).map((t) => ({ x: t, color: C.grid, dash: [2, 3] }));
+    MB.chart(ctx, { x: 40, y: 22, w: w - 56, h: h - 46 }, { x: [a, b], y: [0, 1.05], series, vlines, yTicks: [0, 0.5, 1] });
+  }, { aspect: 0.26, minHeight: 130 });
+  function stats() {
+    if (jSel < 0) { MB.stat("sl-bs-j", "—"); MB.stat("sl-bs-sp", "점을 끌어 보세요"); MB.stat("sl-bs-mv", "—"); return; }
+    const T = knots(), [a, b] = dom(T), lo = Math.max(T[jSel], a), hi = Math.min(T[jSel + p + 1], b);
+    MB.stat("sl-bs-j", "P" + SL.sub(jSel));
+    MB.stat("sl-bs-sp", "t ∈ [" + SL.num(lo, 0) + ", " + SL.num(hi, 0) + "] (전체 [" + SL.num(a, 0) + ", " + SL.num(b, 0) + "])");
+    if (ghost) {
+      const cu = curve(cps(), T).map((q) => [q[0], q[1]]), bz = bezier(cps());
+      const far = jSel < N / 2 ? cu.length - 1 : 0, farB = jSel < N / 2 ? Math.round(bz.length * 0.85) : Math.round(bz.length * 0.15);
+      const mv = Math.hypot(cu[Math.round(far === 0 ? cu.length * 0.15 : cu.length * 0.85)][0] - ghost[Math.round(far === 0 ? cu.length * 0.15 : cu.length * 0.85)][0], cu[Math.round(far === 0 ? cu.length * 0.15 : cu.length * 0.85)][1] - ghost[Math.round(far === 0 ? cu.length * 0.15 : cu.length * 0.85)][1]);
+      const mvB = Math.hypot(bz[farB][0] - ghostB[farB][0], bz[farB][1] - ghostB[farB][1]);
+      MB.stat("sl-bs-mv", SL.num(mv, 3) + " / " + SL.num(mvB, 3));
+    }
+  }
+  MB.check("sl-bs-clamp", (v) => { clamp = v; ghost = null; pl.redraw(); cv2.redraw(); stats(); });
+  MB.check("sl-bs-bez", (v) => { bezOn = v; pl.redraw(); });
+  MB.check("sl-bs-ghost", (v) => { ghostOn = v; pl.redraw(); });
+  document.getElementById("sl-bs-reset").addEventListener("click", () => { pl.points = mk(); jSel = -1; ghost = ghostB = null; pl.redraw(); cv2.redraw(); stats(); });
+  stats();
+})();
+</script>
+</body>
+</html>

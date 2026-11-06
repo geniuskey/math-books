@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>연립방정식의 직접 해법 · NumericalBook</title>
+<meta name="description" content="가우스 소거의 연산 수, 부분·척도·완전 피벗팅과 성장 인자, PA = LU와 촐레스키 분해, 토머스 알고리즘, 노름과 조건수의 오차 한계, 힐베르트 행렬, 혼합 정밀도 반복 개선, 희소 행렬의 채움과 재배열.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ds-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ds-two > div { position: relative; min-width: 0; }
+  .ds-two > div + div { border-top: 1px solid var(--border); }
+  .ds-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ds-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ds-msg b { color: var(--text); }
+  .ds-msg.ok { color: var(--ok); font-weight: 600; }
+  .ds-msg.bad { color: var(--bad); font-weight: 600; }
+  .ds-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ds-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ds-tbl td, .ds-tbl th { font-family: var(--mono); text-align: right; }
+  .ds-tbl td:first-child, .ds-tbl th:first-child { text-align: left; font-family: inherit; }
+  .ds-mats { display: flex; flex-wrap: wrap; gap: 14px 22px; padding: 14px 18px; align-items: flex-start; }
+  .ds-mat { display: inline-grid; gap: 3px; padding: 4px 6px; border-left: 2px solid var(--text-dim); border-right: 2px solid var(--text-dim); border-radius: 6px; font: 12.5px var(--mono); }
+  .ds-mat span { min-width: 44px; padding: 3px 4px; text-align: right; border-radius: 4px; color: var(--text); }
+  .ds-mat span.ds-z { color: var(--text-faint); }
+  .ds-mat span.ds-piv { background: var(--accent); color: var(--bg); font-weight: 700; }
+  .ds-mat span.ds-new { background: color-mix(in srgb, var(--accent-2) 22%, transparent); }
+  .ds-mat span.ds-l { color: var(--accent-2); font-weight: 600; }
+  .ds-mlab { font: 600 12px var(--mono); color: var(--text-dim); margin-bottom: 4px; }
+  .ds-tw { max-height: 240px; overflow: auto; border-top: 1px solid var(--border); }
+  .ds-tw table { width: 100%; border-collapse: collapse; font: 12.5px var(--mono); }
+  .ds-tw th, .ds-tw td { padding: 4px 10px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .ds-tw th { position: sticky; top: 0; background: var(--bg-elev); color: var(--text-dim); font-weight: 600; }
+  .ds-tw tr.ds-cur td { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="direct-solvers">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 12</div>
+    <h1 data-no-glossary>연립방정식의 직접 해법</h1>
+    <p class="lead"><a href="../../linear/chapters/elimination.html">LinearBook 3장</a>과 <a href="../../linear/chapters/lu.html">4장</a>에서 소거, 후진 대입, \(A = LU\), 행 교환, 띠 행렬을 배웠고, <a href="../../linear/chapters/numerical.html">16장</a>에서 조건수와 후방 안정성을 맛보았습니다. 이 장은 같은 알고리즘을 <b>계산하는 사람의 눈으로</b> 다시 봅니다. 연산이 정확히 몇 번인지, 피벗팅이 무엇을 지키고 무엇은 못 지키는지(성장 인자), 대칭 양정치 행렬에서 비용을 절반으로 줄이는 촐레스키 분해, \(O(n)\) 토머스 알고리즘의 안정 조건, 답이 몇 자리까지 믿을 만한지 알려 주는 조건수 한계, 단정밀도로 분해하고 배정밀도 답을 얻는 반복 개선, 그리고 10⁶ 미지수의 희소 행렬에서 메모리를 정하는 채움과 재배열까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>가우스 소거와 LU 분해의 연산 수 \(\tfrac23n^3\)을 유도하고, 분해와 대입의 비용을 구별해 여러 우변 문제에 적용한다.</li>
+      <li>작은 피벗의 위험을 유효 숫자 계산으로 보이고, 부분·척도 부분·완전 피벗팅을 비교하며, 성장 인자와 후방 오차의 관계를 설명한다.</li>
+      <li>PA = LU를 손으로 계산하고, 대칭 양정치 행렬의 촐레스키 분해와 그 비용·안정성을 안다.</li>
+      <li>삼중대각계를 토머스 알고리즘으로 \(O(n)\)에 풀고, 대각 우세가 안정성을 보장하는 이유를 안다.</li>
+      <li>벡터·행렬 노름과 조건수를 계산하고, \(\|\delta x\|/\|x\| \le \kappa\,\|\delta b\|/\|b\|\)로 잃는 자릿수를 예측한다. 작은 잔차가 작은 오차를 뜻하지 않음을 안다.</li>
+      <li>반복 개선(혼합 정밀도)의 원리와 한계를 실험으로 확인한다.</li>
+      <li>희소 행렬의 채움을 이해하고, 재배열(RCM, 최소 차수, 중첩 분할)이 메모리와 시간을 줄이는 원리를 안다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>구조 해석과 회로 해석</b></div>
+      <div class="o-body"><p>다리, 비행기 날개, 반도체 칩 단면을 유한 요소로 나누면 수십만에서 수천만 개의 미지수를 가진 연립방정식 \(K\mathbf u = \mathbf f\)가 나옵니다. 회로 시뮬레이터는 시간 걸음마다 노드 전압에 대한 연립방정식을 풉니다. 이 방정식들이 현실적인 시간에 풀리는 것은 행렬이 거의 0으로 차 있고(희소), 대칭 양정치인 경우가 많으며(촐레스키), 피벗팅과 재배열로 반올림 오차와 메모리를 동시에 통제하는 직접 해법 라이브러리가 있기 때문입니다. 1940년대 말 튜링<span class="en">(Alan Turing)</span>은 소거의 반올림 오차를 분석하며 "조건수"라는 이름을 붙였고, 1960년대 윌킨슨<span class="en">(James H. Wilkinson)</span>의 후방 오차 분석이 부분 피벗팅 소거를 믿고 쓸 수 있는 근거를 주었습니다.</p>
+        <div class="o-chain"><span>A x = b</span><i>→</i><span>피벗팅 + 분해</span><i>→</i><span class="tool">PA = LU,  A = LLᵀ</span><i>→</i><span>구조·회로·FEM 해석기</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="cost">
+    <h2>가우스 소거의 연산 수</h2>
+    <div class="problem"><strong>미지수가 10배면 시간은 1000배</strong>
+      <p>미지수 1,000개짜리 계를 푸는 데 0.1초가 걸렸습니다. 같은 프로그램으로 10,000개짜리를 풀면 몇 초가 걸릴까요? 메모리는 몇 배가 필요할까요? 답을 미리 알아야 계산을 설계할 수 있습니다.</p></div>
+    <p>열 우선 순서로 쓴 LU 분해의 핵심은 세 겹의 반복문입니다. \(k\)번째 단계에서 피벗 아래의 \(n - k\)개 행마다 승수를 하나 구하고(나눗셈), 남은 \((n - k)\times(n - k)\) 부분 행렬을 갱신합니다(곱셈과 뺄셈).</p>
+    <pre class="code"><span class="k">for</span> k = 1 … n−1
+  <span class="k">for</span> i = k+1 … n
+    a[i,k] ← a[i,k] / a[k,k]              <span class="c">// 승수 ℓᵢₖ를 그 자리에 저장</span>
+    <span class="k">for</span> j = k+1 … n
+      a[i,j] ← a[i,j] − a[i,k]·a[k,j]    <span class="c">// 슈어 보수 갱신: 곱 1 + 뺄셈 1</span>
+<span class="c">// 끝나면 a의 아래 삼각 = L(대각 1 생략), 위 삼각 = U</span></pre>
+    <div class="callout deep"><strong>정리 12.1 (LU 분해와 대입의 연산 수)</strong> 크기 \(n\)인 LU 분해의 부동소수점 연산 수(곱셈·뺄셈·나눗셈 각각 1회로 셈)는
+      <div class="formula">$$\sum_{m=1}^{n-1}\bigl(2m^2 + m\bigr) = \frac23n^3 - \frac12n^2 - \frac16n \approx \frac23n^3,$$</div>
+      전진 대입 \(L\mathbf y = \mathbf b\)와 후진 대입 \(U\mathbf x = \mathbf y\)는 각각 약 \(n^2\)회다. 따라서 분해 한 번이 대입 한 번의 약 \(n\)배 비용이다.
+      <p style="margin:8px 0 0"><b>셈.</b> 단계 \(k\)에서 \(m = n - k\)라 하면 나눗셈 \(m\)번, 곱셈·뺄셈 \(m^2\)번씩이다. \(\sum_{m=1}^{n-1}m^2 = \frac{(n-1)n(2n-1)}{6}\), \(\sum m = \frac{n(n-1)}{2}\)를 넣어 정리하면 위 식이다. ∎</p></div>
+    <p>그래서 문제 상자의 답은 \(10^3\)배, 약 100초입니다. 메모리는 \(n^2\)이라 100배(배정밀도 \(10^4\times10^4\) 행렬은 800 MB)입니다. 실제 라이브러리(LAPACK의 <code>dgetrf</code>)는 같은 연산을 블록 단위로 묶어 행렬–행렬 곱(BLAS 3단계)으로 바꿉니다. 연산 수는 같지만 캐시에 올린 데이터를 여러 번 재사용하므로, 위의 단순한 세 겹 반복보다 수십 배 빠르게 돕니다.</p>
+    <div class="table-wrap"><table class="ds-tbl">
+      <thead><tr><th>작업</th><th>연산 수(주항)</th><th>n = 1000일 때</th></tr></thead>
+      <tbody>
+        <tr><td>LU 분해 \(PA = LU\)</td><td>\(\tfrac23n^3\)</td><td>6.7×10⁸</td></tr>
+        <tr><td>촐레스키 \(A = LL^{\mathsf T}\) (4절)</td><td>\(\tfrac13n^3\)</td><td>3.3×10⁸</td></tr>
+        <tr><td>전진 + 후진 대입 (우변 하나)</td><td>\(2n^2\)</td><td>2.0×10⁶</td></tr>
+        <tr><td>역행렬 \(A^{-1}\) 전체</td><td>\(2n^3\)</td><td>2.0×10⁹</td></tr>
+        <tr><td>토머스 알고리즘 (삼중대각, 5절)</td><td>\(8n\)</td><td>8.0×10³</td></tr>
+      </tbody></table></div>
+    <p>표의 넷째 줄이 "역행렬을 계산하지 말라"는 격언의 근거입니다. \(A^{-1}\mathbf b\)를 구하려고 역행렬을 만들면 분해만 할 때의 세 배를 쓰고, 정확도도 대개 더 나쁩니다. 우변이 \(m\)개 있으면 분해는 한 번만 하고 대입을 \(m\)번 하면 됩니다(\(\tfrac23n^3 + 2mn^2\)).</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="pivoting">
+    <h2>피벗팅: 작은 피벗과 성장 인자</h2>
+    <div class="problem"><strong>정확히 풀리는 2×2가 틀린다</strong>
+      <p>\(0.0001x + y = 1\), \(x + y = 2\)의 해는 \(x = 1.0001\), \(y = 0.9999\)쯤입니다. 소수 세 자리 유효 숫자로 계산하는 기계(매 연산마다 유효 숫자 3개로 반올림)로 첫 식을 피벗으로 소거하면 \(x = 0\)이 나옵니다. 배정밀도에서도 피벗이 \(10^{-17}\)이면 같은 일이 생깁니다(<a href="../../linear/chapters/elimination.html">LinearBook 3장</a>의 시뮬레이터).</p></div>
+    <div class="callout"><strong>예제 12.1 (유효 숫자 3자리 소거)</strong> 위 계를 매 연산 뒤 유효 숫자 3자리로 반올림하며 풀어라.
+      <ol>
+        <li><b>피벗팅 없이</b>: 승수 \(\ell = 1/0.0001 = 10^4\). 2행: \(1 - 10^4\cdot 1 = -9999 \to -1.00\times10^4\), 우변 \(2 - 10^4 = -9998 \to -1.00\times10^4\). 그러면 \(y = 1.00\), \(x = (1 - 1.00)/0.0001 = 0\). <b>x가 완전히 틀렸다.</b> 2행의 원래 정보 "1"과 "2"가 \(10^4\)에 묻혀 사라졌다.</li>
+        <li><b>부분 피벗팅</b>: 절댓값이 큰 1을 피벗으로 행을 바꾼다. \(\ell = 0.0001\), 2행: \(1 - 0.0001 = 0.9999 \to 1.00\), 우변 \(1 - 0.0002 = 0.9998 \to 1.00\). \(y = 1.00\), \(x = 2 - 1.00 = 1.00\). 3자리 기계가 낼 수 있는 최선의 답이다.</li>
+      </ol></div>
+    <p>부분 피벗팅은 승수를 \(|\ell_{ik}| \le 1\)로 묶습니다. 그런데 행 하나에 큰 수를 곱해 두면 이 장치가 속습니다. \(10x + 10^5y = 10^5\), \(x + y = 2\)(첫 식에 \(10^5\)를 곱한 것과 같은 계)에서 부분 피벗팅은 10을 피벗으로 골라 3자리 계산에서 다시 \(x = 0\)을 냅니다. 행마다 가장 큰 원소 \(s_i = \max_j|a_{ij}|\)로 나눈 상대 크기 \(|a_{ik}|/s_i\)로 피벗을 고르면(\(10/10^5\) 대 \(1/1\)) 둘째 행이 선택되어 \(x = y = 1.00\)이 나옵니다. 이것이 <span class="term">척도 부분 피벗팅</span><span class="en">(scaled partial pivoting)</span>입니다. 실무에서는 행렬을 미리 평형화(행·열 척도 조정)하고 부분 피벗팅을 씁니다.</p>
+    <div class="callout deep"><strong>정의 12.2 (피벗팅 전략과 성장 인자)</strong> \(k\)번째 단계에서 <b>부분 피벗팅</b>은 \(k\)열의 \(k\)행 이하에서 절댓값 최대인 원소를, <b>완전 피벗팅</b>은 남은 부분 행렬 전체에서 절댓값 최대인 원소를 골라 행(과 열)을 바꾼다. 소거 중 나타나는 모든 중간 원소 \(a_{ij}^{(k)}\)에 대해
+      <div class="formula">$$\rho_n = \frac{\max_{i,j,k}|a_{ij}^{(k)}|}{\max_{i,j}|a_{ij}|}$$</div>
+      를 <span class="term">성장 인자</span><span class="en">(growth factor)</span>라 한다. 완전 피벗팅은 \(PAQ = LU\)를 만들며, 원소 비교가 단계마다 \(O((n-k)^2)\)이라 전체 \(O(n^3)\)번의 비교가 더 든다.</div>
+    <div class="callout deep"><strong>정리 12.3 (소거의 후방 오차, 윌킨슨)</strong> 부동소수점에서 피벗팅을 쓴 가우스 소거로 얻은 해 \(\hat{\mathbf x}\)는 약간 흔들린 계 \((A + \Delta A)\hat{\mathbf x} = \mathbf b\)의 정확한 해이고,
+      <div class="formula">$$\frac{\|\Delta A\|_\infty}{\|A\|_\infty} \le c\,n^3\rho_n\,u$$</div>
+      가 성립한다(\(u\)는 단위 반올림, \(c\)는 크지 않은 상수; 실제 오차는 이 상한보다 훨씬 작다). 부분 피벗팅의 성장 인자는 \(\rho_n \le 2^{n-1}\)이고, 이 상한에 도달하는 행렬이 있다.
+      <p style="margin:8px 0 0"><b>요지.</b> \(\rho_n\)이 작으면 소거는 후방 안정하다(<a href="conditioning.html">2장</a>). 부분 피벗팅에서는 \(|\ell_{ik}| \le 1\)이라 한 단계에 원소가 많아야 두 배가 되어 \(2^{n-1}\)이 나온다. 피벗팅이 없으면 \(\rho_n\)에 상한이 없다.</p></div>
+    <p>상한에 닿는 예가 윌킨슨의 행렬입니다. 대각이 1, 대각 아래가 모두 \(-1\), 마지막 열이 모두 1인 행렬은 부분 피벗팅이 행을 바꾸지 않고(첫 열의 최댓값이 이미 대각에 있음), 마지막 열이 단계마다 두 배가 되어 \(u_{nn} = 2^{n-1}\)입니다. 조건수는 \(n\) 정도로 작으니 문제는 전혀 예민하지 않은데, 알고리즘이 답을 망칩니다.</p>
+    <div class="table-wrap"><table class="ds-tbl">
+      <thead><tr><th>윌킨슨 행렬, 배정밀도</th><th>n = 30</th><th>n = 40</th><th>n = 50</th><th>n = 55</th><th>n = 60</th></tr></thead>
+      <tbody>
+        <tr><td>부분 피벗팅 성장 인자 ρₙ</td><td>5.4×10⁸</td><td>5.5×10¹¹</td><td>5.6×10¹⁴</td><td>1.8×10¹⁶</td><td>5.8×10¹⁷</td></tr>
+        <tr><td>부분 피벗팅 상대 오차</td><td>9.4×10⁻⁹</td><td>8.2×10⁻⁶</td><td>1.4×10⁻²</td><td>1.5×10⁻¹</td><td>1.6</td></tr>
+        <tr><td>완전 피벗팅 ρₙ / 상대 오차</td><td>2 / 10⁻¹⁶ 이하</td><td>2 / 10⁻¹⁶ 이하</td><td>2 / 10⁻¹⁶ 이하</td><td>2 / 10⁻¹⁶ 이하</td><td>2 / 10⁻¹⁶ 이하</td></tr>
+      </tbody></table></div>
+    <p>표는 참해를 무작위로 정하고 \(\mathbf b = A\mathbf x\)로 만든 실험입니다. 그런데 이런 행렬은 실제 응용에서 거의 나오지 않습니다. 무작위 50×50 행렬 200개에 부분 피벗팅을 쓰면 성장 인자의 중앙값은 7.5, 최댓값은 15.8이었습니다. 이 경험적 사실 때문에 LAPACK의 일반 풀이기는 부분 피벗팅을 기본으로 쓰고, 완전 피벗팅은 거의 쓰지 않습니다.</p>
+
+    <div class="sim" id="sim-ds-pivot">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>피벗팅 전략 비교: 유효 숫자 d자리 기계의 소거</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ds-pv-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>계</span><select id="ds-pv-pre">
+            <option value="small">작은 피벗: [ε 1; 1 1] x = [1, 2]</option>
+            <option value="scale">행 척도 차이: [10 10⁵; 1 1] x = [10⁵, 2]</option>
+            <option value="w3">윌킨슨 24×24 (성장 2²³)</option>
+          </select></label>
+          <label class="ctrl"><span>유효 숫자 d <output id="ds-pv-d-out"></output></span><input type="range" id="ds-pv-d"></label>
+          <label class="ctrl"><span>작은 피벗 ε = 10^k <output id="ds-pv-e-out"></output></span><input type="range" id="ds-pv-e" min="-12" max="-1" step="1" value="-4"></label>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--bad)"></i>피벗팅 없음</span><span><i style="background:var(--warn)"></i>부분</span><span><i style="background:var(--blue)"></i>척도 부분</span><span><i style="background:var(--ok)"></i>완전</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">참해 x</span><span class="v" id="ds-pv-x">—</span></div>
+        <div class="stat"><span class="k">없음 · 부분</span><span class="v" id="ds-pv-a">—</span></div>
+        <div class="stat"><span class="k">척도 · 완전</span><span class="v" id="ds-pv-b">—</span></div>
+        <div class="stat"><span class="k">성장 인자 (없음 / 부분)</span><span class="v" id="ds-pv-g">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '작은 피벗'에서 d = 3, ε = 10⁻⁴는 예제 12.1입니다. 막대(상대 오차, 로그)가 피벗팅 없음만 10⁰ 근처입니다. ② '행 척도 차이'로 바꾸면 부분 피벗팅도 속고, 척도 부분과 완전 피벗팅만 맞습니다. ③ d를 16으로 올리면 거의 모두 맞지만, ε를 10⁻¹²로 내리면 d = 10에서 피벗팅 없음이 다시 틀립니다. '윌킨슨 24×24'에서는 d = 6이면 부분 피벗팅도 틀리고 완전 피벗팅만 맞습니다(성장 2²³ ≈ 8×10⁶). 모델: 매 사칙연산 결과를 유효 숫자 d자리로 반올림(입력도 반올림). 오차는 ‖x̂ − x‖∞/‖x‖∞, 0은 10<sup>−17</sup>로 표시.</div>
+    </div>
+
+    <div class="sim" id="sim-ds-growth">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>성장 인자: 윌킨슨 행렬과 무작위 행렬</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ds-two">
+          <div><canvas id="ds-gr-cv"></canvas><span class="ds-cap">성장 인자 ρₙ와 상대 오차 vs n (로그 눈금)</span></div>
+          <div><canvas id="ds-gr-hm"></canvas><span class="ds-cap">부분 피벗팅 후 |U|의 히트맵 (로그 색)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬</span><div class="seg" id="ds-gr-m"><button data-value="wilk" class="on">윌킨슨</button><button data-value="rand">무작위 ±1 균등</button></div></div>
+          <label class="ctrl"><span>히트맵 크기 n <output id="ds-gr-n-out"></output></span><input type="range" id="ds-gr-n" min="8" max="60" step="1" value="40"></label>
+          <label class="check"><input type="checkbox" id="ds-gr-cp" checked> 완전 피벗팅도 그리기</label>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--warn)"></i>부분 피벗팅 ρₙ</span><span><i style="background:var(--ok)"></i>완전 피벗팅 ρₙ</span><span><i style="background:var(--bad)"></i>부분 피벗팅 상대 오차</span><span><i style="background:var(--text-faint)"></i>2ⁿ⁻¹</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ρₙ 부분 · 완전</span><span class="v" id="ds-gr-g">—</span></div>
+        <div class="stat"><span class="k">상대 오차 부분 · 완전</span><span class="v" id="ds-gr-e">—</span></div>
+        <div class="stat"><span class="k">max |uᵢⱼ| 위치</span><span class="v" id="ds-gr-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 윌킨슨 행렬에서 부분 피벗팅 ρₙ(주황)이 2ⁿ⁻¹ 직선에 정확히 붙어 있고, n ≈ 50부터 오차(빨강)가 10⁻²를 넘습니다. ② 히트맵에서 큰 값은 U의 마지막 열에만 모입니다. ③ '무작위'로 바꾸면 ρₙ가 n에 따라 아주 천천히 자랍니다. 같은 알고리즘인데 최악과 평균이 이렇게 다릅니다. 모델: 참해는 시드 고정 무작위 벡터, 배정밀도, 무작위 행렬은 n마다 하나.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="plu">
+    <h2>PA = LU와 여러 우변</h2>
+    <p>부분 피벗팅을 쓴 소거는 행 교환을 기록하는 치환 행렬 \(P\)와 함께 \(PA = LU\)를 만듭니다(<a href="../../linear/chapters/lu.html">LinearBook 4장</a>의 정리 4.3). 구현에서는 \(P\)를 행렬로 저장하지 않고 정수 배열 <code>piv</code>로 두며, 승수 \(\ell_{ik}\)를 소거로 0이 된 칸에 덮어써서 \(L\)과 \(U\)를 원래 배열 하나에 담습니다. 행을 바꿀 때는 이미 저장한 승수도 함께 바뀐다는 것이 손계산의 함정입니다.</p>
+    <div class="callout deep"><strong>정리 12.4 (PA = LU의 존재와 사용)</strong> 가역 행렬 \(A\)에 대해 \(PA = LU\)(\(L\)은 대각이 1이고 \(|\ell_{ij}| \le 1\)인 하삼각, \(U\)는 상삼각)인 치환 행렬 \(P\)가 언제나 존재한다. 이 분해로
+      <ul style="margin:6px 0 0">
+        <li>\(A\mathbf x = \mathbf b\): \(L\mathbf y = P\mathbf b\)를 전진 대입, \(U\mathbf x = \mathbf y\)를 후진 대입(\(2n^2\)).</li>
+        <li>행렬식: \(\det A = (-1)^{s}\prod u_{ii}\)(\(s\)는 행 교환 횟수). 공식 전개(\(n!\)항) 대신 \(O(n^3)\).</li>
+        <li>전치 계 \(A^{\mathsf T}\mathbf x = \mathbf c\): \(U^{\mathsf T}\mathbf z = \mathbf c\), \(L^{\mathsf T}\mathbf w = \mathbf z\), \(\mathbf x = P^{\mathsf T}\mathbf w\). 같은 분해를 재사용한다.</li>
+      </ul></div>
+    <div class="callout"><strong>예제 12.2 (부분 피벗팅 PA = LU 손계산)</strong> \(A = \begin{bmatrix}1 & 2 & -1\\ 4 & 3 & 1\\ 2 & 2 & 3\end{bmatrix}\), \(\mathbf b = (2, 8, 7)\)를 풀어라.
+      <ol>
+        <li>1열의 최댓값은 4(2행). 1·2행을 바꾼다: piv = (2, 1, 3). 승수 \(\ell_{21} = 1/4 = 0.25\), \(\ell_{31} = 2/4 = 0.5\). 남은 부분: 2행 \((2 - 0.75,\ -1 - 0.25) = (1.25, -1.25)\), 3행 \((2 - 1.5,\ 3 - 0.5) = (0.5, 2.5)\).</li>
+        <li>2열의 아래쪽 \(|1.25| > |0.5|\)이라 교환 없음. \(\ell_{32} = 0.5/1.25 = 0.4\), \(u_{33} = 2.5 - 0.4(-1.25) = 3\).</li>
+        <li>\(L = \begin{bmatrix}1 & & \\ 0.25 & 1 & \\ 0.5 & 0.4 & 1\end{bmatrix}\), \(U = \begin{bmatrix}4 & 3 & 1\\ & 1.25 & -1.25\\ & & 3\end{bmatrix}\). 확인: \(\det A = -(4\cdot 1.25\cdot 3) = -15\)(교환 1번).</li>
+        <li>\(P\mathbf b = (8, 2, 7)\). 전진: \(y_1 = 8\), \(y_2 = 2 - 0.25\cdot 8 = 0\), \(y_3 = 7 - 0.5\cdot 8 - 0.4\cdot 0 = 3\).</li>
+        <li>후진: \(x_3 = 3/3 = 1\), \(x_2 = (0 + 1.25\cdot 1)/1.25 = 1\), \(x_1 = (8 - 3 - 1)/4 = 1\). 해 \(\mathbf x = (1, 1, 1)\).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ds-lu">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>분해 한 단계씩: PA = LU · 촐레스키 A = LLᵀ</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="ds-mats" id="ds-lu-mats"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬</span><select id="ds-lu-pre">
+            <option value="ex">예제 12.2 (3×3)</option>
+            <option value="spd">예제 12.3 SPD (3×3)</option>
+            <option value="r4">4×4 일반</option>
+            <option value="s4">4×4 SPD (1차원 FEM 강성)</option>
+            <option value="ind">4×4 대칭 부정치</option>
+          </select></label>
+          <div class="ctrl"><span>분해</span><div class="seg" id="ds-lu-m"><button data-value="none">LU (교환 없음)</button><button data-value="plu" class="on">PA = LU</button><button data-value="chol">촐레스키</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ds-lu-step">다음 단계</button><button class="btn" id="ds-lu-play">▶ 자동</button><button class="btn" id="ds-lu-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="ds-lu-k">—</span></div>
+        <div class="stat"><span class="k">이번 단계 연산 수 · 누계</span><span class="v" id="ds-lu-f">—</span></div>
+        <div class="stat"><span class="k">piv (행 순서)</span><span class="v" id="ds-lu-p">—</span></div>
+        <div class="stat"><span class="k">‖PA − LU‖ (또는 ‖A − LLᵀ‖)</span><span class="v" id="ds-lu-r">—</span></div>
+      </div>
+      <div class="ds-msg" id="ds-lu-msg"></div>
+      <div class="sim-note">해볼 것: ① 예제 12.2를 'PA = LU'로 한 단계씩 넘기며 피벗(초록 칸)과 새로 바뀐 칸(보라 바탕), 저장된 승수(보라 글씨)를 확인하세요. 1단계의 행 교환 때 이미 저장한 승수가 없으니 L은 그대로입니다. ② 'LU (교환 없음)'으로 같은 행렬을 분해하면 승수 4, 2가 1보다 큽니다. ③ SPD 행렬을 촐레스키로 분해하면 L의 대각이 모두 양수이고 연산 수가 LU의 약 절반입니다. '대칭 부정치'에서는 촐레스키가 음수의 제곱근에서 멈춥니다. 모델: 배정밀도, 표시는 소수 넷째 자리.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="cholesky">
+    <h2>촐레스키 분해: 대칭 양정치 행렬</h2>
+    <div class="problem"><strong>강성 행렬은 대칭이고 양정치다</strong>
+      <p>스프링과 막대로 이루어진 구조물의 강성 행렬 \(K\)는 대칭이고, 변위 \(\mathbf u \ne 0\)이면 탄성 에너지 \(\tfrac12\mathbf u^{\mathsf T}K\mathbf u\)가 양수입니다. 이 성질을 쓰면 피벗팅 없이도 안정하고, 연산과 메모리를 절반으로 줄일 수 있습니다.</p></div>
+    <div class="callout deep"><strong>정리 12.5 (촐레스키 분해)</strong> 실대칭 행렬 \(A\)가 <span class="term">양정치</span><span class="en">(positive definite)</span>(모든 \(\mathbf x \ne 0\)에 대해 \(\mathbf x^{\mathsf T}A\mathbf x \gt 0\))일 필요충분조건은 대각 원소가 양수인 하삼각 행렬 \(L\)로 \(A = LL^{\mathsf T}\)라 쓸 수 있는 것이다. 이 \(L\)은 유일하며, 원소는 열 순서로
+      <div class="formula">$$\ell_{jj} = \sqrt{a_{jj} - \sum_{k \lt j}\ell_{jk}^2},\qquad \ell_{ij} = \frac{1}{\ell_{jj}}\Bigl(a_{ij} - \sum_{k \lt j}\ell_{ik}\ell_{jk}\Bigr)\quad (i \gt j).$$</div>
+      연산 수는 약 \(\tfrac13n^3\)(LU의 절반)과 제곱근 \(n\)개, 저장은 아래 삼각만 필요하다. 피벗팅 없이 후방 안정하다.
+      <p style="margin:8px 0 0"><b>왜 피벗팅이 필요 없나.</b> \(a_{ij}\)를 \(L\)의 \(i\)행·\(j\)행의 내적으로 보면 \(a_{ii} = \sum_k\ell_{ik}^2\)이므로 \(|\ell_{ik}| \le \sqrt{a_{ii}}\). \(L\)의 원소가 \(A\)의 대각으로 묶이니 성장이 일어나지 않는다. 또한 제곱근 안이 음수나 0이 되면 \(A\)가 양정치가 아니라는 증거다. 그래서 촐레스키 분해는 양정치성의 가장 값싼 판정법으로도 쓰인다. ∎</p></div>
+    <div class="callout"><strong>예제 12.3 (3×3 촐레스키)</strong> \(A = \begin{bmatrix}4 & 2 & 2\\ 2 & 5 & 3\\ 2 & 3 & 6\end{bmatrix}\)을 분해하라.
+      <ol>
+        <li>1열: \(\ell_{11} = \sqrt4 = 2\), \(\ell_{21} = 2/2 = 1\), \(\ell_{31} = 2/2 = 1\).</li>
+        <li>2열: \(\ell_{22} = \sqrt{5 - 1^2} = 2\), \(\ell_{32} = (3 - 1\cdot 1)/2 = 1\).</li>
+        <li>3열: \(\ell_{33} = \sqrt{6 - 1^2 - 1^2} = 2\).</li>
+        <li>\(L = \begin{bmatrix}2 & & \\ 1 & 2 & \\ 1 & 1 & 2\end{bmatrix}\). 확인: \(LL^{\mathsf T}\)의 (3, 3) 성분은 \(1 + 1 + 4 = 6\), (2, 3) 성분은 \(1 + 2 = 3\). \(\det A = (2\cdot 2\cdot 2)^2 = 64\).</li>
+      </ol></div>
+    <p>대칭이지만 양정치가 아닌 행렬(구조물의 좌굴 해석, 제약 조건이 있는 최적화의 KKT 행렬)에는 대칭성을 살리면서 1×1과 2×2 블록 피벗을 쓰는 \(PAP^{\mathsf T} = LDL^{\mathsf T}\) 분해(번치–카우프만 피벗팅)를 씁니다. LinearBook 4장의 \(LDL^{\mathsf T}\)에 피벗팅을 더한 것입니다.</p>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="thomas">
+    <h2>띠 행렬과 토머스 알고리즘</h2>
+    <div class="problem"><strong>백만 개의 격자점을 1초 안에</strong>
+      <p>1차원 열전도·확산 문제, 3차 스플라인(<a href="splines.html">6장</a>), 크랭크–니콜슨 시간 걸음(<a href="pde-numerics.html">16장</a>), 경계값 문제의 유한 차분(<a href="ode-solvers.html#bvp">11장</a>)은 모두 삼중대각계를 냅니다. \(n = 10^6\)이면 꽉 찬 LU는 \(7\times10^{17}\)번의 연산이지만, 삼중대각 구조를 쓰면 \(8\times10^6\)번입니다.</p></div>
+    <p>삼중대각계 \(a_ix_{i-1} + b_ix_i + c_ix_{i+1} = d_i\)(\(a_1 = c_n = 0\))에 피벗팅 없는 소거를 쓰면 \(L\)과 \(U\)도 두 줄짜리 띠로 남습니다. 행마다 위쪽 행을 한 번 빼서 정규화한 계수 \(c_i'\), \(d_i'\)를 만들고(전진 소거), 아래에서 위로 대입합니다.</p>
+    <pre class="code"><span class="k">function</span> thomas(a, b, c, d)        <span class="c">// 길이 n, a[1] = c[n] = 0</span>
+  c'[1] ← c[1] / b[1];   d'[1] ← d[1] / b[1]
+  <span class="k">for</span> i = 2 … n                     <span class="c">// 전진 소거: 행마다 상수 번</span>
+    m ← b[i] − a[i]·c'[i−1]           <span class="c">// 이번 행의 피벗</span>
+    c'[i] ← c[i] / m
+    d'[i] ← (d[i] − a[i]·d'[i−1]) / m
+  x[n] ← d'[n]
+  <span class="k">for</span> i = n−1 … 1                   <span class="c">// 후진 대입</span>
+    x[i] ← d'[i] − c'[i]·x[i+1]
+  <span class="k">return</span> x                          <span class="c">// 총 약 8n 연산, 메모리 O(n)</span></pre>
+    <div class="callout deep"><strong>정리 12.6 (토머스 알고리즘의 안정 조건)</strong> 행렬이 <span class="term">대각 우세</span><span class="en">(diagonally dominant)</span>이면, 즉 모든 \(i\)에서 \(|b_i| \ge |a_i| + |c_i|\)이고 적어도 한 행에서 부등호가 엄격하면(그리고 기약이면), 토머스 알고리즘의 모든 피벗 \(m_i\)가 0이 아니고 \(|c_i'| \le 1\)이다. 따라서 피벗팅 없이 안정하다. 대칭 양정치 삼중대각 행렬에서도 같은 결론이 성립한다.
+      <p style="margin:8px 0 0"><b>귀납.</b> \(|c_{i-1}'| \le 1\)이면 \(|m_i| \ge |b_i| - |a_i||c_{i-1}'| \ge |b_i| - |a_i| \ge |c_i|\)이므로 \(|c_i'| = |c_i|/|m_i| \le 1\). 엄격한 행에서 \(|m_i| \gt 0\)이 보장된다. 그래서 오차가 후진 대입에서 \(|c_i'|\)배 이상 커지지 않는다. ∎</p></div>
+    <div class="callout"><strong>예제 12.4 (4×4 토머스)</strong> \(b_i = 2\), \(a_i = c_i = -1\), \(\mathbf d = (1, 0, 0, 1)\)(양 끝 온도가 1인 막대의 정상 상태).
+      <div class="table-wrap"><table class="ds-tbl">
+        <thead><tr><th>i</th><th>피벗 mᵢ</th><th>c′ᵢ</th><th>d′ᵢ</th><th>xᵢ</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>2</td><td>−1/2</td><td>1/2</td><td>1</td></tr>
+          <tr><td>2</td><td>2 − 1/2 = 3/2</td><td>−2/3</td><td>(0 + 1/2)/(3/2) = 1/3</td><td>1</td></tr>
+          <tr><td>3</td><td>2 − 2/3 = 4/3</td><td>−3/4</td><td>(1/3)/(4/3) = 1/4</td><td>1</td></tr>
+          <tr><td>4</td><td>2 − 3/4 = 5/4</td><td>0</td><td>(1 + 1/4)/(5/4) = 1</td><td>1</td></tr>
+        </tbody></table></div>
+      피벗은 \((i + 1)/i\)로 1보다 크고, \(|c_i'| = i/(i + 1) \lt 1\)이다. 후진 대입: \(x_4 = 1\), \(x_3 = 1/4 + 3/4 = 1\), … 모두 1. 막대 전체가 1도가 된다(정상 상태 온도는 양 끝 사이의 직선).</div>
+    <p>반띠폭이 \(w\)인 띠 행렬로 일반화하면 연산 \(O(nw^2)\), 저장 \(O(nw)\)입니다(<a href="../../linear/chapters/lu.html">LinearBook 정리 4.5</a>). 부분 피벗팅을 쓰면 \(U\)의 위쪽 띠가 \(2w\)까지 넓어질 수 있으므로 LAPACK의 띠 풀이기(<code>dgbsv</code>)는 그만큼 여분의 자리를 마련합니다.</p>
+
+    <div class="sim" id="sim-ds-thomas">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>토머스 알고리즘 한 행씩, 그리고 실제 걸리는 시간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ds-two">
+          <div><canvas id="ds-th-cv"></canvas><span class="ds-cap">c′ᵢ(막대)와 해 xᵢ(점): 전진 소거 → 후진 대입</span></div>
+          <div><canvas id="ds-th-tm"></canvas><span class="ds-cap">이 브라우저에서 잰 시간 (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>대각 bᵢ (aᵢ = cᵢ = −1) <output id="ds-th-b-out"></output></span><input type="range" id="ds-th-b" min="1.2" max="4" step="0.05" value="2"></label>
+          <label class="ctrl"><span>우변</span><select id="ds-th-rhs">
+            <option value="ends">양 끝 온도 1 (d = (1, 0, …, 0, 1))</option>
+            <option value="heat">균일 발열 (dᵢ = h²)</option>
+            <option value="spike">가운데 점 열원</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="ds-th-step">다음 행</button><button class="btn" id="ds-th-play">▶ 자동</button><button class="btn" id="ds-th-reset">처음으로</button></div>
+          <div class="btn-row"><button class="btn" id="ds-th-time">시간 재기</button></div>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--accent-2)"></i>c′ᵢ</span><span><i style="background:var(--accent)"></i>xᵢ</span><span><i style="background:var(--warn)"></i>꽉 찬 LU 시간</span><span><i style="background:var(--blue)"></i>토머스 시간</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="ds-th-k">—</span></div>
+        <div class="stat"><span class="k">피벗 mᵢ · c′ᵢ</span><span class="v" id="ds-th-m">—</span></div>
+        <div class="stat"><span class="k">max |c′ᵢ|</span><span class="v" id="ds-th-c">—</span></div>
+        <div class="stat"><span class="k">잰 기울기 LU · 토머스</span><span class="v" id="ds-th-s">—</span></div>
+      </div>
+      <div class="ds-msg" id="ds-th-msg"></div>
+      <div class="sim-note">해볼 것: ① '다음 행'으로 전진 소거를 진행하면 c′ᵢ 막대가 하나씩 생기고, 끝에 닿으면 후진 대입이 오른쪽에서 왼쪽으로 xᵢ를 채웁니다. ② bᵢ = 2(대각 우세의 경계)에서 |c′ᵢ| = i/(i + 1)이 1에 다가가고, bᵢ를 키우면 빨리 수렴합니다. bᵢ &lt; 2로 내리면 대각 우세가 깨지고 피벗이 0을 지나며 |c′ᵢ|가 커질 수 있습니다(bᵢ = 1.2 근처). ③ '시간 재기'는 꽉 찬 LU(n = 50 … 400)와 토머스(n = 10³ … 10⁶)를 실제로 돌려 기울기 3과 1을 측정합니다. 모델: n = 24 (단계 보기), 시간은 같은 n을 여러 번 반복한 평균.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="condition">
+    <h2>노름, 조건수, 그리고 오차 한계</h2>
+    <div class="problem"><strong>답이 몇 자리까지 맞는가</strong>
+      <p>LU 분해로 얻은 해를 원래 식에 넣었더니 잔차 \(\mathbf b - A\hat{\mathbf x}\)가 \(10^{-15}\)입니다. 그럼 \(\hat{\mathbf x}\)도 15자리까지 맞을까요? 그렇지 않을 수 있습니다. 잔차는 후방 오차를, 우리가 알고 싶은 것은 전방 오차를 재고, 두 오차 사이의 환율이 조건수입니다(<a href="conditioning.html">2장</a>).</p></div>
+    <div class="callout deep"><strong>정의 12.7 (벡터 노름과 유도 행렬 노름)</strong> \(\|\mathbf x\|_1 = \sum|x_i|\), \(\|\mathbf x\|_2 = \sqrt{\sum x_i^2}\), \(\|\mathbf x\|_\infty = \max|x_i|\). 각 벡터 노름이 유도하는 행렬 노름 \(\|A\| = \max_{\mathbf x \ne 0}\|A\mathbf x\|/\|\mathbf x\|\)는
+      <div class="formula">$$\|A\|_1 = \max_j\sum_i|a_{ij}|\ (\text{열 합}),\qquad \|A\|_\infty = \max_i\sum_j|a_{ij}|\ (\text{행 합}),\qquad \|A\|_2 = \sigma_{\max}(A).$$</div>
+      가역 행렬의 <span class="term">조건수</span><span class="en">(condition number)</span>는 \(\kappa(A) = \|A\|\,\|A^{-1}\|\)이고, 2-노름에서 \(\kappa_2 = \sigma_{\max}/\sigma_{\min}\)이다.</div>
+    <div class="callout"><strong>예제 12.5 (세 노름의 조건수)</strong> \(A = \begin{bmatrix}1 & 2\\ 3 & 4\end{bmatrix}\), \(A^{-1} = \begin{bmatrix}-2 & 1\\ 1.5 & -0.5\end{bmatrix}\).
+      <ol>
+        <li>\(\|A\|_1 = \max(4, 6) = 6\), \(\|A^{-1}\|_1 = \max(3.5, 1.5) = 3.5\), \(\kappa_1 = 21\).</li>
+        <li>\(\|A\|_\infty = \max(3, 7) = 7\), \(\|A^{-1}\|_\infty = \max(3, 2) = 3\), \(\kappa_\infty = 21\).</li>
+        <li>\(A^{\mathsf T}A = \begin{bmatrix}10 & 14\\ 14 & 20\end{bmatrix}\)의 고윳값의 제곱근이 \(\sigma_1 = 5.4650\), \(\sigma_2 = 0.36597\)이므로 \(\kappa_2 = 14.93\). 노름에 따라 값은 다르지만 크기 정도(자릿수)는 같다. 모든 노름은 \(n\)에 의존하는 상수배 안에서 동등하다.</li>
+      </ol></div>
+    <div class="callout deep"><strong>정리 12.8 (오차 한계와 잔차)</strong> \(A\mathbf x = \mathbf b\)의 근사해 \(\hat{\mathbf x}\)의 잔차를 \(\mathbf r = \mathbf b - A\hat{\mathbf x}\)라 하면
+      <div class="formula">$$\frac{1}{\kappa(A)}\frac{\|\mathbf r\|}{\|\mathbf b\|} \;\le\; \frac{\|\mathbf x - \hat{\mathbf x}\|}{\|\mathbf x\|} \;\le\; \kappa(A)\frac{\|\mathbf r\|}{\|\mathbf b\|}.$$</div>
+      우변 섭동 \(\delta\mathbf b\)에 대해 \(\|\delta\mathbf x\|/\|\mathbf x\| \le \kappa\,\|\delta\mathbf b\|/\|\mathbf b\|\), 행렬 섭동 \(\delta A\)에 대해(\(\kappa\|\delta A\|/\|A\| \lt 1\)이면) \(\dfrac{\|\delta\mathbf x\|}{\|\mathbf x\|} \le \dfrac{\kappa\,\|\delta A\|/\|A\|}{1 - \kappa\,\|\delta A\|/\|A\|}\).
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(\mathbf x - \hat{\mathbf x} = A^{-1}\mathbf r\)이므로 \(\|\mathbf x - \hat{\mathbf x}\| \le \|A^{-1}\|\|\mathbf r\|\), 한편 \(\|\mathbf b\| \le \|A\|\|\mathbf x\|\). 두 식을 곱하면 오른쪽 부등식. 왼쪽은 \(\|\mathbf r\| \le \|A\|\|\mathbf x - \hat{\mathbf x}\|\), \(\|\mathbf x\| \le \|A^{-1}\|\|\mathbf b\|\)에서 나온다. ∎</p></div>
+    <p>정리 12.3과 합치면 실용적인 경험 법칙이 나옵니다. 후방 안정한 풀이기는 \(\|\delta A\|/\|A\| \approx u \approx 10^{-16}\)인 문제를 정확히 푸는 셈이므로, <b>상대 오차 ≈ κ·u, 즉 대략 \(\log_{10}\kappa\)자리를 잃는다</b>. κ = 10⁶이면 16자리 중 약 10자리가 남습니다. LAPACK은 κ를 직접 계산하지 않고(\(A^{-1}\)이 필요하므로) LU 분해를 재사용해 \(O(n^2)\)에 \(\|A^{-1}\|_1\)을 추정합니다(<code>dgecon</code>).</p>
+    <div class="callout warn"><strong>작은 잔차 ≠ 작은 오차</strong> \(A = \begin{bmatrix}1 & 1\\ 1 & 1.0001\end{bmatrix}\), \(\mathbf b = (2, 2.0001)\), 참해 \((1, 1)\), \(\kappa_\infty = 4.0\times10^4\). 근사해 \((2, 0)\)은 잔차 \((0, 10^{-4})\)이지만 오차가 1(100%)이다. 근사해 \((1.0001, 1.0001)\)은 잔차 \((-2\times10^{-4}, -2\times10^{-4})\)로 두 배 크지만 오차는 \(10^{-4}\)이다. 잔차로 해를 고르면 나쁜 쪽을 고른다.</div>
+
+    <div class="sim" id="sim-ds-cond">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>두 직선의 교점: 조건수가 측정 오차를 키우는 모습</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ds-cd-cv"></canvas><span class="tag-tl">두 직선의 방향 손잡이를 끌기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>우변 상대 오차 ‖δb‖∞/‖b‖∞ <output id="ds-cd-e-out"></output></span><input type="range" id="ds-cd-e"></label>
+          <label class="ctrl"><span>표본 수 <output id="ds-cd-n-out"></output></span><input type="range" id="ds-cd-n"></label>
+          <div class="btn-row"><button class="btn" id="ds-cd-p1">거의 수직</button><button class="btn" id="ds-cd-p2">거의 평행 (2°)</button><button class="btn" id="ds-cd-p3">한 직선의 척도 ×1000</button></div>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--blue)"></i>직선 1</span><span><i style="background:var(--warn)"></i>직선 2</span><span><i style="background:var(--accent)"></i>흔들린 b의 해 (구름)</span><span><i style="background:var(--text-faint)"></i>상한 κ‖δb‖/‖b‖의 상자</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ∞(A)</span><span class="v" id="ds-cd-k">—</span></div>
+        <div class="stat"><span class="k">κ₂(A)</span><span class="v" id="ds-cd-k2">—</span></div>
+        <div class="stat"><span class="k">관찰한 최대 증폭률</span><span class="v" id="ds-cd-amp">—</span></div>
+        <div class="stat"><span class="k">잃는 자릿수 ≈ log₁₀ κ</span><span class="v" id="ds-cd-dig">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 두 직선을 거의 평행하게 돌리면 해의 구름이 직선 방향으로 길게 늘어나고 κ가 수백으로 커집니다. 관찰한 증폭률(‖δx‖/‖x‖ ÷ ‖δb‖/‖b‖)은 언제나 κ∞ 이하입니다. ② '척도 ×1000'은 직선은 그대로인데 한 식에 1000을 곱한 것입니다. 해의 구름은 변하지 않는 방향도 있는데 κ는 1000배 가까이 커집니다. 조건수는 행렬의 척도에 민감하고, 평형화가 필요한 이유입니다. 모델: A의 각 행은 직선의 법선 벡터, 참해 x = (1, 1), δb는 ∞-노름 상자 안의 균등 난수(시드 고정).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="hilbert">
+    <h2>힐베르트 행렬: 깔끔한 분수, 사라지는 자릿수</h2>
+    <p>\(H_{ij} = 1/(i + j - 1)\)인 <span class="term">힐베르트 행렬</span><span class="en">(Hilbert matrix)</span>은 구간 \([0, 1]\)에서 단항식 \(1, x, \dots, x^{n-1}\)으로 최소제곱 근사를 할 때 나오는 그람 행렬입니다(<a href="approximation.html">7장</a>). 단항식들이 \([0, 1]\)에서 서로 거의 같은 모양이라(높은 차수일수록 \(x^k\)과 \(x^{k+1}\)은 구별하기 어렵다) 열벡터들이 거의 일차 종속이 됩니다. 역행렬은 정수 원소를 가지는 공식이 알려져 있어 조건수를 정확히 계산할 수 있습니다.</p>
+    <div class="table-wrap"><table class="ds-tbl">
+      <thead><tr><th>n</th><th>4</th><th>6</th><th>8</th><th>10</th><th>11</th><th>12</th><th>13</th></tr></thead>
+      <tbody>
+        <tr><td>κ∞(Hₙ)</td><td>2.8×10⁴</td><td>2.9×10⁷</td><td>3.4×10¹⁰</td><td>3.5×10¹³</td><td>1.2×10¹⁵</td><td>4.1×10¹⁶</td><td>1.3×10¹⁸</td></tr>
+        <tr><td>부분 피벗팅 해의 오차 ‖x̂ − 1‖∞</td><td>6.1×10⁻¹³</td><td>5.3×10⁻¹⁰</td><td>4.2×10⁻⁷</td><td>3.2×10⁻⁴</td><td>9.7×10⁻³</td><td>0.36</td><td>4.2</td></tr>
+        <tr><td>상대 잔차 ‖b − Hx̂‖∞/‖b‖∞</td><td>5×10⁻¹⁷</td><td>0</td><td>2×10⁻¹⁶</td><td>8×10⁻¹⁷</td><td>1.5×10⁻¹⁶</td><td>2.9×10⁻¹⁶</td><td>2.8×10⁻¹⁶</td></tr>
+      </tbody></table></div>
+    <p>표가 정리 12.8을 그대로 보여 줍니다. 잔차는 n과 무관하게 반올림 수준(후방 안정)인데, 오차는 κ·u를 따라 커져 n = 12에서 한 자리도 남지 않습니다. 단, 표의 \(\mathbf b = H\mathbf 1\) 자체도 반올림된 값이고 \(H\)의 원소(\(1/3\) 등)도 정확히 저장되지 않으므로, 이 오차의 상당 부분은 풀이기 이전에 이미 입력 단계에서 생긴 것입니다. 어떤 알고리즘도 되돌릴 수 없는 몫입니다.</p>
+
+    <div class="sim" id="sim-ds-hilbert">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>힐베르트 행렬 κ의 증가와 잃는 자릿수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ds-two">
+          <div><canvas id="ds-hb-cv"></canvas><span class="ds-cap">κ∞(Hₙ), 오차, 잔차, κ·u (로그 눈금)</span></div>
+          <div><canvas id="ds-hb-x"></canvas><span class="ds-cap">계산한 해 x̂ᵢ (참해는 모두 1)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>크기 n <output id="ds-hb-n-out"></output></span><input type="range" id="ds-hb-n" min="2" max="14" step="1" value="10"></label>
+          <div class="ctrl"><span>계산 정밀도</span><div class="seg" id="ds-hb-p"><button data-value="64" class="on">배정밀도</button><button data-value="32">단정밀도</button></div></div>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--accent-2)"></i>κ∞(Hₙ)</span><span><i style="background:var(--bad)"></i>‖x̂ − x‖∞/‖x‖∞</span><span><i style="background:var(--ok)"></i>상대 잔차</span><span><i style="background:var(--text-faint)"></i>κ·u</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ∞(Hₙ)</span><span class="v" id="ds-hb-k">—</span></div>
+        <div class="stat"><span class="k">상대 오차</span><span class="v" id="ds-hb-e">—</span></div>
+        <div class="stat"><span class="k">남은 자릿수 −log₁₀(오차)</span><span class="v" id="ds-hb-d">—</span></div>
+        <div class="stat"><span class="k">예측: 16 − log₁₀ κ (단정밀도 7.2 − …)</span><span class="v" id="ds-hb-pd">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n을 하나 늘릴 때마다 κ가 약 30배(1.5자리) 커지고 오차 곡선이 κ·u 선을 따라 올라가는 것을 보세요. ② 잔차(초록)는 끝까지 바닥에 붙어 있습니다. 후방 안정성은 지켜지지만 답은 틀립니다. ③ 단정밀도로 바꾸면 n = 6에서 이미 자릿수가 거의 남지 않습니다. 모델: b = Hₙ·1을 같은 정밀도로 계산, 부분 피벗팅 LU, κ∞는 정수 원소 역행렬 공식으로 정확히 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="refinement">
+    <h2>반복 개선: 싼 분해로 비싼 정확도를</h2>
+    <div class="problem"><strong>GPU는 단정밀도가 몇 배 빠르다</strong>
+      <p>많은 가속기에서 단정밀도(유효 숫자 약 7자리) 연산이 배정밀도보다 몇 배 빠르고 메모리도 절반입니다. 그런데 공학 계산은 배정밀도의 답을 원합니다. \(\tfrac23n^3\)의 분해는 싸게 단정밀도로 하고, 답은 배정밀도로 받을 수 있을까요?</p></div>
+    <p>근사해 \(\hat{\mathbf x}\)의 오차 \(\mathbf e = \mathbf x - \hat{\mathbf x}\)는 정확히 \(A\mathbf e = \mathbf r\)을 만족합니다. 이 보정 방정식을 이미 있는 (부정확한) LU로 풀어 더하면, 보정값의 <b>상대</b> 오차가 처음 해와 같은 수준이어도 보정 자체가 작으므로 해는 한 단계 더 정확해집니다. 핵심은 잔차 \(\mathbf r = \mathbf b - A\hat{\mathbf x}\)를 <b>높은 정밀도로</b> 계산하는 것입니다. 거의 같은 두 수의 뺄셈이라 여기서 정밀도를 아끼면 자릿수 상쇄(<a href="floating-point.html">1장</a>)로 정보가 사라집니다.</p>
+    <pre class="code"><span class="k">function</span> mixed_refine(A, b)
+  (L, U, P) ← lu(single(A))              <span class="c">// O(n³): 단정밀도, 싸다</span>
+  x ← solve_single(L, U, P, b)            <span class="c">// O(n²)</span>
+  <span class="k">repeat</span>
+    r ← b − A·x                           <span class="c">// O(n²): 배정밀도 (원래 A로)</span>
+    d ← solve_single(L, U, P, r)          <span class="c">// 같은 분해 재사용</span>
+    x ← x + d                             <span class="c">// 배정밀도로 더하기</span>
+  <span class="k">until</span> ‖d‖ ≤ 작은 수·‖x‖
+  <span class="k">return</span> x</pre>
+    <div class="callout deep"><strong>정리 12.9 (반복 개선의 수렴)</strong> 분해의 정밀도를 \(u_f\), 잔차와 갱신의 정밀도를 \(u\)라 하자. 대략 \(\kappa(A)\,u_f \lt 1\)이면 반복마다 오차가 \(\kappa u_f\) 정도의 비율로 줄어, 몇 번 만에 \(\|\mathbf x - \hat{\mathbf x}\|/\|\mathbf x\| \approx \kappa(A)\,u\)(배정밀도 풀이기와 같은 수준)에 도달한다. \(\kappa u_f \ge 1\)이면 수렴이 보장되지 않는다.</div>
+    <div class="table-wrap"><table class="ds-tbl">
+      <thead><tr><th>n = 40, 단정밀도 LU + 배정밀도 잔차</th><th>처음</th><th>1회</th><th>2회</th><th>3회</th><th>6회</th></tr></thead>
+      <tbody>
+        <tr><td>κ = 10²</td><td>2.5×10⁻⁶</td><td>1.1×10⁻¹²</td><td>6.8×10⁻¹⁵</td><td>4.9×10⁻¹⁵</td><td>6.3×10⁻¹⁵</td></tr>
+        <tr><td>κ = 10⁴</td><td>6.8×10⁻⁵</td><td>8.3×10⁻¹⁰</td><td>3.6×10⁻¹³</td><td>4.2×10⁻¹³</td><td>4.0×10⁻¹³</td></tr>
+        <tr><td>κ = 10⁶</td><td>3.7×10⁻³</td><td>2.1×10⁻⁶</td><td>5.7×10⁻⁹</td><td>6.8×10⁻¹¹</td><td>3.4×10⁻¹¹</td></tr>
+        <tr><td>κ = 10⁸</td><td>2.2×10⁻¹</td><td>1.2×10⁻²</td><td>1.0×10⁻³</td><td>9.5×10⁻⁵</td><td>8.5×10⁻⁸</td></tr>
+      </tbody></table></div>
+    <p>표는 특이값이 \(1\)부터 \(1/\kappa\)까지 등비로 퍼진 행렬로 만든 실험입니다(상대 오차, ∞-노름). κ = 10⁴에서는 단 두 번 만에 오차가 \(6.8\times10^{-5}\)에서 배정밀도 바닥 \(\kappa u \approx 10^{-12}\) 근처로 떨어집니다. 단정밀도의 \(u_f \approx 6\times10^{-8}\)이므로 κ = 10⁸은 \(\kappa u_f \approx 6\)으로 정리의 조건 밖입니다. 이 실험에서는 반복마다 약 한 자리씩 느리게 줄었지만, 다른 행렬에서는 정체하거나 발산할 수 있습니다. 최근의 혼합 정밀도 풀이기는 보정 방정식을 GMRES(<a href="iterative.html">13장</a>)로 풀어 이 한계를 넓힙니다.</p>
+
+    <div class="sim" id="sim-ds-refine">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>혼합 정밀도 반복 개선: 단정밀도 LU에서 배정밀도 답까지</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ds-rf-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>조건수 κ <output id="ds-rf-k-out"></output></span><input type="range" id="ds-rf-k"></label>
+          <label class="ctrl"><span>크기 n <output id="ds-rf-n-out"></output></span><input type="range" id="ds-rf-n"></label>
+          <div class="ctrl"><span>잔차 계산 정밀도</span><div class="seg" id="ds-rf-r"><button data-value="64" class="on">배정밀도</button><button data-value="32">단정밀도 (실패 사례)</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ds-rf-step">개선 한 번</button><button class="btn" id="ds-rf-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="ds-legend"><span><i style="background:var(--accent)"></i>상대 오차</span><span><i style="background:var(--ok)"></i>상대 잔차</span><span><i style="background:var(--text-faint)"></i>κ·u₆₄, κ·u₃₂</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복</span><span class="v" id="ds-rf-it">—</span></div>
+        <div class="stat"><span class="k">상대 오차</span><span class="v" id="ds-rf-e">—</span></div>
+        <div class="stat"><span class="k">줄어든 비율 (이번 / 직전)</span><span class="v" id="ds-rf-ratio">—</span></div>
+        <div class="stat"><span class="k">κ·u₃₂</span><span class="v" id="ds-rf-ku">—</span></div>
+      </div>
+      <div class="ds-msg" id="ds-rf-msg"></div>
+      <div class="sim-note">해볼 것: ① κ = 10⁴에서 '개선 한 번'을 두세 번 누르면 오차가 단정밀도 수준(κ·u₃₂ 선 부근)에서 배정밀도 바닥(κ·u₆₄)까지 내려옵니다. ② 잔차를 단정밀도로 계산하면 오차가 κ·u₃₂ 근처에서 멈춥니다. 잔차의 정밀도가 최종 정확도를 정합니다. ③ κ를 10⁸ 이상으로 올리면 수렴이 느려지거나 멈춥니다(κ·u₃₂ &gt; 1). 모델: A = U Σ Vᵀ, U·V는 하우스홀더 반사 3개의 곱(시드 고정), 특이값은 1 … 1/κ 등비. 단정밀도는 Math.fround로 매 연산을 반올림.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="sparse">
+    <h2>희소 행렬과 채움, 재배열</h2>
+    <div class="problem"><strong>400개짜리 격자, 저장은 어디까지 커지나</strong>
+      <p>20×20 격자의 푸아송 방정식(<a href="pde-numerics.html">16장</a>)은 미지수 400개, 행마다 0이 아닌 원소가 많아야 5개입니다. 대칭이니 아래 삼각만 세면 0 아닌 칸이 1,160개입니다. 촐레스키 분해의 \(L\)은 몇 칸을 차지할까요? 꽉 찬 하삼각이면 80,200칸입니다.</p></div>
+    <p>희소 행렬은 0 아닌 원소만 저장합니다. 가장 흔한 형식 <b>CSR</b>(compressed sparse row)은 값 배열, 열 번호 배열, 각 행의 시작 위치 배열 세 개로 행렬을 담아 저장량이 원소 수 \(\mathrm{nnz}\)에 비례합니다. 문제는 분해입니다. 소거 중 \(a_{ij} \leftarrow a_{ij} - \ell_{ik}u_{kj}\)에서 \(a_{ij} = 0\)이어도 \(\ell_{ik}\)와 \(u_{kj}\)가 둘 다 0이 아니면 새 원소가 생깁니다.</p>
+    <div class="callout deep"><strong>정의 12.10 (채움과 소거 그래프)</strong> 분해 \(L\)(또는 \(L + U\))에는 0이 아닌데 \(A\)에서는 0인 원소를 <span class="term">채움</span><span class="en">(fill-in)</span>이라 한다. 대칭 행렬을 그래프(정점 = 미지수, 변 = 0 아닌 \(a_{ij}\))로 보면, 정점 \(k\)를 소거하는 것은 <b>\(k\)의 아직 소거되지 않은 이웃들을 모두 서로 잇는 것</b>(클리크 만들기)과 같다. 새로 생긴 변이 채움이다. 채움의 양은 소거 순서, 곧 행렬의 <span class="term">재배열</span><span class="en">(reordering)</span> \(PAP^{\mathsf T}\)에 따라 크게 달라진다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 230" role="img" aria-label="정점 하나를 소거하면 이웃들이 서로 연결된다">
+        <rect x="10" y="10" width="740" height="210" rx="10" class="f-surface"/>
+        <g style="stroke:var(--text-dim);stroke-width:1.6">
+          <line x1="150" y1="115" x2="80" y2="60"/><line x1="150" y1="115" x2="230" y2="60"/><line x1="150" y1="115" x2="80" y2="175"/><line x1="150" y1="115" x2="230" y2="175"/>
+          <line x1="480" y1="60" x2="630" y2="60"/><line x1="480" y1="60" x2="480" y2="175"/><line x1="480" y1="60" x2="630" y2="175"/><line x1="630" y1="60" x2="480" y2="175"/><line x1="630" y1="60" x2="630" y2="175"/><line x1="480" y1="175" x2="630" y2="175"/>
+        </g>
+        <g style="stroke:var(--bad);stroke-width:2.4;stroke-dasharray:6 4">
+          <line x1="480" y1="60" x2="630" y2="60"/><line x1="480" y1="60" x2="480" y2="175"/><line x1="480" y1="60" x2="630" y2="175"/><line x1="630" y1="60" x2="480" y2="175"/><line x1="630" y1="60" x2="630" y2="175"/><line x1="480" y1="175" x2="630" y2="175"/>
+        </g>
+        <circle cx="150" cy="115" r="16" class="f-acc"/><text x="150" y="120" text-anchor="middle" class="t" style="fill:var(--bg);font-weight:700">k</text>
+        <g class="f-elev" style="stroke:var(--border)"><circle cx="80" cy="60" r="13"/><circle cx="230" cy="60" r="13"/><circle cx="80" cy="175" r="13"/><circle cx="230" cy="175" r="13"/><circle cx="480" cy="60" r="13"/><circle cx="630" cy="60" r="13"/><circle cx="480" cy="175" r="13"/><circle cx="630" cy="175" r="13"/></g>
+        <text x="150" y="208" text-anchor="middle" class="t-dim">소거 전: k의 이웃 4개</text>
+        <text x="555" y="208" text-anchor="middle" class="t-dim">k를 소거한 뒤: 이웃끼리 6개의 변(빨강 = 채움)</text>
+        <text x="355" y="120" text-anchor="middle" class="t" style="font-size:22px">→</text>
+      </svg>
+      <figcaption><b>그림 12-1.</b> 소거 그래프. 정점 \(k\)를 소거하면 \(k\)와 이어져 있던 정점들이 모두 서로 이어진다. 차수가 큰 정점을 일찍 소거하면 큰 클리크가 생기고, 차수가 작은 정점부터 소거하면 채움이 적다. 이것이 최소 차수 재배열의 아이디어다.</figcaption>
+    </figure>
+    <p>대표적인 재배열은 셋입니다. <b>역 커트힐–맥키</b><span class="en">(reverse Cuthill–McKee, RCM)</span>는 너비 우선 탐색으로 번호를 매겨 띠폭을 줄입니다. <b>최소 차수</b><span class="en">(minimum degree)</span>는 매 단계 소거 그래프에서 차수가 가장 작은 정점을 고릅니다(실무에서는 근사 최소 차수 AMD). <b>중첩 분할</b><span class="en">(nested dissection)</span>은 격자를 분리자(separator) 한 줄로 반씩 나누고, 분리자를 맨 마지막에 번호 매기는 일을 재귀적으로 반복합니다. 2차원 \(k\times k\) 격자에서 중첩 분할의 채움은 \(O(n\log n)\), 연산은 \(O(n^{3/2})\)(\(n = k^2\))로 점근적으로 최적이라는 것이 알려져 있습니다.</p>
+    <div class="table-wrap"><table class="ds-tbl">
+      <thead><tr><th>k × k 격자 푸아송, nnz(L) (대각 포함)</th><th>k = 10 (n = 100)</th><th>k = 20 (n = 400)</th><th>k = 30 (n = 900)</th></tr></thead>
+      <tbody>
+        <tr><td>A의 아래 삼각</td><td>280</td><td>1,160</td><td>2,640</td></tr>
+        <tr><td>자연 순서 (행 단위 번호)</td><td>1,009</td><td>8,019</td><td>27,029</td></tr>
+        <tr><td>RCM</td><td>805</td><td>5,910</td><td>19,315</td></tr>
+        <tr><td>중첩 분할 (단순 구현)</td><td>781</td><td>4,867</td><td>13,874</td></tr>
+        <tr><td>최소 차수 (탐욕)</td><td>656</td><td>3,729</td><td>10,351</td></tr>
+        <tr><td>꽉 찬 하삼각 n(n+1)/2</td><td>5,050</td><td>80,200</td><td>405,450</td></tr>
+      </tbody></table></div>
+    <p>표는 소거 그래프로 기호적 채움을 센 값입니다(숫자 상쇄는 무시). 문제 상자의 답은 자연 순서 8,019칸, 최소 차수 3,729칸입니다. 이 크기에서는 탐욕적 최소 차수가 가장 적지만, 격자가 커질수록 중첩 분할의 점근적 우위가 드러나고 병렬화에도 유리해 대규모 FEM 풀이기(MUMPS, PARDISO 등)는 두 방법을 섞어 씁니다. 채움을 아무리 줄여도 3차원 문제에서는 \(L\)이 너무 커지는 경우가 많아, 그때는 반복 해법(<a href="iterative.html">13장</a>)으로 넘어갑니다.</p>
+
+    <div class="sim" id="sim-ds-fill">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>희소 채움 시각화: 같은 격자, 다른 번호 매기기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ds-two">
+          <div><canvas id="ds-fl-cv"></canvas><span class="ds-cap">왼쪽: PAPᵀ의 0 아닌 칸 · 오른쪽: L (빨강 = 채움)</span></div>
+          <div><canvas id="ds-fl-g"></canvas><span class="ds-cap">격자 위의 번호 순서 (밝을수록 나중)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>재배열</span><div class="seg" id="ds-fl-o"><button data-value="nat" class="on">자연</button><button data-value="rcm">RCM</button><button data-value="nd">중첩 분할</button><button data-value="md">최소 차수</button></div></div>
+          <label class="ctrl"><span>격자 k × k <output id="ds-fl-k-out"></output></span><input type="range" id="ds-fl-k" min="4" max="24" step="1" value="12"></label>
+          <label class="ctrl"><span>소거 진행 <output id="ds-fl-s-out"></output></span><input type="range" id="ds-fl-s" min="0" max="100" step="1" value="100"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">n · nnz(A 아래 삼각)</span><span class="v" id="ds-fl-n">—</span></div>
+        <div class="stat"><span class="k">nnz(L) · 채움</span><span class="v" id="ds-fl-l">—</span></div>
+        <div class="stat"><span class="k">촐레스키 연산 수 ∑ (열 길이)²</span><span class="v" id="ds-fl-f">—</span></div>
+        <div class="stat"><span class="k">꽉 찬 경우 대비</span><span class="v" id="ds-fl-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '자연' 순서에서 채움(빨강)이 띠 안을 가득 채우는 것을 보세요. 띠폭이 k입니다. ② 'RCM'은 띠를 조금 좁히고, '중첩 분할'은 분리자(가운데 줄)를 마지막에 두어 오른쪽 아래 블록에 채움을 모읍니다. ③ '최소 차수'는 구조가 무질서해 보이지만 채움이 가장 적습니다. '소거 진행'을 움직이면 소거 그래프에서 채움이 생기는 순서를 따라갈 수 있습니다. 모델: 5점 스텐실 격자 라플라시안, 기호적 촐레스키(숫자 상쇄 무시), 연산 수는 열마다 (그 열의 0 아닌 원소 수)²의 합.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>행렬의 성격</th><th>쓰이는 직접 해법</th></tr></thead>
+      <tbody>
+        <tr><td>회로망 해석(수정 노드 해석)</td><td>희소, 비대칭(전원·제어 소스), 시간 걸음마다 같은 구조</td><td>희소 LU + 재배열, 기호 분해를 한 번만 하고 수치 분해를 반복</td></tr>
+        <tr><td>구조 해석(트러스·골조)</td><td>대칭 양정치 강성 행렬 \(K\)</td><td>희소 촐레스키(스카이라인·다중 전면 방식)</td></tr>
+        <tr><td>유한 요소 강성 행렬</td><td>대칭 양정치, 2·3차원 격자 구조</td><td>중첩 분할 + 촐레스키, 3차원 대형은 반복 해법과 전처리</td></tr>
+        <tr><td>1차원 확산·스플라인·크랭크–니콜슨</td><td>삼중대각, 대각 우세</td><td>토머스 알고리즘 \(O(n)\)</td></tr>
+        <tr><td>강성 ODE 풀이기·뉴턴 반복</td><td>\(I - \gamma hJ\), 걸음마다 비슷한 행렬</td><td>LU 분해를 여러 걸음 재사용(<a href="ode-solvers.html#stiff-bdf">11장</a>)</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="../../linear/chapters/elimination.html"><small>LINEARBOOK 3장</small>가우스 소거<br><span>행 그림·열 그림, 피벗과 승수, 작은 피벗과 부분 피벗팅의 첫 만남.</span></a>
+      <a href="../../linear/chapters/lu.html"><small>LINEARBOOK 4장</small>LU 분해와 띠 행렬<br><span>A = LU, PA = LU, LDLᵀ, 열전도 막대의 삼중대각계와 채움.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK 16장</small>수치 선형대수<br><span>부동소수점, 조건수, 후방 안정성. 이 장의 오차 한계가 처음 나온 곳.</span></a>
+      <a href="conditioning.html"><small>2장</small>조건수와 안정성<br><span>전방·후방 오차의 구별. 행렬 조건수는 그 일반화다.</span></a>
+      <a href="iterative.html"><small>13장</small>반복 해법<br><span>분해의 채움이 감당할 수 없을 만큼 크면 야코비, 켤레 기울기, GMRES로 간다.</span></a>
+      <a href="pde-numerics.html"><small>16장</small>편미분방정식의 수치 해법<br><span>푸아송 방정식의 5점 스텐실이 이 장의 희소 행렬이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>LU 분해는 \(\tfrac23n^3\) 연산, 대입은 \(2n^2\)이다. 분해 한 번으로 여러 우변·행렬식·전치 계를 푼다. 역행렬은 \(2n^3\)이고 덜 정확하므로 계산하지 않는다.</li>
+      <li>작은 피벗은 큰 승수를 만들어 정보를 지운다. 부분 피벗팅은 \(|\ell| \le 1\)을 보장하지만 행 척도에 속을 수 있고(척도 부분 피벗팅·평형화), 완전 피벗팅은 더 안전하지만 비싸다.</li>
+      <li>소거의 후방 오차는 성장 인자 \(\rho_n\)에 비례한다. 부분 피벗팅의 최악은 \(2^{n-1}\)(윌킨슨 행렬)이지만 실제 행렬에서는 작아서 표준이 되었다.</li>
+      <li>대칭 양정치 행렬은 촐레스키 \(A = LL^{\mathsf T}\)로 피벗팅 없이 안정하게 절반 비용(\(\tfrac13n^3\))에 분해되고, 분해의 성공 여부가 양정치 판정이 된다.</li>
+      <li>삼중대각계는 토머스 알고리즘으로 \(8n\) 연산에 풀리고, 대각 우세이면 \(|c_i'| \le 1\)이라 안정하다. 띠 행렬은 \(O(nw^2)\).</li>
+      <li>\(\kappa(A) = \|A\|\|A^{-1}\|\). 상대 오차 ≤ κ × 상대 잔차, 후방 안정한 풀이기의 오차 ≈ κu이므로 약 \(\log_{10}\kappa\)자리를 잃는다. 작은 잔차가 작은 오차를 뜻하지 않는다.</li>
+      <li>힐베르트 행렬은 κ가 n마다 약 30배 커져 n = 12에서 배정밀도의 자릿수를 모두 잃는다. 잔차는 끝까지 작다.</li>
+      <li>반복 개선은 잔차를 높은 정밀도로 계산해 같은 분해로 보정한다. \(\kappa u_f \lt 1\)이면 단정밀도 분해로 배정밀도 정확도를 얻는다.</li>
+      <li>희소 분해의 채움은 소거 순서로 정해진다. RCM(띠 줄이기), 최소 차수, 중첩 분할이 메모리와 연산을 몇 배에서 몇 자릿수까지 줄인다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. n = 2000인 꽉 찬 행렬의 LU 분해가 2초 걸렸다. 같은 분해로 우변 100개를 더 푸는 데 드는 시간은 대략?</p><div class="opts">
+        <button class="opt">200초</button>
+        <button class="opt">20초</button>
+        <button class="opt" data-correct>0.3초 정도</button>
+        <button class="opt">2초</button>
+      </div><div class="quiz-exp">분해 \(\tfrac23n^3\) 대 대입 \(2n^2\)의 비는 n/3 ≈ 667. 우변 하나는 2초/667 ≈ 0.003초, 100개면 약 0.3초. (대입은 캐시 재사용이 적어 실제로는 몇 배 더 걸릴 수 있지만 분해보다 훨씬 싸다.)</div></div>
+
+      <div class="quiz-q"><p>Q2. 부분 피벗팅이 보장하는 것은?</p><div class="opts">
+        <button class="opt">해의 상대 오차가 언제나 반올림 수준이다</button>
+        <button class="opt" data-correct>모든 승수가 |ℓᵢₖ| ≤ 1이다</button>
+        <button class="opt">성장 인자가 언제나 2 이하이다</button>
+        <button class="opt">조건수가 줄어든다</button>
+      </div><div class="quiz-exp">부분 피벗팅은 열의 최댓값을 피벗으로 써서 승수를 1 이하로 묶는다. 그래도 성장 인자는 최대 2ⁿ⁻¹까지 갈 수 있고(윌킨슨 행렬), 조건수는 문제의 성질이라 알고리즘이 바꾸지 못한다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(A = \begin{bmatrix}9 & 3\\ 3 & 5\end{bmatrix}\)의 촐레스키 인자 \(L\)의 \(\ell_{22}\)는?</p><div class="opts">
+        <button class="opt">√5</button>
+        <button class="opt" data-correct>2</button>
+        <button class="opt">√3</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">\(\ell_{11} = 3\), \(\ell_{21} = 3/3 = 1\), \(\ell_{22} = \sqrt{5 - 1^2} = 2\). 확인: \(\det A = 45 - 9 = 36 = (3\cdot 2)^2\).</div></div>
+
+      <div class="quiz-q"><p>Q4. 삼중대각계에서 토머스 알고리즘을 피벗팅 없이 안전하게 쓸 수 있는 충분조건은?</p><div class="opts">
+        <button class="opt">행렬이 대칭이다</button>
+        <button class="opt" data-correct>행렬이 (엄격히) 대각 우세이다</button>
+        <button class="opt">대각 원소가 모두 양수이다</button>
+        <button class="opt">n이 충분히 작다</button>
+      </div><div class="quiz-exp">|bᵢ| ≥ |aᵢ| + |cᵢ|(한 행 이상 엄격)이면 귀납적으로 |c′ᵢ| ≤ 1이고 피벗이 0이 아니다. 대칭 양정치여도 안전하다. 대칭이거나 대각이 양수인 것만으로는 부족하다.</div></div>
+
+      <div class="quiz-q"><p>Q5. κ∞(A) = 10⁹인 계를 배정밀도(u ≈ 10⁻¹⁶)의 후방 안정한 풀이기로 풀었다. 해는 대략 몇 자리 맞는가?</p><div class="opts">
+        <button class="opt">16자리</button>
+        <button class="opt">9자리</button>
+        <button class="opt" data-correct>7자리</button>
+        <button class="opt">0자리</button>
+      </div><div class="quiz-exp">상대 오차 ≈ κu = 10⁹ × 10⁻¹⁶ = 10⁻⁷. 16자리 중 log₁₀ κ = 9자리를 잃어 약 7자리가 남는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 근사해 x̂의 상대 잔차 ‖b − Ax̂‖/‖b‖가 10⁻¹⁴이고 κ(A) = 10⁶이다. 상대 오차에 대해 확실히 말할 수 있는 것은?</p><div class="opts">
+        <button class="opt">10⁻¹⁴ 이하이다</button>
+        <button class="opt" data-correct>10⁻⁸ 이하이다</button>
+        <button class="opt">10⁻²⁰ 이상이다</button>
+        <button class="opt">아무것도 말할 수 없다</button>
+      </div><div class="quiz-exp">정리 12.8: 상대 오차 ≤ κ·상대 잔차 = 10⁶ × 10⁻¹⁴ = 10⁻⁸. 아래쪽 한계는 잔차/κ = 10⁻²⁰이라 '이상'이 맞지만 의미 있는 정보는 상한 쪽이다. 실제 오차는 이 사이 어디든 될 수 있다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 반복 개선에서 잔차 r = b − Ax를 분해와 같은 단정밀도로 계산하면 어떻게 되는가?</p><div class="opts">
+        <button class="opt">배정밀도로 계산할 때와 같은 정확도에 도달한다</button>
+        <button class="opt" data-correct>오차가 대략 κ·u₃₂ 수준에서 멈춘다</button>
+        <button class="opt">반복마다 발산한다</button>
+        <button class="opt">한 번 만에 정확한 해가 된다</button>
+      </div><div class="quiz-exp">r은 거의 같은 두 벡터의 차라 자릿수 상쇄가 일어난다. 단정밀도로 계산하면 r 자체가 단정밀도 수준의 정보만 담아, 보정해도 단정밀도 풀이기 이상의 정확도를 얻지 못한다. 최종 정확도는 잔차의 정밀도가 정한다.</div></div>
+
+      <div class="quiz-q"><p>Q8. '허브' 정점 하나가 다른 모든 정점과 연결된 화살표 모양 희소 행렬을 촐레스키 분해할 때 채움을 0으로 만드는 순서는?</p><div class="opts">
+        <button class="opt">허브를 맨 먼저 소거한다</button>
+        <button class="opt" data-correct>허브를 맨 마지막에 소거한다</button>
+        <button class="opt">무작위 순서로 소거한다</button>
+        <button class="opt">순서와 상관없이 채움이 생긴다</button>
+      </div><div class="quiz-exp">허브를 먼저 소거하면 그 이웃(나머지 전부)이 서로 이어져 L이 꽉 찬다. 다른 정점은 이웃이 허브 하나뿐이라 먼저 소거해도 새 변이 생기지 않는다. 최소 차수 재배열이 정확히 이렇게 고른다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const DS = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "발산";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  sup(v) { return "10" + String(Math.round(Math.log10(v))).replace("-", "⁻").replace(/[0-9]/g, (c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]); },
+  lcg(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; },
+  box(w, h, l = 58, t = 26, r = 16, b = 44) { return { x: l, y: t, w: w - l - r, h: h - t - b }; },
+  /* 피벗팅 전략별 소거: rd는 매 연산 뒤 반올림 함수 */
+  gauss(A0, b0, strat, rd = (x) => x) {
+    const n = b0.length, A = A0.map((r) => r.map(rd)), b = b0.map(rd), col = [...Array(n).keys()];
+    const s = A.map((r) => Math.max(...r.map(Math.abs)));
+    let amax = 0; A.forEach((r) => r.forEach((v) => { amax = Math.max(amax, Math.abs(v)); })); let gmax = amax;
+    for (let k = 0; k < n; k++) {
+      let p = k, q = k;
+      if (strat === "partial") { for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[p][k])) p = i; }
+      else if (strat === "scaled") { for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) / s[i] > Math.abs(A[p][k]) / s[p]) p = i; }
+      else if (strat === "complete") { let m = -1; for (let i = k; i < n; i++) for (let j = k; j < n; j++) if (Math.abs(A[i][j]) > m) { m = Math.abs(A[i][j]); p = i; q = j; } }
+      [A[k], A[p]] = [A[p], A[k]]; [b[k], b[p]] = [b[p], b[k]]; [s[k], s[p]] = [s[p], s[k]];
+      if (q !== k) { for (let i = 0; i < n; i++) [A[i][k], A[i][q]] = [A[i][q], A[i][k]]; [col[k], col[q]] = [col[q], col[k]]; }
+      if (A[k][k] === 0) return { x: new Array(n).fill(NaN), growth: Infinity, U: A };
+      for (let i = k + 1; i < n; i++) {
+        const l = rd(A[i][k] / A[k][k]); A[i][k] = 0;
+        for (let j = k + 1; j < n; j++) { A[i][j] = rd(A[i][j] - rd(l * A[k][j])); gmax = Math.max(gmax, Math.abs(A[i][j])); }
+        b[i] = rd(b[i] - rd(l * b[k]));
+      }
+    }
+    const z = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let t = b[i]; for (let j = i + 1; j < n; j++) t = rd(t - rd(A[i][j] * z[j])); z[i] = rd(t / A[i][i]); }
+    const x = new Array(n); for (let i = 0; i < n; i++) x[col[i]] = z[i];
+    return { x, growth: gmax / amax, U: A };
+  },
+  relErr(x, xt) { let a = 0, b = 0; x.forEach((v, i) => { a = Math.max(a, Math.abs(v - xt[i])); b = Math.max(b, Math.abs(xt[i])); }); return isFinite(a) ? a / b : Infinity; },
+  wilk(n) { const A = []; for (let i = 0; i < n; i++) { A.push([]); for (let j = 0; j < n; j++) A[i].push(j === n - 1 ? 1 : i === j ? 1 : i > j ? -1 : 0); } return A; },
+  matvec(A, x) { return A.map((r) => r.reduce((s, v, j) => s + v * x[j], 0)); },
+};
+
+/* ================================================================ 1. 피벗팅 전략 */
+(function () {
+  const DIG = [3, 4, 5, 6, 8, 10, 12, 16];
+  const ST = ["none", "partial", "scaled", "complete"];
+  let pre = "small", d = 3, ek = -4, R = null;
+  const rdOf = (d) => (d >= 16 ? (x) => x : (x) => (x === 0 || !isFinite(x) ? x : Number(x.toPrecision(d))));
+  const sys = () => {
+    if (pre === "small") { const e = Math.pow(10, ek); return { A: [[e, 1], [1, 1]], b: [1, 2], xt: [1 / (1 - e), (1 - 2 * e) / (1 - e)] }; }
+    if (pre === "scale") return { A: [[10, 1e5], [1, 1]], b: [1e5, 2], xt: [2 - (1e5 - 20) / (1e5 - 10), (1e5 - 20) / (1e5 - 10)] };
+    const n = 24, A = DS.wilk(n), r = DS.lcg(3), xt = [...Array(n)].map(() => r() * 2 - 1); return { A, b: DS.matvec(A, xt), xt };
+  };
+  const compute = () => { const S = sys(), rd = rdOf(d); R = { S, res: ST.map((s) => { const o = DS.gauss(S.A, S.b, s, rd); return { ...o, e: DS.relErr(o.x, S.xt) }; }) }; };
+  compute();
+  const cv = MB.canvas("#ds-pv-cv", (ctx, w, hh) => {
+    const C = MB.palette(), col = [C.bad, C.warn, C.blue, C.ok], names = ["피벗팅 없음", "부분", "척도 부분", "완전"];
+    const box = DS.box(w, hh, 62, 20, 16, 40);
+    const ch = MB.chart(ctx, box, { x: [0, 4], y: [1e-17, 1e2], logY: true, yLabel: "상대 오차", xTicks: [], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], hlines: [{ y: Math.pow(10, 1 - d), color: C.faint, label: "유효 숫자 d자리의 반올림 수준 10^(1−d)" }] });
+    R.res.forEach((o, i) => {
+      const e = MB.clamp(isFinite(o.e) ? Math.max(o.e, 1e-17) : 1e2, 1e-17, 1e2), x0 = ch.X(i + 0.2), x1 = ch.X(i + 0.8);
+      ctx.fillStyle = col[i]; ctx.fillRect(x0, ch.Y(e), x1 - x0, ch.Y(1e-17) - ch.Y(e));
+      ctx.fillStyle = C.text; ctx.font = "12.5px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(names[i], (x0 + x1) / 2, box.y + box.h + 8);
+      ctx.textBaseline = "bottom"; ctx.fillText(isFinite(o.e) ? o.e.toExponential(1) : "실패", (x0 + x1) / 2, ch.Y(e) - 3);
+    });
+  }, { aspect: 0.55, minHeight: 240, maxHeight: 380 });
+  const fx = (x) => (x.length > 3 ? "(" + x.slice(0, 2).map((v) => DS.num(v, 4)).join(", ") + ", …)" : "(" + x.map((v) => DS.num(v, 5)).join(", ") + ")");
+  const update = () => {
+    compute(); cv.redraw(); const r = R.res;
+    MB.stat("ds-pv-x", fx(R.S.xt));
+    MB.stat("ds-pv-a", fx(r[0].x) + " · " + fx(r[1].x));
+    MB.stat("ds-pv-b", fx(r[2].x) + " · " + fx(r[3].x));
+    MB.stat("ds-pv-g", DS.sci(r[0].growth, 2) + " / " + DS.sci(r[1].growth, 2));
+    document.getElementById("ds-pv-e").disabled = pre !== "small";
+  };
+  update();
+  MB.steps("ds-pv-d", DIG, (v) => (v >= 16 ? "16 (배정밀도)" : String(v)), 3, (v) => { d = v; update(); });
+  MB.range("ds-pv-e", (v) => String(v).replace("-", "−"), (v) => { ek = v; update(); });
+  document.getElementById("ds-pv-pre").addEventListener("change", (e) => { pre = e.target.value; update(); });
+})();
+
+/* ================================================================ 2. 성장 인자 */
+(function () {
+  let mat = "wilk", nsel = 40, cp = true, data = null, U = null;
+  const make = (n) => { if (mat === "wilk") return DS.wilk(n); const r = DS.lcg(1000 + n); return [...Array(n)].map(() => [...Array(n)].map(() => r() * 2 - 1)); };
+  const compute = () => {
+    data = [];
+    for (let n = 2; n <= 60; n++) {
+      const A = make(n), r = DS.lcg(77 + n), xt = [...Array(n)].map(() => r() * 2 - 1), b = DS.matvec(A, xt);
+      const P = DS.gauss(A, b, "partial"), Q = cp ? DS.gauss(A, b, "complete") : null;
+      data.push({ n, gp: P.growth, gc: Q ? Q.growth : NaN, ep: DS.relErr(P.x, xt), ec: Q ? DS.relErr(Q.x, xt) : NaN });
+    }
+    const A = make(nsel); U = DS.gauss(A, new Array(nsel).fill(1), "partial").U;
+  };
+  compute();
+  const cv = MB.canvas("#ds-gr-cv", (ctx, w, hh) => {
+    const C = MB.palette(), series = [{ data: data.map((p) => [p.n, Math.pow(2, p.n - 1)]), color: C.faint, width: 1.4, dash: [5, 4] }, { data: data.map((p) => [p.n, p.gp]), color: C.warn, width: 2.4 }, { data: data.map((p) => [p.n, Math.max(p.ep, 1e-17)]), color: C.bad, width: 2 }];
+    if (cp) series.push({ data: data.map((p) => [p.n, p.gc]), color: C.ok, width: 2.2 });
+    MB.chart(ctx, DS.box(w, hh, 58, 26, 16, 40), { x: [2, 60], y: [1e-17, 1e19], logY: true, xLabel: "n", yTicks: [1e-16, 1e-8, 1, 1e8, 1e16], series, vlines: [{ x: nsel, color: C.dim }] });
+  }, { aspect: 0.48, minHeight: 210, maxHeight: 330 });
+  const hm = MB.canvas("#ds-gr-hm", (ctx, w, hh) => {
+    const C = MB.palette(), n = U.length, side = Math.min(w - 40, hh - 36), cell = side / n, x0 = (w - side) / 2, y0 = 28;
+    let mx = 0; U.forEach((r, i) => r.forEach((v, j) => { if (j >= i) mx = Math.max(mx, Math.abs(v)); }));
+    const lm = Math.log10(mx || 1);
+    for (let i = 0; i < n; i++) for (let j = i; j < n; j++) { const v = Math.abs(U[i][j]); if (v === 0) continue; const t = lm > 0 ? MB.clamp(Math.log10(v) / lm, 0, 1) : 0.5; ctx.fillStyle = MB.rgb(MB.colormap(t, "viridis")); ctx.fillRect(x0 + j * cell, y0 + i * cell, Math.max(cell - 0.3, 0.8), Math.max(cell - 0.3, 0.8)); }
+    ctx.strokeStyle = C.border; ctx.strokeRect(x0, y0, side, side);
+    ctx.fillStyle = C.dim; ctx.font = "11.5px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "right"; ctx.textBaseline = "top";
+    ctx.fillText("색: log₁₀|uᵢⱼ|, 0 … " + lm.toFixed(1), w - 10, 8);
+  }, { aspect: 0.5, minHeight: 200, maxHeight: 300 });
+  const update = () => {
+    compute(); cv.redraw(); hm.redraw();
+    const p = data[nsel - 2];
+    MB.stat("ds-gr-g", DS.sci(p.gp, 2) + " · " + (cp ? DS.sci(p.gc, 2) : "—"));
+    MB.stat("ds-gr-e", DS.sci(Math.max(p.ep, 0), 2) + " · " + (cp ? DS.sci(p.ec, 2) : "—"));
+    let bi = 0, bj = 0, bv = -1; U.forEach((r, i) => r.forEach((v, j) => { if (j >= i && Math.abs(v) > bv) { bv = Math.abs(v); bi = i; bj = j; } }));
+    MB.stat("ds-gr-p", `(${bi + 1}, ${bj + 1}) = ${DS.sci(bv, 2)}`);
+  };
+  update();
+  MB.seg("ds-gr-m", (v) => { mat = v; update(); });
+  MB.range("ds-gr-n", (v) => String(v), MB.throttle((v) => { nsel = Number(document.getElementById("ds-gr-n").value); update(); }));
+  MB.check("ds-gr-cp", (v) => { cp = v; update(); });
+})();
+
+/* ================================================================ 3. 분해 한 단계씩 */
+(function () {
+  const PRE = {
+    ex: [[1, 2, -1], [4, 3, 1], [2, 2, 3]],
+    spd: [[4, 2, 2], [2, 5, 3], [2, 3, 6]],
+    r4: [[2, 1, 1, 0], [4, 3, 3, 1], [8, 7, 9, 5], [6, 7, 9, 8]],
+    s4: [[2, -1, 0, 0], [-1, 2, -1, 0], [0, -1, 2, -1], [0, 0, -1, 1]],
+    ind: [[1, 2, 0, 0], [2, 1, 1, 0], [0, 1, 2, 1], [0, 0, 1, 3]],
+  };
+  let key = "ex", mode = "plu", A0, W, piv, k, flops, last, fail, newCells, pivCell, playing = false, acc = 0;
+  const box = document.getElementById("ds-lu-mats"), msg = document.getElementById("ds-lu-msg");
+  const reset = () => { A0 = PRE[key].map((r) => r.slice()); W = A0.map((r) => r.slice()); piv = A0.map((_, i) => i); k = 0; flops = 0; last = 0; fail = null; newCells = new Set(); pivCell = null; };
+  const n = () => A0.length;
+  const done = () => fail || k >= n();
+  const step = () => {
+    if (done()) return; const N = n(); newCells = new Set(); last = 0;
+    if (mode === "chol") {
+      const j = k;
+      if (j === 0 && !A0.every((r, i) => r.every((v, c) => Math.abs(v - A0[c][i]) < 1e-12))) { fail = "대칭 행렬이 아니라 촐레스키를 쓸 수 없습니다."; return; }
+      let s = W[j][j]; for (let q = 0; q < j; q++) s -= W[j][q] * W[j][q];
+      last += 2 * j + 1;
+      if (s <= 0) { fail = `ℓ<sub>${j + 1}${j + 1}</sub>² = ${DS.num(s, 4)} ≤ 0: 양정치가 아닙니다. 촐레스키가 여기서 멈춥니다.`; pivCell = [j, j]; return; }
+      W[j][j] = Math.sqrt(s); pivCell = [j, j]; newCells.add(j + "," + j);
+      for (let i = j + 1; i < N; i++) { let t = W[i][j]; for (let q = 0; q < j; q++) t -= W[i][q] * W[j][q]; W[i][j] = t / W[j][j]; last += 2 * j + 1; newCells.add(i + "," + j); }
+      for (let c = j + 1; c < N; c++) W[j][c] = 0;
+    } else {
+      let p = k;
+      if (mode === "plu") for (let i = k + 1; i < N; i++) if (Math.abs(W[i][k]) > Math.abs(W[p][k])) p = i;
+      if (p !== k) { [W[k], W[p]] = [W[p], W[k]]; [piv[k], piv[p]] = [piv[p], piv[k]]; }
+      if (Math.abs(W[k][k]) < 1e-14) { fail = `피벗 u<sub>${k + 1}${k + 1}</sub> = 0입니다. 행 교환 없이는 진행할 수 없습니다.`; pivCell = [k, k]; return; }
+      pivCell = [k, k];
+      for (let i = k + 1; i < N; i++) { const l = W[i][k] / W[k][k]; W[i][k] = l; last++; newCells.add(i + "," + k); for (let j = k + 1; j < N; j++) { W[i][j] -= l * W[k][j]; last += 2; newCells.add(i + "," + j); } }
+      msg.dataset.p = p !== k ? `${k + 1}행과 ${p + 1}행을 바꿈` : "교환 없음";
+    }
+    flops += last; k++;
+  };
+  const cellHTML = (v, cls) => `<span class="${cls}">${Math.abs(v) < 5e-13 ? "0" : DS.num(v, 4).replace(/\.?0+$/, "") || "0"}</span>`;
+  const matHTML = (M, lab, fn) => `<div><div class="ds-mlab">${lab}</div><div class="ds-mat" style="grid-template-columns:repeat(${M.length},auto)">${M.map((r, i) => r.map((v, j) => cellHTML(v, fn(i, j, v))).join("")).join("")}</div></div>`;
+  const render = () => {
+    const N = n(); let html = "";
+    if (mode === "chol") {
+      html += matHTML(A0, "A", (i, j) => "");
+      html += matHTML(W.map((r, i) => r.map((v, j) => (j < k || (fail && j === k && j < i) ? (j <= i ? v : 0) : j > i ? 0 : i >= k ? NaN : v))).map((r) => r.map((v) => (isNaN(v) ? 0 : v))), "L (지금까지 계산된 열)", (i, j, v) => (pivCell && pivCell[0] === i && pivCell[1] === j ? "ds-piv" : newCells.has(i + "," + j) ? "ds-new" : j > i || j >= k ? "ds-z" : ""));
+    } else {
+      html += matHTML(W, "작업 배열 (아래 = 승수, 위 = U)", (i, j) => {
+        let c = pivCell && pivCell[0] === i && pivCell[1] === j ? "ds-piv" : newCells.has(i + "," + j) ? "ds-new" : "";
+        if (j < Math.min(i, k)) c += " ds-l"; return c;
+      });
+      if (k > 0) {
+        const L = W.map((r, i) => r.map((v, j) => (i === j ? 1 : j < i && j < k ? v : 0))), U = W.map((r, i) => r.map((v, j) => (j >= i && i < k ? v : 0)));
+        html += matHTML(L, "L", (i, j, v) => (v === 0 ? "ds-z" : j < i ? "ds-l" : ""));
+        html += matHTML(U, "U (확정된 행)", (i, j, v) => (v === 0 ? "ds-z" : ""));
+      }
+    }
+    box.innerHTML = html;
+    MB.stat("ds-lu-k", fail ? "멈춤" : `${k} / ${N}`);
+    MB.stat("ds-lu-f", `${last} · ${flops} <small>(⅔n³ ≈ ${Math.round((2 / 3) * N ** 3)})</small>`);
+    MB.stat("ds-lu-p", mode === "chol" ? "—" : "(" + piv.map((v) => v + 1).join(", ") + ")");
+    if (done() && !fail) {
+      let e = 0;
+      if (mode === "chol") { for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { let s = 0; for (let q = 0; q < N; q++) s += (q <= i ? W[i][q] : 0) * (q <= j ? W[j][q] : 0); e = Math.max(e, Math.abs(s - A0[i][j])); } }
+      else { for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { let s = 0; for (let q = 0; q < N; q++) s += (q < i ? W[i][q] : q === i ? 1 : 0) * (q <= j ? W[q][j] : 0); e = Math.max(e, Math.abs(s - A0[piv[i]][j])); } }
+      MB.stat("ds-lu-r", DS.sci(e, 2));
+      let mx = 0; if (mode !== "chol") W.forEach((r, i) => r.forEach((v, j) => { if (j < i) mx = Math.max(mx, Math.abs(v)); }));
+      msg.className = "ds-msg ok"; msg.innerHTML = mode === "chol" ? `분해 완료. 대각 ℓᵢᵢ = (${W.map((r, i) => DS.num(r[i], 3)).join(", ")}) 모두 양수 → 양정치. det A = (∏ℓᵢᵢ)² = ${DS.num(W.reduce((s, r, i) => s * r[i], 1) ** 2, 3)}.` : `분해 완료. 최대 |승수| = ${DS.num(mx, 3)}${mx > 1 ? " (1보다 큼: 피벗팅이 없으면 승수가 커질 수 있습니다)" : ""}. det A = ${DS.num(W.reduce((s, r, i) => s * r[i], 1) * sign(), 3)}.`;
+    } else {
+      MB.stat("ds-lu-r", "—");
+      if (fail) { msg.className = "ds-msg bad"; msg.innerHTML = fail; }
+      else { msg.className = "ds-msg"; msg.innerHTML = k === 0 ? "'다음 단계'를 누르세요. 초록 칸 = 이번 피벗, 보라 바탕 = 이번 단계에 바뀐 칸." : mode === "chol" ? `${k}번째 열을 계산했습니다.` : `${k}단계: ${msg.dataset.p}. 승수를 피벗 아래 칸에 저장하고 남은 부분 행렬을 갱신했습니다.`; }
+    }
+  };
+  const sign = () => { const p = piv.slice(); let s = 1; for (let i = 0; i < p.length; i++) while (p[i] !== i) { const t = p[i]; [p[i], p[t]] = [p[t], p[i]]; s = -s; } return s; };
+  reset(); step(); render();
+  document.getElementById("ds-lu-step").addEventListener("click", () => { step(); render(); });
+  document.getElementById("ds-lu-reset").addEventListener("click", () => { reset(); render(); });
+  document.getElementById("ds-lu-pre").addEventListener("change", (e) => { key = e.target.value; reset(); render(); });
+  MB.seg("ds-lu-m", (v) => { mode = v; reset(); render(); });
+  const btn = MB.playButton("ds-lu-play", () => { if (done()) { reset(); render(); } playing = true; loop.start(); }, () => { playing = false; }, ["▶ 자동", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-ds-lu"), (dt) => { if (!playing) return; acc += dt; if (acc < 0.9) return; acc = 0; step(); render(); if (done()) { playing = false; btn.set(false); } });
+})();
+
+/* ================================================================ 4. 토머스 알고리즘 */
+(function () {
+  const N = 24;
+  let bdiag = 2, rhs = "ends", phase = 0, i = 0, cp = [], dp = [], ms = [], x = [], playing = false, acc = 0, timing = null;
+  const msg = document.getElementById("ds-th-msg");
+  const dvec = () => { const h = 1 / (N + 1); return [...Array(N)].map((_, j) => (rhs === "ends" ? (j === 0 || j === N - 1 ? 1 : 0) : rhs === "heat" ? h * h : j === N / 2 ? 1 : 0)); };
+  const reset = () => { phase = 0; i = 0; cp = []; dp = []; ms = []; x = new Array(N).fill(NaN); };
+  const d = () => dvec();
+  const step = () => {
+    const D = d();
+    if (phase === 0) { const m = bdiag - (i ? -1 * cp[i - 1] : 0); ms.push(m); cp.push((i < N - 1 ? -1 : 0) / m); dp.push((D[i] - (i ? -1 * dp[i - 1] : 0)) / m); i++; if (i === N) { phase = 1; i = N - 1; } }
+    else if (phase === 1) { x[i] = dp[i] - (i < N - 1 ? cp[i] * x[i + 1] : 0); i--; if (i < 0) phase = 2; }
+  };
+  reset();
+  const cv = MB.canvas("#ds-th-cv", (ctx, w, hh) => {
+    const C = MB.palette(), ch = MB.chart(ctx, DS.box(w, hh, 46, 26, 14, 40), { x: [0, N + 1], y: [-1.6, 1.6], xLabel: "i", hlines: [{ y: 0, color: C.axis, dash: [] }, { y: -1, color: C.faint, label: "|c′| = 1" }, { y: 1, color: C.faint }] });
+    const bw = Math.max(2, (ch.X(1) - ch.X(0)) * 0.6);
+    cp.forEach((v, j) => { const y = MB.clamp(v, -1.6, 1.6); ctx.fillStyle = Math.abs(v) > 1 ? C.bad : C.accent2; ctx.fillRect(ch.X(j + 1) - bw / 2, Math.min(ch.Y(0), ch.Y(y)), bw, Math.abs(ch.Y(y) - ch.Y(0))); });
+    let mx = 0; x.forEach((v) => { if (isFinite(v)) mx = Math.max(mx, Math.abs(v)); });
+    const sc = mx > 1.5 ? 1.5 / mx : 1;
+    const pts = []; x.forEach((v, j) => { if (isFinite(v)) pts.push([j + 1, v * sc]); });
+    if (pts.length) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.beginPath(); pts.forEach(([a, b], q) => (q ? ctx.lineTo(ch.X(a), ch.Y(b)) : ctx.moveTo(ch.X(a), ch.Y(b)))); ctx.stroke(); pts.forEach(([a, b]) => { ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(ch.X(a), ch.Y(b), 4, 0, 7); ctx.fill(); }); }
+    if (sc !== 1) { ctx.fillStyle = C.dim; ctx.font = "11.5px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "right"; ctx.fillText("x 표시 배율 ×" + sc.toFixed(3), w - 16, 20); }
+  }, { aspect: 0.42, minHeight: 200, maxHeight: 300 });
+  const tm = MB.canvas("#ds-th-tm", (ctx, w, hh) => {
+    const C = MB.palette(), series = [], points = [];
+    if (timing) { [[timing.lu, C.warn], [timing.th, C.blue]].forEach(([d, c]) => { series.push({ data: d, color: c, width: 2 }); d.forEach(([a, b]) => points.push({ x: a, y: b, r: 4, color: c })); }); }
+    MB.chart(ctx, DS.box(w, hh, 58, 26, 16, 40), { x: [30, 2e6], y: [1e-4, 1e4], logX: true, logY: true, xLabel: "n", yLabel: "ms", series, points });
+    if (!timing) { ctx.fillStyle = C.dim; ctx.font = "13px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "center"; ctx.fillText("재는 중…", w / 2, hh / 2); }
+  }, { aspect: 0.36, minHeight: 170, maxHeight: 250 });
+  const fit = (d) => { const xs = d.map((p) => Math.log(p[0])), ys = d.map((p) => Math.log(p[1])), mx = MB.mean(xs), my = MB.mean(ys); let a = 0, b = 0; xs.forEach((v, q) => { a += (v - mx) * (ys[q] - my); b += (v - mx) ** 2; }); return a / b; };
+  const measure = () => {
+    const time = (fn) => { let reps = 0; const t0 = performance.now(); let t = t0; do { fn(); reps++; t = performance.now(); } while (t - t0 < 25 && reps < 2000); return (t - t0) / reps; };
+    const lu = [50, 100, 200, 300, 400].map((n) => { const r = DS.lcg(n), A0 = [...Array(n)].map(() => Float64Array.from({ length: n }, () => r())); return [n, time(() => { const A = A0.map((row) => row.slice()); for (let k = 0; k < n; k++) { const ak = A[k], p = ak[k]; for (let q = k + 1; q < n; q++) { const aq = A[q], l = aq[k] / p; for (let j = k + 1; j < n; j++) aq[j] -= l * ak[j]; } } })]; });
+    const th = [1e3, 1e4, 1e5, 1e6].map((n) => { const dd = new Float64Array(n).fill(1), c1 = new Float64Array(n), d1 = new Float64Array(n), xx = new Float64Array(n); return [n, time(() => { c1[0] = -0.5; d1[0] = 0.5; for (let q = 1; q < n; q++) { const m = 2 + c1[q - 1]; c1[q] = -1 / m; d1[q] = (dd[q] + d1[q - 1]) / m; } xx[n - 1] = d1[n - 1]; for (let q = n - 2; q >= 0; q--) xx[q] = d1[q] - c1[q] * xx[q + 1]; })]; });
+    timing = { lu: lu.map(([a, b]) => [a, Math.max(b, 1e-4)]), th: th.map(([a, b]) => [a, Math.max(b, 1e-4)]) };
+    tm.redraw(); stats();
+  };
+  const stats = () => {
+    const K = phase === 0 ? i : N;
+    MB.stat("ds-th-k", phase === 0 ? `전진 ${i} / ${N}` : phase === 1 ? `후진 ${N - 1 - i} / ${N}` : "완료");
+    MB.stat("ds-th-m", ms.length ? DS.num(ms[ms.length - 1], 4) + " · " + DS.num(cp[cp.length - 1], 4) : "—");
+    let mx = 0; cp.forEach((v) => { mx = Math.max(mx, Math.abs(v)); }); MB.stat("ds-th-c", cp.length ? DS.num(mx, 4) : "—");
+    MB.stat("ds-th-s", timing ? DS.num(fit(timing.lu), 2) + " · " + DS.num(fit(timing.th), 2) : "—");
+    const dom = bdiag >= 2;
+    msg.className = "ds-msg" + (mx > 1 ? " bad" : "");
+    msg.innerHTML = mx > 1 ? `bᵢ = ${DS.num(bdiag, 2)} &lt; |aᵢ| + |cᵢ| = 2: 대각 우세가 아니어서 |c′ᵢ|가 1을 넘었습니다. 후진 대입에서 오차가 증폭될 수 있습니다.` : `${dom ? "대각 우세(bᵢ ≥ 2)" : "대각 우세는 아니지만 아직 |c′| ≤ 1"}: 전진 소거 ${N}행 × 약 5연산 + 후진 대입 ${N}행 × 2연산.${timing ? ` 측정: 토머스 n = 10⁶이 ${DS.num(timing.th[3][1], 1)} ms, 꽉 찬 LU n = 400이 ${DS.num(timing.lu[4][1], 0)} ms.` : ""}`;
+  };
+  const redraw = () => { cv.redraw(); stats(); };
+  redraw();
+  setTimeout(measure, 60);
+  document.getElementById("ds-th-step").addEventListener("click", () => { step(); redraw(); });
+  document.getElementById("ds-th-reset").addEventListener("click", () => { reset(); redraw(); });
+  document.getElementById("ds-th-time").addEventListener("click", () => { timing = null; tm.redraw(); setTimeout(measure, 30); });
+  MB.range("ds-th-b", (v) => v.toFixed(2), (v) => { bdiag = v; const was = phase; reset(); if (was) { while (phase < 2) step(); } redraw(); });
+  document.getElementById("ds-th-rhs").addEventListener("change", (e) => { rhs = e.target.value; reset(); redraw(); });
+  const btn = MB.playButton("ds-th-play", () => { if (phase === 2) reset(); playing = true; loop.start(); }, () => { playing = false; }, ["▶ 자동", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-ds-thomas"), (dt) => { if (!playing) return; acc += dt; if (acc < 0.12) return; acc = 0; step(); redraw(); if (phase === 2) { playing = false; btn.set(false); } });
+  /* 처음 화면: 끝까지 한 번 진행해 둔다 */
+  while (phase < 2) step(); redraw();
+})();
+
+/* ================================================================ 5. 두 직선과 조건수 */
+(function () {
+  const ES = [1e-3, 3e-3, 1e-2, 3e-2, 0.1], NS = [50, 200, 800];
+  let eps = 0.03, ns = 200, scale = 1;
+  const h1 = { x: 1 + 1.1 * Math.cos(0.25), y: 1 + 1.1 * Math.sin(0.25), r: 8 }, h2 = { x: 1 + 1.1 * Math.cos(0.5), y: 1 + 1.1 * Math.sin(0.5), r: 8 };
+  const mat = () => { const d1 = Math.atan2(h1.y - 1, h1.x - 1), d2 = Math.atan2(h2.y - 1, h2.x - 1); return [[-Math.sin(d1), Math.cos(d1)], [-Math.sin(d2) * scale, Math.cos(d2) * scale]]; };
+  const inv2 = (A) => { const det = A[0][0] * A[1][1] - A[0][1] * A[1][0]; return [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]]; };
+  const ninf = (A) => Math.max(Math.abs(A[0][0]) + Math.abs(A[0][1]), Math.abs(A[1][0]) + Math.abs(A[1][1]));
+  const s2 = (A) => { const a = A[0][0] ** 2 + A[1][0] ** 2, b = A[0][0] * A[0][1] + A[1][0] * A[1][1], c = A[0][1] ** 2 + A[1][1] ** 2, t = a + c, dd = Math.sqrt(Math.max(0, (a - c) ** 2 + 4 * b * b)); return [Math.sqrt((t + dd) / 2), Math.sqrt(Math.max(0, (t - dd) / 2))]; };
+  let amp = 0;
+  const pl = MB.plane("#ds-cd-cv", {
+    x: [-1.2, 3.2], y: [-0.5, 2.5], aspect: 0.68, minHeight: 260, maxHeight: 440, gridStep: 1, points: [h1, h2],
+    onDrag() { readout(); },
+    draw(P) {
+      const C = P.P, A = mat(), Ai = inv2(A), b = [A[0][0] + A[0][1], A[1][0] + A[1][1]], nb = Math.max(Math.abs(b[0]), Math.abs(b[1]));
+      const kap = ninf(A) * ninf(Ai), r = DS.lcg(42);
+      [[h1, C.blue], [h2, C.warn]].forEach(([h, c]) => { const dx = h.x - 1, dy = h.y - 1, L = Math.hypot(dx, dy) || 1; P.line(1 - 10 * dx / L, 1 - 10 * dy / L, 1 + 10 * dx / L, 1 + 10 * dy / L, { color: c, width: 2.4 }); h.color = c; });
+      const half = Math.min(kap * eps, 50);
+      P.poly([[1 - half, 1 - half], [1 + half, 1 - half], [1 + half, 1 + half], [1 - half, 1 + half]], { color: C.faint, width: 1.4, dash: [5, 4], close: true });
+      amp = 0; const ctx = P.ctx; ctx.save(); ctx.fillStyle = C.accent; ctx.globalAlpha = 0.55;
+      for (let s = 0; s < ns; s++) {
+        const db = [(r() * 2 - 1) * eps * nb, (r() * 2 - 1) * eps * nb];
+        const dx = [Ai[0][0] * db[0] + Ai[0][1] * db[1], Ai[1][0] * db[0] + Ai[1][1] * db[1]];
+        const rel = Math.max(Math.abs(dx[0]), Math.abs(dx[1])) / Math.max(Math.abs(db[0]), Math.abs(db[1])) * nb;
+        amp = Math.max(amp, rel);
+        ctx.fillRect(P.X(1 + dx[0]) - 1.5, P.Y(1 + dx[1]) - 1.5, 3, 3);
+      }
+      ctx.restore();
+      P.dot(1, 1, { r: 5, color: C.text });
+    },
+  });
+  function readout() {
+    pl.redraw(); const A = mat(), Ai = inv2(A), k = ninf(A) * ninf(Ai), sv = s2(A);
+    MB.stat("ds-cd-k", DS.num(k, 1)); MB.stat("ds-cd-k2", DS.num(sv[0] / sv[1], 1));
+    MB.stat("ds-cd-amp", DS.num(amp, 1) + " ≤ " + DS.num(k, 1)); MB.stat("ds-cd-dig", DS.num(Math.log10(k), 2));
+  }
+  readout();
+  MB.steps("ds-cd-e", ES, (v) => (v < 0.01 ? v.toExponential(0) : String(v)), 0.03, (v) => { eps = v; readout(); });
+  MB.steps("ds-cd-n", NS, (v) => String(v), 200, (v) => { ns = v; readout(); });
+  const setAng = (a, b2) => { h1.x = 1 + 1.1 * Math.cos(a); h1.y = 1 + 1.1 * Math.sin(a); h2.x = 1 + 1.1 * Math.cos(b2); h2.y = 1 + 1.1 * Math.sin(b2); };
+  document.getElementById("ds-cd-p1").addEventListener("click", () => { scale = 1; setAng(0.2, 0.2 + Math.PI / 2); readout(); });
+  document.getElementById("ds-cd-p2").addEventListener("click", () => { scale = 1; setAng(0.6, 0.6 + 2 * Math.PI / 180); readout(); });
+  document.getElementById("ds-cd-p3").addEventListener("click", () => { scale = scale === 1 ? 1000 : 1; readout(); });
+})();
+
+/* ================================================================ 6. 힐베르트 */
+(function () {
+  const F = Math.fround;
+  let nsel = 10, prec = "64", data = {};
+  const binom = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+  const kinf = (n) => { let a = 0, b = 0; for (let i = 1; i <= n; i++) { let s = 0, t = 0; for (let j = 1; j <= n; j++) { s += 1 / (i + j - 1); t += Math.abs((i + j - 1) * binom(n + i - 1, n - j) * binom(n + j - 1, n - i) * binom(i + j - 2, i - 1) ** 2); } a = Math.max(a, s); b = Math.max(b, t); } return a * b; };
+  const run = (p) => {
+    const rd = p === "32" ? F : (x) => x, out = [];
+    for (let n = 2; n <= 14; n++) {
+      const H = [...Array(n)].map((_, i) => [...Array(n)].map((_, j) => rd(1 / (i + j + 1))));
+      const b = H.map((r) => r.reduce((s, v) => rd(s + v), 0));
+      const o = DS.gauss(H, b, "partial", rd), e = DS.relErr(o.x, new Array(n).fill(1));
+      let res = 0, nb = 0; H.forEach((r, i) => { const s = r.reduce((a, v, j) => a + v * o.x[j], 0); res = Math.max(res, Math.abs(b[i] - s)); nb = Math.max(nb, Math.abs(b[i])); });
+      out.push({ n, k: kinf(n), e, res: res / nb, x: o.x });
+    }
+    return out;
+  };
+  data["64"] = run("64"); data["32"] = run("32");
+  const cv = MB.canvas("#ds-hb-cv", (ctx, w, hh) => {
+    const C = MB.palette(), D = data[prec], u = prec === "32" ? 6e-8 : 1.1e-16;
+    MB.chart(ctx, DS.box(w, hh, 58, 26, 16, 40), {
+      x: [2, 14], y: [1e-18, 1e20], logY: true, xLabel: "n", yTicks: [1e-16, 1e-8, 1, 1e8, 1e16],
+      series: [{ data: D.map((p) => [p.n, p.k]), color: C.accent2, width: 2.4 }, { data: D.map((p) => [p.n, p.k * u]), color: C.faint, width: 1.4, dash: [5, 4] }, { data: D.map((p) => [p.n, Math.max(p.e, 1e-17)]), color: C.bad, width: 2.2 }, { data: D.map((p) => [p.n, Math.max(p.res, 1e-17)]), color: C.ok, width: 2 }],
+      points: D.filter((p) => p.n === nsel).flatMap((p) => [{ x: p.n, y: p.k, r: 5, color: C.accent2 }, { x: p.n, y: Math.max(p.e, 1e-17), r: 5, color: C.bad }]),
+      vlines: [{ x: nsel, color: C.dim }], hlines: [{ y: 1, color: C.axis, label: "오차 100%" }],
+    });
+  }, { aspect: 0.5, minHeight: 220, maxHeight: 340 });
+  const cx = MB.canvas("#ds-hb-x", (ctx, w, hh) => {
+    const C = MB.palette(), p = data[prec][nsel - 2], pts = p.x.map((v, i) => [i + 1, MB.clamp(v, -4, 6)]);
+    MB.chart(ctx, DS.box(w, hh, 46, 26, 14, 40), { x: [0.5, nsel + 0.5], y: [-4, 6], xLabel: "i", series: [{ data: pts, color: C.bad, width: 1.4 }], points: pts.map(([a, b]) => ({ x: a, y: b, r: 4, color: C.bad })), hlines: [{ y: 1, color: C.ok, dash: [], label: "참해 1" }] });
+  }, { aspect: 0.3, minHeight: 150, maxHeight: 210 });
+  const update = () => {
+    cv.redraw(); cx.redraw(); const p = data[prec][nsel - 2], lim = prec === "32" ? 7.2 : 16;
+    MB.stat("ds-hb-k", DS.sci(p.k, 2)); MB.stat("ds-hb-e", DS.sci(p.e, 2));
+    MB.stat("ds-hb-d", DS.num(Math.max(0, -Math.log10(p.e || 1e-17)), 1)); MB.stat("ds-hb-pd", DS.num(Math.max(0, lim - Math.log10(p.k)), 1));
+  };
+  update();
+  MB.range("ds-hb-n", (v) => String(v), (v) => { nsel = v; update(); });
+  MB.seg("ds-hb-p", (v) => { prec = v; update(); });
+})();
+
+/* ================================================================ 7. 반복 개선 */
+(function () {
+  const F = Math.fround, KS = [1e2, 1e4, 1e6, 1e7, 1e8, 1e9], NS = [20, 40, 80];
+  let kap = 1e4, n = 40, rp = "64", st = null;
+  const house = (n, r) => { let Q = [...Array(n)].map((_, i) => [...Array(n)].map((_, j) => (i === j ? 1 : 0))); for (let t = 0; t < 3; t++) { const v = [...Array(n)].map(() => r() * 2 - 1), nv = Math.hypot(...v); v.forEach((x, i) => { v[i] = x / nv; }); Q = Q.map((row) => { const d = row.reduce((s, x, i) => s + x * v[i], 0); return row.map((x, i) => x - 2 * d * v[i]); }); } return Q; };
+  const make = () => { const r = DS.lcg(11), U = house(n, r), V = house(n, r), s = [...Array(n)].map((_, i) => Math.pow(kap, -i / (n - 1))); return [...Array(n)].map((_, i) => [...Array(n)].map((_, j) => { let t = 0; for (let k = 0; k < n; k++) t += U[i][k] * s[k] * V[j][k]; return t; })); };
+  const lu32 = (A0) => { const A = A0.map((r) => r.map(F)), p = [...Array(n).keys()]; for (let k = 0; k < n; k++) { let q = k; for (let i = k + 1; i < n; i++) if (Math.abs(A[i][k]) > Math.abs(A[q][k])) q = i; [A[k], A[q]] = [A[q], A[k]]; [p[k], p[q]] = [p[q], p[k]]; for (let i = k + 1; i < n; i++) { const l = F(A[i][k] / A[k][k]); A[i][k] = l; for (let j = k + 1; j < n; j++) A[i][j] = F(A[i][j] - F(l * A[k][j])); } } return { A, p }; };
+  const sol32 = (LU, b) => { const { A, p } = LU, y = p.map((i) => F(b[i])); for (let i = 0; i < n; i++) for (let j = 0; j < i; j++) y[i] = F(y[i] - F(A[i][j] * y[j])); for (let i = n - 1; i >= 0; i--) { for (let j = i + 1; j < n; j++) y[i] = F(y[i] - F(A[i][j] * y[j])); y[i] = F(y[i] / A[i][i]); } return y; };
+  const reset = () => {
+    const A = make(), r = DS.lcg(5), xt = [...Array(n)].map(() => r() * 2 - 1), b = DS.matvec(A, xt), LU = lu32(A), x = sol32(LU, b).map(Number);
+    st = { A, xt, b, LU, x, hist: [] }; record();
+  };
+  const resid = () => { const { A, b, x } = st; return b.map((v, i) => { if (rp === "64") return v - A[i].reduce((s, a, j) => s + a * x[j], 0); let s = 0; for (let j = 0; j < n; j++) s = F(s + F(F(A[i][j]) * F(x[j]))); return F(F(v) - s); }); };
+  const record = () => { const r = st.b.map((v, i) => v - st.A[i].reduce((s, a, j) => s + a * st.x[j], 0)); let nr = 0, nb = 0; r.forEach((v, i) => { nr = Math.max(nr, Math.abs(v)); nb = Math.max(nb, Math.abs(st.b[i])); }); st.hist.push({ e: DS.relErr(st.x, st.xt), r: nr / nb }); };
+  const step = () => { if (st.hist.length > 12) return; const r = resid(), d = sol32(st.LU, r); st.x = st.x.map((v, i) => (rp === "64" ? v + d[i] : F(v + d[i]))); record(); };
+  reset(); step(); step(); step();
+  const cv = MB.canvas("#ds-rf-cv", (ctx, w, hh) => {
+    const C = MB.palette(), H = st.hist, e = H.map((h, i) => [i, Math.max(h.e, 1e-17)]), r = H.map((h, i) => [i, Math.max(h.r, 1e-18)]);
+    MB.chart(ctx, DS.box(w, hh, 58, 26, 16, 40), {
+      x: [0, 12], y: [1e-18, 10], logY: true, xLabel: "개선 반복 횟수", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [{ data: e, color: C.accent, width: 2.4 }, { data: r, color: C.ok, width: 2 }], points: e.map(([a, b]) => ({ x: a, y: b, r: 4.5, color: C.accent })).concat(r.map(([a, b]) => ({ x: a, y: b, r: 3, color: C.ok }))),
+      hlines: [{ y: kap * 1.1e-16, color: C.faint, label: "κ·u₆₄" }, { y: Math.min(kap * 6e-8, 5), color: C.faint, label: "κ·u₃₂" }],
+    });
+  }, { aspect: 0.55, minHeight: 240, maxHeight: 380 });
+  const update = () => {
+    cv.redraw(); const H = st.hist, L = H[H.length - 1];
+    MB.stat("ds-rf-it", String(H.length - 1)); MB.stat("ds-rf-e", DS.sci(L.e, 2));
+    MB.stat("ds-rf-ratio", H.length > 1 ? DS.sci(L.e / H[H.length - 2].e, 2) : "—"); MB.stat("ds-rf-ku", DS.sci(kap * 6e-8, 2));
+    const m = document.getElementById("ds-rf-msg");
+    m.className = "ds-msg" + (kap * 6e-8 > 1 ? " bad" : "");
+    m.innerHTML = kap * 6e-8 > 1 ? `κ·u₃₂ = ${DS.num(kap * 6e-8, 1)} &gt; 1: 단정밀도 분해가 보정 방향조차 제대로 못 잡을 수 있는 영역입니다.` : `분해 1번(⅔n³ ≈ ${Math.round((2 / 3) * n ** 3).toLocaleString()} 연산, 단정밀도) + 반복마다 잔차·대입 약 4n² = ${(4 * n * n).toLocaleString()} 연산.`;
+  };
+  update();
+  MB.steps("ds-rf-k", KS, (v) => DS.sup(v), 1e4, (v) => { kap = v; reset(); update(); });
+  MB.steps("ds-rf-n", NS, (v) => String(v), 40, (v) => { n = v; reset(); update(); });
+  MB.seg("ds-rf-r", (v) => { rp = v; reset(); update(); });
+  document.getElementById("ds-rf-step").addEventListener("click", () => { step(); update(); });
+  document.getElementById("ds-rf-reset").addEventListener("click", () => { reset(); update(); });
+})();
+
+/* ================================================================ 8. 희소 채움 */
+(function () {
+  let ord = "nat", k = 12, sp = 100, R = null;
+  const grid = (k) => { const n = k * k, adj = [...Array(n)].map(() => new Set()), id = (i, j) => i * k + j; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) { if (i + 1 < k) { adj[id(i, j)].add(id(i + 1, j)); adj[id(i + 1, j)].add(id(i, j)); } if (j + 1 < k) { adj[id(i, j)].add(id(i, j + 1)); adj[id(i, j + 1)].add(id(i, j)); } } return adj; };
+  const rcm = (adj) => { const n = adj.length, deg = adj.map((s) => s.size); let start = 0; for (let i = 0; i < n; i++) if (deg[i] < deg[start]) start = i; const seen = new Array(n).fill(false), o = [start]; seen[start] = true; for (let h = 0; h < o.length; h++) { [...adj[o[h]]].filter((u) => !seen[u]).sort((a, b) => deg[a] - deg[b]).forEach((u) => { seen[u] = true; o.push(u); }); } return o.reverse(); };
+  const mindeg = (adj) => { const n = adj.length, g = adj.map((s) => new Set(s)), done = new Array(n).fill(false), o = []; for (let t = 0; t < n; t++) { let v = -1; for (let i = 0; i < n; i++) if (!done[i] && (v < 0 || g[i].size < g[v].size)) v = i; o.push(v); done[v] = true; const nb = [...g[v]]; nb.forEach((u) => g[u].delete(v)); for (let a = 0; a < nb.length; a++) for (let b = a + 1; b < nb.length; b++) { g[nb[a]].add(nb[b]); g[nb[b]].add(nb[a]); } } return o; };
+  const nd = (k) => { const o = []; const rec = (i0, i1, j0, j1) => { const h = i1 - i0, w = j1 - j0; if (h <= 0 || w <= 0) return; if (h * w <= 4) { for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) o.push(i * k + j); return; } if (w >= h) { const m = j0 + Math.floor(w / 2); rec(i0, i1, j0, m); rec(i0, i1, m + 1, j1); for (let i = i0; i < i1; i++) o.push(i * k + m); } else { const m = i0 + Math.floor(h / 2); rec(i0, m, j0, j1); rec(m + 1, i1, j0, j1); for (let j = j0; j < j1; j++) o.push(m * k + j); } }; rec(0, k, 0, k); return o; };
+  const compute = () => {
+    const adj = grid(k), n = k * k, order = ord === "nat" ? [...Array(n).keys()] : ord === "rcm" ? rcm(adj) : ord === "md" ? mindeg(adj) : nd(k);
+    const pos = new Array(n); order.forEach((v, i) => { pos[v] = i; });
+    const g = adj.map((s) => new Set(s)), Lcols = [], fillSet = new Set(); let orig = 0; adj.forEach((s) => { orig += s.size; }); orig /= 2;
+    for (const v of order) {
+      const nb = [...g[v]].filter((u) => pos[u] > pos[v]); Lcols.push(nb.map((u) => pos[u]));
+      for (let a = 0; a < nb.length; a++) for (let b = a + 1; b < nb.length; b++) { if (!g[nb[a]].has(nb[b])) { g[nb[a]].add(nb[b]); g[nb[b]].add(nb[a]); const p = Math.max(pos[nb[a]], pos[nb[b]]), q = Math.min(pos[nb[a]], pos[nb[b]]); fillSet.add(p * n + q); } }
+    }
+    const Ap = []; adj.forEach((s, v) => s.forEach((u) => { Ap.push([pos[v], pos[u]]); }));
+    let nnzL = n, flops = 0; Lcols.forEach((c) => { nnzL += c.length; flops += (c.length + 1) ** 2; });
+    R = { n, order, pos, Lcols, fillSet, Ap, orig, nnzL, flops };
+  };
+  compute();
+  const cv = MB.canvas("#ds-fl-cv", (ctx, w, hh) => {
+    const C = MB.palette(), n = R.n, gap = 18, side = Math.min((w - 3 * gap) / 2, hh - 56), y0 = 30, xA = (w - 2 * side - gap) / 2, xL = xA + side + gap, cell = side / n, sz = Math.max(cell, 1);
+    const upto = Math.round(n * sp / 100);
+    [xA, xL].forEach((x0) => { ctx.strokeStyle = C.border; ctx.strokeRect(x0, y0, side, side); });
+    ctx.fillStyle = C.text; for (let i = 0; i < n; i++) ctx.fillRect(xA + i * cell, y0 + i * cell, sz, sz);
+    R.Ap.forEach(([a, b]) => { ctx.fillStyle = C.dim; ctx.fillRect(xA + b * cell, y0 + a * cell, sz, sz); });
+    ctx.fillStyle = C.text; for (let i = 0; i < n; i++) ctx.fillRect(xL + i * cell, y0 + i * cell, sz, sz);
+    R.Lcols.forEach((rows, j) => { if (j >= upto) return; rows.forEach((i) => { ctx.fillStyle = R.fillSet.has(i * n + j) ? C.bad : C.dim; ctx.fillRect(xL + j * cell, y0 + i * cell, sz, sz); }); });
+    ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center";
+    ctx.fillText("PAPᵀ", xA + side / 2, y0 + side + 16); ctx.fillText("L (열 " + upto + "/" + n + ")", xL + side / 2, y0 + side + 16);
+  }, { aspect: 0.52, minHeight: 210, maxHeight: 400 });
+  const cg = MB.canvas("#ds-fl-g", (ctx, w, hh) => {
+    const C = MB.palette(), side = Math.min(w - 40, hh - 40), cell = side / k, x0 = (w - side) / 2, y0 = 30, upto = Math.round(R.n * sp / 100);
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) { const p = R.pos[i * k + j]; ctx.fillStyle = MB.rgb(MB.colormap(p / (R.n - 1), "viridis")); ctx.globalAlpha = sp < 100 && p < upto ? 0.3 : 1; ctx.fillRect(x0 + j * cell + 0.5, y0 + i * cell + 0.5, cell - 1, cell - 1); }
+    ctx.globalAlpha = 1;
+    if (k <= 12) { ctx.fillStyle = C.text; ctx.font = Math.max(8, cell * 0.36) + "px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "middle"; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) { const p = R.pos[i * k + j]; ctx.fillStyle = p / (R.n - 1) > 0.6 ? "#111" : "#fff"; ctx.fillText(String(p + 1), x0 + (j + 0.5) * cell, y0 + (i + 0.5) * cell); } }
+  }, { aspect: 0.5, minHeight: 200, maxHeight: 320 });
+  const update = () => {
+    cv.redraw(); cg.redraw(); const dense = R.n * (R.n + 1) / 2;
+    MB.stat("ds-fl-n", R.n + " · " + (R.n + R.orig).toLocaleString());
+    MB.stat("ds-fl-l", R.nnzL.toLocaleString() + " · " + R.fillSet.size.toLocaleString());
+    MB.stat("ds-fl-f", R.flops.toLocaleString());
+    MB.stat("ds-fl-r", DS.num(100 * R.nnzL / dense, 1) + "% 저장, 연산 " + DS.num(100 * R.flops / (R.n ** 3 / 3), 2) + "%");
+  };
+  update();
+  MB.seg("ds-fl-o", (v) => { ord = v; compute(); update(); });
+  MB.range("ds-fl-k", (v) => String(v), MB.throttle(() => { k = Number(document.getElementById("ds-fl-k").value); compute(); update(); }));
+  MB.range("ds-fl-s", (v) => v + "%", (v) => { sp = v; cv.redraw(); cg.redraw(); });
+})();
+</script>
+</body>
+</html>

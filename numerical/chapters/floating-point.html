@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>부동소수점과 오차 · NumericalBook</title>
+<meta name="description" content="컴퓨터가 실수를 저장하는 법. 0.1 + 0.2가 0.3이 아닌 이유, IEEE 754 배정밀도의 비트, 기계 엡실론과 ulp, 오버플로·언더플로·비정규 수, 자릿수 상쇄, 합산 순서와 카한 합산, 실제 사고 사례.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .fp-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .fp-msg b { color: var(--text); }
+  .fp-msg.ok { color: var(--ok); font-weight: 600; }
+  .fp-msg.bad { color: var(--bad); font-weight: 600; }
+  .fp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .fp-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .fp-tbl td, .fp-tbl th { font-family: var(--mono); text-align: right; }
+  .fp-tbl td:first-child, .fp-tbl th:first-child { text-align: left; font-family: inherit; }
+  .fp-grid { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 3px; padding: 16px 14px 10px; }
+  @media (min-width: 980px) { .fp-grid { grid-template-columns: repeat(32, minmax(0, 1fr)); } }
+  .fp-bit { font: 600 12px var(--mono); padding: 6px 0; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; color: var(--text); min-width: 0; }
+  .fp-bit.s { background: color-mix(in srgb, var(--bad) 22%, var(--surface)); }
+  .fp-bit.e { background: color-mix(in srgb, var(--accent-2) 22%, var(--surface)); }
+  .fp-bit.f { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  .fp-bit.one { border-color: var(--text); box-shadow: inset 0 -3px 0 var(--text-dim); }
+  .fp-bit:focus-visible { outline: 2px solid var(--accent); }
+  .fp-decode { padding: 4px 18px 14px; font: 13.5px/1.75 var(--mono); color: var(--text-dim); overflow-wrap: anywhere; }
+  .fp-decode b { color: var(--text); }
+  .fp-decode .fp-s { color: var(--bad); } .fp-decode .fp-e { color: var(--accent-2); } .fp-decode .fp-f { color: var(--accent); }
+  .fp-in { font: 14px var(--mono); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); width: 100%; box-sizing: border-box; }
+  .fp-scroll { max-height: 300px; overflow: auto; border-top: 1px solid var(--border); }
+  .fp-scroll table { margin: 0; font-size: 13px; }
+  .fp-scroll tr.fp-last td { color: var(--bad); font-weight: 700; }
+  .fp-steps { padding: 6px 18px 14px; font: 13.5px/1.8 var(--mono); overflow-x: auto; }
+  .fp-steps table { margin: 0; }
+  .fp-steps td { white-space: nowrap; }
+  #sim-fp-bits .sim-readout .v { overflow-wrap: anywhere; }
+  @media (max-width: 560px) { .fp-steps td { display: block; white-space: normal; overflow-wrap: anywhere; text-align: left !important; } .fp-steps td:first-child { border-bottom: 0; padding-bottom: 0; color: var(--text-dim); } }
+  .fp-steps .fp-same { color: var(--bad); text-decoration: underline; text-decoration-thickness: 2px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="floating-point">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 01</div>
+    <h1 data-no-glossary>부동소수점과 오차</h1>
+    <p class="lead">계산기에 0.1 + 0.2를 넣으면 0.3이 나오지만, 대부분의 프로그래밍 언어는 <code>0.30000000000000004</code>를 돌려줍니다. 버그가 아닙니다. 컴퓨터는 실수를 <b>유한한 비트</b>로 저장하고, 모든 연산 결과를 그 유한한 집합의 가장 가까운 원소로 <b>반올림</b>합니다. 수치해석은 바로 이 사실에서 출발합니다. 이 책 전체의 관점은 하나입니다. <b>컴퓨터는 유한한 수와 유한한 단계로 근사한다. 좋은 수치해석은 그 오차를 예측하고, 통제하고, 비용과 바꾸는 기술이다.</b> 이 장은 그 첫 번째 오차, 곧 수를 저장하는 순간 생기는 반올림 오차를 해부합니다. 64개의 비트가 어떻게 수가 되는지, 표현할 수 있는 수가 수직선 위에 어떻게 흩어져 있는지, 단 하나의 상수 \(u \approx 1.1\times10^{-16}\)이 모든 연산의 오차를 어떻게 묶어 주는지, 그리고 그 작은 오차가 뺄셈과 긴 합산에서 어떻게 치명적으로 커지는지 차례로 봅니다.</p>
+    <ul class="objectives">
+      <li>정수·고정소수점 표현의 한계를 설명하고, 부동소수점 수 체계 \(\mathbb F(\beta, p, e_{\min}, e_{\max})\)를 정의한다.</li>
+      <li>IEEE 754 배정밀도 수의 부호·지수·가수 비트를 읽고 쓰며, 0.1이 왜 정확히 저장되지 않는지 설명한다.</li>
+      <li>부동소수점 수의 간격이 크기에 비례한다는 사실과 기계 엡실론 \(\varepsilon\), 반올림 단위 \(u\), ulp의 관계를 안다.</li>
+      <li>오버플로·언더플로·비정규 수·Inf·NaN이 언제 생기고 어떻게 피하는지 안다.</li>
+      <li>절대·상대 오차와 유효 숫자를 계산하고, 자릿수 상쇄가 상대 오차를 \((|x| + |y|)/|x - y|\)배 키운다는 것을 증명한다.</li>
+      <li>합산 오차의 상한 \((n-1)u\sum|x_i|\)을 유도하고, 합산 순서·짝짓기 합산·카한 합산으로 오차를 줄인다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>어느 컴퓨터에서나 같은 답이 나오는 계산</b></div>
+      <div class="o-body"><p>1970년대까지 컴퓨터 회사마다 실수를 저장하는 형식과 반올림 규칙이 달랐습니다. 같은 프로그램이 기계에 따라 다른 답을 냈고, 어떤 기계에서는 \(x \ne y\)인데 \(x - y = 0\)이 되기도 했습니다. 수치 소프트웨어를 만드는 사람은 기계마다 오차 분석을 다시 해야 했습니다. 1985년에 제정된 <b>IEEE 754 표준</b>은 수의 형식과 함께 "사칙연산과 제곱근의 결과는 정확한 값을 올바르게 반올림한 것이어야 한다"는 규칙을 정했습니다. 이 표준을 이끈 카한<span class="en">(William Kahan)</span>은 1989년 튜링상을 받았습니다.</p>
+        <p>이 한 줄의 규칙 덕분에 모든 연산의 오차를 \(\mathrm{fl}(x \circ y) = (x \circ y)(1 + \delta)\), \(|\delta| \le u\)라는 하나의 식으로 묶을 수 있게 되었습니다. 이 책의 모든 오차 분석, 곧 일기예보·구조 해석·회로 시뮬레이션·기계 학습 라이브러리가 믿고 쓰는 계산의 보증이 이 식 위에 서 있습니다.</p>
+        <div class="o-chain"><span>무한히 많은 실수</span><i>→</i><span>64비트에 담기</span><i>→</i><span class="tool">fl(x) = x(1 + δ), |δ| ≤ u</span><i>→</i><span>오차를 예측하는 계산</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="point-one">
+    <h2>0.1 + 0.2 ≠ 0.3: 수치해석의 출발점</h2>
+    <div class="problem"><strong>0.1을 열 번 더하면 1이 아니다</strong>
+      <p>센서 값을 0.1초마다 읽어 시간을 누적하는 프로그램이 있습니다. <code>t = 0; for (i = 0; i &lt; 10; i++) t += 0.1;</code>를 실행하면 <code>t</code>는 <code>0.9999999999999999</code>이고, <code>t == 1</code>은 거짓입니다. 이 조건으로 반복을 멈추는 코드는 영원히 멈추지 않습니다. 왜 이런 일이 생길까요? 오차는 얼마나 클 수 있고, 어디서 커질까요?</p></div>
+    <p>원인은 간단합니다. 컴퓨터는 수를 <b>2진법</b>으로 저장하는데, 10진법의 0.1은 2진법에서 끝나지 않는 소수입니다. 1/3이 10진법에서 \(0.333\ldots\)로 끝나지 않는 것과 같습니다. 0.1에 2를 거듭 곱하며 정수 부분을 떼어 내면 2진 자리가 하나씩 나옵니다.</p>
+    <div class="callout"><strong>예제 1.1 (0.1의 2진 전개)</strong> 0.1에 2를 곱하고 정수 부분을 다음 자리로 떼어 내는 일을 되풀이하라.
+      <ol>
+        <li>\(0.1\times2 = 0.2 \to 0\), \(0.2\times2 = 0.4 \to 0\), \(0.4\times2 = 0.8 \to 0\), \(0.8\times2 = 1.6 \to 1\) (남은 0.6), \(0.6\times2 = 1.2 \to 1\) (남은 0.2).</li>
+        <li>남은 값이 다시 0.2가 되었으므로 이후는 "0011"이 영원히 반복된다: \(0.1 = 0.0\,0011\,0011\,0011\ldots_2\).</li>
+        <li>배정밀도는 첫 1부터 53자리만 저장하고 나머지를 반올림한다. 그래서 실제로 저장되는 수는
+          <div class="formula">$$\mathrm{fl}(0.1) = 0.1000000000000000055511151231257827021181583404541015625$$</div>
+          이다. 오차는 약 \(5.55\times10^{-18}\), 상대 오차로 \(5.55\times10^{-17}\)이다.</li>
+        <li>같은 방식으로 \(\mathrm{fl}(0.2) = 0.2000000000000000111\ldots\), \(\mathrm{fl}(0.3) = 0.2999999999999999888\ldots\)이다. \(\mathrm{fl}(0.1) + \mathrm{fl}(0.2)\)의 정확한 합 \(0.3000000000000000166\ldots\)은 이웃한 두 double의 정확히 한가운데라, 마지막 비트가 짝수인 쪽으로 반올림되어 \(0.3000000000000000444\ldots\)이 되고, 이는 \(\mathrm{fl}(0.3)\)과 바로 옆의 다른 수다. 둘의 차이는 \(5.55\times10^{-17}\), 곧 이 근처 수 간격(ulp) 한 칸이다.</li>
+      </ol></div>
+    <p>이 현상은 프로그래밍 언어의 결함이 아니라 <b>유한한 비트</b>로 실수를 다루는 모든 계산의 성질입니다. 그리고 수치해석이 다루는 오차 가운데 하나일 뿐입니다. 실제 계산의 답이 참값과 다른 이유는 크게 네 가지입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 230" role="img" aria-label="현실에서 컴퓨터 출력까지 네 가지 오차의 출처">
+        <rect x="10" y="10" width="780" height="210" rx="10" class="f-surface"/>
+        <g>
+          <rect x="30" y="40" width="150" height="64" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="105" y="68" text-anchor="middle" class="t" style="font-weight:700">현실의 현상</text>
+          <text x="105" y="90" text-anchor="middle" class="t-dim">다리, 대기, 회로</text>
+          <rect x="220" y="40" width="150" height="64" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="295" y="68" text-anchor="middle" class="t" style="font-weight:700">수학 모델</text>
+          <text x="295" y="90" text-anchor="middle" class="t-dim">미분방정식, 적분</text>
+          <rect x="410" y="40" width="150" height="64" rx="8" class="f-elev" style="stroke:var(--border)"/>
+          <text x="485" y="68" text-anchor="middle" class="t" style="font-weight:700">이산 알고리즘</text>
+          <text x="485" y="90" text-anchor="middle" class="t-dim">유한 단계, 간격 h</text>
+          <rect x="600" y="40" width="170" height="64" rx="8" class="f-acc-soft"/>
+          <text x="685" y="68" text-anchor="middle" class="t" style="font-weight:700">컴퓨터 출력</text>
+          <text x="685" y="90" text-anchor="middle" class="t-dim">유한 비트의 수</text>
+        </g>
+        <g class="s-line" style="stroke-width:1.6"><line x1="180" y1="72" x2="216" y2="72"/><line x1="370" y1="72" x2="406" y2="72"/><line x1="560" y1="72" x2="596" y2="72"/></g>
+        <text x="198" y="140" text-anchor="middle" class="t" style="fill:var(--warn)">모델 오차</text>
+        <text x="198" y="160" text-anchor="middle" class="t-dim">마찰 무시, 선형화</text>
+        <text x="295" y="190" text-anchor="middle" class="t" style="fill:var(--warn)">데이터 오차</text>
+        <text x="295" y="208" text-anchor="middle" class="t-dim">측정값의 잡음</text>
+        <text x="388" y="140" text-anchor="middle" class="t" style="fill:var(--accent-2)">절단 오차</text>
+        <text x="388" y="160" text-anchor="middle" class="t-dim">급수를 자르고 h로 근사</text>
+        <text x="580" y="140" text-anchor="middle" class="t" style="fill:var(--bad)">반올림 오차</text>
+        <text x="580" y="160" text-anchor="middle" class="t-dim">이 장의 주제</text>
+        <text x="680" y="190" text-anchor="middle" class="t-dim">수치해석이 다루는 것:</text>
+        <text x="680" y="208" text-anchor="middle" class="t-dim">절단 + 반올림 + 그 전파</text>
+      </svg>
+      <figcaption><b>그림 1-1.</b> 계산 결과가 참값과 다른 네 가지 이유. 모델 오차와 데이터 오차는 수치해석 이전의 문제이고, 수치해석은 <b>절단 오차</b>(무한 과정을 유한하게 자름)와 <b>반올림 오차</b>(실수를 유한 비트로 저장함), 그리고 앞선 오차가 계산을 거치며 커지거나 줄어드는 <b>전파</b>를 다룬다. 2장의 조건수가 전파를 재는 도구다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정의 1.1 (절단 오차와 반올림 오차)</strong> 무한 과정(급수, 극한, 적분, 미분)을 유한한 단계로 대신해서 생기는 오차를 <span class="term">절단 오차</span><span class="en">(truncation error)</span>라 한다. 예: \(e^x \approx \sum_{k=0}^{n} x^k/k!\), \(f'(x) \approx (f(x + h) - f(x))/h\). 실수를 유한한 자릿수의 수로 저장하거나 연산 결과를 유한 자릿수로 줄여서 생기는 오차를 <span class="term">반올림 오차</span><span class="en">(rounding error)</span>라 한다.</div>
+    <p>절단 오차는 단계 수를 늘리거나 간격 \(h\)를 줄이면 작아집니다. 3장부터 16장까지 이 책의 대부분은 절단 오차를 \(O(h^p)\)로 재고 줄이는 이야기입니다. 반올림 오차는 반대로, 단계를 늘릴수록 쌓이고 \(h\)를 줄일수록 커지기도 합니다(<a href="differentiation.html">9장</a>의 V자 그래프). 두 오차의 균형을 잡으려면 먼저 반올림 오차의 크기를 정확히 알아야 합니다. MathBook의 <a href="../../foundations/chapters/numerics.html">컴퓨터는 어떻게 틀리는가</a>에서 맛본 내용을 여기서 엄밀하게 다시 세웁니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="fixed-point">
+    <h2>정수와 고정소수점의 한계</h2>
+    <div class="problem"><strong>원자의 질량과 별의 질량을 같은 변수에</strong>
+      <p>전자의 질량은 \(9.1\times10^{-31}\) kg, 태양의 질량은 \(2.0\times10^{30}\) kg입니다. 한 시뮬레이션 안에서 두 값이 모두 나올 수 있습니다. 소수점 위치를 고정한 표현으로 둘을 모두 담으려면 몇 자리가 필요할까요?</p></div>
+    <p>가장 단순한 표현은 정수입니다. 32비트 부호 있는 정수(2의 보수)는 \(-2^{31}\)부터 \(2^{31} - 1 = 2\,147\,483\,647\)까지를 <b>간격 1로 빠짐없이</b> 담습니다. 이 범위 안의 덧셈·곱셈은 정확합니다. 그러나 범위를 넘으면 경고 없이 값이 돌아갑니다. \(2\,147\,483\,647 + 1\)은 32비트 연산에서 \(-2\,147\,483\,648\)이 됩니다(자바스크립트로 <code>(2147483647 + 1) | 0</code>).</p>
+    <p>소수를 담으려면 <span class="term">고정소수점</span><span class="en">(fixed point)</span> 표현을 씁니다. 32비트 중 아래 16비트를 소수 부분으로 정하면(Q16.16 형식) 저장된 정수 \(N\)이 값 \(N/2^{16}\)을 뜻합니다. 간격은 \(2^{-16} \approx 1.5\times10^{-5}\)로 일정하고, 범위는 \(\pm 32768\)입니다. 신호 처리 칩이나 부동소수점 장치가 없는 마이크로컨트롤러는 지금도 이 방식을 씁니다. 하지만 간격이 <b>절대적으로</b> 고정되어 있다는 것이 치명적입니다.</p>
+    <ul>
+      <li>\(0.00001\)을 저장하면 가장 가까운 값은 \(1/65536 = 0.0000153\)이라 상대 오차가 50%를 넘는다.</li>
+      <li>\(30000\)을 저장하면 상대 오차는 \(10^{-10}\) 수준으로 지나치게 정확하다.</li>
+      <li>\(10^{-31}\)과 \(10^{30}\)을 함께 담으려면 소수점 앞뒤로 각각 100비트가 넘게 필요하다.</li>
+    </ul>
+    <p>과학자들이 오래전부터 쓰는 해법은 <b>과학적 표기법</b>입니다. \(9.1\times10^{-31}\)처럼 <b>유효 숫자 몇 자리</b>와 <b>지수</b>를 따로 적으면, 크기와 상관없이 상대 정밀도가 일정합니다. 컴퓨터의 부동소수점은 이것을 2진법으로 옮긴 것입니다. 소수점이 지수에 따라 "떠다닌다"<span class="en">(floating)</span>고 해서 붙은 이름입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 800 210" role="img" aria-label="고정소수점과 부동소수점 수의 간격 비교">
+        <rect x="10" y="10" width="780" height="190" rx="10" class="f-surface"/>
+        <text x="30" y="44" class="t" style="font-weight:700">고정소수점: 간격이 일정</text>
+        <line x1="40" y1="80" x2="760" y2="80" class="s-axis"/>
+        <g style="stroke:var(--accent-2);stroke-width:1.6">
+          <line x1="40" y1="70" x2="40" y2="90"/><line x1="85" y1="70" x2="85" y2="90"/><line x1="130" y1="70" x2="130" y2="90"/><line x1="175" y1="70" x2="175" y2="90"/><line x1="220" y1="70" x2="220" y2="90"/><line x1="265" y1="70" x2="265" y2="90"/><line x1="310" y1="70" x2="310" y2="90"/><line x1="355" y1="70" x2="355" y2="90"/><line x1="400" y1="70" x2="400" y2="90"/><line x1="445" y1="70" x2="445" y2="90"/><line x1="490" y1="70" x2="490" y2="90"/><line x1="535" y1="70" x2="535" y2="90"/><line x1="580" y1="70" x2="580" y2="90"/><line x1="625" y1="70" x2="625" y2="90"/><line x1="670" y1="70" x2="670" y2="90"/><line x1="715" y1="70" x2="715" y2="90"/><line x1="760" y1="70" x2="760" y2="90"/>
+        </g>
+        <text x="40" y="108" text-anchor="middle" class="t-mono">0</text><text x="760" y="108" text-anchor="middle" class="t-mono">16</text>
+        <text x="420" y="44" class="t-dim">작은 수 근처에서 상대 오차가 크다</text>
+        <text x="30" y="140" class="t" style="font-weight:700">부동소수점: 간격이 크기에 비례</text>
+        <line x1="40" y1="176" x2="760" y2="176" class="s-axis"/>
+        <g style="stroke:var(--accent);stroke-width:1.6">
+          <line x1="40" y1="166" x2="40" y2="186"/>
+          <line x1="51" y1="166" x2="51" y2="186"/><line x1="57" y1="166" x2="57" y2="186"/><line x1="62" y1="166" x2="62" y2="186"/><line x1="68" y1="166" x2="68" y2="186"/>
+          <line x1="85" y1="166" x2="85" y2="186"/><line x1="96" y1="166" x2="96" y2="186"/><line x1="107" y1="166" x2="107" y2="186"/><line x1="119" y1="166" x2="119" y2="186"/>
+          <line x1="130" y1="166" x2="130" y2="186"/><line x1="152" y1="166" x2="152" y2="186"/><line x1="175" y1="166" x2="175" y2="186"/><line x1="197" y1="166" x2="197" y2="186"/>
+          <line x1="220" y1="166" x2="220" y2="186"/><line x1="265" y1="166" x2="265" y2="186"/><line x1="310" y1="166" x2="310" y2="186"/><line x1="355" y1="166" x2="355" y2="186"/>
+          <line x1="400" y1="166" x2="400" y2="186"/><line x1="490" y1="166" x2="490" y2="186"/><line x1="580" y1="166" x2="580" y2="186"/><line x1="670" y1="166" x2="670" y2="186"/><line x1="760" y1="166" x2="760" y2="186"/>
+        </g>
+        <text x="40" y="200" text-anchor="middle" class="t-mono">0</text><text x="130" y="200" text-anchor="middle" class="t-mono">2</text><text x="220" y="200" text-anchor="middle" class="t-mono">4</text><text x="400" y="200" text-anchor="middle" class="t-mono">8</text><text x="760" y="200" text-anchor="middle" class="t-mono">16</text>
+        <text x="420" y="140" class="t-dim">2의 거듭제곱마다 간격이 두 배</text>
+      </svg>
+      <figcaption><b>그림 1-2.</b> 같은 개수의 수를 고정소수점은 고르게, 부동소수점은 2의 거듭제곱 구간마다 같은 개수씩(여기서는 4개) 놓는다. 그래서 부동소수점의 <b>상대</b> 간격은 크기와 거의 무관하다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="ieee754">
+    <h2>IEEE 754 배정밀도: 부호·지수·가수</h2>
+    <div class="callout deep"><strong>정의 1.2 (부동소수점 수 체계)</strong> 밑 \(\beta\), 정밀도 \(p\), 지수 범위 \([e_{\min}, e_{\max}]\)의 <span class="term">부동소수점 수</span><span class="en">(floating-point number)</span>는
+      <div class="formula">$$x = \pm\, (d_0.d_1d_2\ldots d_{p-1})_\beta \times \beta^{e}, \qquad 0 \le d_i \le \beta - 1,\quad e_{\min} \le e \le e_{\max}$$</div>
+      꼴의 수다. \(d_0.d_1\ldots d_{p-1}\)을 <span class="term">가수</span><span class="en">(significand, mantissa)</span>, \(e\)를 <span class="term">지수</span><span class="en">(exponent)</span>라 한다. \(d_0 \ne 0\)이면 <b>정규화</b>되었다고 한다. 이런 수 전체와 0의 집합을 \(\mathbb F(\beta, p, e_{\min}, e_{\max})\)로 쓴다.</div>
+    <p>\(\beta = 2\)이면 정규화된 수의 첫 자리 \(d_0\)은 언제나 1입니다. 그래서 저장할 필요가 없습니다. 이 "숨은 비트" 덕분에 52비트로 53자리의 정밀도를 얻습니다. IEEE 754의 배정밀도<span class="en">(binary64, double)</span>가 바로 \(\mathbb F(2, 53, -1022, 1023)\)입니다.</p>
+    <div class="callout deep"><strong>정의 1.3 (IEEE 754 binary64)</strong> 64비트를 부호 1비트 \(s\), 지수 11비트 \(E\)(부호 없는 정수 0–2047), 소수 52비트 \(f = f_1f_2\ldots f_{52}\)로 나누고 다음과 같이 해석한다.
+      <div class="formula">$$x = \begin{cases} (-1)^s \times (1.f_1f_2\ldots f_{52})_2 \times 2^{E - 1023}, & 1 \le E \le 2046 \ (\text{정규 수}) \\ (-1)^s \times (0.f_1f_2\ldots f_{52})_2 \times 2^{-1022}, & E = 0 \ (\text{0과 비정규 수}) \\ (-1)^s \times \infty \ (f = 0), \quad \text{NaN}\ (f \ne 0), & E = 2047 \end{cases}$$
+        <div class="where">1023을 <b>지수 편향</b><span class="en">(exponent bias)</span>이라 한다. 편향을 쓰면 지수 비트를 부호 없는 정수로 비교할 수 있어, 양수끼리의 크기 비교가 64비트 정수 비교와 같아진다.</div></div></div>
+    <div class="callout"><strong>예제 1.2 (−2.5와 0.1을 비트로)</strong>
+      <ol>
+        <li>\(-2.5 = -10.1_2 = -1.01_2\times2^1\). 부호 \(s = 1\), 지수 \(E = 1 + 1023 = 1024 = 10000000000_2\), 소수 \(f = 0100\ldots0\). 16진수로 <code>c004000000000000</code>.</li>
+        <li>\(0.1 = 1.1001\,1001\,1001\ldots_2 \times 2^{-4}\). \(E = -4 + 1023 = 1019 = 01111111011_2\). 소수 52비트는 \(1001\) 반복이고, 53번째 이후 비트가 \(1001\ldots\)(절반보다 큼)이라 마지막 자리를 올린다: \(\ldots1001\,1001\,1010\). 16진수로 <code>3fb999999999999a</code>. 끝의 <code>a</code>(1010)가 올림의 흔적이다.</li>
+        <li>\(1 = 1.0_2\times 2^0\)은 \(E = 1023\), \(f = 0\), <code>3ff0000000000000</code>.</li>
+      </ol></div>
+    <div class="table-wrap"><table class="fp-tbl">
+      <thead><tr><th>형식</th><th>비트</th><th>지수 비트</th><th>정밀도 p</th><th>ε = 2<sup>1−p</sup></th><th>최댓값</th><th>최소 정규 수</th></tr></thead>
+      <tbody>
+        <tr><td>반정밀도 binary16</td><td>16</td><td>5</td><td>11</td><td>9.77×10⁻⁴</td><td>65504</td><td>6.10×10⁻⁵</td></tr>
+        <tr><td>bfloat16 (IEEE 아님)</td><td>16</td><td>8</td><td>8</td><td>7.81×10⁻³</td><td>3.39×10³⁸</td><td>1.18×10⁻³⁸</td></tr>
+        <tr><td>단정밀도 binary32</td><td>32</td><td>8</td><td>24</td><td>1.19×10⁻⁷</td><td>3.40×10³⁸</td><td>1.18×10⁻³⁸</td></tr>
+        <tr><td>배정밀도 binary64</td><td>64</td><td>11</td><td>53</td><td>2.22×10⁻¹⁶</td><td>1.80×10³⁰⁸</td><td>2.23×10⁻³⁰⁸</td></tr>
+        <tr><td>4배정밀도 binary128</td><td>128</td><td>15</td><td>113</td><td>1.93×10⁻³⁴</td><td>1.19×10⁴⁹³²</td><td>3.36×10⁻⁴⁹³²</td></tr>
+      </tbody></table></div>
+    <p>배정밀도의 53비트는 10진법으로 \(53\log_{10}2 \approx 15.95\)자리입니다. "double은 십진 15–16자리"라는 말이 여기서 나옵니다. 단정밀도는 약 7자리입니다. 기계 학습 가속기가 즐겨 쓰는 16비트 형식은 2자리에서 3자리 남짓이라, 2장의 혼합 정밀도 기법과 함께 써야 합니다.</p>
+    <p>아래 편집기에서 비트를 직접 눌러 보세요. 64칸 각각이 값에 어떻게 기여하는지, 지수 비트를 바꾸면 값이 2배씩 뛰고 소수 마지막 비트를 바꾸면 값이 ulp 한 칸만 움직이는 것을 볼 수 있습니다.</p>
+
+    <div class="sim" id="sim-fp-bits">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>64비트 편집기: 비트를 눌러 배정밀도 수 만들기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view">
+          <div class="fp-grid" id="fp-bits-grid" role="group" aria-label="64개 비트"></div>
+          <div class="fp-legend" style="border-top:0"><span><i style="background:var(--bad)"></i>부호 s (1비트)</span><span><i style="background:var(--accent-2)"></i>지수 E (11비트)</span><span><i style="background:var(--accent)"></i>소수 f (52비트)</span></div>
+          <div class="fp-decode" id="fp-bits-decode"></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>10진수 입력 (Enter)</span><input class="fp-in" id="fp-bits-in" value="0.1" inputmode="decimal" aria-label="10진수 입력"></label>
+          <label class="ctrl"><span>프리셋</span><select id="fp-bits-pre">
+            <option value="0.1">0.1</option>
+            <option value="1">1</option>
+            <option value="-2.5">−2.5</option>
+            <option value="third">1/3</option>
+            <option value="9007199254740992">2⁵³</option>
+            <option value="max">최댓값</option>
+            <option value="minn">최소 정규 수 2⁻¹⁰²²</option>
+            <option value="mins">최소 비정규 수 2⁻¹⁰⁷⁴</option>
+            <option value="negzero">−0</option>
+            <option value="inf">+∞</option>
+            <option value="nan">NaN</option>
+          </select></label>
+          <div class="btn-row"><button class="btn" id="fp-bits-down">◀ 이전 수</button><button class="btn" id="fp-bits-up">다음 수 ▶</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">16진수</span><span class="v" id="fp-bits-hex">—</span></div>
+        <div class="stat"><span class="k">종류</span><span class="v" id="fp-bits-kind">—</span></div>
+        <div class="stat"><span class="k">값 (최단 표기)</span><span class="v" id="fp-bits-val">—</span></div>
+        <div class="stat"><span class="k">ulp (다음 수까지)</span><span class="v" id="fp-bits-ulp">—</span></div>
+      </div>
+      <div class="fp-msg" id="fp-bits-msg"></div>
+      <div class="sim-note">해볼 것: ① 0.1에서 '다음 수 ▶'를 누르면 0.10000000000000002가 됩니다. 그 사이에는 double이 없습니다. ② 1에서 지수의 마지막 비트를 누르면 0.5(지수 −1)가 되고, 소수의 마지막(오른쪽 끝) 비트를 누르면 1 + 2⁻⁵²가 됩니다. ③ 지수를 모두 0으로 만들면 비정규 수, 모두 1로 만들면 ∞나 NaN이 됩니다. 모델: 값은 브라우저의 Float64(IEEE 754 binary64) 그대로이고, 정확한 10진값은 정수 산술로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="spacing">
+    <h2>수직선 위의 부동소수점 수: 간격은 크기에 비례한다</h2>
+    <p>부동소수점 수는 수직선 위에 고르게 놓여 있지 않습니다. 지수가 같은 수들, 곧 구간 \([2^e, 2^{e+1})\) 안의 수들은 가수의 마지막 자리 한 칸씩 떨어져 있습니다. 지수가 하나 커지면 같은 개수의 수가 두 배 넓은 구간에 퍼집니다.</p>
+    <div class="callout deep"><strong>정리 1.4 (부동소수점 수의 간격)</strong> \(\mathbb F(2, p, e_{\min}, e_{\max})\)에서 \(e_{\min} \le e \le e_{\max}\)일 때 구간 \([2^e, 2^{e+1})\) 안에는 정확히 \(2^{p-1}\)개의 수
+      \(2^e,\ 2^e + 2^{e-p+1},\ 2^e + 2\cdot2^{e-p+1},\ \dots\)가 간격 \(2^{e-p+1}\)로 놓인다. 따라서 이 구간의 수 \(x\)와 다음 수의 간격을 \(|x|\)로 나눈 <b>상대 간격</b>은
+      <div class="formula">$$2^{-p} \lt \frac{2^{e-p+1}}{|x|} \le 2^{1-p}$$</div>
+      로, 크기와 무관하게 두 배 범위 안에 있다.
+      <p style="margin:8px 0 0"><b>증명.</b> 정규화된 가수 \(1.f_1\ldots f_{p-1}\)은 \(p-1\)개의 비트로 \(2^{p-1}\)가지 값을 가지며, 이웃한 가수의 차는 \(2^{-(p-1)}\)이다. 여기에 \(2^e\)를 곱하면 간격 \(2^{e-p+1}\)이다. \(2^e \le |x| \lt 2^{e+1}\)로 나누면 상대 간격의 범위가 나온다. ∎</p></div>
+    <p>배정밀도에서 1 다음 수는 \(1 + 2^{-52}\), 1000 근처의 간격은 \(1.14\times10^{-13}\), \(10^{16}\) 근처의 간격은 2입니다. 그래서 \(10^{16} + 1\)은 \(10^{16}\)으로 반올림되어 사라집니다. 정수를 빠짐없이 담는 한계는 \(2^{53} = 9\,007\,199\,254\,740\,992\)이고, \(2^{53} + 1\)은 double로 표현할 수 없습니다. 자바스크립트의 <code>Number.MAX_SAFE_INTEGER</code>가 \(2^{53} - 1\)인 이유입니다.</p>
+    <p>아래 시뮬레이터는 정밀도 \(p\)와 지수 범위를 작게 줄인 "장난감 부동소수점 체계"를 수직선에 그립니다. 64비트 체계도 정확히 같은 모양이고, 단지 눈금이 \(2^{52}\)배 촘촘할 뿐입니다.</p>
+
+    <div class="sim" id="sim-fp-line">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>장난감 부동소수점 수직선: 간격과 반올림</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-ln-cv"></canvas><span class="tag-tl">수직선을 클릭·드래그해 x를 고르기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>정밀도 p (가수 비트) <output id="fp-ln-p-out"></output></span><input type="range" id="fp-ln-p" min="2" max="5" step="1" value="3"></label>
+          <label class="ctrl"><span>최대 지수 eₘₐₓ <output id="fp-ln-e-out"></output></span><input type="range" id="fp-ln-e" min="1" max="3" step="1" value="2"></label>
+          <div class="ctrl"><span>가로축</span><div class="seg" id="fp-ln-axis"><button data-value="lin" class="on">선형</button><button data-value="log">로그</button></div></div>
+          <label class="check"><input type="checkbox" id="fp-ln-sub" checked> 비정규 수 포함</label>
+        </div>
+      </div>
+      <div class="fp-legend"><span><i style="background:var(--accent)"></i>정규 수</span><span><i style="background:var(--warn)"></i>비정규 수</span><span><i style="background:var(--bad)"></i>x와 fl(x)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">양수 개수</span><span class="v" id="fp-ln-n">—</span></div>
+        <div class="stat"><span class="k">최댓값 · 최소 정규 수</span><span class="v" id="fp-ln-rng">—</span></div>
+        <div class="stat"><span class="k">x → fl(x)</span><span class="v" id="fp-ln-x">—</span></div>
+        <div class="stat"><span class="k">상대 오차 / u</span><span class="v" id="fp-ln-err">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 선형 축에서 2의 거듭제곱(긴 눈금)을 지날 때마다 간격이 두 배가 되는 것을 보세요. ② 로그 축으로 바꾸면 구간마다 눈금 수가 같아 거의 고르게 보입니다. 상대 간격이 일정하다는 뜻입니다. ③ x를 끌며 상대 오차가 언제나 u = 2<sup>−p</sup> 이하인지 확인하세요. 단, 비정규 수 구간과 최댓값 너머에서는 이 보장이 깨집니다. 모델: 𝔽(2, p, 1 − e<sub>max</sub>, e<sub>max</sub>), 가장 가까운 수로 반올림(동률이면 짝수), 최댓값을 넘는 x는 ∞.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="epsilon">
+    <h2>기계 엡실론, 반올림 단위, ulp</h2>
+    <div class="problem"><strong>1에 더해도 1이 그대로인 가장 큰 수</strong>
+      <p>"충분히 작은 수"를 판단하는 코드, 예를 들어 반복을 멈추는 조건 <code>|x_new − x| &lt; tol</code>에서 tol을 \(10^{-20}\)으로 두면 어떻게 될까요? \(x \approx 1\)인 근처에서 두 double의 차이는 0이 아니면 최소 \(2.2\times10^{-16}\)이므로 이 조건은 \(x_{\text{new}} = x\)일 때만 참이 됩니다. 컴퓨터가 구별할 수 있는 상대 차이의 한계를 알아야 합니다.</p></div>
+    <div class="callout deep"><strong>정의 1.5 (기계 엡실론, 반올림 단위, ulp)</strong>
+      <ul style="margin:6px 0 0">
+        <li><span class="term">기계 엡실론</span><span class="en">(machine epsilon)</span> \(\varepsilon\)은 1과 1 다음의 부동소수점 수 사이의 간격이다. \(\mathbb F(2, p, \cdot, \cdot)\)에서 \(\varepsilon = 2^{1-p}\), 배정밀도에서 \(\varepsilon = 2^{-52} \approx 2.22\times10^{-16}\).</li>
+        <li><span class="term">반올림 단위</span><span class="en">(unit roundoff)</span> \(u = \varepsilon/2 = 2^{-p}\). 배정밀도에서 \(u = 2^{-53} \approx 1.11\times10^{-16}\).</li>
+        <li>부동소수점 수 \(x\)의 <span class="term">ulp</span><span class="en">(unit in the last place)</span>는 \(x\)가 속한 구간 \([2^e, 2^{e+1})\)의 간격 \(2^{e-p+1} = \varepsilon\cdot2^e\)이다.</li>
+      </ul></div>
+    <p>IEEE 754의 기본 반올림은 <b>가장 가까운 수로, 동률이면 마지막 비트가 0인(짝수) 쪽으로</b><span class="en">(round to nearest, ties to even)</span>입니다. 동률을 늘 위로 올리면 긴 계산에서 오차가 한쪽으로 쏠리기 때문에, 짝수 쪽을 골라 평균적으로 상쇄되게 한 것입니다. 이 반올림에서 오차 상한은 간격의 절반입니다.</p>
+    <div class="callout deep"><strong>정리 1.6 (반올림 오차의 상한)</strong> \(x\)가 정규 수 범위 안의 실수이고 \(\mathrm{fl}(x)\)가 가장 가까운 부동소수점 수로의 반올림이면
+      <div class="formula">$$\mathrm{fl}(x) = x(1 + \delta), \qquad |\delta| \le u = 2^{-p}.$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(2^e \le |x| \lt 2^{e+1}\)이라 하자. 정리 1.4에 따라 이 구간의 간격은 \(2^{e-p+1}\)이므로 가장 가까운 수까지의 거리는 그 절반 \(2^{e-p}\) 이하다. 따라서 \(|\mathrm{fl}(x) - x|/|x| \le 2^{e-p}/2^e = 2^{-p}\). \(\delta = (\mathrm{fl}(x) - x)/x\)로 두면 된다. ∎</p></div>
+    <p>이 정리는 수 하나를 저장할 때의 이야기입니다. IEEE 754는 여기에 결정적인 약속을 더합니다. \(+, -, \times, \div, \sqrt{\ }\)의 결과는 <b>정확한 결과를 반올림한 값</b>이어야 합니다<span class="en">(correctly rounded)</span>. 그러므로 부동소수점 수 \(x, y\)에 대해</p>
+    <div class="formula">$$\mathrm{fl}(x \circ y) = (x \circ y)(1 + \delta), \qquad |\delta| \le u, \qquad \circ \in \{+, -, \times, \div\}.$$
+      <div class="where">이것이 <b>표준 반올림 오차 모형</b>이다. 2장에서 이 식 하나로 합산·내적·다항식 계산의 오차를 분석한다. 주의: \(\delta\)는 연산마다 다른, 크기만 아는 수다.</div></div>
+    <p>기계 엡실론은 실험으로 찾을 수 있습니다. 1에 \(e\)를 더해 1보다 커지는지 확인하며 \(e\)를 반씩 줄이면 됩니다.</p>
+<pre class="code"><span class="c">// 기계 엡실론 찾기: 1 + e/2 가 1과 구별되지 않을 때까지 e를 반씩 줄인다</span>
+e ← 1
+<span class="k">while</span> fl(1 + e/2) &gt; 1 <span class="k">do</span>
+    e ← e / 2
+<span class="k">end</span>
+<span class="k">return</span> e          <span class="c">// double: 52번 반복 후 e = 2^(-52)</span></pre>
+    <div class="callout"><strong>예제 1.3 (엡실론 찾기의 마지막 세 단계)</strong> 배정밀도에서 위 반복을 따라가라.
+      <ol>
+        <li>50번 반복 후 \(e = 2^{-50}\): \(\mathrm{fl}(1 + 2^{-51}) = 1.0000000000000004 \gt 1\)이므로 계속.</li>
+        <li>51번 후 \(e = 2^{-51}\): \(\mathrm{fl}(1 + 2^{-52}) = 1.0000000000000002 \gt 1\)이므로 계속.</li>
+        <li>52번 후 \(e = 2^{-52}\): \(1 + 2^{-53}\)은 1과 \(1 + 2^{-52}\)의 정확히 한가운데다. 동률이므로 마지막 비트가 0인 1로 반올림되어 \(\mathrm{fl}(1 + 2^{-53}) = 1\). 멈춘다. 결과 \(e = 2^{-52} = 2.220446049250313\times10^{-16}\), 자바스크립트의 <code>Number.EPSILON</code>과 같다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-fp-eps">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>기계 엡실론 찾기: 1이 움직이지 않을 때까지 반으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-ep-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>형식</span><div class="seg" id="fp-ep-fmt"><button data-value="64" class="on">double (p = 53)</button><button data-value="32">single (p = 24)</button></div></div>
+          <label class="ctrl"><span>기준 수 x</span><select id="fp-ep-x">
+            <option value="1">x = 1 (기계 엡실론)</option>
+            <option value="8">x = 8</option>
+            <option value="1000">x = 1000</option>
+            <option value="0.1">x = 0.1</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="fp-ep-step">한 단계</button><button class="btn" id="fp-ep-play">▶ 자동</button><button class="btn" id="fp-ep-reset">처음부터</button></div>
+        </div>
+      </div>
+      <div class="fp-scroll"><div class="table-wrap" style="margin:0"><table class="fp-tbl"><thead><tr><th>k</th><th>e</th><th>fl(x + e/2)</th><th>&gt; x ?</th></tr></thead><tbody id="fp-ep-tb"></tbody></table></div></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 횟수 k</span><span class="v" id="fp-ep-k">—</span></div>
+        <div class="stat"><span class="k">현재 e</span><span class="v" id="fp-ep-e">—</span></div>
+        <div class="stat"><span class="k">e / x</span><span class="v" id="fp-ep-r">—</span></div>
+      </div>
+      <div class="fp-msg" id="fp-ep-msg"></div>
+      <div class="sim-note">해볼 것: ① '자동'으로 끝까지 돌려 double은 52번, single은 23번 만에 멈추는 것을 보세요. 위 캔버스에서 1비트가 가수의 오른쪽 끝으로 밀려가다 떨어집니다. ② x = 1000이면 멈춘 e가 ulp(1000) = 2<sup>−43</sup>이고, e/x ≈ 0.51ε로 ε/2와 ε 사이입니다(정리 1.4). ③ x = 0.1도 해 보세요. 모델: 시작 e는 x보다 크거나 같은 가장 작은 2의 거듭제곱, single은 Math.fround로 매 연산을 반올림합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="range">
+    <h2>오버플로·언더플로·비정규 수, Inf와 NaN</h2>
+    <div class="problem"><strong>직각삼각형의 빗변이 무한대?</strong>
+      <p>두 변이 \(3\times10^{200}\)과 \(4\times10^{200}\)인 직각삼각형의 빗변은 \(5\times10^{200}\)으로 double 범위 안에 넉넉히 들어갑니다. 그런데 <code>Math.sqrt(x*x + y*y)</code>는 <code>Infinity</code>를 돌려줍니다. 중간값 \(x^2 = 9\times10^{400}\)이 범위를 넘었기 때문입니다. 답이 아니라 <b>중간 계산</b>이 범위를 벗어나는 일을 어떻게 막을까요?</p></div>
+    <p>지수의 범위가 유한하므로 표현할 수 있는 크기에도 위아래 끝이 있습니다.</p>
+    <div class="callout deep"><strong>정의 1.7 (오버플로, 언더플로, 비정규 수)</strong> 결과의 크기가 최댓값 \(x_{\max} = (2 - 2^{-52})\times2^{1023} \approx 1.80\times10^{308}\)을 넘으면 <span class="term">오버플로</span><span class="en">(overflow)</span>이고 결과는 \(\pm\infty\)가 된다. 크기가 최소 정규 수 \(x_{\min} = 2^{-1022} \approx 2.23\times10^{-308}\)보다 작으면 <span class="term">언더플로</span><span class="en">(underflow)</span>다. 이때 IEEE 754는 0으로 바로 떨어뜨리지 않고, 지수를 \(-1022\)에 고정한 채 첫 자리를 0으로 허용하는 <span class="term">비정규 수</span><span class="en">(subnormal number)</span> \((0.f)_2\times 2^{-1022}\)를 쓴다. 가장 작은 양의 비정규 수는 \(2^{-1074} \approx 4.94\times10^{-324}\)이다.</div>
+    <p>비정규 수는 0과 \(x_{\min}\) 사이를 간격 \(2^{-1074}\)로 고르게 채웁니다(그림의 주황 눈금). 이것을 <b>점진적 언더플로</b><span class="en">(gradual underflow)</span>라 합니다. 덕분에 "\(x \ne y\)이면 \(x - y \ne 0\)"이 언제나 성립합니다. 대가는 정밀도입니다. 비정규 수에서는 앞자리 0들이 가수를 차지하므로 상대 오차 상한 \(u\)가 성립하지 않고, \(2^{-1074}\) 근처의 수는 유효 숫자가 한 자리뿐입니다.</p>
+    <p>연산이 수학적으로 정의되지 않으면 결과는 <span class="term">NaN</span><span class="en">(Not a Number)</span>입니다. 특수 값의 규칙은 대부분 극한의 상식을 따릅니다.</p>
+    <div class="table-wrap"><table class="fp-tbl">
+      <thead><tr><th>연산</th><th>결과</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>1e308 × 10</td><td>Infinity</td><td style="text-align:left;font-family:inherit">오버플로</td></tr>
+        <tr><td>1 / 0, −1 / 0</td><td>Infinity, −Infinity</td><td style="text-align:left;font-family:inherit">0으로 나누기는 오류가 아니라 부호 있는 무한대</td></tr>
+        <tr><td>1 / −0</td><td>−Infinity</td><td style="text-align:left;font-family:inherit">−0은 0과 같다고 비교되지만(−0 == 0) 부호를 기억한다</td></tr>
+        <tr><td>0 / 0, ∞ − ∞, 0 × ∞, √−1</td><td>NaN</td><td style="text-align:left;font-family:inherit">정의되지 않는 연산</td></tr>
+        <tr><td>NaN == NaN</td><td>false</td><td style="text-align:left;font-family:inherit">NaN은 자기 자신과도 같지 않다(<code>x != x</code>로 검사)</td></tr>
+        <tr><td>2⁻¹⁰²² / 2</td><td>1.11×10⁻³⁰⁸</td><td style="text-align:left;font-family:inherit">비정규 수(점진적 언더플로)</td></tr>
+        <tr><td>2⁻¹⁰⁷⁴ / 2</td><td>0</td><td style="text-align:left;font-family:inherit">완전한 언더플로(동률 → 짝수인 0)</td></tr>
+      </tbody></table></div>
+    <p>NaN과 Inf는 "계산을 멈추지 않고 문제를 끝까지 운반"하도록 설계되었습니다. 계산 도중 한 번 NaN이 생기면 이후 거의 모든 연산 결과가 NaN이 되므로, 마지막에 한 번만 검사하면 됩니다. 반대로 말하면 NaN이 나왔을 때는 <b>처음 생긴 곳</b>을 찾아야 합니다.</p>
+    <p>빗변 문제의 처방은 <b>척도 조정</b><span class="en">(scaling)</span>입니다. 큰 쪽 \(m = \max(|x|, |y|)\)으로 나누어 계산하면 중간값이 1 근처에 머뭅니다.</p>
+<pre class="code"><span class="c">// 오버플로·언더플로 없는 빗변 sqrt(x^2 + y^2)</span>
+m ← max(|x|, |y|)
+<span class="k">if</span> m = 0 <span class="k">then return</span> 0
+r ← min(|x|, |y|) / m          <span class="c">// 0 ≤ r ≤ 1</span>
+<span class="k">return</span> m · sqrt(1 + r·r)</pre>
+
+    <div class="sim" id="sim-fp-range">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>범위의 양 끝: 빗변 계산의 오버플로와 언더플로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-rg-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지수 k (x = 3·10ᵏ, y = 4·10ᵏ) <output id="fp-rg-k-out"></output></span><input type="range" id="fp-rg-k" min="-330" max="310" step="1" value="200"></label>
+          <div class="btn-row"><button class="btn" id="fp-rg-big">k = 200</button><button class="btn" id="fp-rg-small">k = −160</button><button class="btn" id="fp-rg-sub">k = −320</button></div>
+        </div>
+      </div>
+      <div class="fp-legend"><span><i style="background:var(--warn)"></i>비정규 수 구간</span><span><i style="background:var(--accent)"></i>정규 수 구간</span><span><i style="background:var(--bad)"></i>오버플로(∞)·언더플로(0)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x² (중간값)</span><span class="v" id="fp-rg-x2">—</span></div>
+        <div class="stat"><span class="k">√(x² + y²) 그대로</span><span class="v" id="fp-rg-naive">—</span></div>
+        <div class="stat"><span class="k">척도 조정 m√(1 + r²)</span><span class="v" id="fp-rg-scaled">—</span></div>
+        <div class="stat"><span class="k">참값 5·10<sup>k</sup></span><span class="v" id="fp-rg-true">—</span></div>
+      </div>
+      <div class="fp-msg" id="fp-rg-msg"></div>
+      <div class="sim-note">해볼 것: ① k를 154보다 크게 하면 x²이 10³⁰⁸을 넘어 그대로 계산한 빗변이 ∞가 됩니다. ② k를 −154보다 작게 하면 x²이 비정규 수가 되면서 정확도를 잃고, −162보다 작으면 0이 되어 빗변이 0이 됩니다. ③ 척도 조정은 x 자체가 비정규 수가 되는 k ≈ −308 아래까지 정확합니다. 모델: 막대는 각 값의 log₁₀ 크기, 모두 배정밀도 연산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="errors">
+    <h2>절대 오차, 상대 오차, 유효 숫자</h2>
+    <p>오차의 크기를 말하는 방법은 두 가지입니다. 0.001의 오차는 지구–달 거리에서는 놀라운 정확도이고, 반도체 게이트 길이(수십 나노미터)를 미터로 잴 때는 쓸모없는 값입니다. 크기에 견준 오차가 필요합니다.</p>
+    <div class="callout deep"><strong>정의 1.8 (절대 오차, 상대 오차, 유효 숫자)</strong> 참값 \(x \ne 0\)의 근삿값 \(\hat x\)에 대해 <span class="term">절대 오차</span><span class="en">(absolute error)</span>는 \(|\hat x - x|\), <span class="term">상대 오차</span><span class="en">(relative error)</span>는 \(|\hat x - x|/|x|\)이다. 상대 오차가 \(5\times10^{-q}\) 이하인 가장 큰 정수 \(q\)를 \(\hat x\)의 (10진) <span class="term">유효 숫자</span><span class="en">(significant digits)</span> 개수라 한다. 대략 \(q \approx -\log_{10}(\text{상대 오차})\)이다.</div>
+    <div class="callout"><strong>예제 1.4 (원주율의 두 근삿값)</strong> \(\pi = 3.14159265\ldots\)
+      <ol>
+        <li>\(22/7 = 3.142857\ldots\): 절대 오차 \(1.264\times10^{-3}\), 상대 오차 \(4.02\times10^{-4} \le 5\times10^{-4}\). 유효 숫자 3자리(3.14).</li>
+        <li>\(355/113 = 3.1415929\ldots\): 절대 오차 \(2.67\times10^{-7}\), 상대 오차 \(8.49\times10^{-8} \le 5\times10^{-7}\). 유효 숫자 7자리.</li>
+        <li>배정밀도의 <code>Math.PI</code>는 상대 오차 \(u\) 이하, 유효 숫자 약 16자리다. 정리 1.6은 "부동소수점에 저장하면 유효 숫자 약 16자리가 보장된다"는 뜻이다.</li>
+      </ol></div>
+    <p>참값이 0에 가까우면 상대 오차는 쓸 수 없으므로 절대 오차를 씁니다. 실무의 멈춤 조건이 흔히 \(|\hat x - x| \le \mathrm{atol} + \mathrm{rtol}\cdot|x|\)처럼 둘을 섞는 이유입니다(<a href="roots.html">3장</a>, <a href="ode-solvers.html">11장</a>). 상대 오차의 중요한 성질은 <b>곱셈과 나눗셈에서 거의 더해진다</b>는 것입니다. \(\hat x = x(1 + \delta_1)\), \(\hat y = y(1 + \delta_2)\)이면 \(\hat x\hat y = xy(1 + \delta_1 + \delta_2 + \delta_1\delta_2)\). 곱셈·나눗셈은 상대 오차를 키우지 않습니다. 문제는 덧셈과 뺄셈입니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="cancellation">
+    <h2>자릿수 상쇄: 비슷한 두 수의 뺄셈</h2>
+    <div class="problem"><strong>근의 공식이 틀린 답을 낸다</strong>
+      <p>\(x^2 - 10^8x + 1 = 0\)의 두 근은 약 \(10^8\)과 \(10^{-8}\)입니다. 근의 공식 \(x = \bigl(10^8 \pm \sqrt{10^{16} - 4}\bigr)/2\)를 그대로 double로 계산하면 작은 근이 \(7.45\times10^{-9}\)으로 나옵니다. 상대 오차 25%, 유효 숫자가 하나도 맞지 않습니다. 연산 하나하나의 오차는 \(10^{-16}\)인데 어떻게 이런 일이 생길까요?</p></div>
+    <p>뺄셈 자체는 정확합니다. 아주 가까운 두 부동소수점 수의 차는 반올림 없이 정확히 계산됩니다(스테르베즈 보조정리<span class="en">(Sterbenz lemma)</span>: \(y/2 \le x \le 2y\)이면 \(x - y\)는 부동소수점 수다). 문제는 뺄셈에 <b>들어가는 값</b>이 이미 오차를 품고 있다는 것입니다. 앞자리가 같은 두 수를 빼면 같은 앞자리가 사라지고, 오차가 섞인 뒷자리만 남아 앞으로 올라옵니다. 이것을 <span class="term">자릿수 상쇄</span><span class="en">(catastrophic cancellation)</span>라 합니다.</p>
+    <div class="callout deep"><strong>정리 1.9 (뺄셈의 오차 증폭)</strong> \(\hat x = x(1 + \delta_x)\), \(\hat y = y(1 + \delta_y)\), \(|\delta_x|, |\delta_y| \le \delta\)이고 \(x \ne y\)이면, 뺄셈을 정확히 하더라도
+      <div class="formula">$$\frac{|(\hat x - \hat y) - (x - y)|}{|x - y|} = \frac{|x\delta_x - y\delta_y|}{|x - y|} \le \frac{|x| + |y|}{|x - y|}\,\delta.$$</div>
+      <p style="margin:8px 0 0">증폭 인자 \((|x| + |y|)/|x - y|\)는 \(x \approx y\)일 때 한없이 커진다. 예를 들어 \(x\)와 \(y\)가 앞 10자리가 같으면 인자는 약 \(2\times10^{10}\)이고, 16자리 중 10자리를 잃어 6자리만 남는다. (이 인자는 2장에서 뺄셈의 <b>조건수</b>로 다시 나온다.)</p></div>
+    <p>근의 공식에서는 \(-b = 10^8\)과 \(\sqrt{b^2 - 4ac} = 99999999.99999998\)이 앞 16자리가 거의 같습니다. \(\sqrt{\ }\)의 결과에 있던 \(10^{-16}\) 수준의 상대 오차가 \(10^8/10^{-8}\)배 증폭되어 결과를 망칩니다. 처방은 <b>빼지 않는 식으로 바꾸는 것</b>입니다. 두 근의 곱이 \(c/a\)라는 비에트 공식을 쓰면, 상쇄가 없는 큰 근을 먼저 구하고 작은 근을 나눗셈으로 얻을 수 있습니다.</p>
+<pre class="code"><span class="c">// 상쇄 없는 이차방정식 ax^2 + bx + c = 0 (실근, a ≠ 0)</span>
+d ← sqrt(b·b − 4·a·c)
+q ← −(b + sign(b)·d) / 2     <span class="c">// b와 sign(b)·d는 부호가 같다 → 더해도 상쇄 없음</span>
+x1 ← q / a                   <span class="c">// 크기가 큰 근</span>
+x2 ← c / q                   <span class="c">// 작은 근: 비에트 공식 x1·x2 = c/a</span></pre>
+    <div class="callout"><strong>예제 1.5 (이차방정식 \(x^2 - bx + 1 = 0\)의 작은 근)</strong> 근의 공식 \((b - \sqrt{b^2 - 4})/2\)와 위 알고리즘 \(2/(b + \sqrt{b^2 - 4})\)를 double로 비교한다.</div>
+    <div class="table-wrap"><table class="fp-tbl">
+      <thead><tr><th>b</th><th>근의 공식 그대로</th><th>상대 오차</th><th>상쇄 없는 식</th><th>상대 오차</th></tr></thead>
+      <tbody>
+        <tr><td>10²</td><td>0.010001000200048793</td><td>1.2×10⁻¹³</td><td>0.010001000200050014</td><td>&lt; 10⁻¹⁶</td></tr>
+        <tr><td>10⁴</td><td>0.00010000000111176632</td><td>1.1×10⁻⁹</td><td>0.00010000000100000001</td><td>&lt; 10⁻¹⁶</td></tr>
+        <tr><td>10⁶</td><td>1.00000761449337×10⁻⁶</td><td>7.6×10⁻⁶</td><td>1.000000000001×10⁻⁶</td><td>&lt; 10⁻¹⁶</td></tr>
+        <tr><td>10⁸</td><td>7.450580596923828×10⁻⁹</td><td>2.5×10⁻¹</td><td>1×10⁻⁸</td><td>&lt; 10⁻¹⁶</td></tr>
+      </tbody></table></div>
+    <p>표의 둘째 열은 \(b\)가 100배 커질 때마다 오차가 약 \(10^4\)배 커집니다. 증폭 인자 \(\approx b^2\)과 맞습니다. 같은 일이 \(1 - \cos x\)에서도 일어납니다. \(x = 10^{-8}\)이면 \(\cos x = 1 - 5\times10^{-17}\)인데 이 값은 1과 \(u\)보다 가까워 \(\mathrm{fl}(\cos x) = 1\)이고, 결과는 0입니다. 참값은 \(5\times10^{-17}\)입니다. 삼각 항등식 \(1 - \cos x = 2\sin^2(x/2)\)는 뺄셈이 없어 모든 \(x\)에서 정확합니다.</p>
+    <div class="table-wrap"><table class="fp-tbl">
+      <thead><tr><th>x</th><th>10⁻²</th><th>10⁻⁴</th><th>10⁻⁶</th><th>10⁻⁷</th><th>10⁻⁸</th></tr></thead>
+      <tbody>
+        <tr><td>1 − cos x의 상대 오차</td><td>2.9×10⁻¹³</td><td>5.2×10⁻⁹</td><td>8.9×10⁻⁵</td><td>8.0×10⁻⁴</td><td>1 (결과 0)</td></tr>
+        <tr><td>2 sin²(x/2)의 상대 오차</td><td>&lt; 2u</td><td>&lt; 2u</td><td>&lt; 2u</td><td>&lt; 2u</td><td>&lt; 2u</td></tr>
+      </tbody></table></div>
+
+    <div class="sim" id="sim-fp-cancel">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>상쇄 오차 그래프: x → 0에서 잃는 자릿수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-cc-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>식</span><select id="fp-cc-f">
+            <option value="cos">1 − cos x  vs  2 sin²(x/2)</option>
+            <option value="sqrt">√(1/x + 1) − √(1/x)  vs  1/(√(1/x+1) + √(1/x))</option>
+            <option value="quad">x² − bx + 1 = 0의 작은 근 (b = 1/x)</option>
+            <option value="sq">((1 + x)² − 1)/x  vs  2 + x</option>
+          </select></label>
+          <label class="ctrl"><span>지수 s (x = 10ˢ) <output id="fp-cc-s-out"></output></span><input type="range" id="fp-cc-s" min="-12" max="-0.5" step="0.05" value="-6"></label>
+          <label class="check"><input type="checkbox" id="fp-cc-pred" checked> 예측선: 증폭 인자 × u</label>
+        </div>
+      </div>
+      <div class="fp-legend"><span><i style="background:var(--bad)"></i>그대로 계산</span><span><i style="background:var(--ok)"></i>다시 쓴 식</span><span><i style="background:var(--text-faint)"></i>예측 (|x|+|y|)/|x−y| · u</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">그대로</span><span class="v" id="fp-cc-a">—</span></div>
+        <div class="stat"><span class="k">다시 쓴 식</span><span class="v" id="fp-cc-b">—</span></div>
+        <div class="stat"><span class="k">상대 오차</span><span class="v" id="fp-cc-e">—</span></div>
+        <div class="stat"><span class="k">남은 유효 숫자</span><span class="v" id="fp-cc-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '1 − cos x'에서 x를 줄이면 오차가 x⁻² 기울기(로그–로그에서 −2)로 커지다가 x ≈ 10⁻⁸에서 결과가 0이 되어 상대 오차 1에 붙습니다. ② 빨간 점들이 회색 예측선 근처에서 들쭉날쭉한 것은 반올림 오차의 부호가 x마다 다르기 때문입니다. 크기의 경향은 정리 1.9가 정확히 맞힙니다. ③ 이차방정식에서는 b = 1/x입니다(x = 10⁻⁸이면 b = 10⁸). 표의 값을 슬라이더로 다시 찾아 보세요. 모델: 참값은 다시 쓴 식(상쇄 없음)으로 계산합니다.</div>
+    </div>
+
+    <p>상쇄가 어디서 일어나는지 한 단계씩 보면 더 분명합니다. 아래 표는 근의 공식의 중간값을 17자리로 보여 주고, 뺄셈에서 사라지는 같은 앞자리를 밑줄로 표시합니다.</p>
+
+    <div class="sim" id="sim-fp-quad">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>근의 공식 해부: 사라지는 자릿수를 세기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><div class="fp-steps" id="fp-qd-steps"></div></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>지수 m (b = −10ᵐ) <output id="fp-qd-m-out"></output></span><input type="range" id="fp-qd-m" min="1" max="9" step="0.25" value="6"></label>
+          <label class="ctrl"><span>c <output id="fp-qd-c-out"></output></span><input type="range" id="fp-qd-c" min="0.5" max="5" step="0.5" value="1"></label>
+          <div class="ctrl"><span>작은 근 계산</span><div class="seg" id="fp-qd-alg"><button data-value="naive" class="on">근의 공식</button><button data-value="stable">비에트 공식</button></div></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">방정식</span><span class="v" id="fp-qd-eq">—</span></div>
+        <div class="stat"><span class="k">작은 근 (계산)</span><span class="v" id="fp-qd-x">—</span></div>
+        <div class="stat"><span class="k">상대 오차</span><span class="v" id="fp-qd-err">—</span></div>
+        <div class="stat"><span class="k">상쇄된 자릿수</span><span class="v" id="fp-qd-lost">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① m을 1씩 올리면 −b와 √D가 일치하는 앞자리가 약 2자리씩 늘고(두 값의 지수가 같으면 밑줄로 표시), 그만큼 결과의 유효 숫자가 줄어듭니다(16 − 상쇄 자릿수 ≈ 남은 자릿수). ② '비에트 공식'으로 바꾸면 −b + √D 대신 −b − √D(같은 부호끼리 더하기)를 쓰므로 상쇄가 없습니다. ③ m = 8 근처에서 근의 공식은 √D의 마지막 비트 하나에 좌우됩니다. 모델: x² + bx + c = 0, a = 1, 참값은 비에트 공식(오차 u 수준).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="summation">
+    <h2>오차의 누적과 합산 순서, 카한 합산</h2>
+    <div class="problem"><strong>발산하는 급수가 수렴한다?</strong>
+      <p>조화급수 \(1 + \frac12 + \frac13 + \cdots\)는 발산합니다. 그런데 단정밀도로 차례대로 더하면 합이 \(15.403683\)에서 멈춥니다. \(k = 2\,097\,152\)번째 항 \(1/k \approx 4.8\times10^{-7}\)이 합 15.4의 ulp의 절반보다 작아져서, 더해도 합이 바뀌지 않기 때문입니다. 긴 합산에서는 덧셈마다 생기는 작은 오차와 "작은 수가 큰 수에 먹히는" 현상이 쌓입니다.</p></div>
+    <p>\(n\)개의 수를 차례대로 더하는 <b>재귀 합산</b> \(s_1 = x_1\), \(s_k = \mathrm{fl}(s_{k-1} + x_k)\)의 오차를 표준 모형으로 추적해 봅시다. 각 덧셈에서 \(s_k = (s_{k-1} + x_k)(1 + \delta_k)\), \(|\delta_k| \le u\)입니다.</p>
+    <div class="callout deep"><strong>정리 1.10 (재귀 합산의 오차 한계)</strong> 위 재귀 합산의 결과 \(\hat S = s_n\)과 참값 \(S = \sum x_i\)에 대해
+      <div class="formula">$$|\hat S - S| \le (n - 1)\,u \sum_{i=1}^{n} |x_i| + O(u^2).$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 식을 펼치면 \(\hat S = x_1\prod_{k=2}^{n}(1 + \delta_k) + x_2\prod_{k=2}^{n}(1 + \delta_k) + x_3\prod_{k=3}^{n}(1 + \delta_k) + \cdots + x_n(1 + \delta_n)\). 항 \(x_i\)는 \(n - i + 1\)번(\(x_1\)은 \(n - 1\)번) 반올림을 겪는다. \(\prod(1 + \delta_k) = 1 + \theta\), \(|\theta| \le mu + O(u^2)\)을 쓰면 \(|\hat S - S| \le \sum_i (n - i + 1)u|x_i| \le (n - 1)u\sum|x_i|\) (첫 항 보정 포함). ∎</p></div>
+    <p>이 정리에서 두 가지 교훈이 나옵니다. 첫째, 먼저 더한 항일수록 더 많은 반올림을 겪으므로, <b>크기가 작은 항부터</b> 더하면 큰 \(m\)이 작은 \(|x_i|\)에 곱해져 실제 오차가 줄어듭니다. 둘째, 상한이 \(\sum|x_i|\)에 비례하므로, 부호가 섞여 \(|S| \ll \sum|x_i|\)인 합(교대 급수)은 상대 오차가 클 수 있습니다. 뺄셈 상쇄의 합산판입니다.</p>
+    <p>순서를 바꾸는 것보다 강력한 방법은 <b>잃어버린 부분을 따로 모으는</b> 것입니다. 카한<span class="en">(Kahan)</span>이 1965년에 발표한 보정 합산은 덧셈마다 반올림으로 떨어져 나간 아랫자리를 보정 변수 \(c\)에 정확히 회수해 다음 항에 되돌려 줍니다.</p>
+<pre class="code"><span class="c">// 카한 보정 합산 (compensated summation)</span>
+s ← 0;  c ← 0                <span class="c">// c: 지금까지 잃어버린 아랫자리(부호 반대)</span>
+<span class="k">for</span> i = 1 <span class="k">to</span> n <span class="k">do</span>
+    y ← x[i] − c             <span class="c">// 지난번에 잃은 만큼 보정한 항</span>
+    t ← s + y                <span class="c">// 큰 s에 작은 y를 더하면 y의 아랫자리가 떨어진다</span>
+    c ← (t − s) − y          <span class="c">// (t − s)는 실제로 더해진 부분 → 빼면 떨어진 부분</span>
+    s ← t
+<span class="k">end</span>
+<span class="k">return</span> s</pre>
+    <div class="callout deep"><strong>정리 1.11 (카한 합산과 짝짓기 합산)</strong> 카한 합산의 결과는 \(|\hat S - S| \le \bigl(2u + O(nu^2)\bigr)\sum|x_i|\)를 만족한다. 곧 \(n\)이 \(1/u\)보다 훨씬 작은 한 오차가 \(n\)과 거의 무관하다. 수열을 반으로 나누어 각각 더한 뒤 합치는 <b>짝짓기 합산</b><span class="en">(pairwise summation)</span>은 각 항이 \(\lceil\log_2 n\rceil\)번만 반올림을 겪어 \(|\hat S - S| \le \lceil\log_2 n\rceil\,u\sum|x_i| + O(u^2)\)이다.</div>
+    <p>보정 합산의 둘째 줄 \(c \leftarrow (t - s) - y\)는 수학적으로는 0입니다. 컴파일러가 "대수적으로 단순화"하면 알고리즘이 무너지므로, 실무에서는 공격적인 부동소수점 최적화 옵션을 끄고 씁니다. 비용은 덧셈 네 번으로 재귀 합산의 4배입니다. NumPy의 <code>sum</code>은 짝짓기 합산을, 파이썬의 <code>math.fsum</code>은 이보다 더 정확한 방법을 씁니다.</p>
+    <div class="callout"><strong>예제 1.6 (\(\sum 1/k^2\)를 단정밀도로)</strong> \(\sum_{k=1}^{N} 1/k^2\)를 단정밀도로 계산한다. 오차는 단정밀도 항들의 정확한 합과의 차이다.
+      <ol>
+        <li>앞에서부터(큰 항 먼저): \(N = 4097\)부터 \(1/k^2\)가 합 1.6447의 반 ulp보다 작아져 합이 1.6447253에서 멈춘다. \(N = 10^6\)에서 오차 \(2.1\times10^{-4}\).</li>
+        <li>뒤에서부터(작은 항 먼저): \(N = 10^6\)에서 오차 \(8.1\times10^{-8}\). 순서만 바꿨는데 2600배 정확하다.</li>
+        <li>카한 합산(앞에서부터): \(N = 10^6\)에서 \(3.8\times10^{-8}\). 순서와 상관없이 단정밀도로 저장할 수 있는 최선(\(u \cdot 1.64 \approx 10^{-7}\))에 가깝다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-fp-sum">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>합산 순서와 카한 합산: 오차–항 수 그래프</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-sm-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>더할 수열 (단정밀도)</span><select id="fp-sm-seq">
+            <option value="inv2">1/k² (줄어드는 양수)</option>
+            <option value="inv">1/k (조화급수)</option>
+            <option value="tenth">0.1을 반복</option>
+            <option value="rand">[0, 1) 난수</option>
+            <option value="alt">(−1)<sup>k+1</sup>/k (교대)</option>
+          </select></label>
+          <label class="ctrl"><span>최대 항 수 N <output id="fp-sm-n-out"></output></span><input type="range" id="fp-sm-n"></label>
+          <label class="check"><input type="checkbox" id="fp-sm-bound"> 상한 (n−1)u·Σ|xᵢ|</label>
+        </div>
+      </div>
+      <div class="fp-legend"><span><i style="background:var(--bad)"></i>앞에서부터</span><span><i style="background:var(--warn)"></i>뒤에서부터</span><span><i style="background:var(--blue)"></i>짝짓기</span><span><i style="background:var(--ok)"></i>카한</span><span><i style="background:var(--text-faint)"></i>상한</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">앞 / 뒤 상대 오차 (N)</span><span class="v" id="fp-sm-fb">—</span></div>
+        <div class="stat"><span class="k">짝짓기 / 카한</span><span class="v" id="fp-sm-pk">—</span></div>
+        <div class="stat"><span class="k">참값 (배정밀도)</span><span class="v" id="fp-sm-ex">—</span></div>
+      </div>
+      <div class="fp-msg" id="fp-sm-msg"></div>
+      <div class="sim-note">해볼 것: ① '1/k²'에서 빨간 선(앞에서부터)이 N ≈ 4000에서 꺾여 오차가 고정되는 것을 보세요. 합이 멈춘 것입니다. ② '0.1을 반복'에서 앞에서부터 합산의 오차는 대략 N에 비례해 커지고 카한은 10⁻⁸ 근처에 머뭅니다. ③ 상한을 켜면 실제 오차가 상한보다 훨씬 작습니다. 반올림 오차의 부호가 섞여 평균적으로는 √n u 정도로 자라기 때문입니다. 모델: 모든 연산을 Math.fround로 단정밀도 반올림, 참값은 같은 항들을 배정밀도 카한 합산으로 더한 값.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="incidents">
+    <h2>실제 사고: 시간 누적 오차와 변환 오버플로</h2>
+    <p>반올림 오차는 교과서의 장난감이 아닙니다. 공식 조사 보고서로 원인이 확인된 두 사건을 봅시다.</p>
+    <div class="problem"><strong>패트리어트 미사일, 1991년 2월 25일</strong>
+      <p>걸프 전쟁 중 사우디아라비아 다란에서 패트리어트 방공 포대가 날아오는 스커드 미사일을 요격하지 못했고, 미군 병사 28명이 숨졌습니다. 미국 회계감사원<span class="en">(GAO)</span> 보고서에 따르면 시스템은 시간을 0.1초 단위 정수로 세고, 이를 24비트 고정소수점 레지스터에 저장된 0.1과 곱해 초로 바꿨습니다. 0.1은 2진법에서 끝나지 않으므로 잘린 값이 저장되었고, 포대는 그날 약 100시간 연속 가동 중이었습니다.</p></div>
+    <p>계산해 봅시다. 0.1을 소수점 아래 23비트에서 자르면 \(\lfloor 0.1\times2^{23}\rfloor/2^{23} = 0.09999990463\ldots\)이고, 한 번의 곱마다 오차는 \(9.54\times10^{-8}\)초입니다. 100시간은 0.1초 단위로 \(3.6\times10^{6}\)틱이므로 누적 오차는 \(3.6\times10^6\times9.54\times10^{-8} = 0.343\)초입니다. 스커드는 초속 약 1.7 km로 날아오므로, 0.34초면 레이더가 미사일을 찾는 위치가 500 m 넘게 어긋납니다. 오차 하나하나는 \(10^{-7}\)이었지만 <b>오래 쌓이고, 빠른 물체의 위치로 곱해져</b> 치명적이 되었습니다.</p>
+    <div class="problem"><strong>아리안 5 첫 비행, 1996년 6월 4일</strong>
+      <p>유럽우주국의 아리안 5 로켓은 첫 발사 후 약 37초 만에 궤도를 벗어나 자폭했습니다. 조사 위원회 보고서에 따르면 관성 기준 장치의 소프트웨어가 64비트 부동소수점 값(수평 속도와 관련된 값)을 16비트 부호 있는 정수로 변환하다가, 값이 \(32767\)을 넘어 연산 오류가 났습니다. 이 코드는 아리안 4에서 그대로 가져온 것이었는데, 아리안 5는 더 빠르게 가속해 그 값이 아리안 4에서는 나오지 않던 범위까지 커졌습니다. 예비 장치도 같은 소프트웨어여서 같은 순간에 멈췄습니다.</p></div>
+    <p>두 사건의 교훈은 다릅니다. 패트리어트는 <b>반올림 오차의 누적</b>, 아리안 5는 <b>표현 범위(오버플로)</b>의 문제였습니다. 둘 다 계산 하나하나는 명세대로 정확했고, 문제는 "이 오차·이 범위가 이 사용 조건에서 괜찮은가"를 묻지 않은 데 있었습니다. 수치해석의 질문이 바로 그것입니다.</p>
+
+    <div class="sim" id="sim-fp-tenth">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>0.1을 n번: 시계가 얼마나 어긋나는가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="fp-tn-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>가동 시간 (시간) <output id="fp-tn-h-out"></output></span><input type="range" id="fp-tn-h" min="0" max="100" step="1" value="100"></label>
+          <div class="btn-row"><button class="btn primary" id="fp-tn-play">▶ 시계 돌리기</button></div>
+          <label class="check"><input type="checkbox" id="fp-tn-f32" checked> 단정밀도로 0.1을 반복해 더하기</label>
+          <label class="check"><input type="checkbox" id="fp-tn-f64" checked> 배정밀도로 0.1을 반복해 더하기</label>
+        </div>
+      </div>
+      <div class="fp-legend"><span><i style="background:var(--bad)"></i>틱 수 × 0.1(23비트에서 자름)</span><span><i style="background:var(--warn)"></i>단정밀도 누적 합</span><span><i style="background:var(--blue)"></i>배정밀도 누적 합</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">틱 수 n</span><span class="v" id="fp-tn-n">—</span></div>
+        <div class="stat"><span class="k">패트리어트식 시간 오차</span><span class="v" id="fp-tn-p">—</span></div>
+        <div class="stat"><span class="k">초속 1.7 km 물체의 위치 차이</span><span class="v" id="fp-tn-d">—</span></div>
+        <div class="stat"><span class="k">단정밀도 · 배정밀도 누적 오차</span><span class="v" id="fp-tn-s">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 100시간에서 빨간 선이 0.343초에 닿습니다. 오차는 시간에 정확히 비례합니다(곱셈 한 번의 오차 × 틱 수). ② 단정밀도로 0.1을 반복해 더하면 오차가 훨씬 빠르게 커지다가 들쭉날쭉합니다. 합이 커질수록 ulp가 커져 덧셈마다 잃는 양이 커지기 때문입니다. ③ 배정밀도도 오차가 0은 아니지만 100시간 동안 10⁻⁶초 수준입니다. 모델: 세로축은 |오차|(초)의 로그 눈금, 0.1초마다 한 틱. 실제 시스템의 세부 구현은 단순화했습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>반올림 단위 \(u\)와 상쇄·누적의 원리는 이 책의 거의 모든 장에서 다시 나옵니다. 몇 가지 예를 미리 짚어 둡니다.</p>
+    <div class="uses">
+      <a href="conditioning.html"><small>2장 · 조건수와 안정성</small>반올림 오차 모형의 전파<br><span>fl(x∘y) = (x∘y)(1+δ)로 알고리즘 전체의 오차를 분석하고, 문제의 민감도와 구별한다.</span></a>
+      <a href="roots.html"><small>3장 · 방정식의 근 찾기</small>멈춤 조건<br><span>tol을 u보다 작게 두면 반복이 끝나지 않는다. 잔차와 간격의 상대·절대 기준.</span></a>
+      <a href="differentiation.html"><small>9장 · 수치 미분</small>최적 간격 h ≈ √ε<br><span>차분 몫의 뺄셈 상쇄와 절단 오차가 맞서 오차–h 그래프가 V자가 된다.</span></a>
+      <a href="direct-solvers.html"><small>12장 · 직접 해법</small>피벗팅<br><span>작은 피벗으로 나누면 큰 수끼리의 뺄셈에서 정보가 사라진다.</span></a>
+      <a href="fft.html"><small>8장 · FFT</small>짝짓기 구조의 정확도<br><span>FFT의 반올림 오차는 짝짓기 합산처럼 log N으로만 자란다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MathBook</small>컴퓨터는 어떻게 틀리는가<br><span>이 장의 입문판. 비트, 수직선, 패트리어트, 상쇄 오차를 직관으로 먼저 본다.</span></a>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>상황</th><th>위험</th><th>처방</th></tr></thead>
+      <tbody>
+        <tr><td>실수 비교 <code>x == y</code></td><td>반올림으로 같아야 할 값이 다름</td><td>\(|x - y| \le \mathrm{atol} + \mathrm{rtol}\,|y|\)</td></tr>
+        <tr><td>가까운 두 수의 뺄셈</td><td>자릿수 상쇄</td><td>식 변형(유리화, 항등식, 비에트), 전용 함수(log1p, expm1)</td></tr>
+        <tr><td>긴 합산·내적·평균</td><td>오차 누적, 작은 항 소실</td><td>작은 항 먼저, 짝짓기 합산, 카한 합산, 높은 정밀도 누산기</td></tr>
+        <tr><td>제곱·지수가 들어간 중간값</td><td>오버플로·언더플로</td><td>척도 조정(hypot), 로그 영역 계산(log-sum-exp)</td></tr>
+        <tr><td>시간·돈·카운터</td><td>0.1 같은 10진 소수의 누적</td><td>정수 틱으로 세고 마지막에 한 번 변환, 10진 고정소수점</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>수치 계산의 오차는 모델·데이터·절단·반올림 오차로 나뉜다. 이 장은 유한 비트 때문에 생기는 반올림 오차를 다룬다.</li>
+      <li>IEEE 754 배정밀도는 부호 1, 지수 11(편향 1023), 소수 52비트로 \((-1)^s(1.f)_2\,2^{E-1023}\)을 표현한다. 숨은 비트까지 정밀도 \(p = 53\), 10진 약 16자리다. 0.1은 2진법에서 무한 소수라 정확히 저장되지 않는다.</li>
+      <li>구간 \([2^e, 2^{e+1})\)에는 \(2^{p-1}\)개의 수가 간격 \(2^{e-p+1}\)로 놓인다. 절대 간격은 크기에 비례하고 상대 간격은 거의 일정하다.</li>
+      <li>기계 엡실론 \(\varepsilon = 2^{-52}\), 반올림 단위 \(u = 2^{-53}\). 정규 범위에서 \(\mathrm{fl}(x) = x(1 + \delta)\), \(|\delta| \le u\)이고, IEEE 754는 사칙연산과 제곱근에도 같은 보장을 준다.</li>
+      <li>\(1.8\times10^{308}\)을 넘으면 오버플로(∞), \(2.2\times10^{-308}\)보다 작으면 비정규 수로 점진적 언더플로, \(2^{-1074}\)의 절반 아래는 0. 정의되지 않는 연산은 NaN. 중간값의 범위는 척도 조정으로 지킨다.</li>
+      <li>상대 오차는 곱셈·나눗셈에서 거의 더해질 뿐이지만, 뺄셈은 상대 오차를 \((|x| + |y|)/|x - y|\)배 키운다(자릿수 상쇄). 처방은 빼지 않는 식으로 다시 쓰는 것이다.</li>
+      <li>\(n\)개의 재귀 합산 오차는 \((n - 1)u\sum|x_i|\) 이하다. 작은 항 먼저, 짝짓기(\(\log_2 n\)), 카한 보정 합산(\(2u\))으로 줄인다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 배정밀도에서 <code>0.1 + 0.2 == 0.3</code>이 거짓인 근본 이유는?</p><div class="opts">
+        <button class="opt">덧셈 회로가 근삿값을 쓰기 때문</button>
+        <button class="opt" data-correct>0.1, 0.2, 0.3이 2진법에서 끝나지 않는 소수라 저장할 때부터 반올림되기 때문</button>
+        <button class="opt">자바스크립트가 수를 문자열로 저장하기 때문</button>
+        <button class="opt">0.3이 비정규 수이기 때문</button>
+      </div><div class="quiz-exp">세 수 모두 2진 무한 소수라 가장 가까운 double로 저장된다. fl(0.1) + fl(0.2)를 올바르게 반올림한 결과는 fl(0.3)의 바로 옆 수(한 ulp 위)다. 덧셈 자체는 IEEE 754 규칙대로 정확히 반올림되었다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 배정밀도 수 1024의 ulp(다음 수까지의 간격)는?</p><div class="opts">
+        <button class="opt">2⁻⁵²</button>
+        <button class="opt">2⁻⁵³</button>
+        <button class="opt" data-correct>2⁻⁴²</button>
+        <button class="opt">2¹⁰</button>
+      </div><div class="quiz-exp">1024 = 2¹⁰이므로 구간 [2¹⁰, 2¹¹)의 간격 2^(e−p+1) = 2^(10−52) = 2⁻⁴². 일반적으로 ulp(2ᵉ) = ε·2ᵉ이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 정밀도 p = 24인 단정밀도의 반올림 단위 u는?</p><div class="opts">
+        <button class="opt">2⁻²³ ≈ 1.19×10⁻⁷</button>
+        <button class="opt" data-correct>2⁻²⁴ ≈ 5.96×10⁻⁸</button>
+        <button class="opt">2⁻⁵³ ≈ 1.11×10⁻¹⁶</button>
+        <button class="opt">2⁻¹²⁶</button>
+      </div><div class="quiz-exp">u = 2^(−p) = 2⁻²⁴. 기계 엡실론은 그 두 배인 ε = 2^(1−p) = 2⁻²³이다. 2⁻¹²⁶은 단정밀도의 최소 정규 수다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 배정밀도에서 <code>1e16 + 1 − 1e16</code>의 결과는?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt" data-correct>0</button>
+        <button class="opt">2</button>
+        <button class="opt">NaN</button>
+      </div><div class="quiz-exp">10¹⁶ 근처의 ulp는 2이다. 10¹⁶ + 1은 두 이웃 10¹⁶과 10¹⁶ + 2의 정확히 한가운데라 짝수 쪽인 10¹⁶으로 반올림된다. 따라서 결과는 0. 더하는 순서를 1e16 − 1e16 + 1로 바꾸면 1이 나온다.</div></div>
+
+      <div class="quiz-q"><p>Q5. x와 y가 각각 상대 오차 10⁻¹⁶을 가지고 앞 12자리가 같다. x − y의 상대 오차는 대략 얼마까지 커질 수 있는가?</p><div class="opts">
+        <button class="opt">10⁻¹⁶</button>
+        <button class="opt">10⁻¹²</button>
+        <button class="opt" data-correct>10⁻⁴</button>
+        <button class="opt">1</button>
+      </div><div class="quiz-exp">앞 12자리가 같으면 |x − y| ≈ 10⁻¹²|x|이고 증폭 인자 (|x|+|y|)/|x−y| ≈ 2×10¹². 10⁻¹⁶ × 2×10¹² ≈ 2×10⁻⁴. 16자리 중 12자리를 잃어 4자리 남짓 남는다.</div></div>
+
+      <div class="quiz-q"><p>Q6. x² − 10⁶x + 1 = 0의 작은 근을 정확히 구하는 방법은?</p><div class="opts">
+        <button class="opt">(10⁶ − √(10¹² − 4))/2를 4배정밀도로 계산한다</button>
+        <button class="opt" data-correct>큰 근 x₁ = (10⁶ + √(10¹² − 4))/2를 구한 뒤 x₂ = 1/x₁</button>
+        <button class="opt">√ 대신 테일러 급수를 쓴다</button>
+        <button class="opt">근의 공식에 −b 대신 b를 넣는다</button>
+      </div><div class="quiz-exp">두 근의 곱이 c/a = 1(비에트)이므로, 같은 부호끼리 더하는 큰 근은 상쇄가 없고 작은 근은 나눗셈으로 얻는다. 정밀도를 높이면 문제를 늦출 뿐 b가 더 커지면 다시 생긴다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 0 &lt; x₁ &lt; x₂ &lt; … &lt; xₙ인 양수들을 재귀 합산할 때 오차가 대체로 더 작은 순서는?</p><div class="opts">
+        <button class="opt">큰 수부터(xₙ, xₙ₋₁, …)</button>
+        <button class="opt" data-correct>작은 수부터(x₁, x₂, …)</button>
+        <button class="opt">순서와 무관하다</button>
+        <button class="opt">무작위 순서</button>
+      </div><div class="quiz-exp">먼저 더한 항일수록 더 많은 반올림(최대 n−1번)을 겪는다. 작은 항을 먼저 더하면 그 많은 반올림이 작은 값에 곱해지고, 작은 항이 큰 합에 먹혀 사라지는 일도 줄어든다. 예제 1.6에서 2600배 차이가 났다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 카한 합산에서 보정 변수 c ← (t − s) − y가 하는 일은?</p><div class="opts">
+        <button class="opt">항상 0이므로 아무 일도 하지 않는다</button>
+        <button class="opt">합 s의 오버플로를 막는다</button>
+        <button class="opt" data-correct>s + y에서 반올림으로 떨어져 나간 y의 아랫자리를 회수한다</button>
+        <button class="opt">항들을 크기순으로 정렬한다</button>
+      </div><div class="quiz-exp">t − s는 실제로 s에 더해진 부분이고, 여기서 y를 빼면 반올림으로 잃은 부분(부호 반대)이 남는다. 수학적으로는 0이지만 부동소수점에서는 0이 아니며, 다음 항에 되돌려져 오차가 n에 거의 무관한 2u 수준으로 유지된다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const FP = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return v > 0 ? "∞" : v < 0 ? "−∞" : "NaN";
+    return String(Number(v.toFixed(d))).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (Number.isNaN(v)) return "NaN";
+    if (!isFinite(v)) return v > 0 ? "∞" : "−∞";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e5) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    let e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    if (!isFinite(m)) { e += 1; m = v / Math.pow(10, e); }
+    let ms = m.toFixed(d - 1); if (Math.abs(Number(ms)) >= 10) { e += 1; ms = (v / Math.pow(10, e)).toFixed(d - 1); }
+    return ms.replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  /** 64비트 패턴(BigInt) ↔ double */
+  toBits(x) { const b = new DataView(new ArrayBuffer(8)); b.setFloat64(0, x); return b.getBigUint64(0); },
+  fromBits(B) { const b = new DataView(new ArrayBuffer(8)); b.setBigUint64(0, BigInt.asUintN(64, B)); return b.getFloat64(0); },
+  /** double의 정확한 10진 전개(문자열) */
+  exact(x) {
+    if (!isFinite(x)) return String(x);
+    const neg = x < 0 || Object.is(x, -0); const B = FP.toBits(Math.abs(x));
+    const E = Number((B >> 52n) & 0x7ffn), f = B & ((1n << 52n) - 1n);
+    const m = E ? (1n << 52n) | f : f, q = (E ? E : 1) - 1075;
+    let s;
+    if (m === 0n) s = "0";
+    else if (q >= 0) s = (m << BigInt(q)).toString();
+    else {
+      const n = -q; let t = (m * 5n ** BigInt(n)).toString().padStart(n + 1, "0");
+      s = (t.slice(0, t.length - n) + "." + t.slice(t.length - n)).replace(/0+$/, "").replace(/\.$/, "");
+    }
+    return (neg ? "−" : "") + s;
+  },
+  nextUp(x) {
+    if (Number.isNaN(x) || x === Infinity) return x;
+    if (x === 0) return Math.pow(2, -1074);
+    const B = FP.toBits(x); return FP.fromBits(x > 0 ? B + 1n : B - 1n);
+  },
+  nextDown(x) { return -FP.nextUp(-x); },
+};
+
+/* ================================================================ 1. 64비트 편집기 */
+(function () {
+  const grid = document.getElementById("fp-bits-grid"), inp = document.getElementById("fp-bits-in"), msg = document.getElementById("fp-bits-msg");
+  const dec = document.getElementById("fp-bits-decode");
+  let B = FP.toBits(0.1), typed = "0.1";
+  const cells = [];
+  for (let i = 0; i < 64; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "fp-bit " + (i === 0 ? "s" : i < 12 ? "e" : "f");
+    b.setAttribute("aria-label", (i === 0 ? "부호" : i < 12 ? "지수 " + (i) : "소수 " + (i - 11)) + "번째 비트");
+    b.addEventListener("click", () => { B ^= 1n << BigInt(63 - i); typed = null; render(); });
+    grid.appendChild(b); cells.push(b);
+  }
+  /** 입력한 10진 문자열과 저장된 값의 차이(정확 계산) */
+  const diffTyped = (str, x) => {
+    const mm = /^\s*([+-]?)(\d*)\.?(\d*)(?:e([+-]?\d+))?\s*$/i.exec(str);
+    if (!mm || !isFinite(x) || (mm[2] + mm[3]).length === 0) return null;
+    let N = BigInt((mm[2] + mm[3]) || "0"), S = mm[3].length - Number(mm[4] || 0);
+    if (mm[1] === "-") N = -N;
+    // 저장된 값 = m·2^q
+    const ax = Math.abs(x), Bx = FP.toBits(ax), E = Number((Bx >> 52n) & 0x7ffn), f = Bx & ((1n << 52n) - 1n);
+    let m = E ? (1n << 52n) | f : f; const q = (E ? E : 1) - 1075; if (x < 0) m = -m;
+    // 공통 분모 10^K·2^(-q)…: 둘 다 분수 a/10^S, m·2^q 로 두고 차를 10진 분수로
+    let num, den; // 차 = num/den
+    const tenS = S >= 0 ? 10n ** BigInt(S) : 1n, mulT = S < 0 ? 10n ** BigInt(-S) : 1n;
+    if (q >= 0) { num = N * mulT - m * (1n << BigInt(q)) * tenS; den = tenS; }
+    else { const p2 = 1n << BigInt(-q); num = N * mulT * p2 - m * tenS; den = tenS * p2; }
+    if (num < 0n) num = -num;
+    if (num === 0n) return 0;
+    // num/den을 유효 3자리로
+    const ln = num.toString().length, ld = den.toString().length;
+    let e10 = ln - ld; let scaled;
+    for (let t = 0; t < 2; t++) {
+      const sh = 4 - e10; scaled = sh >= 0 ? (num * 10n ** BigInt(sh)) / den : num / (den * 10n ** BigInt(-sh));
+      if (scaled >= 100000n) e10 += 1; else if (scaled < 10000n) e10 -= 1; else break;
+    }
+    return [Number(scaled) / 1e4, e10];
+  };
+  const render = () => {
+    const x = FP.fromBits(B);
+    let bs = B.toString(2).padStart(64, "0");
+    cells.forEach((c, i) => { c.textContent = bs[i]; c.classList.toggle("one", bs[i] === "1"); });
+    const s = bs[0], eb = bs.slice(1, 12), fb = bs.slice(12), E = parseInt(eb, 2);
+    let kind, form;
+    if (E === 2047) { kind = /1/.test(fb) ? "NaN" : (s === "1" ? "−∞" : "+∞"); form = "지수 비트가 모두 1 → " + (/1/.test(fb) ? "소수 ≠ 0이므로 NaN" : "소수 = 0이므로 무한대"); }
+    else if (E === 0) { kind = /1/.test(fb) ? "비정규 수" : (s === "1" ? "−0" : "+0"); form = `(−1)<sup><span class="fp-s">${s}</span></sup> × <span class="fp-f">0.${fb.replace(/0+$/, "") || "0"}</span><sub>2</sub> × 2<sup>−1022</sup>`; }
+    else { kind = "정규 수"; form = `(−1)<sup><span class="fp-s">${s}</span></sup> × <span class="fp-f">1.${fb.replace(/0+$/, "") || "0"}</span><sub>2</sub> × 2<sup><span class="fp-e">${E}</span> − 1023 = ${String(E - 1023).replace("-", "−")}</sup>`; }
+    let ex = FP.exact(x); const digits = ex.replace(/[−.]/g, "").length;
+    if (ex.length > 90) ex = ex.slice(0, 70) + "… (" + digits + "자리)";
+    dec.innerHTML = `<div>부호 s = <b class="fp-s">${s}</b> · 지수 E = <b class="fp-e">${eb}</b><sub>2</sub> = <b class="fp-e">${E}</b> · 소수 f = <b class="fp-f">${fb.slice(0, 16)}…</b></div><div>값 = ${form}</div><div>정확한 10진값 = <b>${ex}</b></div>`;
+    let hex = B.toString(16).padStart(16, "0");
+    MB.stat("fp-bits-hex", hex);
+    MB.stat("fp-bits-kind", kind);
+    MB.stat("fp-bits-val", Object.is(x, -0) ? "−0" : String(x).replace("-", "−"));
+    const up = FP.nextUp(Math.abs(x));
+    MB.stat("fp-bits-ulp", isFinite(x) && isFinite(up) ? FP.sci(up - Math.abs(x), 3) + (E === 0 ? "" : " = 2<sup>" + String(Math.max(E, 1) - 1075).replace("-", "−") + "</sup>") : "—");
+    let m = "";
+    if (typed != null) {
+      const d = diffTyped(typed, x);
+      if (d === 0) m = `입력한 <b>${typed}</b>은 double로 <b>정확히</b> 표현됩니다(분모가 2의 거듭제곱인 유한 소수).`;
+      else if (d != null) {
+        const ds = d[0].toFixed(2) + "×10<sup>" + String(d[1]).replace("-", "−") + "</sup>";
+        const lr = Math.log10(d[0]) + d[1] - Math.log10(Math.abs(x)), re = Math.pow(10, lr - Math.floor(lr)).toFixed(2) + "×10<sup>" + String(Math.floor(lr)).replace("-", "−") + "</sup>";
+        m = `입력한 <b>${typed}</b>과 저장된 값의 차이는 <b>${ds}</b>, 상대 오차 <b>${re}</b>` + (kind === "비정규 수" ? " (비정규 수라 u 보장이 없습니다)." : " (u = 1.11×10<sup>−16</sup> 이하).");
+      }
+    }
+    if (!m) m = kind === "비정규 수" ? "비정규 수: 지수가 −1022에 고정되고 숨은 비트가 0이라 앞자리 0만큼 정밀도를 잃습니다." : kind === "정규 수" ? "비트를 눌러 보세요. 소수 비트 하나는 2<sup>E−1023−j</sup>만큼 값을 바꿉니다." : "특수 값입니다. 지수 비트를 바꾸면 보통 수로 돌아옵니다.";
+    msg.innerHTML = m;
+  };
+  const setVal = (x, t) => { B = FP.toBits(x); typed = t; inp.value = t != null ? t : String(x); render(); };
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { const v = Number(inp.value.trim()); if (inp.value.trim() !== "" && !Number.isNaN(v)) setVal(v, inp.value.trim()); } });
+  inp.addEventListener("change", () => { const v = Number(inp.value.trim()); if (inp.value.trim() !== "" && !Number.isNaN(v)) setVal(v, inp.value.trim()); });
+  document.getElementById("fp-bits-pre").addEventListener("change", (e) => {
+    const v = e.target.value;
+    const P = { third: [1 / 3, null], max: [Number.MAX_VALUE, null], minn: [Math.pow(2, -1022), null], mins: [Math.pow(2, -1074), null], negzero: [-0, null], inf: [Infinity, null], nan: [NaN, null] };
+    if (P[v]) { B = FP.toBits(P[v][0]); if (v === "nan") B = 0x7ff8000000000000n; typed = null; inp.value = v === "negzero" ? "-0" : String(P[v][0]); render(); }
+    else setVal(Number(v), v);
+  });
+  document.getElementById("fp-bits-up").addEventListener("click", () => { const x = FP.nextUp(FP.fromBits(B)); B = FP.toBits(x); typed = null; inp.value = String(x); render(); });
+  document.getElementById("fp-bits-down").addEventListener("click", () => { const x = FP.nextDown(FP.fromBits(B)); B = FP.toBits(x); typed = null; inp.value = String(x); render(); });
+  render();
+})();
+
+/* ================================================================ 2. 장난감 부동소수점 수직선 */
+(function () {
+  let p = 3, emax = 2, axis = "lin", sub = true, xr = 2.6, ixf = (v) => v;
+  let V = [];
+  const build = () => {
+    const emin = 1 - emax; V = [];
+    if (sub) for (let m = 1; m < 2 ** (p - 1); m++) V.push({ v: m * 2 ** (emin - p + 1), m, sub: true });
+    for (let e = emin; e <= emax; e++) for (let m = 2 ** (p - 1); m < 2 ** p; m++) V.push({ v: m * 2 ** (e - p + 1), m, sub: false, pow: m === 2 ** (p - 1), e });
+  };
+  build();
+  const max = () => V[V.length - 1].v;
+  const minN = () => 2 ** (1 - emax);
+  const range = () => axis === "lin" ? [0, max() * 1.12] : [V[0].v / 1.6, max() * 1.6];
+  const round = (x) => {
+    const M = max(), ulpM = 2 ** (emax - p + 1);
+    if (x >= M + ulpM / 2) return { v: Infinity };
+    let best = { v: 0, m: 0 }, bd = Math.abs(x);
+    V.forEach((c) => { const d = Math.abs(c.v - x); if (d < bd - 1e-15 || (Math.abs(d - bd) <= 1e-15 && c.m % 2 === 0)) { bd = d; best = c; } });
+    return best;
+  };
+  const cv = MB.canvas("#fp-ln-cv", (ctx, w, h) => {
+    const C = MB.palette(), [a, b] = range(), L = 24, R = w - 24, yA = h * 0.56;
+    const X = (v) => axis === "lin" ? L + ((v - a) / (b - a)) * (R - L) : L + ((Math.log2(v) - Math.log2(a)) / (Math.log2(b) - Math.log2(a))) * (R - L);
+    const ix = (px) => axis === "lin" ? a + ((px - L) / (R - L)) * (b - a) : 2 ** (Math.log2(a) + ((px - L) / (R - L)) * (Math.log2(b) - Math.log2(a)));
+    ixf = ix;
+    ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    // 오버플로 영역
+    const xo = X(max() + 2 ** (emax - p + 1) / 2);
+    ctx.fillStyle = C.bad; ctx.globalAlpha = 0.1; ctx.fillRect(xo, 18, R - xo + 24, h - 36); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.bad; ctx.textAlign = "right"; ctx.fillText("→ ∞", R + 18, 30);
+    ctx.strokeStyle = C.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(L, yA); ctx.lineTo(R, yA); ctx.stroke();
+    if (axis === "lin") { ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(X(0), yA, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = C.dim; ctx.textAlign = "center"; ctx.fillText("0", X(0), yA + 30); }
+    V.forEach((c) => {
+      const px = X(c.v), tall = c.pow ? 22 : 12;
+      ctx.strokeStyle = c.sub ? C.warn : C.accent; ctx.lineWidth = c.pow ? 2 : 1.4;
+      ctx.beginPath(); ctx.moveTo(px, yA - tall); ctx.lineTo(px, yA + tall * 0.5); ctx.stroke();
+      if (c.pow) { ctx.fillStyle = C.dim; ctx.textAlign = "center"; ctx.fillText(c.v >= 1 ? String(c.v) : "2" + "⁻" + "¹²³⁴⁵⁶⁷⁸⁹"[Math.round(-Math.log2(c.v)) - 1], px, yA + 30); }
+    });
+    // x와 fl(x)
+    const r = round(xr), px = X(xr);
+    ctx.fillStyle = C.bad; ctx.beginPath(); ctx.moveTo(px, yA - 30); ctx.lineTo(px - 6, yA - 42); ctx.lineTo(px + 6, yA - 42); ctx.fill();
+    ctx.textAlign = "center"; ctx.fillText("x", px, yA - 48);
+    if (isFinite(r.v)) {
+      const pr = X(Math.max(r.v, a)); ctx.strokeStyle = C.bad; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, yA - 30); ctx.lineTo(pr, yA - 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pr, yA, 5, 0, 7); ctx.fill();
+      ctx.fillText("fl(x)", pr, yA + 46);
+    }
+    // 간격 표시: 각 지수 구간의 간격
+    ctx.fillStyle = C.dim; ctx.textAlign = "right"; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.fillText(axis === "lin" ? "간격이 2의 거듭제곱마다 두 배" : "구간마다 같은 개수 2^(p−1) = " + 2 ** (p - 1), R, h - 8);
+  }, { aspect: 0.34, minHeight: 170, maxHeight: 260 });
+  const el = document.getElementById("fp-ln-cv");
+  let drag = false;
+  const pick = (e) => { const r = el.getBoundingClientRect(); const v = ixf(e.clientX - r.left); xr = MB.clamp(v, range()[0] + 1e-9, range()[1]); update(); };
+  el.style.touchAction = "none"; el.style.cursor = "pointer";
+  el.addEventListener("pointerdown", (e) => { drag = true; el.setPointerCapture(e.pointerId); pick(e); });
+  el.addEventListener("pointermove", (e) => { if (drag) pick(e); });
+  el.addEventListener("pointerup", () => { drag = false; });
+  const update = () => {
+    cv.redraw();
+    const r = round(xr), u = 2 ** -p;
+    MB.stat("fp-ln-n", String(V.length));
+    MB.stat("fp-ln-rng", FP.num(max(), 4) + " · " + FP.num(minN(), 4));
+    MB.stat("fp-ln-x", FP.num(xr, 4) + " → " + (isFinite(r.v) ? FP.num(r.v, 5) : "∞"));
+    const re = isFinite(r.v) ? Math.abs(r.v - xr) / xr : Infinity;
+    MB.stat("fp-ln-err", isFinite(re) ? FP.num(re / u, 3) + (re / u > 1.0001 ? " ⚠" : "") : "∞");
+  };
+  MB.range("fp-ln-p", (v) => String(v), (v) => { p = v; build(); xr = Math.min(xr, range()[1]); update(); });
+  MB.range("fp-ln-e", (v) => String(v), (v) => { emax = v; build(); xr = Math.min(xr, range()[1]); update(); });
+  MB.seg("fp-ln-axis", (v) => { axis = v; const [a, b] = range(); xr = MB.clamp(xr, a * 1.01, b); update(); });
+  MB.check("fp-ln-sub", (v) => { sub = v; build(); update(); });
+  update();
+})();
+
+/* ================================================================ 3. 기계 엡실론 찾기 */
+(function () {
+  let fmt = "64", x0 = 1, x = 1, e = 1, k = 0, rows = [], done = false, timer = null;
+  const tb = document.getElementById("fp-ep-tb"), msg = document.getElementById("fp-ep-msg"), playB = document.getElementById("fp-ep-play");
+  const R = (v) => (fmt === "32" ? Math.fround(v) : v);
+  const prec = () => (fmt === "32" ? 9 : 17);
+  const reset = () => {
+    x = R(x0); e = Math.pow(2, Math.ceil(Math.log2(x))); k = 0; rows = []; done = false; stop(); render();
+  };
+  const step = () => {
+    if (done) return;
+    const t = R(x + R(e / 2)), gt = t > x;
+    rows.push({ k: k + 1, e: e / 2, t, gt });
+    if (gt) { e = e / 2; k++; } else done = true;
+  };
+  const bitsOf = (v) => {
+    if (fmt === "32") { const d = new DataView(new ArrayBuffer(4)); d.setFloat32(0, v); return "1" + d.getUint32(0).toString(2).padStart(32, "0").slice(9); }
+    return "1" + FP.toBits(v).toString(2).padStart(64, "0").slice(12);
+  };
+  const cv = MB.canvas("#fp-ep-cv", (ctx, w, h) => {
+    const C = MB.palette(), b0 = bitsOf(x), b1 = bitsOf(R(x + e)), n = b0.length, L = 16, cw = (w - 2 * L) / n, y = 34, ch = Math.min(30, h - 64);
+    ctx.font = (cw > 11 ? 11 : 9) + "px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = 0; i < n; i++) {
+      const diff = b0[i] !== b1[i];
+      ctx.fillStyle = diff ? C.bad : i === 0 ? C.elev : C.surface; ctx.globalAlpha = diff ? 0.85 : 1;
+      ctx.fillRect(L + i * cw + 0.5, y, cw - 1, ch); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.border; ctx.strokeRect(L + i * cw + 0.5, y, cw - 1, ch);
+      if (cw > 6) { ctx.fillStyle = diff ? C.bg : C.text; ctx.fillText(b1[i], L + i * cw + cw / 2, y + ch / 2); }
+    }
+    ctx.textBaseline = "alphabetic"; ctx.fillStyle = C.dim; ctx.textAlign = "left";
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.fillText("x + e의 가수 비트: x + e = " + R(x + e).toPrecision(prec()), L, 22);
+    ctx.textAlign = "right"; ctx.fillText((fmt === "32" ? 23 : 52) + "번째 소수 비트 →", w - L, y + ch + 18);
+    ctx.textAlign = "left"; ctx.fillText("← 숨은 비트", L, y + ch + 18);
+  }, { height: 108 });
+  const render = () => {
+    const last = rows.slice(-60);
+    tb.innerHTML = last.map((r) => `<tr class="${r.gt ? "" : "fp-last"}"><td>${r.k}</td><td>2<sup>${String(Math.round(Math.log2(r.e))).replace("-", "−")}</sup> = ${FP.sci(r.e, 3)}</td><td>${r.t.toPrecision(prec())}</td><td>${r.gt ? "예" : "아니오 → 멈춤"}</td></tr>`).join("") || `<tr><td colspan="4" style="text-align:left;font-family:inherit">'한 단계'를 누르면 e/2를 더해 봅니다.</td></tr>`;
+    const sc = tb.closest(".fp-scroll"); sc.scrollTop = sc.scrollHeight;
+    MB.stat("fp-ep-k", String(k));
+    MB.stat("fp-ep-e", "2<sup>" + String(Math.round(Math.log2(e))).replace("-", "−") + "</sup> = " + FP.sci(e, 4));
+    MB.stat("fp-ep-r", FP.sci(e / x, 4));
+    const eps = fmt === "32" ? 2 ** -23 : 2 ** -52;
+    msg.className = "fp-msg" + (done ? " ok" : "");
+    msg.innerHTML = done ? `멈춤: x = ${x0}에서 더해서 구별되는 가장 작은 2의 거듭제곱은 e = ${FP.sci(e, 4)}, 곧 ulp(x)입니다. e/x = ${FP.num(e / x / eps, 3)}ε (ε = ${FP.sci(eps, 3)}).` : `e를 반으로 줄여 x + e/2가 여전히 x보다 큰지 봅니다. 빨간 칸은 x와 x + e가 다른 비트입니다.`;
+    cv.redraw();
+  };
+  const stop = () => { if (timer) clearInterval(timer); timer = null; playB.textContent = "▶ 자동"; playB.classList.remove("playing"); };
+  document.getElementById("fp-ep-step").addEventListener("click", () => { step(); render(); });
+  document.getElementById("fp-ep-reset").addEventListener("click", reset);
+  playB.addEventListener("click", () => {
+    if (timer) { stop(); return; }
+    if (done) reset();
+    playB.textContent = "■ 정지"; playB.classList.add("playing");
+    timer = setInterval(() => { step(); render(); if (done) stop(); }, 110);
+  });
+  MB.seg("fp-ep-fmt", (v) => { fmt = v; reset(); });
+  document.getElementById("fp-ep-x").addEventListener("change", (ev) => { x0 = Number(ev.target.value); reset(); });
+  reset();
+})();
+
+/* ================================================================ 4. 빗변의 오버플로·언더플로 */
+(function () {
+  let k = 200;
+  const msg = document.getElementById("fp-rg-msg");
+  const L10 = (v) => (v === 0 ? -Infinity : Math.log10(Math.abs(v)));
+  let D = null;
+  const calc = () => {
+    const x = parseFloat("3e" + k), y = parseFloat("4e" + k);
+    const x2 = x * x, naive = Math.sqrt(x * x + y * y);
+    const m = Math.max(Math.abs(x), Math.abs(y)), r = m === 0 ? 0 : Math.min(Math.abs(x), Math.abs(y)) / m, scaled = m === 0 ? 0 : m * Math.sqrt(1 + r * r);
+    const tr = parseFloat("5e" + k);
+    D = { x, x2, naive, scaled, tr, x2true: Math.log10(9) + 2 * k, trueL: Math.log10(5) + k };
+  };
+  calc();
+  const LO = -330, HI = 320, SUBLO = Math.log10(Math.pow(2, -1074)), NLO = Math.log10(Math.pow(2, -1022)), NHI = Math.log10(Number.MAX_VALUE);
+  const cv = MB.canvas("#fp-rg-cv", (ctx, w, h) => {
+    const C = MB.palette(), Lm = 16, Rm = w - 16, top = 14, bot = h - 34;
+    const X = (l) => Lm + ((MB.clamp(l, LO, HI) - LO) / (HI - LO)) * (Rm - Lm);
+    const band = (a, b, col, al) => { ctx.fillStyle = col; ctx.globalAlpha = al; ctx.fillRect(X(a), top, X(b) - X(a), bot - top); ctx.globalAlpha = 1; };
+    band(LO, SUBLO, C.bad, 0.12); band(SUBLO, NLO, C.warn, 0.22); band(NLO, NHI, C.accent, 0.08); band(NHI, HI, C.bad, 0.12);
+    ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    ctx.fillStyle = C.dim; ctx.textAlign = "center";
+    (w < 520 ? [-300, -150, 0, 150, 300] : [-300, -200, -100, 0, 100, 200, 300]).forEach((t) => { ctx.fillText("10" + (t < 0 ? "⁻" : "") + String(Math.abs(t)).split("").map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+c]).join(""), X(t), h - 14); ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(X(t), top); ctx.lineTo(X(t), bot); ctx.stroke(); });
+    const rows = [
+      ["x = 3·10^k", L10(D.x), null],
+      ["x² (정확한 값)", D.x2true, "ghost"],
+      ["fl(x²)", L10(D.x2), D.x2],
+      ["√(x²+y²) 그대로", L10(D.naive), D.naive],
+      ["척도 조정", L10(D.scaled), D.scaled],
+    ];
+    const rh = (bot - top) / rows.length;
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font");
+    rows.forEach(([lab, l, raw], i) => {
+      const yy = top + rh * (i + 0.62);
+      let px, col = i === 3 ? C.bad : i === 4 ? C.ok : C.text, txt = lab;
+      if (raw === "ghost") { px = X(l); col = C.dim; }
+      else if (l === Infinity) { px = X(HI); txt += " = ∞"; col = C.bad; }
+      else if (l === -Infinity) { px = X(LO); txt += " = 0"; col = C.bad; }
+      else px = X(l);
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, yy, 5.5, 0, 7); raw === "ghost" ? ctx.stroke() : ctx.fill();
+      const right = px > w * 0.6; ctx.textAlign = right ? "right" : "left";
+      ctx.fillText(txt, px + (right ? -12 : 12), yy + 4);
+    });
+  }, { aspect: 0.42, minHeight: 230, maxHeight: 320 });
+  const update = () => {
+    calc(); cv.redraw();
+    MB.stat("fp-rg-x2", FP.sci(D.x2, 3));
+    MB.stat("fp-rg-naive", FP.sci(D.naive, 4));
+    MB.stat("fp-rg-scaled", FP.sci(D.scaled, 4));
+    MB.stat("fp-rg-true", FP.sci(D.tr, 4));
+    const re = (v) => (D.tr === 0 ? NaN : Math.abs(v - D.tr) / D.tr);
+    const rn = re(D.naive), rs = re(D.scaled);
+    let m;
+    if (D.naive === Infinity) m = `<b>오버플로</b>: x² = 9×10<sup>${2 * k}</sup>이 최댓값 1.8×10<sup>308</sup>을 넘어 ∞가 되었고, √∞ = ∞. 답은 범위 안인데 중간값이 넘쳤습니다. 척도 조정은 상대 오차 ${FP.sci(rs, 2)}.`;
+    else if (D.naive === 0 && D.tr !== 0) m = `<b>언더플로</b>: x²과 y²이 모두 0으로 떨어져 빗변이 0이 되었습니다. 척도 조정은 상대 오차 ${FP.sci(rs, 2)}.`;
+    else if (rn > 1e-15 || (D.x2 > 0 && D.x2 < Math.pow(2, -1022))) m = `x²이 비정규 수 구간(주황)에 들어가 유효 숫자를 잃었습니다. 그대로 계산한 빗변의 상대 오차 <b>${FP.sci(rn, 2)}</b>, 척도 조정은 ${FP.sci(rs, 2)}.`;
+    else m = `중간값이 모두 정규 수 범위 안입니다. 두 방법 모두 정확합니다(상대 오차 ${FP.sci(Math.max(rn, rs), 2)} 이하).`;
+    if (D.tr === 0 || Math.abs(D.x) < Math.pow(2, -1022)) m = `x 자체가 비정규 수이거나 0입니다(입력에서 이미 정밀도 손실). 척도 조정 결과 ${FP.sci(D.scaled, 3)}, 참값 ${FP.sci(D.tr, 3)}.`;
+    msg.innerHTML = m;
+  };
+  const K = MB.range("fp-rg-k", (v) => String(v).replace("-", "−"), (v) => { k = v; update(); });
+  document.getElementById("fp-rg-big").addEventListener("click", () => K.set(200));
+  document.getElementById("fp-rg-small").addEventListener("click", () => K.set(-160));
+  document.getElementById("fp-rg-sub").addEventListener("click", () => K.set(-320));
+  update();
+})();
+
+/* ================================================================ 5. 상쇄 오차 그래프 */
+(function () {
+  const u = Math.pow(2, -53);
+  const F = {
+    cos: { a: (x) => 1 - Math.cos(x), b: (x) => 2 * Math.sin(x / 2) ** 2, amp: (x) => (1 + Math.cos(x)) / Math.abs(1 - Math.cos(x)) },
+    sqrt: { a: (x) => Math.sqrt(1 / x + 1) - Math.sqrt(1 / x), b: (x) => 1 / (Math.sqrt(1 / x + 1) + Math.sqrt(1 / x)), amp: (x) => (Math.sqrt(1 / x + 1) + Math.sqrt(1 / x)) / (Math.sqrt(1 / x + 1) - Math.sqrt(1 / x)) },
+    quad: { a: (x) => { const b = 1 / x; return (b - Math.sqrt(b * b - 4)) / 2; }, b: (x) => { const b = 1 / x; return 2 / (b + Math.sqrt(b * b - 4)); }, amp: (x) => { const b = 1 / x, d = Math.sqrt(b * b - 4); return (b + d) / (b - d); } },
+    sq: { a: (x) => ((1 + x) * (1 + x) - 1) / x, b: (x) => 2 + x, amp: (x) => ((1 + x) ** 2 + 1) / ((1 + x) ** 2 - 1) },
+  };
+  let f = F.cos, s = -6, pred = true, pts = [];
+  const compute = () => {
+    pts = [];
+    for (let i = 0; i <= 500; i++) { const lx = -12 + (i / 500) * 11.5, x = Math.pow(10, lx); const a = f.a(x), b = f.b(x); pts.push([x, Math.max(Math.abs(a - b) / Math.abs(b), 1e-17), Math.min(f.amp(x) * u, 1)]); }
+  };
+  compute();
+  const cv = MB.canvas("#fp-cc-cv", (ctx, w, h) => {
+    const C = MB.palette();
+    const series = [];
+    if (pred) series.push({ data: pts.map((p) => [p[0], p[2]]), color: C.faint, width: 1.6, dash: [6, 4] });
+    series.push({ data: pts.map((p) => [p[0], 1.2e-16]), color: C.ok, width: 2.4 });
+    const ch = MB.chart(ctx, null, { x: [1e-12, Math.pow(10, -0.5)], y: [1e-17, 10], logX: true, logY: true, xLabel: "x (로그 눈금)", yLabel: "상대 오차", series, vlines: [{ x: Math.pow(10, s), color: C.accent, dash: [3, 3] }], hlines: [{ y: u, label: "u", color: C.faint }] });
+    ctx.save(); ctx.beginPath(); ctx.rect(ch.box.x, ch.box.y, ch.box.w, ch.box.h); ctx.clip();
+    ctx.fillStyle = C.bad; pts.forEach((p) => { ctx.beginPath(); ctx.arc(ch.X(p[0]), ch.Y(p[1]), 1.9, 0, 7); ctx.fill(); });
+    ctx.restore();
+  }, { aspect: 0.56, minHeight: 260, maxHeight: 420 });
+  const update = () => {
+    cv.redraw();
+    const x = Math.pow(10, s), a = f.a(x), b = f.b(x), e = Math.abs(a - b) / Math.abs(b);
+    MB.stat("fp-cc-a", FP.sci(a, 6));
+    MB.stat("fp-cc-b", FP.sci(b, 6));
+    MB.stat("fp-cc-e", FP.sci(e, 2));
+    MB.stat("fp-cc-d", e === 0 ? "≈ 16" : FP.num(MB.clamp(-Math.log10(e), 0, 16), 1) + "자리");
+  };
+  MB.range("fp-cc-s", (v) => v.toFixed(2).replace("-", "−"), (v) => { s = v; update(); });
+  MB.check("fp-cc-pred", (v) => { pred = v; update(); });
+  document.getElementById("fp-cc-f").addEventListener("change", (e) => { f = F[e.target.value]; compute(); update(); });
+  update();
+})();
+
+/* ================================================================ 6. 근의 공식 해부 */
+(function () {
+  let m = 6, c = 1, alg = "naive";
+  const box = document.getElementById("fp-qd-steps");
+  const E = (v) => { if (v === 0) return "0"; const s = v.toExponential(16); const [mm, ee] = s.split("e"); return mm.replace("-", "−") + " ×10<sup>" + String(Number(ee)).replace("-", "−") + "</sup>"; };
+  const underline = (va, vb) => {
+    // 같은 지수일 때 가수의 공통 앞자리에 밑줄
+    const sa = va.toExponential(16), sb = vb.toExponential(16);
+    const [ma, ea] = sa.split("e"), [mb, eb] = sb.split("e");
+    if (ea !== eb) return [E(va), E(vb), 0];
+    let i = 0; while (i < ma.length && ma[i] === mb[i]) i++;
+    const n = ma.slice(0, i).replace(/[^0-9]/g, "").length;
+    const tail = (mm, ee) => " ×10<sup>" + String(Number(ee)).replace("-", "−") + "</sup>";
+    return [`<span class="fp-same">${ma.slice(0, i)}</span>${ma.slice(i)}` + tail(ma, ea), `<span class="fp-same">${mb.slice(0, i)}</span>${mb.slice(i)}` + tail(mb, eb), n];
+  };
+  const update = () => {
+    const b = -Math.pow(10, m), b2 = b * b, ac4 = 4 * c, D = b2 - ac4, sd = Math.sqrt(D), mb = -b;
+    const qv = -(b + Math.sign(b) * sd) / 2, xs = c / qv;
+    const naive = (mb - sd) / 2;
+    const xr = alg === "naive" ? naive : xs;
+    let rows;
+    if (alg === "naive") {
+      const [ua, ub, n] = underline(mb, sd);
+      rows = [["b²", E(b2)], ["4ac", E(ac4)], ["D = b² − 4ac", E(D)], ["√D", ub], ["−b", ua], ["−b − √D (상쇄!)", E(mb - sd)], ["x₂ = (−b − √D)/2", E(naive)]];
+      MB.stat("fp-qd-lost", "≈ " + FP.num(Math.log10(mb / Math.abs(mb - sd || 1e-300)), 1) + "자리 (증폭 " + FP.sci((mb + sd) / Math.abs(mb - sd || 1e-300), 2) + "배)");
+    } else {
+      rows = [["b²", E(b2)], ["D = b² − 4ac", E(D)], ["√D", E(sd)], ["q = −(b + sign(b)√D)/2 (같은 부호끼리 더하기)", E(qv)], ["x₁ = q/a (큰 근)", E(qv)], ["x₂ = c/q (작은 근)", E(xs)]];
+      MB.stat("fp-qd-lost", "0자리 (상쇄 없음)");
+    }
+    box.innerHTML = `<table class="fp-tbl"><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</tbody></table>`;
+    MB.stat("fp-qd-eq", "x² − " + (Number.isInteger(m) ? "10<sup>" + m + "</sup>" : FP.sci(-b, 3)) + "x + " + c + " = 0");
+    MB.stat("fp-qd-x", FP.sci(xr, 8));
+    const re = Math.abs(xr - xs) / xs;
+    MB.stat("fp-qd-err", alg === "naive" ? FP.sci(re, 2) : "≈ u (기준)");
+  };
+  MB.range("fp-qd-m", (v) => String(v), (v) => { m = v; update(); });
+  MB.range("fp-qd-c", (v) => String(v), (v) => { c = v; update(); });
+  MB.seg("fp-qd-alg", (v) => { alg = v; update(); });
+  update();
+})();
+
+/* ================================================================ 7. 합산 순서와 카한 */
+(function () {
+  const f = Math.fround, NS = [100, 300, 1000, 3000, 10000, 30000, 100000, 300000, 1000000];
+  let seq = "inv2", N = 100000, bound = false, R = null;
+  const term = (k, rnd) => {
+    switch (seq) {
+      case "inv2": return f(1 / (k * k));
+      case "inv": return f(1 / k);
+      case "tenth": return f(0.1);
+      case "rand": return f(rnd());
+      default: return f((k % 2 ? 1 : -1) / k);
+    }
+  };
+  const pair = (a, i, j) => { if (j - i === 1) return a[i]; const mid = (i + j) >> 1; return f(pair(a, i, mid) + pair(a, mid, j)); };
+  const compute = () => {
+    const rnd = MB.rng(7), a = new Float32Array(N); for (let k = 1; k <= N; k++) a[k - 1] = term(k, rnd);
+    const cps = []; for (let i = 0; i <= 28; i++) { const n = Math.round(10 * Math.pow(N / 10, i / 28)); if (!cps.length || n > cps[cps.length - 1]) cps.push(n); }
+    const out = { fw: [], bw: [], pw: [], kh: [], bd: [], ex: 0, stag: 0 };
+    let s = f(0), ks = f(0), kc = f(0), es = 0, ec = 0, abs = 0, ci = 0;
+    for (let i = 0; i < N; i++) {
+      const x = a[i];
+      const ns = f(s + x); if (!out.stag && ns === s && x !== 0) out.stag = i + 1; s = ns;
+      const y = f(x - kc), t = f(ks + y); kc = f(f(t - ks) - y); ks = t;
+      const t2 = es + x; ec += Math.abs(es) >= Math.abs(x) ? (es - t2) + x : (x - t2) + es; es = t2; abs += Math.abs(x);
+      if (i + 1 === cps[ci]) {
+        const n = i + 1, ex = es + ec;
+        let b = f(0); for (let j = n - 1; j >= 0; j--) b = f(b + a[j]);
+        const pwv = pair(a, 0, n);
+        const re = (v) => Math.max(Math.abs(v - ex) / Math.abs(ex), 1e-10);
+        out.fw.push([n, re(s)]); out.bw.push([n, re(b)]); out.pw.push([n, re(pwv)]); out.kh.push([n, re(ks)]); out.bd.push([n, (n - 1) * Math.pow(2, -24) * abs / Math.abs(ex)]);
+        out.ex = ex; ci++;
+      }
+    }
+    R = out;
+  };
+  compute();
+  const cv = MB.canvas("#fp-sm-cv", (ctx, w, h) => {
+    const C = MB.palette();
+    const series = [];
+    if (bound) series.push({ data: R.bd, color: C.faint, width: 1.6, dash: [6, 4] });
+    series.push({ data: R.fw, color: C.bad, width: 2.4 }, { data: R.bw, color: C.warn, width: 2.2 }, { data: R.pw, color: C.blue, width: 2 }, { data: R.kh, color: C.ok, width: 2.4 });
+    MB.chart(ctx, null, { x: [10, N], y: [1e-10, 10], logX: true, logY: true, xLabel: "항 수 n (로그 눈금)", yLabel: "상대 오차", series, hlines: [{ y: Math.pow(2, -24), label: "u", color: C.faint }] });
+  }, { aspect: 0.56, minHeight: 260, maxHeight: 420 });
+  const msg = document.getElementById("fp-sm-msg");
+  const update = () => {
+    compute(); cv.redraw();
+    const L = (a) => a[a.length - 1][1];
+    const fm = (v) => (v <= 1e-10 ? "&lt; 10<sup>−10</sup>" : FP.sci(v, 2));
+    MB.stat("fp-sm-fb", fm(L(R.fw)) + " / " + fm(L(R.bw)));
+    MB.stat("fp-sm-pk", fm(L(R.pw)) + " / " + fm(L(R.kh)));
+    MB.stat("fp-sm-ex", R.ex.toPrecision(10));
+    msg.innerHTML = R.stag && seq !== "tenth" && seq !== "rand" ? `앞에서부터 합산은 <b>n = ${R.stag}</b>번째 항부터 더해도 합이 바뀌지 않았습니다(항이 합의 ulp 절반보다 작음). 그 뒤의 항은 모두 버려집니다.` : `N = ${N}에서 앞에서부터 합산의 오차는 카한의 ${FP.num(L(R.fw) / Math.max(L(R.kh), 1e-10), 0)}배입니다.`;
+  };
+  MB.steps("fp-sm-n", NS, (v) => v.toLocaleString("en-US"), N, (v) => { N = v; update(); });
+  MB.check("fp-sm-bound", (v) => { bound = v; cv.redraw(); });
+  document.getElementById("fp-sm-seq").addEventListener("change", (e) => { seq = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 8. 0.1을 n번: 패트리어트 시계 */
+(function () {
+  const CH = 0.8 / 8388608; // 0.1 − (0.1을 소수점 아래 23비트에서 자른 값), 정확히
+  const H = [], P = [], S32 = [], S64 = [];
+  (function pre() {
+    const f = Math.fround, t32 = f(0.1); let s32 = f(0), s64 = 0;
+    for (let hr = 0; hr <= 100; hr++) {
+      const n = hr * 36000;
+      H.push(hr); P.push([hr, n * CH]); S32.push([hr, Math.abs(s32 - n / 10)]); S64.push([hr, Math.abs(s64 - n / 10)]);
+      for (let i = 0; i < 36000; i++) { s32 = f(s32 + t32); s64 += 0.1; }
+    }
+  })();
+  let hr = 100, show32 = true, show64 = true, timer = null;
+  const playB = document.getElementById("fp-tn-play");
+  const cv = MB.canvas("#fp-tn-cv", (ctx, w, h) => {
+    const C = MB.palette(), cut = (a) => a.slice(1, hr + 1);
+    const series = [{ data: cut(P), color: C.bad, width: 2.6 }];
+    if (show32) series.push({ data: cut(S32), color: C.warn, width: 2 });
+    if (show64) series.push({ data: cut(S64), color: C.blue, width: 2 });
+    MB.chart(ctx, null, { x: [0, 100], y: [1e-10, 1e5], logY: true, xLabel: "가동 시간 (시간)", yLabel: "|시간 오차| (초)", series, hlines: [{ y: 0.343, label: "0.343 s", color: C.bad }], vlines: [{ x: hr, color: C.accent, dash: [3, 3] }] });
+  }, { aspect: 0.52, minHeight: 250, maxHeight: 400 });
+  const update = () => {
+    cv.redraw();
+    const n = hr * 36000, pe = n * CH;
+    MB.stat("fp-tn-n", n.toLocaleString("en-US"));
+    MB.stat("fp-tn-p", FP.num(pe, 4) + " s");
+    MB.stat("fp-tn-d", FP.num(pe * 1700, 0) + " m");
+    MB.stat("fp-tn-s", FP.sci(S32[hr][1], 2) + " s · " + FP.sci(S64[hr][1], 2) + " s");
+  };
+  const HR = MB.range("fp-tn-h", (v) => v + " h", (v) => { hr = v; update(); });
+  MB.check("fp-tn-f32", (v) => { show32 = v; update(); });
+  MB.check("fp-tn-f64", (v) => { show64 = v; update(); });
+  const stop = () => { clearInterval(timer); timer = null; playB.textContent = "▶ 시계 돌리기"; playB.classList.remove("playing"); };
+  playB.addEventListener("click", () => {
+    if (timer) { stop(); return; }
+    if (hr >= 100) HR.set(0);
+    playB.textContent = "■ 정지"; playB.classList.add("playing");
+    timer = setInterval(() => { if (hr >= 100) { stop(); return; } HR.set(hr + 1); }, 60);
+  });
+  update();
+})();
+</script>
+</body>
+</html>

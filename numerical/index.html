@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>NumericalBook · 수치해석 교과서</title>
+<meta name="description" content="알고리즘을 한 단계씩 돌려 보며 배우는 인터랙티브 수치해석 교과서. 부동소수점과 오차, 조건수, 근 찾기, 보간과 스플라인, 최소제곱과 FFT, 수치 미분과 적분, 미분방정식 해법, 직접·반복 선형 해법과 고유값, 최적화, 편미분방정식의 수치 해법까지 직접 계산하며 익힌다.">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/common.js"></script>
+<style>
+  .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  .hero-badges span { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); background: var(--bg-elev); }
+  .hero-demo { border-radius: 20px; border: 1px solid var(--border); background: var(--bg-elev); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+  .hero-demo .view { background: var(--canvas-bg); }
+  .hero-demo .foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px 14px; font-size: 13px; color: var(--text-dim); }
+  .hero-demo .foot b { color: var(--text); }
+  .hero-demo .seg button { font-size: 12.5px; }
+  .parts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .part-card { padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); }
+  .part-card small { display: block; font-family: var(--mono); color: var(--accent); font-size: 11.5px; letter-spacing: .06em; margin-bottom: 4px; }
+  .part-card h3 { margin: 0 0 6px; font-size: 16.5px; }
+  .part-card p { margin: 0; color: var(--text-dim); font-size: 14px; }
+  .feat { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .feat a { display: block; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); }
+  .feat a:hover { border-color: var(--accent); text-decoration: none; }
+  .feat a b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .feat a span { color: var(--text-dim); font-size: 14px; }
+  .feat a small { display: block; font-family: var(--mono); color: var(--accent); font-size: 11.5px; margin-bottom: 6px; letter-spacing: .06em; }
+  .myth { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .myth div { padding: 16px 18px; border-radius: var(--radius); background: var(--bg-elev); border: 1px solid var(--border); font-size: 14.5px; color: var(--text-dim); }
+  .myth div b { display: block; color: var(--text); font-size: 15.5px; margin-bottom: 6px; }
+  .myth div b::before { content: "오해 · "; color: var(--bad); }
+  .myth div a { font-size: 13px; }
+  .part-title { margin: 26px 0 10px; font-size: 15px; color: var(--text-dim); font-weight: 700; letter-spacing: .02em; }
+  .part-title:first-child { margin-top: 0; }
+  .ch-card.planned { opacity: .62; border-style: dashed; pointer-events: none; }
+  .ch-card.planned .num::after { content: " · 집필 예정"; }
+  .paths { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .path { padding: 18px 20px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); }
+  .path h3 { margin: 0 0 6px; font-size: 17px; }
+  .path p { margin: 0 0 10px; color: var(--text-dim); font-size: 14.5px; }
+  .path .steps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .path .steps a, .path .steps span { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .path .steps span { opacity: .55; }
+  .path .steps a:hover { text-decoration: none; filter: brightness(1.1); }
+  /* 조밀한 홈: 여백을 줄여 한 화면에 더 많이 보이게 */
+  .home-hero .inner { padding: 40px 16px 36px; gap: 28px; }
+  .home-hero h1 { margin: 10px 0 14px; }
+  .home-hero p { font-size: 17.5px; }
+  .home-hero .cta { margin-top: 20px; }
+  .home-section { padding: 36px 16px; }
+  .home-section > p.sub { margin-bottom: 18px; }
+  .ch-card { min-height: 0; padding: 16px 18px; }
+  .hero-demo .foot #hero-msg { flex: 1 1 260px; }
+  .parts { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../shared/css/book-shell.css">
+<script defer src="../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-root="">
+
+<section class="home-hero">
+  <div class="inner">
+    <div>
+      <div class="eyebrow">Interactive Numerical Analysis</div>
+      <h1>컴퓨터가<br><span class="grad">수학을 근사하는 방법</span></h1>
+      <p>컴퓨터는 유한한 자릿수와 유한한 단계로만 계산합니다. 그래서 0.1 + 0.2는 0.3이 아니고, 미분은 차분이 되고, 적분은 유한한 합이 됩니다. 좋은 수치해석은 <b>오차를 예측하고, 통제하고, 비용과 바꾸는 기술</b>입니다. NumericalBook은 수치해석 한 학기와 수치 선형대수, 최적화, 편미분방정식 해법까지를 <b>알고리즘을 한 단계씩 돌려 보고, 오차를 로그 그래프로 재고, 실패하는 경우까지 확인하는</b> 순서로 다룹니다.</p>
+      <div class="cta">
+        <a class="primary" href="chapters/floating-point.html">1장부터 시작하기 →</a>
+        <a class="ghost" href="chapters/roots.html">근 찾기</a>
+        <a class="ghost" href="chapters/fft.html">FFT</a>
+      </div>
+      <div class="hero-badges">
+        <span>5부 16장 + 용어집</span><span>시뮬레이터 120여 개</span><span>직접 구현한 알고리즘</span><span>공대 3학년</span>
+      </div>
+    </div>
+    <div class="hero-demo" id="hero">
+      <div class="view"><canvas id="cv-hero"></canvas></div>
+      <div class="foot">
+        <div class="seg" id="hero-method"><button data-value="newton" class="on">뉴턴</button><button data-value="secant">할선법</button><button data-value="bisect">이분법</button></div>
+        <span id="hero-msg">출발점 x₀를 끌어 보세요</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <h2>이 책의 지도</h2>
+  <p class="sub">장마다 같은 질문을 던집니다. <b>오차는 얼마나 빨리 줄어드는가(O(hᵖ), 수렴 차수)</b>, <b>입력의 작은 오차가 얼마나 커지는가(조건수, 안정성)</b>, <b>그 정확도에 연산이 몇 번 드는가(비용)</b>. 부동소수점에서 출발해 근 찾기, 보간과 근사, 미분·적분·미분방정식, 행렬 계산, 최적화와 편미분방정식으로 넓혀 갑니다.</p>
+  <div class="parts">
+    <div class="part-card"><small>제1부 · CH.01–04</small><h3>오차와 근 찾기</h3><p>IEEE 754와 기계 엡실론, 자릿수 상쇄, 조건수와 후방 안정, 이분법·뉴턴·할선법의 수렴 차수, 다변수 뉴턴과 뉴턴 프랙털.</p></div>
+    <div class="part-card"><small>제2부 · CH.05–08</small><h3>보간과 근사</h3><p>분할 차분과 룽게 현상, 체비쇼프 노드, 3차 스플라인과 베지에, 최소제곱과 QR, 직교 다항식, DFT와 FFT.</p></div>
+    <div class="part-card"><small>제3부 · CH.09–11</small><h3>수치 미적분</h3><p>차분의 V자 오차와 최적 h, 리처드슨 외삽과 자동 미분, 롬베르크·가우스 구적법, 안정성 영역과 강성, BDF.</p></div>
+    <div class="part-card"><small>제4부 · CH.12–14</small><h3>수치 선형대수</h3><p>피벗팅과 LU·촐레스키, 행렬 조건수, 야코비·가우스–자이델·SOR, 켤레 기울기법과 전처리, 거듭제곱법과 QR 알고리즘.</p></div>
+    <div class="part-card"><small>제5부 · CH.15–16</small><h3>최적화와 편미분방정식</h3><p>경사 하강과 BFGS, 레벤버그–마쿼트, 제약 최적화, 열·이류·파동 방정식의 유한 차분, 폰 노이만 안정성과 CFL, 유한 요소법.</p></div>
+  </div>
+</section>
+
+<section class="home-section" style="padding-top:0">
+  <h2>대표 실험</h2>
+  <p class="sub">수식을 읽기 전에 먼저 돌려 보세요. 각 실험은 해당 장의 그 장면으로 이어집니다.</p>
+  <div class="feat">
+    <a href="chapters/floating-point.html#sim-fp-bits"><small>CH.01 · 부동소수점과 오차</small><b>0.1은 컴퓨터 안에서 정확히 얼마일까?</b><span>64개 비트를 하나씩 눌러 배정밀도 수를 만들고, 0.1 바로 다음 수가 0.10000000000000002라는 것과 그 사이 간격(ulp)을 확인합니다.</span></a>
+    <a href="chapters/floating-point.html#sim-fp-tenth"><small>CH.01 · 부동소수점과 오차</small><b>0.1초를 100시간 세면 시계는 얼마나 어긋날까?</b><span>0.1을 23비트에서 자른 시계는 100시간 뒤 0.34초 늦고, 초속 1.7 km 물체라면 위치가 수백 m 어긋납니다. 정밀도별 누적 오차를 비교합니다.</span></a>
+    <a href="chapters/conditioning.html#sim-cn-wilkinson"><small>CH.02 · 조건수와 안정성</small><b>계수 하나를 2⁻²³만큼 바꿨는데 왜 근 열 개가 복소수가 될까?</b><span>윌킨슨 다항식의 계수를 살짝 흔들면 1부터 20까지의 실근들이 서로 부딪쳐 복소평면으로 튀어 나갑니다.</span></a>
+    <a href="chapters/roots.html#sim-rt-cobweb"><small>CH.03 · 방정식의 근 찾기</small><b>같은 방정식인데 왜 하나는 수렴하고 하나는 달아날까?</b><span>거미줄 그림의 출발점을 끌면 |g′(r)| &lt; 1인지가 수렴과 발산을 가르고, g′(r) = 0이 되는 순간 2차 수렴, 곧 뉴턴 방법이 됩니다.</span></a>
+    <a href="chapters/roots.html#sim-rt-fail"><small>CH.03 · 방정식의 근 찾기</small><b>근 바로 옆에서 출발한 뉴턴 방법이 왜 엉뚱한 데로 갈까?</b><span>순환·발산·평평한 곳 같은 실패 사례를 돌려 보고, 가둠 구간과 이분법 안전장치가 언제나 근에 닿게 하는 모습을 봅니다.</span></a>
+    <a href="chapters/nonlinear-systems.html#sim-ns-fractal"><small>CH.04 · 비선형 연립방정식과 다항식의 근</small><b>뉴턴 방법은 세 근 중 어디로 갈까?</b><span>z³ − 1의 끌개 영역을 클릭하고 확대하면, 경계 어디를 확대해도 세 색이 다시 나오는 프랙털이 보입니다.</span></a>
+    <a href="chapters/nonlinear-systems.html#sim-ns-robot"><small>CH.04 · 비선형 연립방정식과 다항식의 근</small><b>로봇 팔은 목표에 맞는 관절 각을 어떻게 찾을까?</b><span>목표를 끌면 2변수 뉴턴 방법이 한두 번 반복으로 따라가고, 닿지 않는 곳에서는 감쇠 최소제곱이 팔을 목표 쪽으로 쭉 폅니다.</span></a>
+    <a href="chapters/interpolation.html#sim-ip-runge"><small>CH.05 · 다항식 보간</small><b>점을 늘렸는데 왜 더 틀릴까?</b><span>1/(1 + 25x²)을 등간격 점으로 보간하면 차수를 올릴수록 양 끝이 터지고, 체비쇼프 노드로 바꾸면 같은 차수에서 수렴합니다.</span></a>
+    <a href="chapters/splines.html#sim-sl-pchip"><small>CH.06 · 스플라인과 곡선</small><b>매끄러운 곡선이 데이터 범위를 넘어가도 될까?</b><span>계단 데이터에서 3차 스플라인은 위아래로 넘치고, PCHIP는 기울기를 조절해 데이터 범위와 단조성을 지킵니다.</span></a>
+    <a href="chapters/approximation.html#sim-ap-projection"><small>CH.07 · 최소제곱 근사와 직교 다항식</small><b>최소제곱은 왜 '수선의 발'일까?</b><span>직선의 절편과 기울기를 직접 골라 제곱 넓이 합을 줄이면, 최소가 되는 순간 잔차가 ℝ³의 열공간 평면에 수직이 됩니다.</span></a>
+    <a href="chapters/fft.html#sim-ff-alias"><small>CH.08 · 이산 푸리에 변환과 FFT</small><b>7 Hz 신호가 왜 3 Hz로 보일까?</b><span>표본화 주파수를 바꾸면 나이퀴스트 주파수를 넘는 성분이 접혀 들어오고, fₛ가 14 Hz를 넘는 순간 제 주파수로 돌아옵니다.</span></a>
+    <a href="chapters/fft.html#sim-ff-timing"><small>CH.08 · 이산 푸리에 변환과 FFT</small><b>N²과 N log N, 내 브라우저에서는 몇 배 차이일까?</b><span>직접 DFT와 FFT의 실행 시간을 이 브라우저에서 재어 로그–로그 그래프에 찍고 기울기 2와 1을 비교합니다.</span></a>
+    <a href="chapters/differentiation.html#sim-df-vshape"><small>CH.09 · 수치 미분</small><b>h를 더 줄이면 왜 미분이 더 틀릴까?</b><span>오차–간격 로그 그래프의 V자에서 절단 오차와 반올림 오차가 만나는 바닥, 최적 간격 h ≈ √ε를 찾습니다.</span></a>
+    <a href="chapters/differentiation.html#sim-df-reverse"><small>CH.09 · 수치 미분</small><b>신경망은 기울기 수억 개를 어떻게 한 번에 구할까?</b><span>계산 그래프를 앞으로 계산한 뒤 출력에서 입력으로 거꾸로 전파하는 후진 모드 자동 미분(역전파)을 한 단계씩 봅니다.</span></a>
+    <a href="chapters/integration.html#sim-ig-gauss"><small>CH.10 · 수치 적분</small><b>점 두 개로 3차식을 정확히 적분할 수 있을까?</b><span>르장드르 다항식의 근에 놓인 가우스 노드는 n점으로 2n − 1차까지 정확하고, 등간격 뉴턴–코츠는 n ≥ 9에서 음의 가중치가 나옵니다.</span></a>
+    <a href="chapters/integration.html#sim-ig-mc"><small>CH.10 · 수치 적분</small><b>다트를 던져 10차원 공의 부피를 잴 수 있을까?</b><span>몬테카를로 오차는 차원과 상관없이 1/√N으로 줄어듭니다. 같은 점 수의 격자는 10차원에서 축마다 4개 남짓입니다.</span></a>
+    <a href="chapters/ode-solvers.html#sim-od-robertson"><small>CH.11 · 미분방정식의 수치 해법</small><b>느린 화학 반응인데 왜 명시적 방법은 4만 걸음이나 걸릴까?</b><span>강성 로버트슨 반응에서 명시적 DP 5(4)의 걸음 수는 시간에 비례해 늘고, BDF2와 뉴턴 반복은 수백 걸음에 끝냅니다.</span></a>
+    <a href="chapters/direct-solvers.html#sim-ds-refine"><small>CH.12 · 연립방정식의 직접 해법</small><b>단정밀도로 분해하고 배정밀도 답을 얻을 수 있을까?</b><span>단정밀도 LU에 배정밀도 잔차로 반복 개선을 두세 번 하면 오차가 배정밀도 바닥까지 내려옵니다. 잔차의 정밀도가 최종 정확도를 정합니다.</span></a>
+    <a href="chapters/iterative.html#sim-it-heat"><small>CH.13 · 반복 해법</small><b>격자를 키워도 반복 수가 그대로인 방법이 있을까?</b><span>2차원 열판에서 야코비·가우스–자이델·SOR·CG·다중 격자를 겨루면, 격자를 키울 때 다중 격자만 다섯 사이클 그대로입니다.</span></a>
+    <a href="chapters/eigenvalues.html#sim-ev-pagerank"><small>CH.14 · 고유값의 수치 계산</small><b>링크 하나를 더하면 검색 순위가 어떻게 바뀔까?</b><span>작은 웹 그래프에서 링크를 켜고 끄며, 거듭제곱법으로 구한 페이지랭크 고유벡터와 수렴 속도를 봅니다.</span></a>
+    <a href="chapters/optimization.html#sim-op-rosenbrock"><small>CH.15 · 수치 최적화</small><b>경사 하강은 수천 걸음, 뉴턴은 수십 걸음?</b><span>로젠브록의 바나나 골짜기에서 경사 하강·뉴턴·BFGS의 경로와 수렴 곡선을 출발점을 끌며 비교합니다.</span></a>
+    <a href="chapters/pde-numerics.html#sim-pn-advection"><small>CH.16 · 편미분방정식의 수치 해법</small><b>사각 펄스를 옮기기만 하는데 왜 뭉개지거나 폭발할까?</b><span>풍상 차분은 모서리를 깎고(수치 확산), 랙스–벤드로프는 물결을 남기고, CFL 수가 1을 넘으면 터집니다.</span></a>
+  </div>
+</section>
+
+<section class="home-section" style="padding-top:0">
+  <h2>이런 오해, 한 번쯤 해 보셨죠?</h2>
+  <p class="sub">이 책을 읽고 나면 아래 문장들이 왜 틀렸는지 설명할 수 있게 됩니다.</p>
+  <div class="myth">
+    <div><b>컴퓨터 계산은 정확하다</b>대부분의 언어에서 0.1 + 0.2는 0.30000000000000004이고, 0.1을 열 번 더하면 0.9999999999999999입니다. 0.1은 2진법으로 끝나지 않는 소수라 저장하는 순간 반올림되고, <code>t == 1</code>로 멈추는 반복문은 영원히 돕니다. <a href="chapters/floating-point.html#point-one">1장 →</a></div>
+    <div><b>h를 작게 할수록 수치 미분이 정확해진다</b>e<sup>x</sup>의 x = 1에서 전진 차분은 h = 10⁻⁸일 때 오차가 6.6 × 10⁻⁹이지만, h = 10⁻¹²이면 4.3 × 10⁻⁴로 5만 배 나빠지고 h = 10⁻¹⁶이면 답이 0입니다. 자릿수 상쇄 때문입니다. <a href="chapters/differentiation.html#roundoff">9장 →</a></div>
+    <div><b>점을 더 많이 찍으면 보간이 정확해진다</b>1/(1 + 25x²)을 등간격 점으로 보간하면 최대 오차가 차수 10에서 1.92, 20에서 59.8, 40에서 10⁵을 넘습니다. 같은 차수라도 체비쇼프 노드에서는 꾸준히 줄어듭니다. <a href="chapters/interpolation.html#runge">5장 →</a></div>
+    <div><b>Ax = b는 역행렬을 구해 x = A⁻¹b로 풀면 된다</b>n = 1000이면 역행렬 전체는 2n³ ≈ 2.0 × 10⁹번의 연산으로 LU 분해(⅔n³ ≈ 6.7 × 10⁸번)의 세 배이고, 정확도도 대개 더 나쁩니다. 분해를 한 번 해 두면 우변이 몇 개든 대입(2n²번)만 하면 됩니다. <a href="chapters/direct-solvers.html#cost">12장 →</a></div>
+  </div>
+</section>
+
+<section class="home-section" style="padding-top:0">
+  <h2>챕터</h2>
+  <p class="sub">앞에서부터 차례로 읽기를 권합니다. 모든 장에 직접 조작하는 시뮬레이터와 손으로 푸는 예제, 확인 퀴즈가 있고, 마지막 장에서 책 전체를 종합 퀴즈로 점검합니다.</p>
+  <div id="ch-parts"></div>
+</section>
+
+<section class="home-section" style="padding-top:0">
+  <h2>추천 학습 경로</h2>
+  <p class="sub">목적에 맞게 골라 읽으세요.</p>
+  <div class="paths">
+    <div class="path"><h3>한 학기 수치해석</h3><p>공대 3학년 강의 순서 그대로. 오차와 근 찾기에서 보간, 미적분, 미분방정식, 연립방정식까지.</p><div class="steps"><a href="chapters/floating-point.html">01</a><a href="chapters/conditioning.html">02</a><a href="chapters/roots.html">03</a><a href="chapters/interpolation.html">05</a><a href="chapters/splines.html">06</a><a href="chapters/approximation.html">07</a><a href="chapters/differentiation.html">09</a><a href="chapters/integration.html">10</a><a href="chapters/ode-solvers.html">11</a><a href="chapters/direct-solvers.html">12</a></div></div>
+    <div class="path"><h3>과학 계산·시뮬레이션</h3><p>열·유체·구조 해석의 바탕. 오차의 출처, 미분방정식 해법과 강성, 희소 선형계와 반복 해법, 편미분방정식의 유한 차분과 유한 요소.</p><div class="steps"><a href="chapters/floating-point.html">01</a><a href="chapters/conditioning.html">02</a><a href="chapters/differentiation.html">09</a><a href="chapters/ode-solvers.html">11</a><a href="chapters/direct-solvers.html">12</a><a href="chapters/iterative.html">13</a><a href="chapters/pde-numerics.html">16</a></div></div>
+    <div class="path"><h3>데이터·기계 학습</h3><p>최소제곱과 QR, 자동 미분과 역전파, 고유값과 페이지랭크, 경사 하강과 BFGS, 확률적 경사 하강과 담금질.</p><div class="steps"><a href="chapters/conditioning.html">02</a><a href="chapters/approximation.html">07</a><a href="chapters/differentiation.html">09</a><a href="chapters/eigenvalues.html">14</a><a href="chapters/optimization.html">15</a></div></div>
+    <div class="path"><h3>수치 선형대수</h3><p>행렬 계산만 따로. 조건수와 후방 안정성, 피벗팅과 LU·촐레스키, 반복 개선과 희소 채움, CG와 다중 격자, QR 알고리즘.</p><div class="steps"><a href="chapters/floating-point.html">01</a><a href="chapters/conditioning.html">02</a><a href="chapters/approximation.html">07</a><a href="chapters/direct-solvers.html">12</a><a href="chapters/iterative.html">13</a><a href="chapters/eigenvalues.html">14</a></div></div>
+  </div>
+</section>
+
+<section class="home-section" style="padding-top:0">
+  <h2>함께 읽으면 좋은 책</h2>
+  <p class="sub">같은 서가의 다른 책에서 수치해석의 재료와 출발점을 만날 수 있습니다.</p>
+  <div class="paths">
+    <div class="path"><h3>CalculusBook — 미적분</h3><p>오차 차수를 재는 도구인 테일러 전개, 사다리꼴·심프슨 공식의 출발점, 뉴턴 방법의 첫 만남.</p><div class="steps"><a href="../calculus/chapters/taylor.html">테일러 전개 →</a><a href="../calculus/chapters/techniques.html">적분 기법</a><a href="../calculus/chapters/optimization.html">최적화</a></div></div>
+    <div class="path"><h3>LinearBook — 선형대수</h3><p>LU와 QR 분해, 특이값 분해, 수치 선형대수의 기초. 4부의 행렬 계산을 위한 바탕입니다.</p><div class="steps"><a href="../linear/chapters/lu.html">LU 분해 →</a><a href="../linear/chapters/qr.html">QR 분해</a><a href="../linear/chapters/svd.html">SVD</a><a href="../linear/chapters/numerical.html">수치 선형대수</a></div></div>
+    <div class="path"><h3>ODEBook — 미분방정식</h3><p>오일러에서 RK4까지, 강성 맛보기, 열 방정식의 FTCS. 11장과 16장이 여기서 이어집니다.</p><div class="steps"><a href="../ode/chapters/numerical.html">수치 해법 →</a><a href="../ode/chapters/pde.html">편미분방정식 입문</a></div></div>
+    <div class="path"><h3>MathBook — 문제에서 출발하는 수학</h3><p>컴퓨터가 어떻게 틀리는지 한 장으로 먼저 훑어봅니다.</p><div class="steps"><a href="../foundations/chapters/numerics.html">컴퓨터는 어떻게 틀리는가 →</a><a href="../">수학 서가</a></div></div>
+  </div>
+</section>
+
+<script>
+(function () {
+  // 챕터 목록: 부별로 묶고, 집필 예정인 장은 흐리게
+  const parts = [];
+  MB.CHAPTERS.forEach((c) => { let p = parts.find((x) => x.name === c.part); if (!p) parts.push(p = { name: c.part, items: [] }); p.items.push(c); });
+  const tags = (c) => (c.tags || []).map((t) => t === "sim" ? '<span class="t-sim">시뮬레이터</span>' : `<span>${t}</span>`).join("");
+  const card = (c) => c.planned
+    ? `<div class="ch-card planned" aria-disabled="true"><span class="num">CHAPTER ${c.num}</span><h3>${c.title}</h3><p>${c.desc}</p><div class="tags">${tags(c)}</div></div>`
+    : `<a class="ch-card" href="chapters/${c.slug}.html"><span class="num">CHAPTER ${c.num}</span><h3>${c.title}</h3><p>${c.desc}</p><div class="tags">${tags(c)}</div></a>`;
+  document.getElementById("ch-parts").innerHTML = parts.map((p) => `<h3 class="part-title">${p.name}</h3><div class="ch-grid">${p.items.map(card).join("")}</div>`).join("");
+
+  // 히어로: f(x) = x³ − 2x − 5 = 0을 뉴턴·할선법·이분법으로 푼다.
+  // 반복을 한 단계씩 그리고, 왼쪽 위 막대는 단계마다 맞은 자릿수(최대 16).
+  const f = (x) => x * x * x - 2 * x - 5, df = (x) => 3 * x * x - 2;
+  const R = 2.0945514815423265; // 참 근(배정밀도로 정확히 반올림한 값)
+  const XR = [-0.6, 4], YR = [-9, 30];
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const msg = document.getElementById("hero-msg");
+  const pts = [
+    { x: 3.2, y: 0, label: "x₀", lock: "y" },
+    { x: 1.0, y: 0, label: "x₁", lock: "y", hidden: true },
+  ];
+  let mode = "newton", run = null, step = 0, phase = 0, hold = 0;
+  const digits = (x) => { const e = Math.abs(x - R) / R; return e === 0 ? 16 : Math.max(0, Math.min(16, Math.floor(-Math.log10(e)))); };
+  const fmt = (v) => v.toFixed(2).replace("-", "−");
+
+  function solve() {
+    const a = pts[0].x, b = pts[1].x, xs = [], box = [];
+    let ok = true, why = "";
+    if (mode === "newton") {
+      let x = a; xs.push(x);
+      for (let k = 0; k < 14 && digits(x) < 16; k++) {
+        const d = df(x);
+        if (Math.abs(d) < 1e-12) { ok = false; why = "f′(x) = 0이라 접선이 x축과 만나지 않습니다"; break; }
+        const nx = x - f(x) / d;
+        if (nx === x) break;
+        x = nx; xs.push(x);
+        if (!isFinite(x) || Math.abs(x) > 1e6) { ok = false; why = "발산합니다"; break; }
+      }
+    } else if (mode === "secant") {
+      xs.push(a, b);
+      for (let k = 0; k < 16 && digits(xs[xs.length - 1]) < 16; k++) {
+        const p = xs[xs.length - 2], q = xs[xs.length - 1], d = f(q) - f(p);
+        if (d === 0) break;
+        const x = q - f(q) * (q - p) / d;
+        if (x === q) break;
+        xs.push(x);
+        if (!isFinite(x) || Math.abs(x) > 1e6) { ok = false; why = "발산합니다"; break; }
+      }
+    } else {
+      let lo = Math.min(a, b), hi = Math.max(a, b);
+      if (f(lo) * f(hi) > 0) { ok = false; why = "두 끝의 f 부호가 같아 근을 가두지 못합니다. a와 b를 근(≈ 2.09)의 양쪽에 두세요"; }
+      else {
+        for (let k = 0; k < 60; k++) {
+          const m = lo + (hi - lo) / 2; box.push([lo, hi]); xs.push(m);
+          if (m === lo || m === hi || f(m) === 0) break;
+          if (f(lo) * f(m) <= 0) hi = m; else lo = m;
+        }
+      }
+    }
+    const ds = xs.map(digits), last = ds.length ? ds[ds.length - 1] : 0;
+    if (ok && last < 15) { ok = false; why = why || `${xs.length - 1}번 안에 수렴하지 않습니다(근에서 멀거나 f′ ≈ 0 근처)`; }
+    run = { xs, ds, box, ok, why };
+    step = reduce ? Math.max(0, stepsOf() - 1) : 0; phase = reduce ? 1 : 0; hold = 0;
+    say();
+  }
+  const stepsOf = () => run ? (mode === "bisect" ? run.xs.length : Math.max(0, run.xs.length - (mode === "secant" ? 2 : 1))) : 0;
+  function say() {
+    const r = run, head = mode === "bisect" ? `[${fmt(Math.min(pts[0].x, pts[1].x))}, ${fmt(Math.max(pts[0].x, pts[1].x))}]` : mode === "secant" ? `x₀ = ${fmt(pts[0].x)}, x₁ = ${fmt(pts[1].x)}` : `x₀ = ${fmt(pts[0].x)}`;
+    if (!r.ok) { msg.innerHTML = `${head} · ${r.why}`; return; }
+    const n = mode === "bisect" ? r.xs.length : r.xs.length - (mode === "secant" ? 2 : 1);
+    if (mode === "bisect") { msg.innerHTML = `${head} · <b>${n}번</b>에 16자리. 구간이 매번 절반이라 약 3.3번에 한 자리씩(1차 수렴)`; return; }
+    const seq = r.ds.slice(mode === "secant" ? 1 : 0).join(" → ");
+    msg.innerHTML = `${head} · <b>${n}번</b>에 16자리. 맞은 자릿수 ${seq}: ${mode === "newton" ? "근 근처에서 매번 약 두 배(2차 수렴)" : "매번 약 1.6배(황금비 차수)"}`;
+  }
+
+  const opts = {
+    x: XR, y: YR, aspect: 0.7, maxHeight: 400, minHeight: 240, points: pts, grid: false, axes: false,
+    draw(P) {
+      const pal = P.P, ctx = P.ctx, y0 = P.Y(0);
+      pts[0].color = pal.accent; pts[1].color = pal.accent2; pts[1].hidden = mode === "newton";
+      pts[0].label = mode === "bisect" ? "a" : "x₀"; pts[1].label = mode === "bisect" ? "b" : "x₁";
+      // 축과 눈금
+      ctx.save(); ctx.strokeStyle = pal.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(P.w, y0); ctx.moveTo(P.X(0), 0); ctx.lineTo(P.X(0), P.h); ctx.stroke(); ctx.restore();
+      for (let x = 1; x <= 4; x++) { ctx.fillStyle = pal.axis; ctx.fillRect(P.X(x) - 0.6, y0 - 4, 1.2, 8); P.text(String(x), x, 0, { dy: 12, color: pal.faint, size: 11, align: "center" }); }
+      P.curve(f, { color: pal.text, width: 2.4 });
+      const r = run, n = stepsOf(), fade = (k) => (k < step ? 0.4 : 1);
+      if (r && r.xs.length) {
+        if (mode === "bisect") {
+          r.box.slice(0, step + 1).forEach(([lo, hi], k) => {
+            const yy = y0 + 24 + Math.min(k, 9) * 4;
+            ctx.save(); ctx.strokeStyle = k === step ? pal.accent2 : pal.accent; ctx.globalAlpha = k === step ? 1 : 0.45; ctx.lineWidth = k === step ? 3.5 : 2.2; ctx.beginPath(); ctx.moveTo(P.X(lo), yy); ctx.lineTo(P.X(hi), yy); ctx.stroke(); ctx.restore();
+          });
+          const m = r.xs[step], t = Math.min(1, phase * 1.6);
+          if (m != null) { P.line(m, 0, m, f(m) * t, { color: pal.accent2, width: 1.6, dash: [4, 4] }); P.dot(m, 0, { r: 4.5, color: pal.accent2 }); }
+        } else {
+          const off = mode === "secant" ? 1 : 0;
+          for (let k = 0; k <= Math.min(step, n - 1); k++) {
+            const x = r.xs[k + off], nx = r.xs[k + off + 1], cur = k === step, t = cur ? phase : 1;
+            const tv = Math.min(1, t / 0.35), tt = Math.max(0, (t - 0.35) / 0.65), al = fade(k);
+            P.line(x, 0, x, f(x) * tv, { color: pal.dim, width: 1.4, dash: [4, 4], alpha: al });
+            if (tt > 0) {
+              const sx = mode === "secant" ? r.xs[k] : x; // 할선은 이전 점에서 출발
+              const ex = x + (nx - x) * tt, ey = f(x) * (1 - tt);
+              if (mode === "secant") P.line(sx, f(sx), x, f(x), { color: pal.accent2, width: 1.6, alpha: 0.6 * al });
+              P.line(x, f(x), ex, ey, { color: pal.accent, width: 2, alpha: al });
+              if (tt >= 1) P.dot(nx, 0, { r: 4, color: pal.accent, alpha: al });
+            }
+            P.dot(x, f(x), { r: 3.5, color: pal.dim, alpha: al });
+          }
+        }
+      }
+      P.dot(R, 0, { r: 5, color: pal.bg }); P.circle(R, 0, 5 / P.unit, { color: pal.text, width: 1.6 });
+      // 맞은 자릿수 막대(왼쪽 위)
+      if (r && r.ds.length) {
+        const bx = 10, by = 10, bw = Math.min(250, P.w * 0.44), bh = Math.min(110, P.h * 0.36), shown = mode === "bisect" ? step + 1 : step + (phase >= 1 ? 2 : 1) + (mode === "secant" ? 1 : 0);
+        const ds = r.ds.slice(0, Math.min(r.ds.length, shown)), N = Math.max(8, r.ds.length), gw = (bw - 16) / N;
+        ctx.save(); ctx.fillStyle = pal.bg; ctx.globalAlpha = 1; ctx.fillRect(bx, by, bw, bh + 22); ctx.globalAlpha = 1; ctx.strokeStyle = pal.grid; ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh + 22);
+        ctx.fillStyle = pal.dim; ctx.font = `12px ${getComputedStyle(document.body).getPropertyValue("--font")}`; ctx.textBaseline = "top"; ctx.fillText("맞은 자릿수 (최대 16)", bx + 8, by + 6);
+        const base = by + bh + 16, top = by + 26, sc = (base - top) / 16;
+        ctx.strokeStyle = pal.grid; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(bx + 8, top); ctx.lineTo(bx + bw - 8, top); ctx.stroke(); ctx.setLineDash([]);
+        ds.forEach((d, k) => { ctx.fillStyle = k === ds.length - 1 ? pal.accent2 : pal.accent; ctx.fillRect(bx + 8 + k * gw + gw * 0.12, base - Math.max(1.5, d * sc), Math.max(1, gw * 0.76), Math.max(1.5, d * sc)); });
+        ctx.restore();
+      }
+      P.text("f(x) = x³ − 2x − 5", XR[1], YR[0], { dx: -10, dy: -12, color: pal.dim, size: 12.5, align: "right" });
+      P.text("r ≈ 2.0946", R, 0, { dx: -8, dy: -12, color: pal.dim, size: 11.5, align: "right" });
+    },
+    onDrag() { solve(); },
+  };
+  const pl = MB.plane("#cv-hero", opts);
+
+  const loop = MB.loop(document.getElementById("hero"), (dt) => {
+    if (reduce || !run) return;
+    const n = stepsOf(), per = mode === "bisect" ? 0.32 : 1.0;
+    if (n === 0) return;
+    if (step < n - 1 || phase < 1) {
+      phase += Math.min(dt, 0.05) / per;
+      if (phase >= 1) { if (step < n - 1) { step++; phase = 0; } else phase = 1; }
+    } else if ((hold += dt) > 2.2) { step = 0; phase = 0; hold = 0; }
+    pl.redraw();
+  });
+
+  MB.seg("hero-method", (v) => {
+    mode = v;
+    if (v === "newton") { pts[0].x = 3.2; }
+    else if (v === "secant") { pts[0].x = 3.2; pts[1].x = 2.5; }
+    else { pts[0].x = 1.0; pts[1].x = 3.2; }
+    solve(); loop.start && loop.start(); pl.redraw();
+  });
+  solve(); pl.redraw();
+})();
+</script>
+</body>
+</html>

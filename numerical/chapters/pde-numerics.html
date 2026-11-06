@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>편미분방정식의 수치 해법 · NumericalBook</title>
+<meta name="description" content="편미분방정식을 격자 위에서 푸는 법. 차분 근사와 차수, 푸아송 방정식의 5점 스텐실, 열 방정식의 FTCS·BTCS·크랭크–니콜슨, 폰 노이만 안정성, 랙스 동등성 정리, 이류의 풍상 차분과 CFL, 파동의 립프로그, 1차원 유한 요소법, 유한 체적법.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .pn-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .pn-two > div { position: relative; min-width: 0; }
+  .pn-two > div + div { border-top: 1px solid var(--border); }
+  .pn-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .pn-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .pn-msg b { color: var(--text); }
+  .pn-msg.ok { color: var(--ok); font-weight: 600; }
+  .pn-msg.bad { color: var(--bad); font-weight: 600; }
+  .pn-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .pn-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .pn-num td, .pn-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .pn-num td:first-child, .pn-num th:first-child { text-align: left; font-family: inherit; }
+  .pn-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
+  .pn-map a { display: block; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-elev); color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.5; }
+  .pn-map a small { display: block; color: var(--accent); font: 600 11.5px var(--mono); margin-bottom: 4px; }
+  .pn-map a span { color: var(--text-dim); font-size: 13px; }
+  .pn-map a:hover { border-color: var(--accent); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="pde-numerics">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 16</div>
+    <h1 data-no-glossary>편미분방정식의 수치 해법</h1>
+    <p class="lead">온도, 압력, 전위, 농도처럼 공간과 시간에 함께 퍼져 있는 양은 편미분방정식을 따릅니다. ODEBook 16장(<a href="../../ode/chapters/pde.html">편미분방정식 입문</a>)은 열·파동·라플라스 방정식을 변수분리로 풀고, 마지막에 명시적 차분법 FTCS와 그 안정 조건 \(r \le 1/2\), 파동의 CFL 조건을 맛보았습니다. 이 장은 거기서 출발합니다. 막대 대신 판을, 사인 급수 대신 큰 희소 연립방정식을, 명시적 방법 대신 <b>음적 방법</b>을 씁니다. 모든 방법을 같은 세 질문으로 다룹니다. <b>얼마나 정확한가(차수), 오차가 자라지 않는가(안정성), 얼마나 비싼가(비용).</b> 그리고 이 세 질문을 묶는 랙스 동등성 정리, 이류 방정식에서 드러나는 수치 확산과 분산, 그리고 복잡한 모양을 다루는 유한 요소법과 보존 법칙을 지키는 유한 체적법까지 갑니다. 이 장은 책의 마지막 본문 장이라, 끝에서 책 전체를 돌아봅니다.</p>
+    <ul class="objectives">
+      <li>테일러 전개로 차분 근사의 오차 차수를 구하고, 격자 수렴 실험으로 2차 정확도를 확인한다.</li>
+      <li>푸아송 방정식을 5점 스텐실로 이산화해 희소 선형계를 만들고, 그 크기·구조·풀이 비용(야코비·SOR·직접법)을 견준다.</li>
+      <li>열 방정식의 FTCS·BTCS·크랭크–니콜슨을 비교하고, 폰 노이만 분석으로 각 방법의 증폭 인자와 안정 조건을 유도한다.</li>
+      <li>랙스 동등성 정리로 일관성·안정성·수렴의 관계를 설명한다.</li>
+      <li>이류 방정식에서 중앙 차분이 불안정한 이유, 풍상 차분의 수치 확산, 랙스–벤드로프의 진동, CFL 조건을 설명한다.</li>
+      <li>1차원 문제를 약형식과 모자 함수로 유한 요소 강성 행렬로 조립하고, 유한 체적법의 보존 성질을 안다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>칩의 열 설계와 날개 주위의 공기 흐름</b></div>
+      <div class="o-body"><p>스마트폰 칩 안의 뜨거운 점이 어디에 생기는지, 엔진 블록이 시동 뒤 몇 분 만에 데워지는지, 날개 위를 지나는 공기의 압력 분포가 어떤지, 트랜지스터 안의 전자 농도가 어떻게 분포하는지는 모두 편미분방정식의 해입니다. 이런 문제의 영역은 직사각형이 아니고 물성도 균일하지 않아서, 변수분리나 급수로는 풀 수 없습니다. 공학자는 영역을 수만~수십억 개의 칸이나 요소로 자르고, 미분을 이웃 값의 차이로 바꾸어 거대한 연립방정식으로 만든 뒤 컴퓨터로 풉니다.</p>
+        <p>미분방정식을 격자로 바꾸는 생각의 수학적 토대 가운데 하나는 쿠랑, 프리드리히스, 레위<span class="en">(Courant, Friedrichs, Lewy)</span>의 1928년 논문입니다. 1950년대에는 랙스<span class="en">(Peter Lax)</span>의 동등성 정리와 폰 노이만<span class="en">(John von Neumann)</span>의 안정성 분석이, 1960년대 이후에는 구조 공학에서 자란 유한 요소법이 자리 잡았습니다. 오늘날 상용 열·구조 해석 프로그램, 전산 유체 역학(CFD) 코드, 반도체 소자 시뮬레이터는 이 장의 방법을 수백만 배 큰 규모로 돌립니다.</p>
+        <div class="o-chain"><span>∂u/∂t = α∇²u</span><i>→</i><span>격자 위의 차분</span><i>→</i><span class="tool">희소 연립방정식 Au = b, 안정한 시간 진행</span><i>→</i><span>열·유체·소자 시뮬레이션</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="grids">
+    <h2>격자와 유한 차분 근사</h2>
+    <div class="problem"><strong>미분을 이웃 값의 차이로</strong>
+      <p>길이 1 m인 막대에 열원 \(f(x)\)가 있고 양 끝이 0 °C일 때의 정상 온도는 \(-u'' = f\), \(u(0) = u(1) = 0\)을 따릅니다. 컴퓨터는 함수 \(u(x)\)를 저장할 수 없고 점 몇 개의 값만 저장할 수 있습니다. 점 \(N - 1\)개의 값만으로 방정식을 어떻게 쓰고, 점을 두 배로 늘리면 답은 얼마나 좋아질까요?</p></div>
+    <p>구간을 간격 \(h = 1/N\)로 나눈 <span class="term">격자</span><span class="en">(grid, mesh)</span> \(x_i = ih\) 위에서 \(u_i \approx u(x_i)\)를 미지수로 둡니다. 9장의 중앙 차분을 2계 도함수에 쓰면, 테일러 전개 \(u(x \pm h) = u \pm hu' + \frac{h^2}{2}u'' \pm \frac{h^3}{6}u''' + \frac{h^4}{24}u'''' + \cdots\)를 더해 홀수 항이 지워지고</p>
+    <div class="formula">$$\frac{u(x + h) - 2u(x) + u(x - h)}{h^2} = u''(x) + \frac{h^2}{12}u''''(\xi).$$
+      <div class="where">좌변을 \(\delta^2 u/h^2\)로 적는다. 버린 항이 국소 절단 오차이고 \(h^2\)에 비례한다(2차 정확). 이 공식을 이웃 세 점의 무게 \((1, -2, 1)/h^2\)로 보는 것을 <b>스텐실</b>이라 한다.</div></div>
+    <p>이를 각 내부 점에 쓰면 \(-u_{i-1} + 2u_i - u_{i+1} = h^2 f_i\), \(i = 1, \dots, N - 1\)이고, 경계값 \(u_0 = u_N = 0\)을 넣으면 삼중대각 연립방정식 \(T\mathbf u = h^2\mathbf f\)입니다. 행렬 \(T = \operatorname{tridiag}(-1, 2, -1)\)은 대칭 양정치이며, 12장의 토머스 알고리즘으로 \(O(N)\) 연산에 풀립니다.</p>
+    <div class="callout deep"><strong>정의 16.1 (일관성과 정확도 차수)</strong> 차분 방정식에 참 해 \(u(x_i)\)를 넣었을 때 남는 값 \(\tau_i\)를 <span class="term">국소 절단 오차</span>라 하고, \(h \to 0\)일 때 \(\tau \to 0\)이면 그 방법이 미분방정식과 <span class="term">일관적</span><span class="en">(consistent)</span>이라 한다. \(\tau = O(h^p)\)이면 \(p\)차 정확하다.</div>
+    <div class="callout deep"><strong>정리 16.2 (1차원 푸아송 차분법의 수렴)</strong> \(u \in C^4\)이면 위 차분 해의 오차는 \(\max_i|u_i - u(x_i)| \le \frac{h^2}{96}\max|u''''|\)이다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 오차 \(e_i = u_i - u(x_i)\)는 \(T\mathbf e/h^2 = -\boldsymbol\tau\)를 만족한다. 그러므로 \(\|\mathbf e\|_\infty \le \|(T/h^2)^{-1}\|_\infty\|\boldsymbol\tau\|_\infty\). \((T/h^2)^{-1}\)의 성분은 모두 양수이고 행 합은 \(-w'' = 1\)의 차분 해 \(x_i(1 - x_i)/2\)(이 이차식에서는 차분이 정확하다)이므로 최대 \(1/8\)이다. \(|\tau| \le \frac{h^2}{12}\max|u''''|\)와 곱하면 된다. 절단 오차가 작다는 것(일관성)과 역행렬이 \(h\)에 무관하게 유계라는 것(안정성)이 합쳐져 수렴이 된다. 5절의 랙스 동등성 정리의 원형이다. ∎</p></div>
+    <div class="callout"><strong>예제 16.1 (격자 수렴 실험)</strong> \(-u'' = \pi^2\sin\pi x\), 참 해 \(u = \sin\pi x\).
+      <div class="table-wrap"><table class="pn-num">
+        <thead><tr><th>N</th><th>u<sub>N/2</sub> (참값 1)</th><th>최대 오차</th><th>오차 비 (이전/지금)</th></tr></thead>
+        <tbody>
+          <tr><td>4</td><td>1.053029</td><td>5.303×10⁻²</td><td>—</td></tr>
+          <tr><td>8</td><td>1.012951</td><td>1.295×10⁻²</td><td>4.095</td></tr>
+          <tr><td>16</td><td>1.003219</td><td>3.219×10⁻³</td><td>4.023</td></tr>
+          <tr><td>32</td><td>1.000804</td><td>8.036×10⁻⁴</td><td>4.006</td></tr>
+          <tr><td>64</td><td>1.000201</td><td>2.008×10⁻⁴</td><td>4.001</td></tr>
+        </tbody></table></div>
+      <p style="margin:6px 0 0">격자를 두 배로 촘촘히 하면 오차가 4분의 1, 곧 \(\log_2 4 = 2\)차다. 상한 \(\frac{h^2}{96}\pi^4\)은 \(N = 4\)에서 \(6.3\times10^{-2}\)으로 실제 오차 \(5.3\times10^{-2}\)에 가깝다. 이 비율 실험은 PDE 코드를 검증하는 표준 절차다(제조된 해의 방법).</p></div>
+
+    <div class="sim" id="sim-pn-order">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>격자 수렴: 점을 두 배로, 오차는 4분의 1</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pn-two">
+          <div><canvas id="pn-or-cv"></canvas><span class="pn-cap">차분 해(점)와 참 해(선)</span></div>
+          <div><canvas id="pn-or-ch"></canvas><span class="pn-cap">최대 오차 vs h (로그–로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제 −u″ = f</span><select id="pn-or-fn">
+            <option value="sin">f = π² sin πx (u = sin πx)</option>
+            <option value="exp">f = −(eˣ) 꼴 (u = eˣ − 1 − (e − 1)x)</option>
+            <option value="kink">u = |x − 0.4|^2.5 (덜 매끄러움)</option>
+          </select></label>
+          <label class="ctrl"><span>격자 N <output id="pn-or-n-out"></output></span><input type="range" id="pn-or-n"></label>
+          <label class="check"><input type="checkbox" id="pn-or-ref" checked> 기준선 h²</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">h = 1/N</span><span class="v" id="pn-or-h">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="pn-or-e">—</span></div>
+        <div class="stat"><span class="k">오차 비 (N/2 대비)</span><span class="v" id="pn-or-r">—</span></div>
+        <div class="stat"><span class="k">맞춘 기울기 (차수)</span><span class="v" id="pn-or-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① N을 4 → 8 → 16으로 올리며 오차 비가 4에 다가가는지 보세요. ② 'eˣ' 문제에서도 기울기는 2입니다. 차수는 해의 매끄러움에만 달려 있습니다. ③ 덜 매끄러운 해(u‴가 x = 0.4에서 무한대)에서는 오차 비가 N마다 들쭉날쭉해집니다. 격자점이 x = 0.4에 얼마나 가까운지에 따라 오차가 달라지고, 정리 16.2의 가정 u ∈ C⁴가 깨져 깔끔한 h² 법칙이 사라집니다. 모델: 경계값은 참 해에서 가져오고, 삼중대각계는 토머스 알고리즘으로 풉니다. 오차는 격자점에서의 최대 오차, N = 4 … 512.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="poisson">
+    <h2>푸아송 방정식: 5점 스텐실과 희소 선형계</h2>
+    <div class="problem"><strong>칩 위의 정상 온도 분포</strong>
+      <p>정사각형 판의 네 변 온도가 정해져 있고 판 안에 발열 부품이 있습니다. 정상 상태 온도는 \(-\nabla^2 u = f\)(푸아송 방정식, \(f = 0\)이면 라플라스 방정식)를 따릅니다. ODEBook에서는 이웃 평균을 되풀이해 판의 온도를 구했습니다. 그 되풀이가 실제로는 어떤 연립방정식을 푸는 것이고, 격자를 키우면 얼마나 비싸지는지 정량적으로 봅시다.</p></div>
+    <p>\(x\)와 \(y\) 방향에 앞 절의 중앙 차분을 각각 쓰면, 간격 \(h\)의 정사각 격자 점 \((x_i, y_j)\)에서</p>
+    <div class="formula">$$-\frac{u_{i+1,j} + u_{i-1,j} + u_{i,j+1} + u_{i,j-1} - 4u_{i,j}}{h^2} = f_{i,j}.$$
+      <div class="where">가운데 점과 동서남북 네 이웃, 다섯 점의 <span class="term">5점 스텐실</span>. 절단 오차는 \(\frac{h^2}{12}(u_{xxxx} + u_{yyyy})\), 2차 정확하다. \(f = 0\)이면 "각 점의 값은 네 이웃의 평균"이다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="5점 스텐실과 행렬의 희소 구조">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <g style="stroke:var(--grid)">
+          <line x1="40" y1="60" x2="300" y2="60"/><line x1="40" y1="125" x2="300" y2="125"/><line x1="40" y1="190" x2="300" y2="190"/><line x1="40" y1="255" x2="300" y2="255"/>
+          <line x1="60" y1="40" x2="60" y2="270"/><line x1="125" y1="40" x2="125" y2="270"/><line x1="190" y1="40" x2="190" y2="270"/><line x1="255" y1="40" x2="255" y2="270"/>
+        </g>
+        <line x1="125" y1="125" x2="255" y2="125" style="stroke:var(--accent);stroke-width:2"/><line x1="190" y1="60" x2="190" y2="190" style="stroke:var(--accent);stroke-width:2"/>
+        <circle cx="190" cy="125" r="11" style="fill:var(--accent)"/><circle cx="125" cy="125" r="8" style="fill:var(--accent-2)"/><circle cx="255" cy="125" r="8" style="fill:var(--accent-2)"/><circle cx="190" cy="60" r="8" style="fill:var(--accent-2)"/><circle cx="190" cy="190" r="8" style="fill:var(--accent-2)"/>
+        <text x="190" y="129" text-anchor="middle" class="t-mono" style="fill:var(--bg);font-size:11px">4</text>
+        <text x="125" y="150" text-anchor="middle" class="t-mono">−1</text><text x="255" y="150" text-anchor="middle" class="t-mono">−1</text><text x="208" y="56" class="t-mono">−1</text><text x="208" y="210" class="t-mono">−1</text>
+        <text x="40" y="32" class="t-dim">5점 스텐실 (× 1/h²)</text>
+        <g transform="translate(360,40)">
+          <text x="0" y="-6" class="t-dim">행렬 A (내부 3×3 = 9개 미지수)</text>
+          <g style="fill:var(--accent)">
+            <rect x="0" y="0" width="20" height="20"/><rect x="20" y="20" width="20" height="20"/><rect x="40" y="40" width="20" height="20"/><rect x="60" y="60" width="20" height="20"/><rect x="80" y="80" width="20" height="20"/><rect x="100" y="100" width="20" height="20"/><rect x="120" y="120" width="20" height="20"/><rect x="140" y="140" width="20" height="20"/><rect x="160" y="160" width="20" height="20"/>
+          </g>
+          <g style="fill:var(--accent-2)">
+            <rect x="20" y="0" width="20" height="20"/><rect x="0" y="20" width="20" height="20"/><rect x="40" y="20" width="20" height="20"/><rect x="20" y="40" width="20" height="20"/>
+            <rect x="80" y="60" width="20" height="20"/><rect x="60" y="80" width="20" height="20"/><rect x="100" y="80" width="20" height="20"/><rect x="80" y="100" width="20" height="20"/>
+            <rect x="140" y="120" width="20" height="20"/><rect x="120" y="140" width="20" height="20"/><rect x="160" y="140" width="20" height="20"/><rect x="140" y="160" width="20" height="20"/>
+            <rect x="60" y="0" width="20" height="20"/><rect x="80" y="20" width="20" height="20"/><rect x="100" y="40" width="20" height="20"/><rect x="120" y="60" width="20" height="20"/><rect x="140" y="80" width="20" height="20"/><rect x="160" y="100" width="20" height="20"/>
+            <rect x="0" y="60" width="20" height="20"/><rect x="20" y="80" width="20" height="20"/><rect x="40" y="100" width="20" height="20"/><rect x="60" y="120" width="20" height="20"/><rect x="80" y="140" width="20" height="20"/><rect x="100" y="160" width="20" height="20"/>
+          </g>
+          <rect x="0" y="0" width="180" height="180" style="fill:none;stroke:var(--border)"/>
+          <text x="200" y="20" class="t-dim">대각 4</text>
+          <text x="200" y="44" class="t-dim">바로 옆 −1 (같은 줄 이웃)</text>
+          <text x="200" y="68" class="t-dim">띠 거리 n의 −1 (위·아래 줄)</text>
+          <text x="200" y="104" class="t-dim">한 행에 0 아닌 값 ≤ 5개</text>
+          <text x="200" y="128" class="t-dim">띠 너비 n, 크기 n² × n²</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-1.</b> 5점 스텐실(왼쪽)과 그것이 만드는 행렬(오른쪽). 미지수를 한 줄씩 차례로 번호 매기면 행렬은 대각 근처의 세 줄과 거리 \(n\)의 두 줄만 0이 아닌 블록 삼중대각 행렬이 된다.</figcaption>
+    </figure>
+    <p>한 변에 내부 점이 \(n = N - 1\)개면 미지수는 \(n^2\)개, 행렬은 \(n^2\times n^2\)입니다. \(n = 100\)이면 미지수 9801개(\(N = 100\)), 밀집 행렬로 저장하면 약 \(10^8\)개의 칸이지만 0이 아닌 값은 5만 개 미만입니다. 그래서 행렬을 만들지 않고 스텐실만으로 계산하는 <b>희소</b> 방법이 중요합니다. 밀집 가우스 소거는 \((n^2)^3/3 \approx 3\times10^{11}\)번, 띠 촐레스키는 띠 너비 \(n\)을 이용해 약 \(n^2\cdot n^2/2 = 5\times10^7\)번입니다. 3차원이면 차이가 훨씬 커집니다.</p>
+    <div class="callout deep"><strong>정리 16.3 (이산 최대 원리)</strong> \(f = 0\)인 5점 차분 해는 각 내부 점의 값이 네 이웃의 평균이므로, 최댓값과 최솟값을 경계에서만 가진다. 따라서 차분 해는 유일하고(같은 경계값의 두 해의 차는 0), 경계값의 범위를 벗어나지 않는다. ODEBook 정리 16.5의 평균값 성질을 격자로 옮긴 것이다.</div>
+    <div class="callout"><strong>예제 16.2 (윗변만 뜨거운 판)</strong> 단위 정사각형의 윗변 100 °C, 나머지 세 변 0 °C, \(f = 0\).
+      <ol>
+        <li>판을 90°씩 돌린 네 문제를 겹치면 경계가 모두 100 °C인 문제가 되고 그 해는 어디나 100이다. 정중앙은 네 문제에서 같은 값이므로 \(u(\frac12, \frac12) = 25\). 이 논증은 차분 방정식에도 그대로 성립해서, 5점 차분 해의 중앙값도 어떤 \(N\)(짝수)에서나 정확히 25다(계산 결과 \(N = 4, 8, 16\)에서 25.00000000).</li>
+        <li>점 \((0.5, 0.75)\)의 참값(급수해)은 54.053. 차분 해는 \(N = 4, 8, 16\)에서 52.679, 53.608, 53.933, 오차 1.37, 0.445, 0.120으로 비가 3.1, 3.7이다. 윗변 양 끝 모서리에서 경계값이 불연속(100과 0)이라 해가 매끄럽지 않아 처음에는 2차보다 느리게 준다.</li>
+      </ol></div>
+    <p>큰 희소계를 푸는 방법은 13장의 주제였습니다. 이 문제에서 야코비 반복의 스펙트럼 반지름은 정확히 \(\rho_J = \cos\pi h\), 가우스–자이델은 \(\rho_J^2\), 최적 SOR(\(\omega = 2/(1 + \sin\pi h)\))은 \(\omega - 1\)입니다. 오차를 \(10^{-6}\)배 줄이는 데 필요한 반복 수는 다음과 같습니다.</p>
+    <div class="table-wrap"><table class="pn-num">
+      <thead><tr><th>N (h = 1/N)</th><th>미지수</th><th>야코비</th><th>가우스–자이델</th><th>최적 SOR (ω)</th></tr></thead>
+      <tbody>
+        <tr><td>10</td><td>81</td><td>276</td><td>138</td><td>22 (1.528)</td></tr>
+        <tr><td>20</td><td>361</td><td>1116</td><td>558</td><td>44 (1.730)</td></tr>
+        <tr><td>50</td><td>2401</td><td>6995</td><td>3498</td><td>110 (1.882)</td></tr>
+        <tr><td>100</td><td>9801</td><td>27992</td><td>13996</td><td>220 (1.939)</td></tr>
+      </tbody></table></div>
+    <p>야코비는 \(N^2\)에, SOR은 \(N\)에 비례해 늘어납니다. 격자 간격이 작아지면 행렬의 조건수가 \(\kappa \approx 4/(\pi h)^2\)로 커지기 때문입니다. 켤레 기울기법도 \(\sqrt\kappa \propto N\)번이 들고, 격자 크기와 무관한 반복 수로 푸는 것이 <a href="iterative.html#multigrid">13장의 다중 격자법</a>입니다. 직사각형 영역의 상수 계수 문제라면 8장의 FFT로 사인 변환을 해서 \(O(n^2\log n)\)에 직접 풀 수도 있습니다.</p>
+
+    <div class="sim" id="sim-pn-poisson">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>판의 정상 온도: 경계를 바꾸고 열원을 찍기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pn-po-cv"></canvas><span class="tag-tl">판을 누르면 열원(다시 누르면 지움)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>윗변 °C <output id="pn-po-t-out"></output></span><input type="range" id="pn-po-t" min="0" max="100" step="5" value="100"></label>
+          <label class="ctrl"><span>아랫변 °C <output id="pn-po-b-out"></output></span><input type="range" id="pn-po-b" min="0" max="100" step="5" value="0"></label>
+          <label class="ctrl"><span>왼변 °C <output id="pn-po-l-out"></output></span><input type="range" id="pn-po-l" min="0" max="100" step="5" value="0"></label>
+          <label class="ctrl"><span>오른변 °C <output id="pn-po-r-out"></output></span><input type="range" id="pn-po-r" min="0" max="100" step="5" value="0"></label>
+          <div class="ctrl"><span>보기</span><div class="seg" id="pn-po-view"><button data-value="heat" class="on">온도</button><button data-value="iter">SOR 반복 과정</button><button data-value="mat">행렬 구조</button></div></div>
+          <div class="btn-row"><button class="btn" id="pn-po-clear">열원 모두 지우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">중앙 온도 u(½, ½)</span><span class="v" id="pn-po-c">—</span></div>
+        <div class="stat"><span class="k">미지수 · 0 아닌 행렬 값</span><span class="v" id="pn-po-nz">—</span></div>
+        <div class="stat"><span class="k">반복 수 (잔차 10⁻⁸) 야코비 · G-S</span><span class="v" id="pn-po-it">—</span></div>
+        <div class="stat"><span class="k">최적 SOR</span><span class="v" id="pn-po-sor">—</span></div>
+      </div>
+      <div class="pn-msg" id="pn-po-msg"></div>
+      <div class="sim-note">해볼 것: ① 기본값(윗변만 100 °C)에서 중앙 온도가 정확히 25.00인지 보세요(예제 16.2). 네 변을 모두 100으로 하면 어디나 100입니다. ② 판 안을 눌러 열원을 몇 개 찍으면 온도가 경계값보다 높아질 수 있습니다. f ≠ 0이면 최대 원리가 성립하지 않기 때문입니다. ③ 'SOR 반복 과정'은 0에서 시작한 SOR이 경계의 정보를 안쪽으로 퍼뜨리는 모습을, '행렬 구조'는 같은 문제를 6×6 내부 격자로 줄였을 때의 36×36 행렬을 보여 줍니다. 모델: N = 32(미지수 31² = 961개), 열원은 한 점에 f = 3·10⁴(°C/m²). 반복 수는 같은 문제를 0에서 시작해 직접 센 값입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="heat-implicit">
+    <h2>열 방정식: 명시적 FTCS, 음적 BTCS, 크랭크–니콜슨</h2>
+    <div class="problem"><strong>안정 조건이 계산을 묶는다</strong>
+      <p>ODEBook에서 FTCS는 \(r = \alpha\Delta t/\Delta x^2 \le 1/2\)일 때만 안정했습니다. 막대를 \(\Delta x = 1/1000\)로 자르면 \(\alpha = 1\)일 때 \(\Delta t \le 5\times10^{-7}\), 시각 1까지 가는 데 200만 걸음이 필요합니다. 답의 정확도로는 \(\Delta t = 10^{-3}\)이면 충분한데도 말입니다. 11장의 강성 ODE와 같은 상황입니다. 처방도 같습니다. 음적 방법.</p></div>
+    <p>공간을 먼저 차분화하면 열 방정식 \(u_t = \alpha u_{xx}\)는 내부 점 \(n\)개의 연립 ODE \(\mathbf u' = -\frac{\alpha}{\Delta x^2}T\mathbf u\)가 됩니다(<span class="term">선의 방법</span><span class="en">(method of lines)</span>). \(T\)의 고유값은 \(4\sin^2\frac{k\pi\Delta x}{2}\)(\(k = 1, \dots, n\))로, 가장 큰 것이 약 4라 이 ODE의 고유값은 \(0\)에 가까운 것부터 \(-4\alpha/\Delta x^2\)까지 퍼져 있습니다. 강성비가 \(\Delta x^{-2}\)에 비례하는 전형적인 강성 계입니다. 이 ODE에 11장의 세 방법을 쓰면 세 가지 PDE 방법이 나옵니다.</p>
+    <div class="callout deep"><strong>정의 16.4 (FTCS, BTCS, 크랭크–니콜슨)</strong> \(r = \alpha\Delta t/\Delta x^2\), \(\delta^2u_i = u_{i+1} - 2u_i + u_{i-1}\)라 하자.
+      <div class="formula">$$\begin{aligned}
+      \text{FTCS (전진 오일러):}\quad & u_i^{k+1} = u_i^k + r\,\delta^2u_i^k\\
+      \text{BTCS (후진 오일러):}\quad & u_i^{k+1} - r\,\delta^2u_i^{k+1} = u_i^k\\
+      \text{크랭크–니콜슨 (사다리꼴):}\quad & u_i^{k+1} - \tfrac r2\,\delta^2u_i^{k+1} = u_i^k + \tfrac r2\,\delta^2u_i^k
+      \end{aligned}$$</div>
+      <div class="where">행렬로 쓰면 BTCS는 \((I + rT)\mathbf u^{k+1} = \mathbf u^k\), CN은 \((I + \frac r2T)\mathbf u^{k+1} = (I - \frac r2T)\mathbf u^k\). 매 걸음 삼중대각 연립방정식을 하나 푼다. 국소 절단 오차는 FTCS·BTCS가 \(O(\Delta t + \Delta x^2)\), CN이 \(O(\Delta t^2 + \Delta x^2)\)이다.</div></div>
+    <p><span class="term">크랭크–니콜슨 방법</span>은 1947년 크랭크와 니콜슨<span class="en">(John Crank, Phyllis Nicolson)</span>이 발표했습니다. 음적 방법의 대가는 매 걸음의 선형계인데, 1차원에서는 토머스 알고리즘(<a href="direct-solvers.html">12장</a>)으로 \(O(n)\), 곧 FTCS 한 걸음과 같은 차수의 비용입니다. 다차원에서는 희소 선형계를 반복법이나 교대 방향 음적법(ADI: 방향마다 삼중대각계를 번갈아 푸는 방법)으로 풉니다.</p>
+<pre class="code"><span class="k">function</span> crank_nicolson_step(u, r)          <span class="c">// u: 내부 점 n개, 양끝 0</span>
+  <span class="k">for</span> i = 1 .. n                             <span class="c">// 오른쪽: (I - r/2 T) u</span>
+    d[i] = u[i] + (r/2) * (u[i-1] - 2*u[i] + u[i+1])
+  sub = -r/2;  diag = 1 + r;  sup = -r/2      <span class="c">// 왼쪽: (I + r/2 T)</span>
+  <span class="k">return</span> thomas(sub, diag, sup, d)          <span class="c">// O(n): 12장</span></pre>
+    <div class="callout"><strong>예제 16.3 (같은 정확도, 다른 비용)</strong> \(u_t = u_{xx}\), \(u(x, 0) = \sin\pi x\), 양끝 0, \(\Delta x = 1/20\). \(t = 0.1\)에서 \(u(0.5)\)의 참값은 \(e^{-0.1\pi^2} = 0.372708\). 공간 차분만의 오차(\(\Delta t \to 0\)의 극한)는 \(7.6\times10^{-4}\)이다.
+      <div class="table-wrap"><table class="pn-num">
+        <thead><tr><th>방법</th><th>Δt</th><th>r</th><th>걸음 수</th><th>u(0.5, 0.1)</th><th>시간 오차 (반이산 해 대비)</th></tr></thead>
+        <tbody>
+          <tr><td>FTCS</td><td>0.001</td><td>0.4</td><td>100</td><td>0.371645</td><td>−1.82×10⁻³</td></tr>
+          <tr><td>FTCS</td><td>0.0025</td><td>1</td><td>40</td><td>약 3.8×10²</td><td>폭발</td></tr>
+          <tr><td>BTCS</td><td>0.01</td><td>4</td><td>10</td><td>0.390864</td><td>1.74×10⁻²</td></tr>
+          <tr><td>BTCS</td><td>0.005</td><td>2</td><td>20</td><td>0.382339</td><td>8.87×10⁻³</td></tr>
+          <tr><td>BTCS</td><td>0.0025</td><td>1</td><td>40</td><td>0.377947</td><td>4.48×10⁻³</td></tr>
+          <tr><td>CN</td><td>0.01</td><td>4</td><td>10</td><td>0.373167</td><td>−2.98×10⁻⁴</td></tr>
+          <tr><td>CN</td><td>0.005</td><td>2</td><td>20</td><td>0.373390</td><td>−7.44×10⁻⁵</td></tr>
+          <tr><td>CN</td><td>0.0025</td><td>1</td><td>40</td><td>0.373446</td><td>−1.86×10⁻⁵</td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>BTCS의 시간 오차는 \(\Delta t\)를 반으로 줄일 때마다 1.96, 1.98배로 준다: 1차. CN은 4.00, 4.00배: 2차.</li>
+        <li>CN은 10걸음(\(r = 4\))만으로 시간 오차 \(3\times10^{-4}\), 전체 오차 \(4.6\times10^{-4}\)로 공간 오차 수준에 닿는다. 안정한 FTCS는 100걸음을 걷고도 시간 오차가 \(1.8\times10^{-3}\)이다.</li>
+        <li>FTCS \(r = 1\)은 40걸음 만에 값이 약 380이 되었다(정확한 값은 반올림 오차의 크기라 계산 순서에 따라 달라진다). 처음 자료 \(\sin\pi x\)에는 톱니 성분이 반올림 오차 정도로만 있지만, \(|G(\pi)| = 3\)배씩 자라 \(3^{40} \approx 10^{19}\)배가 되면 \(10^{-16}\)도 눈에 보인다.</li>
+      </ol></div>
+    <p>CN에도 약점이 있습니다. 가운데 0.4~0.6만 1이고 나머지가 0인 사각 펄스에서 \(\Delta t = 0.05\)(\(r = 20\))로 한 걸음 가면, \(t = 0.05\)의 참값 중앙 온도 0.244 대신 CN은 \(-0.235\)라는 음의 온도를 내고 이웃 점과 부호가 번갈아 바뀝니다. BTCS는 0.281로 조금 퍼졌지만 매끄럽습니다. 다음 절의 증폭 인자가 이유를 보여 줍니다.</p>
+
+    <div class="sim" id="sim-pn-heat">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>세 방법 나란히: FTCS · BTCS · 크랭크–니콜슨</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pn-ht-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>r = Δt/Δx² <output id="pn-ht-r-out"></output></span><input type="range" id="pn-ht-r"></label>
+          <div class="ctrl"><span>처음 온도</span><div class="seg" id="pn-ht-ic"><button data-value="sin" class="on">sin πx</button><button data-value="pulse">사각 펄스</button><button data-value="two">sin πx + sin 7πx</button></div></div>
+          <label class="check"><input type="checkbox" id="pn-ht-f" checked> FTCS</label>
+          <label class="check"><input type="checkbox" id="pn-ht-b" checked> BTCS</label>
+          <label class="check"><input type="checkbox" id="pn-ht-c" checked> 크랭크–니콜슨</label>
+          <div class="btn-row"><button class="btn primary" id="pn-ht-run">▶ 진행</button><button class="btn" id="pn-ht-step">한 걸음</button><button class="btn" id="pn-ht-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="pn-legend"><span><i style="background:var(--text)"></i>참 해 (급수)</span><span><i style="background:var(--bad)"></i>FTCS</span><span><i style="background:var(--blue)"></i>BTCS</span><span><i style="background:var(--accent-2)"></i>크랭크–니콜슨</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 k · 시각 t</span><span class="v" id="pn-ht-k">—</span></div>
+        <div class="stat"><span class="k">최대 오차 FTCS</span><span class="v" id="pn-ht-ef">—</span></div>
+        <div class="stat"><span class="k">BTCS</span><span class="v" id="pn-ht-eb">—</span></div>
+        <div class="stat"><span class="k">CN</span><span class="v" id="pn-ht-ec">—</span></div>
+      </div>
+      <div class="pn-msg" id="pn-ht-msg"></div>
+      <div class="sim-note">해볼 것: ① r = 0.4에서 세 방법이 모두 참 해를 따라갑니다. r을 0.6으로 올리면 FTCS에만 톱니가 자랍니다(사각 펄스에서 빨리 보입니다). ② r = 4에서 sin πx를 돌리면 BTCS는 눈에 띄게 늦게 식고(1차), CN은 참 해에 거의 붙어 있습니다(2차). ③ 사각 펄스 + r = 20에서 '한 걸음'을 누르면 CN이 음의 온도와 지그재그를 냅니다. BTCS는 그렇지 않습니다. 모델: u<sub>t</sub> = u<sub>xx</sub>, [0, 1], Δx = 1/20, 양끝 0. 참 해는 400항 사인 급수. 화면 밖으로 나간 값은 잘립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="von-neumann">
+    <h2>폰 노이만 안정성 분석</h2>
+    <p>ODEBook 16장은 FTCS의 증폭 인자 \(G(\theta) = 1 - 4r\sin^2\frac\theta2\)를 구해 \(r \le \frac12\)을 얻었습니다. 같은 계산을 모든 선형 상수 계수 차분법에 할 수 있습니다. 이것이 <span class="term">폰 노이만 안정성 분석</span><span class="en">(von Neumann stability analysis)</span>입니다.</p>
+    <div class="callout deep"><strong>정의 16.5 (증폭 인자)</strong> 무한하거나 주기적인 격자에서 격자 푸리에 모드 \(u_j^k = G^k e^{\mathrm ij\theta}\)(\(-\pi \le \theta \le \pi\), \(\theta = \xi\Delta x\))를 차분법에 넣으면 한 걸음의 곱 인자 \(G(\theta)\)가 정해진다. 이를 <span class="term">증폭 인자</span><span class="en">(amplification factor)</span>라 한다. 모든 \(\theta\)에서 \(|G(\theta)| \le 1\)(또는 \(\le 1 + C\Delta t\))이면 폰 노이만 의미에서 안정하다.</div>
+    <p>\(\delta^2 e^{\mathrm ij\theta} = (e^{\mathrm i\theta} - 2 + e^{-\mathrm i\theta})e^{\mathrm ij\theta} = -4s^2e^{\mathrm ij\theta}\), \(s = \sin\frac\theta2\)를 쓰면 세 방법의 증폭 인자가 곧바로 나옵니다.</p>
+    <div class="formula">$$G_{\text{FTCS}} = 1 - 4rs^2,\qquad G_{\text{BTCS}} = \frac{1}{1 + 4rs^2},\qquad G_{\text{CN}} = \frac{1 - 2rs^2}{1 + 2rs^2},\qquad G_{\text{참}} = e^{-r\theta^2}.$$
+      <div class="where">참 해의 모드 \(e^{\mathrm i\xi x}\)는 한 걸음 \(\Delta t\)에 \(e^{-\alpha\xi^2\Delta t} = e^{-r\theta^2}\)배가 된다. 낮은 모드(\(\theta \to 0\))에서 세 인자 모두 이 값과 맞고, 차이는 높은 모드에서 난다.</div></div>
+    <div class="callout deep"><strong>정리 16.6 (열 방정식 차분법의 안정성)</strong> FTCS는 \(r \le \frac12\)일 때만 안정하다. BTCS와 크랭크–니콜슨은 모든 \(r > 0\)에서 안정하다(무조건 안정). 또 \(r \to \infty\)일 때 가장 높은 모드에서 \(G_{\text{BTCS}}(\pi) = 1/(1 + 4r) \to 0\)이지만 \(G_{\text{CN}}(\pi) = (1 - 2r)/(1 + 2r) \to -1\)이다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(0 \le s^2 \le 1\). BTCS의 분모는 1 이상이라 \(0 \lt G \le 1\). CN은 \(|1 - 2rs^2| \le 1 + 2rs^2\)이 늘 성립한다. FTCS는 ODEBook 정리 16.6. 극한은 \(s = 1\)을 넣으면 된다. ∎</p></div>
+    <p>정리의 둘째 부분이 앞 절 CN의 지그재그를 설명합니다. \(r = 20\)이면 \(G_{\text{CN}}(\pi) = -39/41 = -0.951\). 톱니 모드는 사라지지 않고 걸음마다 부호만 바꾸며 거의 그대로 남습니다. 참 해에서는 이 모드가 \(e^{-20\pi^2}\)배, 사실상 즉시 사라져야 합니다. 사각 펄스처럼 높은 모드를 많이 가진 자료에서 이것이 눈에 보입니다. BTCS처럼 \(|G| \to 0\)인 성질을 11장에서 <b>L-안정</b>이라 불렀습니다. 실무에서는 처음 몇 걸음을 BTCS로 걸어 높은 모드를 죽인 뒤 CN으로 바꾸는 요령(래너처 시작)을 씁니다.</p>
+    <p>폰 노이만 분석은 이류 방정식에도 그대로 쓰입니다(6절). 아래 시뮬레이터에서 두 방정식의 증폭 인자를 비교하세요.</p>
+
+    <div class="sim" id="sim-pn-amplification">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>증폭 인자 그래프: 모드마다 한 걸음에 몇 배인가</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pn-am-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방정식</span><div class="seg" id="pn-am-eq"><button data-value="heat" class="on">열 uₜ = uₓₓ</button><button data-value="adv">이류 uₜ + auₓ = 0</button></div></div>
+          <label class="ctrl"><span id="pn-am-lab">r = Δt/Δx²</span><span><output id="pn-am-r-out"></output></span><input type="range" id="pn-am-r"></label>
+          <div class="ctrl"><span>그래프</span><div class="seg" id="pn-am-mode"><button data-value="g" class="on">G(θ) (열) / |G(θ)|</button><button data-value="ph">위상 비 (이류)</button></div></div>
+        </div>
+      </div>
+      <div class="pn-legend" id="pn-am-leg"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k" id="pn-am-k0">FTCS max|G|</span><span class="v" id="pn-am-o0">—</span></div>
+        <div class="stat"><span class="k" id="pn-am-k1">BTCS</span><span class="v" id="pn-am-o1">—</span></div>
+        <div class="stat"><span class="k" id="pn-am-k2">CN</span><span class="v" id="pn-am-o2">—</span></div>
+        <div class="stat"><span class="k" id="pn-am-k3">G(π) CN</span><span class="v" id="pn-am-o3">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 열 방정식에서 r을 0.5 위로 올리면 FTCS 곡선(빨강)이 θ = π 근처에서 −1 아래로 내려갑니다. ② r = 20에서는 CN 곡선이 θ = π에서 −1에 붙고, BTCS는 0에 붙습니다. 참 인자 e<sup>−rθ²</sup>(검정)는 거의 즉시 0입니다. ③ 이류로 바꾸면 중앙 차분 FTCS의 |G|는 어떤 C에서도 1보다 크고, 풍상·랙스–벤드로프는 C ≤ 1에서만 1 이하입니다. '위상 비'는 수치 파의 속도 / 참 속도입니다. 모델: θ = ξΔx ∈ [0, π].</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="lax-equivalence">
+    <h2>랙스 동등성 정리: 일관성 + 안정성 = 수렴</h2>
+    <div class="problem"><strong>절단 오차가 작은데 왜 틀리나</strong>
+      <p>FTCS를 \(r = 0.6\)으로 돌리면, 매 걸음 미분방정식을 \(O(\Delta t + \Delta x^2)\) 오차로 근사합니다. 격자를 아무리 줄여도(같은 \(r\)) 국소 오차는 0으로 갑니다. 그런데 답은 폭발합니다. 반대로, 국소 오차가 작고 폭발하지 않으면 답이 맞는다고 믿어도 될까요?</p></div>
+    <p>수치 해가 참 해에 다가가는 것(<b>수렴</b>)은 우리가 원하는 성질이지만 직접 확인하기 어렵습니다. 참 해를 모르기 때문입니다. 반면 <b>일관성</b>은 테일러 전개로, <b>안정성</b>은 폰 노이만 분석으로 확인할 수 있습니다. 다음 정리가 둘을 수렴에 잇습니다.</p>
+    <div class="callout deep"><strong>정리 16.7 (<span class="term">랙스 동등성 정리</span>)</strong> 잘 놓인(해가 존재·유일하고 처음 자료에 연속적으로 의존하는) 선형 초기값 문제와 그것에 일관적인 선형 차분법에 대해, 그 차분법이 수렴할 필요충분조건은 안정한 것이다. 여기서 안정성은 고정된 시간 \(T\)까지 \(k\Delta t \le T\)인 모든 \(k\)에 대해 \(\|S^k\| \le C_T\)(한 걸음 연산자 \(S\)의 거듭제곱이 격자에 무관하게 유계)라는 뜻이다. 1956년 랙스와 리히트마이어<span class="en">(Lax, Richtmyer)</span>가 발표했다.
+      <p style="margin:8px 0 0"><b>"안정 ⇒ 수렴"의 핵심.</b> 오차 \(\mathbf e^k\)는 \(\mathbf e^{k+1} = S\mathbf e^k + \Delta t\,\boldsymbol\tau^k\)를 따르므로 \(\mathbf e^k = \Delta t\sum_{m \lt k}S^{k-1-m}\boldsymbol\tau^m\). 안정성으로 \(\|\mathbf e^k\| \le C_T\,T\max\|\boldsymbol\tau^m\|\)이고, 일관성으로 이것이 0으로 간다. 정리 16.2와 ODEBook의 오일러 오차 정리(전역 오차 = 국소 오차 × 증폭의 합)가 같은 구조다. ∎</p></div>
+    <p>이 정리에서 실용적인 결론 두 가지가 나옵니다. 첫째, 안정한 방법의 수렴 차수는 절단 오차의 차수와 같습니다. 예제 16.3의 BTCS 1차, CN 2차가 그 예입니다. 그래서 새 코드를 검증할 때는 (1) 절단 오차의 차수를 손으로 구하고, (2) 폰 노이만으로 안정성을 확인한 뒤, (3) 격자 수렴 실험으로 그 차수가 실제로 나오는지 봅니다. 둘째, 일관적이지만 불안정한 방법은 <b>어떤 격자에서도</b> 쓸모가 없습니다. 격자를 줄이면 국소 오차는 줄지만 증폭 횟수가 늘어 결국 반올림 오차까지 키웁니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방법</th><th>일관성 (절단 오차)</th><th>안정 조건</th><th>결론</th></tr></thead>
+      <tbody>
+        <tr><td>열 FTCS</td><td>O(Δt + Δx²)</td><td>r ≤ 1/2</td><td>조건부 수렴, 1차(시간)</td></tr>
+        <tr><td>열 BTCS</td><td>O(Δt + Δx²)</td><td>무조건</td><td>수렴, 1차(시간)</td></tr>
+        <tr><td>열 크랭크–니콜슨</td><td>O(Δt² + Δx²)</td><td>무조건</td><td>수렴, 2차</td></tr>
+        <tr><td>이류 중앙 차분 FTCS</td><td>O(Δt + Δx²)</td><td>없음 (|G| &gt; 1)</td><td>수렴하지 않음</td></tr>
+        <tr><td>이류 풍상 차분</td><td>O(Δt + Δx)</td><td>0 ≤ C ≤ 1</td><td>조건부 수렴, 1차</td></tr>
+        <tr><td>이류 랙스–벤드로프</td><td>O(Δt² + Δx²)</td><td>|C| ≤ 1</td><td>조건부 수렴, 2차</td></tr>
+        <tr><td>파동 립프로그</td><td>O(Δt² + Δx²)</td><td>C ≤ 1</td><td>조건부 수렴, 2차</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="advection">
+    <h2>이류 방정식: 풍상 차분, 수치 확산, 랙스–벤드로프, CFL</h2>
+    <div class="problem"><strong>모양 그대로 실어 나르기</strong>
+      <p>강물에 떨어진 염료, 바람에 실린 오염 물질, 파이프 속의 온도 펄스는 흐름을 따라 모양을 유지한 채 움직입니다. 가장 단순한 모형 \(u_t + au_x = 0\)의 해는 \(u(x, t) = u_0(x - at)\), 처음 모양을 속도 \(a\)로 옮긴 것입니다. 해를 손으로 쓸 수 있는 이 쉬운 방정식이 수치적으로는 놀라울 만큼 어렵습니다. 가장 자연스러운 중앙 차분이 무조건 불안정하기 때문입니다.</p></div>
+    <p>\(C = a\Delta t/\Delta x\)를 <span class="term">쿠랑 수</span>라 합니다. 시간 전진·공간 중앙 차분 \(u_j^{k+1} = u_j^k - \frac C2(u_{j+1}^k - u_{j-1}^k)\)의 증폭 인자는 \(G = 1 - \mathrm iC\sin\theta\)이고 \(|G|^2 = 1 + C^2\sin^2\theta > 1\)입니다. 어떤 \(\Delta t\)를 써도 불안정합니다. 열 방정식에는 확산이 높은 모드를 눌러 주지만, 이류에는 그런 힘이 없어 중앙 차분의 작은 증폭이 그대로 쌓입니다.</p>
+    <p>처방은 정보가 오는 쪽을 보는 것입니다. \(a > 0\)이면 해는 왼쪽에서 옵니다.</p>
+    <div class="callout deep"><strong>정의 16.8 (<span class="term">풍상 차분</span>과 랙스–벤드로프)</strong> \(a > 0\)일 때
+      <div class="formula">$$\text{풍상:}\quad u_j^{k+1} = u_j^k - C\,(u_j^k - u_{j-1}^k),\qquad \text{랙스–벤드로프:}\quad u_j^{k+1} = u_j^k - \frac C2(u_{j+1}^k - u_{j-1}^k) + \frac{C^2}{2}(u_{j+1}^k - 2u_j^k + u_{j-1}^k).$$</div>
+      <div class="where">풍상<span class="en">(upwind)</span> 차분은 1차 정확, \(|G|^2 = 1 - 2C(1 - C)(1 - \cos\theta)\). <span class="term">랙스–벤드로프</span><span class="en">(Lax–Wendroff, 1960)</span>는 테일러 전개 \(u_{tt} = a^2u_{xx}\)를 써서 2차 정확, \(|G|^2 = 1 - 4C^2(1 - C^2)\sin^4\frac\theta2\). 둘 다 \(0 \le C \le 1\)에서 안정하다.</div></div>
+    <p>풍상 차분은 안정하지만 대가가 있습니다. 풍상 식에 참 해를 넣고 테일러 전개하면, 이 방법이 실제로 더 정확하게 푸는 방정식(<span class="term">수정 방정식</span><span class="en">(modified equation)</span>)은</p>
+    <div class="formula">$$u_t + au_x = \underbrace{\frac{a\,\Delta x}{2}(1 - C)}_{D_{\text{num}}}\,u_{xx} + O(\Delta x^2)$$
+      <div class="where">이류 방정식에 없던 확산항이 생겼다. 이것이 <span class="term">수치 확산</span><span class="en">(numerical diffusion)</span>이다. \(\Delta x = 0.01\), \(C = 0.8\), \(a = 1\)이면 \(D_{\text{num}} = 0.001\). \(C = 1\)이면 사라지고, 그때 풍상 차분은 \(u_j^{k+1} = u_{j-1}^k\), 정확히 한 칸 이동이다.</div></div>
+    <p>랙스–벤드로프는 이 확산항을 지웠지만 다음 항인 3계 도함수 항(분산)이 남아, 파장마다 속도가 달라집니다. 짧은 파장이 뒤처지며 급한 경사 뒤에 물결 같은 진동이 생깁니다. 실제로 계산해 보면 다음과 같습니다.</p>
+    <div class="callout"><strong>예제 16.4 (사각 펄스 실어 나르기)</strong> 주기 구간 [0, 1], 칸 100개, \(a = 1\), \(C = 0.8\)(\(\Delta t = 0.008\)), 처음 자료는 \(0.1 \lt x \lt 0.3\)에서 1. 60걸음(\(t = 0.48\)) 뒤.
+      <div class="table-wrap"><table class="pn-num">
+        <thead><tr><th>방법</th><th>최댓값</th><th>최솟값</th><th>L¹ 오차</th><th>총량 ∫u dx</th></tr></thead>
+        <tbody>
+          <tr><td>참 해</td><td>1</td><td>0</td><td>0</td><td>0.200000</td></tr>
+          <tr><td>중앙 차분 FTCS</td><td>2.7×10⁵</td><td>−2.6×10⁵</td><td>5.2×10⁴</td><td>0.200000</td></tr>
+          <tr><td>풍상</td><td>0.9990</td><td>0.0000</td><td>4.91×10⁻²</td><td>0.200000</td></tr>
+          <tr><td>랙스–프리드리히스</td><td>0.9716</td><td>0.0000</td><td>7.31×10⁻²</td><td>0.200000</td></tr>
+          <tr><td>랙스–벤드로프</td><td>1.1613</td><td>−0.1613</td><td>3.90×10⁻²</td><td>0.200000</td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>중앙 차분은 60걸음 만에 \(10^5\)배가 되었다. 모든 방법이 총량은 정확히 보존한다(7절의 유한 체적 구조). 보존이 정확성을 보장하지는 않는다.</li>
+        <li>풍상과 랙스–프리드리히스는 모서리를 둥글게 뭉갰지만 새 최댓값·최솟값을 만들지 않았다(단조). 랙스–벤드로프는 오차가 가장 작지만 0과 1 밖으로 16%씩 넘친다. 농도가 음수가 되는 것이다.</li>
+        <li>매끄러운 가우스 펄스(폭 0.05)에서는 칸을 두 배씩 늘릴 때 L¹ 오차의 차수가 풍상 0.70 → 0.81 → 0.88(1로 다가감), 랙스–벤드로프 1.65 → 1.92 → 1.99다. 같은 칸 100개에서 풍상은 봉우리를 0.750으로, 랙스–벤드로프는 0.968로 남긴다.</li>
+      </ol></div>
+    <p>이 딜레마는 우연이 아닙니다. 고두노프<span class="en">(Sergei Godunov)</span>는 새 극값을 만들지 않는(단조) <b>선형</b> 방법은 많아야 1차 정확이라는 것을 보였습니다. 현대의 고해상도 방법(TVD, 플럭스 제한자, WENO)은 매끄러운 곳에서는 2차 이상, 급한 경사 근처에서는 1차로 바뀌는 <b>비선형</b> 방법으로 이 벽을 넘습니다.</p>
+    <div class="callout deep"><strong>정리 16.9 (<span class="term">CFL 조건</span>)</strong> 명시적 차분법이 수렴하려면 수치적 의존 영역이 참 의존 영역을 포함해야 한다. 이웃 한 칸만 쓰는 방법에서 이것은 \(|C| = |a|\Delta t/\Delta x \le 1\)이다. 이 조건은 필요조건이며 충분조건이 아니다(중앙 차분 FTCS는 \(C \le 1\)이어도 불안정하다).</div>
+    <p>CFL 조건의 의미는 "한 걸음에 정보가 한 칸보다 멀리 가면 안 된다"입니다. 빠른 흐름(\(a\) 큼)이나 가는 격자(\(\Delta x\) 작음)는 시간 걸음을 직접 줄입니다. 3차원 CFD 코드가 비싼 이유의 상당 부분이 이것이고, 음적 방법이 여기서도 쓰입니다. 다만 이류에서는 큰 \(C\)의 음적 방법이 정확도를 크게 잃으므로, 열 방정식만큼 쉽게 걸음을 키우지는 못합니다.</p>
+
+    <div class="sim" id="sim-pn-advection">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>펄스 실어 나르기: 중앙 · 풍상 · 랙스–프리드리히스 · 랙스–벤드로프</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="pn-ad-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="pn-ad-m"><button data-value="ftcs">중앙</button><button data-value="up" class="on">풍상</button><button data-value="lf">랙스–프리드리히스</button><button data-value="lw">랙스–벤드로프</button></div></div>
+          <label class="ctrl"><span>쿠랑 수 C <output id="pn-ad-c-out"></output></span><input type="range" id="pn-ad-c" min="0.1" max="1.2" step="0.05" value="0.8"></label>
+          <div class="ctrl"><span>처음 모양</span><div class="seg" id="pn-ad-ic"><button data-value="sq" class="on">사각</button><button data-value="ga">가우스</button><button data-value="both">사각 + 가우스</button></div></div>
+          <label class="check"><input type="checkbox" id="pn-ad-all"> 네 방법 모두 겹쳐 보기</label>
+          <div class="btn-row"><button class="btn primary" id="pn-ad-run">▶ 진행</button><button class="btn" id="pn-ad-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="pn-legend"><span><i style="background:var(--text)"></i>참 해</span><span><i style="background:var(--bad)"></i>중앙</span><span><i style="background:var(--blue)"></i>풍상</span><span><i style="background:var(--warn)"></i>랙스–프리드리히스</span><span><i style="background:var(--accent-2)"></i>랙스–벤드로프</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 · 시각 t (바퀴)</span><span class="v" id="pn-ad-k">—</span></div>
+        <div class="stat"><span class="k">최대 · 최소</span><span class="v" id="pn-ad-mm">—</span></div>
+        <div class="stat"><span class="k">L¹ 오차</span><span class="v" id="pn-ad-e">—</span></div>
+        <div class="stat"><span class="k">총량 ∫u dx</span><span class="v" id="pn-ad-mass">—</span></div>
+      </div>
+      <div class="pn-msg" id="pn-ad-msg"></div>
+      <div class="sim-note">해볼 것: ① 풍상, C = 0.8로 한 바퀴를 돌리면 사각 펄스가 둥근 언덕이 됩니다(수치 확산). C = 1로 하면 모양이 그대로 돌아옵니다. ② 랙스–벤드로프는 모양을 더 잘 지키지만 모서리 뒤에 물결이 생기고 0 아래로 내려갑니다(분산). ③ C를 1.05로 올리면 풍상·랙스–벤드로프도 폭발합니다(CFL). 중앙 차분은 C = 0.3에서도 결국 폭발합니다. 모델: 주기 구간 [0, 1], 칸 100개, a = 1. 값은 화면 밖에서 잘립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="wave">
+    <h2>파동 방정식: 립프로그와 수치 분산</h2>
+    <p>ODEBook 16장은 파동 방정식 \(u_{tt} = c^2u_{xx}\)의 중앙 차분 \(u_i^{k+1} = 2u_i^k - u_i^{k-1} + C^2\delta^2u_i^k\)와 CFL 조건 \(C = c\Delta t/\Delta x \le 1\)을 보였습니다. 시간과 공간 모두 중앙 차분이라 앞뒤 두 시각을 "뛰어넘는" 꼴이어서 흔히 <span class="term">립프로그</span><span class="en">(leapfrog)</span> 방법이라 부릅니다. 여기서는 그 다음 질문, <b>안정한 범위 안에서도 무엇이 틀리는가</b>를 봅니다.</p>
+    <p>시작에는 두 시각이 필요합니다. \(u^0 = f\)와 \(u_t(x, 0) = g\)에서 테일러 전개로 \(u_i^1 = u_i^0 + \Delta t\,g_i + \frac{C^2}{2}\delta^2u_i^0\)을 만들면 2차 정확도가 유지됩니다. 모드 \(u_j^k = e^{\mathrm i(\xi j\Delta x - \omega k\Delta t)}\)를 넣으면 <b>수치 분산 관계</b></p>
+    <div class="formula">$$\sin\frac{\omega\Delta t}{2} = C\sin\frac{\xi\Delta x}{2}$$
+      <div class="where">참 관계는 \(\omega = c\xi\)(모든 파장이 같은 속도 \(c\)). \(C \le 1\)이면 우변이 1 이하라 \(\omega\)가 실수, 곧 진폭이 유지된다(안정, 감쇠 없음). 수치 위상 속도는 \(\omega/\xi\)이다.</div></div>
+    <p>가 나옵니다. 수치 파의 속도 \(c_{\text{num}}/c = \frac{2}{C\theta}\arcsin\bigl(C\sin\frac\theta2\bigr)\), \(\theta = \xi\Delta x\)는 파장에 따라 달라집니다. 계산하면</p>
+    <div class="table-wrap"><table class="pn-num">
+      <thead><tr><th>c<sub>num</sub>/c</th><th>파장당 10칸 (θ = π/5)</th><th>파장당 4칸 (θ = π/2)</th><th>파장당 2.2칸 (θ = 0.9π)</th></tr></thead>
+      <tbody>
+        <tr><td>C = 0.5</td><td>0.98759</td><td>0.92021</td><td>0.73071</td></tr>
+        <tr><td>C = 0.9</td><td>0.99677</td><td>0.97589</td><td>0.86060</td></tr>
+        <tr><td>C = 1</td><td>1</td><td>1</td><td>1</td></tr>
+      </tbody></table></div>
+    <p>짧은 파장일수록 늦고, \(C\)가 작을수록 더 늦습니다. 급한 펄스는 여러 파장의 합이므로, 시간이 지나면 짧은 성분이 뒤처져 펄스 뒤에 잔물결 꼬리가 생깁니다. 이것이 <span class="term">수치 분산</span><span class="en">(numerical dispersion)</span>입니다. 흥미롭게도 1차원에서는 \(C = 1\)이 가장 정확하고(격자점에서 정확한 해), 안정 경계에서 가장 정확하다는 것은 다차원에서는 성립하지 않습니다. 지진파·음향 시뮬레이션은 "파장당 몇 칸"을 기준으로 격자를 고르고, 분산을 줄이려고 고차 스텐실을 씁니다.</p>
+
+    <div class="sim" id="sim-pn-wave">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>줄 위의 펄스: CFL 수와 수치 분산</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pn-two">
+          <div><canvas id="pn-wv-cv"></canvas><span class="pn-cap">립프로그 해(색)와 참 해(검정)</span></div>
+          <div><canvas id="pn-wv-ch"></canvas><span class="pn-cap">수치 위상 속도 c<sub>num</sub>/c vs θ = ξΔx</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>쿠랑 수 C <output id="pn-wv-c-out"></output></span><input type="range" id="pn-wv-c" min="0.2" max="1.1" step="0.05" value="0.5"></label>
+          <div class="ctrl"><span>펄스 폭</span><div class="seg" id="pn-wv-w"><button data-value="0.06">넓게</button><button data-value="0.025" class="on">좁게</button><button data-value="0">사각</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="pn-wv-run">▶ 진행</button><button class="btn" id="pn-wv-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">걸음 · 시각 t</span><span class="v" id="pn-wv-k">—</span></div>
+        <div class="stat"><span class="k">최대 |u|</span><span class="v" id="pn-wv-m">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="pn-wv-e">—</span></div>
+        <div class="stat"><span class="k">파장당 4칸 속도</span><span class="v" id="pn-wv-v">—</span></div>
+      </div>
+      <div class="pn-msg" id="pn-wv-msg"></div>
+      <div class="sim-note">해볼 것: ① C = 0.5, 좁은 펄스로 ▶를 누르면 두 갈래로 나뉜 펄스 뒤에 잔물결이 따라옵니다. 짧은 파장이 늦기 때문입니다(아래 그래프). ② C = 1로 하면 꼬리가 사라지고 참 해와 겹칩니다. ③ C = 1.05로 올리면 몇십 걸음 뒤 톱니가 폭발합니다(CFL). 모델: u<sub>tt</sub> = u<sub>xx</sub>, [0, 1], 칸 200개, 양끝 고정, 처음 속도 0. 참 해는 홀수 주기 확장의 달랑베르 공식.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="fem">
+    <h2>유한 요소법 입문: 약형식, 모자 함수, 강성 행렬</h2>
+    <div class="problem"><strong>구멍 뚫린 브래킷의 응력</strong>
+      <p>차분법은 바둑판 격자를 좋아합니다. 그러나 엔진 브래킷, 치아 임플란트, 반도체 패키지는 곡선 경계와 구멍과 서로 다른 재료로 되어 있습니다. 경계에 맞춰 크기가 다른 삼각형으로 영역을 채우고 싶지만, 삼각형 격자에서는 "이웃 값의 차이"를 어떻게 써야 할지 분명하지 않습니다. 미분 대신 <b>적분</b>으로 방정식을 다시 쓰면 길이 열립니다.</p></div>
+    <p>\(-u'' = f\), \(u(0) = u(1) = 0\)에 경계에서 0인 아무 시험 함수 \(v\)를 곱해 적분하고 부분 적분하면 경계항이 사라져</p>
+    <div class="formula">$$\int_0^1 u'v'\,dx = \int_0^1 fv\,dx\qquad\text{모든 } v \text{ (}v(0) = v(1) = 0\text{)에 대해}.$$
+      <div class="where">이를 <span class="term">약형식</span><span class="en">(weak form)</span>이라 한다. \(u\)는 2계 도함수 없이 1계 도함수만 있으면 된다. 구조역학에서는 가상 일의 원리, 에너지로 보면 \(\frac12\int u'^2 - \int fu\)의 최소화와 같다.</div></div>
+    <p><span class="term">유한 요소법</span><span class="en">(finite element method, FEM)</span>은 \(u\)와 \(v\)를 유한 차원 공간에서 고릅니다. 가장 단순한 공간은 마디 \(x_i\)에서 1, 다른 마디에서 0이고 그 사이는 직선인 <span class="term">모자 함수</span><span class="en">(hat function)</span> \(\varphi_i\)들로 만든 조각별 선형 함수입니다. \(u_h = \sum_j U_j\varphi_j\)를 넣고 \(v = \varphi_i\)로 두면(갤러킨 방법)</p>
+    <div class="formula">$$\sum_j\underbrace{\Bigl(\int\varphi_i'\varphi_j'\,dx\Bigr)}_{K_{ij}}U_j = \underbrace{\int f\varphi_i\,dx}_{F_i},\qquad K\mathbf U = \mathbf F.$$
+      <div class="where">\(K\)를 <span class="term">강성 행렬</span><span class="en">(stiffness matrix)</span>, \(\mathbf F\)를 하중 벡터라 한다. 이름은 구조 해석의 스프링 강성에서 왔다. \(\varphi_i'\)는 이웃 요소에서만 0이 아니므로 \(K\)는 희소하다.</div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="모자 함수와 요소 강성 행렬의 조립">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <line x1="40" y1="190" x2="420" y2="190" class="s-axis"/>
+        <g style="fill:none;stroke-width:2.4">
+          <path d="M40 190 L115 70 L190 190" style="stroke:var(--accent)"/>
+          <path d="M115 190 L190 70 L265 190" style="stroke:var(--accent-2)"/>
+          <path d="M190 190 L265 70 L340 190" style="stroke:var(--accent)"/>
+          <path d="M265 190 L340 70 L415 190" style="stroke:var(--accent-2)"/>
+        </g>
+        <g class="t-mono"><text x="40" y="210" text-anchor="middle">x₀</text><text x="115" y="210" text-anchor="middle">x₁</text><text x="190" y="210" text-anchor="middle">x₂</text><text x="265" y="210" text-anchor="middle">x₃</text><text x="340" y="210" text-anchor="middle">x₄</text></g>
+        <text x="115" y="60" text-anchor="middle" class="t-mono t-acc">φ₁</text><text x="190" y="60" text-anchor="middle" class="t-mono">φ₂</text>
+        <text x="152" y="226" text-anchor="middle" class="t-dim">요소 e = [x₁, x₂]</text>
+        <g transform="translate(450,40)">
+          <text x="0" y="0" class="t" style="font-weight:700">요소 강성 행렬 (길이 h)</text>
+          <text x="0" y="30" class="t-mono">Kₑ = (1/h)·[ 1  −1 ]</text>
+          <text x="0" y="52" class="t-mono">          [ −1  1 ]</text>
+          <text x="0" y="88" class="t-dim">요소마다 이웃 두 마디의 2×2 칸에 더한다</text>
+          <text x="0" y="112" class="t-dim">→ 전체 K = (1/h)·tridiag(−1, 2, −1)</text>
+          <text x="0" y="146" class="t-dim">f = 1이면 하중 Fᵢ = ∫φᵢ dx = h</text>
+          <text x="0" y="170" class="t-dim">(차분법의 h²f/h와 같은 식)</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 16-2.</b> 1차원 모자 함수. 각 \(\varphi_i\)는 이웃 두 요소에서만 0이 아니다. 요소 하나에서 계산한 2×2 행렬을 두 마디 자리에 더하는 "조립"이 유한 요소 코드의 중심 루프다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 16.10 (갤러킨 최적성)</strong> 유한 요소 해 \(u_h\)는 에너지 노름 \(\|w\|_E = (\int w'^2)^{1/2}\)에서 조각별 선형 함수 가운데 참 해에 가장 가깝다: \(\|u - u_h\|_E = \min_{v_h}\|u - v_h\|_E\). 따라서 \(\|u - u_h\|_E = O(h)\)이고, 최대 오차는 \(O(h^2)\)이다. 또 1차원의 이 문제에서는 하중을 정확히 적분하면 마디 값 \(U_i = u(x_i)\)가 정확하다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 약형식에서 갤러킨 식을 빼면 \(\int(u - u_h)'\varphi_i' = 0\), 곧 오차가 근사 공간에 에너지 내적으로 수직이다(<b>갤러킨 직교성</b>). 7장의 최소제곱에서 잔차가 열공간에 수직인 것과 같은 그림이고, 수직 사영이 최단 거리다. 마디 정확성은 이 문제의 그린 함수가 조각별 선형이라 근사 공간에 들어 있기 때문이다. ∎</p></div>
+    <div class="callout"><strong>예제 16.5 (요소 넷)</strong> \(-u'' = 1\), \(n = 4\) 요소, \(h = 1/4\).
+      <ol>
+        <li>요소 강성 \(\frac1h\begin{bmatrix}1&-1\\-1&1\end{bmatrix} = \begin{bmatrix}4&-4\\-4&4\end{bmatrix}\)을 네 요소에 대해 조립하고 경계 마디를 지우면 \(K = \begin{bmatrix}8&-4&0\\-4&8&-4\\0&-4&8\end{bmatrix}\), 하중 \(F_i = h = 0.25\).</li>
+        <li>풀면 \(\mathbf U = (0.09375,\ 0.125,\ 0.09375)\). 참 해 \(u = x(1 - x)/2\)의 마디 값과 정확히 같다.</li>
+        <li>마디 사이에서는 직선이라 최대 오차는 \(7.81\times10^{-3}\)(요소 중앙). \(n = 8, 16, 32\)에서 최대 오차는 4분의 1씩(2차), 에너지 노름 오차는 \(7.22\times10^{-2}\)에서 반씩(1차) 준다.</li>
+      </ol></div>
+    <p>2차원에서는 삼각형 요소 위의 조각별 선형 함수를 쓰고, 요소 강성 행렬은 3×3이 됩니다. 정사각 격자의 직각삼각형으로 라플라스 방정식을 풀면 5점 스텐실과 같은 행렬이 나옵니다. 유한 요소법은 차분법을 포함하면서 임의의 모양과 재료, 고차 요소, 오차 추정에 따른 적응 세분화로 확장됩니다. 구조 해석의 상용 코드, 전자기장 해석, 열 해석 대부분이 이 방법입니다.</p>
+
+    <div class="sim" id="sim-pn-fem">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>1차원 FEM: 모자 함수 조립하기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view pn-two">
+          <div><canvas id="pn-fe-cv"></canvas><span class="pn-cap">모자 함수 · FEM 해(색) · 참 해(검정)</span></div>
+          <div><canvas id="pn-fe-mx"></canvas><span class="pn-cap">강성 행렬 K (조립 중: 이번 요소의 칸 강조)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>요소 수 n <output id="pn-fe-n-out"></output></span><input type="range" id="pn-fe-n" min="2" max="16" step="1" value="4"></label>
+          <label class="ctrl"><span>하중 f</span><select id="pn-fe-f">
+            <option value="one">f = 1 (u = x(1 − x)/2)</option>
+            <option value="sin">f = π² sin πx (u = sin πx)</option>
+            <option value="patch">f = 5 (0.3 &lt; x &lt; 0.5), 그 밖 0</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="pn-fe-hat" checked> 모자 함수 Uᵢφᵢ 보이기</label>
+          <div class="btn-row"><button class="btn primary" id="pn-fe-step">요소 하나 조립</button><button class="btn" id="pn-fe-all">모두 조립 + 풀기</button><button class="btn" id="pn-fe-reset">비우기</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">조립한 요소</span><span class="v" id="pn-fe-k">—</span></div>
+        <div class="stat"><span class="k">마디 최대 오차</span><span class="v" id="pn-fe-en">—</span></div>
+        <div class="stat"><span class="k">최대 오차 (마디 사이 포함)</span><span class="v" id="pn-fe-em">—</span></div>
+        <div class="stat"><span class="k">에너지 노름 오차</span><span class="v" id="pn-fe-ee">—</span></div>
+      </div>
+      <div class="pn-msg" id="pn-fe-msg"></div>
+      <div class="sim-note">해볼 것: ① '요소 하나 조립'을 눌러 요소마다 2×2 블록이 대각선을 따라 더해지는 것을 보세요. 경계 마디의 행·열은 마지막에 지웁니다. ② f = 1에서 마디 오차가 반올림 수준(10⁻¹⁶)인 것을 확인하세요(정리 16.10). 마디 사이 오차는 n을 두 배로 하면 4분의 1입니다. ③ 'f = 5 (패치)'처럼 하중이 불연속이어도 FEM은 하중을 적분해서 쓰므로 문제없이 풉니다. 모델: 조각별 선형 요소, 하중은 요소마다 가우스 구적 5점으로 적분, 선형계는 토머스 알고리즘.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="finite-volume">
+    <h2>유한 체적법 맛보기: 보존을 정확히</h2>
+    <p>유체의 질량·운동량·에너지, 반도체의 전하는 <b>보존</b>됩니다. 칸의 양이 변하는 것은 칸의 경계를 드나드는 흐름(플럭스) 때문뿐입니다. 보존 법칙 \(u_t + F(u)_x = 0\)을 칸 \([x_{j-1/2}, x_{j+1/2}]\)에서 적분하면 칸 평균 \(\bar u_j\)에 대해</p>
+    <div class="formula">$$\frac{d\bar u_j}{dt} = -\frac{F_{j+1/2} - F_{j-1/2}}{\Delta x}$$
+      <div class="where">\(F_{j+1/2}\)는 칸 경계를 지나는 수치 플럭스. 한 칸이 잃는 양은 이웃 칸이 정확히 얻으므로, 모든 칸을 더하면 내부 플럭스가 소거되어 총량은 반올림 오차까지 정확히 보존된다.</div></div>
+    <p>이것이 <span class="term">유한 체적법</span><span class="en">(finite volume method)</span>의 뼈대입니다. 무엇을 \(F_{j+1/2}\)로 쓰느냐가 방법을 정합니다. 이류 \(F = au\)에서 바람이 불어오는 쪽 칸의 값 \(F_{j+1/2} = a\bar u_j\)를 쓰면 정확히 앞 절의 풍상 차분이 되고, 예제 16.4의 표에서 모든 방법의 총량이 0.200000으로 보존된 것도 그 식들이 이런 플럭스 차이 꼴이기 때문입니다. 비선형 보존 법칙(충격파가 생기는 기체 역학)에서는 칸 경계마다 작은 리만 문제를 풀어 플럭스를 정하는 고두노프 계열 방법이 표준이고, 보존형으로 쓰지 않으면 충격파의 속도가 틀리게 나옵니다. 임의의 다각형 칸에서도 경계 면의 플럭스만 계산하면 되므로, 상용·공개 CFD 코드 대부분이 유한 체적법을 씁니다.</p>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="applications">
+    <h2>응용: 열 해석, 유체, 반도체 소자</h2>
+    <ul>
+      <li><b>전자 기기의 열 해석.</b> 칩과 기판의 온도는 발열원이 있는 열 방정식 \(\rho c\,u_t = \nabla\cdot(k\nabla u) + q\)를 따릅니다. 재료마다 열전도도 \(k\)가 수백 배 다르고 층이 얇아 격자가 매우 불균일하므로 강성이 심합니다. 그래서 BTCS나 CN 같은 음적 시간 진행과, 매 걸음 큰 희소 선형계를 푸는 전처리 켤레 기울기법(13장)의 조합이 표준입니다. 정상 상태만 원하면 2절의 푸아송 문제 하나입니다.</li>
+      <li><b>전산 유체 역학.</b> 나비에–스토크스 방정식은 이류(6절)·확산(3절)·압력의 푸아송 방정식(2절)을 모두 품고 있습니다. 많은 코드가 유한 체적법으로 보존을 지키고, 이류 항에는 풍상 계열의 고해상도 방법을, 시간 걸음은 CFL 수로 고르며, 매 걸음 압력의 푸아송 방정식을 다중 격자법으로 풉니다. 수치 확산이 실제 점성보다 커지지 않게 격자를 고르는 것이 결과를 믿기 위한 첫 점검입니다.</li>
+      <li><b>반도체 소자 시뮬레이션.</b> 트랜지스터 안의 전위는 전하 밀도를 원천으로 하는 푸아송 방정식을, 전자·정공 농도는 표류–확산 연속 방정식을 따릅니다. 농도가 깊이에 따라 수십 자릿수 변하기 때문에 보통의 중앙 차분은 음의 농도를 만들기 쉽습니다. 1969년 샤르페터와 굼멜<span class="en">(Scharfetter, Gummel)</span>이 제안한 이산화는 칸 사이의 전류를 지수 함수 꼴로 정확히 맞춰 이 문제를 피하며, 오늘날 소자 시뮬레이터의 기본 구성 요소로 알려져 있습니다. 결과 연립방정식은 비선형이라 4장의 뉴턴 방법으로, 그 안의 선형계는 희소 직접법이나 반복법으로 풉니다.</li>
+    </ul>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>문제</th><th>알맞은 방법</th><th>주의할 점</th></tr></thead>
+      <tbody>
+        <tr><td>정상 상태(푸아송, 라플라스)</td><td>5점 차분 / FEM + 다중 격자·PCG·희소 직접법</td><td>격자 수렴 확인, 모서리 특이점</td></tr>
+        <tr><td>확산(열, 농도)</td><td>BTCS·CN(+ BTCS 시작), 선의 방법 + BDF</td><td>FTCS는 r ≤ 1/2, CN의 높은 모드 진동</td></tr>
+        <tr><td>이류·보존 법칙</td><td>유한 체적 + 풍상/고해상도(TVD, WENO)</td><td>CFL, 수치 확산과 진동</td></tr>
+        <tr><td>파동(음향, 지진, 전자기)</td><td>립프로그(엇갈린 격자), 고차 스텐실</td><td>CFL, 파장당 칸 수와 분산</td></tr>
+        <tr><td>복잡한 모양·여러 재료</td><td>유한 요소법</td><td>요소 품질, 적응 세분화</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="ode-solvers.html"><small>11장 · 미분방정식의 수치 해법</small>강성과 음적 방법<br><span>선의 방법으로 만든 ODE는 강성이다. BTCS = 후진 오일러, CN = 사다리꼴, L-안정의 의미.</span></a>
+      <a href="direct-solvers.html"><small>12장 · 직접 해법</small>토머스 알고리즘과 띠 행렬<br><span>음적 방법의 매 걸음 삼중대각계, 2차원 푸아송의 띠 촐레스키와 채움.</span></a>
+      <a href="iterative.html"><small>13장 · 반복 해법</small>SOR, CG, 다중 격자<br><span>5점 스텐실 선형계의 반복 수가 격자 크기에 따라 어떻게 늘어나는지.</span></a>
+      <a href="fft.html"><small>8장 · FFT</small>폰 노이만 분석과 빠른 푸아송 풀이<br><span>격자 푸리에 모드가 증폭 인자 분석의 바탕이고, 사인 변환으로 푸아송 방정식을 직접 푼다.</span></a>
+      <a href="../../ode/chapters/pde.html"><small>ODEBOOK</small>편미분방정식 입문<br><span>열·파동·라플라스 방정식의 해석해, FTCS와 r ≤ 1/2, CFL. 이 장의 출발점.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK</small>수치 선형대수<br><span>희소 행렬, 반복법, 조건수. PDE 계산 시간 대부분은 선형계 풀이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== epilogue -->
+  <section id="epilogue">
+    <h2>맺으며: 오차를 예측하고, 통제하고, 비용과 바꾸기</h2>
+    <p>이 책은 한 문장에서 출발했습니다. <b>컴퓨터는 유한한 수와 유한한 단계로 근사한다. 좋은 수치해석은 오차를 예측하고, 통제하고, 비용과 바꾸는 기술이다.</b> 1장에서 그 "유한한 수"는 0.1 + 0.2가 0.3이 아니게 만드는 기계 엡실론 \(2^{-52}\)이었고, 이 장의 마지막에서 "유한한 단계"는 판을 자른 격자와 시간 걸음이었습니다. 무대가 숫자 하나에서 수백만 개의 미지수로 넓어졌을 뿐, 묻는 질문은 같았습니다.</p>
+    <p>우리는 그 질문을 몇 개의 공통 언어로 다루었습니다. <b>오차 차수 \(O(h^p)\)</b>는 보간(5–6장), 미분과 적분(9–10장), ODE와 PDE(11장, 이 장)에서 로그–로그 그래프의 기울기로 되풀이해 나타났습니다. <b>수렴 차수</b>는 이분법의 1차, 뉴턴의 2차, 할선법의 1.618(3–4장)에서 시작해 반복 해법과 최적화의 수렴률 \((\kappa - 1)/(\kappa + 1)\)과 \(\sqrt\kappa\) 가속(13장, 15장)으로 이어졌습니다. <b>조건수</b>는 2장에서 문제의 민감도로 등장해 연립방정식의 오차 한계(12장), 최소제곱의 QR(7장), 경사 하강의 지그재그(15장), 격자를 줄일수록 나빠지는 푸아송 행렬(이 장)까지 따라왔습니다. 그리고 <b>안정성</b>은 2장의 점화식과 근의 공식에서 11장의 안정성 영역, 이 장의 증폭 인자와 랙스 동등성 정리까지, "작은 오차가 자라지 않는가"라는 한 질문의 여러 얼굴이었습니다.</p>
+    <div class="pn-map">
+      <a href="floating-point.html"><small>01–04</small>오차와 근 찾기<br><span>부동소수점, 조건수와 안정성, 근 찾기, 비선형 연립</span></a>
+      <a href="interpolation.html"><small>05–08</small>보간과 근사<br><span>다항식 보간, 스플라인, 최소제곱, FFT</span></a>
+      <a href="differentiation.html"><small>09–11</small>수치 미적분<br><span>수치 미분, 구적법, ODE 해법</span></a>
+      <a href="direct-solvers.html"><small>12–14</small>수치 선형대수<br><span>직접 해법, 반복 해법, 고유값</span></a>
+      <a href="optimization.html"><small>15–16</small>최적화와 PDE<br><span>내리막을 따라 걷기, 격자 위의 미분방정식</span></a>
+      <a href="glossary.html"><small>17</small>용어집 &amp; 종합 퀴즈<br><span>방법별 차수·비용 한눈표와 장별 종합 문제</span></a>
+    </div>
+    <p>여기서 길은 여러 갈래로 이어집니다. 다차원 유한 요소법과 적응 격자, 비선형 보존 법칙과 충격파, 확률 미분방정식과 몬테카를로, 큰 규모의 병렬 계산과 혼합 정밀도, 그리고 데이터로 학습한 모델과 물리 방정식을 결합하는 계산이 모두 이 책의 질문을 다시 묻습니다. 새로운 알고리즘을 만나면 먼저 물어보세요. <b>오차는 얼마나 빨리 줄어드는가, 작은 오차가 자라지는 않는가, 그 정확도에 얼마를 내는가.</b> 세 질문에 숫자로 답할 수 있으면, 그 계산을 믿어도 됩니다.</p>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>중앙 차분 \(\delta^2u/h^2 = u'' + \frac{h^2}{12}u''''\)은 2차 정확하다. 격자를 두 배로 하면 오차가 4분의 1이 되는지 보는 격자 수렴 실험이 PDE 코드 검증의 기본이다.</li>
+      <li>5점 스텐실은 \(n^2\times n^2\) 블록 삼중대각 희소 행렬을 만든다. 이산 최대 원리가 성립하고, 조건수가 \(h^{-2}\)에 비례해 야코비는 \(N^2\), 최적 SOR은 \(N\)에 비례하는 반복이 든다. 다중 격자는 격자와 무관한 반복 수를 낸다.</li>
+      <li>열 방정식의 선의 방법은 강성 ODE다. FTCS(전진 오일러)는 \(r \le 1/2\), BTCS(후진 오일러)와 크랭크–니콜슨(사다리꼴)은 무조건 안정이고 1차원에서 한 걸음 \(O(n)\)(토머스). CN은 2차지만 큰 \(r\)에서 높은 모드가 \(G \to -1\)로 진동한다.</li>
+      <li>폰 노이만 분석은 격자 푸리에 모드의 증폭 인자 \(G(\theta)\)를 구해 \(|G| \le 1\)을 확인한다. 열: \(G = 1 - 4rs^2\), \(1/(1 + 4rs^2)\), \((1 - 2rs^2)/(1 + 2rs^2)\).</li>
+      <li>랙스 동등성 정리: 잘 놓인 선형 문제에서 일관적인 차분법은 안정할 때 그리고 그때만 수렴한다. 안정한 방법의 수렴 차수는 절단 오차의 차수다.</li>
+      <li>이류의 중앙 차분은 \(|G|^2 = 1 + C^2\sin^2\theta\)로 무조건 불안정하다. 풍상은 수치 확산 \(\frac{a\Delta x}{2}(1 - C)u_{xx}\)를 가진 1차, 랙스–벤드로프는 진동(분산)을 가진 2차이며 둘 다 \(C \le 1\)(CFL)에서 안정하다. 단조 선형 방법은 1차가 한계다(고두노프).</li>
+      <li>파동의 립프로그는 \(C \le 1\)에서 안정하고 감쇠가 없지만, 수치 분산 \(\sin\frac{\omega\Delta t}{2} = C\sin\frac{\xi\Delta x}{2}\) 때문에 짧은 파장이 늦다. 1차원에서는 \(C = 1\)이 정확하다.</li>
+      <li>유한 요소법은 약형식 \(\int u'v' = \int fv\)를 모자 함수 공간에서 풀어 강성 행렬 \(K\mathbf U = \mathbf F\)를 조립한다. 갤러킨 해는 에너지 노름에서 최선 근사다. 유한 체적법은 칸 경계의 플럭스로 보존을 정확히 지킨다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 2차 정확한 차분법으로 \(N = 20\)에서 최대 오차가 \(2\times10^{-3}\)이었다. \(N = 80\)이면 대략?</p><div class="opts">
+        <button class="opt">\(5\times10^{-4}\)</button>
+        <button class="opt" data-correct>\(1.25\times10^{-4}\)</button>
+        <button class="opt">\(3.1\times10^{-5}\)</button>
+        <button class="opt">\(2\times10^{-3}\) (변하지 않음)</button>
+      </div><div class="quiz-exp">\(h\)가 1/4이 되면 오차는 \((1/4)^2 = 1/16\)배, \(2\times10^{-3}/16 = 1.25\times10^{-4}\). \(5\times10^{-4}\)은 1차 방법일 때의 답이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 2차원 정사각형 판을 한 변에 내부 점 100개로 나눈 5점 차분 행렬의 크기와 한 행의 0 아닌 값의 최대 개수는?</p><div class="opts">
+        <button class="opt">100 × 100, 3개</button>
+        <button class="opt">10⁴ × 10⁴, 10⁴개</button>
+        <button class="opt" data-correct>10⁴ × 10⁴, 5개</button>
+        <button class="opt">10⁸ × 10⁸, 5개</button>
+      </div><div class="quiz-exp">미지수는 \(100^2 = 10^4\)개. 각 식은 자기와 네 이웃만 쓰므로 한 행에 최대 5개. 밀집 저장이면 \(10^8\)칸이지만 0 아닌 값은 5×10⁴개 미만이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(\Delta x = 0.01\), \(\alpha = 1\)인 열 방정식을 FTCS로 안정하게 풀 수 있는 가장 큰 \(\Delta t\)는?</p><div class="opts">
+        <button class="opt">\(10^{-2}\)</button>
+        <button class="opt">\(10^{-4}\)</button>
+        <button class="opt" data-correct>\(5\times10^{-5}\)</button>
+        <button class="opt">제한 없음</button>
+      </div><div class="quiz-exp">\(r = \Delta t/\Delta x^2 \le 1/2\)에서 \(\Delta t \le 10^{-4}/2\). BTCS나 CN이면 제한이 없고, \(\Delta t\)는 정확도로만 고른다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 크랭크–니콜슨으로 \(r = 10\)일 때 가장 높은 격자 모드(\(\theta = \pi\))의 증폭 인자는?</p><div class="opts">
+        <button class="opt">\(1/41 \approx 0.024\)</button>
+        <button class="opt" data-correct>\(-19/21 \approx -0.905\)</button>
+        <button class="opt">\(-39\)</button>
+        <button class="opt">\(e^{-10\pi^2}\)</button>
+      </div><div class="quiz-exp">\(G = (1 - 2r)/(1 + 2r) = -19/21\). 절댓값이 1보다 작아 안정하지만 거의 줄지 않고 부호만 바꿔 톱니 진동이 남는다. \(1/41\)은 BTCS, \(-39\)는 FTCS의 \(1 - 4r\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 랙스 동등성 정리에 따르면, 일관적인 선형 차분법이 수렴하지 않는다면 그 원인은?</p><div class="opts">
+        <button class="opt">절단 오차의 차수가 낮다</button>
+        <button class="opt" data-correct>불안정하다</button>
+        <button class="opt">반올림 오차가 크다</button>
+        <button class="opt">음적 방법이 아니다</button>
+      </div><div class="quiz-exp">잘 놓인 선형 문제에서 일관성이 있으면 수렴 ⇔ 안정성이다. 차수가 낮은 것은 수렴이 느린 것이지 수렴하지 않는 것이 아니다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(u_t + u_x = 0\)을 풍상 차분, \(\Delta x = 0.02\), \(C = 0.5\)로 풀 때 수정 방정식의 수치 확산 계수는?</p><div class="opts">
+        <button class="opt">0</button>
+        <button class="opt" data-correct>0.005</button>
+        <button class="opt">0.01</button>
+        <button class="opt">0.02</button>
+      </div><div class="quiz-exp">\(D = \frac{a\Delta x}{2}(1 - C) = \frac{1\cdot0.02}{2}\cdot0.5 = 0.005\). \(C = 1\)이면 0이 되어 풍상 차분이 정확한 한 칸 이동이 된다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 파동 방정식의 립프로그 방법에서 \(C \lt 1\)일 때 짧은 파장 성분에 일어나는 일은?</p><div class="opts">
+        <button class="opt">지수적으로 커진다</button>
+        <button class="opt">빨리 감쇠한다</button>
+        <button class="opt" data-correct>진폭은 유지되지만 참 속도보다 느리게 간다</button>
+        <button class="opt">참 해와 정확히 같다</button>
+      </div><div class="quiz-exp">\(\sin(\omega\Delta t/2) = C\sin(\xi\Delta x/2)\)에서 \(C \le 1\)이면 \(\omega\)가 실수(감쇠 없음)이고, \(c_{\text{num}}/c \lt 1\)이 짧은 파장일수록 작다. 예를 들어 \(C = 0.5\), 파장당 4칸이면 0.920이다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(-u'' = f\)를 조각별 선형 유한 요소(\(n\)개 요소, 간격 \(h\))로 풀 때 강성 행렬은?</p><div class="opts">
+        <button class="opt">\(h\cdot\operatorname{tridiag}(1, 4, 1)/6\)</button>
+        <button class="opt" data-correct>\(\frac1h\operatorname{tridiag}(-1, 2, -1)\)</button>
+        <button class="opt">단위 행렬</button>
+        <button class="opt">밀집 행렬</button>
+      </div><div class="quiz-exp">요소 강성 \(\frac1h\begin{bmatrix}1&-1\\-1&1\end{bmatrix}\)을 조립하면 \(\frac1h\operatorname{tridiag}(-1, 2, -1)\). 첫 보기는 \(\int\varphi_i\varphi_j\)의 질량 행렬이다. 하중 \(f = 1\)이면 \(F_i = h\)라 차분법과 같은 식이 된다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const PN = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v) || Math.abs(v) > 1e30) return "발산";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  /** 토머스 알고리즘: 상수 또는 배열 a(아래), b(대각), c(위) */
+  thomas(a, b, c, d) {
+    const n = d.length, A = (i) => (typeof a === "number" ? a : a[i]), B = (i) => (typeof b === "number" ? b : b[i]), Cc = (i) => (typeof c === "number" ? c : c[i]);
+    const cp = new Float64Array(n), dp = new Float64Array(n);
+    cp[0] = Cc(0) / B(0); dp[0] = d[0] / B(0);
+    for (let i = 1; i < n; i++) { const m = B(i) - A(i) * cp[i - 1]; cp[i] = Cc(i) / m; dp[i] = (d[i] - A(i) * dp[i - 1]) / m; }
+    const x = new Float64Array(n); x[n - 1] = dp[n - 1];
+    for (let i = n - 2; i >= 0; i--) x[i] = dp[i] - cp[i] * x[i + 1];
+    return x;
+  },
+  clip(v, lo, hi) { return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : (v > 0 ? hi : lo); },
+  /** 점 목록을 잘라서 그리기 */
+  line(P, pts, color, o = {}) {
+    const ctx = P.ctx; ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = o.width || 2; ctx.setLineDash(o.dash || []); ctx.beginPath();
+    pts.forEach(([x, y], i) => { const yy = PN.clip(y, P.y0 - 1, P.y1 + 1); i ? ctx.lineTo(P.X(x), P.Y(yy)) : ctx.moveTo(P.X(x), P.Y(yy)); });
+    ctx.stroke();
+    if (o.dots) { ctx.fillStyle = color; pts.forEach(([x, y]) => { if (y < P.y0 || y > P.y1 || !isFinite(y)) return; ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), o.dots, 0, 7); ctx.fill(); }); }
+    ctx.restore();
+  },
+};
+
+/* ================================================================ 1. 격자 수렴 */
+(function () {
+  const E = Math.E;
+  const PR = {
+    sin: { u: (x) => Math.sin(Math.PI * x), f: (x) => Math.PI * Math.PI * Math.sin(Math.PI * x), y: [-0.15, 1.2] },
+    exp: { u: (x) => Math.exp(x) - 1 - (E - 1) * x, f: (x) => -Math.exp(x), y: [-0.25, 0.05] },
+    kink: { u: (x) => Math.pow(Math.abs(x - 0.4), 2.5), f: (x) => -3.75 * Math.sqrt(Math.abs(x - 0.4)), y: [-0.03, 0.32] },
+  };
+  const NS = [4, 8, 16, 32, 64, 128, 256, 512];
+  let pr = PR.sin, N = 8, ref = true, errs;
+  const solve = (n) => { const h = 1 / n, m = n - 1, d = new Float64Array(m);
+    for (let i = 1; i < n; i++) d[i - 1] = h * h * pr.f(i * h);
+    d[0] += pr.u(0); d[m - 1] += pr.u(1);
+    const u = PN.thomas(-1, 2, -1, d); let e = 0; for (let i = 1; i < n; i++) e = Math.max(e, Math.abs(u[i - 1] - pr.u(i * h)));
+    return { u, e }; };
+  const all = () => { errs = NS.map((n) => [1 / n, Math.max(solve(n).e, 1e-17)]); };
+  all();
+  const pl = MB.plane("#pn-or-cv", {
+    x: [-0.04, 1.04], y: pr.y, aspect: 0.45, minHeight: 200, gridStep: 0.25,
+    draw(P) { const C = P.P; P.curve(pr.u, { color: C.text, width: 2, from: 0, to: 1 });
+      const r = solve(N), h = 1 / N, pts = [[0, pr.u(0)]]; for (let i = 1; i < N; i++) pts.push([i * h, r.u[i - 1]]); pts.push([1, pr.u(1)]);
+      PN.line(P, pts, C.accent, { width: 1.4, dots: N <= 64 ? 3.5 : 0 }); },
+  });
+  const ch = MB.canvas("#pn-or-ch", (ctx, w, h) => {
+    const C = MB.palette(), series = [{ data: errs, color: C.accent, width: 2.2 }];
+    if (ref) { const [h0, e0] = errs[1]; series.push({ data: [[1 / 600, e0 * Math.pow(1 / 600 / h0, 2)], [0.3, e0 * Math.pow(0.3 / h0, 2)]], color: C.faint, width: 1.2, dash: [5, 4] }); }
+    MB.chart(ctx, { x: 58, y: 26, w: w - 76, h: h - 66 }, { x: [1 / 600, 0.3], y: [1e-8, 1], logX: true, logY: true, xLabel: "h", series, points: errs.map(([x, y]) => ({ x, y, r: x === 1 / N ? 6 : 3, color: x === 1 / N ? C.accent2 : C.accent })), xTicks: [1e-3, 1e-2, 1e-1], yTicks: [1e-8, 1e-6, 1e-4, 1e-2, 1] });
+  }, { aspect: 0.42, minHeight: 190, maxHeight: 300 });
+  const upd = () => {
+    pl.redraw(); ch.redraw();
+    const i = NS.indexOf(N), e = errs[i][1];
+    MB.stat("pn-or-h", "1/" + N); MB.stat("pn-or-e", PN.sci(e, 3)); MB.stat("pn-or-r", i > 0 ? PN.num(errs[i - 1][1] / e, 3) : "—");
+    const xs = errs.map((p) => Math.log(p[0])), ys = errs.map((p) => Math.log(p[1])), mx = MB.mean(xs), my = MB.mean(ys);
+    let a = 0, b = 0; xs.forEach((x, k) => { a += (x - mx) * (ys[k] - my); b += (x - mx) ** 2; }); MB.stat("pn-or-p", PN.num(a / b, 2));
+  };
+  MB.steps("pn-or-n", NS, (v) => String(v), 8, (v) => { N = v; upd(); });
+  MB.check("pn-or-ref", (v) => { ref = v; upd(); });
+  document.getElementById("pn-or-fn").addEventListener("change", (e) => { pr = PR[e.target.value]; all(); pl.view({ y: pr.y }); upd(); });
+  upd();
+})();
+
+/* ================================================================ 2. 판의 정상 온도 */
+(function () {
+  const N = 32, n = N + 1, h = 1 / N, FSRC = 3e4;
+  let bc = { t: 100, b: 0, l: 0, r: 0 }, src = new Set(), view = "heat", U = null, its = null, anim = null;
+  const fresh = () => { const u = new Float64Array(n * n); for (let i = 0; i < n; i++) { u[N * n + i] = bc.t; u[i] = bc.b; } for (let j = 1; j < N; j++) { u[j * n] = bc.l; u[j * n + N] = bc.r; }
+    u[0] = (bc.b + bc.l) / 2; u[N] = (bc.b + bc.r) / 2; u[N * n] = (bc.t + bc.l) / 2; u[N * n + N] = (bc.t + bc.r) / 2; return u; };
+  const F = (j, i) => (src.has(j * n + i) ? h * h * FSRC : 0);
+  const resid = (u) => { let r = 0; for (let j = 1; j < N; j++) for (let i = 1; i < N; i++) { const k = j * n + i; r = Math.max(r, Math.abs(u[k + 1] + u[k - 1] + u[k + n] + u[k - n] - 4 * u[k] + F(j, i))); } return r; };
+  const sweep = (u, method, w) => {
+    if (method === "jac") { const v = u.slice(); for (let j = 1; j < N; j++) for (let i = 1; i < N; i++) { const k = j * n + i; u[k] = 0.25 * (v[k + 1] + v[k - 1] + v[k + n] + v[k - n] + F(j, i)); } return; }
+    for (let j = 1; j < N; j++) for (let i = 1; i < N; i++) { const k = j * n + i; const g = 0.25 * (u[k + 1] + u[k - 1] + u[k + n] + u[k - n] + F(j, i)); u[k] += w * (g - u[k]); }
+  };
+  const WOPT = 2 / (1 + Math.sin(Math.PI * h)), TOL = 1e-8 * 100;
+  const count = (method, w) => { const u = fresh(); let k = 0; while (k < 20000) { sweep(u, method, w); k++; if (k % 5 === 0 && resid(u) < TOL) break; } return [k, u]; };
+  const solveAll = () => { const s = count("sor", WOPT); U = s[1]; its = { sor: s[0], jac: count("jac", 1)[0], gs: count("gs", 1)[0] }; };
+  const cv = MB.canvas("#pn-po-cv", (ctx, w, hh) => {
+    const C = MB.palette(); if (!U) return;
+    if (view === "mat") { // 6×6 내부 격자의 36×36 행렬
+      const m = 6, M = m * m, s = Math.min((w - 40) / M, (hh - 40) / M), x0 = (w - s * M) / 2, y0 = (hh - s * M) / 2;
+      ctx.strokeStyle = C.border; ctx.strokeRect(x0, y0, s * M, s * M);
+      for (let a = 0; a < M; a++) for (let b = 0; b < M; b++) { const ai = a % m, aj = (a / m) | 0, bi = b % m, bj = (b / m) | 0; let v = 0;
+        if (a === b) v = 4; else if ((aj === bj && Math.abs(ai - bi) === 1) || (ai === bi && Math.abs(aj - bj) === 1)) v = -1;
+        if (v) { ctx.fillStyle = v > 0 ? C.accent : C.accent2; ctx.fillRect(x0 + b * s + 0.5, y0 + a * s + 0.5, s - 1, s - 1); } }
+      ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "left"; ctx.fillText("36×36: 대각 4(초록), 이웃 −1(보라), 나머지 0", 10, 16);
+      return;
+    }
+    const u = view === "iter" && anim ? anim.u : U;
+    let mx = 100; for (let k = 0; k < u.length; k++) mx = Math.max(mx, u[k]);
+    const side = Math.min(w - 90, hh - 20), x0 = 14, y0 = (hh - side) / 2;
+    const data = new Float64Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) data[(N - j) * n + i] = MB.clamp(u[j * n + i] / mx, 0, 1);
+    MB.drawGray(ctx, data, n, n, x0, y0, side, side, { map: (t) => MB.colormap(t, "viridis"), smooth: true });
+    // 등온선
+    ctx.save(); ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1; ctx.beginPath();
+    const X = (i) => x0 + (i / N) * side, Y = (j) => y0 + side - (j / N) * side;
+    for (let L = 10; L < mx; L += 10) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const c = [[i, j, u[j * n + i]], [i + 1, j, u[j * n + i + 1]], [i + 1, j + 1, u[(j + 1) * n + i + 1]], [i, j + 1, u[(j + 1) * n + i]]], pts = [];
+      for (let q = 0; q < 4; q++) { const A = c[q], B = c[(q + 1) % 4]; if ((A[2] < L) !== (B[2] < L)) { const t = (L - A[2]) / (B[2] - A[2]); pts.push([A[0] + t * (B[0] - A[0]), A[1] + t * (B[1] - A[1])]); } }
+      if (pts.length >= 2) { ctx.moveTo(X(pts[0][0]), Y(pts[0][1])); ctx.lineTo(X(pts[1][0]), Y(pts[1][1])); }
+    }
+    ctx.stroke(); ctx.restore();
+    src.forEach((k) => { const j = (k / n) | 0, i = k % n; ctx.fillStyle = C.bad; ctx.beginPath(); ctx.arc(X(i), Y(j), 4.5, 0, 7); ctx.fill(); });
+    // 색 막대
+    const bx = x0 + side + 18; for (let p = 0; p < side; p++) { ctx.fillStyle = MB.rgb(MB.colormap(1 - p / side, "viridis")); ctx.fillRect(bx, y0 + p, 14, 1.5); }
+    ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "left";
+    ctx.fillText(PN.num(mx, 0) + " °C", bx + 18, y0 + 8); ctx.fillText("0 °C", bx + 18, y0 + side - 2);
+    if (view === "iter" && anim) { ctx.fillStyle = C.text; ctx.fillText("SOR 반복 " + anim.k, x0 + 6, y0 + 14); }
+    cv.geom = { x0, y0, side };
+  }, { aspect: 0.7, minHeight: 260, maxHeight: 460 });
+  cv.canvas.addEventListener("pointerdown", (e) => {
+    if (view === "mat" || !cv.geom) return; const r = cv.canvas.getBoundingClientRect(), g = cv.geom;
+    const i = Math.round(((e.clientX - r.left - g.x0) / g.side) * N), j = Math.round((1 - (e.clientY - r.top - g.y0) / g.side) * N);
+    if (i < 1 || i >= N || j < 1 || j >= N) return; const k = j * n + i; src.has(k) ? src.delete(k) : src.add(k); recompute();
+  });
+  const msg = document.getElementById("pn-po-msg");
+  const lp = MB.loop(document.getElementById("sim-pn-poisson"), () => { if (view !== "iter" || !anim) return; if (anim.k < its.sor) { const steps = anim.k < 20 ? 1 : 3; for (let s = 0; s < steps && anim.k < its.sor; s++) { sweep(anim.u, "sor", WOPT); anim.k++; } cv.redraw(); } });
+  function upd() {
+    cv.redraw();
+    MB.stat("pn-po-c", PN.num(U[(N / 2) * n + N / 2], 4) + " °C");
+    MB.stat("pn-po-nz", (N - 1) ** 2 + " · " + (5 * (N - 1) ** 2 - 4 * (N - 1)));
+    MB.stat("pn-po-it", its.jac + " · " + its.gs);
+    MB.stat("pn-po-sor", its.sor + " (ω = " + PN.num(WOPT, 3) + ")");
+    let mx = -Infinity; for (let k = 0; k < U.length; k++) mx = Math.max(mx, U[k]); const bmax = Math.max(bc.t, bc.b, bc.l, bc.r);
+    msg.className = "pn-msg"; msg.innerHTML = src.size ? `열원 ${src.size}개: 판 안의 최고 온도 <b>${PN.num(mx, 1)} °C</b>, 경계 최고 ${bmax} °C. 원천이 있으면 최대 원리가 깨집니다.` : `열원 없음: 판 안의 모든 값이 경계값 사이에 있습니다(이산 최대 원리). 최고 ${PN.num(mx, 1)} °C.`;
+  }
+  const recompute = MB.throttle(() => { solveAll(); if (view === "iter") anim = { u: fresh(), k: 0 }; upd(); });
+  ["t", "b", "l", "r"].forEach((s) => MB.range("pn-po-" + s, (v) => String(v), (v) => { bc[s] = v; recompute(); }));
+  MB.seg("pn-po-view", (v) => { view = v; anim = v === "iter" ? { u: fresh(), k: 0 } : null; upd(); });
+  document.getElementById("pn-po-clear").addEventListener("click", () => { src.clear(); recompute(); });
+  solveAll(); upd();
+})();
+
+/* ================================================================ 3. FTCS · BTCS · CN */
+(function () {
+  const N = 20, dx = 1 / N, m = N - 1, RS = [0.1, 0.2, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.8, 1, 2, 4, 10, 20];
+  let r = 0.4, ic = "sin", st, show = { f: true, b: true, c: true };
+  const coef = () => { const b = new Float64Array(401);
+    if (ic === "sin") b[1] = 1; else if (ic === "two") { b[1] = 1; b[7] = 1; }
+    else for (let k = 1; k <= 400; k++) b[k] = 2 * (Math.cos(k * Math.PI * 0.4) - Math.cos(k * Math.PI * 0.6)) / (k * Math.PI);
+    return b; };
+  let B = coef();
+  const u0 = (x) => (ic === "pulse" ? (x > 0.4 && x < 0.6 ? 1 : 0) : Math.sin(Math.PI * x) + (ic === "two" ? Math.sin(7 * Math.PI * x) : 0));
+  const exact = (x, t) => { let s = 0; for (let k = 1; k <= 400; k++) if (B[k]) s += B[k] * Math.sin(k * Math.PI * x) * Math.exp(-k * k * Math.PI * Math.PI * t); return s; };
+  const reset = () => { B = coef(); const v = new Float64Array(m); for (let i = 1; i < N; i++) v[i - 1] = u0(i * dx); st = { k: 0, f: v.slice(), b: v.slice(), c: v.slice() }; upd(); };
+  const L = (u, i) => (i > 0 ? u[i - 1] : 0) - 2 * u[i] + (i < m - 1 ? u[i + 1] : 0);
+  const step = () => {
+    const f = st.f, nf = new Float64Array(m); for (let i = 0; i < m; i++) nf[i] = f[i] + r * L(f, i); st.f = nf;
+    st.b = PN.thomas(-r, 1 + 2 * r, -r, st.b);
+    const d = new Float64Array(m); for (let i = 0; i < m; i++) d[i] = st.c[i] + 0.5 * r * L(st.c, i); st.c = PN.thomas(-r / 2, 1 + r, -r / 2, d);
+    st.k++; upd();
+  };
+  const ymin = () => (ic === "two" ? -1.3 : -0.45), ymax = () => (ic === "two" ? 2.1 : 1.3);
+  const pl = MB.plane("#pn-ht-cv", {
+    x: [-0.03, 1.03], y: [-0.45, 1.3], aspect: 0.55, minHeight: 230, gridStep: 0.25,
+    draw(P) { if (!st) return; const C = P.P, t = st.k * r * dx * dx;
+      P.curve((x) => exact(x, t), { color: C.text, width: 2.2, from: 0, to: 1, n: 300 });
+      const pts = (u) => { const a = [[0, 0]]; for (let i = 0; i < m; i++) a.push([(i + 1) * dx, u[i]]); a.push([1, 0]); return a; };
+      if (show.f) PN.line(P, pts(st.f), C.bad, { width: 1.6, dots: 3 });
+      if (show.b) PN.line(P, pts(st.b), C.blue, { width: 1.6, dots: 3 });
+      if (show.c) PN.line(P, pts(st.c), C.accent2, { width: 1.6, dots: 3 }); },
+  });
+  const msg = document.getElementById("pn-ht-msg");
+  function upd() {
+    if (!st) return; pl.redraw(); const t = st.k * r * dx * dx;
+    const err = (u) => { let e = 0; for (let i = 0; i < m; i++) e = Math.max(e, Math.abs(u[i] - exact((i + 1) * dx, t))); return e; };
+    MB.stat("pn-ht-k", st.k + " · " + PN.num(t, 4)); MB.stat("pn-ht-ef", PN.sci(err(st.f), 2)); MB.stat("pn-ht-eb", PN.sci(err(st.b), 2)); MB.stat("pn-ht-ec", PN.sci(err(st.c), 2));
+    const gf = 1 - 4 * r, gb = 1 / (1 + 4 * r), gc = (1 - 2 * r) / (1 + 2 * r);
+    msg.className = Math.abs(gf) > 1 ? "pn-msg bad" : "pn-msg";
+    msg.innerHTML = `가장 높은 모드의 증폭 인자 G(π): FTCS <b>${PN.num(gf, 3)}</b>, BTCS <b>${PN.num(gb, 3)}</b>, CN <b>${PN.num(gc, 3)}</b>. ` + (Math.abs(gf) > 1 ? "FTCS는 |G| &gt; 1이라 톱니가 걸음마다 자랍니다." : r > 2 ? "CN의 G(π)가 −1에 가까워 높은 모드가 부호만 바꾸며 남습니다." : "");
+  }
+  const lp = MB.loop(document.getElementById("sim-pn-heat"), () => { if (!running) return; const tEnd = 0.5; if (st.k * r * dx * dx >= tEnd) { stop(); return; } step(); });
+  let running = false; const rb = document.getElementById("pn-ht-run");
+  const stop = () => { running = false; rb.textContent = "▶ 진행"; };
+  rb.addEventListener("click", () => { if (running) { stop(); return; } if (st.k * r * dx * dx >= 0.5) reset(); running = true; rb.textContent = "■ 멈춤"; });
+  document.getElementById("pn-ht-step").addEventListener("click", step);
+  document.getElementById("pn-ht-reset").addEventListener("click", () => { stop(); reset(); });
+  MB.steps("pn-ht-r", RS, (v) => String(v), 0.4, (v) => { r = v; stop(); reset(); });
+  MB.seg("pn-ht-ic", (v) => { ic = v; pl.view({ y: [ymin(), ymax()] }); stop(); reset(); });
+  [["pn-ht-f", "f"], ["pn-ht-b", "b"], ["pn-ht-c", "c"]].forEach(([id, k]) => MB.check(id, (v) => { show[k] = v; pl.redraw(); }));
+  reset(); for (let i = 0; i < 25; i++) step();
+})();
+
+/* ================================================================ 4. 증폭 인자 */
+(function () {
+  const RS = [0.1, 0.25, 0.4, 0.5, 0.6, 1, 2, 5, 20];
+  let eq = "heat", mode = "g", r = 0.6, C = 0.8;
+  const cx = (re, im) => [re, im], ab = (z) => Math.hypot(z[0], z[1]);
+  const ADV = { ftcs: (t) => cx(1, -C * Math.sin(t)), up: (t) => cx(1 - C + C * Math.cos(t), -C * Math.sin(t)), lf: (t) => cx(Math.cos(t), -C * Math.sin(t)), lw: (t) => cx(1 - C * C * (1 - Math.cos(t)), -C * Math.sin(t)) };
+  const HEAT = { ftcs: (t) => 1 - 4 * r * Math.sin(t / 2) ** 2, btcs: (t) => 1 / (1 + 4 * r * Math.sin(t / 2) ** 2), cn: (t) => (1 - 2 * r * Math.sin(t / 2) ** 2) / (1 + 2 * r * Math.sin(t / 2) ** 2), ex: (t) => Math.exp(-r * t * t) };
+  const cv = MB.canvas("#pn-am-cv", (ctx, w, h) => {
+    const P = MB.palette(), th = []; for (let i = 0; i <= 200; i++) th.push((Math.PI * i) / 200);
+    const box = { x: 58, y: 20, w: w - 76, h: h - 62 }, xT = [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4, Math.PI], xF = (v) => ["0", "π/4", "π/2", "3π/4", "π"][Math.round(v / (Math.PI / 4))] || "";
+    if (eq === "heat") {
+      MB.chart(ctx, box, { x: [0, Math.PI], y: [-2, 1.15], xTicks: xT, xFmt: xF, xLabel: "θ = ξΔx", hlines: [{ y: 1, color: P.faint }, { y: -1, color: P.faint, label: "G = −1" }, { y: 0, color: P.grid }],
+        series: [{ data: th.map((t) => [t, HEAT.ex(t)]), color: P.text, width: 2 }, { data: th.map((t) => [t, HEAT.ftcs(t)]), color: P.bad }, { data: th.map((t) => [t, HEAT.btcs(t)]), color: P.blue }, { data: th.map((t) => [t, HEAT.cn(t)]), color: P.accent2 }] });
+    } else if (mode === "g") {
+      MB.chart(ctx, box, { x: [0, Math.PI], y: [0, 1.6], xTicks: xT, xFmt: xF, xLabel: "θ = ξΔx", hlines: [{ y: 1, color: P.faint, label: "|G| = 1" }],
+        series: [{ data: th.map((t) => [t, ab(ADV.ftcs(t))]), color: P.bad }, { data: th.map((t) => [t, ab(ADV.up(t))]), color: P.blue }, { data: th.map((t) => [t, ab(ADV.lf(t))]), color: P.warn }, { data: th.map((t) => [t, ab(ADV.lw(t))]), color: P.accent2 }] });
+    } else {
+      const ph = (g) => (t) => (t < 1e-6 ? 1 : -Math.atan2(g(t)[1], g(t)[0]) / (C * t));
+      MB.chart(ctx, box, { x: [0, Math.PI], y: [-0.2, 1.6], xTicks: xT, xFmt: xF, xLabel: "θ = ξΔx", hlines: [{ y: 1, color: P.faint, label: "참 속도" }, { y: 0, color: P.grid }],
+        series: [{ data: th.map((t) => [t, ph(ADV.ftcs)(t)]), color: P.bad }, { data: th.map((t) => [t, ph(ADV.up)(t)]), color: P.blue }, { data: th.map((t) => [t, ph(ADV.lf)(t)]), color: P.warn }, { data: th.map((t) => [t, ph(ADV.lw)(t)]), color: P.accent2 }] });
+    }
+  }, { aspect: 0.5, minHeight: 230, maxHeight: 380 });
+  const leg = document.getElementById("pn-am-leg"), lab = document.getElementById("pn-am-lab");
+  let rg;
+  function upd() {
+    cv.redraw();
+    const th = []; for (let i = 0; i <= 400; i++) th.push((Math.PI * i) / 400);
+    const mxa = (fn) => Math.max(...th.map((t) => Math.abs(fn(t))));
+    if (eq === "heat") {
+      leg.innerHTML = '<span><i style="background:var(--text)"></i>참 e<sup>−rθ²</sup></span><span><i style="background:var(--bad)"></i>FTCS</span><span><i style="background:var(--blue)"></i>BTCS</span><span><i style="background:var(--accent-2)"></i>크랭크–니콜슨</span>';
+      ["FTCS max|G|", "BTCS max|G|", "CN max|G|", "G(π): CN · BTCS"].forEach((k, i) => (document.getElementById("pn-am-k" + i).textContent = k));
+      MB.stat("pn-am-o0", PN.num(mxa(HEAT.ftcs), 3)); MB.stat("pn-am-o1", PN.num(mxa(HEAT.btcs), 3)); MB.stat("pn-am-o2", PN.num(mxa(HEAT.cn), 3)); MB.stat("pn-am-o3", PN.num(HEAT.cn(Math.PI), 3) + " · " + PN.num(HEAT.btcs(Math.PI), 3));
+    } else {
+      leg.innerHTML = '<span><i style="background:var(--bad)"></i>중앙 FTCS</span><span><i style="background:var(--blue)"></i>풍상</span><span><i style="background:var(--warn)"></i>랙스–프리드리히스</span><span><i style="background:var(--accent-2)"></i>랙스–벤드로프</span>';
+      ["중앙 max|G|", "풍상 max|G|", "랙스–프리드리히스", "랙스–벤드로프"].forEach((k, i) => (document.getElementById("pn-am-k" + i).textContent = k));
+      ["ftcs", "up", "lf", "lw"].forEach((k, i) => MB.stat("pn-am-o" + i, PN.num(Math.max(...th.map((t) => ab(ADV[k](t)))), 3)));
+    }
+  }
+  const setEq = (v) => { eq = v; const el = document.getElementById("pn-am-r");
+    if (v === "heat") { lab.textContent = "r = Δt/Δx²"; rg = MB.steps(el, RS, (x) => String(x), r, (x) => { if (eq === "heat") { r = x; upd(); } }); }
+    else { lab.textContent = "쿠랑 수 C"; rg = MB.steps(el, [0.1, 0.25, 0.5, 0.8, 0.9, 1, 1.1, 1.2], (x) => String(x), C, (x) => { if (eq === "adv") { C = x; upd(); } }); }
+    upd(); };
+  MB.seg("pn-am-eq", setEq);
+  MB.seg("pn-am-mode", (v) => { mode = v; upd(); });
+  setEq("heat");
+})();
+
+/* ================================================================ 5. 이류 */
+(function () {
+  const N = 100, dx = 1 / N;
+  let method = "up", C = 0.8, ic = "sq", all = false, st;
+  const f0 = (x) => { const sq = x > 0.1 && x < 0.3 ? 1 : 0, ga = Math.exp(-(((x - 0.6) / 0.05) ** 2)); return ic === "sq" ? sq : ic === "ga" ? Math.exp(-(((x - 0.2) / 0.05) ** 2)) : sq + ga; };
+  const M = ["ftcs", "up", "lf", "lw"];
+  const stepU = (v, m) => { const u = new Float64Array(N); for (let i = 0; i < N; i++) { const um = v[(i - 1 + N) % N], up = v[(i + 1) % N], ui = v[i];
+    u[i] = m === "ftcs" ? ui - C / 2 * (up - um) : m === "up" ? ui - C * (ui - um) : m === "lf" ? 0.5 * (up + um) - C / 2 * (up - um) : ui - C / 2 * (up - um) + C * C / 2 * (up - 2 * ui + um); } return u; };
+  const reset = () => { const v = new Float64Array(N); for (let i = 0; i < N; i++) v[i] = f0((i + 0.5) * dx); st = { k: 0, u: {} }; M.forEach((m) => (st.u[m] = v.slice())); upd(); };
+  const step = () => { M.forEach((m) => { st.u[m] = stepU(st.u[m], m); }); st.k++; };
+  const col = (P) => ({ ftcs: P.bad, up: P.blue, lf: P.warn, lw: P.accent2 });
+  const pl = MB.plane("#pn-ad-cv", {
+    x: [-0.02, 1.02], y: [-0.45, 1.5], aspect: 0.5, minHeight: 220, gridStep: 0.25,
+    draw(P) { if (!st) return; const Cc = P.P, t = st.k * C * dx;
+      P.curve((x) => f0((((x - t) % 1) + 1) % 1), { color: Cc.text, width: 2, from: 0, to: 1, n: 600 });
+      (all ? M : [method]).forEach((m) => { const pts = []; for (let i = 0; i < N; i++) pts.push([(i + 0.5) * dx, st.u[m][i]]); PN.line(P, pts, col(Cc)[m], { width: 2 }); }); },
+  });
+  const msg = document.getElementById("pn-ad-msg");
+  function upd() {
+    if (!st) return; pl.redraw(); const u = st.u[method], t = st.k * C * dx;
+    let mx = -Infinity, mn = Infinity, e = 0, mass = 0;
+    for (let i = 0; i < N; i++) { mx = Math.max(mx, u[i]); mn = Math.min(mn, u[i]); const x = ((((i + 0.5) * dx - t) % 1) + 1) % 1; e += Math.abs(u[i] - f0(x)) * dx; mass += u[i] * dx; }
+    MB.stat("pn-ad-k", st.k + " · " + PN.num(t, 3)); MB.stat("pn-ad-mm", PN.sci(mx, 3) + " · " + PN.sci(mn, 3)); MB.stat("pn-ad-e", PN.sci(e, 3)); MB.stat("pn-ad-mass", isFinite(mass) && Math.abs(mass) < 1e6 ? PN.num(mass, 6) : PN.sci(mass, 2));
+    const unstable = method === "ftcs" || C > 1;
+    msg.className = unstable && st.k > 0 ? "pn-msg bad" : "pn-msg";
+    msg.innerHTML = method === "ftcs" ? "중앙 차분: |G|² = 1 + C²sin²θ &gt; 1. 어떤 C에서도 결국 폭발합니다." : C > 1 ? `C = ${C} &gt; 1: CFL 조건 위반. 한 걸음에 정보가 한 칸보다 멀리 갑니다.` : method === "up" ? `풍상: 수치 확산 계수 aΔx(1 − C)/2 = <b>${PN.num(dx * (1 - C) / 2, 5)}</b>.` : method === "lf" ? "랙스–프리드리히스: 풍상보다 확산이 큽니다(aΔx(1 − C²)/(2C))." : "랙스–벤드로프: 2차 정확, 급한 경사 뒤에 분산 진동.";
+  }
+  let running = false; const rb = document.getElementById("pn-ad-run");
+  const stop = () => { running = false; rb.textContent = "▶ 진행"; };
+  MB.loop(document.getElementById("sim-pn-advection"), () => { if (!running) return; for (let i = 0; i < 2; i++) step(); upd(); if (st.k * C * dx >= 3) stop(); });
+  rb.addEventListener("click", () => { if (running) { stop(); return; } running = true; rb.textContent = "■ 멈춤"; });
+  document.getElementById("pn-ad-reset").addEventListener("click", () => { stop(); reset(); });
+  MB.seg("pn-ad-m", (v) => { method = v; upd(); });
+  MB.range("pn-ad-c", (v) => v.toFixed(2), (v) => { C = v; stop(); reset(); });
+  MB.seg("pn-ad-ic", (v) => { ic = v; stop(); reset(); });
+  MB.check("pn-ad-all", (v) => { all = v; pl.redraw(); });
+  reset(); for (let i = 0; i < 60; i++) step(); upd();
+})();
+
+/* ================================================================ 6. 파동 립프로그 */
+(function () {
+  const N = 200, dx = 1 / N;
+  let C = 0.5, wd = 0.025, st;
+  const f = (x) => (wd ? Math.exp(-(((x - 0.5) / wd) ** 2)) : x > 0.45 && x < 0.55 ? 1 : 0);
+  const Fo = (x) => { const y = ((x % 2) + 2) % 2; return y <= 1 ? f(y) : -f(2 - y); };
+  const exact = (x, t) => 0.5 * (Fo(x - t) + Fo(x + t));
+  const reset = () => { const u0 = new Float64Array(N + 1), u1 = new Float64Array(N + 1); for (let i = 1; i < N; i++) u0[i] = f(i * dx);
+    for (let i = 1; i < N; i++) u1[i] = u0[i] + 0.5 * C * C * (u0[i + 1] - 2 * u0[i] + u0[i - 1]); st = { k: 1, prev: u0, cur: u1 }; upd(); };
+  const step = () => { const nx = new Float64Array(N + 1), u = st.cur, v = st.prev; for (let i = 1; i < N; i++) nx[i] = 2 * u[i] - v[i] + C * C * (u[i + 1] - 2 * u[i] + u[i - 1]); st.prev = u; st.cur = nx; st.k++; };
+  const pl = MB.plane("#pn-wv-cv", {
+    x: [-0.02, 1.02], y: [-1.1, 1.1], aspect: 0.45, minHeight: 200, gridStep: 0.25,
+    draw(P) { if (!st) return; const Cc = P.P, t = st.k * C * dx;
+      P.curve((x) => exact(x, t), { color: Cc.text, width: 1.8, from: 0, to: 1, n: 800 });
+      const pts = []; for (let i = 0; i <= N; i++) pts.push([i * dx, st.cur[i]]); PN.line(P, pts, Cc.accent2, { width: 2 }); },
+  });
+  const ch = MB.canvas("#pn-wv-ch", (ctx, w, h) => {
+    const P = MB.palette(), th = []; for (let i = 1; i <= 200; i++) th.push((Math.PI * i) / 200);
+    const cn = (c) => (t) => { const s = c * Math.sin(t / 2); return Math.abs(s) <= 1 ? (2 / (c * t)) * Math.asin(s) : NaN; };
+    MB.chart(ctx, { x: 58, y: 26, w: w - 76, h: h - 66 }, { x: [0, Math.PI], y: [0.5, 1.05], xTicks: [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4, Math.PI], xFmt: (v) => ["0", "π/4", "π/2", "3π/4", "π"][Math.round(v / (Math.PI / 4))] || "", xLabel: "θ = ξΔx (파장당 칸 수 = 2π/θ)",
+      hlines: [{ y: 1, color: P.faint, label: "C = 1: 정확" }], series: [{ data: th.map((t) => [t, cn(0.5)(t)]), color: P.faint, width: 1.2, dash: [4, 4] }, { data: th.map((t) => [t, cn(Math.min(C, 1))(t)]), color: P.accent2, width: 2.2 }] });
+  }, { aspect: 0.4, minHeight: 180, maxHeight: 280 });
+  const msg = document.getElementById("pn-wv-msg");
+  function upd() {
+    if (!st) return; pl.redraw(); ch.redraw(); const t = st.k * C * dx;
+    let m = 0, e = 0; for (let i = 0; i <= N; i++) { m = Math.max(m, Math.abs(st.cur[i])); e = Math.max(e, Math.abs(st.cur[i] - exact(i * dx, t))); }
+    MB.stat("pn-wv-k", st.k + " · " + PN.num(t, 3)); MB.stat("pn-wv-m", PN.sci(m, 3)); MB.stat("pn-wv-e", PN.sci(e, 2));
+    MB.stat("pn-wv-v", C <= 1 ? PN.num((2 / (C * Math.PI / 2)) * Math.asin(C * Math.sin(Math.PI / 4)), 4) : "—");
+    msg.className = C > 1 ? "pn-msg bad" : "pn-msg";
+    msg.innerHTML = C > 1 ? `C = ${C} &gt; 1: 높은 모드의 ω가 복소수가 되어 지수적으로 자랍니다(CFL 위반).` : C === 1 ? "C = 1: 격자점에서 정확한 해. 분산이 없습니다." : `C = ${C}: 짧은 파장이 늦어 펄스 뒤에 잔물결이 생깁니다.`;
+  }
+  let running = false; const rb = document.getElementById("pn-wv-run");
+  const stop = () => { running = false; rb.textContent = "▶ 진행"; };
+  MB.loop(document.getElementById("sim-pn-wave"), () => { if (!running) return; const per = Math.max(1, Math.round(2 / C)); for (let i = 0; i < per; i++) step(); upd(); if (st.k * C * dx >= 4) stop(); });
+  rb.addEventListener("click", () => { if (running) { stop(); return; } running = true; rb.textContent = "■ 멈춤"; });
+  document.getElementById("pn-wv-reset").addEventListener("click", () => { stop(); reset(); });
+  MB.range("pn-wv-c", (v) => v.toFixed(2), (v) => { C = Math.round(v * 100) / 100; stop(); reset(); });
+  MB.seg("pn-wv-w", (v) => { wd = Number(v); stop(); reset(); });
+  reset(); while (st.k * C * dx < 0.32) step(); upd();
+})();
+
+/* ================================================================ 7. 1차원 FEM */
+(function () {
+  const GX = [-0.9061798459, -0.5384693101, 0, 0.5384693101, 0.9061798459], GW = [0.2369268851, 0.4786286705, 0.5688888889, 0.4786286705, 0.2369268851];
+  const patchU = (x) => { const a = 0.3, b = 0.5, A = (lo, hi) => (hi > lo ? (hi * hi - lo * lo) / 2 : 0), Bf = (lo, hi) => (hi > lo ? (hi - lo) - (hi * hi - lo * lo) / 2 : 0);
+    return 5 * ((1 - x) * A(a, Math.min(x, b)) + x * Bf(Math.max(x, a), b)); };
+  const FS = {
+    one: { f: () => 1, u: (x) => x * (1 - x) / 2, du: (x) => 0.5 - x, y: [-0.02, 0.15] },
+    sin: { f: (x) => Math.PI * Math.PI * Math.sin(Math.PI * x), u: (x) => Math.sin(Math.PI * x), du: (x) => Math.PI * Math.cos(Math.PI * x), y: [-0.08, 1.15] },
+    patch: { f: (x) => (x > 0.3 && x < 0.5 ? 5 : 0), u: patchU, du: (x) => (patchU(x + 1e-6) - patchU(x - 1e-6)) / 2e-6, y: [-0.01, 0.15] },
+  };
+  let n = 4, F = FS.one, hat = true, st;
+  const reset = () => { st = { e: 0, K: Array.from({ length: n + 1 }, () => new Float64Array(n + 1)), Fv: new Float64Array(n + 1), U: null }; upd(); };
+  const assemble = () => { if (st.e >= n) return; const h = 1 / n, e = st.e, a = e * h;
+    st.K[e][e] += 1 / h; st.K[e][e + 1] -= 1 / h; st.K[e + 1][e] -= 1 / h; st.K[e + 1][e + 1] += 1 / h;
+    for (let q = 0; q < 5; q++) { const x = a + h * (GX[q] + 1) / 2, w = GW[q] * h / 2, fx = F.f(x), s = (x - a) / h; st.Fv[e] += w * fx * (1 - s); st.Fv[e + 1] += w * fx * s; }
+    st.e++; if (st.e === n) solve(); };
+  const solve = () => { const m = n - 1; if (m < 1) { st.U = [0, 0]; return; } const a = new Float64Array(m), b = new Float64Array(m), c = new Float64Array(m), d = new Float64Array(m);
+    for (let i = 1; i < n; i++) { a[i - 1] = st.K[i][i - 1]; b[i - 1] = st.K[i][i]; c[i - 1] = st.K[i][i + 1] || 0; d[i - 1] = st.Fv[i]; }
+    const u = PN.thomas(a, b, c, d); st.U = [0, ...u, 0]; };
+  const pl = MB.plane("#pn-fe-cv", {
+    x: [-0.03, 1.03], y: F.y, aspect: 0.48, minHeight: 210, gridStep: 0.25,
+    draw(P) { if (!st) return; const C = P.P, h = 1 / n;
+      P.curve(F.u, { color: C.text, width: 2, from: 0, to: 1, n: 400 });
+      if (st.U) {
+        if (hat) for (let i = 1; i < n; i++) P.poly([[(i - 1) * h, 0], [i * h, st.U[i]], [(i + 1) * h, 0]], { color: i % 2 ? C.accent : C.accent2, width: 1.2, alpha: 0.55, close: false });
+        const pts = st.U.map((v, i) => [i * h, v]); PN.line(P, pts, C.blue, { width: 2.4, dots: 4 });
+      } else {
+        for (let e = 0; e < st.e; e++) P.line(e * h, 0, (e + 1) * h, 0, { color: C.accent, width: 5 });
+        if (hat) for (let i = 1; i < n; i++) P.poly([[(i - 1) * h, 0], [i * h, (P.y1 - P.y0) * 0.35], [(i + 1) * h, 0]], { color: i % 2 ? C.accent : C.accent2, width: 1.2, alpha: 0.5, close: false });
+      } },
+  });
+  const mx = MB.canvas("#pn-fe-mx", (ctx, w, hh) => {
+    if (!st) return; const C = MB.palette(), M = n + 1, s = Math.min((w - 40) / M, (hh - 30) / M, 46), x0 = (w - s * M) / 2, y0 = 26 + (hh - 30 - s * M) / 2;
+    const cur = st.e - 1, showNum = s >= 26, mono = getComputedStyle(document.body).getPropertyValue("--mono");
+    for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) { const v = st.K[i][j], bnd = st.U && (i === 0 || j === 0 || i === n || j === n);
+      ctx.fillStyle = v ? (v > 0 ? C.accent : C.accent2) : C.surface; ctx.globalAlpha = v ? (bnd ? 0.25 : 0.85) : 1; ctx.fillRect(x0 + j * s + 1, y0 + i * s + 1, s - 2, s - 2); ctx.globalAlpha = 1;
+      if (cur >= 0 && !st.U && (i === cur || i === cur + 1) && (j === cur || j === cur + 1)) { ctx.strokeStyle = C.warn; ctx.lineWidth = 2.5; ctx.strokeRect(x0 + j * s + 1, y0 + i * s + 1, s - 2, s - 2); }
+      if (showNum && v) { ctx.fillStyle = C.bg; ctx.font = "600 " + Math.round(s * 0.34) + "px " + mono; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(Math.round(v * 100) / 100), x0 + j * s + s / 2, y0 + i * s + s / 2); } }
+  }, { aspect: 0.55, minHeight: 200, maxHeight: 360 });
+  const msg = document.getElementById("pn-fe-msg");
+  function upd() {
+    if (!st) return; pl.redraw(); mx.redraw(); MB.stat("pn-fe-k", st.e + " / " + n);
+    if (!st.U) { ["pn-fe-en", "pn-fe-em", "pn-fe-ee"].forEach((id) => MB.stat(id, "—")); msg.className = "pn-msg"; msg.innerHTML = `요소 e = [x<sub>e</sub>, x<sub>e+1</sub>]의 (1/h)·[1 −1; −1 1]을 두 마디의 칸(주황 테두리)에 더합니다. 1/h = ${n}.`; return; }
+    const h = 1 / n; let en = 0, em = 0, ee = 0;
+    for (let e = 0; e < n; e++) { en = Math.max(en, Math.abs(st.U[e] - F.u(e * h))); const sl = (st.U[e + 1] - st.U[e]) / h;
+      for (let k = 0; k < 100; k++) { const x = e * h + (k + 0.5) * h / 100; em = Math.max(em, Math.abs(F.u(x) - (st.U[e] + sl * (x - e * h)))); ee += (F.du(x) - sl) ** 2 * h / 100; } }
+    MB.stat("pn-fe-en", PN.sci(en, 2)); MB.stat("pn-fe-em", PN.sci(em, 3)); MB.stat("pn-fe-ee", PN.sci(Math.sqrt(ee), 3));
+    msg.className = "pn-msg ok"; msg.innerHTML = `조립 완료: 경계 마디(흐린 칸)를 지운 ${n - 1}×${n - 1} 삼중대각계 KU = F를 풀었습니다. 마디 오차 ${PN.sci(en, 1)}, 마디 사이 최대 오차 ${PN.sci(em, 2)}.`;
+  }
+  document.getElementById("pn-fe-step").addEventListener("click", () => { assemble(); upd(); });
+  document.getElementById("pn-fe-all").addEventListener("click", () => { while (st.e < n) assemble(); upd(); });
+  document.getElementById("pn-fe-reset").addEventListener("click", reset);
+  MB.range("pn-fe-n", (v) => String(v), (v) => { n = v; reset(); });
+  document.getElementById("pn-fe-f").addEventListener("change", (e) => { F = FS[e.target.value]; pl.view({ y: F.y }); reset(); });
+  MB.check("pn-fe-hat", (v) => { hat = v; pl.redraw(); });
+  reset(); assemble(); assemble(); upd();
+})();
+</script>
+</body>
+</html>

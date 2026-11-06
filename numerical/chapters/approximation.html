@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>최소제곱 근사와 직교 다항식 · NumericalBook</title>
+<meta name="description" content="잡음 데이터를 지나가지 않고 맞추는 법. 정규 방정식과 사영, 조건수 제곱 문제와 QR, 과적합과 검증 오차, 가중·강건 회귀, 르장드르·체비쇼프 직교 다항식, 계수 감소, 최소최대 근사와 레메즈 알고리즘.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ap-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ap-two > div { position: relative; min-width: 0; }
+  .ap-two > div + div { border-top: 1px solid var(--border); }
+  @media (min-width: 900px) { .ap-two.ap-lr { grid-template-columns: 1fr 1fr; } .ap-two.ap-lr > div + div { border-top: 0; border-left: 1px solid var(--border); } }
+  .ap-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ap-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ap-msg b { color: var(--text); }
+  .ap-msg.ok { color: var(--ok); font-weight: 600; }
+  .ap-msg.bad { color: var(--bad); font-weight: 600; }
+  .ap-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ap-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ap-tbl td, .ap-tbl th { font-family: var(--mono); text-align: right; }
+  .ap-tbl td:first-child, .ap-tbl th:first-child { text-align: left; font-family: inherit; }
+  .ap-tbl tr.ap-best td { color: var(--accent); font-weight: 700; }
+  .ap-iter { max-height: 220px; overflow: auto; border-top: 1px solid var(--border); }
+  .ap-iter table { margin: 0; font-size: 13px; }
+  .ap-iter td, .ap-iter th { font-family: var(--mono); text-align: right; padding: 4px 10px; }
+  .ap-iter tr.ap-now td { color: var(--accent); font-weight: 700; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="approximation">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 07</div>
+    <h1 data-no-glossary>최소제곱 근사와 직교 다항식</h1>
+    <p class="lead">5장과 6장의 보간은 주어진 점을 <b>정확히 지나는</b> 곡선을 찾았습니다. 그런데 측정값에는 잡음이 섞여 있고, 점이 수백 개라면 모두 지나는 곡선은 잡음까지 충실히 따라 그립니다. 이 장은 생각을 바꿉니다. 점을 지나지 말고, 점들과의 <b>오차를 가장 작게</b> 만드는 단순한 곡선을 찾자는 것입니다. 오차를 제곱해서 더하면 문제는 선형대수의 <b>사영</b>이 되고, 그 해를 정규 방정식으로 구할지 QR 분해로 구할지에 따라 정확도가 몇 자릿수나 달라집니다. 같은 생각을 데이터 대신 <b>함수</b>에 적용하면 르장드르·체비쇼프 직교 다항식이 나오고, 오차의 최댓값을 줄이는 최소최대 근사로 가면 계산기와 수학 라이브러리가 \(\sin x\)와 \(e^x\)를 계산하는 방법에 닿습니다.</p>
+    <ul class="objectives">
+      <li>잡음 데이터의 맞춤을 과결정 선형계 \(A\mathbf c \approx \mathbf y\)의 최소제곱 문제로 세우고, 정규 방정식과 잔차의 직교 조건을 사영으로 설명한다.</li>
+      <li>정규 방정식이 조건수를 제곱한다는 것을 보이고, 하우스홀더 QR로 같은 문제를 안정하게 푼다.</li>
+      <li>다항식 차수를 학습 오차가 아니라 검증 오차로 고르고, 과적합을 알아본다.</li>
+      <li>가중 최소제곱과 후버 손실의 IRLS로 이상치에 강한 맞춤을 만든다.</li>
+      <li>연속 최소제곱을 내적 공간의 사영으로 보고, 그람–슈미트로 르장드르 다항식을 만들며, 체비쇼프 계수의 감소 속도로 함수의 매끄러움을 읽는다.</li>
+      <li>체비쇼프 등진동 정리로 최소최대 근사를 판정하고, 레메즈 알고리즘을 한 단계씩 돌려 본다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>소행성 케레스의 재발견</b></div>
+      <div class="o-body"><p>1801년 1월 피아치<span class="en">(Giuseppe Piazzi)</span>가 발견한 소행성 케레스는 몇 주 관측된 뒤 태양 뒤로 숨어 버렸습니다. 남은 것은 궤도의 짧은 호에 해당하는 잡음 섞인 관측 몇십 개였습니다. 젊은 가우스<span class="en">(Carl Friedrich Gauss)</span>는 이 관측으로 궤도를 계산해 그해 말 다시 나타날 위치를 예측했고, 천문학자들은 그 근처에서 케레스를 다시 찾았습니다. 가우스는 1809년 책에서 이때 쓴 방법이 "오차의 제곱합을 최소로 하는" 원리라고 밝혔습니다. 같은 원리는 르장드르<span class="en">(Adrien-Marie Legendre)</span>가 1805년에 먼저 출판했습니다.</p>
+        <p>방정식보다 관측이 많고, 관측마다 오차가 있어 모든 식을 동시에 만족하는 답은 없습니다. 최소제곱은 "가장 덜 틀린" 답을 고르는 원칙이고, 오늘날 GPS 위치 결정, 센서 보정, 회귀 분석, 신경망의 손실 함수가 모두 이 원리의 후손입니다.</p>
+        <div class="o-chain"><span>잡음 섞인 관측 m개</span><i>→</i><span>미지수 n개 (m ≫ n)</span><i>→</i><span class="tool">min ‖A c − y‖²</span><i>→</i><span>궤도·보정 곡선·회귀 모형</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="noisy-data">
+    <h2>잡음 데이터와 보간의 실패</h2>
+    <div class="problem"><strong>서미스터 보정 곡선</strong>
+      <p>온도 센서(서미스터)를 보정하려고 기준 온도계 옆에 두고 12번 측정했습니다. 저항–온도 관계는 매끄러운 곡선이어야 하는데, 측정값에는 \(\pm 0.2\) 정도의 잡음이 있습니다. 5장의 방법으로 12개 점을 모두 지나는 11차 다항식을 만들면 점 사이에서 곡선이 크게 출렁이고, 측정하지 않은 온도에서의 예측은 엉망이 됩니다. 점을 <b>지나는</b> 것이 목표가 아니라, 점들 뒤에 숨은 <b>추세</b>를 찾는 것이 목표입니다.</p></div>
+    <p>보간과 근사의 차이는 미지수와 조건의 개수에 있습니다. \(m\)개의 점 \((x_i, y_i)\)를 \(n+1\)개의 계수를 가진 모형 \(p(x) = c_0\phi_0(x) + \dots + c_n\phi_n(x)\)로 설명하려 할 때, \(m = n + 1\)이면 보간(정사각 선형계), \(m > n + 1\)이면 식이 미지수보다 많은 <span class="term">과결정계</span><span class="en">(overdetermined system)</span>입니다.</p>
+    <div class="formula">$$\underbrace{\begin{bmatrix} \phi_0(x_1) & \phi_1(x_1) & \cdots & \phi_n(x_1)\\ \phi_0(x_2) & \phi_1(x_2) & \cdots & \phi_n(x_2)\\ \vdots & & & \vdots\\ \phi_0(x_m) & \phi_1(x_m) & \cdots & \phi_n(x_m)\end{bmatrix}}_{A \;(m\times(n+1))}\begin{bmatrix} c_0\\ \vdots\\ c_n\end{bmatrix} \approx \begin{bmatrix} y_1\\ y_2\\ \vdots\\ y_m\end{bmatrix}$$
+      <div class="where">\(\phi_k(x) = x^k\)이면 \(A\)는 직사각 반데르몽드 행렬이다. 기저 함수는 \(\sin, \cos, e^{-x}\) 등 무엇이든 될 수 있다. 계수에 대해 <b>선형</b>이기만 하면 이 장의 방법이 그대로 쓰인다.</div></div>
+    <p>잡음이 있으면 모든 식을 만족하는 \(\mathbf c\)는 보통 없습니다. 대신 각 식의 어긋남, 곧 <span class="term">잔차</span><span class="en">(residual)</span> \(r_i = y_i - p(x_i)\)를 모두 작게 만드는 \(\mathbf c\)를 고릅니다. "작게"를 어떻게 재느냐가 선택인데, 제곱합을 고르면 계산이 선형대수로 깔끔하게 떨어집니다.</p>
+    <div class="callout deep"><strong>정의 7.1 (선형 최소제곱 문제)</strong> \(A \in \mathbb R^{m\times n}\)(\(m \ge n\)), \(\mathbf y \in \mathbb R^m\)에 대해
+      <div class="formula">$$\hat{\mathbf c} = \arg\min_{\mathbf c \in \mathbb R^n}\ \|A\mathbf c - \mathbf y\|_2^2 = \arg\min_{\mathbf c}\ \sum_{i=1}^m \bigl(y_i - (A\mathbf c)_i\bigr)^2$$</div>
+      를 구하는 문제를 <span class="term">선형 최소제곱</span><span class="en">(linear least squares)</span> 문제라 한다. \(\hat{\mathbf c}\)를 최소제곱 해, \(\mathbf r = \mathbf y - A\hat{\mathbf c}\)를 최소제곱 잔차라 한다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="잡음 데이터의 11차 보간과 3차 최소제곱 맞춤 비교">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="40" y1="150" x2="720" y2="150" class="s-axis"/>
+        <path d="M50 150 C120 40 190 40 225 85 C260 140 300 150 385 150 C470 150 510 160 545 215 C580 260 650 260 710 150" fill="none" style="stroke:var(--text-faint);stroke-width:1.6;stroke-dasharray:6 4"/>
+        <path d="M50 150 C80 20 110 120 140 60 C170 10 190 100 230 70 C260 50 280 190 320 150 C360 110 380 120 420 170 C450 210 470 120 520 210 C560 280 590 220 620 240 C650 260 680 300 700 40" fill="none" style="stroke:var(--bad);stroke-width:2.2"/>
+        <path d="M50 160 C130 50 200 55 240 95 C280 135 330 148 390 152 C460 156 510 175 550 210 C590 245 650 245 710 160" fill="none" style="stroke:var(--accent);stroke-width:3"/>
+        <g style="fill:var(--text)">
+          <circle cx="50" cy="152" r="5"/><circle cx="110" cy="85" r="5"/><circle cx="160" cy="52" r="5"/><circle cx="215" cy="88" r="5"/><circle cx="270" cy="118" r="5"/><circle cx="330" cy="150" r="5"/><circle cx="385" cy="138" r="5"/><circle cx="440" cy="175" r="5"/><circle cx="500" cy="176" r="5"/><circle cx="560" cy="222" r="5"/><circle cx="620" cy="238" r="5"/><circle cx="700" cy="168" r="5"/>
+        </g>
+        <text x="470" y="40" class="t" style="fill:var(--bad)">11차 보간: 점은 모두 지나지만 출렁임</text>
+        <text x="470" y="62" class="t" style="fill:var(--accent)">3차 최소제곱: 점 사이를 지나감</text>
+        <text x="470" y="84" class="t-dim">점선: 숨은 참 곡선</text>
+      </svg>
+      <figcaption><b>그림 7-1.</b> 잡음이 섞인 12개 점. 모든 점을 지나는 11차 다항식(빨강)은 잡음까지 따라가 점 사이와 양 끝에서 크게 벗어난다. 계수가 4개뿐인 3차 다항식(초록)은 어느 점도 정확히 지나지 않지만 참 곡선(점선)에 훨씬 가깝다. 4절의 시뮬레이터에서 직접 확인한다.</figcaption>
+    </figure>
+    <p>왜 하필 제곱일까요? 세 가지 이유가 있습니다. 첫째, 제곱합은 \(\mathbf c\)의 매끄러운 이차 함수라 미분해서 0으로 놓으면 <b>선형 방정식</b>이 나옵니다. 둘째, 기하적으로 유클리드 거리이므로 답이 <b>직교 사영</b>입니다. 셋째, 잡음이 서로 독립인 정규 분포를 따르면 최소제곱 해는 최대 가능도 추정량이 되고, 가우스–마르코프 정리에 따르면 잡음의 평균이 0이고 분산이 같으며 서로 무상관이기만 해도 선형 불편 추정량 가운데 분산이 가장 작습니다. 대신 제곱은 큰 잔차를 매우 무겁게 벌하므로 이상치 하나에 결과가 끌려갑니다. 이 약점은 5절에서 다룹니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="normal-equations">
+    <h2>정규 방정식과 사영</h2>
+    <div class="problem"><strong>세 점, 미지수 둘</strong>
+      <p>점 \((0, 1), (1, 3), (2, 2)\)에 직선 \(y = c_0 + c_1x\)를 맞추려 합니다. 식은 세 개(\(c_0 = 1\), \(c_0 + c_1 = 3\), \(c_0 + 2c_1 = 2\)), 미지수는 둘입니다. 세 식을 동시에 만족하는 직선은 없습니다. 제곱합을 최소로 하는 직선을 어떻게 한 번에 구할까요?</p></div>
+    <p>목적 함수 \(F(\mathbf c) = \|A\mathbf c - \mathbf y\|^2 = \mathbf c^\top A^\top A\mathbf c - 2\mathbf c^\top A^\top\mathbf y + \mathbf y^\top\mathbf y\)의 기울기를 0으로 놓으면 \(\nabla F = 2A^\top A\mathbf c - 2A^\top\mathbf y = \mathbf 0\)입니다.</p>
+    <div class="callout deep"><strong>정리 7.2 (정규 방정식과 잔차의 직교성)</strong> \(\hat{\mathbf c}\)가 최소제곱 해일 필요충분조건은
+      <div class="formula">$$A^\top A\,\hat{\mathbf c} = A^\top\mathbf y \quad\Longleftrightarrow\quad A^\top(\mathbf y - A\hat{\mathbf c}) = \mathbf 0$$</div>
+      이다. 곧 잔차 \(\mathbf r\)은 \(A\)의 모든 열에 수직이다. \(A\)의 열이 일차독립(계수 \(n\))이면 \(A^\top A\)는 대칭 양정치이고 해는 유일하다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(A^\top\mathbf r = \mathbf 0\)인 \(\hat{\mathbf c}\)와 임의의 \(\mathbf c = \hat{\mathbf c} + \mathbf d\)에 대해 \(\mathbf y - A\mathbf c = \mathbf r - A\mathbf d\)이고, \(\mathbf r \perp A\mathbf d\)이므로 피타고라스 정리로 \(\|\mathbf y - A\mathbf c\|^2 = \|\mathbf r\|^2 + \|A\mathbf d\|^2 \ge \|\mathbf r\|^2\). 등호는 \(A\mathbf d = \mathbf 0\)일 때뿐이고, 열이 일차독립이면 \(\mathbf d = \mathbf 0\)이다. 양정치성은 \(\mathbf d^\top A^\top A\mathbf d = \|A\mathbf d\|^2 \gt 0\)(\(\mathbf d \ne \mathbf 0\))에서 나온다. ∎</p></div>
+    <p>이 정리는 그림 한 장으로 요약됩니다. \(A\mathbf c\)가 만들 수 있는 벡터 전체는 \(A\)의 <b>열공간</b> \(\mathcal C(A)\)이고, \(\mathbb R^m\) 안의 \(n\)차원 평면입니다. \(\mathbf y\)는 보통 이 평면 밖에 있습니다. 평면 위에서 \(\mathbf y\)에 가장 가까운 점은 \(\mathbf y\)에서 평면에 내린 <b>수선의 발</b> \(\mathbf p = A\hat{\mathbf c}\)이고, 잔차는 그 수선입니다(<a href="../../linear/chapters/orthogonality.html">LinearBook 9장: 직교성과 사영</a>).</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="최소제곱 해는 y를 열공간에 직교 사영한 것">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <polygon points="70,240 360,270 520,170 230,140" class="f-acc-soft" style="stroke:var(--accent);stroke-width:1.4"/>
+        <line x1="150" y1="215" x2="300" y2="185" style="stroke:var(--text-dim);stroke-width:2.2"/>
+        <polygon points="300,185 288,182 291,192" style="fill:var(--text-dim)"/>
+        <line x1="150" y1="215" x2="250" y2="245" style="stroke:var(--text-dim);stroke-width:2.2"/>
+        <polygon points="250,245 238,246 242,237" style="fill:var(--text-dim)"/>
+        <line x1="150" y1="215" x2="370" y2="60" style="stroke:var(--accent-2);stroke-width:3"/>
+        <polygon points="370,60 356,64 363,73" style="fill:var(--accent-2)"/>
+        <line x1="150" y1="215" x2="370" y2="200" style="stroke:var(--accent);stroke-width:3"/>
+        <polygon points="370,200 357,196 358,206" style="fill:var(--accent)"/>
+        <line x1="370" y1="200" x2="370" y2="60" style="stroke:var(--bad);stroke-width:2.6;stroke-dasharray:6 4"/>
+        <path d="M370 186 L358 187 L358 201" fill="none" style="stroke:var(--text);stroke-width:1.4"/>
+        <text x="306" y="182" class="t-mono t-dim">a₁</text><text x="232" y="262" class="t-mono t-dim">a₂</text>
+        <text x="378" y="58" class="t-mono" style="fill:var(--accent-2)">y</text>
+        <text x="378" y="214" class="t-mono t-acc">p = A ĉ</text>
+        <text x="380" y="130" class="t-mono" style="fill:var(--bad)">r = y − A ĉ</text>
+        <text x="80" y="272" class="t t-acc">열공간 C(A)</text>
+        <g transform="translate(548,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">수선의 조건</text>
+          <text x="0" y="26" class="t-mono">a₁ · r = 0</text>
+          <text x="0" y="48" class="t-mono">a₂ · r = 0</text>
+          <text x="0" y="74" class="t-dim">⇔ Aᵀ r = 0</text>
+          <text x="0" y="96" class="t-dim">⇔ AᵀA ĉ = Aᵀ y</text>
+          <text x="0" y="132" class="t-dim">평면 위의 다른 점까지는</text>
+          <text x="0" y="152" class="t-dim">피타고라스로 항상 더 멀다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 7-2.</b> 최소제곱의 기하. \(A\)의 열 \(\mathbf a_1, \mathbf a_2\)가 펼치는 평면이 모형이 만들 수 있는 모든 예측값이다. 데이터 \(\mathbf y\)에서 평면까지 가장 짧은 선분은 수선이고, 그 발 \(\mathbf p\)가 최소제곱 예측값이다. 잔차 \(\mathbf r\)이 각 열에 수직이라는 조건을 식으로 쓴 것이 정규 방정식이다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 7.1 (직선 맞춤을 손으로)</strong> 점 \((0, 1), (1, 2), (2, 4), (3, 5)\)에 직선 \(y = c_0 + c_1x\)를 최소제곱으로 맞추어라.
+      <ol>
+        <li>\(A\)의 열은 \((1,1,1,1)\)과 \((0,1,2,3)\). \(A^\top A = \begin{bmatrix} 4 & 6\\ 6 & 14\end{bmatrix}\), \(A^\top\mathbf y = \begin{bmatrix} \sum y_i\\ \sum x_iy_i\end{bmatrix} = \begin{bmatrix} 12\\ 25\end{bmatrix}\).</li>
+        <li>행렬식 \(4\cdot 14 - 6\cdot 6 = 20\). 크라메르 공식으로 \(c_0 = (14\cdot 12 - 6\cdot 25)/20 = 0.9\), \(c_1 = (4\cdot 25 - 6\cdot 12)/20 = 1.4\).</li>
+        <li>잔차 \(\mathbf r = (1 - 0.9,\ 2 - 2.3,\ 4 - 3.7,\ 5 - 5.1) = (0.1, -0.3, 0.3, -0.1)\). 제곱합 \(0.2\).</li>
+        <li>검산: \(\sum r_i = 0\)(첫째 열에 수직), \(\sum x_ir_i = 0 - 0.3 + 0.6 - 0.3 = 0\)(둘째 열에 수직). 상수항이 있는 모형에서는 잔차의 합이 항상 0이고, 맞춘 직선은 데이터의 무게중심 \((\bar x, \bar y) = (1.5, 3)\)을 지난다.</li>
+      </ol></div>
+    <pre class="code"><span class="k">함수</span> 정규방정식_최소제곱(A, y)        <span class="c">// A: m×n, 열이 일차독립</span>
+  G ← AᵀA                               <span class="c">// n×n 대칭 양정치, 비용 약 m n²</span>
+  g ← Aᵀy                               <span class="c">// 비용 m n</span>
+  L ← 촐레스키(G)                        <span class="c">// G = L Lᵀ, 비용 약 n³/3</span>
+  z ← 전진대입(L, g)                     <span class="c">// L z = g</span>
+  c ← 후진대입(Lᵀ, z)                    <span class="c">// Lᵀ c = z</span>
+  <span class="k">반환</span> c</pre>
+    <p>아래 시뮬레이터의 왼쪽은 데이터 평면, 오른쪽은 \(m = 3\)일 때의 \(\mathbb R^3\)입니다. 데이터 세 점의 높이 \(y_1, y_2, y_3\)이 \(\mathbb R^3\)의 한 점 \(\mathbf y\)가 되고, 직선 두 계수가 만들 수 있는 예측값 \((c_0 + c_1x_1, c_0 + c_1x_2, c_0 + c_1x_3)\)은 평면을 이룹니다. 왼쪽 그림에서 잔차 제곱의 넓이 합을 줄이는 일과 오른쪽 그림에서 수선을 내리는 일이 같은 일임을 확인해 보세요.</p>
+
+    <div class="sim" id="sim-ap-projection">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최소제곱은 사영이다: 데이터 평면과 ℝ³</h3></div>
+      <div class="ap-two ap-lr">
+        <div><canvas id="ap-pj-cv"></canvas><span class="ap-cap">데이터: 점을 위아래로 끌기</span></div>
+        <div><canvas id="ap-pj-cv3"></canvas><span class="ap-cap">ℝ³: 끌어서 회전</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <div class="ctrl"><span>직선 고르기</span><div class="seg" id="ap-pj-mode"><button data-value="lsq" class="on">최소제곱 해</button><button data-value="man">직접 고르기</button></div></div>
+          <label class="ctrl"><span>절편 c₀ <output id="ap-pj-c0-out"></output></span><input type="range" id="ap-pj-c0" min="-1" max="4" step="0.05" value="1.5"></label>
+          <label class="ctrl"><span>기울기 c₁ <output id="ap-pj-c1-out"></output></span><input type="range" id="ap-pj-c1" min="-2" max="2.5" step="0.05" value="0.5"></label>
+          <div class="btn-row"><button class="btn" id="ap-pj-snap">최소제곱 해로 맞추기</button><button class="btn" id="ap-pj-reset">초기화</button></div>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--accent-2)"></i>데이터 y</span><span><i style="background:var(--accent)"></i>예측 A c (열공간 위)</span><span><i style="background:var(--bad)"></i>잔차 r</span><span><i style="background:var(--text-faint)"></i>열 a₁ = (1,1,1), a₂ = (0,1,2)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">계수 (c₀, c₁)</span><span class="v" id="ap-pj-c">—</span></div>
+        <div class="stat"><span class="k">‖r‖² (제곱 넓이 합)</span><span class="v" id="ap-pj-ss">—</span></div>
+        <div class="stat"><span class="k">Aᵀr = (a₁·r, a₂·r)</span><span class="v" id="ap-pj-atr">—</span></div>
+        <div class="stat"><span class="k">r과 평면의 각</span><span class="v" id="ap-pj-ang">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-pj-msg"></div>
+      <div class="sim-note">해볼 것: ① '직접 고르기'에서 c₀, c₁ 슬라이더로 제곱 넓이 합을 최대한 줄여 보세요. 최소가 되는 순간 Aᵀr이 (0, 0)이 되고 잔차가 평면에 수직(90°)이 됩니다. ② 세 점을 한 직선 위에 놓으면 y가 평면 안으로 들어가 잔차가 0이 됩니다. ③ ℝ³ 그림을 돌려 평면을 옆에서 보면 수선이 정확히 직각인 것이 보입니다. 모델: x = 0, 1, 2 고정, 모형 y = c₀ + c₁x.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="qr-vs-normal">
+    <h2>정규 방정식의 조건수 제곱 문제와 QR</h2>
+    <div class="problem"><strong>교과서 공식이 자릿수를 버린다</strong>
+      <p>정규 방정식은 짧고 외우기 쉽습니다. 그런데 10차 다항식을 \([0, 1]\)의 50개 점에 맞추면 정규 방정식으로 구한 계수는 소수 셋째 자리에서 틀리고, 12차에서는 촐레스키 분해가 아예 실패합니다. 데이터에는 잡음도 없었습니다. 무엇이 자릿수를 먹었을까요?</p></div>
+    <p>2장에서 본 대로 선형계 \(G\mathbf x = \mathbf g\)를 배정밀도로 풀면 상대 오차가 대략 \(\kappa(G)\,\varepsilon_{\text{mach}}\)까지 커질 수 있습니다(\(\varepsilon_{\text{mach}} \approx 2.2\times10^{-16}\), <a href="conditioning.html">2장</a>, <a href="direct-solvers.html">12장</a>). 직사각 행렬의 조건수는 특이값으로 정의합니다.</p>
+    <div class="callout deep"><strong>정의 7.3 (직사각 행렬의 조건수)</strong> 열이 일차독립인 \(A \in \mathbb R^{m\times n}\)의 특이값을 \(\sigma_1 \ge \dots \ge \sigma_n \gt 0\)이라 할 때 \(\kappa_2(A) = \sigma_1/\sigma_n\)이다(<a href="../../linear/chapters/svd.html">LinearBook: 특이값 분해</a>).</div>
+    <div class="callout deep"><strong>정리 7.4 (정규 방정식은 조건수를 제곱한다)</strong> \(\kappa_2(A^\top A) = \kappa_2(A)^2\).
+      <p style="margin:8px 0 0"><b>증명.</b> \(A = U\Sigma V^\top\)이면 \(A^\top A = V\Sigma^2V^\top\)이고, 이것이 대칭 행렬의 고유분해이자 특이값 분해다. 특이값이 \(\sigma_i^2\)이므로 \(\kappa_2(A^\top A) = \sigma_1^2/\sigma_n^2\). ∎</p></div>
+    <p>최소제곱 문제 자체의 민감도는 대략 \(\kappa(A)\)(잔차가 크면 \(\kappa(A)^2\)항이 붙지만 그 계수는 잔차 크기에 비례)인데, 정규 방정식이라는 <b>알고리즘</b>은 잔차와 상관없이 \(\kappa(A)^2\)의 선형계를 풉니다. \(\kappa(A) = 10^8\)이면 \(\kappa(A^\top A) = 10^{16}\)이고, 배정밀도의 16자리가 모두 사라집니다. 2장의 용어로 정규 방정식은 <b>후방 안정하지 않은</b> 알고리즘입니다.</p>
+    <div class="callout"><strong>예제 7.2 (로이힐리 행렬)</strong> \(A = \begin{bmatrix} 1 & 1\\ \epsilon & 0\\ 0 & \epsilon\end{bmatrix}\), 참 해 \(\mathbf c = (1, 2)\), \(\mathbf y = A\mathbf c = (3, \epsilon, 2\epsilon)\)로 두자.
+      <ol>
+        <li>특이값은 \(\sqrt{2 + \epsilon^2}\)과 \(\epsilon\)이므로 \(\kappa(A) \approx \sqrt2/\epsilon\). \(\epsilon = 10^{-7}\)이면 \(\kappa(A) \approx 1.4\times10^7\)으로 배정밀도에서 충분히 다룰 만하다.</li>
+        <li>\(A^\top A = \begin{bmatrix} 1 + \epsilon^2 & 1\\ 1 & 1 + \epsilon^2\end{bmatrix}\). \(\epsilon^2 = 10^{-14}\)은 1에 더하면 유효 숫자 두세 자리만 남는다. 실제로 배정밀도의 정규 방정식(촐레스키)은 \(\hat{\mathbf c} = (1.02247,\ 1.97753)\)을 낸다. 상대 오차 약 \(10^{-2}\).</li>
+        <li>\(\epsilon = 10^{-8}\)이면 \(1 + \epsilon^2\)이 정확히 1로 반올림되어 \(A^\top A\)가 특이 행렬이 되고 촐레스키가 실패한다.</li>
+        <li>같은 문제를 하우스홀더 QR로 풀면 \(\epsilon = 10^{-7}\)에서 오차 \(1.8\times10^{-15}\), \(\epsilon = 10^{-8}\)에서도 \(4\times10^{-16}\) 수준이다. \(A\) 자체는 전혀 나쁘지 않았다.</li>
+      </ol></div>
+    <p>처방은 \(A^\top A\)를 만들지 않는 것입니다. \(A = QR\)(\(Q\)는 열이 정규직교인 \(m\times n\), \(R\)은 \(n\times n\) 상삼각)로 분해하면 직교 행렬은 길이를 바꾸지 않으므로</p>
+    <div class="formula">$$\|A\mathbf c - \mathbf y\|^2 = \|R\mathbf c - Q^\top\mathbf y\|^2 + \|(I - QQ^\top)\mathbf y\|^2.$$
+      <div class="where">둘째 항은 \(\mathbf c\)와 무관하다. 첫째 항은 \(R\hat{\mathbf c} = Q^\top\mathbf y\)일 때 0이 된다. \(\kappa(R) = \kappa(A)\)이므로 조건수가 제곱되지 않는다.</div></div>
+    <div class="callout deep"><strong>정리 7.5 (QR에 의한 최소제곱)</strong> \(A = QR\)이 얇은 QR 분해이고 \(A\)의 열이 일차독립이면 최소제곱 해는 상삼각계 \(R\hat{\mathbf c} = Q^\top\mathbf y\)의 해다. 하우스홀더 반사로 계산한 QR 최소제곱은 후방 안정하다. 곧 계산된 \(\hat{\mathbf c}\)는 \(A\)와 \(\mathbf y\)를 \(O(\varepsilon_{\text{mach}})\)의 상대 크기만큼 바꾼 문제의 정확한 해다.</div>
+    <pre class="code"><span class="k">함수</span> QR_최소제곱(A, y)                 <span class="c">// 하우스홀더, A는 m×n</span>
+  <span class="k">for</span> k = 1 … n
+    v ← A[k:m, k]                        <span class="c">// k번째 열의 아래쪽</span>
+    v[1] ← v[1] + sign(v[1])·‖v‖         <span class="c">// 상쇄를 피하는 부호 선택</span>
+    A[k:m, k:n] ← A[k:m, k:n] − 2 v (vᵀ A[k:m, k:n]) / (vᵀv)
+    y[k:m]      ← y[k:m]      − 2 v (vᵀ y[k:m]) / (vᵀv)   <span class="c">// Qᵀy를 같이 만든다</span>
+  <span class="k">end</span>
+  c ← 후진대입(A[1:n, 1:n], y[1:n])      <span class="c">// R c = (Qᵀy)의 위쪽 n개</span>
+  <span class="k">반환</span> c                                <span class="c">// 비용 약 2mn² − 2n³/3</span></pre>
+    <p>비용은 \(m \gg n\)에서 정규 방정식(약 \(mn^2\))의 두 배 정도입니다. 그 값으로 자릿수를 \(\log_{10}\kappa(A)\)개 더 지킵니다. 더 나쁜 경우(열이 거의 일차종속)에는 특이값 분해로 작은 특이값을 잘라 내는 방법이 가장 튼튼하지만 비용이 몇 배 더 듭니다(<a href="../../linear/chapters/qr.html">LinearBook: 그람–슈미트와 QR</a>). 아래 표는 \([0, 1]\)의 등간격 50개 점에서 계수가 모두 1인 \(n\)차 다항식을 잡음 없이 다시 맞춘 결과입니다.</p>
+    <div class="table-wrap"><table class="ap-tbl">
+      <thead><tr><th>차수 \(n\)</th><th>\(\kappa(A)\)</th><th>\(\kappa(A^\top A)\)</th><th>정규 방정식 계수 오차</th><th>QR 계수 오차</th></tr></thead>
+      <tbody>
+        <tr><td>2</td><td>2.2×10¹</td><td>4.9×10²</td><td>4.6×10⁻¹⁴</td><td>1.6×10⁻¹⁵</td></tr>
+        <tr><td>4</td><td>6.4×10²</td><td>4.1×10⁵</td><td>3.6×10⁻¹¹</td><td>7.1×10⁻¹⁴</td></tr>
+        <tr><td>6</td><td>2.0×10⁴</td><td>3.9×10⁸</td><td>2.2×10⁻⁸</td><td>1.1×10⁻¹²</td></tr>
+        <tr><td>8</td><td>6.3×10⁵</td><td>3.9×10¹¹</td><td>8.6×10⁻⁶</td><td>2.7×10⁻¹¹</td></tr>
+        <tr><td>10</td><td>2.0×10⁷</td><td>4.1×10¹⁴</td><td>6.9×10⁻³</td><td>2.0×10⁻⁹</td></tr>
+        <tr><td>12</td><td>6.8×10⁸</td><td>4.6×10¹⁷</td><td>촐레스키 실패</td><td>3.4×10⁻⁹</td></tr>
+      </tbody></table></div>
+    <p>계수 오차는 최대 절댓값 오차입니다. 정규 방정식의 오차가 대략 \(\kappa(A)^2\varepsilon_{\text{mach}}\)를, QR의 오차가 대략 \(\kappa(A)\varepsilon_{\text{mach}}\)를 따라가는 것이 보입니다. 단항식 기저 \(1, x, x^2, \dots\) 자체도 범인입니다. \([0, 1]\)에서 \(x^9\)과 \(x^{10}\)은 거의 같은 모양이라 열이 거의 평행합니다. 기저를 \([-1, 1]\)로 옮기거나 체비쇼프 다항식으로 바꾸면 \(\kappa(A)\)가 극적으로 줄어듭니다. 6절에서 이 생각을 끝까지 밀고 갑니다.</p>
+
+    <div class="sim" id="sim-ap-qr">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>정규 방정식 vs QR: 차수가 오르면 누가 자릿수를 잃나</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-qr-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>강조할 차수 n <output id="ap-qr-n-out"></output></span><input type="range" id="ap-qr-n" min="1" max="18" step="1" value="10"></label>
+          <div class="ctrl"><span>기저</span><div class="seg" id="ap-qr-basis"><button data-value="m01" class="on">xᵏ, [0,1]</button><button data-value="m11">xᵏ, [−1,1]</button><button data-value="cheb">Tₖ(x)</button></div></div>
+          <label class="ctrl"><span>점의 개수 m <output id="ap-qr-m-out"></output></span><input type="range" id="ap-qr-m" min="20" max="200" step="10" value="50"></label>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--text-faint)"></i>κ(A)·ε</span><span><i style="background:var(--warn)"></i>κ(A)²·ε</span><span><i style="background:var(--bad)"></i>정규 방정식 오차</span><span><i style="background:var(--accent)"></i>QR 오차</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ(A)</span><span class="v" id="ap-qr-k">—</span></div>
+        <div class="stat"><span class="k">κ(AᵀA)</span><span class="v" id="ap-qr-k2">—</span></div>
+        <div class="stat"><span class="k">정규 방정식 오차</span><span class="v" id="ap-qr-en">—</span></div>
+        <div class="stat"><span class="k">QR 오차</span><span class="v" id="ap-qr-eq">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-qr-msg"></div>
+      <div class="sim-note">해볼 것: ① 기본 설정에서 빨간 곡선이 주황 점선(κ²ε)을, 초록 곡선이 회색 점선(κε)을 따라 오르는 것을 보세요. ② 기저를 [−1, 1]로 옮기기만 해도 κ(A)가 수천 배 줄어듭니다. ③ 체비쇼프 기저에서는 κ(A)가 차수 18에서도 10 이하라 두 방법이 모두 거의 완벽합니다. 알고리즘보다 기저 선택이 먼저입니다. 모델: 등간격 m개 점, 참 계수가 모두 1인 다항식, 잡음 없음. 오차는 계수의 최대 절댓값 오차.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="overfitting">
+    <h2>다항식 차수와 과적합, 검증 오차</h2>
+    <div class="problem"><strong>차수를 올리면 잔차는 항상 줄어든다</strong>
+      <p>최소제곱 잔차 \(\|\mathbf r\|\)는 차수를 하나 올릴 때마다 줄거나 그대로입니다. 새 기저 함수의 계수를 0으로 두면 이전 해와 같으니, 최소값이 커질 수는 없습니다. 그러면 차수는 높을수록 좋을까요? 점이 12개면 11차에서 잔차가 정확히 0이 됩니다. 그것이 그림 7-1의 빨간 곡선이었습니다.</p></div>
+    <p>문제는 우리가 원하는 것이 <b>측정한 점에서의</b> 오차가 아니라 <b>측정하지 않은 점에서의</b> 오차라는 데 있습니다. 측정한 점(학습 데이터)에서 잰 오차를 <span class="term">학습 오차</span><span class="en">(training error)</span>, 맞춤에 쓰지 않은 점에서 잰 오차를 <span class="term">검증 오차</span><span class="en">(validation error)</span>라 합니다. 차수를 올리면 학습 오차는 계속 줄지만, 어느 순간부터 모형이 추세 대신 잡음을 외우기 시작해 검증 오차가 커집니다. 이것이 <span class="term">과적합</span><span class="en">(overfitting)</span>입니다.</p>
+    <p>잡음의 표준편차가 \(\sigma\)이면 아무리 좋은 모형도 새 측정값과의 RMS 오차를 \(\sigma\)보다 작게 만들 수 없습니다. 학습 오차가 \(\sigma\)보다 훨씬 작아졌다는 것은 잡음을 외웠다는 신호입니다. 반대로 차수가 너무 낮으면 학습·검증 오차가 모두 큽니다(과소적합). 오차를 "모형이 참 함수를 표현하지 못해서 생기는 부분(편향)"과 "잡음에 따라 맞춘 곡선이 흔들리는 부분(분산)"으로 나누면, 차수를 올릴수록 편향은 줄고 분산은 커집니다.</p>
+    <div class="callout"><strong>예제 7.3 (차수 고르기)</strong> 참 함수 \(f(x) = \sin 2\pi x\)를 \([0, 1]\)에서 12번 측정했다(잡음 표준편차 \(\sigma = 0.2\)). 따로 측정한 40개 점을 검증용으로 남겨 두고, 차수별로 QR 최소제곱 맞춤의 RMS 오차를 쟀다(아래 시뮬레이터의 기본 데이터).
+      <div class="table-wrap"><table class="ap-tbl">
+        <thead><tr><th>차수</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>7</th><th>9</th><th>10</th><th>11</th></tr></thead>
+        <tbody>
+          <tr><td>학습 RMS</td><td>0.724</td><td>0.521</td><td>0.512</td><td>0.217</td><td>0.135</td><td>0.105</td><td>0.065</td><td>0.050</td><td>0.006</td><td>0.000</td></tr>
+          <tr class="ap-best"><td>검증 RMS</td><td>0.625</td><td>0.466</td><td>0.508</td><td>0.229</td><td>0.238</td><td>0.259</td><td>0.352</td><td>0.285</td><td>0.820</td><td>1.133</td></tr>
+        </tbody></table></div>
+      <p style="margin:6px 0 0">학습 오차는 단조 감소해 11차(보간)에서 0이 된다. 검증 오차는 3차에서 최소 0.229로 잡음 수준 0.2에 가깝고, 10차 이후 급격히 커진다. 3차를 고른다. \(\sin 2\pi x\)는 한 주기에 극값이 둘이므로 3차 다항식이 모양을 잡기에 충분하다는 것과도 맞는다.</p></div>
+    <p>데이터가 적어 검증용으로 떼어 둘 여유가 없으면 <span class="term">교차 검증</span><span class="en">(cross-validation)</span>을 씁니다. 데이터를 \(k\)묶음으로 나눠 하나씩 돌아가며 검증에 쓰고 평균을 냅니다. 선형 최소제곱에서는 한 점씩 뺀 검증(LOOCV) 오차를 다시 맞추지 않고도 \(r_i/(1 - h_{ii})\)로 바로 계산할 수 있습니다. 여기서 \(h_{ii}\)는 사영 행렬 \(H = A(A^\top A)^{-1}A^\top\)의 대각 원소입니다. 또 하나의 처방은 계수의 크기에 벌점을 주는 <span class="term">정칙화</span><span class="en">(regularization)</span>로, \(\|A\mathbf c - \mathbf y\|^2 + \lambda\|\mathbf c\|^2\)을 최소화하는 능형 회귀(티호노프 정칙화)가 대표적입니다.</p>
+
+    <div class="sim" id="sim-ap-degree">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>차수 슬라이더: 학습 오차와 검증 오차</h3></div>
+      <div class="ap-two">
+        <div><canvas id="ap-dg-cv"></canvas><span class="ap-cap">데이터와 맞춘 다항식</span></div>
+        <div><canvas id="ap-dg-cv2"></canvas><span class="ap-cap">RMS 오차 – 차수 (로그 축)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식 차수 <output id="ap-dg-n-out"></output></span><input type="range" id="ap-dg-n" min="0" max="11" step="1" value="3"></label>
+          <label class="ctrl"><span>잡음 σ <output id="ap-dg-s-out"></output></span><input type="range" id="ap-dg-s" min="0.02" max="0.5" step="0.02" value="0.2"></label>
+          <label class="ctrl"><span>참 함수</span><select id="ap-dg-f"><option value="sin">sin 2πx</option><option value="exp">e^(2x) / 4</option><option value="bump">1 / (1 + 25(x − ½)²)</option></select></label>
+          <div class="btn-row"><button class="btn" id="ap-dg-new">새 잡음</button><button class="btn" id="ap-dg-reset">기본 데이터</button></div>
+          <label class="check"><input type="checkbox" id="ap-dg-true" checked> 참 함수 보기</label>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--text)"></i>학습 점 (12개)</span><span><i style="background:var(--text-faint)"></i>검증 점 (40개)</span><span><i style="background:var(--accent)"></i>맞춘 다항식 · 학습 오차</span><span><i style="background:var(--bad)"></i>검증 오차</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">학습 RMS</span><span class="v" id="ap-dg-tr">—</span></div>
+        <div class="stat"><span class="k">검증 RMS</span><span class="v" id="ap-dg-va">—</span></div>
+        <div class="stat"><span class="k">검증 최소 차수</span><span class="v" id="ap-dg-best">—</span></div>
+        <div class="stat"><span class="k">잡음 수준 σ</span><span class="v" id="ap-dg-sig">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-dg-msg"></div>
+      <div class="sim-note">해볼 것: ① 차수를 0에서 11까지 올리며 위 그림의 곡선과 아래 그래프의 두 오차를 함께 보세요. 학습 오차(초록)는 계속 내려가지만 검증 오차(빨강)는 U자를 그립니다. ② σ를 0.02로 줄이면 높은 차수도 덜 위험해지고 최적 차수가 올라갑니다. ③ '새 잡음'을 여러 번 눌러 최적 차수가 데이터에 따라 흔들리는 것을 보세요. 모델: 학습 점은 [0, 1]을 12칸으로 나눈 각 칸 안의 임의 위치, 맞춤은 t = 2x − 1 변수의 QR 최소제곱.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="robust">
+    <h2>가중 최소제곱과 강건 회귀</h2>
+    <div class="problem"><strong>센서 하나가 튀었다</strong>
+      <p>여섯 개의 측정 가운데 하나가 통신 오류로 엉뚱한 값을 냈습니다. 최소제곱 직선은 그 한 점 쪽으로 크게 기울어, 나머지 다섯 점 모두에서 틀려 버립니다. 잔차를 제곱하면 큰 잔차 하나가 작은 잔차 여럿보다 훨씬 무겁기 때문입니다. 이상치가 어느 점인지 미리 모른다면 어떻게 할까요?</p></div>
+    <p>먼저 측정마다 신뢰도가 다를 때입니다. \(i\)번째 측정의 잡음 표준편차가 \(\sigma_i\)로 알려져 있으면, 정밀한 측정의 잔차를 더 무겁게 쳐야 합니다.</p>
+    <div class="callout deep"><strong>정의 7.6 (가중 최소제곱)</strong> 가중치 \(w_i \gt 0\)에 대해 \(\sum_i w_i r_i^2\)을 최소화하는 문제. \(W = \mathrm{diag}(w_i)\)라 하면 정규 방정식은 \(A^\top WA\,\mathbf c = A^\top W\mathbf y\)이고, 실제 계산은 각 행에 \(\sqrt{w_i}\)를 곱한 \((\sqrt W A)\mathbf c \approx \sqrt W\mathbf y\)를 QR로 푼다. 잡음이 독립이고 분산이 \(\sigma_i^2\)이면 \(w_i = 1/\sigma_i^2\)이 최선이다.</div>
+    <p>이상치는 어느 점의 \(\sigma_i\)가 큰지 <b>모르는</b> 경우입니다. 그래서 잔차를 보고 가중치를 스스로 정합니다. 제곱 대신 큰 잔차에서 덜 가파르게 자라는 손실 \(\rho(r)\)을 쓰는데, 대표가 <span class="term">후버 손실</span><span class="en">(Huber loss)</span>입니다.</p>
+    <div class="formula">$$\rho_\delta(r) = \begin{cases} \tfrac12 r^2, & |r| \le \delta\\ \delta|r| - \tfrac12\delta^2, & |r| \gt \delta\end{cases}\qquad w(r) = \frac{\rho_\delta'(r)}{r} = \begin{cases} 1, & |r| \le \delta\\ \delta/|r|, & |r| \gt \delta\end{cases}$$
+      <div class="where">작은 잔차는 최소제곱처럼, 큰 잔차는 절댓값(\(L^1\))처럼 다룬다. \(\delta\)는 "보통 잔차"의 크기로, 흔히 잡음 표준편차의 1.345배를 쓴다.</div></div>
+    <p>\(\sum\rho(r_i)\)을 최소화하는 조건 \(\sum\rho'(r_i)\,\partial r_i/\partial\mathbf c = 0\)은 \(\sum w(r_i)\,r_i\,\partial r_i/\partial\mathbf c = 0\)으로 쓸 수 있고, 이는 가중치 \(w(r_i)\)를 고정했을 때의 가중 최소제곱 조건과 같습니다. 그래서 가중치를 고정하고 풀고, 새 잔차로 가중치를 다시 계산하는 반복이 자연스럽습니다.</p>
+    <pre class="code"><span class="k">함수</span> IRLS(A, y, δ)                     <span class="c">// 반복 재가중 최소제곱</span>
+  c ← QR_최소제곱(A, y)                  <span class="c">// 보통 최소제곱으로 출발</span>
+  <span class="k">repeat</span>
+    r ← y − A c
+    w_i ← 1        (|r_i| ≤ δ)
+    w_i ← δ/|r_i|  (|r_i| &gt; δ)            <span class="c">// 큰 잔차의 영향을 깎는다</span>
+    c ← QR_최소제곱(√W A, √W y)
+  <span class="k">until</span> c가 거의 변하지 않음
+  <span class="k">반환</span> c</pre>
+    <div class="callout"><strong>예제 7.4 (이상치 하나)</strong> \(x = 0, 1, \dots, 5\)에서 \(y = (1.1, 1.4, 2.1, 2.4, 3.1, 8)\). 앞의 다섯 점은 \(y \approx 1 + 0.5x\) 근처이고 마지막 점이 이상치다.
+      <ol>
+        <li>보통 최소제곱: \(y = 0.167 + 1.140x\). 기울기가 참 기울기 0.5의 두 배가 넘는다.</li>
+        <li>후버 IRLS(\(\delta = 0.3\)): \(y = 0.900 + 0.590x\). 수렴했을 때 이상치의 가중치는 \(\delta/|r| = 0.3/4.15 \approx 0.07\)로 줄어 있다.</li>
+        <li>\(L^1\) 회귀(\(w = 1/|r|\)의 IRLS): \(y = 1.100 + 0.500x\). 세 점 \((0, 1.1), (2, 2.1), (4, 3.1)\)을 정확히 지나는 직선으로, 이상치를 뺀 다섯 점의 최소제곱 \(y = 1.02 + 0.50x\)와 기울기가 같다. \(L^1\) 해는 이처럼 데이터 점 몇 개를 지나는 경우가 많다.</li>
+      </ol></div>
+    <p>후버 손실은 볼록이라 IRLS가 하나의 답으로 수렴하지만, 이상치가 아주 크고 많으면 여전히 영향을 받습니다. 영향을 완전히 끊는 손실(투키의 이중가중 등)은 볼록이 아니어서 출발점에 따라 답이 달라집니다. 이상치가 데이터의 절반 가까이면 RANSAC처럼 작은 부분집합을 무작위로 골라 맞추고 동의하는 점을 세는 방법을 씁니다. 컴퓨터 비전에서 두 사진의 대응점으로 변환을 추정할 때가 대표적입니다.</p>
+
+    <div class="sim" id="sim-ap-robust">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이상치 끌기: 최소제곱 · 후버 · L¹</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-rb-cv"></canvas><span class="tag-tl">점을 끌어 이상치 만들기</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>후버 문턱 δ <output id="ap-rb-d-out"></output></span><input type="range" id="ap-rb-d" min="0.05" max="3" step="0.05" value="0.3"></label>
+          <label class="check"><input type="checkbox" id="ap-rb-ls" checked> 보통 최소제곱</label>
+          <label class="check"><input type="checkbox" id="ap-rb-hb" checked> 후버 IRLS</label>
+          <label class="check"><input type="checkbox" id="ap-rb-l1" checked> L¹ (IRLS)</label>
+          <label class="check"><input type="checkbox" id="ap-rb-sq"> 최소제곱 잔차 제곱 보기</label>
+          <div class="btn-row"><button class="btn" id="ap-rb-reset">예제 7.4로</button><button class="btn" id="ap-rb-clean">이상치 없애기</button></div>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--bad)"></i>최소제곱</span><span><i style="background:var(--accent)"></i>후버 (점 크기 = 가중치)</span><span><i style="background:var(--accent-2)"></i>L¹</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최소제곱</span><span class="v" id="ap-rb-o0">—</span></div>
+        <div class="stat"><span class="k">후버</span><span class="v" id="ap-rb-o1">—</span></div>
+        <div class="stat"><span class="k">L¹</span><span class="v" id="ap-rb-o2">—</span></div>
+        <div class="stat"><span class="k">IRLS 반복 수</span><span class="v" id="ap-rb-it">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 맨 오른쪽 점을 위아래로 크게 끌어 보세요. 빨간 직선은 따라 흔들리지만 초록 실선(후버)과 보라 점선(L¹)은 거의 그대로입니다. ② δ를 3까지 키우면 모든 잔차가 문턱 안에 들어가 후버가 최소제곱과 같아집니다. ③ 두 점을 동시에 이상치로 만들면 L¹도 흔들리기 시작합니다. 모델: 직선 y = c₀ + c₁x, IRLS는 변화가 10⁻¹⁰ 미만이 될 때까지(최대 100회, L¹은 수렴이 느려 대개 100회를 다 씁니다). L¹의 가중치는 1/max(|r|, 10⁻⁶).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="orthogonal-polynomials">
+    <h2>연속 최소제곱과 직교 다항식</h2>
+    <div class="problem"><strong>점이 아니라 함수를 근사하기</strong>
+      <p>계산기 회로나 수학 라이브러리는 \(e^x\)를 \([-1, 1]\) 전체에서 다항식으로 근사하고 싶습니다. 데이터는 유한 개의 점이 아니라 구간 위의 연속 함수입니다. 오차의 제곱합 대신 오차 제곱의 <b>적분</b>을 최소로 하면 어떻게 될까요? 그리고 단항식 기저를 쓰면 3절의 조건수 문제가 다시 나타날까요?</p></div>
+    <p>합을 적분으로 바꾸면 됩니다. 구간 \([a, b]\)와 양의 가중 함수 \(w(x)\)에 대해 <span class="term">내적</span> \(\langle f, g\rangle = \int_a^b f(x)g(x)w(x)\,dx\)와 노름 \(\|f\| = \sqrt{\langle f, f\rangle}\)을 정의하면, 함수도 벡터처럼 다룰 수 있습니다. \(n\)차 이하 다항식 전체 \(\mathcal P_n\)이 "열공간" 역할을 합니다.</p>
+    <div class="callout deep"><strong>정리 7.7 (연속 최소제곱의 정규 방정식)</strong> \(\|f - p\|\)을 최소화하는 \(p = \sum_{k=0}^n c_k\phi_k \in \mathcal P_n\)은 \(f - p \perp \phi_j\)(\(j = 0, \dots, n\))로 결정되며, 이는
+      <div class="formula">$$\sum_{k=0}^n \langle\phi_j, \phi_k\rangle\,c_k = \langle\phi_j, f\rangle,\qquad j = 0, \dots, n$$</div>
+      이다. 기저가 <b>직교</b>하면(\(\langle\phi_j, \phi_k\rangle = 0\), \(j \ne k\)) 행렬이 대각이 되어 \(c_k = \langle f, \phi_k\rangle/\langle\phi_k, \phi_k\rangle\)로 바로 풀린다.</div>
+    <p>단항식 \(\phi_k = x^k\)를 \([0, 1]\), \(w = 1\)로 쓰면 \(\langle x^j, x^k\rangle = 1/(j + k + 1)\)이고, 정규 방정식의 행렬은 유명한 <span class="term">힐베르트 행렬</span><span class="en">(Hilbert matrix)</span>입니다. 그 조건수는 \(5\times5\)에서 \(4.8\times10^5\), \(10\times10\)에서 \(1.6\times10^{13}\)으로, 10차 근사만 해도 배정밀도의 자릿수 대부분이 사라집니다. 3절과 같은 병입니다. 처방도 같습니다. 기저를 직교화합니다.</p>
+    <p>그람–슈미트 과정(<a href="../../linear/chapters/qr.html">LinearBook: 그람–슈미트와 QR</a>)을 \(1, x, x^2, \dots\)에 \([-1, 1]\), \(w = 1\)의 내적으로 적용하면 차례로</p>
+    <div class="formula">$$\pi_0 = 1,\quad \pi_1 = x,\quad \pi_2 = x^2 - \tfrac13,\quad \pi_3 = x^3 - \tfrac35x,\quad \pi_4 = x^4 - \tfrac67x^2 + \tfrac{3}{35}, \;\dots$$
+      <div class="where">예: \(\pi_2 = x^2 - \frac{\langle x^2, 1\rangle}{\langle 1, 1\rangle}\cdot 1 - \frac{\langle x^2, x\rangle}{\langle x, x\rangle}x = x^2 - \frac{2/3}{2} - 0\). 홀짝 대칭 때문에 짝수 차와 홀수 차는 저절로 직교한다.</div></div>
+    <p>이 다항식들을 \(P_k(1) = 1\)이 되도록 크기를 맞춘 것이 <span class="term">르장드르 다항식</span><span class="en">(Legendre polynomials)</span> \(P_0 = 1\), \(P_1 = x\), \(P_2 = \frac12(3x^2 - 1)\), \(P_3 = \frac12(5x^3 - 3x)\)입니다. 매번 앞의 모든 다항식에 대한 사영을 뺄 필요는 없습니다. 직교 다항식은 항상 세 항 점화식을 만족합니다.</p>
+    <div class="callout deep"><strong>정리 7.8 (세 항 점화식)</strong> 어떤 가중 내적에 대해서든 직교 다항식열은 \(\pi_{k+1}(x) = (x - \alpha_k)\pi_k(x) - \beta_k\pi_{k-1}(x)\) 꼴의 점화식을 만족한다(\(\alpha_k = \langle x\pi_k, \pi_k\rangle/\langle\pi_k, \pi_k\rangle\), \(\beta_k = \langle\pi_k, \pi_k\rangle/\langle\pi_{k-1}, \pi_{k-1}\rangle\)). 르장드르 다항식은 \((k + 1)P_{k+1} = (2k + 1)xP_k - kP_{k-1}\)이다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(x\pi_k\)는 \(k + 1\)차이므로 \(\pi_0, \dots, \pi_{k+1}\)의 결합으로 쓸 수 있다. \(j \le k - 2\)이면 \(\langle x\pi_k, \pi_j\rangle = \langle\pi_k, x\pi_j\rangle = 0\)(\(x\pi_j\)가 \(k - 1\)차 이하이므로). 남는 항은 세 개뿐이다. ∎</p></div>
+    <p>그래서 \(n\)차 직교 다항식의 값은 \(O(n)\)번의 연산으로 안정하게 계산되고, 근사 계수는 적분 하나씩으로 따로따로 구해집니다. 차수를 하나 올려도 앞의 계수는 바뀌지 않습니다. 단항식 기저에서는 차수를 올리면 모든 계수를 다시 풀어야 했습니다.</p>
+    <div class="callout"><strong>예제 7.5 (\(e^x\)의 르장드르 전개)</strong> \([-1, 1]\)에서 \(c_k = \frac{2k + 1}{2}\int_{-1}^1 e^xP_k(x)\,dx\)를 계산하면(수치 적분)
+      <ol>
+        <li>\(c_0 = 1.175201\)(\(= \sinh 1\)), \(c_1 = 1.103638\)(\(= 3/e\)), \(c_2 = 0.357814\), \(c_3 = 0.070456\), \(c_4 = 0.009965\), \(c_5 = 0.001100\).</li>
+        <li>3차 근사 \(p_3 = \sum_{k\le 3}c_kP_k\)의 \(L^2\) 오차는 \(4.72\times10^{-3}\), 최대 오차는 \(1.12\times10^{-2}\)(\(x = 1\)에서).</li>
+        <li>비교: 원점에서의 3차 테일러 다항식 \(1 + x + x^2/2 + x^3/6\)의 최대 오차는 \(x = 1\)에서 \(e - 8/3 = 0.0516\). 같은 차수인데 르장드르 근사가 4.6배 정확하다. 테일러는 한 점 근처에 집중하고, 최소제곱은 구간 전체에 오차를 고르게 나눈다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ap-legendre">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>그람–슈미트로 르장드르 다항식 만들기와 연속 최소제곱</h3></div>
+      <div class="ap-two">
+        <div><canvas id="ap-lg-cv"></canvas><span class="ap-cap" id="ap-lg-cap">함수와 근사</span></div>
+        <div><canvas id="ap-lg-cv2"></canvas><span class="ap-cap" id="ap-lg-cap2">오차 f − pₙ</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <div class="ctrl"><span>보기</span><div class="seg" id="ap-lg-mode"><button data-value="fit" class="on">연속 최소제곱</button><button data-value="gs">그람–슈미트</button></div></div>
+          <label class="ctrl"><span>함수</span><select id="ap-lg-f"><option value="exp">eˣ</option><option value="abs">|x|</option><option value="runge">1/(1 + 25x²)</option><option value="sin">sin 3x</option><option value="step">계단 sign(x)</option></select></label>
+          <label class="ctrl"><span>차수 n <output id="ap-lg-n-out"></output></span><input type="range" id="ap-lg-n" min="0" max="12" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="ap-lg-taylor"> 같은 차수 테일러 비교 (eˣ)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k" id="ap-lg-k1">계수 c₀ … cₙ</span><span class="v" id="ap-lg-o1">—</span></div>
+        <div class="stat"><span class="k" id="ap-lg-k2">L² 오차</span><span class="v" id="ap-lg-o2">—</span></div>
+        <div class="stat"><span class="k" id="ap-lg-k3">최대 오차</span><span class="v" id="ap-lg-o3">—</span></div>
+      </div>
+      <div class="ap-msg" id="ap-lg-msg"></div>
+      <div class="sim-note">해볼 것: ① '그람–슈미트'에서 n을 0부터 올리며 xⁿ(점선)에서 앞 다항식들의 사영(회색)을 빼면 직교 다항식 πₙ(초록)이 남는 것을 보세요. 아래 그림은 πₙ·πⱼ의 적분이 0인지 보여 줍니다. ② '연속 최소제곱'에서 |x|나 계단 함수를 고르면 꺾인 곳과 불연속점에서 오차가 오래 남습니다(계단에서는 깁스 현상). ③ eˣ에서 테일러 비교를 켜면 테일러 오차는 x = 1로 갈수록 커지지만 르장드르 오차는 구간 전체에 고르게 퍼집니다. 모델: 내적 적분은 합성 심프슨(2000칸).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="chebyshev">
+    <h2>체비쇼프 전개와 계수 감소</h2>
+    <div class="problem"><strong>몇 차까지 써야 하는가</strong>
+      <p>르장드르 계수는 차수가 오를수록 줄어들었습니다(\(1.18, 1.10, 0.36, 0.070, 0.010, 0.0011\)). 이 감소 속도를 보면 몇 차에서 멈춰야 원하는 정확도가 나오는지 알 수 있지 않을까요? 그리고 계수를 적분 없이 빠르게 구할 수는 없을까요?</p></div>
+    <p>가중 함수를 \(w(x) = 1/\sqrt{1 - x^2}\)로 바꾸면 또 하나의 직교 다항식열이 나옵니다. \(x = \cos\theta\)로 치환하면 이 가중치는 \(dx/\sqrt{1 - x^2} = -d\theta\)가 되어 사라지고, 직교 다항식은 놀랍도록 단순해집니다.</p>
+    <div class="callout deep"><strong>정의 7.9 (체비쇼프 다항식)</strong> \(T_k(\cos\theta) = \cos k\theta\)로 정의되는 \(k\)차 다항식 \(T_k\)를 (제1종) <span class="term">체비쇼프 다항식</span><span class="en">(Chebyshev polynomial)</span>이라 한다. \(T_0 = 1\), \(T_1 = x\), \(T_{k+1} = 2xT_k - T_{k-1}\)이고, \(\int_{-1}^1 T_jT_k\,\frac{dx}{\sqrt{1 - x^2}} = 0\)(\(j \ne k\)), \(= \pi\)(\(j = k = 0\)), \(= \pi/2\)(\(j = k \ge 1\))이다.</div>
+    <p>점화식은 삼각함수의 합 공식 \(\cos(k + 1)\theta + \cos(k - 1)\theta = 2\cos\theta\cos k\theta\) 그대로이고, 직교성은 \(\int_0^\pi\cos j\theta\cos k\theta\,d\theta = 0\) 그대로입니다. 곧 체비쇼프 전개 \(f(x) = \sum a_kT_k(x)\)는 \(f(\cos\theta)\)의 <b>코사인 푸리에 급수</b>입니다. 그래서 계수는 체비쇼프 점 \(x_j = \cos\frac{(j + 1/2)\pi}{N}\)에서의 함숫값에 이산 코사인 변환을 하면 \(O(N\log N)\)에 얻어집니다(<a href="fft.html">8장</a>의 FFT). \(T_k\)는 \([-1, 1]\)에서 \(|T_k| \le 1\)이므로 꼬리를 잘라 낸 오차는 버린 계수의 합으로 바로 묶입니다.</p>
+    <div class="formula">$$\Bigl|f(x) - \sum_{k=0}^n a_kT_k(x)\Bigr| \le \sum_{k=n+1}^\infty |a_k|.$$</div>
+    <div class="callout deep"><strong>정리 7.10 (매끄러움과 계수 감소)</strong> \(f\)의 체비쇼프 계수 \(a_k\)에 대해
+      <ul style="margin:6px 0 0 18px">
+        <li>\(f, f', \dots, f^{(\nu-1)}\)이 절대연속이고 \(f^{(\nu)}\)가 유계 변동 \(V\)를 가지면 \(|a_k| \le \frac{2V}{\pi k(k - 1)\cdots(k - \nu)}\), 곧 \(|a_k| = O(k^{-\nu-1})\).</li>
+        <li>\(f\)가 \([-1, 1]\)을 품는 베른슈타인 타원 \(E_\rho\)(초점 \(\pm1\), 장반경과 단반경의 합 \(\rho \gt 1\)) 안에서 해석적이고 \(|f| \le M\)이면 \(|a_k| \le 2M\rho^{-k}\), 곧 계수가 <b>기하급수적으로</b> 준다.</li>
+      </ul>
+      <p style="margin:8px 0 0"><b>아이디어.</b> \(a_k = \frac2\pi\int_0^\pi f(\cos\theta)\cos k\theta\,d\theta\)를 부분적분할 때마다 \(1/k\)이 하나씩 나온다(푸리에 계수와 같은 원리). 해석적이면 적분 경로를 복소 평면으로 밀어 \(\rho^{-k}\)를 얻는다. ∎</p></div>
+    <p>계수를 로그 눈금으로 그리면 함수의 성격이 그대로 보입니다. \(e^x\)는 어디서나 해석적이라 계수가 \(1.27, 1.13, 0.27, 0.044, 0.0055, 5.4\times10^{-4}, 4.5\times10^{-5}, 3.2\times10^{-6}\)으로 매 차수 열 배 가까이 줄고, 15차 근처에서 기계 엡실론에 닿습니다. \(1/(1 + 25x^2)\)은 \(x = \pm i/5\)에 극이 있어 타원이 좁고(\(\rho \approx 1.22\)) 감소가 느립니다. 5장의 룽게 함수가 체비쇼프 노드에서도 꽤 많은 점을 요구한 이유입니다. \(|x|\)는 꺾인 점 때문에 \(k^{-2}\), 계단 함수는 \(k^{-1}\)로 줄어듭니다. 이 계수의 꼴은 다음 장에서 푸리에 계수의 감소로 다시 만납니다.</p>
+    <p>잘린 체비쇼프 급수의 오차는 대체로 첫 번째 버린 항 \(a_{n+1}T_{n+1}(x)\)이 지배하고, \(T_{n+1}\)은 \([-1, 1]\)에서 \(+1\)과 \(-1\)을 \(n + 2\)번 번갈아 찍는 함수입니다. 그래서 잘린 체비쇼프 급수의 오차 곡선은 <b>거의 고른 진동</b>을 합니다. \(e^x\)의 3차 체비쇼프 절단은 최대 오차 \(6.07\times10^{-3}\)으로, 첫 버린 계수 \(a_4 = 5.47\times10^{-3}\)과 거의 같습니다. 다음 절에서 이 "거의"를 "정확히"로 바꿉니다. 소프트웨어 Chebfun은 이 원리로 함수를 체비쇼프 계수가 기계 엡실론 아래로 떨어질 때까지 자동으로 전개해 숫자처럼 다룹니다.</p>
+
+    <div class="sim" id="sim-ap-chebcoef">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>체비쇼프 계수 막대: 매끄러움이 감소 속도를 정한다</h3></div>
+      <div class="ap-two">
+        <div><canvas id="ap-cc-cv"></canvas><span class="ap-cap">f와 n차 체비쇼프 절단</span></div>
+        <div><canvas id="ap-cc-cv2"></canvas><span class="ap-cap">|aₖ| (로그 축)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ap-cc-f"><option value="exp">eˣ (전해석)</option><option value="runge">1/(1 + 25x²) (극 ±i/5)</option><option value="cos">cos 10x</option><option value="abs">|x| (꺾임)</option><option value="step">sign(x) (불연속)</option><option value="absx3">|x|³</option></select></label>
+          <label class="ctrl"><span>절단 차수 n <output id="ap-cc-n-out"></output></span><input type="range" id="ap-cc-n" min="1" max="60" step="1" value="6"></label>
+          <label class="check"><input type="checkbox" id="ap-cc-err"> 위 그림에 오차 곡선(확대) 겹치기</label>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--text)"></i>f(x)</span><span><i style="background:var(--accent)"></i>쓰는 계수 · 절단 급수</span><span><i style="background:var(--text-faint)"></i>버리는 계수</span><span><i style="background:var(--warn)"></i>오차(확대)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="ap-cc-e">—</span></div>
+        <div class="stat"><span class="k">|a<sub>n+1</sub>|</span><span class="v" id="ap-cc-a">—</span></div>
+        <div class="stat"><span class="k">Σ<sub>k&gt;n</sub> |aₖ| (상한)</span><span class="v" id="ap-cc-s">—</span></div>
+        <div class="stat"><span class="k">감소 꼴</span><span class="v" id="ap-cc-rate">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① eˣ에서 막대가 직선(기하급수)으로 떨어져 n ≈ 15에서 10⁻¹⁶ 바닥에 닿는 것을 보세요. ② |x|와 sign(x)를 비교하면 막대 끝이 각각 k⁻², k⁻¹ 기울기의 완만한 선입니다. 홀수 계수(|x|) 또는 짝수 계수(sign)는 대칭성 때문에 0입니다. ③ cos 10x는 n이 10을 넘을 때까지 계수가 줄지 않다가 그 뒤 급격히 떨어집니다. 진동을 표현하려면 진동수만큼의 차수가 먼저 필요합니다. 모델: 계수는 체비쇼프 점 256개에서의 이산 코사인 합.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="minimax">
+    <h2>최소최대 근사와 등진동: 레메즈 알고리즘</h2>
+    <div class="problem"><strong>최악의 경우를 보장하라</strong>
+      <p>수학 라이브러리의 \(\exp\)는 "평균적으로" 정확해서는 안 됩니다. 어떤 입력에서든 오차가 정해진 한계 아래여야 합니다. 그러면 최소화할 것은 제곱 적분이 아니라 <b>최대 오차</b> \(\|f - p\|_\infty = \max_{x\in[a, b]}|f(x) - p(x)|\)입니다. 이 최소화 문제는 미분해서 0으로 놓는 방법이 통하지 않습니다. 최댓값 함수는 매끄럽지 않기 때문입니다.</p></div>
+    <p>\(\|f - p\|_\infty\)을 최소화하는 \(p^* \in \mathcal P_n\)을 <span class="term">최소최대 근사</span><span class="en">(minimax approximation)</span> 또는 최량 균등 근사라 합니다. 연속 함수에 대해 존재하고 유일하며, 놀랍게도 오차 곡선의 <b>모양</b>만 보고 판정할 수 있습니다.</p>
+    <div class="callout deep"><strong>정리 7.11 (체비쇼프 등진동 정리)</strong> \(f\)가 \([a, b]\)에서 연속일 때, \(p \in \mathcal P_n\)이 최소최대 근사일 필요충분조건은 오차 \(e = f - p\)가 \(n + 2\)개의 점 \(x_0 \lt x_1 \lt \dots \lt x_{n+1}\)에서 크기 \(\|e\|_\infty\)를 부호를 번갈아 가며 찍는 것이다:
+      <div class="formula">$$e(x_i) = (-1)^i\,s\,\|e\|_\infty,\qquad s = \pm 1,\quad i = 0, \dots, n + 1.$$</div>
+      <p style="margin:8px 0 0"><b>충분성의 핵심.</b> 등진동하는 \(p\)보다 좋은 \(q\)가 있다면, \(q - p = e_p - e_q\)는 \(n + 2\)개 점에서 \(e_p\)와 같은 부호를 가진다(\(|e_q| \lt |e_p|\)이므로). 부호가 \(n + 1\)번 바뀌니 \(q - p\)는 근이 \(n + 1\)개 있는 \(n\)차 이하 다항식, 곧 0이다. 모순. ∎</p></div>
+    <p>등진동 정리에서 체비쇼프 다항식의 또 다른 얼굴이 나옵니다. 최고차 계수가 1인 \(n\)차 다항식 가운데 \([-1, 1]\)에서 최댓값이 가장 작은 것은 \(2^{1-n}T_n\)이고 그 최댓값은 \(2^{1-n}\)입니다(\(x^n\)을 \(n - 1\)차 이하로 최소최대 근사한 오차가 \(2^{1-n}T_n\)이고, 이것이 \(n + 1\)개 점에서 등진동하기 때문). 5장의 체비쇼프 노드가 보간 오차의 \(\prod(x - x_i)\)를 최소로 만든 이유가 바로 이것입니다(<a href="interpolation.html">5장</a>).</p>
+    <div class="callout"><strong>예제 7.6 (\(e^x\)의 1차 최소최대 근사, \([0, 1]\))</strong> \(p(x) = c_0 + c_1x\)를 구하라.
+      <ol>
+        <li>\(e^x\)는 아래로 볼록하므로 오차 \(e(x) = e^x - c_0 - c_1x\)도 볼록이다. 등진동점 3개는 양 끝 \(0, 1\)과 내부의 극점 \(x^*\) 하나다.</li>
+        <li>\(e(0) = -e(x^*) = e(1)\)에서 \(1 - c_0 = e - c_0 - c_1\)이므로 \(c_1 = e - 1 = 1.718282\).</li>
+        <li>내부 극점은 \(e'(x^*) = e^{x^*} - c_1 = 0\)에서 \(x^* = \ln(e - 1) = 0.541325\).</li>
+        <li>\(1 - c_0 = -(c_1 - c_0 - c_1x^*)\)에서 \(c_0 = \frac12\bigl(1 + c_1(1 - x^*)\bigr) = 0.894067\). 최대 오차 \(E = 1 - c_0 = 0.105933\).</li>
+        <li>비교: 연속 최소제곱 1차 근사 \(0.873127 + 1.690309x\)의 최대 오차는 \(0.154845\). 최소제곱은 \(L^2\)에서, 최소최대는 \(L^\infty\)에서 최선이다.</li>
+      </ol></div>
+    <p>일반적인 경우에는 등진동점을 미리 알 수 없으므로 추측하고 고치기를 되풀이합니다. 이것이 <span class="term">레메즈 알고리즘</span><span class="en">(Remez exchange algorithm)</span>입니다.</p>
+    <pre class="code"><span class="k">함수</span> 레메즈(f, n, [a, b])
+  x₀ &lt; … &lt; x_{n+1} ← 처음 기준점      <span class="c">// 보통 체비쇼프 극점 cos(iπ/(n+1))</span>
+  <span class="k">repeat</span>
+    <span class="c">// n+2개 미지수 (c₀…cₙ, E)의 선형계: 기준점에서 정확히 등진동하게</span>
+    c₀ + c₁xᵢ + … + cₙxᵢⁿ + (−1)ⁱ E = f(xᵢ),   i = 0 … n+1
+    e(x) ← f(x) − p(x)                     <span class="c">// 촘촘한 격자에서 계산</span>
+    새 기준점 ← e의 극값 중 부호가 번갈아 바뀌는 n+2개 (전역 최대 포함)
+  <span class="k">until</span> max|e| ≈ |E|                        <span class="c">// 기준점에서의 높이 = 전체 최댓값</span>
+  <span class="k">반환</span> p, |E|</pre>
+    <p>매 단계에서 \(|E|\)는 최소최대 오차의 <b>아래 한계</b>(드 라 발레 푸생 정리), \(\max|e|\)는 <b>위 한계</b>입니다. 두 값이 만나면 끝입니다. 매끄러운 함수에서는 이 간격이 2차로 줄어 몇 번 만에 수렴합니다. \(e^x\)의 \([-1, 1]\) 3차 근사는 체비쇼프 극점에서 출발하면 첫 단계에 \(|E| = 5.474\times10^{-3}\), \(\max|e| = 5.581\times10^{-3}\), 둘째 단계에 두 값이 \(5.528\times10^{-3}\)에서 넷째 자리까지 일치하고, 셋째 단계에 배정밀도 수준으로 만납니다.</p>
+    <div class="table-wrap"><table class="ap-tbl">
+      <thead><tr><th>\(e^x\), \([-1, 1]\), 3차 근사</th><th>최대 오차</th><th>최소최대 대비</th></tr></thead>
+      <tbody>
+        <tr><td>테일러(원점)</td><td>5.16×10⁻²</td><td>9.3배</td></tr>
+        <tr><td>등간격 4점 보간</td><td>9.98×10⁻³</td><td>1.81배</td></tr>
+        <tr><td>르장드르 최소제곱(\(L^2\) 최선)</td><td>1.12×10⁻²</td><td>2.02배</td></tr>
+        <tr><td>체비쇼프 4점 보간</td><td>6.66×10⁻³</td><td>1.20배</td></tr>
+        <tr><td>체비쇼프 급수 절단</td><td>6.07×10⁻³</td><td>1.10배</td></tr>
+        <tr class="ap-best"><td>최소최대(레메즈)</td><td>5.53×10⁻³</td><td>1</td></tr>
+      </tbody></table></div>
+    <p>표가 실무의 교훈을 줍니다. 체비쇼프 절단이나 체비쇼프 보간은 계산이 훨씬 쉬운데도 최소최대보다 10~20%만 나쁩니다. 그래서 대부분의 응용에서는 체비쇼프 근사로 충분하고, 수학 라이브러리처럼 마지막 한 비트가 중요한 곳에서만 레메즈로 다듬습니다. 실제 라이브러리는 먼저 <b>범위 축소</b>(예: \(e^x = 2^k e^r\), \(|r| \le \frac12\ln 2\))로 구간을 좁힌 뒤 그 작은 구간에서 낮은 차수의 최소최대 다항식(또는 유리 함수)을 호너 방법으로 계산합니다(<a href="nonlinear-systems.html">4장</a>).</p>
+
+    <div class="sim" id="sim-ap-minimax">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>레메즈 알고리즘 한 단계씩: 오차가 등진동할 때까지</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ap-mm-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ap-mm-f"><option value="exp">eˣ</option><option value="sin">sin 4x</option><option value="abs">|x|</option><option value="runge">1/(1 + 25x²)</option><option value="log">ln(x + 1.5)</option></select></label>
+          <label class="ctrl"><span>차수 n <output id="ap-mm-n-out"></output></span><input type="range" id="ap-mm-n" min="1" max="10" step="1" value="3"></label>
+          <div class="ctrl"><span>처음 기준점</span><div class="seg" id="ap-mm-init"><button data-value="eq" class="on">등간격(흔들림)</button><button data-value="cheb">체비쇼프 극점</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ap-mm-step">레메즈 한 단계</button><button class="btn" id="ap-mm-reset">처음부터</button></div>
+          <label class="check"><input type="checkbox" id="ap-mm-ct"> 체비쇼프 절단 오차 겹치기</label>
+        </div>
+      </div>
+      <div class="ap-legend"><span><i style="background:var(--accent)"></i>현재 오차 e(x)</span><span><i style="background:var(--warn)"></i>±E (기준점 높이)</span><span><i style="background:var(--bad)"></i>기준점</span><span><i style="background:var(--text-faint)"></i>체비쇼프 절단 오차</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계</span><span class="v" id="ap-mm-it">—</span></div>
+        <div class="stat"><span class="k">|E| (아래 한계)</span><span class="v" id="ap-mm-E">—</span></div>
+        <div class="stat"><span class="k">max|e| (위 한계)</span><span class="v" id="ap-mm-M">—</span></div>
+        <div class="stat"><span class="k">상대 간격</span><span class="v" id="ap-mm-gap">—</span></div>
+      </div>
+      <div class="ap-iter"><table><thead><tr><th>단계</th><th>|E|</th><th>max|e|</th><th>(max|e| − |E|)/|E|</th></tr></thead><tbody id="ap-mm-tb"></tbody></table></div>
+      <div class="sim-note">해볼 것: ① 등간격 출발에서 '레메즈 한 단계'를 누를 때마다 빨간 기준점이 오차 곡선의 봉우리로 옮겨 가고, 봉우리 높이가 주황 띠(±E)에 맞춰지는 것을 보세요. ② |x|나 룽게 함수는 수렴이 느리고 간격이 줄어드는 데 몇 단계가 더 걸립니다. ③ 체비쇼프 절단 오차를 겹치면 이미 거의 등진동하고, 최소최대보다 조금만 큰 것이 보입니다. 모델: 오차 극값은 3000칸 격자에서 찾고, 처음 기준점에는 작은 흔들림을 줍니다(대칭 함수 |x|, 룽게, sin 4x에서 선형계가 퇴화하지 않도록. eˣ의 체비쇼프 극점 출발은 흔들림 없이 본문 수치와 같습니다).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>상황</th><th>쓰는 방법</th><th>주의할 점</th></tr></thead>
+      <tbody>
+        <tr><td>센서 보정(서미스터, 로드셀, 카메라 왜곡)</td><td>낮은 차수 다항식·물리 모형의 QR 최소제곱</td><td>차수는 검증 오차로, 측정 정밀도가 다르면 가중치 1/σ²</td></tr>
+        <tr><td>수학 라이브러리 함수(exp, sin, log)</td><td>범위 축소 + 최소최대 다항식/유리 함수</td><td>오차 한계가 ulp 단위로 보장되어야 한다</td></tr>
+        <tr><td>GPS·측량·궤도 결정</td><td>비선형 최소제곱(가우스–뉴턴)의 각 단계가 선형 최소제곱</td><td>측정 기하가 나쁘면 κ(A)가 커진다(정밀도 저하 계수)</td></tr>
+        <tr><td>영상 정합, 구조 복원</td><td>RANSAC + 강건 손실의 IRLS</td><td>이상치 비율이 크면 볼록 손실만으로 부족</td></tr>
+        <tr><td>스펙트럴 방법, Chebfun</td><td>체비쇼프 전개, 계수가 ε 아래로 떨어지면 절단</td><td>매끄럽지 않은 함수는 구간을 나눈다</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="interpolation.html"><small>5장 · 다항식 보간</small>체비쇼프 노드<br><span>보간 오차의 ∏(x − xᵢ)를 최소로 하는 노드가 Tₙ의 근인 이유는 이 장의 최소최대 성질이다.</span></a>
+      <a href="fft.html"><small>8장 · 이산 푸리에 변환과 FFT</small>삼각 다항식 최소제곱<br><span>등간격 주기 데이터에서 사인·코사인 기저는 이산 직교라, 최소제곱 계수가 DFT로 바로 나온다.</span></a>
+      <a href="integration.html"><small>10장 · 수치 적분</small>가우스 구적법<br><span>르장드르 다항식의 근이 가우스 구적법의 노드가 된다. 직교성이 2n − 1차 정확도를 만든다.</span></a>
+      <a href="optimization.html"><small>15장 · 수치 최적화</small>가우스–뉴턴, 레벤버그–마쿼트<br><span>비선형 모형의 맞춤은 선형 최소제곱을 반복해 푼다.</span></a>
+      <a href="../../linear/chapters/orthogonality.html"><small>LINEARBOOK</small>직교성과 사영<br><span>정규 방정식과 사영 행렬, 직선·다항식 맞춤의 선형대수.</span></a>
+      <a href="../../linear/chapters/qr.html"><small>LINEARBOOK</small>그람–슈미트와 QR<br><span>QR 최소제곱의 분해 자체와 하우스홀더 반사의 기하.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>잡음 데이터는 보간하지 않고 과결정계 \(A\mathbf c \approx \mathbf y\)의 최소제곱 해로 맞춘다. 해는 \(\mathbf y\)를 열공간에 직교 사영한 것이고, 조건은 정규 방정식 \(A^\top A\hat{\mathbf c} = A^\top\mathbf y\), 곧 \(A^\top\mathbf r = \mathbf 0\)이다.</li>
+      <li>정규 방정식은 \(\kappa(A^\top A) = \kappa(A)^2\)의 선형계를 풀어 자릿수를 두 배로 잃는다. 하우스홀더 QR로 \(R\hat{\mathbf c} = Q^\top\mathbf y\)를 풀면 후방 안정하고, 비용은 약 두 배다. 기저를 \([-1, 1]\)의 직교 다항식으로 바꾸면 \(\kappa(A)\) 자체가 작아진다.</li>
+      <li>차수를 올리면 학습 오차는 항상 줄지만 검증 오차는 U자를 그린다. 차수는 검증 오차(또는 교차 검증)로 고르고, 학습 오차가 잡음 수준 σ보다 훨씬 작으면 과적합이다.</li>
+      <li>측정 정밀도가 다르면 가중치 \(w_i = 1/\sigma_i^2\)의 가중 최소제곱, 이상치가 있으면 후버 손실이나 \(L^1\)을 IRLS로 푼다. 큰 잔차의 가중치를 \(\delta/|r|\)로 깎는 반복이다.</li>
+      <li>함수의 연속 최소제곱은 내적 \(\int fgw\)에 대한 사영이다. 단항식 기저의 정규 행렬은 힐베르트 행렬(\(\kappa \approx 10^{13}\), \(n = 10\))이므로 직교 다항식을 쓴다. 르장드르(\(w = 1\)), 체비쇼프(\(w = 1/\sqrt{1 - x^2}\))는 세 항 점화식을 만족하고 계수가 \(c_k = \langle f, \phi_k\rangle/\langle\phi_k, \phi_k\rangle\)로 따로 구해진다.</li>
+      <li>\(T_k(\cos\theta) = \cos k\theta\)이므로 체비쇼프 전개는 코사인 급수이고 계수는 FFT로 구한다. 해석적 함수는 계수가 \(\rho^{-k}\)로, \(\nu\)번 미분 가능한 함수는 \(k^{-\nu-1}\) 정도로 준다. 절단 오차 \(\le \sum_{k\gt n}|a_k|\).</li>
+      <li>최소최대 근사는 오차가 \(n + 2\)개 점에서 같은 크기로 부호를 바꾸는 것(등진동)으로 판정한다. 레메즈 알고리즘은 기준점에서 등진동하도록 풀고, 오차의 봉우리로 기준점을 옮기기를 되풀이한다. 체비쇼프 근사는 최소최대에 매우 가깝다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 점 \((0, 1), (1, 2), (2, 4), (3, 5)\)에 최소제곱 직선을 맞추었다. 잔차의 합 \(\sum r_i\)는?</p><div class="opts">
+        <button class="opt">0.2</button>
+        <button class="opt" data-correct>0</button>
+        <button class="opt">−0.1</button>
+        <button class="opt">데이터에 따라 다르다</button>
+      </div><div class="quiz-exp">상수항이 있는 모형에서는 첫째 열 (1, …, 1)이 잔차에 수직이어야 하므로 \(\sum r_i = 0\)이 항상 성립한다. 예제 7.1의 잔차 (0.1, −0.3, 0.3, −0.1)의 합도 0이다. 0.2는 잔차 제곱합이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\kappa(A) = 10^6\)인 최소제곱 문제를 배정밀도(\(\varepsilon \approx 10^{-16}\))의 정규 방정식으로 풀면 계수의 상대 오차는 대략 어느 정도까지 커질 수 있는가?</p><div class="opts">
+        <button class="opt">10⁻¹⁶</button>
+        <button class="opt">10⁻¹⁰</button>
+        <button class="opt" data-correct>10⁻⁴</button>
+        <button class="opt">10⁻⁶</button>
+      </div><div class="quiz-exp">\(\kappa(A^\top A) = \kappa(A)^2 = 10^{12}\)이므로 오차는 \(10^{12}\times10^{-16} = 10^{-4}\) 정도까지 커질 수 있다. QR을 쓰면 대략 \(\kappa(A)\varepsilon = 10^{-10}\) 수준이다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 다항식 차수를 올리며 학습 RMS와 검증 RMS를 쟀더니 차수 3에서 (0.22, 0.23), 차수 10에서 (0.006, 0.82)였다. 잡음 표준편차는 약 0.2다. 옳은 해석은?</p><div class="opts">
+        <button class="opt">10차가 학습 오차가 작으므로 더 좋은 모형이다</button>
+        <button class="opt" data-correct>10차는 잡음을 외운 과적합이고, 3차가 낫다</button>
+        <button class="opt">두 모형 모두 과소적합이다</button>
+        <button class="opt">검증 데이터가 잘못되었다</button>
+      </div><div class="quiz-exp">학습 오차가 잡음 수준 0.2보다 훨씬 작은 0.006이라는 것은 모형이 잡음까지 따라갔다는 뜻이다. 검증 오차가 0.82로 커진 것이 그 증거다. 3차는 두 오차가 모두 잡음 수준에 가깝다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 후버 IRLS에서 \(\delta = 0.5\)일 때 잔차가 \(r = 2\)인 점의 가중치는?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">0.5</button>
+        <button class="opt" data-correct>0.25</button>
+        <button class="opt">0.0625</button>
+      </div><div class="quiz-exp">\(|r| \gt \delta\)이므로 \(w = \delta/|r| = 0.5/2 = 0.25\). 제곱 손실이면 가중치가 1로 그대로이고, 그만큼 이 점이 직선을 끌어당긴다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \([-1, 1]\), \(w = 1\)의 내적으로 \(1, x, x^2\)에 그람–슈미트를 적용하면 세 번째 직교 다항식(최고차 계수 1)은?</p><div class="opts">
+        <button class="opt">\(x^2 - \tfrac12\)</button>
+        <button class="opt" data-correct>\(x^2 - \tfrac13\)</button>
+        <button class="opt">\(x^2 - x\)</button>
+        <button class="opt">\(2x^2 - 1\)</button>
+      </div><div class="quiz-exp">\(\langle x^2, 1\rangle/\langle 1, 1\rangle = (2/3)/2 = 1/3\), \(\langle x^2, x\rangle = 0\). 그래서 \(x^2 - 1/3\)이다. 이를 \(P_2(1) = 1\)로 맞춘 것이 \(P_2 = (3x^2 - 1)/2\). \(2x^2 - 1\)은 가중치 \(1/\sqrt{1 - x^2}\)의 체비쇼프 \(T_2\)다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 어떤 함수의 체비쇼프 계수가 \(|a_k| \approx C/k^2\)으로 줄어든다. 이 함수에 대해 가장 그럴듯한 것은?</p><div class="opts">
+        <button class="opt">\([-1, 1]\) 근처의 복소 평면 전체에서 해석적이다</button>
+        <button class="opt" data-correct>연속이지만 도함수가 한 점에서 점프한다(꺾인 점이 있다)</button>
+        <button class="opt">불연속점이 있다</button>
+        <button class="opt">다항식이다</button>
+      </div><div class="quiz-exp">정리 7.10에서 \(f'\)이 유계 변동(점프 포함)이면 \(\nu = 1\), \(|a_k| = O(k^{-2})\). \(|x|\)가 대표다. 불연속이면 \(k^{-1}\), 해석적이면 기하급수, 다항식이면 유한 개 뒤 정확히 0이다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 3차 다항식 근사의 오차 곡선이 \([-1, 1]\)에서 같은 크기로 부호를 번갈아 바꾸는 점을 4개만 가진다. 이 근사에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">최소최대 근사다</button>
+        <button class="opt" data-correct>최소최대 근사가 아니다. 등진동점이 n + 2 = 5개 필요하다</button>
+        <button class="opt">최소제곱 근사다</button>
+        <button class="opt">판단할 수 없다</button>
+      </div><div class="quiz-exp">체비쇼프 등진동 정리에 따르면 n차 최소최대 근사의 오차는 n + 2개 점에서 등진동한다. 3차면 5개다. 4개뿐이면 더 좋은 3차 다항식이 존재한다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 최고차 계수가 1인 4차 다항식 가운데 \([-1, 1]\)에서 최대 절댓값이 가장 작은 것의 최댓값은?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">1/4</button>
+        <button class="opt" data-correct>1/8</button>
+        <button class="opt">1/16</button>
+      </div><div class="quiz-exp">답은 \(2^{1-n}T_n\)이고 최댓값은 \(2^{1-n}\). \(n = 4\)이면 \(2^{-3} = 1/8\). \(T_4 = 8x^4 - 8x^2 + 1\)을 8로 나눈 \(x^4 - x^2 + 1/8\)이 그 다항식이다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+/* ================================================================ 이 장의 도우미 */
+const AP = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (v == null || !isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  polyval(c, x) { let s = 0; for (let k = c.length - 1; k >= 0; k--) s = s * x + c[k]; return s; },
+  vander(xs, n) { return xs.map((x) => { const r = []; let p = 1; for (let k = 0; k <= n; k++) { r.push(p); p *= x; } return r; }); },
+  chebRow(u, n) { const r = [1, u]; for (let k = 2; k <= n; k++) r.push(2 * u * r[k - 1] - r[k - 2]); return r.slice(0, n + 1); },
+  /** 정규 방정식 + 촐레스키. 실패하면 null */
+  normal(A, b) {
+    const m = A.length, n = A[0].length;
+    const G = Array.from({ length: n }, () => new Array(n).fill(0)), r = new Array(n).fill(0);
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) { r[j] += A[i][j] * b[i]; for (let k = 0; k < n; k++) G[j][k] += A[i][j] * A[i][k]; }
+    const L = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (let j = 0; j < n; j++) {
+      let s = G[j][j]; for (let k = 0; k < j; k++) s -= L[j][k] ** 2;
+      if (!(s > 0)) return null; L[j][j] = Math.sqrt(s);
+      for (let i = j + 1; i < n; i++) { let t = G[i][j]; for (let k = 0; k < j; k++) t -= L[i][k] * L[j][k]; L[i][j] = t / L[j][j]; }
+    }
+    const y = new Array(n); for (let i = 0; i < n; i++) { let s = r[i]; for (let k = 0; k < i; k++) s -= L[i][k] * y[k]; y[i] = s / L[i][i]; }
+    const x = new Array(n); for (let i = n - 1; i >= 0; i--) { let s = y[i]; for (let k = i + 1; k < n; k++) s -= L[k][i] * x[k]; x[i] = s / L[i][i]; }
+    return x;
+  },
+  /** 하우스홀더 QR 최소제곱 */
+  qr(A, b) {
+    const m = A.length, n = A[0].length, R = A.map((r) => r.slice()), q = b.slice();
+    for (let k = 0; k < n; k++) {
+      let nr = 0; for (let i = k; i < m; i++) nr += R[i][k] ** 2; nr = Math.sqrt(nr); if (nr === 0) continue;
+      const a = R[k][k] >= 0 ? -nr : nr, v = new Array(m).fill(0);
+      for (let i = k; i < m; i++) v[i] = R[i][k]; v[k] -= a;
+      let vv = 0; for (let i = k; i < m; i++) vv += v[i] ** 2; if (vv === 0) continue;
+      for (let j = k; j < n; j++) { let s = 0; for (let i = k; i < m; i++) s += v[i] * R[i][j]; s = (2 * s) / vv; for (let i = k; i < m; i++) R[i][j] -= s * v[i]; }
+      let s = 0; for (let i = k; i < m; i++) s += v[i] * q[i]; s = (2 * s) / vv; for (let i = k; i < m; i++) q[i] -= s * v[i];
+    }
+    const x = new Array(n); for (let i = n - 1; i >= 0; i--) { let s = q[i]; for (let k = i + 1; k < n; k++) s -= R[i][k] * x[k]; x[i] = s / R[i][i]; }
+    return x;
+  },
+  /** 특이값(한쪽 야코비) */
+  sv(A) {
+    const m = A.length, n = A[0].length, U = A.map((r) => r.slice());
+    for (let sweep = 0; sweep < 60; sweep++) {
+      let off = 0;
+      for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) {
+        let a = 0, b = 0, c = 0; for (let i = 0; i < m; i++) { a += U[i][p] ** 2; b += U[i][q] ** 2; c += U[i][p] * U[i][q]; }
+        if (Math.abs(c) <= 1e-300 || Math.abs(c) < 1e-15 * Math.sqrt(a * b)) continue;
+        off = Math.max(off, Math.abs(c) / Math.sqrt(a * b));
+        const z = (b - a) / (2 * c), t = Math.sign(z || 1) / (Math.abs(z) + Math.sqrt(1 + z * z)), cs = 1 / Math.sqrt(1 + t * t), sn = cs * t;
+        for (let i = 0; i < m; i++) { const x = U[i][p], y = U[i][q]; U[i][p] = cs * x - sn * y; U[i][q] = sn * x + cs * y; }
+      }
+      if (off < 1e-15) break;
+    }
+    const s = []; for (let j = 0; j < n; j++) { let a = 0; for (let i = 0; i < m; i++) a += U[i][j] ** 2; s.push(Math.sqrt(a)); }
+    return s.sort((a, b) => b - a);
+  },
+  gauss(A, b) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let i = 0; i < n; i++) {
+      let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[p][i])) p = r;
+      [M[i], M[p]] = [M[p], M[i]];
+      for (let r = i + 1; r < n; r++) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const x = new Array(n); for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let k = i + 1; k < n; k++) s -= M[i][k] * x[k]; x[i] = s / M[i][i]; }
+    return x;
+  },
+  rng(seed = 1) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; },
+  randn(r) { let u = 0, v = 0; while (u === 0) u = r(); while (v === 0) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },
+  /** 체비쇼프 계수: 체비쇼프–가우스 점 N개 */
+  cheb(f, N = 256) {
+    const fx = []; for (let j = 0; j < N; j++) fx.push(f(Math.cos((Math.PI * (j + 0.5)) / N)));
+    const a = [];
+    for (let k = 0; k < N; k++) { let s = 0; for (let j = 0; j < N; j++) s += fx[j] * Math.cos((Math.PI * k * (j + 0.5)) / N); a.push((2 * s) / N); }
+    a[0] /= 2; return a;
+  },
+  chebval(a, x) { let b1 = 0, b2 = 0; for (let k = a.length - 1; k >= 1; k--) { const t = 2 * x * b1 - b2 + a[k]; b2 = b1; b1 = t; } return x * b1 - b2 + a[0]; },
+  legend(C, items) { return items; },
+};
+
+/* ================================================================ 1. 사영 */
+(function () {
+  const xs = [0, 1, 2], Y0 = [1, 3, 2];
+  const a1 = [1, 1, 1], a2 = [0, 1, 2], nrm = [1, -2, 1];
+  let mode = "lsq", yaw = -0.75, pitch = 0.42;
+  const dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const lsq = (y) => AP.qr(AP.vander(xs, 1), y);
+  const S = { y: Y0.slice(), c: lsq(Y0) };
+  const g0 = MB.range("ap-pj-c0", (v) => v.toFixed(2), (v) => { if (mode === "lsq") seg.set("man", false), (mode = "man"); S.c[0] = v; update(); });
+  const g1 = MB.range("ap-pj-c1", (v) => v.toFixed(2), (v) => { if (mode === "lsq") seg.set("man", false), (mode = "man"); S.c[1] = v; update(); });
+  const pl = MB.plane("#ap-pj-cv", {
+    x: [-0.6, 2.8], y: [-1, 5], aspect: 0.8, minHeight: 260, maxHeight: 420,
+    points: Y0.map((y, i) => ({ x: xs[i], y, lock: "x", color: MB.color("accent-2") })),
+    draw(P, api) {
+      const C = P.P, c = S.c;
+      const ys = api.points.map((p) => p.y);
+      P.curve((x) => c[0] + c[1] * x, { color: C.accent, width: 2.6 });
+      ys.forEach((y, i) => {
+        const yh = c[0] + c[1] * xs[i], r = y - yh, side = Math.abs(P.Y(yh) - P.Y(y));
+        const ctx = P.ctx; ctx.save(); ctx.globalAlpha = 0.16; ctx.fillStyle = C.bad;
+        ctx.fillRect(P.X(xs[i]), Math.min(P.Y(y), P.Y(yh)), side, side); ctx.restore();
+        P.line(xs[i], yh, xs[i], y, { color: C.bad, width: 2.4 });
+        P.text("r" + "₁₂₃"[i] + " = " + AP.num(r, 2), xs[i], y, { color: C.dim, dx: -8, dy: r >= 0 ? -16 : 16, align: "right", size: 12 });
+      });
+    },
+    onDrag() { S.y = pl.points.map((p) => p.y); if (mode === "lsq") S.c = lsq(S.y); update(); },
+  });
+  const cv3 = MB.canvas("#ap-pj-cv3", (ctx, w, h) => {
+    const C = MB.palette(), cen = [1.6, 1.6, 1.6], s = Math.min(w, h) / 8.2;
+    const prj = (v) => {
+      const x = v[0] - cen[0], y = v[1] - cen[1], z = v[2] - cen[2];
+      const xr = x * Math.cos(yaw) - y * Math.sin(yaw), yr = x * Math.sin(yaw) + y * Math.cos(yaw);
+      return [w / 2 + s * xr, h / 2 - s * (z * Math.cos(pitch) - yr * Math.sin(pitch))];
+    };
+    const ln = (u, v, col, wd, dash) => { const p = prj(u), q = prj(v); ctx.strokeStyle = col; ctx.lineWidth = wd || 1.5; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); ctx.setLineDash([]); };
+    const arrow = (u, v, col, wd, label) => {
+      ln(u, v, col, wd); const p = prj(u), q = prj(v), L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 4) return;
+      const ux = (q[0] - p[0]) / L, uy = (q[1] - p[1]) / L, hd = 10;
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(q[0] - ux * hd - uy * 4.5, q[1] - uy * hd + ux * 4.5); ctx.lineTo(q[0] - ux * hd + uy * 4.5, q[1] - uy * hd - ux * 4.5); ctx.closePath(); ctx.fill();
+      if (label) { ctx.font = "600 13px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.fillText(label, q[0] + 6, q[1] - 6); }
+    };
+    const comb = (a, b) => [a * a1[0] + b * a2[0], a * a1[1] + b * a2[1], a * a1[2] + b * a2[2]];
+    // 평면 조각
+    const corners = [comb(-1, -1), comb(4, -1), comb(4, 2.5), comb(-1, 2.5)].map(prj);
+    ctx.fillStyle = C.accent; ctx.globalAlpha = 0.09; ctx.beginPath(); corners.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    for (let a = -1; a <= 4; a++) ln(comb(a, -1), comb(a, 2.5), C.grid, 1);
+    for (let b = -1; b <= 2.5; b += 0.5) ln(comb(-1, b), comb(4, b), C.grid, 1);
+    // 축
+    const O = [0, 0, 0];
+    ["y₁", "y₂", "y₃"].forEach((lb, i) => { const e = [0, 0, 0]; e[i] = 4.6; ln(O, e, C.axis, 1.2); const q = prj(e); ctx.fillStyle = C.dim; ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.fillText(lb, q[0] + 4, q[1]); });
+    arrow(O, a1, C.faint, 2, "a₁"); arrow(O, a2, C.faint, 2, "a₂");
+    const y = S.y, p = comb(S.c[0], S.c[1]), r = [y[0] - p[0], y[1] - p[1], y[2] - p[2]];
+    arrow(O, y, C.accent2, 2.6, "y");
+    arrow(O, p, C.accent, 2.6, "Ac");
+    ln(p, y, C.bad, 2.6, [6, 4]);
+    const rn = Math.hypot(...r);
+    if (rn > 1e-6) {
+      const ang = Math.asin(Math.min(1, Math.abs(dot(r, nrm)) / (rn * Math.hypot(...nrm))));
+      if (ang > Math.PI / 2 - 0.01) {
+        let u2 = [-p[0], -p[1], -p[2]]; const k = dot(u2, r) / (rn * rn); u2 = u2.map((v, i) => v - k * r[i]); const n2 = Math.hypot(...u2) || 1;
+        const s1 = r.map((v) => (0.28 * v) / rn), s2 = u2.map((v) => (0.28 * v) / n2);
+        const A = p.map((v, i) => v + s1[i]), B = p.map((v, i) => v + s1[i] + s2[i]), D = p.map((v, i) => v + s2[i]);
+        ln(A, B, C.text, 1.4); ln(B, D, C.text, 1.4);
+      }
+    }
+  }, { aspect: 0.8, minHeight: 260, maxHeight: 420 });
+  // 회전
+  (function () {
+    const el = cv3.canvas; let drag = null; el.style.touchAction = "none"; el.style.cursor = "grab";
+    el.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY, yaw, pitch]; el.setPointerCapture(e.pointerId); });
+    el.addEventListener("pointermove", (e) => { if (!drag) return; yaw = drag[2] + (e.clientX - drag[0]) * 0.01; pitch = MB.clamp(drag[3] + (e.clientY - drag[1]) * 0.01, -1.3, 1.3); cv3.redraw(); });
+    const up = () => { drag = null; }; el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  })();
+  const msg = document.getElementById("ap-pj-msg");
+  function update() {
+    const c = S.c, y = S.y, r = y.map((v, i) => v - c[0] - c[1] * xs[i]);
+    const ss = r.reduce((s, v) => s + v * v, 0), atr = [dot(a1, r), dot(a2, r)];
+    const best = lsq(y), rb = y.map((v, i) => v - best[0] - best[1] * xs[i]), ssb = rb.reduce((s, v) => s + v * v, 0);
+    const rn = Math.sqrt(ss), ang = rn > 1e-9 ? (Math.asin(Math.min(1, Math.abs(dot(r, nrm)) / (rn * Math.hypot(...nrm)))) * 180) / Math.PI : NaN;
+    MB.stat("ap-pj-c", AP.num(c[0], 3) + ", " + AP.num(c[1], 3));
+    MB.stat("ap-pj-ss", AP.num(ss, 4));
+    MB.stat("ap-pj-atr", "(" + AP.num(atr[0], 3) + ", " + AP.num(atr[1], 3) + ")");
+    MB.stat("ap-pj-ang", isFinite(ang) ? AP.num(ang, 1) + "°" : "r = 0");
+    if (ssb < 1e-10) { msg.className = "ap-msg ok"; msg.innerHTML = "세 점이 한 직선 위에 있습니다. y가 열공간(평면) 안에 있어 잔차가 0입니다."; }
+    else if (mode === "lsq" || ss - ssb < 1e-6) { msg.className = "ap-msg ok"; msg.innerHTML = `최소제곱 해: ‖r‖² = ${AP.num(ssb, 4)}. Aᵀr = 0이고 잔차가 평면에 수직(90°)입니다.`; }
+    else { msg.className = "ap-msg"; msg.innerHTML = `지금 직선의 ‖r‖²은 최소값 <b>${AP.num(ssb, 4)}</b>보다 <b>${AP.num(ss - ssb, 4)}</b> 큽니다. 피타고라스: ‖r‖² = ‖r̂‖² + ‖A(c − ĉ)‖².`; }
+    pl.redraw(); cv3.redraw();
+  }
+  const seg = MB.seg("ap-pj-mode", (v) => { mode = v; if (v === "lsq") { S.c = lsq(S.y); g0.set(S.c[0], false); g1.set(S.c[1], false); } update(); });
+  document.getElementById("ap-pj-snap").addEventListener("click", () => { seg.set("lsq"); });
+  document.getElementById("ap-pj-reset").addEventListener("click", () => { pl.points.forEach((p, i) => (p.y = Y0[i])); S.y = Y0.slice(); seg.set("lsq"); });
+  g0.set(S.c[0], false); g1.set(S.c[1], false);
+  update();
+})();
+
+/* ================================================================ 2. 정규 방정식 vs QR */
+(function () {
+  let basis = "m01", m = 50, nSel = 10, data = null;
+  const EPS = 2.220446049250313e-16, NMAX = 18;
+  const compute = () => {
+    data = [];
+    for (let n = 1; n <= NMAX; n++) {
+      const x = [...Array(m)].map((_, i) => i / (m - 1));
+      const A = x.map((t) => (basis === "m01" ? AP.vander([t], n)[0] : basis === "m11" ? AP.vander([2 * t - 1], n)[0] : AP.chebRow(2 * t - 1, n)));
+      const ones = new Array(n + 1).fill(1), y = basis === "cheb" ? A.map((row) => row.reduce((s, v) => s + v, 0)) : x.map((t) => AP.polyval(ones, basis === "m01" ? t : 2 * t - 1));
+      const s = AP.sv(A), k = s[0] / s[s.length - 1];
+      const cn = AP.normal(A, y), cq = AP.qr(A, y);
+      const err = (c) => (c && c.every(isFinite) ? Math.max(1e-17, ...c.map((v) => Math.abs(v - 1))) : null);
+      data.push({ n, k, en: err(cn), eq: err(cq) });
+    }
+  };
+  compute();
+  const cv = MB.canvas("#ap-qr-cv", (ctx) => {
+    const C = MB.palette(), cap = (v) => Math.min(v, 1e2);
+    const pts = [];
+    data.forEach((d) => { if (d.en == null) pts.push({ x: d.n, y: 1e2, color: C.bad, r: 4 }); });
+    const cur = data[nSel - 1];
+    pts.push({ x: cur.n, y: cur.eq, color: C.accent, r: 6 });
+    if (cur.en != null) pts.push({ x: cur.n, y: cur.en, color: C.bad, r: 6 });
+    MB.chart(ctx, null, {
+      x: [1, NMAX], y: [1e-17, 1e4], logY: true, xLabel: "다항식 차수 n", yLabel: "계수 오차",
+      xTicks: [1, 2, 4, 6, 8, 10, 12, 14, 16, 18], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [
+        { data: data.map((d) => [d.n, cap(d.k * EPS)]), color: C.faint, width: 1.4, dash: [5, 4] },
+        { data: data.map((d) => [d.n, cap(d.k * d.k * EPS)]), color: C.warn, width: 1.4, dash: [5, 4] },
+        { data: data.filter((d) => d.en != null).map((d) => [d.n, d.en]), color: C.bad, width: 2.4 },
+        { data: data.map((d) => [d.n, d.eq]), color: C.accent, width: 2.4 },
+      ],
+      vlines: [{ x: nSel, color: C.faint }],
+      hlines: [{ y: 1e2, color: C.faint, label: "이 줄의 점 = 촐레스키 실패" }],
+      points: pts,
+    });
+  }, { aspect: 0.62, minHeight: 260 });
+  const msg = document.getElementById("ap-qr-msg");
+  const update = () => {
+    const d = data[nSel - 1];
+    MB.stat("ap-qr-k", AP.sci(d.k, 2)); MB.stat("ap-qr-k2", AP.sci(d.k * d.k, 2));
+    MB.stat("ap-qr-en", d.en == null ? "실패" : AP.sci(d.en, 2)); MB.stat("ap-qr-eq", AP.sci(d.eq, 2));
+    const lost = (v) => (v == null ? 16 : Math.max(0, Math.min(16, -Math.log10(v))));
+    msg.className = "ap-msg";
+    msg.innerHTML = d.en == null
+      ? `n = ${nSel}: AᵀA가 배정밀도에서 양정치가 아니게 되어 <b>촐레스키가 실패</b>했습니다(κ(AᵀA) ≈ ${AP.sci(d.k * d.k, 1)}). QR은 여전히 약 <b>${AP.num(lost(d.eq), 0)}자리</b>를 맞춥니다.`
+      : `n = ${nSel}: 정규 방정식은 약 <b>${AP.num(lost(d.en), 0)}자리</b>, QR은 약 <b>${AP.num(lost(d.eq), 0)}자리</b>를 맞춥니다.`;
+    cv.redraw();
+  };
+  MB.range("ap-qr-n", (v) => String(v), (v) => { nSel = v; update(); });
+  MB.range("ap-qr-m", (v) => String(v), (v) => { m = v; compute(); update(); });
+  MB.seg("ap-qr-basis", (v) => { basis = v; compute(); update(); });
+  update();
+})();
+
+/* ================================================================ 3. 차수와 과적합 */
+(function () {
+  const F = {
+    sin: { f: (x) => Math.sin(2 * Math.PI * x), y: [-1.9, 1.9] },
+    exp: { f: (x) => Math.exp(2 * x) / 4, y: [-0.7, 2.6] },
+    bump: { f: (x) => 1 / (1 + 25 * (x - 0.5) ** 2), y: [-0.7, 1.7] },
+  };
+  const NT = 12;
+  let fn = F.sin, sigma = 0.2, seed = 7, deg = 3, showTrue = true, tr = [], va = [], curve = [], fits = [];
+  const gen = () => {
+    const r = AP.rng(seed); tr = []; va = [];
+    for (let i = 0; i < NT; i++) { const x = (i + 0.5) / NT + ((r() - 0.5) * 0.6) / NT; tr.push([x, fn.f(x) + sigma * AP.randn(r)]); }
+    for (let i = 0; i < 40; i++) { const x = r(); va.push([x, fn.f(x) + sigma * AP.randn(r)]); }
+    fits = [];
+    for (let n = 0; n < NT; n++) {
+      const c = AP.qr(AP.vander(tr.map((p) => 2 * p[0] - 1), n), tr.map((p) => p[1]));
+      const rm = (d) => Math.sqrt(d.reduce((s, [x, y]) => s + (y - AP.polyval(c, 2 * x - 1)) ** 2, 0) / d.length);
+      fits.push({ c, tr: rm(tr), va: rm(va) });
+    }
+  };
+  gen();
+  const pl = MB.plane("#ap-dg-cv", {
+    x: [-0.03, 1.03], y: fn.y, aspect: 0.46, minHeight: 220, gridStep: 0.5,
+    draw(P) {
+      const C = P.P;
+      if (showTrue) P.curve(fn.f, { color: C.dim, width: 1.6, dash: [6, 4] });
+      va.forEach(([x, y]) => P.dot(x, y, { r: 2.6, color: C.faint }));
+      const c = fits[deg].c;
+      P.curve((x) => AP.polyval(c, 2 * x - 1), { color: C.accent, width: 2.6, n: 500 });
+      tr.forEach(([x, y]) => P.dot(x, y, { r: 4.5, color: C.text }));
+    },
+  });
+  const cv2 = MB.canvas("#ap-dg-cv2", (ctx) => {
+    const C = MB.palette(), fl = (v) => Math.max(v, 1.2e-3);
+    MB.chart(ctx, null, {
+      x: [0, NT - 1], y: [1e-3, 10], logY: true, xLabel: "다항식 차수", yLabel: "RMS",
+      xTicks: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      series: [{ data: fits.map((f, n) => [n, fl(f.tr)]), color: C.accent, width: 2.4 }, { data: fits.map((f, n) => [n, fl(f.va)]), color: C.bad, width: 2.4 }],
+      hlines: [{ y: sigma, color: C.faint, label: "잡음 σ" }],
+      vlines: [{ x: deg, color: C.faint }],
+      points: [{ x: deg, y: fl(fits[deg].tr), color: C.accent, r: 5 }, { x: deg, y: fl(fits[deg].va), color: C.bad, r: 5 }],
+    });
+  }, { aspect: 0.36, minHeight: 200, maxHeight: 300 });
+  const msg = document.getElementById("ap-dg-msg");
+  const update = () => {
+    const f = fits[deg]; let best = 0; fits.forEach((g, n) => { if (g.va < fits[best].va) best = n; });
+    MB.stat("ap-dg-tr", AP.num(f.tr, 4)); MB.stat("ap-dg-va", AP.num(f.va, 4)); MB.stat("ap-dg-best", best + "차 (" + AP.num(fits[best].va, 3) + ")"); MB.stat("ap-dg-sig", AP.num(sigma, 2));
+    if (deg < best) { msg.className = "ap-msg"; msg.innerHTML = `${deg}차: 학습·검증 오차가 모두 큽니다. 모형이 추세를 다 표현하지 못하는 <b>과소적합</b>입니다.`; }
+    else if (deg === best) { msg.className = "ap-msg ok"; msg.innerHTML = `${deg}차: 검증 오차가 가장 작습니다. 학습 오차 ${AP.num(f.tr, 3)}가 잡음 수준 ${AP.num(sigma, 2)} 근처입니다.`; }
+    else { msg.className = f.tr < sigma * 0.5 ? "ap-msg bad" : "ap-msg"; msg.innerHTML = `${deg}차: 학습 오차는 ${AP.num(f.tr, 3)}로 작아졌지만 검증 오차는 ${AP.num(f.va, 3)}입니다. ${f.tr < sigma * 0.5 ? "학습 오차가 σ보다 훨씬 작습니다. <b>과적합</b>입니다." : "최적 차수보다 높습니다."}`; }
+    pl.redraw(); cv2.redraw();
+  };
+  const gS = MB.range("ap-dg-s", (v) => v.toFixed(2), (v) => { sigma = v; gen(); update(); });
+  const gN = MB.range("ap-dg-n", (v) => String(v), (v) => { deg = v; update(); });
+  MB.check("ap-dg-true", (v) => { showTrue = v; pl.redraw(); });
+  const sel = document.getElementById("ap-dg-f");
+  sel.addEventListener("change", () => { fn = F[sel.value]; pl.view({ y: fn.y }); gen(); update(); });
+  document.getElementById("ap-dg-new").addEventListener("click", () => { seed = (seed * 7919 + 13) % 100000 + 1; gen(); update(); });
+  document.getElementById("ap-dg-reset").addEventListener("click", () => { seed = 7; sel.value = "sin"; fn = F.sin; pl.view({ y: fn.y }); gS.set(0.2, false); sigma = 0.2; gN.set(3, false); deg = 3; gen(); update(); });
+  update();
+})();
+
+/* ================================================================ 4. 강건 회귀 */
+(function () {
+  const X0 = [0, 1, 2, 3, 4, 5], Y0 = [1.1, 1.4, 2.1, 2.4, 3.1, 8];
+  let delta = 0.3, show = { ls: true, hb: true, l1: true }, sq = false, R = null;
+  const fit = (pts) => {
+    const A = pts.map((p) => [1, p.x]), y = pts.map((p) => p.y), ls = AP.qr(A, y);
+    const irls = (wfn) => {
+      let c = ls.slice(), it = 0, w = pts.map(() => 1);
+      for (it = 1; it <= 100; it++) {
+        const r = pts.map((p, i) => y[i] - c[0] - c[1] * p.x); w = r.map(wfn); const sw = w.map(Math.sqrt);
+        const cn = AP.qr(A.map((row, i) => row.map((v) => v * sw[i])), y.map((v, i) => v * sw[i]));
+        const ch = Math.abs(cn[0] - c[0]) + Math.abs(cn[1] - c[1]); c = cn; if (ch < 1e-10) break;
+      }
+      return { c, it: Math.min(it, 100), w };
+    };
+    return { ls, hb: irls((r) => (Math.abs(r) <= delta ? 1 : delta / Math.abs(r))), l1: irls((r) => 1 / Math.max(Math.abs(r), 1e-6)) };
+  };
+  const pl = MB.plane("#ap-rb-cv", {
+    x: [-0.6, 5.6], y: [-1, 9.5], aspect: 0.66, minHeight: 260,
+    points: X0.map((x, i) => ({ x, y: Y0[i] })),
+    draw(P, api) {
+      const C = P.P;
+      R = fit(api.points);
+      if (sq) api.points.forEach((p) => { const yh = R.ls[0] + R.ls[1] * p.x, side = Math.abs(P.Y(yh) - P.Y(p.y)); P.ctx.save(); P.ctx.globalAlpha = 0.13; P.ctx.fillStyle = C.bad; P.ctx.fillRect(P.X(p.x), Math.min(P.Y(p.y), P.Y(yh)), side, side); P.ctx.restore(); P.line(p.x, yh, p.x, p.y, { color: C.bad, width: 1.4, dash: [3, 3] }); });
+      if (show.ls) P.curve((x) => R.ls[0] + R.ls[1] * x, { color: C.bad, width: 2.4 });
+      if (show.l1) P.curve((x) => R.l1.c[0] + R.l1.c[1] * x, { color: C.accent2, width: 2.4, dash: [7, 4] });
+      if (show.hb) {
+        P.curve((x) => R.hb.c[0] + R.hb.c[1] * x, { color: C.accent, width: 2.8 });
+        api.points.forEach((p, i) => { P.ctx.save(); P.ctx.strokeStyle = C.accent; P.ctx.lineWidth = 2; P.ctx.beginPath(); P.ctx.arc(P.X(p.x), P.Y(p.y), 9 + 9 * R.hb.w[i], 0, Math.PI * 2); P.ctx.stroke(); P.ctx.restore(); P.text("w=" + AP.num(R.hb.w[i], 2), p.x, p.y, { color: C.dim, size: 11, dx: 12, dy: 20 }); });
+      }
+    },
+    onDrag() { update(); },
+  });
+  const fmt = (c) => AP.num(c[0], 3) + (c[1] < 0 ? " − " : " + ") + AP.num(Math.abs(c[1]), 3) + "x";
+  function update() {
+    pl.redraw();
+    MB.stat("ap-rb-o0", fmt(R.ls)); MB.stat("ap-rb-o1", fmt(R.hb.c)); MB.stat("ap-rb-o2", fmt(R.l1.c));
+    MB.stat("ap-rb-it", "후버 " + R.hb.it + " · L¹ " + R.l1.it);
+  }
+  MB.range("ap-rb-d", (v) => v.toFixed(2), (v) => { delta = v; update(); });
+  MB.check("ap-rb-ls", (v) => { show.ls = v; update(); });
+  MB.check("ap-rb-hb", (v) => { show.hb = v; update(); });
+  MB.check("ap-rb-l1", (v) => { show.l1 = v; update(); });
+  MB.check("ap-rb-sq", (v) => { sq = v; update(); });
+  document.getElementById("ap-rb-reset").addEventListener("click", () => { pl.points.forEach((p, i) => { p.x = X0[i]; p.y = Y0[i]; }); update(); });
+  document.getElementById("ap-rb-clean").addEventListener("click", () => { pl.points.forEach((p, i) => { p.x = X0[i]; p.y = i === 5 ? 3.6 : Y0[i]; }); update(); });
+  update();
+})();
+
+/* ================================================================ 5. 르장드르 · 그람–슈미트 */
+(function () {
+  const FN = { exp: Math.exp, abs: Math.abs, runge: (x) => 1 / (1 + 25 * x * x), sin: (x) => Math.sin(3 * x), step: (x) => (x > 0 ? 1 : x < 0 ? -1 : 0) };
+  const G = 2000, xs = [], wq = [];
+  for (let i = 0; i <= G; i++) { xs.push(-1 + (2 * i) / G); wq.push(((i === 0 || i === G ? 1 : i % 2 ? 4 : 2) * (2 / G)) / 3); }
+  const ip = (u, v) => { let s = 0; for (let i = 0; i <= G; i++) s += wq[i] * u[i] * v[i]; return s; };
+  const NMAX = 12;
+  // 르장드르 값 (점화식)
+  const PL = [xs.map(() => 1), xs.slice()];
+  for (let k = 1; k < NMAX; k++) PL.push(xs.map((x, i) => ((2 * k + 1) * x * PL[k][i] - k * PL[k - 1][i]) / (k + 1)));
+  // 그람–슈미트 (단항식 계수와 격자 값)
+  const GS = [];
+  for (let n = 0; n <= NMAX; n++) {
+    const mono = xs.map((x) => Math.pow(x, n)); const coef = new Array(n + 1).fill(0); coef[n] = 1;
+    const vals = mono.slice(), proj = xs.map(() => 0);
+    for (let j = 0; j < n; j++) {
+      const a = ip(mono, GS[j].vals) / ip(GS[j].vals, GS[j].vals);
+      for (let i = 0; i <= G; i++) { vals[i] -= a * GS[j].vals[i]; proj[i] += a * GS[j].vals[i]; }
+      GS[j].coef.forEach((v, k) => (coef[k] -= a * v));
+    }
+    GS.push({ vals, coef, proj, mono });
+  }
+  let mode = "fit", fkey = "exp", n = 3, taylor = false, R = null;
+  const compute = () => {
+    const f = FN[fkey], fv = xs.map(f), c = [];
+    for (let k = 0; k <= n; k++) c.push(((2 * k + 1) / 2) * ip(fv, PL[k]));
+    const pv = xs.map((_, i) => c.reduce((s, ck, k) => s + ck * PL[k][i], 0));
+    const ev = fv.map((v, i) => v - pv[i]);
+    let mx = 0; ev.forEach((e) => (mx = Math.max(mx, Math.abs(e))));
+    const tv = xs.map((x) => { let s = 0, t = 1; for (let k = 0; k <= n; k++) { s += t; t *= x / (k + 1); } return s; });
+    R = { fv, c, pv, ev, l2: Math.sqrt(ip(ev, ev)), mx, tv, tmx: Math.max(...xs.map((x, i) => Math.abs(Math.exp(x) - tv[i]))) };
+  };
+  const yr = () => {
+    if (mode === "gs") return [-1.3, 1.3];
+    const lo = Math.min(...R.fv), hi = Math.max(...R.fv), pad = (hi - lo) * 0.25 + 0.1; return [lo - pad, hi + pad];
+  };
+  const curveArr = (P, arr, o) => { const pts = []; for (let i = 0; i <= G; i += 4) pts.push([xs[i], arr[i]]); P.poly(pts, Object.assign({ close: false }, o)); };
+  compute();
+  const pl = MB.plane("#ap-lg-cv", {
+    x: [-1.08, 1.08], y: yr(), aspect: 0.46, minHeight: 220, gridStep: 0.5,
+    draw(P) {
+      const C = P.P;
+      if (mode === "fit") {
+        curveArr(P, R.fv, { color: C.text, width: 2.2 });
+        if (taylor && fkey === "exp") curveArr(P, R.tv, { color: C.warn, width: 2, dash: [6, 4] });
+        curveArr(P, R.pv, { color: C.accent, width: 2.6 });
+      } else {
+        const g = GS[n];
+        for (let j = 0; j < n; j++) curveArr(P, GS[j].vals, { color: C.faint, width: 1.2 });
+        curveArr(P, g.mono, { color: C.dim, width: 1.8, dash: [6, 4] });
+        if (n > 0) curveArr(P, g.proj, { color: C.warn, width: 1.8, dash: [3, 3] });
+        curveArr(P, g.vals, { color: C.accent, width: 2.8 });
+      }
+    },
+  });
+  const cv2 = MB.canvas("#ap-lg-cv2", (ctx) => {
+    const C = MB.palette();
+    if (mode === "fit") {
+      const d = [], t = []; for (let i = 0; i <= G; i += 4) { d.push([xs[i], R.ev[i]]); t.push([xs[i], Math.exp(xs[i]) - R.tv[i]]); }
+      let M = R.mx; if (taylor && fkey === "exp") M = Math.max(M, R.tmx); M = M * 1.15 || 1;
+      const series = [{ data: d, color: C.accent, width: 2.2 }];
+      if (taylor && fkey === "exp") series.push({ data: t, color: C.warn, width: 1.8, dash: [6, 4] });
+      MB.chart(ctx, null, { x: [-1, 1], y: [-M, M], series, hlines: [{ y: 0, color: C.axis, dash: [] }], xLabel: "x" });
+    } else {
+      const series = []; for (let k = 0; k <= n; k++) { const d = []; for (let i = 0; i <= G; i += 8) d.push([xs[i], PL[k] ? PL[k][i] : 0]); series.push({ data: d, color: k === n ? C.accent : C.faint, width: k === n ? 2.4 : 1.2 }); }
+      MB.chart(ctx, null, { x: [-1, 1], y: [-1.1, 1.1], series, xLabel: "x", yLabel: "Pₖ(x)" });
+    }
+  }, { aspect: 0.32, minHeight: 190, maxHeight: 280 });
+  const msg = document.getElementById("ap-lg-msg");
+  const polyStr = (coef) => {
+    const parts = []; for (let k = coef.length - 1; k >= 0; k--) { const v = coef[k]; if (Math.abs(v) < 1e-9) continue; const a = Math.abs(v), sg = v < 0 ? " − " : parts.length ? " + " : "";
+      const mono = k === 0 ? "" : k === 1 ? "x" : "x<sup>" + k + "</sup>"; parts.push(sg + (a === 1 && k > 0 ? "" : AP.num(a, 4)) + mono); }
+    return parts.join("") || "0";
+  };
+  const update = () => {
+    compute(); pl.view({ y: yr() }); cv2.redraw();
+    document.getElementById("ap-lg-cap").textContent = mode === "fit" ? "f와 르장드르 근사 pₙ" : "xⁿ(점선) − 사영(주황) = πₙ(초록)";
+    document.getElementById("ap-lg-cap2").textContent = mode === "fit" ? "오차 f − pₙ" : "르장드르 다항식 P₀ … Pₙ";
+    if (mode === "fit") {
+      MB.stat("ap-lg-k1", "계수 c₀ … c" + (n <= 9 ? "₀₁₂₃₄₅₆₇₈₉"[n] : "ₙ"));
+      MB.stat("ap-lg-o1", R.c.slice(0, 6).map((v) => AP.num(v, 4)).join(", ") + (n > 5 ? ", …" : ""));
+      MB.stat("ap-lg-k2", "L² 오차 ‖f − pₙ‖"); MB.stat("ap-lg-o2", AP.sci(R.l2, 3));
+      MB.stat("ap-lg-k3", "최대 오차"); MB.stat("ap-lg-o3", AP.sci(R.mx, 3) + (taylor && fkey === "exp" ? " (테일러 " + AP.sci(R.tmx, 3) + ")" : ""));
+      msg.className = "ap-msg"; msg.innerHTML = `차수를 올려도 앞의 계수는 바뀌지 않습니다. cₖ = (2k + 1)/2 · ∫ f Pₖ dx를 하나씩 적분할 뿐입니다.`;
+    } else {
+      const g = GS[n]; let orth = 0; for (let j = 0; j < n; j++) orth = Math.max(orth, Math.abs(ip(g.vals, GS[j].vals)));
+      MB.stat("ap-lg-k1", "π" + (n <= 9 ? "₀₁₂₃₄₅₆₇₈₉"[n] : "ₙ") + "(x)"); MB.stat("ap-lg-o1", polyStr(g.coef));
+      MB.stat("ap-lg-k2", "max<sub>j&lt;n</sub> |⟨πₙ, πⱼ⟩|"); MB.stat("ap-lg-o2", n ? AP.sci(orth, 1) : "—");
+      MB.stat("ap-lg-k3", "‖πₙ‖²"); MB.stat("ap-lg-o3", AP.sci(ip(g.vals, g.vals), 4));
+      msg.className = "ap-msg"; msg.innerHTML = n ? `πₙ = xⁿ − Σ<sub>j&lt;n</sub> (⟨xⁿ, πⱼ⟩/⟨πⱼ, πⱼ⟩) πⱼ. 앞의 모든 πⱼ와의 내적이 반올림 오차 수준으로 0입니다.` : `π₀ = 1에서 출발합니다. n을 올려 보세요.`;
+    }
+  };
+  MB.seg("ap-lg-mode", (v) => { mode = v; update(); });
+  MB.range("ap-lg-n", (v) => String(v), (v) => { n = v; update(); });
+  MB.check("ap-lg-taylor", (v) => { taylor = v; update(); });
+  document.getElementById("ap-lg-f").addEventListener("change", (e) => { fkey = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 6. 체비쇼프 계수 */
+(function () {
+  const FN = {
+    exp: { f: Math.exp, rate: "기하급수보다 빠름 (전해석)" },
+    runge: { f: (x) => 1 / (1 + 25 * x * x), rate: "기하급수 ρ⁻ᵏ, ρ ≈ 1.22" },
+    cos: { f: (x) => Math.cos(10 * x), rate: "k > 10 뒤 초기하급수" },
+    abs: { f: Math.abs, rate: "대수적 k⁻²" },
+    step: { f: (x) => (x > 0 ? 1 : x < 0 ? -1 : 0), rate: "대수적 k⁻¹" },
+    absx3: { f: (x) => Math.abs(x) ** 3, rate: "대수적 k⁻⁴" },
+  };
+  const cache = {};
+  let key = "exp", n = 6, showErr = false, R = null;
+  const coefs = (k) => (cache[k] || (cache[k] = AP.cheb(FN[k].f, 256)));
+  const compute = () => {
+    const a = coefs(key), tr = a.slice(0, n + 1), f = FN[key].f; let mx = 0; const err = [];
+    for (let i = 0; i <= 1000; i++) { const x = -1 + i / 500, e = f(x) - AP.chebval(tr, x); err.push([x, e]); mx = Math.max(mx, Math.abs(e)); }
+    let tail = 0; for (let k = n + 1; k < a.length; k++) tail += Math.abs(a[k]);
+    R = { a, tr, mx, err, tail };
+  };
+  compute();
+  const pl = MB.plane("#ap-cc-cv", {
+    x: [-1.08, 1.08], y: [-1.6, 3.1], aspect: 0.44, minHeight: 210, gridStep: 0.5,
+    draw(P) {
+      const C = P.P, f = FN[key].f;
+      P.curve(f, { color: C.text, width: 2.2, n: 800 });
+      P.curve((x) => AP.chebval(R.tr, x), { color: C.accent, width: 2.4, n: 800 });
+      if (showErr && R.mx > 0) { const sc = 0.8 / R.mx; P.curve((x) => -1.0 + sc * (f(x) - AP.chebval(R.tr, x)) * 0.6, { color: C.warn, width: 1.6, n: 800 }); P.text("오차 × " + (0.48 / R.mx).toExponential(1).replace("e+", "e"), -1.02, -1.45, { color: C.warn, size: 11 }); }
+    },
+  });
+  const cv2 = MB.canvas("#ap-cc-cv2", (ctx, w, h) => {
+    const C = MB.palette(), K = 64;
+    const ch = MB.chart(ctx, null, { x: [-1, K + 1], y: [1e-17, 10], logY: true, xLabel: "k", yLabel: "|aₖ|", xTicks: [0, 8, 16, 24, 32, 40, 48, 56, 64], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], hlines: [{ y: 2.2e-16, color: C.faint, label: "ε" }], vlines: [{ x: n + 0.5, color: C.warn, dash: [4, 3] }] });
+    const bw = Math.max(1.5, (ch.box.w / (K + 2)) * 0.7);
+    for (let k = 0; k <= K; k++) {
+      const v = Math.abs(R.a[k]); if (!(v > 1e-17)) continue;
+      ctx.fillStyle = k <= n ? C.accent : C.faint;
+      const y = ch.Y(Math.min(v, 10)); ctx.fillRect(ch.X(k) - bw / 2, y, bw, ch.box.y + ch.box.h - y);
+    }
+  }, { aspect: 0.36, minHeight: 200, maxHeight: 300 });
+  const update = () => {
+    compute(); pl.redraw(); cv2.redraw();
+    MB.stat("ap-cc-e", AP.sci(R.mx, 2)); MB.stat("ap-cc-a", AP.sci(Math.abs(R.a[n + 1]), 2)); MB.stat("ap-cc-s", AP.sci(R.tail, 2)); MB.stat("ap-cc-rate", FN[key].rate);
+  };
+  MB.range("ap-cc-n", (v) => String(v), (v) => { n = v; update(); });
+  MB.check("ap-cc-err", (v) => { showErr = v; update(); });
+  document.getElementById("ap-cc-f").addEventListener("change", (e) => { key = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 7. 레메즈 */
+(function () {
+  const FN = { exp: Math.exp, sin: (x) => Math.sin(4 * x), abs: Math.abs, runge: (x) => 1 / (1 + 25 * x * x), log: (x) => Math.log(x + 1.5) };
+  const G = 3000, ts = []; for (let i = 0; i <= G; i++) ts.push(-1 + (2 * i) / G);
+  let key = "exp", n = 3, init = "eq", st = null, ct = false;
+  const initRef = () => {
+    const r = [];
+    for (let i = 0; i < n + 2; i++) {
+      const t = init === "eq" ? -1 + (2 * i) / (n + 1) : -Math.cos((Math.PI * i) / (n + 1));
+      r.push(i === 0 || i === n + 1 ? t : t + ((init === "eq" ? 0.37 : ["abs", "runge", "sin"].includes(key) ? 0.04 : 0) / (n + 1)) * Math.sin(i * 1.7 + 0.3));
+    }
+    return r;
+  };
+  const solve = (ref) => {
+    const f = FN[key];
+    const M = ref.map((t, i) => [...AP.chebRow(t, n), i % 2 ? -1 : 1]);
+    const sol = AP.gauss(M, ref.map(f)), c = sol.slice(0, n + 1), E = sol[n + 1];
+    const es = ts.map((t) => f(t) - AP.chebval(c, t));
+    const ex = [];
+    for (let i = 0; i <= G; i++) { const l = i > 0 ? Math.abs(es[i - 1]) : -1, r = i < G ? Math.abs(es[i + 1]) : -1; if (Math.abs(es[i]) >= l && Math.abs(es[i]) >= r && Math.abs(es[i]) > 0) ex.push(i); }
+    const alt = [];
+    ex.forEach((i) => { if (alt.length && Math.sign(es[alt[alt.length - 1]]) === Math.sign(es[i])) { if (Math.abs(es[i]) > Math.abs(es[alt[alt.length - 1]])) alt[alt.length - 1] = i; } else alt.push(i); });
+    while (alt.length > n + 2) { if (Math.abs(es[alt[0]]) < Math.abs(es[alt[alt.length - 1]])) alt.shift(); else alt.pop(); }
+    let mx = 0; es.forEach((e) => (mx = Math.max(mx, Math.abs(e))));
+    return { ref, c, E, es, mx, next: alt.length === n + 2 ? alt.map((i) => ts[i]) : null };
+  };
+  const reset = () => { st = { k: 0, cur: solve(initRef()), hist: [] }; st.hist.push([0, Math.abs(st.cur.E), st.cur.mx]); };
+  reset();
+  const cv = MB.canvas("#ap-mm-cv", (ctx) => {
+    const C = MB.palette(), s = st.cur; let M = Math.max(s.mx, Math.abs(s.E));
+    let ctErr = null;
+    if (ct) { const a = AP.cheb(FN[key], 256).slice(0, n + 1); ctErr = ts.filter((_, i) => i % 3 === 0).map((t) => [t, FN[key](t) - AP.chebval(a, t)]); ctErr.forEach((p) => (M = Math.max(M, Math.abs(p[1])))); }
+    M *= 1.2;
+    const series = [];
+    if (ctErr) series.push({ data: ctErr, color: C.faint, width: 1.6, dash: [5, 4] });
+    series.push({ data: ts.filter((_, i) => i % 3 === 0).map((t, j) => [t, s.es[j * 3]]), color: C.accent, width: 2.4 });
+    const E = Math.abs(s.E);
+    MB.chart(ctx, null, {
+      x: [-1, 1], y: [-M, M], xLabel: "x", yFmt: (v) => (v === 0 ? "0" : Math.abs(v) < 1e-2 || Math.abs(v) >= 1e4 ? v.toExponential(1).replace("e+", "e") : String(Number(v.toPrecision(2)))),
+      series, hlines: [{ y: E, color: C.warn, dash: [6, 3], width: 1.6 }, { y: -E, color: C.warn, dash: [6, 3], width: 1.6 }, { y: 0, color: C.axis, dash: [] }],
+      points: s.ref.map((t, i) => ({ x: t, y: (i % 2 ? -1 : 1) * s.E, color: C.bad, r: 5 })),
+    });
+  }, { aspect: 0.6, minHeight: 260 });
+  const tb = document.getElementById("ap-mm-tb");
+  const update = () => {
+    const s = st.cur, E = Math.abs(s.E), gap = E > 0 ? (s.mx - E) / E : NaN;
+    MB.stat("ap-mm-it", String(st.k)); MB.stat("ap-mm-E", AP.sci(E, 4)); MB.stat("ap-mm-M", AP.sci(s.mx, 4)); MB.stat("ap-mm-gap", AP.sci(gap, 2));
+    tb.innerHTML = st.hist.map(([k, e, m], i) => `<tr${i === st.hist.length - 1 ? ' class="ap-now"' : ""}><td>${k}</td><td>${AP.sci(e, 4)}</td><td>${AP.sci(m, 4)}</td><td>${AP.sci(e > 0 ? (m - e) / e : NaN, 2)}</td></tr>`).join("");
+    cv.redraw();
+  };
+  document.getElementById("ap-mm-step").addEventListener("click", () => {
+    if (!st.cur.next) return;
+    st.k++; st.cur = solve(st.cur.next); st.hist.push([st.k, Math.abs(st.cur.E), st.cur.mx]); update();
+  });
+  document.getElementById("ap-mm-reset").addEventListener("click", () => { reset(); update(); });
+  MB.range("ap-mm-n", (v) => String(v), (v) => { n = v; reset(); update(); });
+  MB.seg("ap-mm-init", (v) => { init = v; reset(); update(); });
+  MB.check("ap-mm-ct", (v) => { ct = v; update(); });
+  document.getElementById("ap-mm-f").addEventListener("change", (e) => { key = e.target.value; reset(); update(); });
+  update();
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>다항식 보간 · NumericalBook</title>
+<meta name="description" content="점을 지나는 다항식을 계산하는 법. 존재와 유일성, 반데르몽드 행렬의 조건수, 라그랑주·뉴턴 형식과 분할 차분, 보간 오차 공식, 룽게 현상, 체비쇼프 노드, 무게중심 공식, 에르미트 보간.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ip-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ip-two > div { position: relative; min-width: 0; }
+  .ip-two > div + div { border-top: 1px solid var(--border); }
+  .ip-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ip-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ip-msg b { color: var(--text); }
+  .ip-msg.ok { color: var(--ok); font-weight: 600; }
+  .ip-msg.bad { color: var(--bad); font-weight: 600; }
+  .ip-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ip-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ip-tbl td, .ip-tbl th { font-family: var(--mono); text-align: right; }
+  .ip-tbl td:first-child, .ip-tbl th:first-child { text-align: left; font-family: inherit; }
+  .ip-dd { padding: 10px 18px; border-top: 1px solid var(--border); overflow-x: auto; }
+  .ip-dd table { width: auto; border-collapse: collapse; font: 13px var(--mono); margin: 0; min-width: 0; }
+  .ip-dd th, .ip-dd td { padding: 4px 9px; border: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .ip-dd th { color: var(--text-dim); font-weight: 600; background: var(--surface); }
+  .ip-dd td.ip-empty { color: var(--text-faint); }
+  .ip-dd td.ip-cur { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); font-weight: 700; }
+  .ip-dd td.ip-par { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+  .ip-dd td.ip-top { outline: 2px solid var(--accent-2); outline-offset: -2px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="interpolation">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 05</div>
+    <h1 data-no-glossary>다항식 보간</h1>
+    <p class="lead">측정값이나 표에 적힌 값은 띄엄띄엄 있지만, 우리는 그 사이의 값이 필요합니다. 점들을 지나는 다항식을 하나 정하면 그 사이를 계산할 수 있고, 미분하고 적분할 수도 있습니다. 이 장은 그 다항식이 언제나 하나뿐이라는 사실에서 출발해, <b>같은 다항식을 어떤 형식으로 계산해야 하는지</b>(반데르몽드·라그랑주·뉴턴·무게중심), 그 다항식이 원래 함수와 <b>얼마나 다른지</b>(보간 오차 공식), 그리고 점을 늘렸는데 오히려 틀려지는 <b>룽게 현상</b>과 그 처방인 <b>체비쇼프 노드</b>까지 다룹니다. 수치적분(10장), 다단계 ODE 해법(11장), 할선법(3장)이 모두 이 장의 보간 다항식 위에 서 있습니다.</p>
+    <ul class="objectives">
+      <li>서로 다른 \(n+1\)개의 점을 지나는 \(n\)차 이하 다항식의 존재와 유일성을 증명하고, 반데르몽드 행렬로 계수를 구하는 방법이 왜 나쁜지 조건수로 설명한다.</li>
+      <li>라그랑주 기저와 뉴턴 형식(분할 차분표)으로 보간 다항식을 손으로 만들고, 점을 하나 더할 때의 비용을 비교한다.</li>
+      <li>보간 오차 공식 \(f^{(n+1)}(\xi)/(n+1)!\cdot\prod(x - x_i)\)를 롤의 정리로 유도하고 오차 한계를 계산한다.</li>
+      <li>등간격 노드에서 차수를 높이면 발산하는 룽게 현상을 관찰하고, 체비쇼프 노드가 노드 다항식의 최댓값을 최소로 만든다는 정리를 이해한다.</li>
+      <li>무게중심 공식으로 보간 다항식을 \(O(n)\)에 안정적으로 계산하고, 도함수까지 맞추는 에르미트 보간을 구성한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>수표와 인공위성 궤도력</b></div>
+      <div class="o-body"><p>계산기가 없던 시대의 엔지니어와 천문학자는 로그표와 삼각함수표를 들고 다녔습니다. 표에는 \(x = 2.71\)과 \(2.72\)의 값만 있는데 필요한 것은 \(\log_{10} 2.718\)입니다. 두 값을 잇는 직선(1차 보간)으로 읽으면 다섯 자리 표에서 소수 여섯째 자리까지 맞는다는 것을 이 장의 오차 공식이 보장합니다. 표 한 줄 한 줄이 보간을 전제로 만들어진 셈입니다.</p>
+        <p>오늘날에도 같은 생각이 쓰입니다. 미국 제트추진연구소(JPL)가 배포하는 행성 궤도력은 시간 구간마다 <b>체비쇼프 다항식의 계수</b>를 저장하고, 사용자는 그 다항식을 계산해 임의 시각의 행성 위치를 얻습니다. 몇 천 개의 계수로 수십 년치 궤도를 담을 수 있는 것은, 잘 고른 노드에서의 다항식 근사가 매끄러운 함수에 대해 지수적으로 빨리 수렴하기 때문입니다.</p>
+        <div class="o-chain"><span>띄엄띄엄한 표·측정값</span><i>→</i><span>사이의 값이 필요</span><i>→</i><span class="tool">점을 지나는 다항식 p(x)</span><i>→</i><span>보간·미분·적분·궤도력</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="existence">
+    <h2>점을 지나는 다항식: 존재와 유일성</h2>
+    <div class="problem"><strong>네 점을 지나는 3차 곡선은 몇 개인가</strong>
+      <p>풍동 실험에서 받음각 0°, 4°, 8°, 12°의 양력 계수를 쟀습니다. 6°에서의 값을 추정하려고 네 점을 지나는 3차 다항식을 쓰기로 했습니다. 그런 다항식이 정말 있을까요? 있다면 하나뿐일까요? 사람마다 다른 다항식을 고르면 추정값이 달라질 테니, 이것부터 확인해야 합니다.</p></div>
+    <p>서로 다른 <span class="term">노드</span><span class="en">(node)</span> \(x_0, x_1, \dots, x_n\)과 값 \(y_0, \dots, y_n\)이 주어졌을 때 \(p(x_i) = y_i\)를 만족하는 다항식 \(p\)를 찾는 문제를 <span class="term">다항식 보간</span><span class="en">(polynomial interpolation)</span>이라 합니다. 값이 어떤 함수 \(f\)에서 왔다면(\(y_i = f(x_i)\)) \(p\)를 \(f\)의 보간 다항식이라 부릅니다.</p>
+    <div class="callout deep"><strong>정리 5.1 (보간 다항식의 존재와 유일성)</strong> 노드 \(x_0, \dots, x_n\)이 모두 다르면, 임의의 값 \(y_0, \dots, y_n\)에 대해 \(p(x_i) = y_i\) \((i = 0, \dots, n)\)를 만족하는 차수 \(n\) 이하의 다항식 \(p\)가 <b>정확히 하나</b> 있다.
+      <p style="margin:8px 0 0"><b>증명.</b> 유일성: 두 다항식 \(p, q\)가 모두 조건을 만족하면 \(r = p - q\)는 차수 \(n\) 이하인데 \(n+1\)개의 서로 다른 근 \(x_0, \dots, x_n\)을 가진다. 0이 아닌 \(n\)차 이하 다항식의 근은 많아야 \(n\)개이므로 \(r \equiv 0\). 존재: 아래 정의 5.3의 라그랑주 형식이 실제로 그런 다항식을 하나 만들어 준다. (또는: 계수에 대한 \((n+1)\times(n+1)\) 선형계가 유일성 때문에 영공간이 \(\{0\}\)이므로 가역이다.) ∎</p></div>
+    <p>가장 직접적인 계산법은 \(p(x) = a_0 + a_1x + \dots + a_nx^n\)로 두고 조건 \(n+1\)개를 연립방정식으로 쓰는 것입니다.</p>
+    <div class="callout deep"><strong>정의 5.2 (반데르몽드 행렬)</strong> 단항식 기저 \(1, x, \dots, x^n\)으로 쓴 보간 조건은
+      <div class="formula">$$\underbrace{\begin{bmatrix} 1 & x_0 & x_0^2 & \cdots & x_0^n \\ 1 & x_1 & x_1^2 & \cdots & x_1^n \\ \vdots & & & & \vdots \\ 1 & x_n & x_n^2 & \cdots & x_n^n \end{bmatrix}}_{V}\begin{bmatrix} a_0 \\ a_1 \\ \vdots \\ a_n \end{bmatrix} = \begin{bmatrix} y_0 \\ y_1 \\ \vdots \\ y_n \end{bmatrix}$$
+      <div class="where">\(V\)를 <span class="term">반데르몽드 행렬</span><span class="en">(Vandermonde matrix)</span>이라 한다. \(\det V = \prod_{0 \le i \lt j \le n}(x_j - x_i)\)이므로 노드가 서로 다르면 가역이다.</div></div></div>
+    <p>이론으로는 이것으로 끝입니다. 문제는 계산입니다. \(x^5\)와 \(x^6\)은 \([0, 1]\)에서 그래프가 거의 겹칩니다. 기저 함수들이 서로 비슷하면 \(V\)의 열들이 거의 평행해지고, 2장에서 본 <a href="conditioning.html">조건수</a>가 폭발합니다. 아래 표는 실제로 계산한 2-노름 조건수 \(\kappa_2(V)\)입니다(노드 \(n\)개).</p>
+    <div class="table-wrap"><table class="ip-tbl">
+      <thead><tr><th>노드 수</th><th>등간격, \([0, 1]\)</th><th>등간격, \([-1, 1]\)</th><th>체비쇼프, \([-1, 1]\)</th></tr></thead>
+      <tbody>
+        <tr><td>5</td><td>6.86×10²</td><td>2.35×10¹</td><td>1.96×10¹</td></tr>
+        <tr><td>10</td><td>1.52×10⁷</td><td>4.63×10³</td><td>1.47×10³</td></tr>
+        <tr><td>15</td><td>4.03×10¹¹</td><td>1.10×10⁶</td><td>1.19×10⁵</td></tr>
+        <tr><td>20</td><td>1.20×10¹⁶</td><td>2.72×10⁸</td><td>9.48×10⁶</td></tr>
+      </tbody></table></div>
+    <p>\([0, 1]\)의 등간격 노드 20개에서 \(\kappa_2 \approx 10^{16}\), 곧 배정밀도의 \(1/\varepsilon\)에 닿았습니다. 계수 \(a_k\)는 소수 첫 자리도 믿을 수 없습니다. 체비쇼프 노드(6절)를 써도 조건수는 지수적으로 자랍니다. 반데르몽드의 병은 노드가 아니라 <b>단항식 기저</b>에 있습니다. 그래서 이 장의 나머지는 같은 다항식을 <b>다른 기저</b>로 쓰는 이야기입니다. 다행히 조건수가 크다고 해서 \(p(x)\)의 <b>값</b>이 언제나 틀리는 것은 아닙니다(7절에서 그 미묘한 차이를 실험합니다).</p>
+
+    <div class="sim" id="sim-ip-drag">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점을 끌어 보간 다항식 만들기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-dr-cv"></canvas><span class="tag-tl">점을 끌기 · 빈 곳 클릭으로 점 추가</span></div>
+        <div class="sim-controls">
+          <div class="btn-row"><button class="btn" id="ip-dr-del">마지막 점 지우기</button><button class="btn" id="ip-dr-reset">초기화</button></div>
+          <label class="check"><input type="checkbox" id="ip-dr-lin"> 꺾은선(조각별 선형) 겹쳐 보기</label>
+          <label class="check"><input type="checkbox" id="ip-dr-coef" checked> 단항식 계수 보기</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">점 수 / 차수</span><span class="v" id="ip-dr-n">—</span></div>
+        <div class="stat"><span class="k">κ₂(V) 반데르몽드</span><span class="v" id="ip-dr-k">—</span></div>
+        <div class="stat"><span class="k">점 사이 최대 |p|</span><span class="v" id="ip-dr-mx">—</span></div>
+      </div>
+      <div class="ip-msg" id="ip-dr-msg"></div>
+      <div class="sim-note">해볼 것: ① 점 두 개를 x가 거의 같은 자리로 끌어 보세요. 곡선이 크게 출렁이고 κ₂가 치솟습니다. 두 점의 x가 같아지면 보간 자체가 불가능합니다(정리 5.1의 가정). ② 빈 곳을 클릭해 점을 8~9개로 늘리면 곡선이 양 끝에서 요동치기 시작합니다. 5절의 룽게 현상의 예고입니다. ③ 점 하나만 위아래로 끌면 곡선 <b>전체</b>가 움직입니다. 다항식 보간은 국소적이지 않습니다(6장 스플라인과 비교). 모델: 계수는 부분 피벗 가우스 소거로 반데르몽드 계를 풀어 얻고, 곡선은 무게중심 공식(7절)으로 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="lagrange">
+    <h2>라그랑주 형식: 노드마다 하나씩의 기저</h2>
+    <div class="problem"><strong>연립방정식을 풀지 않고 보간 다항식을 적을 수 있을까</strong>
+      <p>세 점 \((0, 1)\), \((1, 3)\), \((3, 2)\)를 지나는 2차식을 반데르몽드 계 없이 바로 적고 싶습니다. 비결은 "한 노드에서만 1이고 나머지 노드에서는 0인" 다항식을 먼저 만드는 것입니다.</p></div>
+    <div class="callout deep"><strong>정의 5.3 (라그랑주 기저와 라그랑주 형식)</strong> 노드 \(x_0, \dots, x_n\)에 대해
+      <div class="formula">$$\ell_k(x) = \prod_{j \ne k}\frac{x - x_j}{x_k - x_j}, \qquad p(x) = \sum_{k=0}^{n} y_k\,\ell_k(x).$$
+      <div class="where">\(\ell_k\)는 \(n\)차 다항식이고 \(\ell_k(x_i) = \delta_{ik}\)(\(i = k\)이면 1, 아니면 0)이다. 그러므로 \(p(x_i) = y_i\).</div></div>
+      \(\ell_k\)를 <span class="term">라그랑주 기저 다항식</span><span class="en">(Lagrange basis polynomial)</span>이라 한다. 이 기저에서 반데르몽드 행렬의 자리에 오는 행렬은 단위 행렬이다. 계수가 곧 데이터 \(y_k\)다.</div>
+    <p>상수 함수 1도 보간 다항식이므로(모든 \(y_k = 1\)) 언제나 \(\sum_k \ell_k(x) = 1\)입니다. 곧 \(p(x)\)는 데이터의 <b>가중 평균</b>인데, 가중치 \(\ell_k(x)\)가 음수일 수도 있고 1보다 클 수도 있습니다. 노드 밖으로 나가면(외삽) 가중치의 크기가 급격히 커지고, 데이터의 작은 오차가 크게 증폭됩니다.</p>
+    <div class="callout"><strong>예제 5.1 (세 점의 라그랑주 형식)</strong> \((0, 1)\), \((1, 3)\), \((3, 2)\)를 지나는 2차식의 \(x = 2\)에서의 값을 구하라.
+      <ol>
+        <li>\(\ell_0(x) = \dfrac{(x - 1)(x - 3)}{(0 - 1)(0 - 3)} = \dfrac{(x-1)(x-3)}{3}\), \(\ell_1(x) = \dfrac{x(x - 3)}{(1)(-2)}\), \(\ell_2(x) = \dfrac{x(x - 1)}{(3)(2)}\).</li>
+        <li>\(x = 2\)에서 \(\ell_0(2) = -\tfrac13\), \(\ell_1(2) = 1\), \(\ell_2(2) = \tfrac13\). 합은 \(1\)이다.</li>
+        <li>\(p(2) = 1\cdot(-\tfrac13) + 3\cdot 1 + 2\cdot\tfrac13 = \tfrac{10}{3} \approx 3.3333\).</li>
+        <li>가중치 \(\ell_0(2)\)가 음수다. 2는 노드 1과 3 사이에 있으므로 멀리 있는 \(x_0 = 0\)의 값은 "빼서" 곡률을 맞춘다.</li>
+      </ol></div>
+    <p>라그랑주 형식은 이론에 편리하지만 그대로 계산하면 한 점 \(x\)에서 \(p(x)\)를 얻는 데 \(O(n^2)\)번의 곱셈이 들고, 점을 하나 추가하면 모든 \(\ell_k\)를 새로 만들어야 합니다. 이 두 약점을 뉴턴 형식(3절)과 무게중심 공식(7절)이 고칩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="라그랑주 기저 함수 세 개">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <line x1="60" y1="190" x2="560" y2="190" class="s-axis"/>
+        <line x1="60" y1="70" x2="560" y2="70" style="stroke:var(--grid);stroke-dasharray:4 4"/>
+        <path d="M 90 70 C 160 170 230 215 300 190 C 360 170 420 175 520 190" fill="none" style="stroke:var(--accent);stroke-width:2.4"/>
+        <path d="M 90 190 C 150 80 230 50 300 70 C 380 95 460 190 520 260" fill="none" style="stroke:var(--warn);stroke-width:2.4"/>
+        <path d="M 90 190 C 170 205 240 210 300 190 C 380 160 450 110 520 70" fill="none" style="stroke:var(--accent-2);stroke-width:2.4"/>
+        <circle cx="90" cy="70" r="5" style="fill:var(--accent)"/><circle cx="300" cy="70" r="5" style="fill:var(--warn)"/><circle cx="520" cy="70" r="5" style="fill:var(--accent-2)"/>
+        <circle cx="300" cy="190" r="4" style="fill:var(--text-dim)"/><circle cx="520" cy="190" r="4" style="fill:var(--text-dim)"/><circle cx="90" cy="190" r="4" style="fill:var(--text-dim)"/>
+        <text x="90" y="212" text-anchor="middle" class="t-mono">x₀</text><text x="300" y="212" text-anchor="middle" class="t-mono">x₁</text><text x="520" y="212" text-anchor="middle" class="t-mono">x₂</text>
+        <text x="48" y="74" text-anchor="end" class="t-mono">1</text><text x="48" y="194" text-anchor="end" class="t-mono">0</text>
+        <g transform="translate(585,60)">
+          <rect x="0" y="0" width="14" height="4" style="fill:var(--accent)"/><text x="22" y="6" class="t">ℓ₀: x₀에서 1</text>
+          <rect x="0" y="28" width="14" height="4" style="fill:var(--warn)"/><text x="22" y="34" class="t">ℓ₁: x₁에서 1</text>
+          <rect x="0" y="56" width="14" height="4" style="fill:var(--accent-2)"/><text x="22" y="62" class="t">ℓ₂: x₂에서 1</text>
+          <text x="0" y="100" class="t-dim">다른 노드에서는 모두 0</text>
+          <text x="0" y="122" class="t-dim">p = y₀ℓ₀ + y₁ℓ₁ + y₂ℓ₂</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 5-1.</b> 세 노드의 라그랑주 기저. 각 \(\ell_k\)는 자기 노드에서 1, 다른 노드에서 0이다. 데이터 \(y_k\)로 각 기저의 높이를 조절해 더하면 보간 다항식이 된다.</figcaption>
+    </figure>
+
+    <div class="sim" id="sim-ip-lagrange">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>라그랑주 기저 함수의 합으로 보는 보간</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-lg-cv"></canvas><span class="tag-tl">데이터 점을 위아래로 · x축의 ◆를 좌우로</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>노드 수 <output id="ip-lg-n-out"></output></span><input type="range" id="ip-lg-n" min="2" max="7" step="1" value="4"></label>
+          <label class="ctrl"><span>강조할 기저 k <output id="ip-lg-k-out"></output></span><input type="range" id="ip-lg-k" min="0" max="3" step="1" value="1"></label>
+          <div class="ctrl"><span>보기</span><div class="seg" id="ip-lg-mode"><button data-value="scaled" class="on">yₖℓₖ(x)</button><button data-value="raw">ℓₖ(x)</button></div></div>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--text)"></i>보간 다항식 p</span><span><i style="background:var(--accent)"></i>강조한 기저</span><span><i style="background:var(--text-faint)"></i>나머지 기저</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">탐침 x*</span><span class="v" id="ip-lg-x">—</span></div>
+        <div class="stat"><span class="k">가중치 ℓₖ(x*)</span><span class="v" id="ip-lg-w">—</span></div>
+        <div class="stat"><span class="k">Σℓₖ(x*)</span><span class="v" id="ip-lg-s">—</span></div>
+        <div class="stat"><span class="k">p(x*) = Σyₖℓₖ</span><span class="v" id="ip-lg-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 탐침 ◆를 어디에 두어도 가중치의 합 Σℓₖ가 1인 것을 보세요. ② 탐침을 노드 구간 밖(외삽)으로 끌면 가중치의 절댓값이 수십으로 커집니다. 데이터에 섞인 측정 오차가 그만큼 증폭됩니다. ③ '보기'를 ℓₖ로 바꾸고 노드를 7개로 늘리면 양 끝 노드 근처에서 기저가 크게 출렁입니다. 이 출렁임의 최댓값 합이 7절의 르베그 상수입니다. 모델: 노드는 [0, 6]의 등간격.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="newton">
+    <h2>뉴턴 형식과 분할 차분표</h2>
+    <div class="problem"><strong>측정점이 하나 더 들어오면</strong>
+      <p>예제 5.1의 세 점으로 2차식을 만든 뒤, 네 번째 측정값 \((4, 5)\)가 도착했습니다. 라그랑주 형식에서는 모든 기저가 바뀝니다. 이미 한 계산을 버리지 않고 항 하나만 덧붙일 수는 없을까요?</p></div>
+    <p>\(p_n\)을 처음 \(n+1\)개 점의 보간 다항식이라 하면 \(p_{n+1} - p_n\)은 \(x_0, \dots, x_n\)에서 0이 되는 \(n+1\)차 이하 다항식이므로 \(c\,(x - x_0)\cdots(x - x_n)\) 꼴입니다. 그래서 보간 다항식을 <b>점을 하나씩 더하는</b> 꼴로 쓸 수 있습니다.</p>
+    <div class="callout deep"><strong>정의 5.4 (뉴턴 형식과 분할 차분)</strong>
+      <div class="formula">$$p_n(x) = c_0 + c_1(x - x_0) + c_2(x - x_0)(x - x_1) + \dots + c_n(x - x_0)\cdots(x - x_{n-1}).$$</div>
+      계수 \(c_k\)를 \(f[x_0, \dots, x_k]\)로 쓰고 <span class="term">분할 차분</span><span class="en">(divided difference)</span>이라 한다. 분할 차분은 다음 점화식으로 계산된다.
+      <div class="formula">$$f[x_i] = y_i, \qquad f[x_i, \dots, x_{i+k}] = \frac{f[x_{i+1}, \dots, x_{i+k}] - f[x_i, \dots, x_{i+k-1}]}{x_{i+k} - x_i}.$$</div></div>
+    <div class="callout deep"><strong>정리 5.5 (분할 차분의 성질)</strong> (가) \(f[x_0, \dots, x_k]\)는 \(p_k\)의 최고차 계수다. (나) 노드의 순서를 바꿔도 값이 같다(대칭). (다) \(f\)가 \(C^k\)이면 노드를 포함하는 구간의 어떤 \(\xi\)에 대해 \(f[x_0, \dots, x_k] = f^{(k)}(\xi)/k!\).
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> (가) 위의 \(p_{n+1} - p_n = c(x - x_0)\cdots(x - x_n)\)에서 \(c\)가 최고차 계수. (나) 보간 다항식은 노드 순서와 무관하므로 그 최고차 계수도 무관. 점화식: \(x_0..x_{k-1}\)의 보간 \(q_0\)와 \(x_1..x_k\)의 보간 \(q_1\)로 \(p_k = \frac{(x - x_0)q_1 - (x - x_k)q_0}{x_k - x_0}\)이 모든 노드에서 맞으므로, 양변의 최고차 계수를 비교. (다) \(f - p_k\)는 \(k+1\)개의 근을 가지니 롤의 정리를 \(k\)번 쓰면 \((f - p_k)^{(k)}(\xi) = 0\), 곧 \(f^{(k)}(\xi) = k!\,c_k\). ∎</p></div>
+    <p>(다)는 분할 차분이 "이산적인 도함수"라는 뜻입니다. 1차 분할 차분은 할선의 기울기이고(<a href="../../calculus/chapters/derivative.html">CalculusBook: 도함수</a>), 노드가 모이면 도함수가 됩니다. 이 사실이 8절의 에르미트 보간과 9장 <a href="differentiation.html">수치 미분</a>의 출발점입니다.</p>
+    <pre class="code"><span class="c">// 분할 차분 계수 c[0..n] (제자리 계산, O(n²))</span>
+c ← y
+<span class="k">for</span> k = 1 <span class="k">to</span> n
+  <span class="k">for</span> i = n <span class="k">downto</span> k
+    c[i] ← (c[i] − c[i−1]) / (x[i] − x[i−k])
+<span class="c">// 뉴턴 형식의 계산 (호너와 같은 중첩, O(n))</span>
+<span class="k">function</span> evaluate(t)
+  p ← c[n]
+  <span class="k">for</span> i = n−1 <span class="k">downto</span> 0
+    p ← p · (t − x[i]) + c[i]
+  <span class="k">return</span> p</pre>
+    <p class="code-cap">계수 계산은 한 번 \(O(n^2)\), 그 뒤 점마다 \(O(n)\). 점을 하나 더하면 표의 새 행 하나, \(O(n)\)만 추가로 계산한다.</p>
+    <div class="callout"><strong>예제 5.2 (분할 차분표와 점 추가)</strong> 예제 5.1의 데이터에 \((4, 5)\)를 더해 3차 보간 다항식을 만들고 \(p_3(2)\)를 구하라.
+      <div class="table-wrap"><table class="ip-tbl">
+        <thead><tr><th>\(x_i\)</th><th>\(f[x_i]\)</th><th>1차</th><th>2차</th><th>3차</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td><b>1</b></td><td></td><td></td><td></td></tr>
+          <tr><td>1</td><td>3</td><td><b>2</b></td><td></td><td></td></tr>
+          <tr><td>3</td><td>2</td><td>−0.5</td><td><b>−5/6</b></td><td></td></tr>
+          <tr><td>4</td><td>5</td><td>3</td><td>7/6</td><td><b>1/2</b></td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>1차: \(f[0,1] = (3 - 1)/1 = 2\), \(f[1,3] = (2 - 3)/2 = -0.5\), \(f[3,4] = (5 - 2)/1 = 3\).</li>
+        <li>2차: \(f[0,1,3] = (-0.5 - 2)/(3 - 0) = -5/6\), \(f[1,3,4] = (3 + 0.5)/(4 - 1) = 7/6\).</li>
+        <li>3차: \(f[0,1,3,4] = (7/6 + 5/6)/(4 - 0) = 1/2\).</li>
+        <li>대각선(굵게)이 계수다: \(p_2(x) = 1 + 2x - \tfrac56 x(x - 1)\), \(p_2(2) = 1 + 4 - \tfrac53 = \tfrac{10}{3}\) (예제 5.1과 같다).</li>
+        <li>점 추가는 항 하나: \(p_3(x) = p_2(x) + \tfrac12 x(x - 1)(x - 3)\), \(p_3(2) = \tfrac{10}{3} + \tfrac12\cdot 2\cdot 1\cdot(-1) = \tfrac73 \approx 2.3333\). 같은 다항식을 단항식으로 쓰면 \(1 + \tfrac{13}{3}x - \tfrac{17}{6}x^2 + \tfrac12 x^3\)이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ip-divdiff">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>분할 차분표를 한 칸씩 채우기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-dd-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>데이터</span><select id="ip-dd-pre">
+            <option value="ex">예제 5.2: (0,1) (1,3) (3,2) (4,5) …</option>
+            <option value="sin">sin x, x = 0, 0.6, 1.5, 2.2, 3, 3.6</option>
+            <option value="sq">x², 노드 6개 (3차 이상이 0)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="ip-dd-step">다음 칸</button><button class="btn" id="ip-dd-row">행 끝까지</button></div>
+          <div class="btn-row"><button class="btn" id="ip-dd-add">점 추가</button><button class="btn" id="ip-dd-reset">처음부터</button></div>
+        </div>
+      </div>
+      <div class="ip-dd" id="ip-dd-tbl"></div>
+      <div class="ip-legend"><span><i style="background:var(--accent)"></i>지금 계산한 칸</span><span><i style="background:var(--warn)"></i>사용한 두 칸</span><span><i style="background:var(--accent-2)"></i>뉴턴 계수(대각선)</span></div>
+      <div class="ip-msg" id="ip-dd-msg"></div>
+      <div class="sim-note">해볼 것: ① '다음 칸'으로 한 칸씩 채우며, 각 칸이 왼쪽의 두 칸(노랑)만 쓰는 것을 보세요. 행이 끝날 때마다 곡선의 차수가 하나 올라갑니다. ② '점 추가'를 누르면 표에 <b>새 행 하나</b>만 생깁니다. 위쪽 행은 그대로입니다. ③ x² 데이터에서는 2차 열이 모두 1이고 3차 이상은 0입니다. 정리 5.5(다): f[…] = f⁽ᵏ⁾(ξ)/k! 이고 (x²)″/2! = 1. 모델: 행 i는 f[xᵢ₋ⱼ, …, xᵢ] (j = 0 … i)를 담습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="error">
+    <h2>보간 오차 공식</h2>
+    <div class="problem"><strong>표 사이의 값은 몇 자리까지 믿을 수 있나</strong>
+      <p>사인표에 \(0\), \(\pi/4\), \(\pi/2\)의 값만 있습니다. 2차 보간으로 \(\sin(\pi/8)\)을 구하면 몇 자리가 맞을까요? 참값을 모르는 상태에서 오차를 <b>미리</b> 말할 수 있어야 표를 설계할 수 있습니다.</p></div>
+    <div class="callout deep"><strong>정리 5.6 (보간 오차)</strong> \(f \in C^{n+1}[a, b]\)이고 노드 \(x_0, \dots, x_n \in [a, b]\)가 서로 다르면, 각 \(x \in [a, b]\)에 대해 \(\xi\in(a, b)\)가 있어
+      <div class="formula">$$f(x) - p_n(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}\,\omega(x), \qquad \omega(x) = \prod_{i=0}^{n}(x - x_i).$$
+      <div class="where">\(\omega\)를 <span class="term">노드 다항식</span><span class="en">(node polynomial)</span>이라 한다. \(\xi\)는 \(x\)에 따라 달라지고 보통 알 수 없다. 그래서 실제로는 \(|f^{(n+1)}| \le M\)으로 바꾸어 \(|f(x) - p_n(x)| \le \frac{M}{(n+1)!}|\omega(x)|\)를 쓴다.</div></div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(x\)가 노드면 양변이 0. 아니면 \(x\)를 고정하고 \(g(t) = f(t) - p_n(t) - \bigl(f(x) - p_n(x)\bigr)\,\omega(t)/\omega(x)\)라 하자. \(g\)는 \(x_0, \dots, x_n\)과 \(x\), 모두 \(n+2\)개의 점에서 0이다. 롤의 정리를 \(n+1\)번 쓰면 \(g^{(n+1)}(\xi) = 0\)인 \(\xi\)가 있다. \(p_n^{(n+1)} = 0\), \(\omega^{(n+1)} = (n+1)!\)이므로 \(0 = f^{(n+1)}(\xi) - (f(x) - p_n(x))(n+1)!/\omega(x)\). ∎</p></div>
+    <p>이 식은 <a href="../../calculus/chapters/taylor.html">테일러 정리</a>의 나머지 \(f^{(n+1)}(\xi)(x - a)^{n+1}/(n+1)!\)과 꼴이 같습니다. 테일러 다항식은 한 점에 \(n+1\)개의 조건을 몰아넣은 보간이고, 그때 \(\omega = (x - a)^{n+1}\)입니다. 오차는 세 요소의 곱입니다. <b>함수의 매끄러움</b> \(f^{(n+1)}\), <b>차수</b> \((n+1)!\), 그리고 우리가 고를 수 있는 유일한 요소인 <b>노드 배치</b> \(\omega(x)\).</p>
+    <div class="callout"><strong>예제 5.3 (사인표의 2차 보간)</strong> 노드 \(0, \pi/4, \pi/2\)로 \(\sin x\)를 보간해 \(\sin(\pi/8)\)을 구하고, 오차 공식과 비교하라.
+      <ol>
+        <li>분할 차분: \(f[0] = 0\), \(f[0, \pi/4] = 0.70711/0.78540 = 0.900316\), \(f[0, \pi/4, \pi/2] = -0.335749\).</li>
+        <li>\(p_2(\pi/8) = 0.900316\cdot 0.392699 - 0.335749\cdot 0.392699\cdot(-0.392699) = 0.405330\). 참값 \(\sin(\pi/8) = 0.382683\), 오차 \(f - p_2 = -0.022647\).</li>
+        <li>오차 한계: \(|f'''| = |\cos| \le 1\), \(|\omega(\pi/8)| = \tfrac{\pi}{8}\cdot\tfrac{\pi}{8}\cdot\tfrac{3\pi}{8} = \tfrac{3\pi^3}{512} = 0.181677\). 한계 \(0.181677/3! = 0.030280\). 실제 오차 \(0.0226\)이 한계 안에 있다.</li>
+        <li>구간 전체: 간격 \(h\)의 등간격 세 노드에서 \(\max|\omega| = \tfrac{2}{3\sqrt3}h^3\). \(h = \pi/4\)이면 한계 \(0.031079\), 실제 최대 오차는 \(x \approx 0.320\)에서 \(0.023537\)이다.</li>
+      </ol></div>
+    <div class="callout tip"><strong>1차 보간의 오차: h²/8</strong> \(n = 1\)이면 \(\omega = (x - x_0)(x - x_1)\)의 최대 크기가 구간 가운데에서 \(h^2/4\)이므로 \(|f - p_1| \le \frac{h^2}{8}\max|f''|\). 로그표(\(h = 0.01\), \(x \ge 1\))에서는 \(|(\log_{10}x)''| = 1/(x^2\ln 10) \le 0.4343\)이라 한계가 \(5.43\times10^{-6}\)이다. 예: \(\log_{10}2.71 = 0.432969\), \(\log_{10}2.72 = 0.434569\)에서 직선 보간한 \(\log_{10}2.718 \approx 0.4342490\), 참값 \(0.4342495\), 오차 \(4.7\times10^{-7}\). 다섯 자리 표의 반올림 오차(\(5\times10^{-6}\))보다 작으니 1차 보간으로 충분하다.</div>
+
+    <div class="sim" id="sim-ip-error">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차 곡선과 오차 한계: 노드를 옮겨 보기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ip-two">
+          <div><canvas id="ip-er-cv"></canvas><span class="ip-cap">f와 p · 노드(●)를 좌우로 끌기</span></div>
+          <div><canvas id="ip-er-cv2"></canvas><span class="ip-cap">오차 f − p 와 한계 ±M|ω|/(n+1)!</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ip-er-f">
+            <option value="sin">sin x, [0, π] (M = 1)</option>
+            <option value="exp">eˣ, [0, 2] (M = e²)</option>
+            <option value="log">ln x, [1, 4] (M = n!)</option>
+          </select></label>
+          <label class="ctrl"><span>노드 수 n+1 <output id="ip-er-n-out"></output></span><input type="range" id="ip-er-n" min="2" max="8" step="1" value="3"></label>
+          <div class="btn-row"><button class="btn" id="ip-er-eq">등간격</button><button class="btn" id="ip-er-ch">체비쇼프</button></div>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--text-dim)"></i>f</span><span><i style="background:var(--accent)"></i>p</span><span><i style="background:var(--bad)"></i>오차 f − p</span><span><i style="background:var(--warn)"></i>오차 한계</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">max |f − p|</span><span class="v" id="ip-er-e">—</span></div>
+        <div class="stat"><span class="k">max 한계</span><span class="v" id="ip-er-b">—</span></div>
+        <div class="stat"><span class="k">max |ω|</span><span class="v" id="ip-er-w">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 오차 곡선(빨강)이 언제나 한계(노랑) 안에 있고, 노드에서 0을 지나는 것을 보세요. 오차의 모양은 ω(x)를 닮았습니다. ② 노드 하나를 끌어 다른 노드에 바짝 붙이면 그 근처 오차는 줄지만 반대쪽 빈 곳에서 커집니다. ③ '등간격' 다음에 '체비쇼프'를 누르면 양 끝으로 노드가 몰리며 max |ω|와 max |f − p|가 함께 줄어듭니다. 6절의 주제입니다. 모델: M은 구간에서 |f⁽ⁿ⁺¹⁾|의 최댓값(ln x는 x = 1에서 n!).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="runge">
+    <h2>룽게 현상: 점을 늘렸는데 더 틀린다</h2>
+    <div class="problem"><strong>더 많은 측정점은 언제나 더 좋은가</strong>
+      <p>오차 공식의 분모 \((n+1)!\)은 아주 빨리 커지니, 노드를 늘리면 보간이 점점 정확해질 것 같습니다. 실제로 \(e^x\)나 \(\sin x\)에서는 그렇습니다. 그런데 무한 번 미분 가능하고 모양도 얌전한 \(f(x) = 1/(1 + 25x^2)\)을 \([-1, 1]\)의 등간격 노드로 보간하면 이야기가 달라집니다.</p></div>
+    <p>1901년 룽게<span class="en">(Carl Runge)</span>가 이 예를 연구했습니다. 등간격 노드 \(n+1\)개로 보간한 최대 오차를 계산하면 다음과 같습니다.</p>
+    <div class="table-wrap"><table class="ip-tbl">
+      <thead><tr><th>차수 \(n\)</th><th>4</th><th>8</th><th>10</th><th>16</th><th>20</th><th>40</th></tr></thead>
+      <tbody>
+        <tr><td>등간격 \(\max|f - p_n|\)</td><td>0.438</td><td>1.05</td><td>1.92</td><td>14.4</td><td>59.8</td><td>1.05×10⁵</td></tr>
+        <tr><td>체비쇼프 \(\max|f - p_n|\)</td><td>0.402</td><td>0.171</td><td>0.109</td><td>0.0326</td><td>0.0153</td><td>2.89×10⁻⁴</td></tr>
+      </tbody></table></div>
+    <p>등간격에서는 오차가 줄기는커녕 지수적으로 커지고, 그 오차는 모두 구간의 양 끝 근처에서 생깁니다. 이것이 <span class="term">룽게 현상</span><span class="en">(Runge phenomenon)</span>입니다. 같은 함수를 체비쇼프 노드(6절)로 보간하면 꾸준히 줄어듭니다.</p>
+    <p>왜일까요? 오차 공식의 두 요소가 서로 싸웁니다. \(1/(1 + 25x^2)\)의 도함수는 \(x = \pm i/5\)의 복소 특이점 때문에 \(f^{(n+1)}\)이 대략 \((n+1)!\,5^{n+1}\)만큼 자랍니다. \((n+1)!\)은 지워지고 \(5^{n+1}\max|\omega|\)이 남는데, 등간격 노드의 \(\max|\omega|\)는 대략 \((2/e)^{n}\) 정도로만 줄어 \(5\cdot 2/e \gt 1\)이 이깁니다. 더 정확한 이론(복소 평면의 퍼텐셜 이론)은 등간격 보간이 수렴하는 영역이 실수축 위의 대략 \(|x| \lt 0.726\)뿐임을 보여 줍니다. 시뮬레이터에서 가운데는 맞아 들어가고 양 끝만 터지는 것이 그 결과입니다.</p>
+    <div class="callout warn"><strong>교훈</strong> 매끄러움만으로는 부족하다. 고차 다항식 보간은 <b>노드 배치</b>가 결정한다. 등간격 데이터밖에 없다면 차수를 높이는 대신 조각별 다항식(<a href="splines.html">6장 스플라인</a>)이나 최소제곱(<a href="approximation.html">7장</a>)을 쓴다.</div>
+
+    <div class="sim" id="sim-ip-runge">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>룽게 현상: 차수 n 슬라이더</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-rg-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ip-rg-f">
+            <option value="runge">1/(1 + 25x²) (룽게)</option>
+            <option value="mild">1/(1 + x²) (특이점 ±i)</option>
+            <option value="abs">|x| (꺾인 점)</option>
+            <option value="exp">e^(sin 3x) (전해석)</option>
+          </select></label>
+          <label class="ctrl"><span>차수 n <output id="ip-rg-n-out"></output></span><input type="range" id="ip-rg-n" min="1" max="30" step="1" value="10"></label>
+          <div class="ctrl"><span>노드</span><div class="seg" id="ip-rg-node"><button data-value="eq" class="on">등간격</button><button data-value="ch">체비쇼프</button></div></div>
+          <label class="check"><input type="checkbox" id="ip-rg-both"> 두 노드 모두 그리기</label>
+          <div class="btn-row"><button class="btn primary" id="ip-rg-play">▶ n 올리기</button></div>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--text-dim)"></i>f</span><span><i style="background:var(--bad)"></i>등간격 보간</span><span><i style="background:var(--accent)"></i>체비쇼프 보간</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">등간격 max |f − p|</span><span class="v" id="ip-rg-e1">—</span></div>
+        <div class="stat"><span class="k">체비쇼프 max |f − p|</span><span class="v" id="ip-rg-e2">—</span></div>
+        <div class="stat"><span class="k">최대 오차 위치 (등간격)</span><span class="v" id="ip-rg-at">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 룽게 함수에서 ▶를 눌러 n을 올리면 가운데는 점점 맞는데 양 끝의 출렁임이 화면을 뚫고 나갑니다(세로축은 잘려 있으니 수치를 보세요). ② 노드를 체비쇼프로 바꾸면 같은 n에서 출렁임이 사라집니다. ③ 1/(1 + x²)은 특이점이 더 멀리(±i) 있어 등간격으로도 수렴합니다. |x|는 매끄럽지 않아 체비쇼프로도 느리게(오차 ∝ 1/n) 줄어듭니다. 모델: 구간 [−1, 1], 무게중심 공식으로 계산.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="chebyshev">
+    <h2>체비쇼프 노드와 최적성</h2>
+    <div class="problem"><strong>노드를 어디에 두어야 할까</strong>
+      <p>오차 공식에서 \(f^{(n+1)}\)은 함수가 정하고 \((n+1)!\)은 차수가 정합니다. 우리가 바꿀 수 있는 것은 \(\omega(x) = \prod(x - x_i)\)뿐입니다. \([-1, 1]\)에서 \(\max|\omega|\)를 가장 작게 만드는 노드는 무엇일까요?</p></div>
+    <p>답은 <span class="term">체비쇼프 다항식</span><span class="en">(Chebyshev polynomial)</span> \(T_m(\cos\theta) = \cos m\theta\)에서 나옵니다. \(T_0 = 1\), \(T_1 = x\), \(T_{m+1} = 2xT_m - T_{m-1}\)이므로 \(T_m\)은 최고차 계수가 \(2^{m-1}\)인 \(m\)차 다항식이고, \([-1, 1]\)에서 \(|T_m| \le 1\)이며 \(m+1\)개의 점 \(\cos(k\pi/m)\)에서 \(\pm1\)을 번갈아 찍습니다.</p>
+    <div class="callout deep"><strong>정의 5.7 (체비쇼프 노드)</strong> \(T_{n+1}\)의 근
+      <div class="formula">$$x_k = \cos\frac{(2k+1)\pi}{2(n+1)}, \qquad k = 0, 1, \dots, n$$
+      <div class="where">를 \(n+1\)개의 <span class="term">체비쇼프 노드</span><span class="en">(Chebyshev nodes)</span>라 한다. 반원 위의 등간격 점을 지름에 내린 그림자라서 양 끝에 촘촘하다. 일반 구간 \([a, b]\)에서는 \(x = \frac{a+b}{2} + \frac{b-a}{2}x_k\)로 옮긴다.</div></div></div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="반원 위 등간격 점의 그림자가 체비쇼프 노드">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <path d="M 130 200 A 250 250 0 0 1 630 200" fill="none" class="s-line" style="stroke-width:1.6"/>
+        <line x1="110" y1="200" x2="650" y2="200" class="s-axis"/>
+        <g style="stroke:var(--text-faint);stroke-dasharray:4 4;stroke-width:1.2">
+          <line x1="621.5" y1="135" x2="621.5" y2="200"/><line x1="556.6" y1="66" x2="556.6" y2="200"/><line x1="451.0" y1="-37" x2="451.0" y2="200"/>
+          <line x1="309.0" y1="-37" x2="309.0" y2="200"/><line x1="203.4" y1="66" x2="203.4" y2="200"/><line x1="138.5" y1="135" x2="138.5" y2="200"/>
+        </g>
+        <g style="fill:var(--accent-2)">
+          <circle cx="621.5" cy="135" r="5"/><circle cx="556.6" cy="66" r="5"/><circle cx="451.0" cy="-37" r="5"/>
+        </g>
+        <g style="fill:var(--accent)">
+          <circle cx="621.5" cy="200" r="5.5"/><circle cx="556.6" cy="200" r="5.5"/><circle cx="451.0" cy="200" r="5.5"/><circle cx="309.0" cy="200" r="5.5"/><circle cx="203.4" cy="200" r="5.5"/><circle cx="138.5" cy="200" r="5.5"/>
+        </g>
+        <text x="130" y="222" text-anchor="middle" class="t-mono">−1</text><text x="630" y="222" text-anchor="middle" class="t-mono">1</text><text x="380" y="222" text-anchor="middle" class="t-mono">0</text>
+        <text x="380" y="140" text-anchor="middle" class="t-dim">반원의 각을 같은 간격으로 나눈 점</text>
+        <text x="380" y="160" text-anchor="middle" class="t-dim">→ 지름 위의 그림자는 양 끝에 몰린다</text>
+      </svg>
+      <figcaption><b>그림 5-2.</b> 체비쇼프 노드 6개. 반원 위에서 각 \(\theta_k = (2k+1)\pi/12\)로 같은 간격인 점(청록, 일부만 보임)을 지름에 내리면 \(x_k = \cos\theta_k\)(초록)가 된다. 가운데는 성기고 양 끝은 촘촘하다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 5.8 (체비쇼프 노드의 최적성)</strong> 최고차 계수가 1인 \(n+1\)차 다항식 가운데 \([-1, 1]\)에서 최댓값 \(\max|q|\)이 가장 작은 것은 \(\tilde T_{n+1} = 2^{-n}T_{n+1}\)이고, 그 값은 \(2^{-n}\)이다. 따라서 체비쇼프 노드에서 \(\omega = \tilde T_{n+1}\)이고
+      <div class="formula">$$\max_{[-1,1]}|f - p_n| \le \frac{\max|f^{(n+1)}|}{(n+1)!\,2^n}.$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 어떤 최고차 계수 1인 \(q\)가 \(\max|q| \lt 2^{-n}\)이라 하자. \(\tilde T_{n+1}\)은 \(n+2\)개의 점에서 \(\pm 2^{-n}\)을 번갈아 찍으므로, \(r = \tilde T_{n+1} - q\)는 그 점들에서 부호가 번갈아 바뀐다. 그러면 \(r\)은 \(n+1\)개 이상의 근을 갖는데, 최고차 항이 지워져 차수가 \(n\) 이하이므로 \(r \equiv 0\), 모순. ∎</p></div>
+    <p>등간격과 비교하면 차이가 분명합니다. 노드 3개에서 등간격 \(\{-1, 0, 1\}\)의 \(\omega = x^3 - x\)는 최대 \(2/(3\sqrt3) = 0.385\), 체비쇼프 \(\{\pm\sqrt3/2, 0\}\)의 \(\omega = x^3 - \tfrac34 x\)는 최대 \(0.25\)입니다. 노드 21개에서는 \(2.34\times10^{-4}\) 대 \(9.54\times10^{-7}\), <b>245배</b> 차이입니다. 예제 5.3의 사인 보간을 체비쇼프 노드 \(\{0.1052, 0.7854, 1.4656\}\)으로 바꾸면 오차 한계는 \(0.0311\)에서 \(0.0202\)로, 실제 최대 오차는 \(0.0235\)에서 \(0.0162\)로 줄어듭니다.</p>
+    <p>노드 배치의 품질을 재는 더 완전한 척도는 <span class="term">르베그 상수</span><span class="en">(Lebesgue constant)</span> \(\Lambda_n = \max_x\sum_k|\ell_k(x)|\)입니다. 최선의 \(n\)차 근사 \(p^*\)에 대해 \(\|f - p_n\|_\infty \le (1 + \Lambda_n)\|f - p^*\|_\infty\)이고, 데이터의 오차도 최대 \(\Lambda_n\)배로 증폭됩니다. 계산해 보면 등간격은 \(n = 10\)에서 \(29.9\), \(n = 20\)에서 \(10987\)로 지수적으로 커지고, 체비쇼프는 \(2.49\), \(2.90\)으로 \(\frac{2}{\pi}\ln n\) 정도로만 자랍니다.</p>
+
+    <div class="sim" id="sim-ip-nodepoly">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>노드 다항식 |ω(x)|: 등간격 vs 체비쇼프</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ip-two">
+          <div><canvas id="ip-np-cv"></canvas><span class="ip-cap">|ω(x)| = |∏(x − xᵢ)|</span></div>
+          <div><canvas id="ip-np-cv2"></canvas><span class="ip-cap">노드 위치</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>노드 수 n+1 <output id="ip-np-n-out"></output></span><input type="range" id="ip-np-n" min="2" max="25" step="1" value="11"></label>
+          <div class="ctrl"><span>세로축</span><div class="seg" id="ip-np-ax"><button data-value="lin">선형</button><button data-value="log" class="on">로그</button></div></div>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--bad)"></i>등간격</span><span><i style="background:var(--accent)"></i>체비쇼프</span><span><i style="background:var(--text-faint)"></i>2⁻ⁿ</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">max |ω| 등간격</span><span class="v" id="ip-np-e">—</span></div>
+        <div class="stat"><span class="k">max |ω| 체비쇼프 (= 2⁻ⁿ)</span><span class="v" id="ip-np-c">—</span></div>
+        <div class="stat"><span class="k">비율</span><span class="v" id="ip-np-r">—</span></div>
+        <div class="stat"><span class="k">르베그 상수 Λ 등간격 / 체비쇼프</span><span class="v" id="ip-np-l">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 로그 축에서 등간격의 |ω|는 가운데가 낮고 양 끝 구간에서 수십~수백 배 솟습니다. 체비쇼프는 모든 봉우리가 같은 높이 2⁻ⁿ입니다(등진동). ② n+1을 늘리며 비율이 지수적으로 커지는 것을 보세요. ③ 아래 노드 그림에서 체비쇼프 노드가 양 끝에 몰리는 정도를 보세요. 끝의 큰 봉우리를 누르기 위해서입니다. 모델: [−1, 1], 르베그 상수는 1500개 점에서 Σ|ℓₖ|의 최댓값.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="barycentric">
+    <h2>무게중심 공식: 빠르고 안정적인 계산</h2>
+    <div class="problem"><strong>100차 다항식을 믿고 계산할 수 있을까</strong>
+      <p>체비쇼프 노드라면 차수 100의 보간도 정확하다고 했습니다. 하지만 반데르몽드 계수는 1절에서 본 대로 조건수가 \(10^{16}\)을 넘고, 라그랑주 형식은 점마다 \(O(n^2)\)입니다. 실제로 수백 차수의 보간을 쓰는 라이브러리(예: Chebfun)는 어떻게 계산할까요?</p></div>
+    <p>라그랑주 기저의 공통 인수를 묶어 냅니다. \(\omega(x) = \prod_j(x - x_j)\)와 <span class="term">무게중심 가중치</span><span class="en">(barycentric weight)</span> \(w_k = 1/\prod_{j \ne k}(x_k - x_j)\)를 쓰면 \(\ell_k(x) = \omega(x)\,w_k/(x - x_k)\)입니다. 여기에 \(\sum_k\ell_k = 1\)로 나누면 \(\omega(x)\)가 지워집니다.</p>
+    <div class="callout deep"><strong>정리 5.9 (무게중심 공식)</strong> \(x\)가 노드가 아니면
+      <div class="formula">$$p(x) = \frac{\displaystyle\sum_{k=0}^{n}\frac{w_k}{x - x_k}\,y_k}{\displaystyle\sum_{k=0}^{n}\frac{w_k}{x - x_k}}.$$
+      <div class="where">가중치는 데이터 \(y\)와 무관하므로 한 번 \(O(n^2)\)로 구해 두면, 점마다 \(O(n)\)이다. 가중치 전체에 같은 상수를 곱해도 결과가 같다. 체비쇼프 노드(제1종)에서는 \(w_k \propto (-1)^k\sin\frac{(2k+1)\pi}{2(n+1)}\), 끝점을 포함하는 체비쇼프 점 \(\cos(k\pi/n)\)에서는 \(w_k \propto (-1)^k\delta_k\)(\(\delta_0 = \delta_n = \tfrac12\), 나머지 1)로 닫힌 꼴이다.</div></div></div>
+    <pre class="code"><span class="c">// 무게중심 가중치 (한 번, O(n²))</span>
+<span class="k">for</span> k = 0 <span class="k">to</span> n
+  w[k] ← 1
+  <span class="k">for</span> j = 0 <span class="k">to</span> n, j ≠ k
+    w[k] ← w[k] / (x[k] − x[j])
+<span class="c">// 한 점 t에서의 값 (O(n))</span>
+<span class="k">function</span> bary(t)
+  num ← 0;  den ← 0
+  <span class="k">for</span> k = 0 <span class="k">to</span> n
+    d ← t − x[k]
+    <span class="k">if</span> d = 0 <span class="k">then return</span> y[k]      <span class="c">// 노드 위에서는 데이터 그대로</span>
+    q ← w[k] / d
+    num ← num + q · y[k];  den ← den + q
+  <span class="k">return</span> num / den</pre>
+    <div class="callout"><strong>예제 5.4 (무게중심 공식으로 다시 계산)</strong> 예제 5.1의 노드 \(0, 1, 3\)과 값 \(1, 3, 2\)로 \(p(2)\)를 구하라.
+      <ol>
+        <li>\(w_0 = \frac{1}{(0-1)(0-3)} = \tfrac13\), \(w_1 = \frac{1}{(1-0)(1-3)} = -\tfrac12\), \(w_2 = \frac{1}{(3-0)(3-1)} = \tfrac16\).</li>
+        <li>\(t = 2\): \(q_k = w_k/(2 - x_k) = \tfrac16,\ -\tfrac12,\ -\tfrac16\).</li>
+        <li>분자 \(\tfrac16\cdot 1 - \tfrac12\cdot 3 - \tfrac16\cdot 2 = -\tfrac53\), 분모 \(\tfrac16 - \tfrac12 - \tfrac16 = -\tfrac12\). \(p(2) = \tfrac{10}{3}\). 예제 5.1, 5.2와 같은 답이다.</li>
+      </ol></div>
+    <p>안정성은 놀랍습니다. \(t\)가 노드 \(x_k\)에 아주 가까우면 \(1/(t - x_k)\)가 거대해지지만, 분자와 분모에 <b>같은 비율로</b> 나타나 서로 지워집니다. 하이엄<span class="en">(Nicholas Higham)</span>은 2004년에 이 공식이 르베그 상수가 작은 노드(체비쇼프 등)에서 전방 안정임을 증명했습니다. 반면 같은 다항식을 반데르몽드로 구한 단항식 계수로 계산하면, 계수 자체가 조건수만큼 틀려서 정확도에 바닥이 생깁니다. 아래 시뮬레이터의 세 번째 곡선이 그 바닥입니다.</p>
+    <div class="callout"><strong>예제 5.5 (계산 방법이 정확도를 가른다)</strong> 룽게 함수를 체비쇼프 노드로 보간한 최대 오차를 두 방법으로 계산했다.
+      <div class="table-wrap"><table class="ip-tbl">
+        <thead><tr><th>차수 \(n\)</th><th>20</th><th>40</th><th>60</th><th>80</th></tr></thead>
+        <tbody>
+          <tr><td>무게중심 공식</td><td>1.53×10⁻²</td><td>2.89×10⁻⁴</td><td>5.42×10⁻⁶</td><td>1.02×10⁻⁷</td></tr>
+          <tr><td>반데르몽드 → 단항식 계수</td><td>1.53×10⁻²</td><td>3.03×10⁻⁴</td><td>3.48×10⁻⁴</td><td>7.70×10⁻⁴</td></tr>
+        </tbody></table></div>
+      수학적으로 같은 다항식인데 \(n = 40\)부터 단항식 계산은 더 좋아지지 않고 오히려 나빠진다. 무게중심 공식은 이론적 수렴 속도 \(\rho^{-n}\), \(\rho = \tfrac15 + \sqrt{1 + \tfrac1{25}} \approx 1.2198\)을 그대로 따라 \(n = 128\)에서 \(7.4\times10^{-12}\)에 이른다.</div>
+
+    <div class="sim" id="sim-ip-convergence">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차–차수 그래프: 노드와 계산 방법</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-cv-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ip-cv-f">
+            <option value="runge">1/(1 + 25x²)</option>
+            <option value="exp">eˣ</option>
+            <option value="abs">|x|</option>
+            <option value="osc">cos 20x</option>
+          </select></label>
+          <label class="ctrl"><span>살펴볼 n <output id="ip-cv-n-out"></output></span><input type="range" id="ip-cv-n" min="2" max="100" step="2" value="40"></label>
+          <label class="check"><input type="checkbox" id="ip-cv-eq" checked> 등간격 (무게중심)</label>
+          <label class="check"><input type="checkbox" id="ip-cv-ch" checked> 체비쇼프 (무게중심)</label>
+          <label class="check"><input type="checkbox" id="ip-cv-mo" checked> 체비쇼프 (반데르몽드 계수)</label>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--bad)"></i>등간격 · 무게중심</span><span><i style="background:var(--accent)"></i>체비쇼프 · 무게중심</span><span><i style="background:var(--warn)"></i>체비쇼프 · 반데르몽드</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">등간격</span><span class="v" id="ip-cv-o0">—</span></div>
+        <div class="stat"><span class="k">체비쇼프 · 무게중심</span><span class="v" id="ip-cv-o1">—</span></div>
+        <div class="stat"><span class="k">체비쇼프 · 반데르몽드</span><span class="v" id="ip-cv-o2">—</span></div>
+      </div>
+      <div class="ip-msg" id="ip-cv-msg"></div>
+      <div class="sim-note">해볼 것: ① eˣ에서 등간격도 처음엔 체비쇼프만큼 빨리 줄지만 n ≈ 14에서 10⁻¹³ 근처에 닿은 뒤 다시 올라갑니다. 함수가 아니라 반올림 오차가 르베그 상수(지수적으로 큼)만큼 증폭된 것입니다. ② 룽게 함수에서 반데르몽드 곡선(노랑)이 10⁻⁴ 근처에서 멈추고, 무게중심(초록)은 직선으로 계속 내려갑니다. 세로축이 로그이므로 직선은 지수 수렴입니다. ③ cos 20x는 n이 16~20을 넘어야 비로소 줄기 시작합니다. 파장당 최소 노드 수(대략 π개)가 필요합니다. 모델: [−1, 1], 오차는 1201개 점의 최댓값, 반데르몽드 계는 부분 피벗 가우스 소거.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="hermite">
+    <h2>에르미트 보간: 기울기까지 맞추기</h2>
+    <div class="problem"><strong>위치와 속도를 함께 아는 경우</strong>
+      <p>로봇 팔의 관절이 \(t = 0\)에 각도 0, 각속도 1이고 \(t = 1\)에 각도 1, 각속도 0이어야 합니다. 값 두 개로는 직선밖에 못 정하지만, 끝점의 기울기까지 지정하면 부드럽게 출발하고 부드럽게 멈추는 궤적을 만들 수 있습니다. 애니메이션의 키프레임, 위성 궤도력의 위치·속도 표도 같은 구조입니다.</p></div>
+    <div class="callout deep"><strong>정의 5.10 (에르미트 보간)</strong> 서로 다른 노드 \(x_0, \dots, x_m\)에서 값 \(f(x_i)\)와 도함수 \(f'(x_i)\)를 모두 맞추는 \(2m+1\)차 이하 다항식 \(H\)를 <span class="term">에르미트 보간</span><span class="en">(Hermite interpolation)</span>이라 한다. 조건 \(2m+2\)개, 미지수 \(2m+2\)개이며 해는 유일하다. 오차는
+      <div class="formula">$$f(x) - H(x) = \frac{f^{(2m+2)}(\xi)}{(2m+2)!}\prod_{i=0}^{m}(x - x_i)^2.$$</div></div>
+    <p>계산은 분할 차분표에 각 노드를 <b>두 번</b> 적으면 됩니다. 정리 5.5(다)에 의해 같은 노드의 1차 분할 차분은 \(f[x_i, x_i] = \lim_{h\to0}\frac{f(x_i + h) - f(x_i)}{h} = f'(x_i)\)로 정의하는 것이 자연스럽습니다. 나머지 칸은 보통 점화식 그대로입니다.</p>
+    <div class="callout"><strong>예제 5.6 (부드러운 출발과 정지)</strong> \(H(0) = 0\), \(H'(0) = 1\), \(H(1) = 1\), \(H'(1) = 0\)인 3차식을 구하라.
+      <div class="table-wrap"><table class="ip-tbl">
+        <thead><tr><th>\(z\)</th><th>\(f[z]\)</th><th>1차</th><th>2차</th><th>3차</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td><b>0</b></td><td></td><td></td><td></td></tr>
+          <tr><td>0</td><td>0</td><td><b>1</b> (= f′(0))</td><td></td><td></td></tr>
+          <tr><td>1</td><td>1</td><td>1</td><td><b>0</b></td><td></td></tr>
+          <tr><td>1</td><td>1</td><td>0 (= f′(1))</td><td>−1</td><td><b>−1</b></td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>1차: \(f[0,0] = 1\), \(f[0,1] = (1 - 0)/1 = 1\), \(f[1,1] = 0\). 2차: \(f[0,0,1] = (1 - 1)/1 = 0\), \(f[0,1,1] = (0 - 1)/1 = -1\). 3차: \((-1 - 0)/1 = -1\).</li>
+        <li>\(H(x) = 0 + 1\cdot x + 0\cdot x^2 - 1\cdot x^2(x - 1) = x + x^2 - x^3\).</li>
+        <li>확인: \(H(1) = 1\), \(H'(x) = 1 + 2x - 3x^2\)이므로 \(H'(0) = 1\), \(H'(1) = 0\). 중간값 \(H(0.5) = 0.625\).</li>
+      </ol></div>
+    <p>구간 하나에서의 3차 에르미트 보간은 6장의 조각별 3차 에르미트(PCHIP)와 3차 스플라인의 부품이 됩니다. 노드마다 기울기를 어떻게 정하느냐가 두 방법의 차이입니다.</p>
+
+    <div class="sim" id="sim-ip-hermite">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>같은 정보량, 다른 보간: 라그랑주 vs 에르미트</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ip-hm-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="ip-hm-f">
+            <option value="damp">e^(−x/2)·sin 3x, [0, 4]</option>
+            <option value="runge">1/(1 + x²), [−4, 4]</option>
+            <option value="bump">tanh(3x), [−2, 2]</option>
+          </select></label>
+          <label class="ctrl"><span>노드 수 m+1 <output id="ip-hm-n-out"></output></span><input type="range" id="ip-hm-n" min="2" max="7" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="ip-hm-l1" checked> 라그랑주, 같은 노드 (m차)</label>
+          <label class="check"><input type="checkbox" id="ip-hm-l2" checked> 라그랑주, 노드 2배 (2m+1차)</label>
+          <label class="check"><input type="checkbox" id="ip-hm-h" checked> 에르미트 (2m+1차)</label>
+        </div>
+      </div>
+      <div class="ip-legend"><span><i style="background:var(--text-dim)"></i>f</span><span><i style="background:var(--warn)"></i>라그랑주 m+1점</span><span><i style="background:var(--bad)"></i>라그랑주 2m+2점</span><span><i style="background:var(--accent)"></i>에르미트</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">라그랑주 m+1점</span><span class="v" id="ip-hm-o0">—</span></div>
+        <div class="stat"><span class="k">라그랑주 2m+2점</span><span class="v" id="ip-hm-o1">—</span></div>
+        <div class="stat"><span class="k">에르미트</span><span class="v" id="ip-hm-o2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 노드 위의 짧은 선분이 에르미트가 맞추는 기울기입니다. 에르미트 곡선(초록)이 노드에서 f에 접하는 것을 보세요. ② 정보량(조건 2m+2개)이 같은 '라그랑주 2배 노드'와 에르미트의 최대 오차를 비교하세요. 대체로 비슷하지만, 에르미트는 오차가 노드 사이로 몰립니다(∏(x − xᵢ)²). ③ 1/(1 + x²), [−4, 4]에서 노드를 5개 넘게 늘리면 에르미트와 2배 노드 라그랑주 모두 양 끝에서 오차가 다시 커집니다(룽게 현상). 도함수를 아는 것이 노드 배치 문제를 없애 주지는 않습니다. 모델: 등간격 노드, 반복 노드 분할 차분표로 계산. 표시는 최대 오차.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>보간 다항식은 그 자체로 쓰이기보다 다른 알고리즘의 <b>부품</b>으로 더 자주 쓰입니다. "모르는 함수를 다항식으로 바꾸고, 다항식에 대해서는 정확히 계산한다"가 수치해석의 기본 동작입니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>보간이 하는 일</th><th>이 장의 도구</th></tr></thead>
+      <tbody>
+        <tr><td>수표·물성표(증기표, 로그표)</td><td>표 사이의 값 읽기</td><td>1차·2차 보간, 오차 \(h^2/8\cdot\max|f''|\)</td></tr>
+        <tr><td>행성·위성 궤도력</td><td>시간 구간마다 계수 저장, 임의 시각의 위치</td><td>체비쇼프 다항식, 위치·속도 에르미트</td></tr>
+        <tr><td>수치 적분</td><td>피적분 함수를 보간해 정확히 적분</td><td>뉴턴–코츠(등간격), 클렌쇼–커티스(체비쇼프)</td></tr>
+        <tr><td>ODE 다단계 방법</td><td>과거 기울기를 보간해 외삽</td><td>애덤스 공식 = 뉴턴 형식 보간의 적분</td></tr>
+        <tr><td>근 찾기</td><td>함수 대신 보간 다항식의 근</td><td>할선법(1차), 역 2차 보간(브렌트)</td></tr>
+        <tr><td>스펙트럴 방법·Chebfun</td><td>함수를 수백 차 보간으로 표현</td><td>체비쇼프 점, 무게중심 공식</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="splines.html"><small>6장 · 스플라인과 곡선</small>조각별 다항식<br><span>룽게 현상의 처방. 낮은 차수를 이어 붙이고 이음매의 매끄러움을 맞춘다.</span></a>
+      <a href="approximation.html"><small>7장 · 최소제곱 근사</small>잡음 데이터와 직교 다항식<br><span>측정 잡음이 있으면 모든 점을 지나는 것이 오히려 해롭다. 체비쇼프 전개와 최소최대 근사로 이어진다.</span></a>
+      <a href="integration.html"><small>10장 · 수치 적분</small>뉴턴–코츠와 가우스 구적법<br><span>보간 다항식을 적분하면 구적 공식이다. 노드를 잘 고르면 정확도 차수가 두 배가 된다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · ODE 수치 해법</small>애덤스 다단계 방법<br><span>지난 걸음들의 f 값을 뉴턴 형식으로 보간해 다음 걸음을 적분한다.</span></a>
+      <a href="roots.html"><small>3장 · 근 찾기</small>할선법과 브렌트 방법<br><span>두 점의 1차 보간이 할선법, 세 점의 역 2차 보간이 브렌트 방법의 빠른 걸음이다.</span></a>
+      <a href="../../calculus/chapters/taylor.html"><small>CALCULUSBOOK</small>테일러 다항식<br><span>한 점에 조건을 모두 몰아넣은 에르미트 보간. 나머지 항이 보간 오차 공식과 같은 꼴이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>서로 다른 \(n+1\)개 노드를 지나는 \(n\)차 이하 다항식은 정확히 하나다. 형식(단항식·라그랑주·뉴턴·무게중심)은 달라도 같은 다항식이다.</li>
+      <li>단항식 계수를 구하는 반데르몽드 계는 조건수가 지수적으로 커서(\([0,1]\) 등간격 20점에서 \(\approx10^{16}\)) 계산 도구로 부적합하다.</li>
+      <li>라그랑주 기저 \(\ell_k\)는 자기 노드에서 1, 다른 노드에서 0이고 \(\sum\ell_k = 1\)이다. 뉴턴 형식의 계수는 분할 차분표의 대각선이며 점 추가가 \(O(n)\)이다.</li>
+      <li>보간 오차는 \(f(x) - p_n(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}\prod(x - x_i)\). 1차 보간은 \(\frac{h^2}{8}\max|f''|\). 분할 차분은 \(f^{(k)}(\xi)/k!\)이다.</li>
+      <li>등간격 노드의 고차 보간은 매끄러운 함수에서도 발산할 수 있다(룽게 현상, \(1/(1 + 25x^2)\), \(n = 20\)에서 오차 60).</li>
+      <li>체비쇼프 노드 \(\cos\frac{(2k+1)\pi}{2(n+1)}\)는 \(\max|\omega|\)를 최소 \(2^{-n}\)으로 만들고, 르베그 상수가 \(\frac2\pi\ln n\) 정도로만 자란다.</li>
+      <li>무게중심 공식은 가중치를 한 번 \(O(n^2)\)로 구한 뒤 점마다 \(O(n)\)이고, 체비쇼프 노드에서 수백 차수까지 안정적이다.</li>
+      <li>에르미트 보간은 노드를 두 번 적은 분할 차분표로 값과 기울기를 함께 맞추며, 오차에 \(\prod(x - x_i)^2\)이 붙는다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 서로 다른 x를 가진 점 6개를 모두 지나는 다항식에 대한 설명으로 옳은 것은?</p><div class="opts">
+        <button class="opt">6차 다항식이 정확히 하나 있다</button>
+        <button class="opt" data-correct>5차 이하 다항식이 정확히 하나 있고, 6차 이상은 무수히 많다</button>
+        <button class="opt">5차 이하 다항식은 점의 배치에 따라 없을 수도 있다</button>
+        <button class="opt">라그랑주 형식과 뉴턴 형식은 서로 다른 다항식을 준다</button>
+      </div><div class="quiz-exp">정리 5.1에 의해 n+1 = 6개 노드에는 5차 이하 보간 다항식이 유일하다. 6차 이상이면 c·∏(x − xᵢ)를 더한 것도 조건을 만족하므로 무수히 많다. 형식은 계산법의 차이일 뿐 같은 다항식이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 데이터 \((0, 1)\), \((1, 3)\), \((3, 2)\)의 분할 차분 \(f[x_0, x_1, x_2]\)는?</p><div class="opts">
+        <button class="opt">−0.5</button>
+        <button class="opt" data-correct>−5/6</button>
+        <button class="opt">2</button>
+        <button class="opt">7/6</button>
+      </div><div class="quiz-exp">f[0,1] = 2, f[1,3] = −0.5, f[0,1,3] = (−0.5 − 2)/(3 − 0) = −5/6. 이것이 2차 보간 다항식의 최고차 계수다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 라그랑주 기저 \(\ell_0, \dots, \ell_n\)에 대해 항상 성립하는 것은?</p><div class="opts">
+        <button class="opt">모든 x에서 0 ≤ ℓₖ(x) ≤ 1</button>
+        <button class="opt">∫ℓₖ(x)dx = 1</button>
+        <button class="opt" data-correct>모든 x에서 Σℓₖ(x) = 1</button>
+        <button class="opt">ℓₖ는 서로 직교한다</button>
+      </div><div class="quiz-exp">상수 함수 1의 보간 다항식은 자기 자신이므로 Σ1·ℓₖ(x) = 1. 각 ℓₖ는 음수나 1보다 큰 값을 가질 수 있다(예제 5.1의 ℓ₀(2) = −1/3).</div></div>
+
+      <div class="quiz-q"><p>Q4. 간격 \(h = 0.1\)인 사인표에서 이웃한 두 값을 직선으로 보간할 때 오차 한계는?</p><div class="opts">
+        <button class="opt">0.1</button>
+        <button class="opt">0.01</button>
+        <button class="opt" data-correct>0.00125</button>
+        <button class="opt">0.0001</button>
+      </div><div class="quiz-exp">1차 보간 오차는 (h²/8)·max|f″|이고 |sin″| ≤ 1이므로 0.01/8 = 0.00125. 간격을 반으로 줄이면 한계는 1/4이 된다.</div></div>
+
+      <div class="quiz-q"><p>Q5. \(1/(1 + 25x^2)\)을 \([-1, 1]\)의 등간격 노드로 보간하며 차수를 10, 20, 40으로 높이면?</p><div class="opts">
+        <button class="opt">오차가 (n+1)!에 반비례해 빠르게 줄어든다</button>
+        <button class="opt">오차가 일정하게 유지된다</button>
+        <button class="opt" data-correct>가운데는 맞아 가지만 양 끝 근처의 오차가 지수적으로 커진다</button>
+        <button class="opt">반올림 오차 때문에만 틀린다</button>
+      </div><div class="quiz-exp">룽게 현상. 최대 오차는 1.92 → 59.8 → 1.05×10⁵로 커지고 모두 양 끝 근처에서 생긴다. 반올림이 아니라 수학적 보간 다항식 자체의 성질이다. 체비쇼프 노드로 바꾸면 수렴한다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 체비쇼프 노드 11개로 만든 노드 다항식 \(\omega(x)\)의 \([-1, 1]\)에서의 최댓값은?</p><div class="opts">
+        <button class="opt">2⁻¹¹ ≈ 4.9×10⁻⁴</button>
+        <button class="opt" data-correct>2⁻¹⁰ ≈ 9.8×10⁻⁴</button>
+        <button class="opt">1/11! ≈ 2.5×10⁻⁸</button>
+        <button class="opt">1</button>
+      </div><div class="quiz-exp">노드 n+1 = 11개면 ω = T₁₁/2¹⁰이고 |T₁₁| ≤ 1이므로 최댓값은 2⁻¹⁰. 같은 개수의 등간격 노드에서는 8.53×10⁻³으로 약 8.7배 크다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 무게중심 공식에 대한 설명으로 틀린 것은?</p><div class="opts">
+        <button class="opt">가중치는 데이터 yₖ와 무관하다</button>
+        <button class="opt">가중치를 구한 뒤 한 점의 계산은 O(n)이다</button>
+        <button class="opt" data-correct>단항식 계수를 먼저 구해야 하므로 반데르몽드와 같은 조건수 문제가 있다</button>
+        <button class="opt">가중치 전체에 같은 상수를 곱해도 결과가 같다</button>
+      </div><div class="quiz-exp">무게중심 공식은 단항식 계수를 전혀 쓰지 않는다. 그래서 체비쇼프 노드에서 반데르몽드 방법이 10⁻⁴에서 멈출 때에도 계속 수렴한다(예제 5.5). 분자·분모의 공통 상수는 약분된다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 노드 3개에서 값과 1차 도함수를 모두 맞추는 에르미트 보간 다항식의 차수는 최대 얼마인가?</p><div class="opts">
+        <button class="opt">2</button>
+        <button class="opt">3</button>
+        <button class="opt" data-correct>5</button>
+        <button class="opt">6</button>
+      </div><div class="quiz-exp">조건이 3×2 = 6개이므로 미지수 6개, 곧 5차 이하 다항식이다. 분할 차분표에서는 각 노드를 두 번 적어 z = x₀, x₀, x₁, x₁, x₂, x₂로 계산한다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const IP = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "∞";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  equi: (n, a, b) => Array.from({ length: n }, (_, i) => (n === 1 ? (a + b) / 2 : a + ((b - a) * i) / (n - 1))),
+  cheb: (n, a = -1, b = 1) => Array.from({ length: n }, (_, i) => (a + b) / 2 + ((b - a) / 2) * Math.cos(((2 * i + 1) * Math.PI) / (2 * n))),
+  /** 무게중심 가중치 (크기를 맞추려고 구간 길이로 스케일) */
+  weights(x) {
+    const n = x.length, span = (Math.max(...x) - Math.min(...x)) || 1, s = 4 / span;
+    return x.map((xk, k) => { let w = 1; for (let j = 0; j < n; j++) if (j !== k) w /= (xk - x[j]) * s; return w; });
+  },
+  bary(x, y, w, t) {
+    let N = 0, D = 0;
+    for (let k = 0; k < x.length; k++) { const d = t - x[k]; if (d === 0) return y[k]; const q = w[k] / d; N += q * y[k]; D += q; }
+    return N / D;
+  },
+  /** 뉴턴 분할 차분 계수 (반복 노드는 dy로 도함수) */
+  divdiff(z, fz, dz) {
+    const n = z.length, Q = z.map((_, i) => [fz[i]]);
+    for (let j = 1; j < n; j++) for (let i = j; i < n; i++) {
+      const den = z[i] - z[i - j];
+      Q[i][j] = Math.abs(den) < 1e-14 ? (dz ? dz[i] : NaN) : (Q[i][j - 1] - Q[i - 1][j - 1]) / den;
+    }
+    return Q.map((r, i) => r[i]);
+  },
+  newton(z, c, t) { let p = c[c.length - 1]; for (let i = c.length - 2; i >= 0; i--) p = p * (t - z[i]) + c[i]; return p; },
+  /** 부분 피벗 가우스 소거 */
+  solve(A, b) {
+    const n = A.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let i = 0; i < n; i++) {
+      let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[p][i])) p = r;
+      [M[p], M[i]] = [M[i], M[p]];
+      if (M[i][i] === 0) return null;
+      for (let r = i + 1; r < n; r++) { const f = M[r][i] / M[i][i]; if (f) for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const x = Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let c = i + 1; c < n; c++) s -= M[i][c] * x[c]; x[i] = s / M[i][i]; }
+    return x;
+  },
+  /** 한쪽 야코비 특이값 → 2-노름 조건수 */
+  cond(A) {
+    const m = A.length, n = A[0].length, U = A.map((r) => r.slice());
+    for (let sw = 0; sw < 40; sw++) {
+      let off = false;
+      for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) {
+        let a = 0, b = 0, c = 0;
+        for (let i = 0; i < m; i++) { a += U[i][p] * U[i][p]; b += U[i][q] * U[i][q]; c += U[i][p] * U[i][q]; }
+        if (Math.abs(c) <= 1e-15 * Math.sqrt(a * b)) continue;
+        off = true;
+        const z = (b - a) / (2 * c), t = (z >= 0 ? 1 : -1) / (Math.abs(z) + Math.sqrt(1 + z * z)), cs = 1 / Math.sqrt(1 + t * t), sn = cs * t;
+        for (let i = 0; i < m; i++) { const x = U[i][p], y = U[i][q]; U[i][p] = cs * x - sn * y; U[i][q] = sn * x + cs * y; }
+      }
+      if (!off) break;
+    }
+    const s = []; for (let j = 0; j < n; j++) { let a = 0; for (let i = 0; i < m; i++) a += U[i][j] * U[i][j]; s.push(Math.sqrt(a)); }
+    return Math.max(...s) / Math.min(...s);
+  },
+  maxErr(f, g, a, b, N = 1200) { let m = 0, at = a; for (let i = 0; i <= N; i++) { const t = a + ((b - a) * i) / N, e = Math.abs(f(t) - g(t)); if (!(e <= m)) { m = e; at = t; } } return [m, at]; },
+  sub: (k) => String(k).split("").map((c) => "₀₁₂₃₄₅₆₇₈₉"[+c]).join(""),
+};
+
+/* ================================================================ 1. 점 끌기 보간 */
+(function () {
+  const INIT = [[0.5, 1], [2, 3], [3.5, 1.5], [5.5, 2.5]];
+  const C0 = MB.palette();
+  const mk = (p) => ({ x: p[0], y: p[1], color: C0.accent });
+  let lin = false, coef = true;
+  const msg = document.getElementById("ip-dr-msg");
+  const sorted = (pts) => pts.map((p) => [p.x, p.y]).sort((a, b) => a[0] - b[0]);
+  const pl = MB.plane("#ip-dr-cv", {
+    x: [-0.5, 6.5], y: [-2.5, 5.5], aspect: 0.62, minHeight: 260,
+    points: INIT.map(mk),
+    draw(P, api) {
+      const C = P.P, s = sorted(api.points), x = s.map((p) => p[0]), y = s.map((p) => p[1]);
+      let dup = false; for (let i = 1; i < x.length; i++) if (x[i] - x[i - 1] < 1e-3) dup = true;
+      if (lin) P.poly(s, { color: C.faint, width: 1.6, dash: [5, 4], close: false });
+      if (!dup && x.length >= 1) { const w = IP.weights(x); P.curve((t) => IP.bary(x, y, w, t), { color: C.accent, width: 2.6 }); }
+      api.points.forEach((p) => (p.color = C.accent));
+    },
+    onDrag: () => update(),
+    onPointer(x, y, ev) { if (ev !== "down" || pl.points.length >= 10) return; pl.points.push(mk([x, y])); update(); },
+  });
+  function update() {
+    pl.redraw();
+    const s = sorted(pl.points), x = s.map((p) => p[0]), y = s.map((p) => p[1]), n = x.length;
+    let dmin = Infinity; for (let i = 1; i < n; i++) dmin = Math.min(dmin, x[i] - x[i - 1]);
+    MB.stat("ip-dr-n", n + " / " + (n - 1));
+    if (dmin < 1e-3) { MB.stat("ip-dr-k", "∞"); MB.stat("ip-dr-mx", "—"); msg.className = "ip-msg bad"; msg.innerHTML = "두 점의 x가 같습니다. 서로 다른 노드라는 가정이 깨져 보간 다항식이 없습니다(반데르몽드 행렬이 특이)."; return; }
+    const V = x.map((xi) => x.map((_, j) => Math.pow(xi, j)));
+    MB.stat("ip-dr-k", IP.sci(IP.cond(V), 2));
+    const w = IP.weights(x); let mx = 0; for (let i = 0; i <= 600; i++) { const t = x[0] + ((x[n - 1] - x[0]) * i) / 600; mx = Math.max(mx, Math.abs(IP.bary(x, y, w, t))); }
+    MB.stat("ip-dr-mx", IP.num(mx, 2));
+    msg.className = "ip-msg";
+    if (coef) {
+      const a = IP.solve(V, y) || [];
+      msg.innerHTML = "p(x) = " + a.map((c, j) => (j === 0 ? IP.num(c, 3) : (c < 0 ? " − " : " + ") + IP.num(Math.abs(c), 3) + (j === 1 ? "x" : "x<sup>" + j + "</sup>"))).join("") + (dmin < 0.3 ? " &nbsp;<b>· 노드가 가까워 계수가 커졌습니다</b>" : "");
+    } else msg.innerHTML = "점을 끌거나 빈 곳을 클릭해 보세요. 점 수가 늘수록 κ₂(V)가 빠르게 커집니다.";
+  }
+  update();
+  document.getElementById("ip-dr-del").addEventListener("click", () => { if (pl.points.length > 1) pl.points.pop(); update(); });
+  document.getElementById("ip-dr-reset").addEventListener("click", () => { pl.points = INIT.map(mk); update(); });
+  MB.check("ip-dr-lin", (v) => { lin = v; update(); });
+  MB.check("ip-dr-coef", (v) => { coef = v; update(); });
+})();
+
+/* ================================================================ 2. 라그랑주 기저 */
+(function () {
+  const BASEY = [1.5, 3, 1, 2.5, 3.5, 1.5, 2.8];
+  let n = 4, k = 1, mode = "scaled";
+  const C0 = MB.palette();
+  const build = () => {
+    const x = IP.equi(n, 0, 6);
+    const pts = x.map((xi, i) => ({ x: xi, y: BASEY[i], lock: "x", color: C0.accent }));
+    pts.push({ x: 2.4, y: -1.3, lock: "y", color: C0.warn, label: "x*", r: 7 });
+    return pts;
+  };
+  const ell = (x, j, t) => { let p = 1; for (let i = 0; i < x.length; i++) if (i !== j) p *= (t - x[i]) / (x[j] - x[i]); return p; };
+  const pl = MB.plane("#ip-lg-cv", {
+    x: [-0.8, 6.8], y: [-2, 5], aspect: 0.62, minHeight: 260,
+    points: build(),
+    draw(P, api) {
+      const C = P.P, pts = api.points, d = pts.slice(0, n), x = d.map((p) => p.x), y = d.map((p) => p.y), probe = pts[n];
+      for (let j = 0; j < n; j++) {
+        if (j === k) continue;
+        P.curve((t) => (mode === "scaled" ? y[j] : 1) * ell(x, j, t), { color: C.faint, width: 1.2 });
+      }
+      P.curve((t) => (mode === "scaled" ? y[k] : 1) * ell(x, k, t), { color: C.accent, width: 2.4, dash: [6, 3] });
+      if (mode === "raw") x.forEach((xi, i) => P.dot(xi, i === k ? 1 : 0, { r: 4, color: i === k ? C.accent : C.dim }));
+      const w = IP.weights(x);
+      P.curve((t) => IP.bary(x, y, w, t), { color: C.text, width: 2.6 });
+      if (probe) { P.line(probe.x, P.y0, probe.x, P.y1, { color: C.warn, width: 1, dash: [3, 4] }); P.dot(probe.x, IP.bary(x, y, w, probe.x), { r: 4.5, color: C.warn }); }
+      d.forEach((p) => (p.color = C.accent)); if (probe) probe.color = C.warn;
+    },
+    onDrag: () => stats(),
+  });
+  function stats() {
+    const pts = pl.points, d = pts.slice(0, n), x = d.map((p) => p.x), y = d.map((p) => p.y), t = pts[n].x;
+    const ws = x.map((_, j) => ell(x, j, t));
+    MB.stat("ip-lg-x", IP.num(t, 2));
+    MB.stat("ip-lg-w", ws.map((v, j) => (j === k ? "<b>" + IP.num(v, 2) + "</b>" : IP.num(v, 2))).join(", "));
+    MB.stat("ip-lg-s", IP.num(ws.reduce((s, v) => s + v, 0), 6));
+    MB.stat("ip-lg-p", IP.num(ws.reduce((s, v, j) => s + v * y[j], 0), 4));
+  }
+  const kr = MB.range("ip-lg-k", (v) => String(v), (v) => { k = v; pl.redraw(); stats(); });
+  MB.range("ip-lg-n", (v) => String(v), (v) => {
+    n = v; const el = document.getElementById("ip-lg-k"); el.max = n - 1; if (k > n - 1) k = n - 1; kr.set(k, false);
+    pl.points = build(); pl.redraw(); stats();
+  });
+  MB.seg("ip-lg-mode", (v) => { mode = v; pl.view({ y: v === "raw" ? [-1.6, 2.2] : [-2, 5] }); pl.points[n].y = v === "raw" ? -1.1 : -1.3; pl.redraw(); });
+  stats();
+})();
+
+/* ================================================================ 3. 분할 차분표 */
+(function () {
+  const PRE = {
+    ex: { x: [0, 1, 3, 4, 2, 5], y: [1, 3, 2, 5, 2.5, 1], view: [-0.5, 5.5, -3, 7] },
+    sin: { x: [0, 0.6, 1.5, 2.2, 3, 3.6], y: null, f: Math.sin, view: [-0.3, 3.9, -1.6, 1.8] },
+    sq: { x: [0, 1, 3, 4, 2, 5], y: null, f: (t) => t * t, view: [-0.5, 5.5, -3, 27] },
+  };
+  let pre = PRE.ex, m = 3, done = 0; // m: 쓰는 점 수, done: 채운 칸 수(행 우선)
+  const tbl = document.getElementById("ip-dd-tbl"), msg = document.getElementById("ip-dd-msg");
+  const X = () => pre.x.slice(0, m), Y = () => (pre.y || pre.x.map(pre.f)).slice(0, m);
+  const order = () => { const o = []; for (let i = 0; i < m; i++) for (let j = 0; j <= i; j++) o.push([i, j]); return o; };
+  const full = () => { const x = X(), y = Y(), T = x.map(() => []); for (let i = 0; i < m; i++) { T[i][0] = y[i]; for (let j = 1; j <= i; j++) T[i][j] = (T[i][j - 1] - T[i - 1][j - 1]) / (x[i] - x[i - j]); } return T; };
+  const fmt = (v) => { const r = Math.round(v * 1e4) / 1e4; return (Math.abs(r) < 5e-5 ? "0" : String(r)).replace("-", "−"); };
+  const fd = (i, j) => "f[" + Array.from({ length: j + 1 }, (_, q) => "x" + IP.sub(i - j + q)).join(",") + "]";
+  const completeRows = () => { const o = order(); let r = 0; for (let i = 0; i < m; i++) { const last = o.findIndex(([a, b]) => a === i && b === i); if (last < done) r = i + 1; } return r; };
+  let pl;
+  function render() {
+    const T = full(), o = order(), x = X(), filled = new Set(o.slice(0, done).map(([i, j]) => i + "," + j));
+    const cur = done > 0 ? o[done - 1] : null;
+    let h = "<table><thead><tr><th>i</th><th>xᵢ</th>";
+    for (let j = 0; j < m; j++) h += "<th>" + (j === 0 ? "f[xᵢ]" : j + "차") + "</th>";
+    h += "</tr></thead><tbody>";
+    for (let i = 0; i < m; i++) {
+      h += "<tr><td>" + i + "</td><td>" + fmt(x[i]) + "</td>";
+      for (let j = 0; j < m; j++) {
+        if (j > i) { h += "<td class='ip-empty'></td>"; continue; }
+        const key = i + "," + j, cls = [];
+        if (cur && cur[0] === i && cur[1] === j) cls.push("ip-cur");
+        if (cur && cur[1] > 0 && ((i === cur[0] && j === cur[1] - 1) || (i === cur[0] - 1 && j === cur[1] - 1))) cls.push("ip-par");
+        if (i === j && filled.has(key)) cls.push("ip-top");
+        h += "<td class='" + cls.join(" ") + (filled.has(key) ? "" : " ip-empty") + "'>" + (filled.has(key) ? fmt(T[i][j]) : "·") + "</td>";
+      }
+      h += "</tr>";
+    }
+    tbl.innerHTML = h + "</tbody></table>";
+    if (!cur) msg.innerHTML = "‘다음 칸’을 눌러 0열(데이터)부터 채우세요. 행 i에는 f[xᵢ₋ⱼ, …, xᵢ]가 들어갑니다.";
+    else if (cur[1] === 0) msg.innerHTML = fd(cur[0], 0) + " = y" + IP.sub(cur[0]) + " = <b>" + fmt(T[cur[0]][0]) + "</b>";
+    else { const [i, j] = cur; msg.innerHTML = fd(i, j) + " = (" + fmt(T[i][j - 1]) + " − " + fmt(T[i - 1][j - 1]) + ") / (" + fmt(x[i]) + " − " + fmt(x[i - j]) + ") = <b>" + fmt(T[i][j]) + "</b>" + (i === j ? " ← 뉴턴 계수 c" + IP.sub(i) : ""); }
+    msg.className = "ip-msg";
+    pl.redraw();
+  }
+  pl = MB.plane("#ip-dd-cv", {
+    x: [pre.view[0], pre.view[1]], y: [pre.view[2], pre.view[3]], aspect: 0.62, minHeight: 240,
+    draw(P) {
+      const C = P.P, x = X(), y = Y(), r = completeRows();
+      if (pre.f) P.curve(pre.f, { color: C.faint, width: 1.4, dash: [4, 4] });
+      if (r > 0) { const T = full(), c = T.slice(0, r).map((row, i) => row[i]), z = x.slice(0, r); P.curve((t) => IP.newton(z, c, t), { color: C.accent2, width: 2.6 }); P.text("p" + IP.sub(r - 1) + " (" + (r - 1) + "차)", P.x0 + (P.x1 - P.x0) * 0.03, P.y1 - (P.y1 - P.y0) * 0.07, { color: C.accent2, bold: true, dx: 0 }); }
+      x.forEach((xi, i) => P.dot(xi, y[i], { r: 6, color: i < r ? C.accent : C.dim, stroke: C.bg, label: "x" + IP.sub(i) }));
+      for (let i = m; i < pre.x.length; i++) { const yy = (pre.y || pre.x.map(pre.f))[i]; P.dot(pre.x[i], yy, { r: 4, color: C.faint }); }
+    },
+  });
+  const step = (k) => { done = Math.min(order().length, done + k); render(); };
+  document.getElementById("ip-dd-step").addEventListener("click", () => step(1));
+  document.getElementById("ip-dd-row").addEventListener("click", () => { const o = order(); let t = done; while (t < o.length && !(o[t][0] === o[t][1])) t++; done = Math.min(o.length, t + 1); render(); });
+  document.getElementById("ip-dd-add").addEventListener("click", () => { if (m < pre.x.length) { m++; render(); msg.innerHTML = "점 x" + IP.sub(m - 1) + " = " + fmt(pre.x[m - 1]) + "을 추가했습니다. 위쪽 행은 그대로이고 <b>새 행 " + m + "칸</b>만 계산하면 됩니다. " + msg.innerHTML; } else { msg.className = "ip-msg bad"; msg.innerHTML = "이 데이터의 점을 모두 썼습니다."; } });
+  document.getElementById("ip-dd-reset").addEventListener("click", () => { m = 3; done = 0; render(); });
+  document.getElementById("ip-dd-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; m = 3; done = 0; pl.view({ x: [pre.view[0], pre.view[1]], y: [pre.view[2], pre.view[3]] }); render(); });
+  render();
+})();
+
+/* ================================================================ 4. 오차 곡선과 한계 */
+(function () {
+  const fact = (k) => { let p = 1; for (let i = 2; i <= k; i++) p *= i; return p; };
+  const F = {
+    sin: { f: Math.sin, a: 0, b: Math.PI, M: () => 1, y: [-0.3, 1.25] },
+    exp: { f: Math.exp, a: 0, b: 2, M: () => Math.exp(2), y: [0.4, 7.8] },
+    log: { f: Math.log, a: 1, b: 4, M: (n) => fact(n - 1), y: [-0.2, 1.6] },
+  };
+  let F0 = F.sin, n = 3, nodes = IP.equi(3, 0, Math.PI), R = null;
+  const C0 = MB.palette();
+  const calc = () => {
+    const x = nodes.slice().sort((a, b) => a - b), y = x.map(F0.f);
+    let ok = true; for (let i = 1; i < x.length; i++) if (x[i] - x[i - 1] < 1e-6) ok = false;
+    const w = IP.weights(x), p = (t) => IP.bary(x, y, w, t), om = (t) => x.reduce((s, xi) => s * (t - xi), 1), K = F0.M(n) / fact(n);
+    let me = 0, mb = 0, mw = 0;
+    for (let i = 0; i <= 800; i++) { const t = F0.a + ((F0.b - F0.a) * i) / 800; me = Math.max(me, Math.abs(F0.f(t) - p(t))); mw = Math.max(mw, Math.abs(om(t))); }
+    mb = K * mw;
+    R = { x, p, om, K, me, mb, mw, ok };
+  };
+  calc();
+  const pl = MB.plane("#ip-er-cv", {
+    x: [F0.a - 0.15, F0.b + 0.15], y: F0.y, aspect: 0.42, minHeight: 200,
+    points: nodes.map((v) => ({ x: v, y: F0.f(v), lock: "y", color: C0.accent, constrain(p) { p.x = MB.clamp(p.x, F0.a, F0.b); p.y = F0.f(p.x); } })),
+    draw(P) {
+      const C = P.P;
+      P.curve(F0.f, { color: C.dim, width: 2, from: F0.a, to: F0.b });
+      if (R.ok) P.curve(R.p, { color: C.accent, width: 2.4, from: F0.a, to: F0.b });
+    },
+    onDrag(p, i) { nodes[i] = p.x; calc(); cv2.redraw(); stats(); },
+  });
+  const cv2 = MB.canvas("#ip-er-cv2", (ctx, w, h) => {
+    const C = MB.palette(); if (!R.ok) return;
+    const lim = Math.max(R.mb, R.me) * 1.15 || 1, N = 300, err = [], bu = [], bl = [];
+    for (let i = 0; i <= N; i++) { const t = F0.a + ((F0.b - F0.a) * i) / N, b = R.K * Math.abs(R.om(t)); err.push([t, F0.f(t) - R.p(t)]); bu.push([t, b]); bl.push([t, -b]); }
+    MB.chart(ctx, { x: 58, y: 24, w: w - 76, h: h - 52 }, {
+      x: [F0.a - 0.15, F0.b + 0.15], y: [-lim, lim], yFmt: (v) => IP.sci(v, 1).replace(/<\/?sup>/g, "").replace("×10", "e"),
+      series: [{ data: bu, color: C.warn, width: 1.6, dash: [5, 3] }, { data: bl, color: C.warn, width: 1.6, dash: [5, 3] }, { data: err, color: C.bad, width: 2.4 }],
+      points: R.x.map((v) => ({ x: v, y: 0, r: 3.5, color: C.accent })), hlines: [{ y: 0, color: C.axis, dash: [] }],
+    });
+  }, { aspect: 0.32, minHeight: 160 });
+  function stats() { MB.stat("ip-er-e", IP.sci(R.me, 3)); MB.stat("ip-er-b", IP.sci(R.mb, 3)); MB.stat("ip-er-w", IP.sci(R.mw, 3)); }
+  const reset = (kind) => {
+    nodes = kind === "ch" ? IP.cheb(n, F0.a, F0.b).reverse() : IP.equi(n, F0.a, F0.b);
+    pl.points = nodes.map((v) => ({ x: v, y: F0.f(v), lock: "y", color: MB.palette().accent, constrain(p) { p.x = MB.clamp(p.x, F0.a, F0.b); p.y = F0.f(p.x); } }));
+    calc(); pl.view({ x: [F0.a - 0.15, F0.b + 0.15], y: F0.y }); cv2.redraw(); stats();
+  };
+  MB.range("ip-er-n", (v) => String(v), (v) => { n = v; reset("eq"); });
+  document.getElementById("ip-er-eq").addEventListener("click", () => reset("eq"));
+  document.getElementById("ip-er-ch").addEventListener("click", () => reset("ch"));
+  document.getElementById("ip-er-f").addEventListener("change", (e) => { F0 = F[e.target.value]; reset("eq"); });
+  stats();
+})();
+
+/* ================================================================ 5. 룽게 현상 */
+(function () {
+  const F = { runge: (t) => 1 / (1 + 25 * t * t), mild: (t) => 1 / (1 + t * t), abs: Math.abs, exp: (t) => Math.exp(Math.sin(3 * t)) };
+  const YV = { runge: [-0.7, 1.7], mild: [0.2, 1.3], abs: [-0.4, 1.4], exp: [0, 3.2] };
+  let fk = "runge", n = 10, node = "eq", both = false, R = null;
+  const calc = () => {
+    const f = F[fk], mk = (x) => { const y = x.map(f), w = IP.weights(x); return { x, y, w, p: (t) => IP.bary(x, y, w, t) }; };
+    const E = mk(IP.equi(n + 1, -1, 1)), Cn = mk(IP.cheb(n + 1));
+    R = { E, Cn, e1: IP.maxErr(f, E.p, -1, 1, 2000), e2: IP.maxErr(f, Cn.p, -1, 1, 2000) };
+  };
+  calc();
+  const pl = MB.plane("#ip-rg-cv", {
+    x: [-1.12, 1.12], y: YV.runge, aspect: 0.6, minHeight: 260, gridStep: 0.5,
+    draw(P) {
+      const C = P.P, f = F[fk];
+      P.curve(f, { color: C.dim, width: 2.2, from: -1, to: 1 });
+      const show = (S, col) => { P.curve(S.p, { color: col, width: 2.4, from: -1, to: 1, n: 900 }); S.x.forEach((v, i) => P.dot(v, S.y[i], { r: 3.5, color: col })); };
+      if (node === "eq" || both) show(R.E, C.bad);
+      if (node === "ch" || both) show(R.Cn, C.accent);
+    },
+  });
+  const stats = () => { MB.stat("ip-rg-e1", IP.sci(R.e1[0], 3)); MB.stat("ip-rg-e2", IP.sci(R.e2[0], 3)); MB.stat("ip-rg-at", "x = " + IP.num(R.e1[1], 3)); };
+  const upd = () => { calc(); pl.redraw(); stats(); };
+  const nr = MB.range("ip-rg-n", (v) => String(v), (v) => { n = v; upd(); });
+  MB.seg("ip-rg-node", (v) => { node = v; pl.redraw(); });
+  MB.check("ip-rg-both", (v) => { both = v; pl.redraw(); });
+  document.getElementById("ip-rg-f").addEventListener("change", (e) => { fk = e.target.value; pl.view({ y: YV[fk] }); upd(); });
+  let acc = 0;
+  const loop = MB.loop(document.getElementById("sim-ip-runge"), (dt) => { acc += dt; if (acc < 0.45) return; acc = 0; let v = n + 1; if (v > 30) v = 1; nr.set(v); });
+  loop.stop();
+  MB.playButton("ip-rg-play", () => loop.start(), () => loop.stop(), ["▶ n 올리기", "■ 멈춤"]);
+  stats();
+})();
+
+/* ================================================================ 6. 노드 다항식 */
+(function () {
+  let n1 = 11, ax = "log", R = null;
+  const calc = () => {
+    const E = IP.equi(n1, -1, 1), Cn = IP.cheb(n1), N = 1500, om = (x, t) => x.reduce((s, xi) => s * (t - xi), 1);
+    const de = [], dc = []; let me = 0, mc = 0;
+    for (let i = 0; i <= N; i++) { const t = -1 + (2 * i) / N, a = Math.abs(om(E, t)), b = Math.abs(om(Cn, t)); de.push([t, a]); dc.push([t, b]); me = Math.max(me, a); mc = Math.max(mc, b); }
+    const leb = (x) => { const w = IP.weights(x); let L = 0; for (let i = 0; i <= N; i++) { const t = -1 + (2 * i) / N; let s = 0, D = 0, hit = -1; for (let k = 0; k < x.length; k++) { const d = t - x[k]; if (d === 0) { hit = k; break; } D += w[k] / d; } if (hit >= 0) { L = Math.max(L, 1); continue; } for (let k = 0; k < x.length; k++) s += Math.abs(w[k] / (t - x[k])); L = Math.max(L, s / Math.abs(D)); } return L; };
+    R = { E, Cn, de, dc, me, mc, le: leb(E), lc: leb(Cn) };
+  };
+  calc();
+  const cv = MB.canvas("#ip-np-cv", (ctx, w, h) => {
+    const C = MB.palette(), ref = Math.pow(2, 1 - n1);
+    const log = ax === "log", ylo = log ? Math.max(1e-12, R.mc * 1e-4) : 0, yhi = R.me * (log ? 3 : 1.1);
+    MB.chart(ctx, { x: 58, y: 26, w: w - 76, h: h - 54 }, {
+      x: [-1, 1], y: [ylo, yhi], logY: log,
+      series: [{ data: R.de, color: C.bad, width: 2 }, { data: R.dc, color: C.accent, width: 2.2 }],
+      hlines: [{ y: ref, color: C.faint, label: "2⁻ⁿ" }],
+    });
+  }, { aspect: 0.4, minHeight: 200 });
+  const cv2 = MB.canvas("#ip-np-cv2", (ctx, w, h) => {
+    const C = MB.palette(), X = (t) => 58 + ((t + 1) / 2) * (w - 76);
+    ctx.strokeStyle = C.axis; ctx.lineWidth = 1;
+    [[h * 0.52, R.E, C.bad, "등간격"], [h * 0.82, R.Cn, C.accent, "체비쇼프"]].forEach(([y, x, col, lab]) => {
+      ctx.beginPath(); ctx.moveTo(X(-1), y); ctx.lineTo(X(1), y); ctx.stroke();
+      ctx.fillStyle = col; x.forEach((v) => { ctx.beginPath(); ctx.arc(X(v), y, 4, 0, 7); ctx.fill(); });
+      ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--font"); ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText(lab, 52, y);
+    });
+  }, { height: 84 });
+  const stats = () => {
+    MB.stat("ip-np-e", IP.sci(R.me, 3)); MB.stat("ip-np-c", IP.sci(R.mc, 3)); MB.stat("ip-np-r", IP.num(R.me / R.mc, 1) + "배");
+    MB.stat("ip-np-l", IP.num(R.le, 2) + " / " + IP.num(R.lc, 3));
+  };
+  MB.range("ip-np-n", (v) => String(v), (v) => { n1 = v; calc(); cv.redraw(); cv2.redraw(); stats(); });
+  MB.seg("ip-np-ax", (v) => { ax = v; cv.redraw(); });
+  stats();
+})();
+
+/* ================================================================ 7. 오차–차수 그래프 */
+(function () {
+  const F = { runge: (t) => 1 / (1 + 25 * t * t), exp: Math.exp, abs: Math.abs, osc: (t) => Math.cos(20 * t) };
+  let fk = "runge", nSel = 40, show = [true, true, true], data = null;
+  const msg = document.getElementById("ip-cv-msg");
+  const NS = []; for (let n = 2; n <= 100; n += 2) NS.push(n);
+  const compute = () => {
+    const f = F[fk], G = 1200;
+    const errOf = (ev) => { let m = 0; for (let i = 0; i <= G; i++) { const t = -1 + (2 * i) / G, e = Math.abs(f(t) - ev(t)); if (!(e <= m)) m = e; } return Math.max(m, 1e-17); };
+    data = [[], [], []];
+    NS.forEach((n) => {
+      const xe = IP.equi(n + 1, -1, 1), ye = xe.map(f), we = IP.weights(xe);
+      data[0].push([n, errOf((t) => IP.bary(xe, ye, we, t))]);
+      const xc = IP.cheb(n + 1), yc = xc.map(f), wc = IP.weights(xc);
+      data[1].push([n, errOf((t) => IP.bary(xc, yc, wc, t))]);
+      const a = IP.solve(xc.map((xi) => { const r = [1]; for (let j = 1; j <= n; j++) r.push(r[j - 1] * xi); return r; }), yc);
+      data[2].push([n, a ? errOf((t) => { let s = 0; for (let j = a.length - 1; j >= 0; j--) s = s * t + a[j]; return s; }) : NaN]);
+    });
+  };
+  compute();
+  const cv = MB.canvas("#ip-cv-cv", (ctx, w, h) => {
+    const C = MB.palette(), col = [C.bad, C.accent, C.warn];
+    const series = data.map((d, i) => (show[i] ? { data: d.map(([n, e]) => [n, Math.min(e, 1e8)]), color: col[i], width: i === 2 ? 2 : 2.4, dash: i === 2 ? [6, 3] : [] } : null)).filter(Boolean);
+    MB.chart(ctx, null, {
+      x: [0, 100], y: [1e-17, 1e8], logY: true, xLabel: "차수 n", yLabel: "최대 오차",
+      yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1, 1e4, 1e8], yFmt: (v) => "1e" + Math.round(Math.log10(v)),
+      series, vlines: [{ x: nSel, color: C.faint, label: "n = " + nSel }], hlines: [{ y: 2.2e-16, color: C.faint, label: "ε" }],
+    });
+  }, { aspect: 0.58, minHeight: 260, maxHeight: 460 });
+  const stats = () => {
+    const i = NS.indexOf(nSel);
+    ["ip-cv-o0", "ip-cv-o1", "ip-cv-o2"].forEach((id, k) => MB.stat(id, IP.sci(data[k][i][1], 2)));
+    const e1 = data[1][i][1], e2 = data[2][i][1];
+    msg.className = "ip-msg";
+    msg.innerHTML = e2 > 20 * e1 && e1 < 1e-3 ? `n = ${nSel}: 같은 체비쇼프 보간인데 반데르몽드 계수로 계산한 값이 무게중심 공식보다 <b>${IP.num(e2 / e1, 0)}배</b> 틀립니다. 다항식이 아니라 계산법의 오차입니다.`
+      : `n = ${nSel}: 체비쇼프·무게중심 오차 ${IP.sci(e1, 2)}. 슬라이더로 n을 옮겨 세 방법을 비교하세요.`;
+  };
+  MB.range("ip-cv-n", (v) => String(v), (v) => { nSel = v; cv.redraw(); stats(); });
+  ["ip-cv-eq", "ip-cv-ch", "ip-cv-mo"].forEach((id, k) => MB.check(id, (v) => { show[k] = v; cv.redraw(); }));
+  document.getElementById("ip-cv-f").addEventListener("change", (e) => { fk = e.target.value; compute(); cv.redraw(); stats(); });
+  stats();
+})();
+
+/* ================================================================ 8. 에르미트 */
+(function () {
+  const F = {
+    damp: { f: (t) => Math.exp(-t / 2) * Math.sin(3 * t), d: (t) => Math.exp(-t / 2) * (3 * Math.cos(3 * t) - 0.5 * Math.sin(3 * t)), a: 0, b: 4, y: [-1.3, 1.3] },
+    runge: { f: (t) => 1 / (1 + t * t), d: (t) => (-2 * t) / Math.pow(1 + t * t, 2), a: -4, b: 4, y: [-0.6, 1.5] },
+    bump: { f: (t) => Math.tanh(3 * t), d: (t) => 1 / Math.pow(Math.cosh(3 * t), 2) * 3, a: -2, b: 2, y: [-1.6, 1.6] },
+  };
+  let F0 = F.damp, m1 = 3, show = [true, true, true], R = null;
+  const calc = () => {
+    const x = IP.equi(m1, F0.a, F0.b), y = x.map(F0.f), w = IP.weights(x);
+    const x2 = IP.equi(2 * m1, F0.a, F0.b), y2 = x2.map(F0.f), w2 = IP.weights(x2);
+    const z = [], fz = [], dz = []; x.forEach((v) => { z.push(v, v); fz.push(F0.f(v), F0.f(v)); dz.push(F0.d(v), F0.d(v)); });
+    const c = IP.divdiff(z, fz, dz);
+    const g = [(t) => IP.bary(x, y, w, t), (t) => IP.bary(x2, y2, w2, t), (t) => IP.newton(z, c, t)];
+    R = { x, x2, g, e: g.map((fn) => IP.maxErr(F0.f, fn, F0.a, F0.b, 1500)[0]) };
+  };
+  calc();
+  const pl = MB.plane("#ip-hm-cv", {
+    x: [F0.a - 0.2, F0.b + 0.2], y: F0.y, aspect: 0.6, minHeight: 260,
+    draw(P) {
+      const C = P.P, col = [C.warn, C.bad, C.accent];
+      P.curve(F0.f, { color: C.dim, width: 2.2, from: F0.a, to: F0.b });
+      R.g.forEach((fn, i) => { if (show[i]) P.curve(fn, { color: col[i], width: i === 2 ? 2.6 : 2, dash: i === 0 ? [6, 3] : [], from: F0.a, to: F0.b, n: 700 }); });
+      if (show[1]) R.x2.forEach((v) => P.dot(v, F0.f(v), { r: 3, color: C.bad }));
+      const L = (F0.b - F0.a) * 0.06;
+      R.x.forEach((v) => { const s = F0.d(v), dx = L / Math.sqrt(1 + s * s); P.line(v - dx, F0.f(v) - s * dx, v + dx, F0.f(v) + s * dx, { color: C.text, width: 3 }); P.dot(v, F0.f(v), { r: 5, color: C.accent, stroke: C.bg }); });
+    },
+  });
+  const stats = () => ["ip-hm-o0", "ip-hm-o1", "ip-hm-o2"].forEach((id, i) => MB.stat(id, IP.sci(R.e[i], 2)));
+  const upd = () => { calc(); pl.redraw(); stats(); };
+  MB.range("ip-hm-n", (v) => String(v), (v) => { m1 = v; upd(); });
+  ["ip-hm-l1", "ip-hm-l2", "ip-hm-h"].forEach((id, i) => MB.check(id, (v) => { show[i] = v; pl.redraw(); }));
+  document.getElementById("ip-hm-f").addEventListener("change", (e) => { F0 = F[e.target.value]; pl.view({ x: [F0.a - 0.2, F0.b + 0.2], y: F0.y }); upd(); });
+  stats();
+})();
+</script>
+</body>
+</html>

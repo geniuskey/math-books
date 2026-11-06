@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>용어집 &amp; 종합 퀴즈 · NumericalBook</title>
+<meta name="description" content="NumericalBook 전체를 한 장에 정리한다. 문제 유형으로 알고리즘 고르기, 방법별 오차 차수·비용 한눈표, 수렴 차수 비교, 안정성 조건 모음, 수치해석 용어 검색, 열여섯 장 전 범위 종합 퀴즈.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  main.gl-main { padding-top: 24px; padding-bottom: 48px; }
+  main.gl-main > section { margin: 30px 0; }
+  main.gl-main h2 { font-size: 23px; margin-bottom: 8px; padding-top: 0; }
+  main.gl-main h3 { margin: 0; }
+  .gl-main .chapter-hero .lead { margin-bottom: 10px; }
+  .gl-main .objectives { margin: 8px 0 0; }
+  .gl-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+  .gl-jump a { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); text-decoration: none; }
+  .gl-main .sim { margin: 12px 0; }
+  .gl-pick { padding: 10px 14px; display: grid; gap: 8px; background: var(--canvas-bg); }
+  .gl-pick .row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .gl-pick .row > b { font-size: 13px; color: var(--text-dim); min-width: 78px; }
+  .gl-pick .seg button { padding: 5px 9px; }
+  .gl-out { padding: 10px 14px 12px; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .gl-rec { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-elev); min-width: 0; }
+  .gl-rec.best { border-color: var(--accent); background: var(--accent-soft); }
+  .gl-rec .nm { font-weight: 700; font-size: 15px; color: var(--accent); }
+  .gl-rec .nm small { font-weight: 400; font-size: 12px; color: var(--text-dim); margin-left: 6px; }
+  .gl-rec p { margin: 3px 0 4px; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+  .gl-rec .lk { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12.5px; }
+  #sim-gl-chooser .stat .v { font-family: var(--font); font-size: 14px; font-weight: 600; line-height: 1.5; }
+  .gl-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin: 10px 0; }
+  .gl-grid > .table-wrap { margin: 0; }
+  .gl-t { font-size: 13.5px; }
+  .gl-t th, .gl-t td { padding: 5px 9px; }
+  .gl-t caption { caption-side: top; text-align: left; font-weight: 700; font-size: 13.5px; padding: 6px 9px; background: var(--surface-2); color: var(--text); }
+  .gl-t td:last-child { white-space: nowrap; }
+  .gl-t td a { font-size: 12.5px; }
+  .gl-ctl { padding: 10px 14px; display: grid; gap: 10px 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); border-top: 1px solid var(--border); }
+  .gl-view { position: relative; background: var(--canvas-bg); }
+  .gl-view canvas { display: block; width: 100%; }
+  .gl-legend { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12.5px; color: var(--text-dim); padding: 6px 14px; border-top: 1px solid var(--border); }
+  .gl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .gl-main .sim-readout .stat { padding: 8px 12px; }
+  .gl-main .sim-readout .stat .v { font-size: 15px; }
+  .gl-main .sim-note { padding: 8px 14px; font-size: 13.5px; }
+  .gl-main .callout { margin: 12px 0; padding: 10px 14px; font-size: 14.5px; }
+  .gl-search { margin-bottom: 8px; padding: 9px 14px; }
+  .gl-filter { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; align-items: center; }
+  .gl-filter button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .gl-filter button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .gl-filter select { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 10px; max-width: 100%; }
+  .gl-count { font-size: 12.5px; color: var(--text-faint); margin-bottom: 6px; }
+  .gl-main .gl-list { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; max-height: 70vh; overflow-y: auto; padding-right: 2px; }
+  .gl-main .gl-item { padding: 8px 12px; }
+  .gl-main .gl-item h4 { font-size: 15px; margin-bottom: 2px; }
+  .gl-main .gl-item h4 .en { font-size: 12.5px; color: var(--text-faint); }
+  .gl-main .gl-item p { font-size: 13.5px !important; line-height: 1.55; }
+  .gl-main .gl-item .chs { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; font-size: 12px; }
+  .score { position: sticky; top: calc(var(--nav-h) + 8px); z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 10px; background: var(--bg-elev); border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 10px; font-family: var(--mono); font-size: 13.5px; }
+  .score .bar { flex: 1; height: 7px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .score .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s; }
+  .score .btn { padding: 5px 10px; font-size: 13px; }
+  .gl-weak { font-size: 13.5px; color: var(--text-dim); margin: 0 0 8px; }
+  .gl-weak a { margin-right: 8px; white-space: nowrap; }
+  .gl-main .quiz { gap: 8px; }
+  @media (min-width: 820px) { .gl-main .quiz { grid-template-columns: 1fr 1fr; } }
+  .gl-main .quiz-q { padding: 10px 12px; border-radius: 10px; }
+  .gl-main .quiz-q > p:first-child { font-size: 14.5px; margin-bottom: 7px; line-height: 1.55; }
+  .gl-main .quiz-q .opts { gap: 5px; }
+  .gl-main .quiz-q button.opt { font-size: 14px; padding: 7px 10px; line-height: 1.45; }
+  .gl-main .quiz-exp { font-size: 13.5px; margin-top: 7px; padding: 7px 10px; }
+  .quiz-q .ch { font-size: 12px; font-weight: 400; color: var(--text-faint); margin-left: 6px; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="glossary">
+<main class="chapter gl-main">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 17 · 부록</div>
+    <h1 data-no-glossary>용어집 &amp; 종합 퀴즈</h1>
+    <p class="lead">열여섯 장의 알고리즘을 한곳에 모았습니다. 문제 앞에서 실제로 묻는 것은 늘 넷입니다. <b>어떤 방법을 쓸까, 오차는 h나 반복 수에 따라 얼마나 줄까, 비용은 얼마일까, 언제 터질까.</b> 고르기 도우미 → 오차·비용 한눈표 → 수렴 차수 → 안정성 조건 → 용어 검색 → 종합 퀴즈 순서입니다.</p>
+    <div class="gl-jump"><a href="#chooser">알고리즘 고르기</a><a href="#cost">오차·비용 표</a><a href="#convergence">수렴 차수</a><a href="#stability">안정성 조건</a><a href="#glossary-terms">용어 검색</a><a href="#quiz">종합 퀴즈</a></div>
+  </header>
+
+  <section id="chooser">
+    <h2>알고리즘 고르기 도우미</h2>
+    <p>무엇을 계산하는지 고르고, 문제의 성질(도함수가 있는가, 행렬이 대칭인가, 강성인가…)을 고르면 먼저 써 볼 방법(강조)과 대안, 다룬 절로 가는 링크가 나옵니다.</p>
+    <div class="sim" id="sim-gl-chooser">
+      <div class="sim-head"><span class="sim-tag">GUIDE</span><h3>이 문제, 어떤 알고리즘으로?</h3></div>
+      <div class="gl-pick">
+        <div class="row"><b>무엇을</b><div class="seg" id="gl-kind"></div></div>
+        <div class="row"><b>문제의 성질</b><div class="seg" id="gl-sub"></div></div>
+      </div>
+      <div class="gl-out" id="gl-out"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">오차·수렴</span><span class="v" id="gl-err">—</span></div>
+        <div class="stat"><span class="k">조심할 것</span><span class="v" id="gl-warn">—</span></div>
+      </div>
+      <div class="sim-note">안내는 교과서 수준의 일반 원칙입니다. 어떤 방법이든 마지막 검산은 같습니다. <b>h(또는 허용 오차)를 반으로 줄여 답이 기대한 차수만큼 변하는지</b> 보고, 잔차와 조건수를 함께 확인합니다.</div>
+    </div>
+  </section>
+
+  <section id="cost">
+    <h2>방법별 오차 차수·비용 한눈표</h2>
+    <p>h는 간격, n은 미지수(점) 수, N은 표본·격자 수, κ는 조건수입니다. 비용은 대표적인 flop 수 또는 함수 계산 횟수입니다.</p>
+    <div class="gl-grid">
+      <div class="table-wrap"><table class="gl-t">
+        <caption>보간·근사·FFT</caption>
+        <thead><tr><th>방법</th><th>오차</th><th>비용</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>n차 다항식 보간</td><td>f⁽ⁿ⁺¹⁾(ξ)/(n+1)! · ∏(x − xᵢ)</td><td>무게중심: 준비 O(n²), 점당 O(n)</td><td><a href="interpolation.html#error">5장</a></td></tr>
+          <tr><td>조각별 선형</td><td>h²/8 · max|f″|, O(h²)</td><td>O(1)/점</td><td><a href="splines.html#piecewise">6장</a></td></tr>
+          <tr><td>PCHIP</td><td>약 O(h³), 단조 유지</td><td>O(n)</td><td><a href="splines.html#pchip">6장</a></td></tr>
+          <tr><td>3차 스플라인</td><td>고정·not-a-knot O(h⁴), 자연 O(h²)</td><td>삼중대각 O(n)</td><td><a href="splines.html#boundary">6장</a></td></tr>
+          <tr><td>최소제곱(QR)</td><td>상대 오차 ≈ κ(A)u</td><td>2mn² − 2n³/3</td><td><a href="approximation.html#qr-vs-normal">7장</a></td></tr>
+          <tr><td>정규 방정식</td><td>≈ κ(A)²u (자릿수 2배 손실)</td><td>약 mn²</td><td><a href="approximation.html#qr-vs-normal">7장</a></td></tr>
+          <tr><td>DFT 직접 / FFT</td><td>유니터리, κ = 1</td><td>O(N²) / (N/2)log₂N 곱셈</td><td><a href="fft.html#cooley-tukey">8장</a></td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>수치 미분·적분</caption>
+        <thead><tr><th>방법</th><th>오차</th><th>비용·한계</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>전진·후진 차분</td><td>(h/2)f″, O(h)</td><td>h* ≈ √ε, 약 8자리</td><td><a href="differentiation.html#roundoff">9장</a></td></tr>
+          <tr><td>중앙 차분</td><td>(h²/6)f‴, O(h²)</td><td>h* ≈ ∛ε, 약 10자리</td><td><a href="differentiation.html#roundoff">9장</a></td></tr>
+          <tr><td>복소 스텝</td><td>O(h²), 뺄셈 없음</td><td>h = 10⁻²⁰도 됨</td><td><a href="differentiation.html#complex-step">9장</a></td></tr>
+          <tr><td>자동 미분</td><td>기계 정밀도</td><td>전진: 입력당 1회, 후진: 출력당 1회</td><td><a href="differentiation.html#automatic-differentiation">9장</a></td></tr>
+          <tr><td>합성 사다리꼴·중점</td><td>O(h²), 주기 함수는 지수적</td><td>f n + 1회</td><td><a href="integration.html#composite">10장</a></td></tr>
+          <tr><td>합성 심프슨</td><td>O(h⁴), 3차까지 정확</td><td>f n + 1회</td><td><a href="integration.html#composite">10장</a></td></tr>
+          <tr><td>롬베르크</td><td>열마다 차수 +2</td><td>새 중점만 계산</td><td><a href="integration.html#romberg">10장</a></td></tr>
+          <tr><td>n점 가우스–르장드르</td><td>2n − 1차까지 정확</td><td>f n회, 가중치 양수</td><td><a href="integration.html#gauss">10장</a></td></tr>
+          <tr><td>몬테카를로</td><td>σ/√N, 차원 무관</td><td>한 자리에 표본 100배</td><td><a href="integration.html#monte-carlo">10장</a></td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>미분방정식(ODE·PDE)</caption>
+        <thead><tr><th>방법</th><th>전역 오차</th><th>걸음당 비용</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>명시적 오일러</td><td>O(h)</td><td>f 1회</td><td><a href="ode-solvers.html#convergence">11장</a></td></tr>
+          <tr><td>음적 오일러 · BDF1</td><td>O(h)</td><td>뉴턴(선형계)</td><td><a href="ode-solvers.html#stiff-bdf">11장</a></td></tr>
+          <tr><td>RK4</td><td>O(h⁴)</td><td>f 4회</td><td><a href="ode-solvers.html#butcher">11장</a></td></tr>
+          <tr><td>도르만드–프린스 5(4)</td><td>O(h⁵), 오차 추정 포함</td><td>7단, FSAL로 f 6회</td><td><a href="ode-solvers.html#embedded">11장</a></td></tr>
+          <tr><td>k단계 AB / AM</td><td>O(hᵏ) / O(hᵏ⁺¹)</td><td>f 1회 / PECE 2회</td><td><a href="ode-solvers.html#multistep">11장</a></td></tr>
+          <tr><td>BDF k (k ≤ 6)</td><td>O(hᵏ)</td><td>단순화 뉴턴, LU 재사용</td><td><a href="ode-solvers.html#stiff-bdf">11장</a></td></tr>
+          <tr><td>스퇴르머–베를레</td><td>O(h²), 에너지 오차 유계</td><td>f 1회</td><td><a href="ode-solvers.html#symplectic">11장</a></td></tr>
+          <tr><td>열 FTCS / BTCS</td><td>O(Δt + Δx²)</td><td>O(n) / 토머스 O(n)</td><td><a href="pde-numerics.html#heat-implicit">16장</a></td></tr>
+          <tr><td>크랭크–니콜슨</td><td>O(Δt² + Δx²)</td><td>토머스 O(n)</td><td><a href="pde-numerics.html#heat-implicit">16장</a></td></tr>
+          <tr><td>풍상 / 랙스–벤드로프</td><td>O(Δt + Δx) / O(Δt² + Δx²)</td><td>O(n)</td><td><a href="pde-numerics.html#advection">16장</a></td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>수치 선형대수·최적화</caption>
+        <thead><tr><th>방법</th><th>정확도·수렴</th><th>비용</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>LU(부분 피벗팅)</td><td>후방 안정, 오차 ≈ κu</td><td>(2/3)n³ + 우변당 2n²</td><td><a href="direct-solvers.html#plu">12장</a></td></tr>
+          <tr><td>촐레스키</td><td>피벗팅 없이 안정</td><td>(1/3)n³</td><td><a href="direct-solvers.html#cholesky">12장</a></td></tr>
+          <tr><td>토머스 / 띠 LU</td><td>대각 우세면 안정</td><td>약 8n / O(nw²)</td><td><a href="direct-solvers.html#thomas">12장</a></td></tr>
+          <tr><td>야코비·G–S</td><td>비율 ρ(G); 푸아송 O(N²)회</td><td>반복당 O(nnz)</td><td><a href="iterative.html#convergence">13장</a></td></tr>
+          <tr><td>최적 SOR · CG</td><td>푸아송 O(N)회; CG (√κ−1)/(√κ+1)</td><td>반복당 O(nnz)</td><td><a href="iterative.html#cg">13장</a></td></tr>
+          <tr><td>다중 격자</td><td>격자와 무관한 반복 수</td><td>O(n)</td><td><a href="iterative.html#multigrid">13장</a></td></tr>
+          <tr><td>QR 알고리즘</td><td>후방 안정, 고유값당 2–3단계</td><td>비대칭 약 10n³, 대칭 (4/3)n³</td><td><a href="eigenvalues.html#qr">14장</a></td></tr>
+          <tr><td>경사 하강 / 모멘텀</td><td>(κ−1)/(κ+1) / (√κ−1)/(√κ+1)</td><td>기울기 1회</td><td><a href="optimization.html#conditioning">15장</a></td></tr>
+          <tr><td>뉴턴 / BFGS</td><td>2차 / 초선형</td><td>O(n³) / O(n²)</td><td><a href="optimization.html#quasi-newton">15장</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="convergence">
+    <h2>수렴 차수 비교</h2>
+    <p>반복법의 속도는 |e<sub>n+1</sub>| ≈ C|e<sub>n</sub>|<sup>p</sup>의 차수 p와 상수 C로 요약됩니다. 공평하게 비교하려면 <b>한 단계의 비용</b>(함수·도함수 계산, 선형계 풀이)까지 셉니다.</p>
+    <div class="gl-grid">
+      <div class="table-wrap"><table class="gl-t">
+        <caption>근 찾기·1차원 최소화</caption>
+        <thead><tr><th>방법</th><th>차수 p</th><th>단계당 계산</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>이분법</td><td>1 (C = 1/2), 자릿수당 3.3번</td><td>f 1</td><td><a href="roots.html#bisection">3장</a></td></tr>
+          <tr><td>고정점 반복</td><td>1 (C = |g′(r)|)</td><td>g 1</td><td><a href="roots.html#fixed-point">3장</a></td></tr>
+          <tr><td>가위치법 / 일리노이</td><td>1 / 약 1.44</td><td>f 1</td><td><a href="roots.html#regula-falsi">3장</a></td></tr>
+          <tr><td>할선법</td><td>1.618 (p² = p + 1)</td><td>f 1, 효율 1.618</td><td><a href="roots.html#newton">3장</a></td></tr>
+          <tr><td>역2차 보간</td><td>약 1.839</td><td>f 1</td><td><a href="roots.html#brent">3장</a></td></tr>
+          <tr><td>뉴턴(단순근)</td><td>2</td><td>f + f′, 효율 1.414</td><td><a href="roots.html#newton">3장</a></td></tr>
+          <tr><td>뉴턴(m중근)</td><td>1 (C = (m − 1)/m)</td><td>f + f′</td><td><a href="roots.html#newton">3장</a></td></tr>
+          <tr><td>황금 분할 / 포물선</td><td>1 (C = 0.618) / 약 1.32</td><td>f 1</td><td><a href="optimization.html#one-dimensional">15장</a></td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>연립·행렬 반복</caption>
+        <thead><tr><th>방법</th><th>수렴</th><th>단계당 계산</th><th>장</th></tr></thead>
+        <tbody>
+          <tr><td>다변수 뉴턴</td><td>2</td><td>F, J, 선형계</td><td><a href="nonlinear-systems.html#newton">4장</a></td></tr>
+          <tr><td>브로이든 · BFGS</td><td>초선형</td><td>F(∇f) 1, O(n²)</td><td><a href="nonlinear-systems.html#broyden">4장</a></td></tr>
+          <tr><td>가우스–뉴턴</td><td>영 잔차면 2, 아니면 1(잔차가 크면 느림)</td><td>J, 최소제곱</td><td><a href="optimization.html#nonlinear-least-squares">15장</a></td></tr>
+          <tr><td>정상 반복(야코비·G–S·SOR)</td><td>1 (C = ρ(G)), G–S: ρ<sub>J</sub>²</td><td>Ax 1</td><td><a href="iterative.html#convergence">13장</a></td></tr>
+          <tr><td>최급 강하 / CG</td><td>(κ−1)/(κ+1) / (√κ−1)/(√κ+1)</td><td>Ax 1</td><td><a href="iterative.html#steepest">13장</a></td></tr>
+          <tr><td>거듭제곱법</td><td>1 (C = |λ₂/λ₁|)</td><td>Ax 1</td><td><a href="eigenvalues.html#power">14장</a></td></tr>
+          <tr><td>이동 역반복</td><td>1 (C = |λ<sub>J</sub> − σ|/|λ<sub>K</sub> − σ|)</td><td>LU 재사용 풀이</td><td><a href="eigenvalues.html#inverse">14장</a></td></tr>
+          <tr><td>레일리 몫 반복</td><td>대칭 3, 비대칭 2</td><td>매번 새 풀이</td><td><a href="eigenvalues.html#inverse">14장</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="sim" id="sim-gl-race">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>수렴 차수 경주: 10⁻¹⁵까지 몇 번?</h3></div>
+      <div class="gl-view"><canvas id="gl-race-cv"></canvas></div>
+      <div class="gl-legend" id="gl-race-lg"></div>
+      <div class="gl-ctl">
+        <label class="ctrl"><span>처음 오차 e₀ <output id="gl-race-e0-out"></output></span><input type="range" id="gl-race-e0" min="-3" max="-0.4" step="0.05" value="-1"></label>
+        <label class="ctrl"><span>선형 방법의 비율 C <output id="gl-race-c-out"></output></span><input type="range" id="gl-race-c" min="0.05" max="0.95" step="0.01" value="0.5"></label>
+        <div class="ctrl"><span>가로축</span><div class="seg" id="gl-race-x"><button data-value="n" class="on">반복 n</button><button data-value="w">함수 계산 수</button></div></div>
+      </div>
+      <div class="sim-readout" id="gl-race-out"></div>
+      <div class="sim-note">모델: eₙ₊₁ = C·eₙᵖ. 선형(p = 1)은 위 슬라이더의 C, 초선형은 C = 1로 둡니다. 함수 계산 수는 선형·할선 1, 뉴턴 2(f, f′)로 셉니다. 해볼 것: ① e₀를 10⁻³으로 줄이면 2차·3차는 한두 번 덜 걸리고, 선형은 줄어든 자릿수만큼 꼬박 덜 걸립니다. ② '함수 계산 수'에서 할선법이 뉴턴을 앞지르는지 보세요(효율 지수 1.618 대 1.414). ③ C = 0.95는 ρ(G)가 1에 가까운 야코비 반복이나 |λ₂/λ₁| ≈ 1인 거듭제곱법의 모습입니다.</div>
+    </div>
+  </section>
+
+  <section id="stability">
+    <h2>안정성 조건 모음</h2>
+    <p>"수렴 = 일관성 + 안정성"(<a href="ode-solvers.html#convergence">11장</a>, <a href="pde-numerics.html#lax-equivalence">16장 랙스 동등성</a>). 정확도가 아니라 안정성이 걸음 폭을 정하는 순간을 알아보는 것이 핵심입니다.</p>
+    <div class="gl-grid">
+      <div class="table-wrap"><table class="gl-t">
+        <caption>ODE: 시험 방정식 y′ = λy, z = hλ (이름 뒤 숫자는 차수)</caption>
+        <thead><tr><th>방법</th><th>음의 실수축 안정 구간</th><th>성격</th></tr></thead>
+        <tbody>
+          <tr><td>명시적 오일러</td><td>|1 + z| ≤ 1, (−2, 0)</td><td>h ≤ 2/|λ|</td></tr>
+          <tr><td>AB2 · AB3 · AB4</td><td>(−1, 0) · (−0.545, 0) · (−0.300, 0)</td><td>차수 ↑, 영역 ↓</td></tr>
+          <tr><td>RK4 · DP5</td><td>(−2.785, 0) · (−3.306, 0)</td><td>명시적</td></tr>
+          <tr><td>AM3 · AM4</td><td>(−6, 0) · (−3, 0)</td><td>음적, 유한 영역</td></tr>
+          <tr><td>사다리꼴(AM2)</td><td>왼쪽 반평면 전체</td><td>A-안정, L-안정 아님</td></tr>
+          <tr><td>음적 오일러 · BDF2</td><td>왼쪽 반평면 전체</td><td>A-안정 + L-안정</td></tr>
+          <tr><td>BDF3 · 4 · 5 · 6</td><td>A(α): 86.03°, 73.35°, 51.84°, 17.84°</td><td>제2 장벽, BDF7부터 영 안정 아님</td></tr>
+          <tr><td>다단계 일반</td><td>근 조건(영 안정)</td><td>달퀴스트 동등성</td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>PDE 차분법(r = αΔt/Δx², C = aΔt/Δx)</caption>
+        <thead><tr><th>방법</th><th>안정 조건</th><th>증폭 인자 G</th></tr></thead>
+        <tbody>
+          <tr><td>열 FTCS</td><td>r ≤ 1/2</td><td>1 − 4r sin²(θ/2)</td></tr>
+          <tr><td>열 BTCS</td><td>무조건</td><td>1/(1 + 4r sin²(θ/2))</td></tr>
+          <tr><td>크랭크–니콜슨</td><td>무조건(큰 r에서 G → −1 진동)</td><td>(1 − 2r sin²(θ/2))/(1 + 2r sin²(θ/2))</td></tr>
+          <tr><td>이류 중앙 FTCS</td><td>없음(무조건 불안정)</td><td>|G|² = 1 + C²sin²θ</td></tr>
+          <tr><td>풍상 차분</td><td>0 ≤ C ≤ 1</td><td>수치 확산 (aΔx/2)(1 − C)</td></tr>
+          <tr><td>랙스–벤드로프</td><td>|C| ≤ 1</td><td>2차, 진동(분산)</td></tr>
+          <tr><td>파동 립프로그</td><td>C ≤ 1 (CFL)</td><td>|G| = 1, 수치 분산</td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table class="gl-t">
+        <caption>반복법이 수렴할 조건</caption>
+        <thead><tr><th>방법</th><th>조건</th></tr></thead>
+        <tbody>
+          <tr><td>고정점 반복</td><td>근 근처에서 |g′| &lt; 1(축소 사상)</td></tr>
+          <tr><td>뉴턴(1변수·다변수)</td><td>단순근·J(r) 가역, 충분히 가까운 출발점(먼 곳은 감쇠)</td></tr>
+          <tr><td>정상 반복</td><td>ρ(G) &lt; 1 (필요충분)</td></tr>
+          <tr><td>야코비 · G–S</td><td>엄격한 대각 우세면 수렴, SPD면 G–S 수렴</td></tr>
+          <tr><td>SOR</td><td>0 &lt; ω &lt; 2 필요, SPD면 충분</td></tr>
+          <tr><td>CG</td><td>A가 대칭 양정치</td></tr>
+          <tr><td>경사 하강(고정 걸음)</td><td>0 &lt; αL &lt; 2, 최선 α = 2/(L + μ)</td></tr>
+          <tr><td>BFGS</td><td>yᵀs &gt; 0(울프 조건)이면 양정치 유지</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="sim" id="sim-gl-step">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>안정성이 정하는 걸음 폭</h3></div>
+      <div class="gl-ctl">
+        <label class="ctrl"><span>가장 빠른 감쇠율 |λ| <output id="gl-st-l-out"></output></span><input type="range" id="gl-st-l" min="0" max="6" step="0.1" value="3"></label>
+        <label class="ctrl"><span>격자 간격 Δx (α = a = c = 1) <output id="gl-st-x-out"></output></span><input type="range" id="gl-st-x" min="-3" max="-1" step="0.05" value="-2"></label>
+      </div>
+      <div class="sim-readout" id="gl-st-out"></div>
+      <div class="sim-note">ODE 칸은 t ∈ [0, 10]을 가는 데 필요한 최소 걸음 수(명시적 방법은 h ≤ ℓ/|λ|, ℓ은 위 표의 음의 실수축 안정 구간 길이)이고, PDE 칸은 Δt의 상한입니다. 해볼 것: ① |λ|를 10⁶으로 올리면 명시적 방법의 걸음 수가 수백만이 됩니다. 느린 성분만 보고 싶은 강성 문제라면 BDF는 정확도가 허락하는 만큼 크게 걷습니다(<a href="ode-solvers.html#stiff-bdf">11장</a>). ② Δx를 반으로 줄이면 열 FTCS의 Δt는 4분의 1, 이류·파동의 Δt는 2분의 1이 됩니다. 확산이 명시적 방법에 더 가혹한 이유입니다(<a href="pde-numerics.html#von-neumann">16장</a>).</div>
+    </div>
+  </section>
+
+  <section id="glossary-terms">
+    <h2>용어집</h2>
+    <input class="gl-search" id="gl-q" type="search" placeholder="용어 검색 (예: 조건수, 강성, CFL, spline)" aria-label="용어 검색">
+    <div class="gl-filter" id="gl-f"></div>
+    <div class="gl-count" id="gl-n"></div>
+    <div class="gl-list" id="gl-list"></div>
+  </section>
+
+  <section class="quiz-sec" id="quiz">
+    <h2>종합 퀴즈</h2>
+    <p>열여섯 장에서 두 문제씩, 모두 32문항입니다. 몇 줄의 손계산으로 푸는 문제와 방법의 성질을 묻는 문제가 섞여 있습니다. 답을 고르면 해설이 열리고, 틀린 문제의 장이 위에 모입니다.</p>
+    <div class="score"><span id="sc-t">0 / 0</span><span class="bar"><i id="sc-b"></i></span><button class="btn" id="sc-r">다시 풀기</button></div>
+    <p class="gl-weak" id="gl-weak"></p>
+    <div class="quiz" id="final"></div>
+  </section>
+</main>
+<script src="../js/glossary-data.js"></script>
+<script>
+/* ------------------------------------------------ 1. 알고리즘 고르기 도우미 */
+(function () {
+  const ch = {}; MB.CHAPTERS.forEach((c) => (ch[c.slug] = c));
+  const L = ([slug, id, label]) => `<a href="${slug}.html#${id}">${+ch[slug].num}장 · ${label} →</a>`;
+  // kind: [label, { sub: [label, [[name, small, desc, links], ...], err, warn] }]
+  const K = {
+    root: ["근 f(x) = 0", {
+      bracket: ["부호가 바뀌는 구간을 앎", [["브렌트 방법", "실무 표준", "역2차 보간·할선으로 빠르게 가다가 수상하면 이분으로 돌아갑니다. 가둠을 잃지 않습니다.", [["roots", "brent", "브렌트 방법"]]], ["이분법", "가장 안전", "부호만 보고 반씩 줄입니다. 반복 수를 미리 압니다.", [["roots", "bisection", "이분법"]]], ["일리노이 수정", "가위치법 개량", "할선의 속도에 가둠을 더했습니다.", [["roots", "regula-falsi", "가위치법"]]]], "브렌트 초선형, 이분 1차(C = 1/2)", "f가 연속이어야 하고, 불연속점의 부호 변화도 '근'으로 잡힙니다."],
+      deriv: ["f′가 쉽고 출발점이 좋음", [["뉴턴 방법", "2차 수렴", "x − f/f′. 맞는 자릿수가 매번 두 배가 됩니다.", [["roots", "newton", "뉴턴 방법"]]], ["할선법", "f′ 없이", "f 계산 한 번에 차수 1.618. 함수 계산당 효율은 뉴턴보다 좋습니다.", [["roots", "newton", "할선법"]]]], "뉴턴 2차, 할선 1.618", "순환·발산·평평한 곳에서 실패합니다. 가둠 안전장치와 반복 수 상한을 둡니다."],
+      multiple: ["중근이 의심됨", [["수정 뉴턴", "x − m f/f′", "중복도 m을 알면 2차를 되찾습니다.", [["roots", "newton", "중근"]]], ["f/f′에 뉴턴", "m 모를 때", "f/f′는 단순근을 가지므로 다시 2차가 됩니다.", [["roots", "failures", "실패 사례"]]]], "보통 뉴턴은 비율 (m − 1)/m의 1차", "짝수 중근은 부호가 바뀌지 않아 이분법을 쓸 수 없고, 조건이 나빠 ε^(1/m) 정도만 맞습니다."],
+    }],
+    sys: ["연립 F(x) = 0", {
+      jac: ["야코비안 계산 가능", [["감쇠 뉴턴", "직선 탐색", "J s = −F를 풀고(역행렬 금지), ½‖F‖²이 충분히 줄 때까지 걸음을 반씩 줄입니다.", [["nonlinear-systems", "newton", "다변수 뉴턴"], ["nonlinear-systems", "damped", "감쇠 뉴턴"]]]], "근 근처에서 2차", "‖F‖의 국소 최솟값에 갇힐 수 있습니다. 다차원에서는 근을 가둘 수 없습니다."],
+      nojac: ["야코비안이 비싸거나 없음", [["브로이든 방법", "준뉴턴", "할선 조건을 만족하는 계수 1 갱신으로 J를 대신합니다. 반복마다 F 한 번.", [["nonlinear-systems", "broyden", "브로이든"]]], ["차분 야코비안", "대안", "열마다 F를 한 번 더 계산합니다(n회). 미지수가 많으면 비쌉니다.", [["differentiation", "difference-quotients", "차분 몫"]]]], "초선형", "처음 B₀가 나쁘면 느립니다. 차분 J로 시작해도 좋습니다."],
+      start: ["좋은 출발점이 없음", [["연속법", "호모토피", "해를 아는 쉬운 문제에서 t를 조금씩 바꾸며 예측–수정으로 해 경로를 따라갑니다.", [["nonlinear-systems", "continuation", "연속법"]]], ["감쇠 뉴턴 + 다중 시작", "대안", "여러 출발점에서 돌려 끌개 영역을 탐색합니다.", [["nonlinear-systems", "fractal", "끌개 영역"]]]], "걸음마다 뉴턴 몇 번", "전환점에서는 J가 특이해지므로 호 길이 매개변수를 씁니다."],
+      poly: ["다항식의 모든 근", [["동반 행렬 + QR", "roots", "동반 행렬의 고유값을 이동 QR로 구하면 출발점 없이 O(n³)에 모든 근이 나옵니다.", [["nonlinear-systems", "companion", "동반 행렬"], ["eigenvalues", "qr", "QR 알고리즘"]]], ["뉴턴–호너 + 수축", "하나씩", "호너 두 줄로 p, p′을 구하고, 작은 근부터 떼어 낸 뒤 원래 다항식으로 다듬습니다.", [["nonlinear-systems", "horner", "호너"], ["nonlinear-systems", "deflation", "수축"]]]], "QR은 후방 안정", "다항식 근은 계수에 대해 조건이 나쁠 수 있습니다(윌킨슨 다항식)."],
+    }],
+    interp: ["점을 지나는 곡선", {
+      nodes: ["노드를 고를 수 있음", [["체비쇼프 노드 + 무게중심 공식", "고차도 안전", "max|ω|를 최소로 하는 노드에서 무게중심 공식으로 점마다 O(n)에 계산합니다.", [["interpolation", "chebyshev", "체비쇼프 노드"], ["interpolation", "barycentric", "무게중심 공식"]]]], "해석적 함수면 지수적으로 수렴", "단항식 계수(반데르몽드)로 풀지 않습니다."],
+      equi: ["등간격 데이터가 많음", [["3차 스플라인", "C², O(h⁴)", "구간마다 3차식, 모멘트의 삼중대각계를 O(n)에 풉니다. 끝 도함수를 모르면 not-a-knot.", [["splines", "cubic-spline", "3차 스플라인"], ["splines", "boundary", "경계 조건"]]], ["조각별 선형", "가장 단순", "오차 h²/8·max|f″|.", [["splines", "piecewise", "조각별 다항식"]]]], "고정·not-a-knot O(h⁴), 자연 O(h²)", "등간격 고차 다항식 하나로 보간하면 룽게 현상이 납니다."],
+      mono: ["단조·오버슈트 금지", [["PCHIP", "모양 보존", "기울기를 조화 평균(극값에서 0)으로 골라 데이터 사이에서 넘치지 않습니다.", [["splines", "pchip", "PCHIP"]]]], "약 O(h³), C¹", "곡률이 이음매에서 끊깁니다. 매끄러움이 중요하면 스플라인."],
+      design: ["모양 설계(CAD·글꼴)", [["베지에 곡선", "드 카스텔조", "제어점의 볼록 결합. 내분 반복으로 안정적으로 계산·분할합니다.", [["splines", "bezier", "베지에"]]], ["B-스플라인", "국소 제어", "제어점 하나가 주변 p + 1개 구간만 바꾸고, 3차면 저절로 C²입니다.", [["splines", "bspline", "B-스플라인"]]]], "보간이 아니라 근사(제어점을 지나지 않음)", "조각 베지에의 C¹ 이음도 곡률 연속은 아닙니다."],
+      hermite: ["기울기까지 앎", [["에르미트 보간", "값 + 도함수", "노드를 두 번 적은 분할 차분표로 계산합니다.", [["interpolation", "hermite", "에르미트 보간"]]]], "오차에 ∏(x − xᵢ)²", "고차가 되면 같은 룽게 문제가 생깁니다. 조각별로 쓰세요."],
+    }],
+    fit: ["데이터 맞춤·근사", {
+      ls: ["잡음 데이터, 선형 모형", [["QR 최소제곱", "후방 안정", "Rc = Qᵀy를 풉니다. 차수는 검증 오차(교차 검증)로 고릅니다.", [["approximation", "qr-vs-normal", "QR"], ["approximation", "overfitting", "과적합"]]], ["직교 다항식 기저", "조건 개선", "단항식 대신 체비쇼프·르장드르 기저로 κ(A) 자체를 줄입니다.", [["approximation", "orthogonal-polynomials", "직교 다항식"]]]], "상대 오차 ≈ κ(A)u", "정규 방정식은 κ²로 자릿수를 두 배 잃습니다. 학습 오차가 잡음 σ보다 훨씬 작으면 과적합."],
+      outlier: ["이상치가 있음", [["후버 손실 + IRLS", "강건 회귀", "큰 잔차의 가중치를 δ/|r|로 깎으며 가중 최소제곱을 되풀이합니다.", [["approximation", "robust", "강건 회귀"]]]], "몇 번의 가중 최소제곱", "δ는 잡음 수준에 맞춰 고릅니다."],
+      nonlin: ["비선형 모형(곡선 맞춤)", [["레벤버그–마쿼트", "표준", "λ로 가우스–뉴턴과 경사 하강 사이를 오가 먼 출발점에서도 수렴합니다.", [["optimization", "nonlinear-least-squares", "비선형 최소제곱"]]]], "잔차가 작으면 거의 2차", "국소 최솟값이 여럿일 수 있습니다. 출발값을 물리적으로 고르세요."],
+      func: ["함수를 다항식으로(라이브러리)", [["체비쇼프 전개", "거의 최선", "계수를 FFT로 구하고 작은 꼬리를 자릅니다. 절단 오차 ≤ Σ|a_k|.", [["approximation", "chebyshev", "체비쇼프 전개"]]], ["레메즈 알고리즘", "최소최대", "오차가 n + 2개 점에서 등진동하도록 기준점을 바꿔 갑니다.", [["approximation", "minimax", "최소최대 근사"]]]], "해석적 함수: 계수 ρ⁻ᵏ로 감소", "구간 밖에서는 쓸 수 없습니다(범위 축소 후 사용)."],
+    }],
+    freq: ["주파수·합성곱", {
+      spec: ["스펙트럼 보기", [["FFT + 창 함수", "한·블랙먼", "누설을 줄이고 진폭은 2|X_k|/N으로 읽습니다.", [["fft", "leakage", "누설과 창"], ["fft", "aliasing", "앨리어싱"]]]], "분해능 1/T, O(N log N)", "표본화 전에 앨리어싱을 막아야 합니다. 제로 패딩은 분해능을 늘리지 않습니다."],
+      conv: ["합성곱·다항식 곱", [["FFT 합성곱", "제로 패딩", "길이 ≥ n + m − 1로 0을 붙여 변환 → 곱 → 역변환.", [["fft", "convolution", "빠른 합성곱"]]]], "O(N log N) (직접은 O(nm))", "패딩이 모자라면 끝 항이 앞으로 감깁니다(원형 합성곱)."],
+      spdiff: ["매끄러운 주기 함수 미분", [["스펙트럴 미분", "FFT → ik → 역 FFT", "오차가 N에 대해 지수적으로 줄어듭니다.", [["fft", "applications", "스펙트럴 미분"]]]], "e^(sin x)는 N = 32에서 약 4×10⁻¹⁵", "주기가 아니거나 불연속이면 기브스 진동이 생깁니다."],
+    }],
+    diff: ["도함수", {
+      code: ["f가 코드로 계산됨", [["자동 미분", "기계 정밀도", "연쇄 법칙을 연산마다 적용. 입력이 적으면 전진(이중수), 출력이 적으면 후진(역전파).", [["differentiation", "automatic-differentiation", "자동 미분"]]], ["복소 스텝", "간단", "Im f(x + ih)/h, h = 10⁻²⁰. 복소 연산이 가능한 코드에서.", [["differentiation", "complex-step", "복소 스텝"]]]], "반올림 수준", "복소 스텝은 abs·조건문 같은 비해석적 연산에서 틀립니다."],
+      black: ["블랙박스 f, 값만", [["중앙 차분 + 리처드슨", "h ≈ ∛ε", "중앙 차분은 O(h²). 외삽 열마다 두 차수씩 오릅니다.", [["differentiation", "roundoff", "최적 h"], ["differentiation", "richardson", "리처드슨"]]]], "중앙 차분 약 10자리가 한계", "h를 무작정 줄이면 반올림 오차 ε|f|/h가 커집니다(V자 그래프)."],
+      noisy: ["잡음 데이터", [["사비츠키–골레이", "국소 맞춤", "창 안의 점에 다항식을 최소제곱으로 맞춰 미분합니다.", [["differentiation", "noisy-data", "잡음 데이터"]]]], "잡음이 σ/h로 커짐", "창이 넓을수록 잡음↓ 해상도↓의 맞바꿈입니다."],
+    }],
+    integ: ["정적분", {
+      smooth: ["매끄러운 1차원 함수", [["가우스–르장드르", "최소 함숫값", "n점으로 2n − 1차까지 정확, 가중치가 모두 양수입니다.", [["integration", "gauss", "가우스 구적법"]]], ["롬베르크", "사다리꼴 + 외삽", "h를 반씩 줄인 사다리꼴 값에 리처드슨을 되풀이합니다.", [["integration", "romberg", "롬베르크"]]]], "매끄러울수록 빠름", "수렴 차수는 공식이 아니라 피적분 함수의 매끄러움이 정합니다."],
+      local: ["봉우리·꺾임이 국소적", [["적응 심프슨", "어려운 곳만", "(S₂ − S₁)/15로 오차를 추정하고 넘는 구간만 쪼갭니다.", [["integration", "adaptive", "적응 구적법"]]]], "허용 오차까지 자동", "좁은 봉우리를 처음 점들이 모두 놓치면 못 찾습니다."],
+      sing: ["끝점 특이점·무한 구간", [["변수 변환 + 가우스", "x = t², x = t/(1 − t)", "특이점을 매끄러운 유한 적분으로 바꾼 뒤 적분합니다.", [["integration", "singular", "특이점과 무한 구간"]]]], "변환 후 지수적일 수 있음", "그대로 적분하면 수렴 차수가 크게 떨어집니다."],
+      periodic: ["주기 함수 한 주기", [["사다리꼴 공식", "의외의 최선", "매끄러운 주기 함수에서는 지수적으로 수렴합니다.", [["integration", "composite", "합성 공식"]]]], "지수적", "주기가 아니면 다시 O(h²)."],
+      high: ["고차원 (d가 큼)", [["몬테카를로", "차원 무관", "무작위 표본 평균. 오차 σ/√N.", [["integration", "monte-carlo", "몬테카를로"]]]], "σ/√N", "한 자리 더 맞추려면 표본 100배. 낮은 차원에서는 곱 공식이 낫습니다."],
+    }],
+    ode: ["상미분방정식", {
+      nonstiff: ["보통(비강성) 초기값 문제", [["임베디드 RK", "도르만드–프린스 5(4)", "두 가중치 차이로 국소 오차를 추정하고 atol + rtol·|y|에 맞춰 h를 조절합니다.", [["ode-solvers", "embedded", "오차 제어"]]], ["RK4 고정 걸음", "간단", "f 4회로 4차.", [["ode-solvers", "butcher", "룽게–쿠타"]]]], "DP5 5차, RK4 4차", "고정 걸음은 h를 반으로 해 답이 1/16로 변하는지 확인합니다."],
+      stiff: ["강성(빠른 감쇠 성분)", [["BDF", "음적 + 단순화 뉴턴", "I − γhJ의 LU를 재사용해 걸음마다 음적 방정식을 풉니다.", [["ode-solvers", "stiff-bdf", "강성과 BDF"]]], ["음적 오일러·사다리꼴", "A-안정", "사다리꼴은 L-안정이 아니라 빠른 성분이 부호를 바꾸며 남습니다.", [["ode-solvers", "stability", "안정성 영역"]]]], "BDF k ≤ 6차", "명시적 방법은 h ≲ 2.8/|λ_max|에 묶여 걸음 수가 폭발합니다."],
+      ham: ["장기 궤도·해밀턴 계", [["스퇴르머–베를레", "심플렉틱", "넓이를 보존하고 시간 가역적이라 에너지 오차가 O(h²) 띠에 머뭅니다.", [["ode-solvers", "symplectic", "심플렉틱 적분"]]]], "2차, 에너지 유계", "RK4도 짧게는 정확하지만 에너지가 t에 비례해 표류합니다."],
+      costly: ["f 계산이 아주 비쌈", [["애덤스 예측–수정", "PECE", "과거 f를 재사용해 걸음당 f 1–2회로 고차를 얻고, 예측–수정 차이로 오차를 추정합니다.", [["ode-solvers", "multistep", "다단계 방법"]]]], "AB k차, AM k + 1차", "출발값이 필요하고 걸음 폭 변경이 번거롭습니다."],
+      bvp: ["경계값 문제", [["슈팅 방법", "IVP + 할선", "모르는 초기 기울기를 할선·뉴턴으로 맞춥니다.", [["ode-solvers", "bvp", "슈팅"]]], ["유한 차분", "삼중대각 뉴턴", "격자 위 차분식 전체를 한꺼번에 풉니다. O(h²).", [["ode-solvers", "bvp", "유한 차분"]]]], "유한 차분 O(h²)", "초기값 문제가 불안정하면 슈팅이 실패합니다(유한 차분·다중 슈팅)."],
+    }],
+    lin: ["선형계 Ax = b", {
+      dense: ["밀집, 일반 행렬", [["PA = LU", "부분 피벗팅", "한 번 분해하고 우변마다 대입만 합니다. 역행렬은 계산하지 않습니다.", [["direct-solvers", "plu", "PA = LU"], ["direct-solvers", "pivoting", "피벗팅"]]]], "후방 안정, 상대 오차 ≈ κu", "작은 잔차가 작은 오차를 뜻하지 않습니다(조건수)."],
+      spd: ["대칭 양정치", [["촐레스키", "LU의 절반", "A = GGᵀ, 피벗팅 없이 안정. 실패하면 양정치가 아닙니다.", [["direct-solvers", "cholesky", "촐레스키"]]]], "(1/3)n³", "대칭이어도 부정치면 쓸 수 없습니다."],
+      band: ["삼중대각·띠", [["토머스 알고리즘", "O(n)", "삼중대각을 약 8n flop에 풉니다.", [["direct-solvers", "thomas", "토머스 알고리즘"]]], ["띠 LU", "O(nw²)", "띠 밖은 0으로 남습니다.", [["direct-solvers", "thomas", "띠 행렬"]]]], "대각 우세면 피벗팅 불필요", "피벗팅을 하면 띠 폭이 늘 수 있습니다."],
+      sparse_spd: ["크고 희소, SPD", [["전처리 CG", "IC(0)·야코비", "크릴로프 공간에서 A-노름 오차를 최소화합니다.", [["iterative", "cg", "켤레 기울기법"], ["iterative", "precond", "전처리"]]], ["다중 격자", "격자 문제", "평활화 + 거친 격자 보정으로 O(n).", [["iterative", "multigrid", "다중 격자"]]]], "CG (√κ − 1)/(√κ + 1)", "분해하면 채움으로 메모리가 폭발합니다(재배열로 줄이기는 가능)."],
+      sparse_gen: ["크고 희소, 비대칭", [["GMRES + 전처리", "재시작", "아놀디 기저 위에서 잔차를 최소화합니다.", [["iterative", "krylov", "GMRES"]]], ["희소 직접법", "재배열", "RCM·최소 차수 순서로 채움을 줄인 LU.", [["direct-solvers", "sparse", "희소 행렬"]]]], "고유값 분포가 속도를 정함", "재시작 길이가 짧으면 정체할 수 있습니다."],
+      ill: ["조건이 나쁨·정확도 부족", [["반복 개선", "혼합 정밀도", "잔차를 높은 정밀도로 계산해 기존 LU로 보정합니다.", [["direct-solvers", "refinement", "반복 개선"]]], ["표현 바꾸기", "근본 처방", "변수·기저를 바꾸거나 정칙화합니다.", [["direct-solvers", "hilbert", "힐베르트 행렬"], ["approximation", "overfitting", "정칙화"]]]], "κu_f &lt; 1이면 작업 정밀도까지", "문제 자체의 조건은 알고리즘으로 고칠 수 없습니다."],
+    }],
+    eig: ["고유값·특이값", {
+      largest: ["가장 큰 것 하나(큰 희소)", [["거듭제곱법", "Ax만 필요", "곱하고 정규화. 대칭이면 레일리 몫으로 고유값을 제곱 속도로 읽습니다.", [["eigenvalues", "power", "거듭제곱법"]]]], "1차, C = |λ₂/λ₁|", "|λ₂| ≈ |λ₁|이면 매우 느립니다(이동·크릴로프 방법)."],
+      near: ["특정 값 근처", [["이동 역반복", "σ 근처", "(A − σI)를 한 번 분해해 재사용합니다.", [["eigenvalues", "inverse", "역반복과 이동"]]], ["레일리 몫 반복", "대칭 3차", "이동을 매번 갱신. 어느 고유값으로 갈지는 시작점이 정합니다.", [["eigenvalues", "inverse", "레일리 몫 반복"]]]], "σ가 가까울수록 빠름", "σ가 고유값과 같아도 문제없습니다(오차가 고유벡터 방향)."],
+      all: ["전부(밀집 행렬)", [["QR 알고리즘", "헤센베르크 + 윌킨슨 이동", "직교 닮음 변환만 쌓아 후방 안정하게 모든 고유값을 구합니다.", [["eigenvalues", "qr", "QR 알고리즘"]]], ["야코비 회전", "대칭, 높은 정확도", "비대각 원소를 회전으로 하나씩 지웁니다.", [["eigenvalues", "jacobi", "야코비 회전"]]]], "비대칭 약 10n³, 대칭 (4/3)n³", "특성 다항식의 근으로 구하지 않습니다."],
+      bound: ["계산 없이 어림", [["게르시고린 원판", "O(n²)", "중심 aᵢᵢ, 반지름 Σ|aᵢⱼ| 원판들의 합집합에 모든 고유값이 있습니다.", [["eigenvalues", "gershgorin", "게르시고린"]]]], "범위만", "원판이 겹치면 각 원판 안의 개수는 알 수 없습니다."],
+      svd: ["특이값·저계수 근사", [["SVD", "이중대각화", "AᵀA를 만들지 않고 특이값을 구해 큰 k개만 남깁니다.", [["eigenvalues", "svd", "특이값 계산"]]]], "후방 안정", "AᵀA의 고유값으로 구하면 작은 특이값이 망가집니다."],
+    }],
+    opt: ["최소화 min f", {
+      one: ["1변수", [["브렌트(최소화)", "황금 분할 + 포물선", "황금 분할의 안전과 포물선의 초선형을 합칩니다.", [["optimization", "one-dimensional", "1차원 최소화"]]]], "황금 0.618배 / 포물선 약 1.32차", "단봉이 아니면 국소 최솟값을 찾습니다."],
+      grad: ["매끄러움, 기울기 있음", [["BFGS + 울프 직선 탐색", "준뉴턴", "역헤세 근사를 O(n²)로 갱신. 큰 문제는 L-BFGS.", [["optimization", "quasi-newton", "BFGS"]]], ["경사 하강 + 모멘텀", "단순", "조건수 κ가 크면 지그재그합니다.", [["optimization", "conditioning", "지그재그와 모멘텀"]]]], "BFGS 초선형", "기울기를 자동 미분으로 얻으면 정확하고 쌉니다."],
+      hess: ["헤세 계산 가능, n이 작음", [["뉴턴 + 직선 탐색", "2차, 아핀 불변", "∇²f p = −∇f. 헤세가 양정치가 아니면 수정합니다.", [["optimization", "newton", "뉴턴 방법"]]]], "2차, 걸음당 O(n³)", "안장점 쪽으로 갈 수 있습니다."],
+      nograd: ["도함수 없음·잡음", [["넬더–미드", "함숫값 비교만", "심플렉스를 반사·확장·수축합니다.", [["optimization", "nelder-mead", "넬더–미드"]]]], "보장 약함", "차원이 크면 느립니다."],
+      lsq: ["제곱합(곡선 맞춤)", [["레벤버그–마쿼트", "표준", "가우스–뉴턴에 λ 감쇠를 더했습니다.", [["optimization", "nonlinear-least-squares", "LM"]]]], "작은 잔차에서 거의 2차", "J의 열이 거의 종속이면 매개변수를 줄이세요."],
+      cons: ["제약이 있음", [["벌칙법", "μ → ∞", "제약 위반의 제곱을 더해 제약 없는 문제로 풉니다.", [["optimization", "constrained", "제약 최적화"]]], ["KKT 확인", "최적성 판정", "정류·실현 가능·μ ≥ 0·상보성.", [["optimization", "constrained", "KKT 조건"]]]], "μ에 따라 정확도↑ 조건수↑", "μ를 한 번에 키우지 말고 단계적으로."],
+      big: ["데이터가 아주 많음", [["SGD + 모멘텀", "미니배치", "기울기 분산 σ²/B를 감수하고 값싸게 많이 걷습니다.", [["optimization", "sgd", "확률적 경사 하강"]]]], "걸음을 줄여야 정확히 수렴", "학습률이 가장 중요한 손잡이입니다."],
+      global: ["국소 최솟값이 많음", [["다중 시작 / 담금질", "전역 탐색", "오르막도 e^(−Δ/T)로 받아들이며 온도를 낮춥니다.", [["optimization", "global", "담금질 기법"]]]], "보장 없음, 확률적", "마지막은 국소 방법으로 다듬습니다."],
+    }],
+    pde: ["편미분방정식", {
+      poisson: ["정상 상태(푸아송)", [["5점 차분 / FEM", "희소 선형계", "다중 격자·PCG·희소 직접법으로 풉니다.", [["pde-numerics", "poisson", "푸아송"], ["iterative", "multigrid", "다중 격자"]]]], "O(h²), 격자 수렴 실험으로 확인", "조건수가 h⁻²에 비례해 단순 반복은 느립니다."],
+      heat: ["확산(열 방정식)", [["크랭크–니콜슨", "2차, 무조건 안정", "토머스로 걸음당 O(n). 처음 몇 걸음은 BTCS로 진동을 누릅니다.", [["pde-numerics", "heat-implicit", "열 방정식"]]], ["선의 방법 + BDF", "강성 ODE", "공간만 이산화하고 강성 해법에 맡깁니다.", [["pde-numerics", "heat-implicit", "선의 방법"]]]], "CN O(Δt² + Δx²)", "FTCS는 r ≤ 1/2이라 Δt ∝ Δx²."],
+      adv: ["이류·보존 법칙", [["풍상 / 유한 체적", "단조", "바람이 오는 쪽 차분. 보존을 정확히 지킵니다.", [["pde-numerics", "advection", "이류"], ["pde-numerics", "finite-volume", "유한 체적"]]], ["랙스–벤드로프", "2차", "매끄러운 해에서 정확하지만 불연속 근처에서 진동합니다.", [["pde-numerics", "advection", "랙스–벤드로프"]]]], "풍상 1차 + 수치 확산", "CFL |C| ≤ 1. 중앙 차분 FTCS는 무조건 불안정."],
+      wave: ["파동", [["립프로그", "감쇠 없음", "C ≤ 1에서 안정. 파장당 칸 수로 격자를 고릅니다.", [["pde-numerics", "wave", "파동 방정식"]]]], "O(Δt² + Δx²)", "수치 분산으로 짧은 파장이 늦습니다."],
+      geom: ["복잡한 모양·여러 재료", [["유한 요소법", "약형식", "모자 함수로 강성 행렬을 조립합니다. 에너지 노름에서 최선 근사.", [["pde-numerics", "fem", "유한 요소법"]]]], "1차 요소 O(h²)", "요소 품질이 나쁘면 조건수가 나빠집니다."],
+    }],
+  };
+  const kindEl = document.getElementById("gl-kind"), subEl = document.getElementById("gl-sub"), out = document.getElementById("gl-out");
+  let kind = "root", sub = "bracket";
+  kindEl.innerHTML = Object.entries(K).map(([k, [lab]]) => `<button data-value="${k}"${k === kind ? ' class="on"' : ""}>${lab}</button>`).join("");
+  function mark(el, v) { el.querySelectorAll("button").forEach((b) => { const on = b.dataset.value === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); }
+  function subs() { const S = K[kind][1]; if (!S[sub]) sub = Object.keys(S)[0]; subEl.innerHTML = Object.entries(S).map(([k, [lab]]) => `<button data-value="${k}">${lab}</button>`).join(""); mark(subEl, sub); }
+  function render() {
+    const [, recs, err, warn] = K[kind][1][sub];
+    out.innerHTML = recs.map(([nm, sm, desc, links], i) => `<div class="gl-rec${i === 0 ? " best" : ""}"><div class="nm">${nm}<small>${sm}</small></div><p>${desc}</p><div class="lk">${links.map(L).join("")}</div></div>`).join("");
+    MB.stat("gl-err", err); MB.stat("gl-warn", warn);
+  }
+  kindEl.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; kind = b.dataset.value; sub = ""; mark(kindEl, kind); subs(); render(); });
+  subEl.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; sub = b.dataset.value; mark(subEl, sub); render(); });
+  mark(kindEl, kind); subs(); render();
+})();
+
+/* ------------------------------------------------ 2. 수렴 차수 경주 */
+(function () {
+  const M = [
+    { nm: "선형 (C)", p: 1, w: 1, col: "blue", lin: true },
+    { nm: "황금 분할 (0.618)", p: 1, w: 1, col: "text-faint", C: 0.6180339887 },
+    { nm: "할선 (1.618)", p: 1.6180339887, w: 1, col: "warn" },
+    { nm: "역2차 보간 (1.839)", p: 1.839286755, w: 1, col: "ok" },
+    { nm: "뉴턴 (2)", p: 2, w: 2, col: "accent" },
+    { nm: "레일리 몫 (3)", p: 3, w: 1, col: "accent-2" },
+  ];
+  const TOL = 1e-15;
+  document.getElementById("gl-race-lg").innerHTML = M.map((m) => `<span><i style="background:var(--${m.col})"></i>${m.nm}</span>`).join("");
+  document.getElementById("gl-race-out").innerHTML = M.map((m, i) => `<div class="stat"><span class="k">${m.nm}</span><span class="v" id="gl-race-r${i}">—</span></div>`).join("");
+  const SUP = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+  const e0 = MB.range("gl-race-e0", (v) => { const [m, e] = Math.pow(10, v).toExponential(1).split("e"); return `${m}×10${[...String(+e)].map((c) => SUP[c]).join("")}`; }, () => cv.redraw());
+  const cC = MB.range("gl-race-c", (v) => v.toFixed(2), () => cv.redraw());
+  const ax = MB.seg("gl-race-x", () => cv.redraw());
+  function run(m) {
+    const C = m.lin ? cC() : m.C || 1;
+    let e = Math.pow(10, e0()), n = 0; const pts = [[0, e]];
+    while (e > TOL && n < 400) { e = C * Math.pow(e, m.p); n++; pts.push([n, Math.max(e, 1e-300)]); }
+    return { pts, n };
+  }
+  const cv = MB.canvas("#gl-race-cv", (ctx) => {
+    const P = MB.palette(), byW = ax() === "w";
+    const R = M.map(run);
+    const xmax = Math.min(80, Math.max(8, ...R.map((r, i) => r.n * (byW ? M[i].w : 1))));
+    MB.chart(ctx, null, { x: [0, xmax], y: [1e-16, 1], logY: true, xLabel: byW ? "함수 계산 수" : "반복 n", yLabel: "오차 eₙ",
+      yTicks: [1, 1e-4, 1e-8, 1e-12, 1e-16], hlines: [{ y: TOL, color: P.faint, label: "10⁻¹⁵" }],
+      series: R.map((r, i) => ({ data: r.pts.map(([n, e]) => [n * (byW ? M[i].w : 1), e]), color: MB.color(M[i].col), width: 2 })) });
+    R.forEach((r, i) => MB.stat("gl-race-r" + i, r.n >= 400 ? "&gt; 400" : `${r.n}<small>회</small>${M[i].w > 1 ? ` <small>(f ${r.n * M[i].w})</small>` : ""}`));
+  }, { aspect: 0.42, minHeight: 210, maxHeight: 300 });
+})();
+
+/* ------------------------------------------------ 3. 안정성이 정하는 걸음 폭 */
+(function () {
+  const ODE = [["명시적 오일러", 2], ["AB2", 1], ["AB4", 0.3], ["RK4", 2.785], ["DP5", 3.306], ["BDF2", Infinity]];
+  const PDE = [["열 FTCS: Δt 상한 Δx²/2", (dx) => dx * dx / 2], ["열 CN · BTCS", () => Infinity], ["이류 풍상: Δt 상한 Δx", (dx) => dx], ["파동 립프로그: Δt 상한 Δx", (dx) => dx]];
+  const out = document.getElementById("gl-st-out");
+  out.innerHTML = ODE.map((m, i) => `<div class="stat"><span class="k">${m[0]} 걸음 수</span><span class="v" id="gl-st-o${i}">—</span></div>`).join("") +
+    PDE.map((m, i) => `<div class="stat"><span class="k">${m[0]}</span><span class="v" id="gl-st-p${i}">—</span></div>`).join("");
+  const sci = (x) => { if (!isFinite(x)) return "제한 없음"; if (x >= 1e4 || x < 1e-2) { const e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e); return `${m.toFixed(2)}×10<sup>${String(e).replace("-", "−")}</sup>`; } return String(+x.toPrecision(3)); };
+  const SUP = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+  const txt = (x) => sci(x).replace(/<sup>([^<]*)<\/sup>/, (_, e) => [...e.replace("−", "-")].map((c) => SUP[c]).join(""));
+  const lam = MB.range("gl-st-l", (v) => txt(Math.pow(10, v)), upd), dxr = MB.range("gl-st-x", (v) => txt(Math.pow(10, v)), upd);
+  function upd() {
+    const l = Math.pow(10, lam()), dx = Math.pow(10, dxr());
+    ODE.forEach(([, b], i) => MB.stat("gl-st-o" + i, isFinite(b) ? sci(Math.ceil(10 * l / b)) : "제한 없음<small>(정확도만)</small>"));
+    PDE.forEach(([, f], i) => MB.stat("gl-st-p" + i, isFinite(f(dx)) ? sci(f(dx)) : "제한 없음"));
+  }
+  upd();
+})();
+
+/* ------------------------------------------------ 4. 용어집 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  const T = window.BOOK_GLOSSARY.terms;
+  const list = document.getElementById("gl-list"), qEl = document.getElementById("gl-q"), fEl = document.getElementById("gl-f"), nEl = document.getElementById("gl-n");
+  const parts = [...new Set(MB.CHAPTERS.filter((c) => T.some((t) => t.chapters[0] === c.slug)).map((c) => c.part))];
+  const used = MB.CHAPTERS.filter((c) => T.some((t) => t.chapters.includes(c.slug)));
+  let filt = "all", chf = "all";
+  fEl.innerHTML = `<button data-p="all" class="on">전체</button>` + parts.map((p) => `<button data-p="${p}">${p.replace(/^제\d부 /, "")}</button>`).join("") +
+    `<select id="gl-ch" aria-label="장으로 거르기"><option value="all">모든 장</option>${used.map((c) => `<option value="${c.slug}">${c.num} ${c.title}</option>`).join("")}</select>`;
+  const sel = document.getElementById("gl-ch"), btns = [...fEl.querySelectorAll("button")];
+  btns.forEach((b) => b.addEventListener("click", () => { filt = b.dataset.p; chf = "all"; sel.value = "all"; btns.forEach((x) => x.classList.toggle("on", x === b)); render(); }));
+  sel.addEventListener("change", () => { chf = sel.value; filt = "all"; btns.forEach((x) => x.classList.toggle("on", x.dataset.p === "all")); render(); });
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function render() {
+    const q = qEl.value.trim().toLowerCase();
+    const rows = T.filter((t) => chs[t.chapters[0]] && (filt === "all" || chs[t.chapters[0]].part === filt) && (chf === "all" || t.chapters.includes(chf)) && (!q || [t.ko, t.en, t.abbr, t.def].join(" ").toLowerCase().includes(q)))
+      .sort((a, b) => a.ko.localeCompare(b.ko, "ko"));
+    nEl.textContent = `${rows.length}개 / 전체 ${T.length}개`;
+    list.innerHTML = rows.map((t) => `<div class="gl-item"><h4>${esc(t.ko)}<span class="en">${esc(t.en)}${t.abbr ? " · " + esc(t.abbr) : ""}</span></h4><p>${esc(t.def)}</p><div class="chs">${t.chapters.filter((s) => chs[s]).map((s) => `<a class="ch" href="${s}.html">${chs[s].num} ${chs[s].title}</a>`).join("")}</div></div>`).join("") || `<p style="color:var(--text-dim)">찾는 용어가 없습니다. 다른 표현(영어 등)으로 검색해 보세요.</p>`;
+  }
+  qEl.addEventListener("input", render);
+  render();
+})();
+
+/* ------------------------------------------------ 5. 종합 퀴즈 */
+(function () {
+  const chs = {}; MB.CHAPTERS.forEach((c) => (chs[c.slug] = c));
+  // [질문, [보기...], 정답 인덱스, 해설, 장]
+  const Q = [
+    ["배정밀도(p = 53)에서 1 + 2⁻⁵³을 계산하면?", ["1 + 2⁻⁵³", "1", "1 + 2⁻⁵²", "오버플로"], 1, "1 + 2⁻⁵³은 1과 1 + 2⁻⁵²의 정확한 한가운데이므로, 동률일 때 마지막 비트가 짝수인 쪽(1)으로 반올림된다. 그래서 기계 엡실론 찾기 반복이 2⁻⁵²에서 멈춘다.", "floating-point"],
+    ["1 − cos x를 x = 10⁻⁸에서 배정밀도로 그대로 계산하면 0이 나온다. 가장 좋은 처방은?", ["x를 더 작게 잡는다", "4배정밀도로 바꾼다", "2 sin²(x/2)로 계산한다", "cos x를 테일러 급수 두 항으로 계산한 뒤 1에서 뺀다"], 2, "cos x가 1과 u보다 가까워 fl(cos x) = 1이 되고 뺄셈에서 모든 자릿수가 상쇄된다. 항등식 1 − cos x = 2 sin²(x/2)에는 뺄셈이 없어 모든 x에서 상대 오차가 u 수준이다.", "floating-point"],
+    ["조건수가 10⁸인 문제를 후방 안정한 알고리즘으로 배정밀도(u ≈ 10⁻¹⁶)로 풀었다. 답의 상대 오차는 대략?", ["10⁻¹⁶", "10⁻⁸", "10⁻²⁴", "0 (후방 안정이므로)"], 1, "전방 오차 ≲ 조건수 × 후방 오차 ≈ 10⁸ × 10⁻¹⁶ = 10⁻⁸. 후방 안정성은 알고리즘이 오차를 더 키우지 않는다는 보증일 뿐, 문제의 민감도까지 없애 주지는 않는다.", "conditioning"],
+    ["점화식 Iₙ = 1 − nIₙ₋₁로 I₀ = 1 − 1/e에서 출발해 I₂₀을 계산하면 −30이 나온다. 옳은 처방은?", ["I₀를 4배정밀도로 저장한다", "Iₙ₋₁ = (1 − Iₙ)/n으로 큰 N에서 뒤로 계산한다", "n을 줄여서 계산한다", "부분적분을 한 번 더 한다"], 1, "앞으로 가면 오차가 매 단계 n배로 커져 n!배가 된다. 뒤로 가면 오차가 매 단계 1/n배로 줄어들어, 출발값 I<sub>N</sub> = 0이 엉터리여도 금방 정확해진다. 정밀도를 높이는 것은 문제를 늦출 뿐이다.", "conditioning"],
+    ["뉴턴 방법의 오차가 10⁻³에서 다음 단계 5×10⁻⁷이 되었다. 이 방법이 단순근에서 보이는 수렴은?", ["선형 수렴, 비율 0.5", "2차 수렴, |f″/(2f′)| ≈ 0.5", "3차 수렴", "수렴하지 않는다"], 1, "5×10⁻⁷ = 0.5×(10⁻³)²이므로 오차가 제곱에 비례하는 2차 수렴이고 점근 상수는 |f″(r)/(2f′(r))| ≈ 0.5다.", "roots"],
+    ["가위치법이 볼록한 함수에서 이분법보다도 느려질 수 있는 이유는?", ["근을 가두지 못해서", "도함수가 필요해서", "할선의 근이 늘 같은 쪽에 떨어져 한 끝점이 묶이고 선형으로 느리게 수렴해서", "반올림 오차가 커서"], 2, "한 끝점이 처음 자리에 묶여 구간 길이가 0으로 가지 않는다. x¹⁰ − 1을 [0, 1.3]에서 풀면 10⁻¹⁰까지 가위치법 95번, 일리노이 수정 14번이 든다.", "roots"],
+    ["다변수 뉴턴 방법의 한 반복에서 하는 일로 옳은 것은?", ["야코비안의 역행렬을 구해 F에 곱한다", "선형계 J(x)s = −F(x)를 LU 등으로 풀고 x에 s를 더한다", "각 성분에 1변수 뉴턴을 따로 쓴다", "‖F‖²의 기울기 방향으로 고정된 걸음을 간다"], 1, "역행렬을 만들지 않고 선형계를 푼다. 비용은 야코비안 n²개 성분과 LU 약 (2/3)n³ 연산이다.", "nonlinear-systems"],
+    ["MATLAB의 roots나 numpy.roots가 다항식의 모든 근을 구하는 방법은?", ["근의 공식", "모든 정수 후보를 대입", "동반 행렬의 고유값을 이동 QR 알고리즘으로 계산", "이분법을 여러 구간에서 반복"], 2, "동반 행렬의 특성 다항식이 원래 다항식이므로 고유값이 근이다. 출발점이나 수축 순서를 걱정하지 않고 O(n³)에 모든 근을 얻는다.", "nonlinear-systems"],
+    ["1/(1 + 25x²)을 [−1, 1]의 등간격 노드로 보간하며 차수를 높이면 어떤 일이 생기는가?", ["오차가 (n+1)!에 반비례해 빠르게 줄어든다", "양 끝 근처의 오차가 지수적으로 커진다(룽게 현상)", "반올림 오차 때문에만 조금 틀린다", "오차가 차수와 무관하게 일정하다"], 1, "등간격 노드의 최대 오차는 n = 10에서 1.92, n = 20에서 59.8로 커지고 모두 양 끝에서 생긴다. 체비쇼프 노드로 바꾸면 수렴한다.", "interpolation"],
+    ["노드 0, 1, 3과 값 1, 3, 2의 2차 보간 다항식에서 p(2)는?", ["2.5", "3", "10/3", "7/3"], 2, "라그랑주 가중치가 ℓ₀(2) = −1/3, ℓ₁(2) = 1, ℓ₂(2) = 1/3이므로 p(2) = −1/3 + 3 + 2/3 = 10/3. 뉴턴 형식이나 무게중심 공식으로 계산해도 같다.", "interpolation"],
+    ["구간 n개의 3차 스플라인에서 보간 조건과 이음매의 1·2차 도함수 연속 조건만으로는 몇 개의 조건이 모자라는가?", ["0개", "1개", "2개", "n − 1개"], 2, "미지수 4n개에 조건은 보간 2n개와 내부 노드 연속 2(n − 1)개, 합 4n − 2개다. 모자란 2개를 자연·고정·not-a-knot 같은 경계 조건으로 채운다.", "splines"],
+    ["3차 B-스플라인 곡선에서 제어점 하나를 옮기면 곡선의 어느 부분이 바뀌는가?", ["곡선 전체", "가장 가까운 한 구간", "매듭 구간 4개", "양 끝점을 뺀 전체"], 2, "기저 Nⱼ,₃의 받침이 [tⱼ, tⱼ₊₄), 곧 매듭 구간 4개라서 국소 제어가 된다. 같은 제어점의 단일 베지에 곡선이라면 끝점을 뺀 전체가 움직인다.", "splines"],
+    ["정규 방정식 AᵀA c = Aᵀy로 최소제곱 문제를 풀 때의 가장 큰 수치적 약점은?", ["해가 유일하지 않다", "AᵀA의 조건수가 κ(A)²이 되어 정확도를 두 배로 잃는다", "계산량이 QR보다 훨씬 많다", "잔차가 열공간에 수직이 아니게 된다"], 1, "κ(AᵀA) = κ(A)²이므로 κ(A) = 10⁸이면 배정밀도의 자릿수가 모두 사라질 수 있다. 하우스홀더 QR은 AᵀA를 만들지 않아 후방 안정하다.", "approximation"],
+    ["3차 다항식이 어떤 함수의 [−1, 1] 최소최대 근사라면, 오차 곡선은 최소 몇 개의 점에서 같은 크기로 부호를 번갈아 바꾸는가?", ["3", "4", "5", "6"], 2, "체비쇼프 등진동 정리에 따라 n차 최소최대 근사의 오차는 n + 2개 점에서 등진동한다. n = 3이면 5개다.", "approximation"],
+    ["초당 10번 표본화한 7 Hz 사인파는 스펙트럼에서 몇 Hz로 보이는가?", ["7 Hz", "5 Hz", "3 Hz", "17 Hz"], 2, "나이퀴스트 주파수 5 Hz를 넘는 성분은 접혀 들어온다. 겉보기 주파수는 |7 − 10| = 3 Hz다.", "fft"],
+    ["N = 1024일 때 기수 2 FFT의 나비 연산 수는 직접 DFT의 곱셈 수 N²의 대략 몇 분의 1인가?", ["약 10분의 1", "약 200분의 1", "약 1000분의 1", "약 2분의 1"], 1, "FFT는 (N/2)log₂N = 512 × 10 = 5120개의 나비, 직접 DFT는 1024² = 1,048,576번의 곱셈이다. 비율은 약 205다.", "fft"],
+    ["배정밀도에서 매끄러운 함수의 도함수를 중앙 차분으로 구할 때, 반올림 오차와 절단 오차의 균형을 맞추는 간격 h의 대략적인 크기는?", ["10⁻¹⁶ (기계 엡실론)", "10⁻⁸ (√ε)", "약 6×10⁻⁶ (∛ε 규모)", "10⁻² (클수록 안전)"], 2, "중앙 차분의 오차는 (M₃/6)h² + ε|f|/(2h)로, h* = (3ε|f|/(2M₃))^(1/3)에서 최소다. M₃ = |f|이면 (1.5ε)^(1/3) ≈ 6.9×10⁻⁶이고 약 10자리가 맞는다. √ε ≈ 10⁻⁸은 1차인 전진 차분의 최적값이다.", "differentiation"],
+    ["입력이 수백만 개이고 출력이 하나(스칼라)인 함수의 기울기를 가장 적은 비용으로 정확히 구하는 방법은?", ["전진 차분", "복소 스텝 미분", "전진 모드 자동 미분", "후진 모드 자동 미분(역전파)"], 3, "후진 모드는 출력 하나당 한 번의 후진 패스로 모든 입력에 대한 편도함수를 준다. 차분·복소 스텝·전진 모드는 입력 수만큼 반복해야 한다.", "differentiation"],
+    ["n점 가우스–르장드르 구적법이 정확히 적분하는 다항식의 최고 차수는?", ["n − 1", "n", "2n − 1", "2n"], 2, "노드 n개와 가중치 n개, 자유도 2n개로 1, x, …, x^(2n−1)을 맞춘다. 노드가 르장드르 다항식 Pₙ의 근이라 Pₙ과의 직교성이 이를 보장한다. 2n차는 ∏(x − xᵢ)²가 반례다.", "integration"],
+    ["10차원 적분에서 몬테카를로 적분이 격자 위의 심프슨 곱 공식보다 유리한 이유는?", ["몬테카를로는 오차가 0이라서", "몬테카를로 오차는 σ/√N으로 차원과 무관하지만 곱 공식은 O(N^(−4/d))로 차원이 커질수록 느려져서", "난수는 계산이 빨라서", "심프슨은 10차원에서 정의되지 않아서"], 1, "축마다 n점이면 총 N = n^d점이라 심프슨 곱 공식의 오차는 N^(−4/d)이다. d = 10이면 N^(−0.4)로 몬테카를로의 N^(−0.5)보다 느리다. 이것이 차원의 저주다.", "integration"],
+    ["선형 다단계 방법 y<sub>n+2</sub> + 4y<sub>n+1</sub> − 5y<sub>n</sub> = h(4f<sub>n+1</sub> + 2f<sub>n</sub>)은 3차로 일관적이다. 걸음 폭을 줄이면 어떻게 되는가?", ["오차가 h³에 비례해 준다", "오차가 h에 비례해 준다", "기생 근 −5 때문에 오차가 오히려 폭발한다", "h와 무관하게 일정하다"], 2, "ρ(ζ) = (ζ − 1)(ζ + 5)의 근 −5가 단위원 밖에 있어 영 안정이 아니다. 걸음 수 N이 늘수록 기생 성분이 5<sup>N</sup>꼴로 자라므로 수렴하지 않는다(달퀴스트 동등성 정리).", "ode-solvers"],
+    ["강성 문제(로버트슨 반응)를 명시적 RK45보다 BDF로 풀 때 걸음 수가 수백 배 적은 이유는?", ["BDF의 차수가 더 높아서", "BDF는 안정 영역이 음의 실수축 전체를 포함해 걸음 폭이 정확도만으로 정해지기 때문", "BDF는 f를 계산하지 않기 때문", "명시적 방법은 반올림 오차가 더 크기 때문"], 1, "명시적 방법은 h|λ<sub>max</sub>|가 유한한 안정 경계(DP5는 약 3.3) 안에 있어야 해 h가 가장 빠른 시상수에 묶인다. 로버트슨 문제에서 걸음 수가 200배 이상 준다. BDF는 매 걸음 뉴턴 반복의 비용을 치르는 대신 이 제한이 없다.", "ode-solvers"],
+    ["조건수 κ(A) = 10⁸인 계를 배정밀도 부분 피벗팅 LU로 풀었다. 해의 상대 오차로 예상되는 크기는?", ["10⁻¹⁶", "10⁻¹²", "10⁻⁸", "10⁰"], 2, "후방 안정한 풀이기의 상대 오차 ≈ κ·u = 10⁸ × 10⁻¹⁶ = 10⁻⁸. 약 log₁₀κ = 8자리를 잃는다.", "direct-solvers"],
+    ["대칭 양정치 행렬에 LU 대신 촐레스키 분해를 쓸 때의 이점으로 옳지 않은 것은?", ["연산 수가 약 절반(n³/3)이다", "피벗팅 없이 안정하다", "아래 삼각만 저장하면 된다", "채움이 언제나 0이 된다"], 3, "촐레스키도 소거 순서에 따라 채움이 생긴다. 채움을 줄이려면 최소 차수나 중첩 분할 같은 재배열이 필요하다.", "direct-solvers"],
+    ["반복 행렬의 스펙트럼 반지름이 0.9인 정상 반복법으로 오차를 10⁻⁶배로 줄이려면 대략 몇 번 반복해야 하는가?", ["약 6번", "약 54번", "약 131번", "약 900번"], 2, "0.9ᵏ = 10⁻⁶에서 k = 6/(−log₁₀0.9) ≈ 131. 스펙트럼 반지름이 1에 가까울수록 반복 수가 급격히 늘어난다.", "iterative"],
+    ["켤레 기울기법이 정확한 산술에서 많아야 m번 만에 끝나는 경우는?", ["행렬의 조건수가 m 이하일 때", "행렬의 서로 다른 고유값이 m개뿐일 때", "행렬의 대각 원소가 m개 이하로 0이 아닐 때", "전처리기를 m번 적용했을 때"], 1, "CG의 오차는 P(0) = 1인 다항식 중 고유값 위에서 가장 작은 것으로 줄어든다. 서로 다른 고유값이 m개면 그 모두에서 0인 m차 다항식이 있으므로 m번째에 끝난다.", "iterative"],
+    ["고유값이 1, 3, 4, 7, 10인 행렬에 이동량 σ = 3.8의 이동 역반복을 쓰면 어느 고유값으로, 어떤 수렴비로 가는가?", ["10으로, 0.7", "3으로, 0.25", "4로, 0.25", "4로, 0.05"], 2, "σ에 가장 가까운 고유값은 4(거리 0.2), 두 번째는 3(거리 0.8)이다. 수렴비는 0.2/0.8 = 0.25다.", "eigenvalues"],
+    ["특이값을 구하려고 AᵀA의 고유값을 계산하면 안 되는 이유는?", ["AᵀA는 대칭이 아니어서", "조건수가 제곱되어 작은 특이값이 반올림에 묻혀서", "계산량이 지수적으로 늘어서", "큰 특이값의 부호가 바뀌어서"], 1, "κ(AᵀA) = κ(A)²이다. 특이값 10⁻⁸의 제곱 10⁻¹⁶은 1과 더해지는 순간 배정밀도에서 사라진다. 표준 알고리즘은 A 자체를 이중대각화한다.", "eigenvalues"],
+    ["헤세 행렬의 고유값이 1과 100인 이차 함수에서, 최적 고정 걸음의 경사 하강과 최적 모멘텀(무거운 공)의 오차 수렴률은 각각 약 얼마인가?", ["0.98과 0.82", "0.99와 0.9", "0.82와 0.5", "0.5와 0.1"], 0, "κ = 100. 경사 하강 (κ−1)/(κ+1) = 99/101 ≈ 0.980, 모멘텀 (√κ−1)/(√κ+1) = 9/11 ≈ 0.818. 오차 10⁻⁶까지 약 691걸음과 69걸음이다.", "optimization"],
+    ["레벤버그–마쿼트 방법에서 시도한 걸음이 잔차 제곱합을 키웠을 때 하는 일은?", ["걸음을 받아들이고 λ를 줄인다", "걸음을 버리고 λ를 키워 더 짧은 경사 하강 쪽 걸음을 다시 푼다", "헤세 행렬을 정확히 계산한다", "출발점을 무작위로 바꾼다"], 1, "(JᵀJ + λ·diag(JᵀJ))δ = −Jᵀr에서 λ가 크면 걸음이 짧은 경사 하강에 가까워진다. 실패하면 λ를 10배로 키우고, 성공하면 1/10로 줄여 가우스–뉴턴에 가깝게 간다.", "optimization"],
+    ["열 방정식 uₜ = uₓₓ를 Δx = 0.01로 풀 때, FTCS가 안정한 가장 큰 Δt와 크랭크–니콜슨의 안정 조건은?", ["Δt ≤ 5×10⁻⁵, 크랭크–니콜슨은 무조건 안정", "Δt ≤ 10⁻², 크랭크–니콜슨도 같은 조건", "Δt ≤ 10⁻⁴, 크랭크–니콜슨은 Δt ≤ 10⁻²", "제한 없음, 크랭크–니콜슨은 불안정"], 0, "FTCS는 r = Δt/Δx² ≤ 1/2이어야 하므로 Δt ≤ 10⁻⁴/2. 크랭크–니콜슨의 증폭 인자 (1 − 2rs²)/(1 + 2rs²)는 모든 r에서 크기가 1 이하라 무조건 안정하다.", "pde-numerics"],
+    ["이류 방정식 uₜ + uₓ = 0을 풍상 차분, 쿠랑 수 C = 1로 풀면 어떻게 되는가?", ["무조건 폭발한다", "수치 확산이 가장 크다", "격자점에서 정확히 한 칸씩 이동해 참 해와 같다", "진동이 생긴다"], 2, "C = 1이면 uⱼᵏ⁺¹ = uⱼ₋₁ᵏ, 정확한 한 칸 이동이다. 수치 확산 계수 aΔx(1 − C)/2도 0이 된다. C > 1이면 CFL 조건을 어겨 폭발한다.", "pde-numerics"],
+  ];
+  const box = document.getElementById("final"), weak = document.getElementById("gl-weak");
+  let score = 0, done = 0, miss = {};
+  const upd = () => {
+    MB.stat("sc-t", `${score} / ${done} · 전체 ${Q.length}`); document.getElementById("sc-b").style.width = (done / Q.length) * 100 + "%";
+    const ks = Object.keys(miss).sort((a, b) => chs[a].num.localeCompare(chs[b].num));
+    weak.innerHTML = !done ? "" : ks.length ? `다시 볼 장: ${ks.map((k) => `<a href="${k}.html">${chs[k].num} ${chs[k].title}${miss[k] > 1 ? ` (${miss[k]})` : ""}</a>`).join("")}` : "지금까지 모두 맞혔습니다.";
+  };
+  function build() {
+    score = 0; done = 0; miss = {};
+    box.innerHTML = Q.map(([q, opts, a, exp, ch], i) =>
+      `<div class="quiz-q" data-i="${i}"><p>${i + 1}. ${q}<a class="ch" href="${ch}.html">(${chs[ch].num}장)</a></p><div class="opts">${opts.map((o, k) => `<button class="opt"${k === a ? " data-correct" : ""}>${o}</button>`).join("")}</div><div class="quiz-exp">${exp}</div></div>`).join("");
+    box.querySelectorAll(".quiz-q").forEach((qq) => {
+      const opts = [...qq.querySelectorAll("button.opt")], ch = Q[+qq.dataset.i][4];
+      opts.forEach((b) => b.addEventListener("click", () => {
+        if (qq.classList.contains("done")) return;
+        opts.forEach((o) => { o.disabled = true; if (o.hasAttribute("data-correct")) o.classList.add("right"); });
+        if (!b.hasAttribute("data-correct")) { b.classList.add("wrong"); miss[ch] = (miss[ch] || 0) + 1; } else score++;
+        qq.classList.add("done"); done++; upd();
+      }));
+    });
+    upd();
+  }
+  document.getElementById("sc-r").addEventListener("click", build);
+  build();
+})();
+</script>
+</body>
+</html>

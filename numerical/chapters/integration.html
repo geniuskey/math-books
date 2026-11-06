@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>수치 적분 · NumericalBook</title>
+<meta name="description" content="함숫값 몇 개의 가중합으로 정적분을 구하는 법. 뉴턴–코츠 공식과 오차 항, 합성 공식의 수렴 차수, 오일러–매클로린과 롬베르크 적분, 가우스 구적법, 적응 구적법, 특이점과 무한 구간의 변수 변환, 몬테카를로와 차원의 저주.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ig-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ig-two > div { position: relative; min-width: 0; }
+  .ig-two > div + div { border-top: 1px solid var(--border); }
+  .ig-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ig-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ig-msg b { color: var(--text); }
+  .ig-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ig-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ig-tbl { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; max-height: 320px; overflow: auto; }
+  .ig-tbl table { font-size: 12.5px; }
+  .ig-tbl td, .ig-tbl th { font-family: var(--mono); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  .ig-tbl td:first-child, .ig-tbl th:first-child { text-align: center; }
+  .ig-tbl tr.cur td { color: var(--accent); font-weight: 700; }
+  .ig-tbl td small { display: block; font-size: 11px; color: var(--text-faint); }
+  .ig-tbl td.best { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .ig-num td, .ig-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .ig-num td:first-child, .ig-num th:first-child { text-align: center; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="integration">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 10</div>
+    <h1 data-no-glossary>수치 적분</h1>
+    <p class="lead">정규분포의 확률 \(\int e^{-x^2/2}dx\), 진자의 주기를 주는 타원 적분, 측정값으로만 주어진 힘이 한 일. 이런 적분에는 기본 함수로 쓸 수 있는 원시함수가 없거나, 함수가 아예 표로만 주어집니다. 이 장은 정적분을 <b>함숫값 몇 개의 가중합</b> \(\sum w_if(x_i)\)로 바꾸는 법, 곧 <span class="term">구적법</span><span class="en">(quadrature)</span>을 다룹니다. 점을 등간격으로 놓는 뉴턴–코츠 공식에서 출발해, 구간을 잘게 나누는 합성 공식과 그 수렴 차수, 사다리꼴 공식의 오차 구조를 이용해 외삽하는 롬베르크 적분, 점의 위치까지 최적으로 고르는 가우스 구적법, 어려운 곳만 촘촘히 나누는 적응 구적법을 차례로 봅니다. 마지막으로 특이점과 무한 구간을 변수 변환으로 길들이고, 차원이 높아지면 왜 난수(몬테카를로)가 이기는지 확인합니다.</p>
+    <ul class="objectives">
+      <li>보간 다항식을 적분해 사다리꼴·심프슨·3/8 공식을 유도하고, 정확도 차수와 오차 항을 설명한다.</li>
+      <li>합성 공식의 전역 오차 \(O(h^2)\), \(O(h^4)\)를 유도하고 로그–로그 그래프의 기울기로 확인한다.</li>
+      <li>오일러–매클로린 공식으로 사다리꼴 오차의 짝수 거듭제곱 구조를 이해하고, 롬베르크 표를 만든다.</li>
+      <li>\(n\)점 가우스–르장드르 공식이 \(2n - 1\)차 다항식까지 정확한 이유를 직교 다항식으로 설명하고, 노드와 가중치를 계산한다.</li>
+      <li>적응 심프슨 방법의 오차 추정과 구간 분할 전략을 구현하고, 균등 분할과 비용을 비교한다.</li>
+      <li>특이점·무한 구간을 변수 변환으로 처리하고, 몬테카를로 적분의 \(1/\sqrt N\) 수렴과 차원의 저주를 정량적으로 비교한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>정규분포표와 유한 요소 해석</b></div>
+      <div class="o-body"><p>통계 프로그램이 p-값을 내놓을 때, 구조 해석 프로그램이 요소 하나의 강성 행렬을 만들 때, 위성 항법 수신기가 궤도를 예측할 때, 컴퓨터 그래픽이 한 픽셀에 들어오는 빛을 모을 때, 그 안에서는 모두 적분이 숫자로 계산됩니다. 유한 요소 프로그램은 요소마다 몇 개의 <b>가우스 점</b>에서만 피적분 함수를 계산하고, 렌더러는 빛의 경로를 무작위로 수천 개 뽑아 평균을 냅니다(몬테카를로). 원시함수를 찾는 대신 "어디서 함숫값을 재고, 어떤 가중치로 더할까"를 묻는 것이 수치 적분입니다.</p>
+        <p>넓이를 작은 조각의 합으로 구하는 생각은 고대 그리스의 착출법까지 거슬러 올라가지만, 오늘날 쓰는 공식의 이름에는 17~19세기의 수학자들이 남아 있습니다. 뉴턴<span class="en">(Isaac Newton)</span>과 코츠<span class="en">(Roger Cotes)</span>의 등간격 공식, 심프슨<span class="en">(Thomas Simpson)</span>의 포물선 공식, 그리고 1814년 가우스<span class="en">(Carl Friedrich Gauss)</span>가 발표한, 점의 위치까지 최적화한 구적법입니다. 롬베르크<span class="en">(Werner Romberg)</span>의 외삽 적분은 1955년에 발표되었습니다.</p>
+        <div class="o-chain"><span>∫ f(x) dx (원시함수 없음)</span><i>→</i><span>보간 다항식을 대신 적분</span><i>→</i><span class="tool">Σ wᵢ f(xᵢ)</span><i>→</i><span>확률·강성 행렬·렌더링</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="quadrature">
+    <h2>구적법의 아이디어: 함숫값의 가중합</h2>
+    <div class="problem"><strong>원시함수가 없는 적분</strong>
+      <p>표준정규분포에서 \(0 \le Z \le 1\)일 확률은 \(\frac{1}{\sqrt{2\pi}}\int_0^1 e^{-x^2/2}dx\)입니다. \(e^{-x^2/2}\)의 원시함수는 기본 함수로 쓸 수 없다는 것이 증명되어 있습니다(<a href="../../calculus/chapters/taylor.html#nonelementary">CalculusBook 12장</a>). 함숫값은 몇 개든 계산할 수 있습니다. 몇 개를 어디서 계산해 어떻게 더해야 소수 여섯째 자리까지 맞출까요?</p></div>
+    <p>모든 구적법은 같은 꼴입니다. 노드 \(x_i\)에서 함숫값을 계산하고 가중치 \(w_i\)를 곱해 더합니다. 노드와 가중치를 고르는 가장 자연스러운 방법은 <b>노드를 지나는 보간 다항식</b> \(p\)(<a href="interpolation.html">5장</a>)를 만들고 그것을 정확히 적분하는 것입니다. 라그랑주 기저 \(\ell_i\)로 \(p = \sum f(x_i)\ell_i\)이므로 \(\int p = \sum f(x_i)\int\ell_i\), 곧 가중치는 다음과 같습니다.</p>
+    \[w_i = \int_a^b \ell_i(x)\,dx\]
+    <div class="callout deep"><strong>정의 10.1 (구적 공식과 정확도 차수)</strong> 노드 \(x_0, \dots, x_n\)과 가중치 \(w_0, \dots, w_n\)으로 정한
+      <div class="formula">$$Q[f] = \sum_{i=0}^{n} w_i f(x_i) \approx I[f] = \int_a^b f(x)\,dx$$</div>
+      를 <span class="term">구적 공식</span><span class="en">(quadrature rule)</span>이라 한다. 차수가 \(k\) 이하인 모든 다항식에 대해 \(Q = I\)이고 \(x^{k+1}\)에 대해서는 아닐 때, \(k\)를 그 공식의 <span class="term">정확도 차수</span><span class="en">(degree of exactness)</span>라 한다. 보간 다항식을 적분해 만든 \(n+1\)점 공식은 정확도 차수가 적어도 \(n\)이다.</div>
+    <p>정확도 차수는 공식을 검사하는 가장 쉬운 방법이기도 합니다. \(1, x, x^2, \dots\)를 차례로 넣어 보아 맞지 않는 첫 지수를 찾으면 됩니다. 가중치의 합이 \(b - a\)여야 한다(\(f = 1\))는 것이 첫 번째 확인입니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="newton-cotes">
+    <h2>뉴턴–코츠 공식: 사다리꼴, 심프슨, 3/8</h2>
+    <p>노드를 \([a, b]\)에 등간격으로 놓고 양 끝을 포함한 공식이 닫힌 <span class="term">뉴턴–코츠 공식</span><span class="en">(Newton–Cotes formula)</span>입니다. 점 두 개(직선)는 사다리꼴, 세 개(포물선)는 심프슨, 네 개(3차식)는 심프슨 3/8 공식입니다. 한가운데 점 하나만 쓰면(열린 공식) 중점 공식입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="중점 사다리꼴 심프슨 공식의 그림">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <g>
+          <path d="M40 220 L40 120 L200 120 L200 220 Z" class="f-acc-soft"/>
+          <path d="M40 160 C80 140 150 100 200 60" fill="none" class="s-line" style="stroke-width:2.4"/>
+          <line x1="40" y1="220" x2="200" y2="220" class="s-axis"/>
+          <circle cx="120" cy="120" r="5" style="fill:var(--accent)"/>
+          <text x="120" y="244" text-anchor="middle" class="t">중점: (b − a)·f(m)</text>
+        </g>
+        <g transform="translate(250,0)">
+          <path d="M40 220 L40 160 L200 60 L200 220 Z" class="f-acc2-soft"/>
+          <path d="M40 160 C80 140 150 100 200 60" fill="none" class="s-line" style="stroke-width:2.4"/>
+          <line x1="40" y1="220" x2="200" y2="220" class="s-axis"/>
+          <circle cx="40" cy="160" r="5" style="fill:var(--accent-2)"/><circle cx="200" cy="60" r="5" style="fill:var(--accent-2)"/>
+          <text x="120" y="244" text-anchor="middle" class="t">사다리꼴: (b − a)(f(a) + f(b))/2</text>
+        </g>
+        <g transform="translate(500,0)">
+          <path d="M40 220 L40 160 Q120 150 200 60 L200 220 Z" class="f-acc-soft"/>
+          <path d="M40 160 C80 140 150 100 200 60" fill="none" class="s-line" style="stroke-width:2.4"/>
+          <line x1="40" y1="220" x2="200" y2="220" class="s-axis"/>
+          <circle cx="40" cy="160" r="5" style="fill:var(--accent)"/><circle cx="120" cy="124" r="5" style="fill:var(--accent)"/><circle cx="200" cy="60" r="5" style="fill:var(--accent)"/>
+          <text x="120" y="244" text-anchor="middle" class="t">심프슨: (b − a)(f(a) + 4f(m) + f(b))/6</text>
+        </g>
+        <text x="40" y="36" class="t-dim">볼록한 곡선: 중점은 모자라고, 사다리꼴은 넘치고, 포물선은 거의 맞는다</text>
+      </svg>
+      <figcaption><b>그림 10-1.</b> 세 공식은 곡선 대신 상수, 직선, 포물선의 넓이를 잰다. 아래로 볼록한 \(f\)에서 중점 공식은 모자라고 사다리꼴은 넘친다. 오차의 크기는 중점이 사다리꼴의 약 절반이라서, 가중 평균 \(\frac23M + \frac13T\)가 바로 심프슨 공식이 된다.</figcaption>
+    </figure>
+    <div class="callout deep"><strong>정리 10.2 (단일 구간 뉴턴–코츠 공식의 오차)</strong> \(f\)가 충분히 매끄러우면 \([a, b]\) 안의 어떤 \(\xi\)에 대해
+      <div class="formula">$$\begin{aligned}
+        \text{중점}\quad & I = (b-a)f\!\left(\tfrac{a+b}{2}\right) + \frac{(b-a)^3}{24}f''(\xi),\\
+        \text{사다리꼴}\quad & I = \frac{b-a}{2}\bigl(f(a) + f(b)\bigr) - \frac{(b-a)^3}{12}f''(\xi),\\
+        \text{심프슨}\ (h = \tfrac{b-a}{2})\quad & I = \frac h3\bigl(f_0 + 4f_1 + f_2\bigr) - \frac{h^5}{90}f^{(4)}(\xi),\\
+        \text{3/8}\ (h = \tfrac{b-a}{3})\quad & I = \frac{3h}{8}\bigl(f_0 + 3f_1 + 3f_2 + f_3\bigr) - \frac{3h^5}{80}f^{(4)}(\xi).
+      \end{aligned}$$</div>
+      정확도 차수는 중점 1, 사다리꼴 1, 심프슨 3, 3/8 3이다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 사다리꼴은 보간 오차 \(f(x) - p(x) = \frac{f''(\xi_x)}{2}(x - a)(x - b)\)를 적분한다. \((x - a)(x - b)\)는 구간에서 부호가 일정하므로 적분의 평균값 정리로 \(f''\)를 밖으로 꺼내고 \(\int_a^b (x-a)(x-b)dx = -(b-a)^3/6\)을 쓴다. 심프슨은 대칭 덕분에 3차식까지 정확하므로(\(\int(x - m)^3 = 0\)), 오차는 4계 도함수에서 시작한다. ∎</p></div>
+    <p>심프슨이 점 세 개로 3차식까지 맞추는 것은 짝수 개의 구간을 대칭으로 쓰는 공식의 공통된 덤입니다. 그래서 점 네 개를 쓰는 3/8 공식은 차수를 올려 주지 못하고 상수만 조금 바꿉니다. 실무에서 심프슨이 3/8보다 흔한 이유입니다.</p>
+    <div class="callout"><strong>예제 10.1 (한 구간에서 비교)</strong> \(\int_0^1 e^x\,dx = e - 1 = 1.7182818\).
+      <ol>
+        <li>중점: \(e^{0.5} = 1.6487213\), 오차 \(-6.96\times10^{-2}\).</li>
+        <li>사다리꼴: \((1 + e)/2 = 1.8591409\), 오차 \(+1.41\times10^{-1}\). 정리 10.2의 범위 \([\frac{1}{12}, \frac{e}{12}] = [0.083, 0.227]\) 안이다. 중점 오차의 약 \(-2\)배다.</li>
+        <li>심프슨: \(\frac16(1 + 4e^{0.5} + e) = 1.7188612\), 오차 \(5.79\times10^{-4}\). 예측 범위 \(\frac{0.5^5}{90}[1, e] = [3.5, 9.4]\times10^{-4}\).</li>
+        <li>3/8: \(\frac18(1 + 3e^{1/3} + 3e^{2/3} + e) = 1.7185402\), 오차 \(2.58\times10^{-4}\). 점 하나를 더 써서 오차가 절반 남짓 줄었을 뿐이다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>높은 차수의 뉴턴–코츠는 쓰지 않는다</strong> 점을 9개(\(n = 8\)) 이상 등간격으로 놓으면 가중치 일부가 <b>음수</b>가 됩니다. \([0, 1]\)의 9점 공식 가중치는 \(0.0349\), \(0.2077\), \(-0.0327\), \(0.3702\), \(-0.1601\), …이고 \(\sum|w_i| = 1.45\), 11점은 \(3.07\)입니다. 가중치의 절댓값 합은 함숫값의 오차(반올림, 측정 잡음)가 증폭되는 배율이라 조건이 나빠집니다. 게다가 등간격 고차 보간은 룽게 현상(<a href="interpolation.html#runge">5장</a>)으로 발산할 수 있습니다. \(1/(1 + 25x^2)\)을 \([-1, 1]\)에서 21점 뉴턴–코츠로 적분하면 오차가 \(-5.9\)로, 참값 0.549보다 열 배 큽니다. 해결책은 두 가지입니다. 낮은 차수 공식을 <b>여러 구간에 반복</b>하거나(다음 절), 노드를 <b>등간격이 아니게</b> 고르는 것입니다(가우스 구적법).</div>
+
+    <div class="sim" id="sim-ig-rules">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>구적 공식의 그림: 상수·직선·포물선·3차식의 넓이</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ig-ru-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피적분 함수</span><select id="ig-ru-f">
+            <option value="wave">2 + x sin 3x, [0, 3]</option>
+            <option value="exp">eˣ, [0, 2]</option>
+            <option value="bump">4 / (1 + x²), [0, 1]</option>
+            <option value="sqrt">√x, [0, 1]</option>
+          </select></label>
+          <div class="ctrl"><span>공식</span><div class="seg" id="ig-ru-m"><button data-value="left">왼쪽</button><button data-value="mid">중점</button><button data-value="trap" class="on">사다리꼴</button><button data-value="simp">심프슨</button><button data-value="t38">3/8</button></div></div>
+          <label class="ctrl"><span>소구간 수 n <output id="ig-ru-n-out"></output></span><input type="range" id="ig-ru-n" min="1" max="24" step="1" value="3"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">근삿값 Q</span><span class="v" id="ig-ru-q">—</span></div>
+        <div class="stat"><span class="k">참값 I</span><span class="v" id="ig-ru-i">—</span></div>
+        <div class="stat"><span class="k">오차 Q − I</span><span class="v" id="ig-ru-e">—</span></div>
+        <div class="stat"><span class="k">함숫값 계산</span><span class="v" id="ig-ru-ev">—</span></div>
+      </div>
+      <div class="ig-msg" id="ig-ru-msg"></div>
+      <div class="sim-note">해볼 것: ① n = 1에서 공식을 바꿔 가며 색칠된 도형(상수, 직선, 포물선, 3차식)이 곡선을 얼마나 따라가는지 보세요. ② 사다리꼴에서 n을 두 배로 할 때마다 오차가 약 4분의 1, 심프슨에서는 16분의 1이 됩니다(아래 메시지). ③ √x는 x = 0에서 기울기가 무한대라 심프슨도 4분의 1보다 덜 줄어듭니다. 특이점 절의 주제입니다. 모델: 심프슨·3/8은 각 소구간 안에 중간점을 1개·2개 더 쓴다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="composite">
+    <h2>합성 공식과 수렴 차수</h2>
+    <div class="problem"><strong>차수를 올리지 말고 구간을 나눠라</strong>
+      <p>정확도를 올리려고 점을 늘릴 때, 하나의 고차 다항식으로 맞추면 위의 경고처럼 실패합니다. 대신 \([a, b]\)를 폭 \(h\)인 \(n\)개 소구간으로 나누고 각 소구간에 사다리꼴이나 심프슨을 적용하면 어떨까요? 스플라인(<a href="splines.html">6장</a>)이 고차 보간을 대신한 것과 같은 처방입니다.</p></div>
+    <p>소구간마다 사다리꼴을 쓰고 더하면, 안쪽 점은 이웃한 두 소구간에 한 번씩 들어가므로 가중치가 \(h\), 양 끝은 \(h/2\)입니다. 심프슨은 소구간 두 개씩 묶어 가중치 \(\frac h3(1, 4, 2, 4, \dots, 2, 4, 1)\)이 됩니다(\(n\) 짝수).</p>
+    <div class="callout deep"><strong>정리 10.3 (합성 공식의 오차)</strong> \(h = (b - a)/n\), \(x_i = a + ih\)일 때 어떤 \(\xi \in (a, b)\)에 대해
+      <div class="formula">$$\begin{aligned}
+        T_h &= h\Bigl[\tfrac12 f_0 + f_1 + \cdots + f_{n-1} + \tfrac12 f_n\Bigr], & I - T_h &= -\frac{(b-a)h^2}{12}f''(\xi),\\
+        M_h &= h\sum_{i=0}^{n-1} f\bigl(x_i + \tfrac h2\bigr), & I - M_h &= \frac{(b-a)h^2}{24}f''(\xi),\\
+        S_h &= \frac h3\Bigl[f_0 + 4f_1 + 2f_2 + 4f_3 + \cdots + 4f_{n-1} + f_n\Bigr], & I - S_h &= -\frac{(b-a)h^4}{180}f^{(4)}(\xi).
+      \end{aligned}$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 정리 10.2의 단일 구간 오차 \(-\frac{h^3}{12}f''(\xi_i)\)를 \(n = (b-a)/h\)개 더하면 \(-\frac{h^3}{12}\sum f''(\xi_i) = -\frac{(b-a)h^2}{12}\cdot\overline{f''}\)이고, 평균 \(\overline{f''}\)는 중간값 정리로 한 점의 값이다. 국소 오차 \(h^3\)이 구간 수 \(1/h\)만큼 쌓여 전역 \(h^2\)이 되는 것은 <a href="../../ode/chapters/numerical.html">ODEBook 5장</a>의 국소·전역 오차와 같은 구조다. ∎</p></div>
+    <div class="table-wrap"><table class="ig-num">
+      <thead><tr><th>\(n\)</th><th>사다리꼴 오차</th><th>비율</th><th>심프슨 오차</th><th>비율</th></tr></thead>
+      <tbody>
+        <tr><td>2</td><td>3.565×10⁻²</td><td></td><td>5.793×10⁻⁴</td><td></td></tr>
+        <tr><td>4</td><td>8.940×10⁻³</td><td>3.99</td><td>3.701×10⁻⁵</td><td>15.65</td></tr>
+        <tr><td>8</td><td>2.237×10⁻³</td><td>4.00</td><td>2.326×10⁻⁶</td><td>15.91</td></tr>
+        <tr><td>16</td><td>5.593×10⁻⁴</td><td>4.00</td><td>1.456×10⁻⁷</td><td>15.98</td></tr>
+        <tr><td>32</td><td>1.398×10⁻⁴</td><td>4.00</td><td>9.103×10⁻⁹</td><td>15.99</td></tr>
+      </tbody></table></div>
+    <p>위 표는 \(\int_0^1 e^x\,dx\)의 합성 공식 오차(근삿값 − 참값)입니다. \(n\)을 두 배로 할 때 비율이 4(\(=2^2\))와 16(\(=2^4\))으로 다가갑니다. 이 비율의 \(\log_2\)가 실험으로 잰 수렴 차수입니다. 심프슨 \(n = 32\)(함숫값 33개)에서 오차 \(10^{-8}\)인데, 사다리꼴로 같은 오차를 얻으려면 \(n\)이 약 4000이어야 합니다. 같은 비용에서는 차수가 높은 공식이 압도적입니다. 단, \(f\)가 매끄러울 때만입니다.</p>
+    <div class="callout tip"><strong>주기 함수의 사다리꼴 공식은 기적처럼 정확하다</strong> \(\int_0^{2\pi}e^{\cos x}dx = 2\pi I_0(1) = 7.954926521\)을 사다리꼴로 계산하면 \(n = 4\)에서 오차 \(3.4\times10^{-2}\), \(n = 8\)에서 \(1.3\times10^{-6}\), \(n = 16\)에서 \(10^{-15}\)입니다. 2차가 아니라 <b>지수적</b> 수렴입니다. 다음 절의 오일러–매클로린 공식에서 오차 항이 모두 \(f^{(k)}(b) - f^{(k)}(a)\)의 꼴인데, 매끄러운 주기 함수는 한 주기의 양 끝에서 모든 도함수가 같아 전부 0이 되기 때문입니다. 이 성질이 이산 푸리에 변환(<a href="fft.html">8장</a>)이 정확한 이유이기도 합니다.</div>
+
+    <div class="sim" id="sim-ig-order">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차–비용 로그 그래프: 기울기로 읽는 수렴 차수</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ig-or-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="ig-or-f">
+            <option value="exp">∫₀¹ eˣ dx (매끄러움)</option>
+            <option value="sqrt">∫₀¹ √x dx (끝점 특이)</option>
+            <option value="per">∫₀²ᵖⁱ e^(cos x) dx (주기 함수)</option>
+            <option value="runge">∫₋₁¹ 1/(1 + 25x²) dx</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="ig-or-mid" checked> 중점</label>
+          <label class="check"><input type="checkbox" id="ig-or-trap" checked> 사다리꼴</label>
+          <label class="check"><input type="checkbox" id="ig-or-simp" checked> 심프슨</label>
+          <label class="check"><input type="checkbox" id="ig-or-gauss" checked> 가우스–르장드르 (한 구간 n점)</label>
+          <label class="check"><input type="checkbox" id="ig-or-ref" checked> 기준선 N⁻², N⁻⁴</label>
+        </div>
+      </div>
+      <div class="ig-legend"><span><i style="background:var(--warn)"></i>중점</span><span><i style="background:var(--bad)"></i>사다리꼴</span><span><i style="background:var(--accent-2)"></i>심프슨</span><span><i style="background:var(--ok)"></i>가우스</span><span><i style="background:var(--text-faint)"></i>기준선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">중점 기울기</span><span class="v" id="ig-or-s0">—</span></div>
+        <div class="stat"><span class="k">사다리꼴 기울기</span><span class="v" id="ig-or-s1">—</span></div>
+        <div class="stat"><span class="k">심프슨 기울기</span><span class="v" id="ig-or-s2">—</span></div>
+        <div class="stat"><span class="k">오차 10⁻⁸까지 필요한 N (심프슨 · 가우스)</span><span class="v" id="ig-or-n">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① eˣ에서 기울기가 −2, −2, −4인 것과 가우스가 N ≈ 7에서 바로 바닥(10⁻¹⁶)에 닿는 것을 보세요. ② √x로 바꾸면 모든 합성 공식의 기울기가 −1.5로 같아집니다. 차수는 공식이 아니라 함수의 매끄러움이 정합니다. ③ 주기 함수에서는 사다리꼴이 심프슨보다 빠릅니다(심프슨은 가중치 4, 2가 주기성을 깨뜨립니다). 모델: 가로축은 함숫값 계산 횟수 N, 기울기는 10⁻¹³ … 10⁻¹ 사이의 점으로 맞춤.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="romberg">
+    <h2>오일러–매클로린 공식과 롬베르크 적분</h2>
+    <div class="problem"><strong>사다리꼴 결과 몇 개로 심프슨보다 정확하게</strong>
+      <p>사다리꼴 공식은 가장 단순하지만 \(h\)를 반으로 줄이면 오차가 정확히 4분의 1에 가깝게 줄었습니다. <a href="differentiation.html#richardson">9장의 리처드슨 외삽</a>은 이런 규칙적인 오차를 지우는 기술이었습니다. 사다리꼴 오차에도 그런 전개가 있을까요?</p></div>
+    <div class="callout deep"><strong>정리 10.4 (오일러–매클로린 공식)</strong> \(f\)가 \([a, b]\)에서 \(2K + 2\)번 연속 미분 가능하면
+      <div class="formula">$$T_h - I = \frac{h^2}{12}\bigl(f'(b) - f'(a)\bigr) - \frac{h^4}{720}\bigl(f'''(b) - f'''(a)\bigr) + \cdots + \frac{B_{2K}h^{2K}}{(2K)!}\bigl(f^{(2K-1)}(b) - f^{(2K-1)}(a)\bigr) + O(h^{2K+2})$$</div>
+      <div class="where">\(B_2 = \frac16\), \(B_4 = -\frac1{30}\), \(B_6 = \frac1{42}, \dots\)는 베르누이 수. 핵심은 오차 전개에 <b>\(h\)의 짝수 거듭제곱만</b> 있다는 것이다.</div></div>
+    <p>이 전개는 \(\int_0^1 4/(1 + x^2)dx = \pi\)에서 확인할 수 있습니다. \(f'(1) - f'(0) = -2\)라 첫 항이 \(-h^2/6\)이고, \(n = 4\)이면 \(-0.0104167\), 실제 오차 \(T_{1/4} - \pi = -0.0104162\)입니다. 계수가 미리 정해져 있으니 리처드슨 외삽을 반복할 수 있습니다. \(R_{i,0} = T_{h/2^i}\)에서 출발해</p>
+    <div class="formula">$$R_{i,j} = \frac{4^jR_{i,j-1} - R_{i-1,j-1}}{4^j - 1}$$</div>
+    <p>로 표를 채우는 것이 <span class="term">롬베르크 적분</span><span class="en">(Romberg integration)</span>입니다. 둘째 열 \(R_{i,1} = (4T_{h/2} - T_h)/3\)은 정확히 합성 심프슨 공식이고, 셋째 열은 불<span class="en">(Boole)</span> 공식입니다. \(h\)를 반으로 줄일 때 새로 계산할 함숫값은 새 중점들뿐이라 \(T_{h/2} = \frac12 T_h + \frac h2\sum f(\text{새 중점})\)으로 앞의 계산을 그대로 재사용합니다.</p>
+    <pre class="code"><span class="k">function</span> romberg(f, a, b, kmax, tol)
+  h = b - a
+  R[0][0] = h * (f(a) + f(b)) / 2
+  <span class="k">for</span> i = 1 .. kmax
+    h = h / 2
+    s = 0
+    <span class="k">for</span> j = 1 .. 2^(i-1):  s = s + f(a + (2j - 1) * h)   <span class="c">// 새 중점만</span>
+    R[i][0] = R[i-1][0] / 2 + h * s
+    <span class="k">for</span> j = 1 .. i
+      R[i][j] = (4^j * R[i][j-1] - R[i-1][j-1]) / (4^j - 1)
+    <span class="k">if</span> |R[i][i] - R[i-1][i-1]| &lt; tol <span class="k">then return</span> R[i][i]
+  <span class="k">return</span> R[kmax][kmax]</pre>
+    <div class="callout"><strong>예제 10.2 (롬베르크 표)</strong> \(\int_0^\pi \sin x\,dx = 2\). 괄호 안은 오차.
+      <div class="table-wrap"><table class="ig-num">
+        <thead><tr><th>\(n\)</th><th>\(R_{i,0}\) (사다리꼴)</th><th>\(R_{i,1}\) (심프슨)</th><th>\(R_{i,2}\)</th><th>\(R_{i,3}\)</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>0 (−2)</td><td></td><td></td><td></td></tr>
+          <tr><td>2</td><td>1.5707963 (−4.3×10⁻¹)</td><td>2.0943951 (9.4×10⁻²)</td><td></td><td></td></tr>
+          <tr><td>4</td><td>1.8961189 (−1.0×10⁻¹)</td><td>2.0045598 (4.6×10⁻³)</td><td>1.9985707 (−1.4×10⁻³)</td><td></td></tr>
+          <tr><td>8</td><td>1.9742316 (−2.6×10⁻²)</td><td>2.0002692 (2.7×10⁻⁴)</td><td>1.9999831 (−1.7×10⁻⁵)</td><td>2.0000055 (5.6×10⁻⁶)</td></tr>
+          <tr><td>16</td><td>1.9935703 (−6.4×10⁻³)</td><td>2.0000166 (1.7×10⁻⁵)</td><td>1.9999998 (−2.5×10⁻⁷)</td><td>2.0000000163 (1.6×10⁻⁸)</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0">함숫값 17개(\(n = 16\))로 대각 원소의 오차가 \(5.4\times10^{-9}\)(\(R_{4,4} = 1.9999999946\)), 한 행을 더하면(33개) \(1.3\times10^{-12}\)이다. 같은 33개로 사다리꼴은 \(1.6\times10^{-3}\), 심프슨은 \(1.0\times10^{-6}\)이다. 첫 행 \(n = 1\)에서 \(\sin 0 = \sin\pi = 0\)이라 사다리꼴 값이 0인데도 외삽이 회복한다.</p></div>
+
+    <div class="sim" id="sim-ig-romberg">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>롬베르크 표 쌓기: 사다리꼴에서 외삽으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ig-ro-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피적분 함수</span><select id="ig-ro-f">
+            <option value="sin">∫₀^π sin x dx = 2</option>
+            <option value="pi">∫₀¹ 4/(1 + x²) dx = π</option>
+            <option value="gauss">∫₀¹ e^(−x²/2) dx / √(2π)</option>
+            <option value="sqrt">∫₀¹ √x dx = 2/3 (특이)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="ig-ro-next">다음 행 (h/2)</button><button class="btn" id="ig-ro-reset">처음부터</button></div>
+        </div>
+      </div>
+      <div class="table-wrap ig-tbl"><table><thead id="ig-ro-th"></thead><tbody id="ig-ro-tb"></tbody></table></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">함숫값 계산 (누적)</span><span class="v" id="ig-ro-ev">—</span></div>
+        <div class="stat"><span class="k">대각 R<sub>k,k</sub> 오차</span><span class="v" id="ig-ro-d">—</span></div>
+        <div class="stat"><span class="k">사다리꼴 R<sub>k,0</sub> 오차</span><span class="v" id="ig-ro-t">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 행을 쌓으며 그래프에서 열마다 다른 기울기(−2, −4, −6, …)를 보세요. 가로축은 그 행의 함숫값 계산 수입니다. ② 정규분포 적분(문제 상자의 확률, 답 0.3413447461)은 6행(함숫값 33개)이면 10자리가 맞습니다. ③ √x에서는 오일러–매클로린 전개의 가정(매끄러움)이 깨져 외삽해도 기울기가 −1.5에 머뭅니다. 외삽은 공짜가 아닙니다. 모델: 최대 8행(함숫값 129개).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="gauss">
+    <h2>가우스 구적법: 노드의 위치까지 최적으로</h2>
+    <div class="problem"><strong>점 두 개로 3차식을 정확히</strong>
+      <p>뉴턴–코츠는 노드를 등간격으로 <b>미리 정하고</b> 가중치만 골랐습니다. \(n\)점 공식의 자유도는 \(n\)개, 그래서 \(n - 1\)차(대칭이면 \(n\)차)까지 맞춥니다. 노드의 위치 \(n\)개도 자유롭게 고르면 자유도가 \(2n\)개입니다. 그러면 \(2n - 1\)차 다항식까지 정확한 공식을 만들 수 있지 않을까요?</p></div>
+    <p>\([-1, 1]\)에서 2점 공식 \(w_1f(x_1) + w_2f(x_2)\)가 \(1, x, x^2, x^3\)을 정확히 적분하라는 조건은 \(w_1 + w_2 = 2\), \(w_1x_1 + w_2x_2 = 0\), \(w_1x_1^2 + w_2x_2^2 = \frac23\), \(w_1x_1^3 + w_2x_2^3 = 0\)입니다. 대칭 \(x_2 = -x_1\), \(w_1 = w_2 = 1\)을 넣으면 \(2x_1^2 = \frac23\), 곧 \(x_{1,2} = \mp1/\sqrt3 = \mp0.5773503\)입니다. 이 점들은 2차 르장드르 다항식 \(P_2(x) = \frac12(3x^2 - 1)\)의 근입니다. 우연이 아닙니다.</p>
+    <div class="callout deep"><strong>정리 10.5 (가우스–르장드르 구적법)</strong> \(x_1, \dots, x_n\)을 르장드르 다항식 \(P_n\)의 근(모두 \((-1, 1)\) 안의 서로 다른 실근)이라 하고 \(w_i = \dfrac{2}{(1 - x_i^2)\,P_n'(x_i)^2}\)라 하면, <span class="term">가우스 구적법</span><span class="en">(Gaussian quadrature)</span> \(G_n[f] = \sum w_if(x_i)\)은 차수 \(2n - 1\) 이하의 모든 다항식을 정확히 적분하고, 이보다 높은 차수를 갖는 \(n\)점 공식은 없다. 가중치는 모두 양수이고, 오차는
+      <div class="formula">$$\int_{-1}^{1}f\,dx - G_n[f] = \frac{2^{2n+1}(n!)^4}{(2n+1)\,\bigl((2n)!\bigr)^3}\,f^{(2n)}(\xi).$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 차수 \(\le 2n - 1\)인 \(p\)를 \(P_n\)으로 나누면 \(p = qP_n + r\), \(q\)와 \(r\)의 차수는 \(n - 1\) 이하다. \(P_n\)은 차수가 낮은 모든 다항식과 직교하므로(<a href="approximation.html">7장</a>) \(\int qP_n = 0\). 노드에서는 \(P_n(x_i) = 0\)이라 \(p(x_i) = r(x_i)\). 그런데 가중치가 보간형(\(w_i = \int\ell_i\))이라 \(n - 1\)차인 \(r\)은 정확히 적분된다. 따라서 \(\int p = \int r = \sum w_ir(x_i) = \sum w_ip(x_i)\). 반대로 \(p = \prod(x - x_i)^2\)(차수 \(2n\))는 적분이 양수인데 공식은 0을 주므로 \(2n\)차는 불가능하다. ∎</p></div>
+    <div class="table-wrap"><table class="ig-num">
+      <thead><tr><th>\(n\)</th><th>노드 \(\pm x_i\)</th><th>가중치 \(w_i\)</th><th>정확도 차수</th><th>오차 상수</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0</td><td>2</td><td>1</td><td>\(f''/3\)</td></tr>
+        <tr><td>2</td><td>0.5773502692</td><td>1</td><td>3</td><td>\(f^{(4)}/135\)</td></tr>
+        <tr><td>3</td><td>0, 0.7745966692</td><td>0.8888888889, 0.5555555556</td><td>5</td><td>\(f^{(6)}/15750\)</td></tr>
+        <tr><td>4</td><td>0.3399810436, 0.8611363116</td><td>0.6521451549, 0.3478548451</td><td>7</td><td>\(f^{(8)}/3472875\)</td></tr>
+        <tr><td>5</td><td>0, 0.5384693101, 0.9061798459</td><td>0.5688888889, 0.4786286705, 0.2369268851</td><td>9</td><td></td></tr>
+      </tbody></table></div>
+    <p>구간 \([a, b]\)에서는 \(x = \frac{a+b}{2} + \frac{b-a}{2}t\)로 옮겨 \(\int_a^b f\,dx = \frac{b-a}{2}\sum w_if\bigl(\frac{a+b}{2} + \frac{b-a}{2}t_i\bigr)\)로 씁니다. 노드는 \(P_n\)의 3항 점화식 \(kP_k = (2k - 1)xP_{k-1} - (k - 1)P_{k-2}\)과 뉴턴 방법(<a href="roots.html">3장</a>)으로 구하거나, 점화식 계수로 만든 대칭 삼중대각 행렬의 고유값으로 구합니다(골럽–웰시 알고리즘, <a href="eigenvalues.html">14장</a>). 노드가 양 끝으로 몰리는 모양은 체비쇼프 노드(<a href="interpolation.html">5장</a>)와 닮았습니다.</p>
+    <div class="callout"><strong>예제 10.3 (2점 가우스 vs 심프슨)</strong> \(\int_0^1 e^xdx\). 노드 \(\frac12 \mp \frac{1}{2\sqrt3} = 0.2113249,\ 0.7886751\), 가중치 각각 \(\frac12\).
+      <ol>
+        <li>\(G_2 = \frac12(e^{0.2113249} + e^{0.7886751}) = 1.7178964\). 오차 \(-3.85\times10^{-4}\). 함숫값 <b>2개</b>로 3개를 쓴 심프슨(\(5.79\times10^{-4}\))보다 정확하다.</li>
+        <li>3점 가우스: 오차 \(-8.24\times10^{-7}\). 같은 3개로 심프슨의 700분의 1이다.</li>
+        <li>5점 가우스: \(-6.5\times10^{-13}\), 6점에서 배정밀도의 한계에 닿는다. 합성 심프슨이 오차 \(10^{-12}\)에 이르려면 함숫값이 수백 개 필요하다.</li>
+        <li>룽게 함수 \(\int_{-1}^1 \frac{dx}{1 + 25x^2}\)에서는 \(n = 21\)일 때 뉴턴–코츠 오차가 \(-5.9\)인데 가우스는 \(2.4\times10^{-4}\)이다. 가중치가 모두 양수라 발산하지 않는다.</li>
+      </ol></div>
+
+    <div class="callout"><strong>예제 10.4 (처음 문제의 답: 정규분포 확률)</strong> \(P(0 \le Z \le 1) = \frac{1}{\sqrt{2\pi}}\int_0^1 e^{-x^2/2}dx = 0.3413447461\)을 여러 공식으로 계산하라.
+      <div class="table-wrap"><table class="ig-num">
+        <thead><tr><th>방법</th><th>함숫값 수</th><th>근삿값</th><th>오차</th></tr></thead>
+        <tbody>
+          <tr><td>합성 사다리꼴 \(n = 10\)</td><td>11</td><td>0.3411430365</td><td>−2.0×10⁻⁴</td></tr>
+          <tr><td>합성 심프슨 \(n = 4\)</td><td>5</td><td>0.3413554879</td><td>1.1×10⁻⁵</td></tr>
+          <tr><td>합성 심프슨 \(n = 10\)</td><td>11</td><td>0.3413450159</td><td>2.7×10⁻⁷</td></tr>
+          <tr><td>가우스 3점</td><td>3</td><td>0.3413455448</td><td>8.0×10⁻⁷</td></tr>
+          <tr><td>가우스 4점</td><td>4</td><td>0.3413447435</td><td>−2.6×10⁻⁹</td></tr>
+          <tr><td>가우스 5점</td><td>5</td><td>0.3413447461</td><td>−5.3×10⁻¹²</td></tr>
+        </tbody></table></div>
+      <p style="margin:8px 0 0">소수 여섯째 자리까지 맞추려면 사다리꼴은 수백 개, 심프슨은 11개, 가우스는 4개의 함숫값이면 된다. 매끄러운 피적분 함수에서 가우스 구적법이 표준인 이유다.</p></div>
+    <div class="callout tip"><strong>가우스–크론로드: 오차 추정까지 공짜로</strong> 가우스 공식은 \(n\)을 바꾸면 노드가 모두 달라져 이전 함숫값을 재사용할 수 없습니다. 크론로드<span class="en">(Aleksandr Kronrod)</span> 확장은 \(n\)점 가우스 노드를 그대로 두고 \(n + 1\)개의 노드를 더해 \(2n + 1\)점 공식을 만듭니다. 두 결과의 차이가 곧 오차 추정이라, 적응 구적법(다음 절)에서 구간마다 이 쌍을 씁니다. 실무 라이브러리의 기본 적분 함수가 대부분 이 구조입니다.</div>
+
+    <div class="sim" id="sim-ig-gauss">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가우스 노드와 가중치: 르장드르 근 vs 등간격</h3></div>
+      <div class="ig-two">
+        <div><canvas id="ig-ga-cv1"></canvas><span class="ig-cap">Pₙ(x)와 노드·가중치 막대</span></div>
+        <div><canvas id="ig-ga-cv2"></canvas><span class="ig-cap">k차 다항식의 적분 오차: 몇 차까지 정확한가</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>점 개수 n <output id="ig-ga-n-out"></output></span><input type="range" id="ig-ga-n" min="1" max="12" step="1" value="3"></label>
+          <label class="check"><input type="checkbox" id="ig-ga-nc" checked> 같은 n점 뉴턴–코츠 가중치도 보기</label>
+          <label class="ctrl"><span>시험 함수</span><select id="ig-ga-f">
+            <option value="exp">∫₋₁¹ eˣ dx</option>
+            <option value="runge">∫₋₁¹ 1/(1 + 25x²) dx (룽게)</option>
+            <option value="abs">∫₋₁¹ |x| dx (꺾인 점)</option>
+          </select></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">가우스 정확도 차수</span><span class="v" id="ig-ga-deg">—</span></div>
+        <div class="stat"><span class="k">뉴턴–코츠 정확도 차수</span><span class="v" id="ig-ga-ndeg">—</span></div>
+        <div class="stat"><span class="k">시험 함수 오차 (가우스)</span><span class="v" id="ig-ga-eg">—</span></div>
+        <div class="stat"><span class="k">시험 함수 오차 (뉴턴–코츠) · Σ|w|</span><span class="v" id="ig-ga-en">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n을 올리며 노드(초록 막대)가 정확히 Pₙ의 근에 놓이고, 양 끝으로 몰리는 것을 보세요. 막대 높이가 가중치입니다. ② n ≥ 9에서 뉴턴–코츠 가중치(빨간 막대)에 음수가 나타나고 Σ|w|가 2보다 커집니다. ③ 아래 그래프에서 가우스는 k = 2n − 1까지 오차가 반올림 수준이고, 뉴턴–코츠는 n − 1(n 홀수면 n)까지입니다. |x|처럼 매끄럽지 않은 함수에서는 가우스도 느립니다. 모델: 노드는 점화식과 뉴턴 방법, NC 가중치는 반데르몽드 계.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="adaptive">
+    <h2>적응 구적법: 어려운 곳만 촘촘히</h2>
+    <div class="problem"><strong>한 곳만 험한 함수</strong>
+      <p>\(\int_0^1\sqrt x\,dx\)에서 어려운 곳은 \(x = 0\) 근처뿐입니다. 기울기가 무한대로 커지기 때문입니다. 균등 분할은 어려운 곳에 맞춰 \(h\)를 정하므로 나머지 대부분에서 계산을 낭비합니다. 오차를 스스로 추정해서 필요한 곳만 쪼갤 수 없을까요? <a href="../../ode/chapters/numerical.html">ODEBook 5장</a>의 적응 간격과 같은 질문입니다.</p></div>
+    <p>구간 \([a, b]\)에서 심프슨을 한 번(\(S_1\)), 반으로 나눠 두 번(\(S_2 = S_{\text{왼}} + S_{\text{오}}\)) 계산합니다. 심프슨 오차는 \(h^5\)에 비례하므로 \(I - S_2 \approx (I - S_1)/16\). 두 식을 빼면</p>
+    <div class="formula">$$I - S_2 \approx \frac{S_2 - S_1}{15}.$$</div>
+    <p>참값 없이 오차를 추정했습니다. 이 추정이 허용 오차보다 작으면 받아들이고(보정값 \(S_2 + (S_2 - S_1)/15\)을 쓰면 리처드슨 외삽으로 한 차수를 더 얻습니다), 크면 두 반쪽에 대해 허용 오차를 반씩 나눠 주고 <b>재귀적으로</b> 같은 일을 합니다.</p>
+    <pre class="code"><span class="k">function</span> adapt(f, a, b, fa, fm, fb, S1, tol, depth)
+  m = (a + b) / 2;  lm = (a + m) / 2;  rm = (m + b) / 2
+  flm = f(lm);  frm = f(rm)                       <span class="c">// 새 함숫값은 두 개뿐</span>
+  L = (m - a) / 6 * (fa + 4*flm + fm)
+  R = (b - m) / 6 * (fm + 4*frm + fb)
+  S2 = L + R
+  <span class="k">if</span> depth &gt;= maxdepth <span class="k">or</span> |S2 - S1| &lt;= 15 * tol
+    <span class="k">return</span> S2 + (S2 - S1) / 15                   <span class="c">// 받아들이고 외삽</span>
+  <span class="k">return</span> adapt(f, a, m, fa, flm, fm, L, tol/2, depth+1)
+       + adapt(f, m, b, fm, frm, fb, R, tol/2, depth+1)</pre>
+    <p>\(\int_0^1\sqrt x\,dx\)에 허용 오차 \(10^{-6}\)을 주면 함숫값 105개, 소구간 26개로 오차 \(2.0\times10^{-8}\)을 얻습니다. 가장 작은 소구간은 폭 \(4.8\times10^{-7}\)으로 \(x = 0\)에 붙어 있고, 가장 큰 것은 \(1/4\)입니다. 같은 105개를 균등 분할 심프슨에 쓰면 오차가 \(7.7\times10^{-5}\), 4000배 나쁩니다. 반면 어디나 똑같이 매끄러운 함수라면 적응 방법은 오차 추정에 쓰는 계산만큼 손해이고, 추정이 보수적이라 허용 오차보다 훨씬 정확한(그만큼 비싼) 답을 내는 경우가 많습니다.</p>
+    <div class="callout warn"><strong>적응 방법도 속을 수 있다</strong> 오차 추정은 함숫값 다섯 개만 봅니다. 폭이 아주 좁은 봉우리가 그 점들 사이에 숨어 있으면 \(S_1 \approx S_2\)가 되어 구간이 통째로 받아들여집니다. 예를 들어 \([0, 1]\)에서 \(x = 0.3\)에 폭 \(10^{-4}\)인 봉우리가 있는데 첫 분할점이 0, 0.25, 0.5, 0.75, 1이면 봉우리를 영영 못 볼 수 있습니다. 실무 라이브러리(QUADPACK 계열, SciPy의 <code>quad</code>)는 가우스–크론로드 쌍처럼 더 많은 점을 쓰는 오차 추정과 최소 분할 수로 이 위험을 줄입니다. 봉우리의 위치를 안다면 거기서 구간을 미리 나눠 주는 것이 가장 확실합니다.</div>
+
+    <div class="sim" id="sim-ig-adaptive">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>적응 심프슨: 오차 추정으로 쪼개는 구간 트리</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ig-ad-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>피적분 함수 (구간 [0, 1])</span><select id="ig-ad-f">
+            <option value="sqrt">√x (x = 0에서 특이)</option>
+            <option value="tanh">tanh(50(x − 0.4)) (급경사)</option>
+            <option value="humps">humps: 두 봉우리</option>
+            <option value="osc">x sin(30x²) (점점 빨라지는 진동)</option>
+          </select></label>
+          <label class="ctrl"><span>허용 오차 tol <output id="ig-ad-t-out"></output></span><input type="range" id="ig-ad-t"></label>
+          <label class="check"><input type="checkbox" id="ig-ad-pts" checked> 함숫값 계산 점 표시</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">함숫값 계산</span><span class="v" id="ig-ad-ev">—</span></div>
+        <div class="stat"><span class="k">소구간 수 · 최대 깊이</span><span class="v" id="ig-ad-lv">—</span></div>
+        <div class="stat"><span class="k">적응 오차</span><span class="v" id="ig-ad-e">—</span></div>
+        <div class="stat"><span class="k">같은 계산 수의 균등 심프슨 오차</span><span class="v" id="ig-ad-u">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① √x에서 tol을 줄이면 막대(아래 트리)가 x = 0 근처에서만 깊어집니다. 막대의 높이가 분할 깊이입니다. ② tanh에서는 x = 0.4의 급경사에만 점이 몰립니다. ③ humps처럼 전체가 매끄러운 함수에서는 균등 분할이 비슷하거나 더 좋습니다. 적응은 어려움이 국소적일 때 이깁니다. 모델: 위 의사코드 그대로, 최대 깊이 40.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="singular">
+    <h2>특이점과 무한 구간: 변수 변환</h2>
+    <div class="problem"><strong>피적분 함수가 무한대로 가면</strong>
+      <p>\(\int_0^1 \frac{dx}{\sqrt x} = 2\)는 유한하지만 \(x = 0\)에서 함숫값이 무한대라 사다리꼴과 심프슨은 첫 점에서 멈춥니다. \(\int_0^\infty e^{-x^2}dx\)는 구간이 끝이 없습니다. 이런 적분(<a href="../../calculus/chapters/techniques.html#improper">CalculusBook 8장: 이상적분</a>)을 구적 공식에 어떻게 먹일까요?</p></div>
+    <p>먼저 매끄럽지 않은 함수에서 무슨 일이 생기는지 봅시다. \(\int_0^1\sqrt x\,dx\)를 합성 공식으로 계산하면 \(n\)을 두 배로 할 때 오차가 사다리꼴과 심프슨 모두 약 \(2.83 = 2^{1.5}\)배씩만 줄어듭니다. 수렴 차수가 \(h^{1.5}\)로, 공식의 차수와 상관없이 함수의 매끄러움(\(\sqrt x\)의 도함수가 0에서 \(x^{-1/2}\)로 발산)이 결정합니다. \(1/\sqrt x\)를 중점 공식(끝점을 쓰지 않는 열린 공식)으로 계산하면 오차가 \(\sqrt2\)배씩, \(h^{0.5}\)로 줄어 \(n = 128\)에서도 \(5\times10^{-2}\)입니다.</p>
+    <div class="callout deep"><strong>정리 10.6 (변수 변환으로 특이점 없애기)</strong> \(x = \phi(t)\), \(\phi\)가 단조이고 미분 가능하면 \(\int_a^b f(x)\,dx = \int_\alpha^\beta f(\phi(t))\,\phi'(t)\,dt\)이다. \(\phi'\)이 특이점에서 충분히 빨리 0이 되도록 고르면 새 피적분 함수가 매끄러워진다. 대표적인 변환은
+      <ul style="margin:6px 0 0">
+        <li>끝점의 \(x^{\pm 1/2}\) 특이점: \(x = t^2\). \(\int_0^1\frac{dx}{\sqrt x} = \int_0^1 2\,dt\), \(\int_0^1\sqrt x\,dx = \int_0^1 2t^2dt\).</li>
+        <li>무한 구간 \([0, \infty)\): \(x = \frac{t}{1 - t}\), \(dx = \frac{dt}{(1 - t)^2}\), \(t \in [0, 1)\).</li>
+        <li>양 끝의 일반적인 특이점: 이중 지수(tanh-sinh) 변환 \(x = \tanh\bigl(\frac\pi2\sinh t\bigr)\). 끝점 근처의 가중치가 이중 지수로 작아져 대부분의 끝점 특이점을 견딘다.</li>
+      </ul></div>
+    <p>변환 뒤의 두 적분은 다항식이라 심프슨이 정확합니다. 무한 구간 \(\int_0^\infty e^{-x^2}dx = \sqrt\pi/2\)에 \(x = t/(1 - t)\)를 쓰면 새 피적분 함수는 \(t \to 1\)에서 0으로 매끄럽게 사라지고, 합성 심프슨 오차가 \(n = 16\)에서 \(1.4\times10^{-4}\), \(n = 64\)에서 \(1.5\times10^{-11}\)입니다. 반면 \(\int_0^\infty\frac{dx}{1 + x^2}\)을 \([0, 10]\)에서 잘라 버리면 꼬리 \(\int_{10}^\infty \approx 0.1\)을 통째로 잃습니다. 같은 변환을 쓰면 피적분 함수가 \(1/\bigl((1 - t)^2 + t^2\bigr)\), \([0, 1]\)의 매끄러운 함수가 됩니다.</p>
+    <div class="callout tip"><strong>특이점은 빼낼 수도 있다</strong> \(\int_0^1\frac{\cos x}{\sqrt x}dx = \int_0^1\frac{dx}{\sqrt x} + \int_0^1\frac{\cos x - 1}{\sqrt x}dx = 2 + \int_0^1\frac{\cos x - 1}{\sqrt x}dx\). 뒤의 피적분 함수는 \(x \to 0\)에서 \(-\frac12x^{3/2}\)처럼 0이 되어 훨씬 다루기 쉽습니다. 특이 부분을 손으로 적분하고 나머지를 수치로 계산하는 방법입니다.</div>
+
+    <div class="sim" id="sim-ig-transform">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>변수 변환 전후: 피적분 함수의 모양과 수렴 속도</h3></div>
+      <div class="ig-two">
+        <div><canvas id="ig-tr-cv1"></canvas><span class="ig-cap">피적분 함수와 노드 (g(t) = f(φ(t))φ′(t))</span></div>
+        <div><canvas id="ig-tr-cv2"></canvas><span class="ig-cap">오차 vs 함숫값 수 N</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="ig-tr-f">
+            <option value="isq">∫₀¹ dx/√x = 2 (x = t²)</option>
+            <option value="sq">∫₀¹ √x dx = 2/3 (x = t²)</option>
+            <option value="cosq">∫₀¹ cos x/√x dx (x = t²)</option>
+            <option value="gau">∫₀^∞ e^(−x²) dx = √π/2 (x = t/(1 − t))</option>
+            <option value="lor">∫₀^∞ dx/(1 + x²) = π/2 (x = t/(1 − t))</option>
+          </select></label>
+          <div class="ctrl"><span>구적 공식</span><div class="seg" id="ig-tr-m"><button data-value="mid" class="on">합성 중점</button><button data-value="gauss">가우스 n점</button></div></div>
+          <label class="ctrl"><span>그림에 쓸 N <output id="ig-tr-n-out"></output></span><input type="range" id="ig-tr-n" min="2" max="40" step="1" value="8"></label>
+        </div>
+      </div>
+      <div class="ig-legend"><span><i style="background:var(--bad)"></i>변환 없음 (무한 구간은 [0, 10]에서 자름)</span><span><i style="background:var(--ok)"></i>변환 후</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">변환 없음 오차 (N)</span><span class="v" id="ig-tr-e0">—</span></div>
+        <div class="stat"><span class="k">변환 후 오차 (N)</span><span class="v" id="ig-tr-e1">—</span></div>
+        <div class="stat"><span class="k">기울기 (없음 · 후)</span><span class="v" id="ig-tr-s">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① dx/√x에서 변환 없는 오차의 기울기가 −0.5, 변환 후는 피적분 함수가 상수 2라 처음부터 반올림 수준입니다. ② cos x/√x는 변환 후 2cos t²이 되어 중점은 기울기 −2, 가우스는 지수적으로 수렴합니다. ③ dx/(1 + x²)를 [0, 10]에서 자르면 N을 아무리 늘려도 오차가 0.0997에서 멈춥니다. 잘라 낸 꼬리입니다. 모델: 위 그림의 점은 N개의 노드.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="monte-carlo">
+    <h2>다차원 적분, 차원의 저주, 몬테카를로</h2>
+    <div class="problem"><strong>10차원 적분</strong>
+      <p>심프슨 공식을 축마다 쓰면(곱 공식) \(d\)차원 적분도 계산할 수 있습니다. 축마다 점 10개면 2차원은 100개, 3차원은 1000개, 10차원은 \(10^{10}\)개입니다. 금융의 옵션 가격, 통계 물리의 분배 함수, 렌더링의 빛 경로는 수십~수천 차원 적분입니다. 격자로는 불가능합니다.</p></div>
+    <p>곱 공식의 오차는 축마다 \(O(h^p)\)이고 총점수가 \(N = n^d = h^{-d}\)이므로 \(O(N^{-p/d})\)입니다. 심프슨(\(p = 4\))도 \(d = 8\)이면 \(N^{-1/2}\), \(d = 20\)이면 \(N^{-1/5}\)로 느려집니다. 차원이 높아질수록 같은 정확도에 필요한 점이 지수적으로 늘어나는 이 현상을 <span class="term">차원의 저주</span><span class="en">(curse of dimensionality)</span>라 합니다. 또 고차원에서는 직관이 틀립니다. 단위 정육면체 \([-1, 1]^d\) 안에서 단위 공이 차지하는 비율은 \(d = 2\)에서 0.785, \(d = 5\)에서 0.164, \(d = 10\)에서 0.0025, \(d = 20\)에서 \(2.5\times10^{-8}\)입니다. 부피의 거의 전부가 "모서리"에 있습니다.</p>
+    <div class="callout deep"><strong>정리 10.7 (몬테카를로 적분)</strong> 영역 \(\Omega\)(부피 \(V\))에서 균등하게 뽑은 독립 표본 \(\mathbf x_1, \dots, \mathbf x_N\)에 대해
+      <div class="formula">$$\hat I_N = \frac{V}{N}\sum_{k=1}^{N} f(\mathbf x_k),\qquad \mathbb E[\hat I_N] = I,\qquad \sqrt{\operatorname{Var}\hat I_N} = \frac{V\sigma_f}{\sqrt N}$$</div>
+      이다. 여기서 \(\sigma_f^2\)은 \(\Omega\) 위에서 \(f\)의 분산이다. 오차의 크기는 <b>차원 \(d\)와 무관하게</b> \(N^{-1/2}\)로 줄어든다. 중심극한정리에 의해 \(\hat I_N \pm 1.96\,V\hat\sigma_f/\sqrt N\)이 약 95% 신뢰구간이다.</div>
+    <p><span class="term">몬테카를로 적분</span><span class="en">(Monte Carlo integration)</span>의 오차는 확률적이고 느립니다. 한 자리 더 맞추려면 표본이 100배 필요합니다. 그러나 \(d \gt 8\) 정도부터는 어떤 곱 공식보다 빠르고, 피적분 함수의 매끄러움도 요구하지 않습니다. 정사각형에 점을 뿌려 사분원 안의 비율로 \(\pi\)를 구하면 \(f\)는 0 또는 1이라 \(\sigma_f = \sqrt{p(1 - p)}\), \(p = \pi/4\)이므로 \(\pi\) 추정의 표준오차는 \(4\sqrt{p(1 - p)}/\sqrt N = 1.64/\sqrt N\)입니다. \(N = 10^6\)이면 약 \(0.0016\), 소수 셋째 자리 근처까지입니다.</p>
+    <div class="callout tip"><strong>더 잘 뿌리기</strong> 분산을 줄이는 기법(중요도 표집, 층화 표집, 대조 변량)은 \(\sigma_f\)를 줄여 상수를 개선합니다. 난수 대신 고르게 퍼진 결정론적 수열(소볼, 할턴 수열)을 쓰는 준몬테카를로<span class="en">(quasi-Monte Carlo)</span>는 매끄러운 함수에서 오차를 \(O((\log N)^d/N)\)까지 줄입니다. 렌더링과 금융 공학이 이 기법들을 씁니다.</div>
+
+    <div class="sim" id="sim-ig-mc">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>몬테카를로: 다트로 π와 d차원 공의 부피를</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ig-mc-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>차원 d (단위 공의 부피)</span><div class="seg" id="ig-mc-d"><button data-value="2" class="on">2 (π)</button><button data-value="3">3</button><button data-value="5">5</button><button data-value="10">10</button></div></div>
+          <label class="ctrl"><span>한 번에 던질 점 <output id="ig-mc-b-out"></output></span><input type="range" id="ig-mc-b"></label>
+          <div class="btn-row"><button class="btn primary" id="ig-mc-play">▶ 던지기</button><button class="btn" id="ig-mc-step">+ 한 묶음</button><button class="btn" id="ig-mc-reset">다시</button></div>
+        </div>
+      </div>
+      <div class="ig-legend"><span><i style="background:var(--accent)"></i>공 안 (첫 두 좌표의 투영)</span><span><i style="background:var(--text-faint)"></i>공 밖</span><span><i style="background:var(--bad)"></i>|추정 − 참값|</span><span><i style="background:var(--text-dim)"></i>표준오차 σ/√N</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">표본 수 N</span><span class="v" id="ig-mc-n">—</span></div>
+        <div class="stat"><span class="k">추정 V̂ (참값)</span><span class="v" id="ig-mc-v">—</span></div>
+        <div class="stat"><span class="k">|오차| · 이론 표준오차</span><span class="v" id="ig-mc-e">—</span></div>
+        <div class="stat"><span class="k">같은 N의 격자: 축마다 점</span><span class="v" id="ig-mc-g">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶로 던지며 오른쪽 그래프의 빨간 점들이 기울기 −1/2인 회색 띠를 따라 내려가는 것을 보세요. 오차가 띠 위아래로 들쭉날쭉한 것은 확률적이기 때문입니다. ② d = 10으로 바꾸면 공 안에 들어가는 점이 0.25%뿐이라 상대 오차가 훨씬 큽니다(σ/V가 큼). 분산 감소 기법이 필요한 이유입니다. ③ N = 10⁶일 때 같은 수의 격자 점은 10차원에서 축마다 4개 남짓입니다. 모델: xorshift 시드 난수, [−1, 1]<sup>d</sup> 균등 표본.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>상황</th><th>알맞은 방법</th><th>대표 도구</th></tr></thead>
+      <tbody>
+        <tr><td>매끄러운 1차원 함수, 공식으로 계산 가능</td><td>가우스–르장드르, 적응 가우스–크론로드</td><td><code>scipy.integrate.quad</code>, MATLAB <code>integral</code></td></tr>
+        <tr><td>표로 주어진 등간격 측정값(힘–변위, 유량–시간)</td><td>합성 사다리꼴·심프슨</td><td><code>numpy.trapezoid</code>, <code>scipy.integrate.simpson</code></td></tr>
+        <tr><td>주기 함수(한 주기 평균, 푸리에 계수)</td><td>사다리꼴(지수적 수렴)</td><td>FFT</td></tr>
+        <tr><td>끝점 특이점·무한 구간</td><td>변수 변환, tanh-sinh, 가우스–라게르·에르미트</td><td><code>mpmath.quad</code></td></tr>
+        <tr><td>유한 요소의 요소 행렬</td><td>요소마다 고정 차수 가우스 점</td><td>FEM 패키지</td></tr>
+        <tr><td>고차원(확률, 금융, 렌더링, 통계 물리)</td><td>몬테카를로, 준몬테카를로</td><td>경로 추적 렌더러, MCMC</td></tr>
+      </tbody></table></div>
+    <p><b>확률 계산</b>에서 정규분포의 누적 확률은 오차 함수로, 오차 함수는 \(\operatorname{erf}(x) = \frac{2}{\sqrt\pi}\int_0^xe^{-t^2}dt\)로 정의됩니다. 라이브러리는 이를 구간별 유리 근사로 계산하지만, 그 근사의 검증은 고정밀 구적으로 합니다. <b>물리량 적분</b>에서는 일 \(W = \int F\,dx\), 질량 중심, 관성 모멘트, 곡선의 길이가 모두 이 장의 공식으로 계산됩니다.</p>
+    <div class="uses">
+      <a href="differentiation.html"><small>9장 · 수치 미분</small>리처드슨 외삽<br><span>롬베르크 적분은 사다리꼴 공식에 9장의 외삽을 되풀이한 것이다.</span></a>
+      <a href="approximation.html"><small>7장 · 최소제곱 근사와 직교 다항식</small>르장드르 다항식<br><span>가우스 노드는 직교 다항식의 근이다. 직교성이 2n − 1차 정확도를 만든다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · 미분방정식의 수치 해법</small>RK4 = 심프슨<br><span>y′ = f(t)이면 룽게–쿠타 방법은 구적 공식이 된다. 가우스 점을 쓰면 가우스–르장드르 RK.</span></a>
+      <a href="pde-numerics.html"><small>16장 · PDE의 수치 해법</small>유한 요소의 강성 행렬<br><span>요소마다 가우스 점에서 피적분 함수를 계산해 강성 행렬을 조립한다.</span></a>
+      <a href="../../calculus/chapters/techniques.html#numerical"><small>CALCULUSBOOK</small>수치 적분 입문<br><span>사다리꼴과 심프슨을 처음 만나는 곳. 이 장은 오차 구조와 고급 방법을 더했다.</span></a>
+      <a href="../../foundations/chapters/probability.html"><small>MATHBOOK</small>확률과 분포<br><span>정규분포의 확률, 기댓값, 몬테카를로의 바탕인 중심극한정리.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>구적법은 \(\int f \approx \sum w_if(x_i)\)다. 보간 다항식을 적분하면 \(w_i = \int\ell_i\)이고, \(k\)차 다항식까지 정확하면 정확도 차수 \(k\)다.</li>
+      <li>사다리꼴·중점은 1차까지, 심프슨·3/8은 3차까지 정확하다. 높은 차수의 등간격 뉴턴–코츠는 음수 가중치와 룽게 현상 때문에 쓰지 않는다.</li>
+      <li>합성 사다리꼴·중점의 오차는 \(O(h^2)\), 합성 심프슨은 \(O(h^4)\)다. 중점 오차는 사다리꼴의 약 \(-\frac12\)배이고, 매끄러운 주기 함수에서 사다리꼴은 지수적으로 수렴한다.</li>
+      <li>오일러–매클로린 공식에 따라 사다리꼴 오차는 \(h^2, h^4, \dots\)의 짝수 거듭제곱 전개를 가진다. 롬베르크 적분은 여기에 리처드슨 외삽을 되풀이하며, 둘째 열이 심프슨이다.</li>
+      <li>\(n\)점 가우스–르장드르는 노드를 \(P_n\)의 근에 두어 \(2n - 1\)차까지 정확하고 가중치가 모두 양수다. 매끄러운 함수에서 가장 적은 함숫값으로 가장 정확하다.</li>
+      <li>적응 심프슨은 \((S_2 - S_1)/15\)로 오차를 추정하고 허용 오차를 넘는 구간만 쪼갠다. 어려움이 국소적일 때 균등 분할보다 훨씬 효율적이다.</li>
+      <li>끝점 특이점과 무한 구간은 \(x = t^2\), \(x = t/(1 - t)\) 같은 변수 변환으로 매끄러운 유한 적분으로 바꾼다. 수렴 차수는 공식이 아니라 피적분 함수의 매끄러움이 정한다.</li>
+      <li>곱 공식의 오차는 \(O(N^{-p/d})\)로 차원과 함께 나빠진다(차원의 저주). 몬테카를로 오차는 \(\sigma/\sqrt N\)으로 차원과 무관하다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 매끄러운 함수를 합성 사다리꼴 공식으로 \(n = 10\)일 때 오차 \(4\times10^{-4}\)을 얻었다. \(n = 20\)이면 오차는 대략?</p><div class="opts">
+        <button class="opt">\(2\times10^{-4}\)</button>
+        <button class="opt" data-correct>\(1\times10^{-4}\)</button>
+        <button class="opt">\(2.5\times10^{-5}\)</button>
+        <button class="opt">\(4\times10^{-4}\)</button>
+      </div><div class="quiz-exp">합성 사다리꼴의 오차는 \(-\frac{(b-a)h^2}{12}f''\), \(O(h^2)\)이다. h가 반이 되면 오차는 4분의 1. \(2.5\times10^{-5}\)은 심프슨(16분의 1)일 때다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 심프슨 공식 \(\frac{h}{3}(f_0 + 4f_1 + f_2)\)의 정확도 차수는?</p><div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">2</button>
+        <button class="opt" data-correct>3</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">포물선 보간이라 2차까지는 당연히 정확하고, 대칭 덕분에 \((x - m)^3\)의 적분이 0이라 3차까지 정확하다. \(x^4\)에서 처음 틀리므로 오차가 \(f^{(4)}\)에 비례한다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 5점 가우스–르장드르 공식이 정확히 적분하는 다항식의 최대 차수는?</p><div class="opts">
+        <button class="opt">4</button>
+        <button class="opt">5</button>
+        <button class="opt" data-correct>9</button>
+        <button class="opt">10</button>
+      </div><div class="quiz-exp">n점 가우스 공식은 2n − 1 = 9차까지 정확하다. 노드 5개와 가중치 5개, 자유도 10개로 \(1, x, \dots, x^9\)의 10개 조건을 맞춘다. 10차는 \(\prod(x - x_i)^2\)가 반례다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(\int_0^1 \frac{4}{1+x^2}dx\)의 사다리꼴 값이 \(T_{1/4} = 3.1311765\), \(T_{1/8} = 3.1389885\)이다. 롬베르크 표의 \(R_{1,1}\)은?</p><div class="opts">
+        <button class="opt">3.1350825</button>
+        <button class="opt">3.1468005</button>
+        <button class="opt" data-correct>3.1415925</button>
+        <button class="opt">3.1416000</button>
+      </div><div class="quiz-exp">\(R_{1,1} = (4T_{1/8} - T_{1/4})/3 = (12.555954 - 3.1311765)/3 = 3.1415925\). 이것은 \(n = 8\)의 합성 심프슨 값과 같고, π와 \(1.5\times10^{-7}\) 차이다. 첫 보기는 단순 평균이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 몬테카를로 적분으로 표본 \(10^4\)개에서 표준오차가 0.01이었다. 표준오차를 0.001로 줄이려면 표본이 몇 개 필요한가?</p><div class="opts">
+        <button class="opt">\(10^5\)</button>
+        <button class="opt" data-correct>\(10^6\)</button>
+        <button class="opt">\(10^7\)</button>
+        <button class="opt">차원에 따라 다르다</button>
+      </div><div class="quiz-exp">표준오차가 \(\sigma/\sqrt N\)이므로 10분의 1로 줄이려면 N이 100배, \(10^6\)개다. 이 비율은 차원과 무관하다. 그래서 고차원에서 몬테카를로가 이긴다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(\int_0^1\sqrt x\,dx\)를 합성 심프슨 공식으로 계산할 때 \(n\)을 두 배로 하면 오차는 대략 몇 분의 1이 되는가?</p><div class="opts">
+        <button class="opt">16</button>
+        <button class="opt">4</button>
+        <button class="opt" data-correct>2.83</button>
+        <button class="opt">1.41</button>
+      </div><div class="quiz-exp">√x는 x = 0에서 도함수가 발산해 심프슨의 오차 항 가정이 깨진다. 첫 소구간의 오차가 지배하며 \(h^{1.5}\)로 줄어 비율은 \(2^{1.5} = 2.83\)이다. \(x = t^2\)로 바꾸면 \(\int 2t^2dt\)가 되어 심프슨이 정확하다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 등간격 뉴턴–코츠 공식의 점을 많이(예: 21개) 쓰지 않는 이유로 가장 알맞은 것은?</p><div class="opts">
+        <button class="opt">정확도 차수가 올라가지 않아서</button>
+        <button class="opt" data-correct>가중치에 큰 음수가 생겨 오차가 증폭되고, 룽게 현상으로 발산할 수 있어서</button>
+        <button class="opt">가중치의 합이 구간 길이와 달라져서</button>
+        <button class="opt">함숫값 계산이 너무 많아서</button>
+      </div><div class="quiz-exp">정확도 차수는 올라가고 가중치 합도 b − a로 맞다. 문제는 9점부터 음수 가중치가 생기고 \(\sum|w_i|\)가 커지는 것이다. 21점 공식은 \(1/(1+25x^2)\)에서 오차가 −5.9로 발산한다. 합성 공식이나 가우스 구적법을 쓴다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 적응 심프슨에서 오차 추정에 \((S_2 - S_1)/15\)를 쓰는 이유는?</p><div class="opts">
+        <button class="opt">심프슨 공식의 가중치 합이 15라서</button>
+        <button class="opt">구간을 15개로 나누므로</button>
+        <button class="opt" data-correct>간격이 반이 되면 심프슨 오차가 16분의 1이 되어 \(I - S_2 \approx (S_2 - S_1)/(16 - 1)\)이므로</button>
+        <button class="opt">경험적으로 정한 안전 계수라서</button>
+      </div><div class="quiz-exp">\(I - S_1 \approx 16(I - S_2)\)를 \(S_2 - S_1 = (I - S_1) - (I - S_2) \approx 15(I - S_2)\)로 바꾸면 나온다. 리처드슨 외삽과 같은 논리이고, \(S_2 + (S_2 - S_1)/15\)는 불 공식 수준의 값이다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const IG = {
+  num(v, d = 4) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  font(px, mono) { return px + "px " + getComputedStyle(document.body).getPropertyValue(mono ? "--mono" : "--font"); },
+  slope(pts) {
+    if (pts.length < 2) return NaN;
+    const xs = pts.map((p) => Math.log10(p[0])), ys = pts.map((p) => Math.log10(p[1])), mx = MB.mean(xs), my = MB.mean(ys);
+    let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; });
+    return a / b;
+  },
+  trap(f, a, b, n) { const h = (b - a) / n; let s = (f(a) + f(b)) / 2; for (let i = 1; i < n; i++) s += f(a + i * h); return s * h; },
+  mid(f, a, b, n) { const h = (b - a) / n; let s = 0; for (let i = 0; i < n; i++) s += f(a + (i + 0.5) * h); return s * h; },
+  simp(f, a, b, n) { const h = (b - a) / n; let s = f(a) + f(b); for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * f(a + i * h); return (s * h) / 3; },
+  /** 가우스–르장드르 노드·가중치: 점화식 + 뉴턴 */
+  gl: (() => {
+    const cache = {};
+    return (n) => {
+      if (cache[n]) return cache[n];
+      const x = [], w = [];
+      for (let i = 0; i < n; i++) {
+        let z = Math.cos((Math.PI * (i + 0.75)) / (n + 0.5)), pp = 1;
+        for (let it = 0; it < 100; it++) {
+          let p0 = 1, p1 = z; for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * z * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; }
+          pp = n * (z * p1 - p0) / (z * z - 1); const dz = p1 / pp; z -= dz; if (Math.abs(dz) < 1e-16) break;
+        }
+        let p0 = 1, p1 = z; for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * z * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; }
+        pp = n * (z * p1 - p0) / (z * z - 1);
+        x.push(z); w.push(2 / ((1 - z * z) * pp * pp));
+      }
+      if (n === 1) { x[0] = 0; w[0] = 2; }
+      return (cache[n] = { x, w });
+    };
+  })(),
+  gauss(f, a, b, n) { const { x, w } = IG.gl(n); let s = 0; for (let i = 0; i < n; i++) s += w[i] * f((a + b) / 2 + ((b - a) / 2) * x[i]); return (s * (b - a)) / 2; },
+  legendre(n, z) { if (n === 0) return 1; let p0 = 1, p1 = z; for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * z * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; } return p1; },
+};
+
+/* ================================================================ 1. 공식 그림 */
+(function () {
+  const PRE = {
+    wave: { f: (x) => 2 + x * Math.sin(3 * x), F: (x) => 2 * x + Math.sin(3 * x) / 9 - (x * Math.cos(3 * x)) / 3, a: 0, b: 3, y: [-0.4, 5.2] },
+    exp: { f: Math.exp, F: Math.exp, a: 0, b: 2, y: [-0.5, 8] },
+    bump: { f: (x) => 4 / (1 + x * x), F: (x) => 4 * Math.atan(x), a: 0, b: 1, y: [-0.3, 4.5] },
+    sqrt: { f: Math.sqrt, F: (x) => (2 / 3) * Math.pow(x, 1.5), a: 0, b: 1, y: [-0.15, 1.2] },
+  };
+  let pre = PRE.wave, mode = "trap", n = 3, prev = null;
+  const msg = document.getElementById("ig-ru-msg");
+  /** 각 소구간의 보간 다항식(라그랑주)과 노드 */
+  const pieces = () => {
+    const h = (pre.b - pre.a) / n, out = [];
+    for (let i = 0; i < n; i++) {
+      const l = pre.a + i * h, r = l + h;
+      let xs;
+      if (mode === "left") xs = [l]; else if (mode === "mid") xs = [l + h / 2]; else if (mode === "trap") xs = [l, r];
+      else if (mode === "simp") xs = [l, l + h / 2, r]; else xs = [l, l + h / 3, l + (2 * h) / 3, r];
+      const ys = xs.map(pre.f);
+      const p = (x) => { if (xs.length === 1) return ys[0]; let s = 0; for (let j = 0; j < xs.length; j++) { let L = 1; for (let k = 0; k < xs.length; k++) if (k !== j) L *= (x - xs[k]) / (xs[j] - xs[k]); s += ys[j] * L; } return s; };
+      out.push({ l, r, xs, ys, p });
+    }
+    return out;
+  };
+  const W = { left: [1], mid: [1], trap: [0.5, 0.5], simp: [1 / 6, 4 / 6, 1 / 6], t38: [1 / 8, 3 / 8, 3 / 8, 1 / 8] };
+  const Q = () => { let s = 0; pieces().forEach((pc) => { pc.ys.forEach((y, j) => { s += W[mode][j] * y * (pc.r - pc.l); }); }); return s; };
+  const evals = () => { const k = { left: 1, mid: 1, trap: 1, simp: 2, t38: 3 }[mode]; return mode === "left" || mode === "mid" ? n : k * n + 1; };
+  const pl = MB.plane("#ig-ru-cv", {
+    x: [pre.a - 0.08 * (pre.b - pre.a), pre.b + 0.08 * (pre.b - pre.a)], y: pre.y, aspect: 0.62, minHeight: 260,
+    draw(P) {
+      const C = P.P, ps = pieces();
+      ps.forEach((pc, i) => {
+        const poly = [[pc.l, 0]]; for (let k = 0; k <= 40; k++) { const x = pc.l + ((pc.r - pc.l) * k) / 40; poly.push([x, pc.p(x)]); } poly.push([pc.r, 0]);
+        P.poly(poly, { fill: i % 2 ? C.accent2 : C.accent, alpha: 0.22, stroke: false, close: true });
+        P.poly(poly.slice(1, -1), { color: i % 2 ? C.accent2 : C.accent, width: 1.6, close: false });
+        P.line(pc.l, 0, pc.l, pc.p(pc.l), { color: C.faint, width: 1 });
+        pc.xs.forEach((x, j) => P.dot(x, pc.ys[j], { r: 4, color: C.text }));
+      });
+      P.curve(pre.f, { color: C.text, width: 2.2, from: pre.a + 1e-9, to: pre.b });
+    },
+  });
+  const update = () => {
+    const I = pre.F(pre.b) - pre.F(pre.a), q = Q(), e = q - I;
+    MB.stat("ig-ru-q", q.toFixed(8)); MB.stat("ig-ru-i", I.toFixed(8)); MB.stat("ig-ru-e", IG.sci(e, 3)); MB.stat("ig-ru-ev", String(evals()));
+    if (prev && prev.mode === mode && prev.pre === pre && prev.n !== n) {
+      msg.innerHTML = `n을 ${prev.n} → ${n}(<b>${IG.num(n / prev.n, 2)}배</b>)로 바꾸자 오차가 <b>${IG.num(Math.abs(prev.e / e), 2)}배</b> 작아졌습니다. 그 비율의 로그를 n 비율의 로그로 나누면 차수 <b>${IG.num(Math.log(Math.abs(prev.e / e)) / Math.log(n / prev.n), 2)}</b>.`;
+    } else msg.innerHTML = "색칠된 넓이가 공식이 계산하는 값입니다. n을 바꾸면 오차가 몇 배 줄었는지와 측정 차수를 알려 줍니다.";
+    prev = { mode, pre, n, e }; pl.redraw();
+  };
+  MB.range("ig-ru-n", (v) => String(v), (v) => { n = v; update(); });
+  MB.seg("ig-ru-m", (v) => { mode = v; update(); });
+  document.getElementById("ig-ru-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; const L = pre.b - pre.a; pl.view({ x: [pre.a - 0.08 * L, pre.b + 0.08 * L], y: pre.y }); update(); });
+  update();
+})();
+
+/* ================================================================ 2. 수렴 차수 */
+(function () {
+  const PRE = {
+    exp: { f: Math.exp, a: 0, b: 1, I: Math.E - 1 },
+    sqrt: { f: Math.sqrt, a: 0, b: 1, I: 2 / 3 },
+    per: { f: (x) => Math.exp(Math.cos(x)), a: 0, b: 2 * Math.PI, I: 7.954926521012844 },
+    runge: { f: (x) => 1 / (1 + 25 * x * x), a: -1, b: 1, I: 0.4 * Math.atan(5) },
+  };
+  let pre = PRE.exp; const sh = { mid: true, trap: true, simp: true, gauss: true, ref: true };
+  const NS = []; for (let k = 1; k <= 12; k++) NS.push(Math.pow(2, k));
+  let data;
+  const FL = 1e-17;
+  const compute = () => {
+    const { f, a, b, I } = pre, rel = (v) => Math.max(FL, Math.abs(v - I) / Math.abs(I));
+    data = {
+      mid: NS.map((n) => [n, rel(IG.mid(f, a, b, n))]),
+      trap: NS.map((n) => [n + 1, rel(IG.trap(f, a, b, n))]),
+      simp: NS.map((n) => [n + 1, rel(IG.simp(f, a, b, n))]),
+      gauss: Array.from({ length: 60 }, (_, i) => [i + 1, rel(IG.gauss(f, a, b, i + 1))]),
+    };
+  };
+  const C0 = () => MB.palette();
+  const cols = (C) => ({ mid: C.warn, trap: C.bad, simp: C.accent2, gauss: C.ok });
+  const cv = MB.canvas("#ig-or-cv", (ctx, w, h) => {
+    if (!data) return;
+    const C = C0(), col = cols(C), s = [], pts = [];
+    if (sh.ref) { [[2, 0.3], [4, 0.3]].forEach(([p, c]) => s.push({ data: [[1, c], [1e4, c * Math.pow(1e4, -p)]], color: C.faint, width: 1.2, dash: [5, 4] })); }
+    ["mid", "trap", "simp", "gauss"].forEach((k) => { if (!sh[k]) return; s.push({ data: data[k], color: col[k], width: 2 }); data[k].forEach(([x, y]) => pts.push({ x, y, color: col[k], r: 2.6 })); });
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [1, 1e4], y: [1e-17, 1], logX: true, logY: true, xLabel: "함숫값 계산 횟수 N", yLabel: "상대 오차", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: s, points: pts,
+    });
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 460 });
+  const update = () => {
+    compute(); cv.redraw();
+    ["mid", "trap", "simp"].forEach((k, i) => {
+      const pts = data[k].filter(([, e]) => e > 1e-13 && e < 1e-1).slice(-5);
+      const sl = IG.slope(pts);
+      MB.stat("ig-or-s" + i, !isFinite(sl) ? "—" : sl < -12 ? "지수적" : IG.num(sl, 2));
+    });
+    const need = (arr) => { const p = arr.find(([, e]) => e <= 1e-8); return p ? String(p[0]) : "> " + arr[arr.length - 1][0]; };
+    MB.stat("ig-or-n", need(data.simp) + " · " + need(data.gauss));
+  };
+  ["mid", "trap", "simp", "gauss", "ref"].forEach((k) => MB.check("ig-or-" + k, (v) => { sh[k] = v; cv.redraw(); }));
+  document.getElementById("ig-or-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  update();
+})();
+
+/* ================================================================ 3. 롬베르크 */
+(function () {
+  const PRE = {
+    sin: { f: Math.sin, a: 0, b: Math.PI, I: 2 },
+    pi: { f: (x) => 4 / (1 + x * x), a: 0, b: 1, I: Math.PI },
+    gauss: { f: (x) => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI), a: 0, b: 1, I: 0.5 * MB.erf(1 / Math.SQRT2) },
+    sqrt: { f: Math.sqrt, a: 0, b: 1, I: 2 / 3 },
+  };
+  let pre = PRE.sin, rows = 1; const MAXR = 8;
+  let R = [];
+  const build = () => {
+    R = []; const { f, a, b } = pre; let h = b - a;
+    R[0] = [(h * (f(a) + f(b))) / 2];
+    for (let i = 1; i < rows; i++) {
+      h /= 2; let s = 0; for (let j = 1; j <= Math.pow(2, i - 1); j++) s += f(a + (2 * j - 1) * h);
+      R[i] = [R[i - 1][0] / 2 + h * s];
+      for (let j = 1; j <= i; j++) { const p = Math.pow(4, j); R[i][j] = (p * R[i][j - 1] - R[i - 1][j - 1]) / (p - 1); }
+    }
+  };
+  const cv = MB.canvas("#ig-ro-cv", (ctx, w, h) => {
+    if (R.length < rows) return;
+    const C = MB.palette(), cols = [C.bad, C.warn, C.ok, C.accent2, C.blue, C.accent, C.dim, C.text], s = [], pts = [];
+    for (let j = 0; j < rows; j++) {
+      const d = []; for (let i = j; i < rows; i++) d.push([Math.pow(2, i) + 1, Math.max(1e-17, Math.abs(R[i][j] - pre.I))]);
+      s.push({ data: d, color: cols[j], width: 2 }); d.forEach(([x, y]) => pts.push({ x, y, color: cols[j], r: 3.5 }));
+    }
+    MB.chart(ctx, { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, {
+      x: [1.5, 200], y: [1e-17, 10], logX: true, logY: true, xLabel: "그 행의 함숫값 계산 수", yLabel: "|오차|", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: s, points: pts,
+    });
+  }, { aspect: 0.5, minHeight: 230, maxHeight: 360 });
+  const update = () => {
+    build();
+    let th = "<tr><th>n</th>"; for (let j = 0; j < rows; j++) th += `<th>R<sub>i,${j}</sub>${j === 0 ? " 사다리꼴" : j === 1 ? " 심프슨" : ""}</th>`; th += "</tr>";
+    document.getElementById("ig-ro-th").innerHTML = th;
+    let be = Infinity, bi = 0, bj = 0; R.forEach((r, i) => r.forEach((v, j) => { const e = Math.abs(v - pre.I); if (e < be) { be = e; bi = i; bj = j; } }));
+    let tb = "";
+    R.forEach((r, i) => {
+      tb += `<tr class="${i === rows - 1 ? "cur" : ""}"><td>${Math.pow(2, i)}</td>`;
+      for (let j = 0; j < rows; j++) { if (j > i) { tb += "<td></td>"; continue; } tb += `<td class="${i === bi && j === bj ? "best" : ""}">${r[j].toFixed(12)}<small>${IG.sci(r[j] - pre.I, 2)}</small></td>`; }
+      tb += "</tr>";
+    });
+    document.getElementById("ig-ro-tb").innerHTML = tb;
+    MB.stat("ig-ro-ev", String(Math.pow(2, rows - 1) + 1));
+    MB.stat("ig-ro-d", IG.sci(Math.abs(R[rows - 1][rows - 1] - pre.I), 2));
+    MB.stat("ig-ro-t", IG.sci(Math.abs(R[rows - 1][0] - pre.I), 2));
+    document.getElementById("ig-ro-next").disabled = rows >= MAXR;
+    cv.redraw();
+  };
+  document.getElementById("ig-ro-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  document.getElementById("ig-ro-next").addEventListener("click", () => { if (rows < MAXR) { rows++; update(); } });
+  document.getElementById("ig-ro-reset").addEventListener("click", () => { rows = 1; update(); });
+  rows = 5; update();
+})();
+
+/* ================================================================ 4. 가우스 노드 */
+(function () {
+  let n = 3, showNC = true, fk = "exp";
+  const FS = {
+    exp: { f: Math.exp, I: Math.E - 1 / Math.E },
+    runge: { f: (x) => 1 / (1 + 25 * x * x), I: 0.4 * Math.atan(5) },
+    abs: { f: Math.abs, I: 1 },
+  };
+  /** n점 등간격 닫힌 뉴턴–코츠 가중치 ([-1, 1]) */
+  const ncw = (m) => {
+    if (m === 1) return { x: [0], w: [2] };
+    const xs = Array.from({ length: m }, (_, j) => -1 + (2 * j) / (m - 1));
+    const A = [], b = [];
+    for (let k = 0; k < m; k++) { A.push(xs.map((x) => Math.pow(x, k))); b.push(k % 2 ? 0 : 2 / (k + 1)); }
+    for (let i = 0; i < m; i++) {
+      let p = i; for (let r = i + 1; r < m; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+      [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+      for (let r = i + 1; r < m; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < m; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; }
+    }
+    const w = Array(m).fill(0); for (let i = m - 1; i >= 0; i--) { let s = b[i]; for (let c = i + 1; c < m; c++) s -= A[i][c] * w[c]; w[i] = s / A[i][i]; }
+    return { x: xs, w };
+  };
+  const rule = (R, f) => R.x.reduce((s, x, i) => s + R.w[i] * f(x), 0);
+  const mono = (k) => (x) => Math.pow((1 + x) / 2, k);
+  const exactDeg = (R) => { for (let k = 0; k < 40; k++) { const I = 2 / (k + 1); if (Math.abs(rule(R, mono(k)) - I) > 1e-10 * I) return k - 1; } return 39; };
+  const cv1 = MB.canvas("#ig-ga-cv1", (ctx, w, h) => {
+    const C = MB.palette(), G = IG.gl(n), N = ncw(n);
+    const box = { x: 46, y: 26, w: w - 46 - 14, h: h - 26 - 28 };
+    const ymax = showNC ? Math.max(1.2, ...N.w.map(Math.abs), ...G.w) * 1.05 : Math.max(1.2, ...G.w) * 1.1;
+    const ch = MB.chart(ctx, box, { x: [-1.05, 1.05], y: [showNC ? -ymax : -1.1, ymax], series: [] });
+    const pts = []; for (let i = 0; i <= 300; i++) { const x = -1 + (2 * i) / 300; pts.push([x, IG.legendre(n, x)]); }
+    ctx.save(); ctx.strokeStyle = C.dim; ctx.lineWidth = 1.6; ctx.setLineDash([5, 3]); ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(ch.X(x), ch.Y(y)) : ctx.moveTo(ch.X(x), ch.Y(y)))); ctx.stroke(); ctx.restore();
+    const bw = Math.max(3, Math.min(14, box.w / (3 * n)));
+    if (showNC) N.x.forEach((x, i) => { ctx.fillStyle = C.bad; ctx.globalAlpha = 0.55; const y0 = ch.Y(0), y1 = ch.Y(N.w[i]); ctx.fillRect(ch.X(x) - bw / 2 + bw * 0.6, Math.min(y0, y1), bw, Math.abs(y1 - y0)); ctx.globalAlpha = 1; });
+    G.x.forEach((x, i) => { ctx.fillStyle = C.ok; const y0 = ch.Y(0), y1 = ch.Y(G.w[i]); ctx.fillRect(ch.X(x) - bw / 2, y1, bw, y0 - y1); ctx.beginPath(); ctx.arc(ch.X(x), y0, 4.5, 0, 7); ctx.fill(); });
+    ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(ch.X(-1), ch.Y(0)); ctx.lineTo(ch.X(1), ch.Y(0)); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = IG.font(11.5, true); ctx.textAlign = "right"; ctx.fillText("초록: 가우스 wᵢ" + (showNC ? " · 빨강: NC wᵢ" : "") + " · 점선: Pₙ", box.x + box.w - 4, box.y + 12);
+  }, { aspect: (w) => (w < 500 ? 0.62 : 0.34), minHeight: 200, maxHeight: 320 });
+  const cv2 = MB.canvas("#ig-ga-cv2", (ctx, w, h) => {
+    const C = MB.palette(), G = IG.gl(n), N = ncw(n), K = Math.max(2 * n + 3, 8), g = [], c = [];
+    for (let k = 0; k <= K; k++) { const I = 2 / (k + 1); g.push([k, Math.max(1e-17, Math.abs(rule(G, mono(k)) - I) / I)]); c.push([k, Math.max(1e-17, Math.abs(rule(N, mono(k)) - I) / I)]); }
+    const s = [{ data: g, color: C.ok, width: 2 }]; if (showNC) s.push({ data: c, color: C.bad, width: 1.6, dash: [5, 3] });
+    const pts = g.map(([x, y]) => ({ x, y, color: C.ok, r: 3 })); if (showNC) c.forEach(([x, y]) => pts.push({ x, y, color: C.bad, r: 2.5 }));
+    MB.chart(ctx, { x: 58, y: 26, w: w - 58 - 14, h: h - 26 - 40 }, { x: [0, K], y: [1e-17, 10], logY: true, xLabel: "k (피적분 함수 ((1 + x)/2)ᵏ, 상대 오차)", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], series: s, points: pts, vlines: [{ x: 2 * n - 1, label: "2n − 1", color: C.ok }] });
+  }, { aspect: (w) => (w < 500 ? 0.6 : 0.32), minHeight: 200, maxHeight: 300 });
+  const update = () => {
+    const G = IG.gl(n), N = ncw(n), F = FS[fk];
+    MB.stat("ig-ga-deg", String(exactDeg(G))); MB.stat("ig-ga-ndeg", String(exactDeg(N)));
+    MB.stat("ig-ga-eg", IG.sci(rule(G, F.f) - F.I, 2));
+    MB.stat("ig-ga-en", IG.sci(rule(N, F.f) - F.I, 2) + " · " + IG.num(N.w.reduce((s, v) => s + Math.abs(v), 0), 3));
+    cv1.redraw(); cv2.redraw();
+  };
+  MB.range("ig-ga-n", (v) => String(v), (v) => { n = v; update(); });
+  MB.check("ig-ga-nc", (v) => { showNC = v; update(); });
+  document.getElementById("ig-ga-f").addEventListener("change", (e) => { fk = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 5. 적응 심프슨 */
+(function () {
+  const PRE = {
+    sqrt: { f: Math.sqrt, I: 2 / 3, y: [-0.1, 1.1] },
+    tanh: { f: (x) => Math.tanh(50 * (x - 0.4)), I: (Math.log(Math.cosh(30)) - Math.log(Math.cosh(20))) / 50, y: [-1.2, 1.2] },
+    humps: { f: (x) => 1 / ((x - 0.3) ** 2 + 0.01) + 1 / ((x - 0.9) ** 2 + 0.04) - 6, I: 29.858325395498674, y: [-10, 100] },
+    osc: { f: (x) => x * Math.sin(30 * x * x), I: (1 - Math.cos(30)) / 60, y: [-1.1, 1.1] },
+  };
+  const TOL = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10];
+  let pre = PRE.sqrt, tol = 1e-4, showPts = true, res;
+  const run = () => {
+    const f = pre.f, xs = [], leaves = []; let ev = 0;
+    const F = (x) => { ev++; xs.push(x); return f(x); };
+    const rec = (a, b, fa, fm, fb, S, t, d) => {
+      const m = (a + b) / 2, lm = (a + m) / 2, rm = (m + b) / 2, flm = F(lm), frm = F(rm);
+      const L = ((m - a) / 6) * (fa + 4 * flm + fm), R = ((b - m) / 6) * (fm + 4 * frm + fb), D = L + R - S;
+      if (d >= 40 || Math.abs(D) <= 15 * t) { leaves.push([a, b, d]); return L + R + D / 15; }
+      return rec(a, m, fa, flm, fm, L, t / 2, d + 1) + rec(m, b, fm, frm, fb, R, t / 2, d + 1);
+    };
+    const fa = F(0), fb = F(1), fm = F(0.5);
+    const v = rec(0, 1, fa, fm, fb, (fa + 4 * fm + fb) / 6, tol, 0);
+    const nu = ev - 1 + ((ev - 1) % 2);
+    res = { v, ev, xs, leaves, uni: IG.simp(f, 0, 1, Math.max(2, nu)), maxd: Math.max(...leaves.map((l) => l[2])) };
+  };
+  const cv = MB.canvas("#ig-ad-cv", (ctx, w, h) => {
+    if (!res) return;
+    const C = MB.palette(), top = { x: 50, y: 14, w: w - 50 - 14, h: (h - 14 - 30) * 0.62 }, bot = { x: 50, y: top.y + top.h + 14, w: top.w, h: h - top.y - top.h - 14 - 26 };
+    const cur = []; for (let i = 0; i <= 600; i++) { const x = i / 600; cur.push([x, pre.f(x)]); }
+    const ch = MB.chart(ctx, top, { x: [0, 1], y: pre.y, series: [{ data: cur, color: C.text, width: 2 }], xFmt: () => "" });
+    if (showPts) { ctx.fillStyle = C.accent; res.xs.forEach((x) => { const y = ch.Y(MB.clamp(pre.f(x), pre.y[0], pre.y[1])); ctx.beginPath(); ctx.arc(ch.X(x), y, 2.2, 0, 7); ctx.fill(); }); }
+    const md = Math.max(4, res.maxd + 1), X = (x) => bot.x + x * bot.w;
+    res.leaves.forEach(([a, b, d], i) => {
+      const hh = ((d + 1) / md) * bot.h;
+      ctx.fillStyle = i % 2 ? C.accent2 : C.accent; ctx.globalAlpha = 0.65;
+      ctx.fillRect(X(a), bot.y + bot.h - hh, Math.max(0.6, X(b) - X(a) - 0.4), hh); ctx.globalAlpha = 1;
+    });
+    ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(bot.x, bot.y + bot.h); ctx.lineTo(bot.x + bot.w, bot.y + bot.h); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = IG.font(11, true); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    [0, 0.25, 0.5, 0.75, 1].forEach((x) => ctx.fillText(String(x), X(x), bot.y + bot.h + 5));
+    ctx.textAlign = "left"; ctx.fillText("소구간과 분할 깊이 (높을수록 깊음)", bot.x + 4, bot.y - 2);
+  }, { aspect: 0.66, minHeight: 300, maxHeight: 480 });
+  const update = () => {
+    run(); cv.redraw();
+    const widths = res.leaves.map(([a, b]) => b - a);
+    MB.stat("ig-ad-ev", String(res.ev));
+    MB.stat("ig-ad-lv", res.leaves.length + " · " + res.maxd);
+    MB.stat("ig-ad-e", IG.sci(res.v - pre.I, 2) + " <small>(최소 폭 " + IG.sci(Math.min(...widths), 1) + ")</small>");
+    MB.stat("ig-ad-u", IG.sci(res.uni - pre.I, 2));
+  };
+  MB.steps("ig-ad-t", TOL, (v) => "10<sup>" + String(Math.round(Math.log10(v))).replace("-", "−") + "</sup>", 1e-4, (v) => { tol = v; update(); });
+  document.getElementById("ig-ad-t-out").innerHTML = "10<sup>−4</sup>";
+  MB.check("ig-ad-pts", (v) => { showPts = v; cv.redraw(); });
+  document.getElementById("ig-ad-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  update();
+})();
+
+/* ================================================================ 6. 변수 변환 */
+(function () {
+  const C1 = 1.8090484758005438; // ∫₀¹ cos x/√x dx = 2∫₀¹ cos t² dt
+  const PRE = {
+    isq: { f: (x) => 1 / Math.sqrt(x), a: 0, b: 1, g: (t) => 2, I: 2, xr: [0, 1], yr: [0, 6] },
+    sq: { f: Math.sqrt, a: 0, b: 1, g: (t) => 2 * t * t, I: 2 / 3, xr: [0, 1], yr: [0, 2.1] },
+    cosq: { f: (x) => Math.cos(x) / Math.sqrt(x), a: 0, b: 1, g: (t) => 2 * Math.cos(t * t), I: C1, xr: [0, 1], yr: [0, 6] },
+    gau: { f: (x) => Math.exp(-x * x), a: 0, b: 10, g: (t) => { if (t >= 1) return 0; const x = t / (1 - t); return Math.exp(-x * x) / (1 - t) ** 2; }, I: Math.sqrt(Math.PI) / 2, xr: [0, 3], yr: [0, 1.3] },
+    lor: { f: (x) => 1 / (1 + x * x), a: 0, b: 10, g: (t) => 1 / ((1 - t) ** 2 + t * t), I: Math.PI / 2, xr: [0, 10], yr: [0, 2.1] },
+  };
+  let pre = PRE.isq, mode = "mid", N = 8, data;
+  const Q = (f, a, b, n) => (mode === "mid" ? IG.mid(f, a, b, n) : IG.gauss(f, a, b, n));
+  const nodes = (a, b, n) => (mode === "mid" ? Array.from({ length: n }, (_, i) => a + ((i + 0.5) * (b - a)) / n) : IG.gl(n).x.map((x) => (a + b) / 2 + ((b - a) / 2) * x));
+  const NS = mode === "mid" ? [] : [];
+  const compute = () => {
+    const ns = mode === "mid" ? [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024] : Array.from({ length: 40 }, (_, i) => i + 1);
+    const FL = 1e-17;
+    data = {
+      o: ns.map((n) => [n, Math.max(FL, Math.abs(Q(pre.f, pre.a, pre.b, n) - pre.I))]),
+      t: ns.map((n) => [n, Math.max(FL, Math.abs(Q(pre.g, 0, 1, n) - pre.I))]),
+    };
+  };
+  const cv1 = MB.canvas("#ig-tr-cv1", (ctx, w, h) => {
+    const C = MB.palette(), half = w < 520 ? null : (w - 50) / 2;
+    const draw = (box, f, xr, yr, nd, col, lab) => {
+      const pts = []; for (let i = 0; i <= 400; i++) { const x = xr[0] + ((xr[1] - xr[0]) * (i + 0.001)) / 400.002; pts.push([x, Math.min(yr[1] * 1.5, f(x))]); }
+      const ch = MB.chart(ctx, box, { x: xr, y: yr, series: [{ data: pts, color: col, width: 2.2 }] });
+      ctx.fillStyle = col; nd.forEach((x) => { if (x < xr[0] || x > xr[1]) return; const y = f(x); ctx.beginPath(); ctx.arc(ch.X(x), ch.Y(Math.min(yr[1], y)), 3.4, 0, 7); ctx.fill(); });
+      ctx.fillStyle = C.dim; ctx.font = IG.font(11.5, true); ctx.textAlign = "right"; ctx.fillText(lab, box.x + box.w - 4, box.y + 12);
+    };
+    const yt = [0, Math.max(2.1, ...Array.from({ length: 50 }, (_, i) => pre.g(i / 50))) * 1.1];
+    if (half) {
+      draw({ x: 44, y: 28, w: half - 44, h: h - 28 - 28 }, pre.f, pre.xr, pre.yr, nodes(pre.a, pre.b, N), C.bad, "원래 f(x)");
+      draw({ x: half + 44, y: 28, w: half - 30, h: h - 28 - 28 }, pre.g, [0, 1], yt, nodes(0, 1, N), C.ok, "변환 g(t)");
+    } else {
+      const hh = (h - 20) / 2;
+      draw({ x: 44, y: 28, w: w - 58, h: hh - 40 }, pre.f, pre.xr, pre.yr, nodes(pre.a, pre.b, N), C.bad, "원래 f(x)");
+      draw({ x: 44, y: hh + 24, w: w - 58, h: hh - 34 }, pre.g, [0, 1], yt, nodes(0, 1, N), C.ok, "변환 g(t)");
+    }
+  }, { aspect: (w) => (w < 520 ? 1.0 : 0.34), minHeight: 220, maxHeight: 380 });
+  const cv2 = MB.canvas("#ig-tr-cv2", (ctx, w, h) => {
+    if (!data) return;
+    const C = MB.palette();
+    MB.chart(ctx, { x: 62, y: 26, w: w - 62 - 16, h: h - 26 - 46 }, {
+      x: mode === "mid" ? [2, 1024] : [1, 40], y: [1e-17, 10], logX: mode === "mid", logY: true, xLabel: "함숫값 수 N", yLabel: "|오차|", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [{ data: data.o, color: C.bad, width: 2 }, { data: data.t, color: C.ok, width: 2 }],
+      points: [...data.o.map(([x, y]) => ({ x, y, color: C.bad, r: 2.6 })), ...data.t.map(([x, y]) => ({ x, y, color: C.ok, r: 2.6 }))],
+      vlines: [{ x: N, color: C.faint }],
+    });
+  }, { aspect: (w) => (w < 520 ? 0.7 : 0.36), minHeight: 220, maxHeight: 340 });
+  const update = () => {
+    compute(); cv1.redraw(); cv2.redraw();
+    const e0 = Math.abs(Q(pre.f, pre.a, pre.b, N) - pre.I), e1 = Math.abs(Q(pre.g, 0, 1, N) - pre.I);
+    MB.stat("ig-tr-e0", IG.sci(e0, 2)); MB.stat("ig-tr-e1", IG.sci(e1, 2));
+    if (mode === "mid") {
+      const s0 = IG.slope(data.o.filter(([, e]) => e > 1e-13).slice(-5)), s1 = IG.slope(data.t.filter(([, e]) => e > 1e-13).slice(-5));
+      MB.stat("ig-tr-s", (isFinite(s0) ? IG.num(s0, 2) : "—") + " · " + (isFinite(s1) ? IG.num(s1, 2) : "바닥"));
+    } else MB.stat("ig-tr-s", "가우스: 가로축 선형");
+  };
+  MB.range("ig-tr-n", (v) => String(v), (v) => { N = v; update(); });
+  MB.seg("ig-tr-m", (v) => { mode = v; update(); });
+  document.getElementById("ig-tr-f").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  update();
+})();
+
+/* ================================================================ 7. 몬테카를로 */
+(function () {
+  const BS = [10, 100, 1000, 10000];
+  let d = 2, batch = 100, rng = MB.rng(11), N = 0, hit = 0, pts = [], hist = [];
+  const vol = (dd) => Math.pow(Math.PI, dd / 2) / Math.exp(MB.lgamma(dd / 2 + 1));
+  const reset = () => { rng = MB.rng(11 + d); N = 0; hit = 0; pts = []; hist = []; };
+  const throwSome = (k) => {
+    for (let i = 0; i < k; i++) {
+      let r2 = 0, x0 = 0, y0 = 0;
+      for (let j = 0; j < d; j++) { const u = 2 * rng() - 1; if (j === 0) x0 = u; if (j === 1) y0 = u; r2 += u * u; }
+      const inside = r2 <= 1; if (inside) hit++; N++;
+      if (pts.length < 4000) pts.push([x0, y0, inside]); else if (rng() < 0.05) pts[Math.floor(rng() * 4000)] = [x0, y0, inside];
+    }
+    const V = Math.pow(2, d) * hit / N; hist.push([N, Math.max(1e-6, Math.abs(V - vol(d)))]);
+    if (hist.length > 400) hist = hist.filter((_, i) => i % 2 === 0 || i === hist.length - 1);
+  };
+  const cv = MB.canvas("#ig-mc-cv", (ctx, w, h) => {
+    const C = MB.palette(), wide = w >= 520;
+    const sq = wide ? Math.min(h - 30, w * 0.42) : Math.min(w - 40, h * 0.45), sx = wide ? 16 : (w - sq) / 2, sy = 14;
+    ctx.fillStyle = C.surface; ctx.fillRect(sx, sy, sq, sq); ctx.strokeStyle = C.border; ctx.strokeRect(sx, sy, sq, sq);
+    if (d === 2) { ctx.strokeStyle = C.dim; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(sx + sq / 2, sy + sq / 2, sq / 2, 0, 7); ctx.stroke(); }
+    pts.forEach(([x, y, ins]) => { ctx.fillStyle = ins ? C.accent : C.faint; ctx.fillRect(sx + ((x + 1) / 2) * sq - 1, sy + ((1 - y) / 2) * sq - 1, 2.2, 2.2); });
+    const box = wide ? { x: sx + sq + 64, y: 14, w: w - sx - sq - 64 - 14, h: h - 14 - 46 } : { x: 58, y: sy + sq + 20, w: w - 58 - 14, h: h - sy - sq - 20 - 46 };
+    const V = vol(d), p = V / Math.pow(2, d), sig = Math.pow(2, d) * Math.sqrt(p * (1 - p));
+    MB.chart(ctx, box, {
+      x: [10, 1e7], y: [1e-5, 10], logX: true, logY: true, xLabel: "표본 수 N · 세로: |오차|", xTicks: [10, 1e3, 1e5, 1e7], yTicks: [1e-4, 1e-2, 1],
+      series: [{ data: [[10, sig / Math.sqrt(10)], [1e7, sig / Math.sqrt(1e7)]], color: C.dim, width: 1.5, dash: [5, 4] }, { data: [[10, 2 * sig / Math.sqrt(10)], [1e7, 2 * sig / Math.sqrt(1e7)]], color: C.faint, width: 1, dash: [2, 4] }],
+      points: hist.map(([x, y]) => ({ x, y, color: C.bad, r: 2.4 })),
+    });
+  }, { aspect: (w) => (w < 520 ? 1.3 : 0.5), minHeight: 280, maxHeight: 520 });
+  const stat = () => {
+    const V = vol(d), est = N ? (Math.pow(2, d) * hit) / N : NaN, p = V / Math.pow(2, d);
+    MB.stat("ig-mc-n", N.toLocaleString("en-US"));
+    MB.stat("ig-mc-v", (N ? est.toFixed(5) : "—") + " <small>(" + V.toFixed(5) + ")</small>");
+    MB.stat("ig-mc-e", (N ? IG.sci(Math.abs(est - V), 2) : "—") + " · " + (N ? IG.sci((Math.pow(2, d) * Math.sqrt(p * (1 - p))) / Math.sqrt(N), 2) : "—"));
+    MB.stat("ig-mc-g", N ? IG.num(Math.pow(N, 1 / d), 1) : "—");
+  };
+  const step = () => { throwSome(batch); stat(); cv.redraw(); };
+  let acc = 0;
+  const loop = MB.loop(document.getElementById("sim-ig-mc"), (dt) => { acc += dt; if (acc > 0.08) { acc = 0; if (N < 1e7) step(); else play.set(false); } });
+  loop.stop();
+  const btn = document.getElementById("ig-mc-play");
+  const play = { set(on) { on ? loop.start() : loop.stop(); btn.textContent = on ? "■ 멈춤" : "▶ 던지기"; } };
+  btn.addEventListener("click", () => play.set(!loop.running));
+  document.getElementById("ig-mc-step").addEventListener("click", step);
+  document.getElementById("ig-mc-reset").addEventListener("click", () => { reset(); stat(); cv.redraw(); });
+  MB.steps("ig-mc-b", BS, (v) => v.toLocaleString("en-US"), 100, (v) => { batch = v; });
+  MB.seg("ig-mc-d", (v) => { d = +v; reset(); for (let i = 0; i < 30; i++) throwSome(i < 10 ? 10 : 100); stat(); cv.redraw(); });
+  for (let i = 0; i < 30; i++) throwSome(i < 10 ? 10 : 100);
+  stat(); cv.redraw();
+})();
+</script>
+</body>
+</html>

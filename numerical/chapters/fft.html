@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>이산 푸리에 변환과 FFT · NumericalBook</title>
+<meta name="description" content="주기 데이터의 삼각 보간에서 DFT로, 단위근과 DFT 행렬, 표본화와 앨리어싱, 쿨리–튜키 FFT의 나비 연산과 O(N log N), 빠른 합성곱과 큰 수 곱셈, 스펙트럼 누설과 창 함수, 제로 패딩, 스펙트럴 미분.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ff-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ff-two > div { position: relative; min-width: 0; }
+  .ff-two > div + div { border-top: 1px solid var(--border); }
+  @media (min-width: 900px) { .ff-two.ff-lr { grid-template-columns: 1fr 1fr; } .ff-two.ff-lr > div + div { border-top: 0; border-left: 1px solid var(--border); } }
+  .ff-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ff-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ff-msg b { color: var(--text); }
+  .ff-msg.ok { color: var(--ok); font-weight: 600; }
+  .ff-msg.bad { color: var(--bad); font-weight: 600; }
+  .ff-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ff-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ff-tbl td, .ff-tbl th { font-family: var(--mono); text-align: right; }
+  .ff-tbl td:first-child, .ff-tbl th:first-child { text-align: left; font-family: inherit; }
+  .ff-in { width: 100%; box-sizing: border-box; font: 14px var(--mono); padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="fft">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 08</div>
+    <h1 data-no-glossary>이산 푸리에 변환과 FFT</h1>
+    <p class="lead">5~7장은 다항식으로 근사했습니다. 그런데 하루의 기온, 회전하는 기계의 진동, 소리처럼 <b>되풀이되는</b> 데이터에는 다항식보다 사인과 코사인이 어울립니다. 등간격으로 잰 주기 데이터를 삼각함수로 보간하면 그 계수가 <b>이산 푸리에 변환</b>(DFT)이고, DFT는 \(N\times N\) 행렬 곱이라 \(N^2\)번의 곱셈이 듭니다. 1965년에 널리 알려진 <b>고속 푸리에 변환</b>(FFT)은 같은 결과를 \(N\log_2 N\)에 비례하는 연산으로 냅니다. 백만 개의 표본이면 수만 배 빠릅니다. 이 장은 DFT의 정의와 단위근의 기하, 표본화가 만드는 앨리어싱, FFT의 짝·홀 분할과 나비 연산, FFT로 합성곱과 큰 수 곱셈을 빠르게 하는 법, 그리고 실제 신호의 스펙트럼을 읽을 때 만나는 누설과 창 함수까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>등간격 주기 데이터의 삼각 보간 계수가 DFT임을 이산 직교성으로 보인다.</li>
+      <li>DFT를 단위근의 행렬 \(F_N\)으로 쓰고, 역변환과 파스발 등식을 안다.</li>
+      <li>표본화 주파수와 나이퀴스트 주파수로 앨리어싱을 예측한다.</li>
+      <li>쿨리–튜키 FFT를 짝·홀 분할로 유도하고, 나비 연산과 비트 반전 순서를 따라가며 \(O(N\log N)\)을 확인한다.</li>
+      <li>합성곱 정리로 다항식 곱셈과 큰 수 곱셈을 FFT로 계산하고, 원형 합성곱의 감김을 제로 패딩으로 막는다.</li>
+      <li>스펙트럼 누설을 창 함수로 줄이고, 제로 패딩이 해상도를 높이지 않는 이유를 설명하며, 스펙트럴 미분의 지수적 정확도를 측정한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>와이파이와 LTE·5G의 OFDM</b></div>
+      <div class="o-body"><p>스마트폰의 LTE·5G와 와이파이는 OFDM이라는 방식으로 데이터를 보냅니다. 수백~수천 개의 서로 다른 주파수(부반송파)에 비트를 나눠 실어 한꺼번에 보내는 방식인데, 송신기는 매 심볼마다 역 DFT로 그 주파수들을 합쳐 하나의 파형을 만들고, 수신기는 DFT로 다시 갈라냅니다. 부반송파가 2048개라면 DFT를 직접 계산할 때 심볼 하나에 약 400만 번의 복소 곱셈이 필요하고, 이를 초당 수만 번 해야 합니다. FFT는 같은 일을 약 1만 1천 번의 곱셈으로 끝냅니다.</p>
+        <p>FFT의 아이디어는 가우스<span class="en">(Carl Friedrich Gauss)</span>의 1805년 무렵 미출판 원고에 이미 있었다고 알려져 있지만, 널리 퍼진 것은 쿨리<span class="en">(James Cooley)</span>와 튜키<span class="en">(John Tukey)</span>의 1965년 논문 뒤입니다. 그 뒤로 디지털 오디오, MRI 영상 재구성, 레이더, 지진파 분석, 큰 수의 곱셈까지 FFT 위에 올라섰습니다.</p>
+        <div class="o-chain"><span>N개 주파수의 데이터</span><i>→</i><span>DFT: N² 곱셈</span><i>→</i><span class="tool">FFT: (N/2) log₂N 나비</span><i>→</i><span>실시간 무선 통신·영상·오디오</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="trig-interpolation">
+    <h2>주기 데이터의 삼각 보간</h2>
+    <div class="problem"><strong>하루 24번 잰 기온</strong>
+      <p>기상 관측소가 한 시간마다 기온을 잽니다. 기온은 하루를 주기로 되풀이되므로 측정 사이의 값을 보간할 때 다항식은 어울리지 않습니다. 다항식은 구간 밖으로 가면 무한히 커지고, 0시와 24시의 값과 기울기가 맞아야 한다는 주기 조건을 모릅니다. 주기가 있는 함수의 자연스러운 재료는 \(\cos kx\)와 \(\sin kx\)입니다.</p></div>
+    <p>주기를 \(2\pi\)로 맞추고 한 주기를 \(N\)등분한 점 \(x_j = 2\pi j/N\)(\(j = 0, \dots, N - 1\))에서 값 \(f_j\)를 안다고 합시다. 복소 지수 \(e^{ikx} = \cos kx + i\sin kx\)로 쓰면 계산이 훨씬 간단해집니다. 핵심은 등간격 점에서 지수 함수들이 <b>이산적으로 직교</b>한다는 사실입니다.</p>
+    <div class="callout deep"><strong>정리 8.1 (이산 직교성)</strong> 정수 \(k, l\)에 대해
+      <div class="formula">$$\sum_{j=0}^{N-1} e^{ikx_j}\,\overline{e^{ilx_j}} = \sum_{j=0}^{N-1} e^{2\pi i(k - l)j/N} = \begin{cases} N, & k \equiv l \pmod N\\ 0, & \text{그 밖}\end{cases}$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(q = e^{2\pi i(k - l)/N}\)이라 하면 합은 등비급수 \(\sum_{j=0}^{N-1}q^j\)이다. \(k \equiv l\)이면 \(q = 1\)이라 합이 \(N\). 아니면 \(q \ne 1\), \(q^N = 1\)이므로 \((1 - q^N)/(1 - q) = 0\). ∎</p></div>
+    <p>7장의 언어로 말하면 등간격 점 위의 내적 \(\langle u, v\rangle = \sum_j u(x_j)\overline{v(x_j)}\)에서 \(e^{ikx}\)들이 직교 기저입니다. 그래서 보간 계수가 정규 방정식을 풀 필요 없이 내적 하나로 나옵니다. 단, \(k\)와 \(k + N\)은 표본점에서 구별되지 않습니다(\(e^{i(k+N)x_j} = e^{ikx_j}\)). 이것이 3절의 앨리어싱입니다.</p>
+    <div class="callout deep"><strong>정리 8.2 (삼각 보간)</strong> \(N\)이 짝수일 때
+      <div class="formula">$$p(x) = \frac1N\sum_{k=-N/2+1}^{N/2-1} F_k\,e^{ikx} + \frac{1}{N}F_{N/2}\cos\frac{Nx}{2},\qquad F_k = \sum_{j=0}^{N-1} f_j\,e^{-ikx_j}$$
+        <div class="where">\(F_{k}\)는 \(k\)에 대해 주기 \(N\)이므로 \(F_{-k} = F_{N-k}\)로 읽는다. \(f_j\)가 실수이면 \(F_{-k} = \overline{F_k}\)이고 \(p\)도 실수이다. 나이퀴스트 항 \(\cos(Nx/2)\)는 \(\pm N/2\) 두 지수를 반씩 나눈 것이다.</div></div>
+      는 \(p(x_j) = f_j\)를 만족하는 차수 \(N/2\) 이하의 유일한 실 삼각 다항식이다. 계수 \(F_k\)의 계산이 다음 절의 이산 푸리에 변환이다.</div>
+    <div class="callout"><strong>예제 8.1 (네 점의 삼각 보간)</strong> \(N = 4\), \(x_j = 0, \frac\pi2, \pi, \frac{3\pi}2\)에서 \(f = (2, 1, 0, 1)\).
+      <ol>
+        <li>\(e^{-ikx_j} = (-i)^{kj}\). \(F_0 = 2 + 1 + 0 + 1 = 4\).</li>
+        <li>\(F_1 = 2 + 1\cdot(-i) + 0\cdot(-1) + 1\cdot(i) = 2\). \(F_2 = 2 - 1 + 0 - 1 = 0\). \(F_3 = F_{-1} = \overline{F_1} = 2\).</li>
+        <li>\(p(x) = \frac14\bigl(4 + 2e^{ix} + 2e^{-ix}\bigr) + 0 = 1 + \cos x\). 확인: \(1 + \cos 0 = 2\), \(1 + \cos\frac\pi2 = 1\), \(1 + \cos\pi = 0\). 데이터는 사실 \(1 + \cos x\)의 표본이었고, 삼각 보간이 그것을 정확히 되살렸다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ff-triginterp">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>점을 끌어 만드는 삼각 보간</h3></div>
+      <div class="ff-two">
+        <div><canvas id="ff-ti-cv"></canvas><span class="ff-cap">한 주기 [0, 2π) · 점을 위아래로 끌기</span></div>
+        <div><canvas id="ff-ti-cv2"></canvas><span class="ff-cap">|F<sub>k</sub>| / N, k = 0 … N/2</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <div class="ctrl"><span>점의 개수 N</span><div class="seg" id="ff-ti-n"><button data-value="4">4</button><button data-value="6">6</button><button data-value="8" class="on">8</button><button data-value="12">12</button><button data-value="16">16</button></div></div>
+          <label class="ctrl"><span>표본을 뜰 함수</span><select id="ff-ti-f"><option value="cos">1 + cos x (예제 8.1)</option><option value="esin">e^(sin x) (매끄러움)</option><option value="tri">삼각파 (꺾임)</option><option value="sq">사각파 (불연속)</option><option value="rand">무작위</option></select></label>
+          <label class="check"><input type="checkbox" id="ff-ti-true" checked> 원래 함수 보기</label>
+          <label class="check"><input type="checkbox" id="ff-ti-poly"> 같은 점의 다항식 보간 비교</label>
+        </div>
+      </div>
+      <div class="ff-legend"><span><i style="background:var(--accent)"></i>삼각 보간 p(x)</span><span><i style="background:var(--text-faint)"></i>원래 함수</span><span><i style="background:var(--bad)"></i>다항식 보간</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">F₀/N (평균)</span><span class="v" id="ff-ti-o0">—</span></div>
+        <div class="stat"><span class="k">가장 큰 |F<sub>k</sub>|/N (k ≥ 1)</span><span class="v" id="ff-ti-o1">—</span></div>
+        <div class="stat"><span class="k">원래 함수와의 최대 오차</span><span class="v" id="ff-ti-o2">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 점 하나를 끌면 곡선 전체가 매끄럽게 반응하고, 0과 2π에서 값과 기울기가 이어지는 것을 보세요. ② e^(sin x)는 N = 8만 되어도 오차가 10⁻³ 근처, N = 16이면 10⁻⁸ 수준입니다. 사각파는 불연속점 근처의 출렁임이 N을 늘려도 남습니다(깁스 현상). ③ 다항식 보간을 겹치면 주기 경계 근처에서 다항식이 따로 놀아 버립니다. 모델: 정리 8.2의 실 삼각 다항식, N은 짝수.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="dft">
+    <h2>DFT의 정의, 행렬, 단위근</h2>
+    <p>표본의 위치 \(x_j\)를 잊고 숫자의 배열만 남기면 정의가 깔끔해집니다.</p>
+    <div class="callout deep"><strong>정의 8.3 (이산 푸리에 변환)</strong> \(\omega_N = e^{-2\pi i/N}\)이라 하자. 복소 벡터 \(\mathbf x = (x_0, \dots, x_{N-1})\)의 <span class="term">이산 푸리에 변환</span><span class="en">(discrete Fourier transform, DFT)</span>은
+      <div class="formula">$$X_k = \sum_{j=0}^{N-1} x_j\,\omega_N^{jk},\qquad k = 0, 1, \dots, N - 1$$</div>
+      이고, 역변환은 \(x_j = \frac1N\sum_{k=0}^{N-1}X_k\,\omega_N^{-jk}\)이다. 행렬로 \(\mathbf X = F_N\mathbf x\), \((F_N)_{kj} = \omega_N^{jk}\)이며 \(F_N^{-1} = \frac1N\overline{F_N}\)이다.</div>
+    <p>\(\omega_N\)은 1의 원시 \(N\)제곱근, 곧 복소 평면의 단위원을 \(N\)등분한 점입니다(<a href="../../foundations/chapters/complex.html">MathBook: 복소수는 회전이다</a>). \(F_N\)의 \(k\)번째 행은 단위원을 시계 방향으로 한 걸음에 \(k/N\)바퀴씩 도는 수열이고, \(X_k\)는 신호를 그 회전과 짝지어 더한 값입니다. 신호에 그 빠르기로 도는 성분이 있으면 화살표들이 한 방향으로 모여 \(|X_k|\)가 커지고, 없으면 서로 상쇄됩니다. 역변환이 켤레를 쓰는 이유는 정리 8.1 그대로입니다. \(\overline{F_N}F_N = NI\)이므로 \(F_N/\sqrt N\)은 유니터리 행렬입니다. 여기서 두 가지 성질이 바로 나옵니다.</p>
+    <div class="callout deep"><strong>정리 8.4 (파스발 등식과 조건수)</strong> \(\sum_j|x_j|^2 = \frac1N\sum_k|X_k|^2\)이다. \(F_N/\sqrt N\)이 유니터리이므로 \(\kappa_2(F_N) = 1\), 곧 DFT는 완벽하게 조건이 좋은 문제다. 실제로 배정밀도 FFT로 변환했다가 역변환하면 상대 오차가 \(N = 2^{10}\)에서 \(3.8\times10^{-16}\), \(N = 2^{18}\)에서도 \(5.3\times10^{-16}\)에 머문다.</div>
+    <div class="callout"><strong>예제 8.2 (손으로 DFT)</strong> \(\mathbf x = (1, 2, 3, 4)\), \(N = 4\), \(\omega_4 = -i\).
+      <div class="formula">$$F_4 = \begin{bmatrix} 1 & 1 & 1 & 1\\ 1 & -i & -1 & i\\ 1 & -1 & 1 & -1\\ 1 & i & -1 & -i\end{bmatrix},\qquad F_4\begin{bmatrix}1\\2\\3\\4\end{bmatrix} = \begin{bmatrix} 10\\ -2 + 2i\\ -2\\ -2 - 2i\end{bmatrix}.$$</div>
+      <p style="margin:6px 0 0">\(X_0 = 10\)은 합(평균의 \(N\)배). 실수 입력이므로 \(X_3 = \overline{X_1}\). 파스발: \(1 + 4 + 9 + 16 = 30\), \(\frac14(100 + 8 + 4 + 8) = 30\). 직접 계산은 \(16\)번의 곱셈이 들었다. 4절에서 이를 줄인다.</p></div>
+    <p>표본 간격이 \(\Delta t\)초이면 \(X_k\)는 주파수 \(k/(N\Delta t)\) Hz 성분입니다. 곧 주파수 눈금의 간격(<span class="term">주파수 분해능</span>)은 \(\Delta f = 1/(N\Delta t) = 1/T\), 관측 시간의 역수입니다. 실수 신호에서는 \(k\)와 \(N - k\)가 켤레라서 \(k = 0, \dots, N/2\)만 보면 충분하고, 진폭 \(A\)인 사인파 \(A\cos(2\pi k_0j/N)\)는 \(|X_{k_0}| = |X_{N-k_0}| = AN/2\)로 나타납니다. 그래서 진폭을 읽을 때는 \(2|X_k|/N\)을 그립니다.</p>
+
+    <div class="sim" id="sim-ff-synth">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>신호 합성 → 스펙트럼</h3></div>
+      <div class="ff-two">
+        <div><canvas id="ff-sy-cv"></canvas><span class="ff-cap">시간 영역: N = 128 표본 (1초)</span></div>
+        <div><canvas id="ff-sy-cv2"></canvas><span class="ff-cap">진폭 스펙트럼 2|X<sub>k</sub>|/N</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>성분 1: 주파수 <output id="ff-sy-f1-out"></output></span><input type="range" id="ff-sy-f1" min="0" max="64" step="1" value="5"></label>
+          <label class="ctrl"><span>성분 1: 진폭 <output id="ff-sy-a1-out"></output></span><input type="range" id="ff-sy-a1" min="0" max="1.5" step="0.05" value="1"></label>
+          <label class="ctrl"><span>성분 2: 주파수 <output id="ff-sy-f2-out"></output></span><input type="range" id="ff-sy-f2" min="0" max="64" step="1" value="12"></label>
+          <label class="ctrl"><span>성분 2: 진폭 <output id="ff-sy-a2-out"></output></span><input type="range" id="ff-sy-a2" min="0" max="1.5" step="0.05" value="0.6"></label>
+          <label class="ctrl"><span>성분 3: 주파수 <output id="ff-sy-f3-out"></output></span><input type="range" id="ff-sy-f3" min="0" max="64" step="1" value="30"></label>
+          <label class="ctrl"><span>성분 3: 진폭 <output id="ff-sy-a3-out"></output></span><input type="range" id="ff-sy-a3" min="0" max="1.5" step="0.05" value="0.3"></label>
+          <label class="ctrl"><span>잡음 σ <output id="ff-sy-s-out"></output></span><input type="range" id="ff-sy-s" min="0" max="1.5" step="0.05" value="0"></label>
+          <label class="check"><input type="checkbox" id="ff-sy-db"> 세로축 dB</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">가장 큰 봉우리 세 개 (Hz: 진폭)</span><span class="v" id="ff-sy-pk">—</span></div>
+        <div class="stat"><span class="k">파스발: Σ|x|² · Σ|X|²/N</span><span class="v" id="ff-sy-pv">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 성분 2의 진폭을 0으로 하면 봉우리 하나가 사라집니다. 시간 영역에서는 알아보기 어려운 변화가 주파수 영역에서는 한눈에 보입니다. ② 잡음 σ를 1로 올리면 시간 파형은 엉망이지만 스펙트럼의 봉우리는 잡음 바닥 위로 뚜렷합니다. 잡음은 128개 주파수에 고르게 퍼지고, 사인파는 한 칸에 모이기 때문입니다. ③ 주파수를 64(나이퀴스트)로 하면 진폭이 두 배로 보입니다. k = N/2에는 켤레 짝이 따로 없기 때문입니다. 모델: x<sub>j</sub> = Σ A cos(2π f j/128) + 잡음, 주파수는 정수 Hz.</div>
+    </div>
+
+    <div class="sim" id="sim-ff-roots">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>단위근과 DFT 행렬: Xₖ는 회전 화살표의 합</h3></div>
+      <div class="ff-two ff-lr">
+        <div><canvas id="ff-rt-cv"></canvas><span class="ff-cap">x<sub>j</sub> ω<sup>jk</sup>를 이어 붙이기</span></div>
+        <div><canvas id="ff-rt-cv2"></canvas><span class="ff-cap">F<sub>N</sub>의 위상 (행 = k, 열 = j)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>N <output id="ff-rt-n-out"></output></span><input type="range" id="ff-rt-n" min="2" max="16" step="1" value="8"></label>
+          <label class="ctrl"><span>행 k <output id="ff-rt-k-out"></output></span><input type="range" id="ff-rt-k" min="0" max="7" step="1" value="2"></label>
+          <label class="ctrl"><span>신호 x</span><select id="ff-rt-x"><option value="cos2">cos(2π·2j/N)</option><option value="ones">모두 1</option><option value="imp">임펄스 (1, 0, 0, …)</option><option value="ramp">1, 2, 3, …</option></select></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">X<sub>k</sub></span><span class="v" id="ff-rt-X">—</span></div>
+        <div class="stat"><span class="k">|X<sub>k</sub>|</span><span class="v" id="ff-rt-A">—</span></div>
+        <div class="stat"><span class="k">ω<sub>N</sub> = e<sup>−2πi/N</sup></span><span class="v" id="ff-rt-w">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 신호 cos(2π·2j/N)에서 k를 0부터 올려 보세요. k = 2와 k = N − 2에서만 화살표가 한 방향으로 모여 |X<sub>k</sub>| = N/2가 되고, 나머지 k에서는 사슬이 원점으로 돌아옵니다. ② '모두 1'이면 X₀ = N이고 나머지는 모두 0, 임펄스는 모든 X<sub>k</sub> = 1입니다. ③ 오른쪽 행렬에서 k번째 행의 색이 j를 따라 k바퀴 도는 것, 행렬이 대칭((F)<sub>kj</sub> = (F)<sub>jk</sub>)인 것을 보세요. 모델: 왼쪽의 점선 원은 단위원, 회색 점은 ω<sup>jk</sup>의 위치.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="aliasing">
+    <h2>표본화와 앨리어싱, 나이퀴스트</h2>
+    <div class="problem"><strong>7 Hz가 3 Hz로 보인다</strong>
+      <p>진동 센서를 초당 10번 읽었더니 3 Hz의 진동이 보였습니다. 그런데 실제 기계는 7 Hz로 떨고 있었습니다. 측정은 정확했고 계산에도 실수가 없었습니다. 표본만 보고는 두 진동을 구별할 방법이 원리적으로 없습니다.</p></div>
+    <p>표본화 주파수 \(f_s = 1/\Delta t\)로 \(\cos(2\pi f t)\)를 뜨면 표본은 \(\cos(2\pi fj/f_s)\)입니다. \(f\)에 \(f_s\)의 정수배를 더하거나 부호를 바꿔도 표본은 같습니다(\(\cos(2\pi(f + mf_s)j/f_s) = \cos(2\pi fj/f_s + 2\pi mj)\)). 그래서 표본이 보여 줄 수 있는 주파수는 \([0, f_s/2]\)뿐이고, 그 밖의 주파수는 이 구간 안으로 <b>접혀</b> 들어옵니다. 이것이 <span class="term">앨리어싱</span><span class="en">(aliasing)</span>입니다. 7 Hz를 \(f_s = 10\)으로 뜨면 \(|7 - 10| = 3\) Hz로 보입니다.</p>
+    <div class="callout deep"><strong>정리 8.5 (표본화 정리, 나이퀴스트–섀넌)</strong> 연속 신호 \(x(t)\)의 푸리에 변환이 \(|f| \lt B\) 밖에서 0이면(대역 제한), \(f_s \gt 2B\)로 뜬 표본으로부터
+      <div class="formula">$$x(t) = \sum_{n=-\infty}^{\infty} x(n\Delta t)\,\mathrm{sinc}\!\left(\frac{t - n\Delta t}{\Delta t}\right),\qquad \mathrm{sinc}(u) = \frac{\sin\pi u}{\pi u}$$</div>
+      로 \(x\)를 정확히 복원할 수 있다. \(f_s/2\)를 <span class="term">나이퀴스트 주파수</span><span class="en">(Nyquist frequency)</span>라 한다.</div>
+    <p>겉보기 주파수는 \(f_{\text{alias}} = |f - f_s\cdot\mathrm{round}(f/f_s)|\)입니다. 실무의 처방은 두 가지입니다. 표본화 <b>전에</b> 아날로그 저역 통과 필터(앤티앨리어싱 필터)로 \(f_s/2\) 위의 성분을 지우거나, 관심 대역보다 충분히 빠르게 뜹니다. CD 오디오가 사람의 가청 한계 약 20 kHz의 두 배를 조금 넘는 44.1 kHz를 쓰는 이유입니다. 일단 표본에 섞여 들어온 앨리어스는 어떤 계산으로도 되돌릴 수 없습니다(<a href="../../foundations/chapters/sampling.html">MathBook: 연속을 격자로 자르기</a>).</p>
+
+    <div class="sim" id="sim-ff-alias">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>앨리어싱: 표본화 주파수 슬라이더</h3></div>
+      <div class="ff-two">
+        <div><canvas id="ff-al-cv"></canvas><span class="ff-cap">t ∈ [0, 1]초: 실제 신호 · 표본 · 표본이 말하는 신호</span></div>
+        <div><canvas id="ff-al-cv2"></canvas><span class="ff-cap">주파수 축: 접힘</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>신호 주파수 f <output id="ff-al-f-out"></output></span><input type="range" id="ff-al-f" min="0.5" max="25" step="0.5" value="7"></label>
+          <label class="ctrl"><span>표본화 주파수 fₛ <output id="ff-al-fs-out"></output></span><input type="range" id="ff-al-fs" min="2" max="60" step="1" value="10"></label>
+          <label class="check"><input type="checkbox" id="ff-al-rec" checked> 표본이 말하는 신호(최저 주파수 해석)</label>
+        </div>
+      </div>
+      <div class="ff-legend"><span><i style="background:var(--text-faint)"></i>실제 신호</span><span><i style="background:var(--bad)"></i>표본</span><span><i style="background:var(--accent)"></i>겉보기 신호</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">나이퀴스트 f<sub>s</sub>/2</span><span class="v" id="ff-al-ny">—</span></div>
+        <div class="stat"><span class="k">겉보기 주파수</span><span class="v" id="ff-al-ap">—</span></div>
+        <div class="stat"><span class="k">주기당 표본 수</span><span class="v" id="ff-al-pp">—</span></div>
+      </div>
+      <div class="ff-msg" id="ff-al-msg"></div>
+      <div class="sim-note">해볼 것: ① 기본값(f = 7, f<sub>s</sub> = 10)에서 빨간 표본이 3 Hz 곡선 위에 정확히 놓이는 것을 보세요. ② f<sub>s</sub>를 천천히 올려 14를 넘기는 순간 겉보기 주파수가 7 Hz로 돌아옵니다. ③ f<sub>s</sub> = f로 맞추면 표본이 모두 같은 값이 되어 신호가 상수(0 Hz)로 보입니다. 바퀴가 멈춰 보이는 영화 속 마차 바퀴와 같은 원리입니다. 모델: x(t) = cos(2πft), 표본 t = n/f<sub>s</sub>.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="cooley-tukey">
+    <h2>쿨리–튜키 FFT: 짝·홀 분할과 나비 연산</h2>
+    <div class="problem"><strong>백만 점의 스펙트럼</strong>
+      <p>\(N = 2^{20} \approx 10^6\)개 표본의 DFT를 정의대로 계산하면 복소 곱셈이 \(N^2 \approx 1.1\times10^{12}\)번입니다. 초당 \(10^9\)번 곱하는 컴퓨터로 18분이 넘게 걸립니다. 그런데 \(F_N\)의 원소는 \(N^2\)개가 아니라 \(N\)가지 값(\(\omega_N\)의 거듭제곱)뿐입니다. 이 반복되는 구조를 이용할 수 없을까요?</p></div>
+    <p>\(N\)이 짝수일 때 합을 짝수 번째와 홀수 번째로 나눕니다. \(\omega_N^2 = \omega_{N/2}\)이므로</p>
+    <div class="formula">$$X_k = \sum_{m=0}^{N/2-1} x_{2m}\,\omega_{N/2}^{mk} + \omega_N^k\sum_{m=0}^{N/2-1} x_{2m+1}\,\omega_{N/2}^{mk} = E_k + \omega_N^k\,O_k.$$
+      <div class="where">\(E_k\), \(O_k\)는 각각 짝수 표본, 홀수 표본의 \(N/2\)점 DFT다. 이들은 \(k\)에 대해 주기 \(N/2\)이고, \(\omega_N^{k + N/2} = -\omega_N^k\)이다.</div></div>
+    <div class="callout deep"><strong>정리 8.6 (나비 연산)</strong> \(k = 0, \dots, N/2 - 1\)에 대해
+      <div class="formula">$$X_k = E_k + \omega_N^kO_k,\qquad X_{k + N/2} = E_k - \omega_N^kO_k.$$</div>
+      곧 길이 \(N\)의 DFT는 길이 \(N/2\)의 DFT 두 개와, 곱셈 한 번(<span class="term">회전 인자</span><span class="en">(twiddle factor)</span> \(\omega_N^k\))과 덧셈·뺄셈 한 번씩인 <span class="term">나비 연산</span><span class="en">(butterfly)</span> \(N/2\)개로 계산된다.</div>
+    <p>이를 \(N = 2^p\)까지 되풀이하는 것이 기수 2 <span class="term">쿨리–튜키 FFT</span><span class="en">(Cooley–Tukey FFT)</span>입니다. 비용을 \(T(N)\)이라 하면 \(T(N) = 2T(N/2) + cN\), \(T(1) = 0\)이므로 \(T(N) = cN\log_2N\)입니다. 정확히는 \(\log_2N\)단계마다 나비가 \(N/2\)개, 복소 곱셈 \(\frac N2\log_2N\)번입니다(\(\omega^0 = 1\) 같은 자명한 곱셈을 빼면 더 적다).</p>
+    <div class="table-wrap"><table class="ff-tbl">
+      <thead><tr><th>\(N\)</th><th>직접 DFT \(N^2\)</th><th>FFT \(\frac N2\log_2N\)</th><th>비율</th></tr></thead>
+      <tbody>
+        <tr><td>\(8\)</td><td>64</td><td>12</td><td>5.3</td></tr>
+        <tr><td>\(1024\)</td><td>1,048,576</td><td>5,120</td><td>205</td></tr>
+        <tr><td>\(2048\)</td><td>4,194,304</td><td>11,264</td><td>372</td></tr>
+        <tr><td>\(2^{20}\)</td><td>1.10×10¹²</td><td>1.05×10⁷</td><td>104,858</td></tr>
+      </tbody></table></div>
+    <p>재귀를 펼쳐 놓으면 입력이 \(x_0, x_4, x_2, x_6, x_1, x_5, x_3, x_7\)(\(N = 8\)) 순서로 맨 아래에 놓입니다. 짝·홀 분할을 세 번 했으니 인덱스를 2진수로 쓰고 <b>비트를 뒤집은</b> 순서입니다(\(1 = 001_2 \to 100_2 = 4\)). 그래서 실제 구현은 먼저 배열을 비트 반전 순서로 바꾼 뒤, 길이 2, 4, 8, …의 나비를 제자리에서 계산합니다. 추가 메모리가 필요 없습니다.</p>
+    <pre class="code"><span class="k">함수</span> FFT(x)                             <span class="c">// 제자리, N = 2^p</span>
+  <span class="k">for</span> i = 0 … N−1                        <span class="c">// 1단계: 비트 반전 순서로 재배열</span>
+    j ← bitreverse(i, p)
+    <span class="k">if</span> i &lt; j <span class="k">then</span> swap(x[i], x[j])
+  len ← 2
+  <span class="k">while</span> len ≤ N                         <span class="c">// log₂N 단계</span>
+    w ← exp(−2πi / len)                   <span class="c">// 이 단계의 회전 인자 밑</span>
+    <span class="k">for</span> s = 0, len, 2·len, … &lt; N          <span class="c">// 블록마다</span>
+      t ← 1
+      <span class="k">for</span> k = 0 … len/2 − 1              <span class="c">// 나비 len/2개</span>
+        a ← x[s+k];  b ← t · x[s+k+len/2]
+        x[s+k] ← a + b;  x[s+k+len/2] ← a − b
+        t ← t · w
+    len ← 2·len
+  <span class="k">반환</span> x                                <span class="c">// 역변환: w의 부호를 바꾸고 N으로 나눈다</span></pre>
+    <div class="callout"><strong>예제 8.3 (예제 8.2를 FFT로)</strong> \(\mathbf x = (1, 2, 3, 4)\).
+      <ol>
+        <li>짝수 표본 \((1, 3)\)의 2점 DFT: \(E = (1 + 3,\ 1 - 3) = (4, -2)\). 홀수 표본 \((2, 4)\): \(O = (6, -2)\).</li>
+        <li>회전 인자 \(\omega_4^0 = 1\), \(\omega_4^1 = -i\). \(X_0 = 4 + 6 = 10\), \(X_2 = 4 - 6 = -2\).</li>
+        <li>\(X_1 = -2 + (-i)(-2) = -2 + 2i\), \(X_3 = -2 - (-i)(-2) = -2 - 2i\). 예제 8.2와 같다. 자명하지 않은 곱셈은 \((-i)\cdot(-2)\) 하나뿐이었다.</li>
+      </ol></div>
+    <p>회전 인자 \(t \leftarrow t\cdot w\)를 반복 곱으로 만들면 반올림 오차가 쌓이므로, 정밀한 구현은 미리 \(\cos\), \(\sin\) 표를 만들어 둡니다. 그렇게 하면 FFT의 상대 오차는 \(O(\varepsilon_{\text{mach}}\log N)\)으로, 정의대로 계산한 DFT보다 오히려 정확합니다. \(N\)이 2의 거듭제곱이 아니어도 \(N = N_1N_2\)로 인수분해되면 같은 분할이 되고(혼합 기수), 소수 \(N\)도 블루스타인 방법 등으로 \(O(N\log N)\)에 계산됩니다. FFTW 같은 라이브러리는 기계에 맞는 분할 순서를 실행 중에 골라 씁니다.</p>
+
+    <div class="sim" id="sim-ff-butterfly">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>8점 FFT 나비 그림 한 단계씩</h3></div>
+      <div class="sim-body">
+        <div class="sim-view"><canvas id="ff-bf-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>입력 x</span><select id="ff-bf-x"><option value="ramp">1, 2, 3, 4, 5, 6, 7, 8</option><option value="ex">1, 2, 3, 4, 0, 0, 0, 0</option><option value="imp">임펄스 1, 0, …, 0</option><option value="cos">cos(2π·j/8)</option><option value="alt">1, −1, 1, −1, …</option></select></label>
+          <div class="ctrl"><span>단계</span><div class="seg" id="ff-bf-st"><button data-value="0" class="on">비트 반전</button><button data-value="1">1 (len 2)</button><button data-value="2">2 (len 4)</button><button data-value="3">3 (len 8)</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ff-bf-next">다음 단계</button><button class="btn" id="ff-bf-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">이 단계의 나비 수</span><span class="v" id="ff-bf-nb">—</span></div>
+        <div class="stat"><span class="k">지금까지 복소 곱셈 (자명한 것 제외)</span><span class="v" id="ff-bf-mul">—</span></div>
+        <div class="stat"><span class="k">직접 DFT와의 최대 차이</span><span class="v" id="ff-bf-err">—</span></div>
+      </div>
+      <div class="ff-msg" id="ff-bf-msg"></div>
+      <div class="sim-note">해볼 것: ① '비트 반전'에서 왼쪽 열의 인덱스 순서 0, 4, 2, 6, 1, 5, 3, 7을 2진수로 읽어 보세요. ② 단계를 넘길 때마다 강조된 나비(위 a + ωb, 아래 a − ωb)가 이웃 2개 → 4개 → 8개 묶음으로 넓어집니다. 선 위의 숫자는 곱해지는 회전 인자 ω<sub>len</sub><sup>k</sup>입니다. ③ 마지막 단계의 결과가 직접 DFT와 반올림 수준으로 같습니다. 자명한 곱셈(1, −i)을 빼면 8점 FFT의 진짜 복소 곱셈은 2번뿐입니다. 모델: 기수 2, 시간 솎음(decimation in time).</div>
+    </div>
+
+    <div class="sim" id="sim-ff-timing">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>O(N²) vs O(N log N): 이 브라우저에서 시간 재기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ff-tm-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>직접 DFT 최대 크기 <output id="ff-tm-max-out"></output></span><input type="range" id="ff-tm-max" min="8" max="13" step="1" value="11"></label>
+          <div class="btn-row"><button class="btn primary" id="ff-tm-run">다시 측정</button></div>
+          <label class="check"><input type="checkbox" id="ff-tm-ref" checked> 기울기 기준선 N², N log N</label>
+        </div>
+      </div>
+      <div class="ff-legend"><span><i style="background:var(--bad)"></i>직접 DFT (측정)</span><span><i style="background:var(--accent)"></i>FFT (측정)</span><span><i style="background:var(--text-faint)"></i>기준선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">직접 DFT 기울기</span><span class="v" id="ff-tm-s0">—</span></div>
+        <div class="stat"><span class="k">FFT 기울기</span><span class="v" id="ff-tm-s1">—</span></div>
+        <div class="stat"><span class="k">같은 N에서 속도 비</span><span class="v" id="ff-tm-r">—</span></div>
+      </div>
+      <div class="ff-msg" id="ff-tm-msg">측정 준비 중…</div>
+      <div class="sim-note">해볼 것: ① 로그–로그 그래프에서 직접 DFT의 기울기는 2, FFT의 기울기는 1을 조금 넘습니다(log N 인자). ② 직접 DFT 최대 크기를 2¹³까지 올리고 다시 측정하면 직접 DFT 한 번에 수백 ms가 걸립니다. 크기를 두 배로 할 때마다 네 배씩 늘어납니다. FFT는 2¹⁸까지 재도 순식간입니다. ③ 작은 N에서는 측정이 들쭉날쭉합니다. 시간 측정 해상도와 JIT 컴파일 때문입니다. 모델: 회전 인자는 직접 DFT도 표로 미리 계산, 각 크기는 5 ms 이상 반복해 평균.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="convolution">
+    <h2>빠른 합성곱과 다항식·큰 수 곱셈</h2>
+    <div class="problem"><strong>백만 자리 곱셈</strong>
+      <p>두 \(n\)자리 수를 초등학교 방식으로 곱하면 자릿수 곱이 \(n^2\)번입니다. 원주율을 수조 자리까지 계산하는 프로그램은 백만 자리가 훌쩍 넘는 수를 수없이 곱해야 합니다. \(n^2 = 10^{12}\)번의 곱셈을 매번 할 수는 없습니다. 곱셈의 정체를 다시 보면, 자릿수 배열의 <b>합성곱</b>입니다.</p></div>
+    <p>다항식 \(a(x) = \sum a_ix^i\)와 \(b(x) = \sum b_jx^j\)의 곱의 계수는 \(c_k = \sum_{i + j = k}a_ib_j\), 곧 계수 배열의 (선형) <span class="term">합성곱</span><span class="en">(convolution)</span> \(\mathbf c = \mathbf a * \mathbf b\)입니다. 정수 \(123 \times 45\)는 \(x = 10\)에서의 다항식 곱 \((3 + 2x + x^2)(5 + 4x)\)입니다. 직접 계산은 \(O(nm)\)인데, DFT는 합성곱을 곱셈으로 바꿉니다.</p>
+    <div class="callout deep"><strong>정리 8.7 (합성곱 정리)</strong> 길이 \(N\)의 <b>원형</b> 합성곱 \((\mathbf a \circledast \mathbf b)_k = \sum_{j=0}^{N-1}a_jb_{(k - j)\bmod N}\)에 대해
+      <div class="formula">$$\mathrm{DFT}(\mathbf a \circledast \mathbf b) = \mathrm{DFT}(\mathbf a)\odot\mathrm{DFT}(\mathbf b)\qquad(\odot\text{는 성분별 곱}).$$</div>
+      <p style="margin:8px 0 0"><b>증명.</b> \(\sum_k\sum_ja_jb_{k-j}\omega^{k\cdot l} = \sum_ja_j\omega^{jl}\sum_k b_{k-j}\omega^{(k-j)l}\). 안쪽 합은 \(k - j\)를 \(N\)을 법으로 한 바퀴 돌므로 \(B_l\)이다. ∎</p></div>
+    <p>원형 합성곱은 끝을 넘어간 항이 앞으로 <b>감겨</b> 들어옵니다. 다항식 곱셈에 필요한 것은 선형 합성곱이므로, 두 배열 뒤에 0을 붙여 길이를 \(N \ge n + m - 1\)로 늘리면 감겨 들 항이 모두 0이 되어 두 합성곱이 같아집니다.</p>
+    <pre class="code"><span class="k">함수</span> FFT_곱셈(a, b)                       <span class="c">// 길이 n, m의 계수 배열</span>
+  N ← n + m − 1 이상인 가장 작은 2의 거듭제곱
+  A ← FFT(a 뒤에 0을 붙여 길이 N)
+  B ← FFT(b 뒤에 0을 붙여 길이 N)
+  C ← A ⊙ B                                 <span class="c">// N번의 곱셈</span>
+  c ← IFFT(C)의 앞 n + m − 1개
+  <span class="k">반환</span> c                                    <span class="c">// 정수 계수면 반올림. 큰 수면 받아올림 처리</span></pre>
+    <div class="callout"><strong>예제 8.4 (다항식과 정수)</strong>
+      <ol>
+        <li>\((1 + 2x + 3x^2)(4 + 5x)\): \(\mathbf a = (1, 2, 3)\), \(\mathbf b = (4, 5)\), \(N = 4\). 합성곱 \(\mathbf c = (4,\ 5 + 8,\ 10 + 12,\ 15) = (4, 13, 22, 15)\), 곧 \(4 + 13x + 22x^2 + 15x^3\).</li>
+        <li>제로 패딩 없이 길이 3의 원형 합성곱을 하면 \(15x^3\)항이 \(x^0\)자리로 감겨 \((19, 13, 22)\)이 된다. 틀린 답이다.</li>
+        <li>\(123\times45\): 낮은 자리부터 \((3, 2, 1) * (5, 4) = (15, 22, 13, 4)\). 받아올림: \(15 \to 5\) 올림 1, \(22 + 1 = 23 \to 3\) 올림 2, \(13 + 2 = 15 \to 5\) 올림 1, \(4 + 1 = 5\). 답 \(5535\).</li>
+      </ol></div>
+    <p>비용은 FFT 세 번과 곱셈 \(N\)번, 합쳐서 \(O(N\log N)\)입니다. 큰 수 곱셈에서는 합성곱 값이 \(n\cdot 9^2\)까지 커지므로 부동소수점 반올림이 정수 반올림을 망치지 않도록 한 칸에 담는 자릿수를 조절하거나, 반올림 오차가 없는 수론적 변환(유한체에서의 DFT)을 씁니다. 같은 원리로 신호의 FIR 필터, 이미지 흐림(<a href="../../foundations/chapters/fourier.html">MathBook: 모든 것은 주파수의 합</a>), 확률 분포의 합의 분포를 FFT로 계산합니다. 필터 길이가 수십 이하이면 직접 합성곱이 더 빠르고, 수백 이상이면 FFT가 이깁니다.</p>
+
+    <div class="sim" id="sim-ff-conv">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>FFT 합성곱: 다항식 · 큰 수 · 이동 평균</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ff-cv-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>예</span><div class="seg" id="ff-cv-mode"><button data-value="poly" class="on">다항식</button><button data-value="int">큰 수</button><button data-value="ma">이동 평균</button></div></div>
+          <label class="ctrl"><span id="ff-cv-la">a (계수, 낮은 차수부터)</span><input class="ff-in" id="ff-cv-a" value="1, 2, 3"></label>
+          <label class="ctrl"><span id="ff-cv-lb">b</span><input class="ff-in" id="ff-cv-b" value="4, 5"></label>
+          <label class="ctrl"><span>이동 평균 폭 <output id="ff-cv-w-out"></output></span><input type="range" id="ff-cv-w" min="1" max="31" step="2" value="9"></label>
+          <label class="check"><input type="checkbox" id="ff-cv-nopad"> 제로 패딩 없이 (원형 합성곱)</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">FFT 길이 N</span><span class="v" id="ff-cv-N">—</span></div>
+        <div class="stat"><span class="k">결과</span><span class="v" id="ff-cv-res">—</span></div>
+        <div class="stat"><span class="k">직접 계산과의 최대 차이</span><span class="v" id="ff-cv-err">—</span></div>
+      </div>
+      <div class="ff-msg" id="ff-cv-msg"></div>
+      <div class="sim-note">해볼 것: ① 다항식 (1, 2, 3)·(4, 5)에서 '제로 패딩 없이'를 켜면 마지막 계수 15가 첫 칸으로 감겨 19가 됩니다. ② '큰 수'에서 두 수를 30자리 넘게 입력해도 FFT 곱이 BigInt 직접 곱셈과 일치합니다. ③ '이동 평균'에서 원형 합성곱을 켜면 신호의 오른쪽 끝 값이 왼쪽 시작 부분에 섞여 들어옵니다. 모델: 큰 수는 한 칸에 10진 한 자리, 결과는 반올림 후 받아올림.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="leakage">
+    <h2>스펙트럼 누설, 창 함수, 제로 패딩</h2>
+    <div class="problem"><strong>봉우리가 번지고 작은 성분이 묻힌다</strong>
+      <p>2절의 시뮬레이터는 주파수를 정수 Hz로만 골랐습니다. 실제 신호의 주파수는 관측 시간에 정수 개의 주기가 들어맞을 이유가 없습니다. 10.5 Hz를 1초 동안 재면 스펙트럼의 봉우리가 낮아지고 옆 칸으로 넓게 번져, 근처의 약한 성분을 덮어 버립니다.</p></div>
+    <p>DFT는 관측한 \(N\)개 표본이 한 주기인 주기 신호라고 <b>가정</b>합니다. 주기가 정수 개 들어맞지 않으면 끝과 처음이 이어지는 곳에 불연속이 생기고, 불연속의 계수는 \(1/k\)로 느리게 줄었습니다(7장 정리 7.10). 수학적으로는 무한한 사인파에 길이 \(N\)의 사각 창을 곱한 것이고, 곱셈은 주파수 영역에서 창의 스펙트럼 \(|\sin(\pi k)/\sin(\pi k/N)|\)과의 합성곱입니다. 사인파 하나의 에너지가 모든 칸으로 새어 나가는 이 현상을 <span class="term">스펙트럼 누설</span><span class="en">(spectral leakage)</span>이라 합니다.</p>
+    <p>처방은 신호의 양 끝을 부드럽게 0으로 줄이는 <span class="term">창 함수</span><span class="en">(window function)</span> \(w_j\)를 곱한 뒤 DFT하는 것입니다. 끝의 불연속이 사라져 누설이 빠르게 줄어드는 대신, 봉우리의 폭(주엽)이 넓어집니다. 주파수 분해능과 누설 억제를 맞바꾸는 셈입니다.</p>
+    <div class="table-wrap"><table class="ff-tbl">
+      <thead><tr><th>창 (\(N = 64\))</th><th>식 \(w_j\)</th><th>주엽 반폭</th><th>최대 부엽</th><th>칸 사이 손실</th></tr></thead>
+      <tbody>
+        <tr><td>사각</td><td>1</td><td>1칸</td><td>−13.3 dB</td><td>−3.92 dB</td></tr>
+        <tr><td>한(Hann)</td><td>\(\frac12 - \frac12\cos\frac{2\pi j}{N}\)</td><td>2칸</td><td>−31.5 dB</td><td>−1.42 dB</td></tr>
+        <tr><td>블랙먼</td><td>\(0.42 - 0.5\cos\frac{2\pi j}{N} + 0.08\cos\frac{4\pi j}{N}\)</td><td>3칸</td><td>약 −58 dB</td><td>약 −1.1 dB</td></tr>
+      </tbody></table></div>
+    <p>표의 값은 창의 스펙트럼을 아주 촘촘히 계산해 잰 것입니다. "칸 사이 손실"은 주파수가 두 칸의 정중앙(예: 10.5)에 있을 때 봉우리가 얼마나 낮아지는지입니다. 사각 창으로 \(N = 64\), 10.5 Hz를 재면 진폭 1이 0.646(−3.79 dB)으로 읽히고 약 20칸 떨어진 곳에서도 −26 dB가 남지만, 한 창은 0.849(−1.42 dB)로 읽히고 같은 곳에서 −93 dB까지 떨어집니다.</p>
+    <p><span class="term">제로 패딩</span><span class="en">(zero padding)</span>은 표본 뒤에 0을 붙여 더 긴 DFT를 하는 것입니다. 같은 연속 스펙트럼(창을 곱한 신호의 이산 시간 푸리에 변환)을 더 촘촘한 간격으로 표본하는 효과라, 봉우리의 위치와 높이를 더 정확히 읽을 수 있습니다. 하지만 <b>분해능</b>, 곧 가까운 두 주파수를 구별하는 능력은 관측 시간 \(T\)로 정해진 \(1/T\)에서 나아지지 않습니다. 정보는 0을 붙인다고 늘지 않습니다. 두 성분이 1칸보다 가까우면 더 오래 측정하는 수밖에 없습니다.</p>
+
+    <div class="sim" id="sim-ff-window">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>창 함수와 누설, 제로 패딩</h3></div>
+      <div class="ff-two">
+        <div><canvas id="ff-wn-cv"></canvas><span class="ff-cap">창을 곱한 신호 (N = 64)</span></div>
+        <div><canvas id="ff-wn-cv2"></canvas><span class="ff-cap">스펙트럼 (dB, 진폭 1 = 0 dB)</span></div>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <label class="ctrl"><span>강한 성분 주파수 (칸) <output id="ff-wn-f1-out"></output></span><input type="range" id="ff-wn-f1" min="5" max="20" step="0.05" value="10.5"></label>
+          <label class="ctrl"><span>약한 성분: 위치 차이 (칸) <output id="ff-wn-df-out"></output></span><input type="range" id="ff-wn-df" min="0.5" max="12" step="0.25" value="6"></label>
+          <label class="ctrl"><span>약한 성분 크기 <output id="ff-wn-a2-out"></output></span><input type="range" id="ff-wn-a2" min="-80" max="0" step="5" value="-40"></label>
+          <div class="ctrl"><span>창</span><div class="seg" id="ff-wn-w"><button data-value="rect">사각</button><button data-value="hann" class="on">한</button><button data-value="black">블랙먼</button></div></div>
+          <div class="ctrl"><span>제로 패딩</span><div class="seg" id="ff-wn-zp"><button data-value="1">없음</button><button data-value="4">4배</button><button data-value="16" class="on">16배</button></div></div>
+        </div>
+      </div>
+      <div class="ff-legend"><span><i style="background:var(--accent)"></i>스펙트럼</span><span><i style="background:var(--bad)"></i>패딩 없는 DFT 칸</span><span><i style="background:var(--warn)"></i>참 주파수</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">읽은 봉우리 위치</span><span class="v" id="ff-wn-pf">—</span></div>
+        <div class="stat"><span class="k">읽은 봉우리 높이</span><span class="v" id="ff-wn-pa">—</span></div>
+        <div class="stat"><span class="k">약한 성분 위치(±½칸)의 누설 최대</span><span class="v" id="ff-wn-lk">—</span></div>
+      </div>
+      <div class="ff-msg" id="ff-wn-msg"></div>
+      <div class="sim-note">해볼 것: ① 사각 창에서 주파수를 10 → 10.5로 바꾸면 빨간 칸들이 모두 들려 누설이 생깁니다. 정수 칸이면 누설이 없습니다. ② 약한 성분(−40 dB, 6칸 위)이 사각 창에서는 누설에 묻히고, 한·블랙먼 창에서는 봉우리로 드러납니다. −50 dB로 낮추면 한 창의 누설(그 자리에서 약 −54 dB)과 비슷해져 겨우 보이고, 블랙먼(약 −63 dB)에서는 뚜렷합니다. ③ 위치 차이를 1칸 이하로 줄이면 16배 패딩으로도 두 봉우리가 갈라지지 않습니다. 패딩은 곡선을 촘촘히 그릴 뿐, 분해능 1/T를 바꾸지 못합니다. 모델: 주기형 창(분모 N), 진폭은 창 이득으로 보정.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="applications">
+    <h2>응용: 오디오, 이미지 압축, 스펙트럴 미분</h2>
+    <p><b>오디오 스펙트럼.</b> 음악 분석기와 음성 인식은 신호를 짧은 구간(예: 44.1 kHz에서 2048표본, 약 46 ms)으로 잘라 한 창을 곱하고 FFT를 반복합니다. 이것이 단시간 푸리에 변환이고, 그 크기를 시간–주파수 평면에 그린 것이 스펙트로그램입니다. 구간 길이가 주파수 분해능(\(44100/2048 \approx 21.5\) Hz)과 시간 분해능을 맞바꿉니다.</p>
+    <p><b>이미지 압축 맛보기.</b> JPEG은 영상을 \(8\times8\) 블록으로 나눠 각 블록에 2차원 이산 코사인 변환(DCT)을 합니다. DCT는 신호를 좌우 대칭으로 늘여 붙인 뒤의 DFT라, 블록 경계의 불연속이 없어 누설이 적고 에너지가 낮은 주파수 몇 개에 모입니다. 높은 주파수 계수를 거칠게 양자화하거나 버려서 용량을 줄입니다(<a href="../../foundations/chapters/fourier.html">MathBook: 모든 것은 주파수의 합</a>). 7장의 체비쇼프 계수가 바로 DCT로 계산되었다는 것도 같은 이야기입니다.</p>
+    <p><b>스펙트럴 미분.</b> 주기 함수를 미분하면 \(e^{ikx}\)의 계수가 \(ik\)배가 됩니다. 그래서 FFT → \(ik\) 곱하기 → 역 FFT로 표본점에서의 도함수를 얻습니다(짝수 \(N\)에서 나이퀴스트 계수는 0으로 둔다). 매끄러운 주기 함수에서는 7장의 해석적 함수처럼 계수가 기하급수로 줄기 때문에 오차가 \(N\)에 대해 <b>지수적으로</b> 줄어듭니다. 9장의 차분 공식과 비교해 봅시다.</p>
+    <div class="callout"><strong>예제 8.5 (\(e^{\sin x}\)의 도함수, 표본점 최대 오차)</strong>
+      <div class="table-wrap"><table class="ff-tbl">
+        <thead><tr><th>\(N\)</th><th>2차 중앙 차분</th><th>4차 중앙 차분</th><th>스펙트럴(FFT)</th></tr></thead>
+        <tbody>
+          <tr><td>8</td><td>3.40×10⁻¹</td><td>1.38×10⁻¹</td><td>4.32×10⁻³</td></tr>
+          <tr><td>16</td><td>9.36×10⁻²</td><td>1.58×10⁻²</td><td>1.76×10⁻⁷</td></tr>
+          <tr><td>32</td><td>2.58×10⁻²</td><td>1.13×10⁻³</td><td>4.22×10⁻¹⁵</td></tr>
+          <tr><td>64</td><td>6.51×10⁻³</td><td>7.59×10⁻⁵</td><td>1.04×10⁻¹⁴</td></tr>
+        </tbody></table></div>
+      <p style="margin:6px 0 0">\(N\)을 두 배로 할 때 차분 공식은 오차가 각각 약 4배, 16배 주는 대수적 수렴(\(O(h^2)\), \(O(h^4)\))이고, 스펙트럴 미분은 \(N = 32\)에서 이미 반올림 바닥에 닿는다. 64에서 조금 커진 것은 \(k\)가 커질수록 \(ik\)가 반올림 오차를 증폭하기 때문이다. 이 정확도가 날씨 예보 모형과 난류 시뮬레이션에서 쓰는 스펙트럴 방법의 바탕이다. 단, 주기적이고 매끄러운 함수에서만 통한다(<a href="pde-numerics.html">16장</a>).</p></div>
+    <p><b>그 밖에.</b> 7장에서 미룬 등간격 주기 데이터의 삼각 최소제곱은 DFT 계수를 \(|k| \le n\)까지만 남기는 것입니다(이산 직교성 덕분에 정규 방정식이 대각). 2차원 FFT는 푸아송 방정식을 주기 경계에서 \(O(N^2\log N)\)에 풀고(<a href="pde-numerics.html">16장</a>), MRI는 측정한 k-공간 데이터를 2차원 역 FFT로 영상으로 바꿉니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>FFT가 하는 일</th><th>주의할 점</th></tr></thead>
+      <tbody>
+        <tr><td>무선 통신(OFDM: 와이파이, LTE, 5G)</td><td>역 FFT로 부반송파 합성, FFT로 분리</td><td>순환 전치로 다중 경로 지연을 원형 합성곱으로 만든다</td></tr>
+        <tr><td>진동·소음 진단</td><td>회전 기계의 스펙트럼, 베어링 결함 주파수 찾기</td><td>앤티앨리어싱 필터, 창 함수, 평균화</td></tr>
+        <tr><td>오디오·음성</td><td>스펙트로그램, 이퀄라이저, 압축(MP3·AAC의 변형 DCT)</td><td>구간 길이로 시간–주파수 분해능 맞바꾸기</td></tr>
+        <tr><td>영상</td><td>JPEG의 DCT, 큰 커널의 흐림·선명화, MRI 재구성</td><td>2차원 FFT, 경계 처리(패딩)</td></tr>
+        <tr><td>과학 계산</td><td>스펙트럴 방법, 주기 푸아송 풀이, 큰 수 곱셈</td><td>주기성·매끄러움 가정, 반올림 오차 관리</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="approximation.html"><small>7장 · 최소제곱 근사와 직교 다항식</small>체비쇼프 계수와 DCT<br><span>체비쇼프 전개는 코사인 급수이고, 계수는 DCT(곧 FFT)로 구한다. 계수 감소 속도의 이론도 같다.</span></a>
+      <a href="differentiation.html"><small>9장 · 수치 미분</small>차분 vs 스펙트럴 미분<br><span>차분 공식의 O(hᵖ)와 스펙트럴 미분의 지수 수렴을 비교한다.</span></a>
+      <a href="pde-numerics.html"><small>16장 · 편미분방정식의 수치 해법</small>주기 경계의 빠른 풀이<br><span>폰 노이만 안정성 분석도 격자 위의 푸리에 모드 하나씩을 보는 방법이다.</span></a>
+      <a href="../../foundations/chapters/fourier.html"><small>MATHBOOK</small>모든 것은 주파수의 합<br><span>푸리에 급수와 변환의 직관, 합성곱, JPEG과 MRI.</span></a>
+      <a href="../../foundations/chapters/sampling.html"><small>MATHBOOK</small>연속을 격자로 자르기<br><span>앨리어싱, 나이퀴스트, 모아레와 베이어 필터.</span></a>
+      <a href="../../ode/chapters/pde.html"><small>ODEBOOK</small>편미분방정식 입문<br><span>변수 분리로 나오는 사인 급수와 모드의 감쇠.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>등간격 점 \(x_j = 2\pi j/N\)에서 \(e^{ikx}\)들은 이산 직교한다. 그래서 주기 데이터의 삼각 보간 계수는 내적 하나, 곧 DFT \(F_k = \sum f_je^{-ikx_j}\)로 바로 나온다.</li>
+      <li>DFT는 \(X = F_N\mathbf x\), \((F_N)_{kj} = \omega_N^{jk}\), \(\omega_N = e^{-2\pi i/N}\). 역변환은 \(\frac1N\overline{F_N}\)이고 \(F_N/\sqrt N\)은 유니터리(파스발, \(\kappa = 1\)). 주파수 간격은 \(1/T\), 실수 신호의 진폭은 \(2|X_k|/N\)으로 읽는다.</li>
+      <li>표본화 주파수 \(f_s\)에서 \(f\)와 \(f + mf_s\), \(-f\)는 구별되지 않는다. 보이는 대역은 \([0, f_s/2]\)(나이퀴스트)이고 그 밖의 성분은 접혀 들어온다. 앨리어싱은 표본화 전에 막아야 한다.</li>
+      <li>쿨리–튜키 FFT: \(X_k = E_k + \omega_N^kO_k\), \(X_{k+N/2} = E_k - \omega_N^kO_k\). \(\log_2N\)단계 × 나비 \(N/2\)개 = \(O(N\log N)\). 입력은 비트 반전 순서, 계산은 제자리.</li>
+      <li>DFT는 원형 합성곱을 성분별 곱으로 바꾼다. 길이 \(\ge n + m - 1\)로 제로 패딩하면 선형 합성곱(다항식 곱, 큰 수 곱)을 \(O(N\log N)\)에 얻는다. 패딩이 모자라면 끝 항이 앞으로 감긴다.</li>
+      <li>정수 개 주기가 아니면 스펙트럼 누설이 생긴다. 창 함수(한, 블랙먼)는 부엽을 −31 dB, −58 dB 수준으로 낮추는 대신 주엽을 넓힌다. 제로 패딩은 스펙트럼을 촘촘히 표본할 뿐 분해능 \(1/T\)는 그대로다.</li>
+      <li>매끄러운 주기 함수의 스펙트럴 미분(FFT → \(ik\) → 역 FFT)은 오차가 \(N\)에 대해 지수적으로 준다. \(e^{\sin x}\)는 \(N = 32\)에서 \(4\times10^{-15}\).</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. \(\mathbf x = (1, 0, -1, 0)\)의 DFT \(X = (X_0, X_1, X_2, X_3)\)는?</p><div class="opts">
+        <button class="opt">(0, 1, 0, 1)</button>
+        <button class="opt" data-correct>(0, 2, 0, 2)</button>
+        <button class="opt">(0, 2i, 0, −2i)</button>
+        <button class="opt">(1, 0, 1, 0)</button>
+      </div><div class="quiz-exp">\(\omega_4 = -i\). \(X_0 = 1 - 1 = 0\), \(X_1 = 1 + (-1)(-1) = 2\), \(X_2 = 1 + (-1)(1) = 0\), \(X_3 = 1 + (-1)(-1) = 2\). 신호가 \(\cos(\pi j/2)\)이므로 \(k = 1\)과 \(k = 3 = -1\)에 \(N/2 = 2\)씩 나타난다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 초당 1000번 표본화한 신호에서 스펙트럼에 120 Hz 봉우리가 보였다. 실제 신호가 될 수 <b>없는</b> 주파수는?</p><div class="opts">
+        <button class="opt">120 Hz</button>
+        <button class="opt">880 Hz</button>
+        <button class="opt">1120 Hz</button>
+        <button class="opt" data-correct>620 Hz</button>
+      </div><div class="quiz-exp">겉보기 주파수는 \(|f - 1000m|\)이다. 880 → 120, 1120 → 120. 620 Hz는 \(|620 - 1000| = 380\)으로 보인다. 나이퀴스트 500 Hz 위의 성분은 500을 기준으로 접혀 들어온다.</div></div>
+
+      <div class="quiz-q"><p>Q3. \(N = 4096\)일 때 기수 2 FFT의 나비 연산 수는?</p><div class="opts">
+        <button class="opt">4096</button>
+        <button class="opt" data-correct>24576</button>
+        <button class="opt">49152</button>
+        <button class="opt">16777216</button>
+      </div><div class="quiz-exp">\(\log_2 4096 = 12\)단계, 단계마다 \(N/2 = 2048\)개. \(12\times2048 = 24576\). 직접 DFT의 \(N^2 = 16{,}777{,}216\)과 비교하면 약 680배 적다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 8점 FFT의 비트 반전 재배열에서 인덱스 3은 어디로 가는가?</p><div class="opts">
+        <button class="opt">3</button>
+        <button class="opt">5</button>
+        <button class="opt" data-correct>6</button>
+        <button class="opt">4</button>
+      </div><div class="quiz-exp">\(3 = 011_2\)을 뒤집으면 \(110_2 = 6\). 전체 순서는 0, 4, 2, 6, 1, 5, 3, 7이다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 길이 300과 길이 200의 배열을 FFT로 선형 합성곱하려 한다. 감김 없이 쓸 수 있는 가장 짧은 2의 거듭제곱 FFT 길이는?</p><div class="opts">
+        <button class="opt">256</button>
+        <button class="opt">300</button>
+        <button class="opt" data-correct>512</button>
+        <button class="opt">1024</button>
+      </div><div class="quiz-exp">결과 길이는 \(300 + 200 - 1 = 499\)이므로 \(N \ge 499\), 2의 거듭제곱으로 512. 256으로 하면 원형 합성곱의 감김이 생긴다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 1초 동안 잰 신호에 10.0 Hz와 10.4 Hz 성분이 있다. 두 성분을 구별하려면?</p><div class="opts">
+        <button class="opt">8배로 제로 패딩한다</button>
+        <button class="opt">한 창을 쓴다</button>
+        <button class="opt" data-correct>더 오래(예: 5초 이상) 측정한다</button>
+        <button class="opt">표본화 주파수를 두 배로 올린다</button>
+      </div><div class="quiz-exp">분해능은 관측 시간의 역수 \(1/T = 1\) Hz다. 0.4 Hz 차이를 가르려면 \(T\)가 적어도 \(1/0.4 = 2.5\)초, 창의 주엽 폭까지 생각하면 그 몇 배가 필요하다. 제로 패딩과 표본화 주파수는 \(T\)를 바꾸지 않고, 창은 주엽을 오히려 넓힌다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 사각 창 대신 한 창을 쓸 때의 변화로 옳은 것은?</p><div class="opts">
+        <button class="opt">주엽이 좁아지고 부엽도 낮아진다</button>
+        <button class="opt" data-correct>부엽이 약 −13 dB에서 −31 dB로 낮아지는 대신 주엽이 두 배로 넓어진다</button>
+        <button class="opt">분해능이 두 배 좋아진다</button>
+        <button class="opt">정수 칸 주파수에서도 누설이 생기지 않던 것이 생긴다</button>
+      </div><div class="quiz-exp">창 함수는 누설(부엽)과 분해능(주엽 폭)을 맞바꾼다. 한 창의 주엽 반폭은 2칸으로 사각의 1칸보다 넓다. 정수 칸 주파수의 한 창 스펙트럼은 이웃 두 칸에 −6 dB씩 퍼지지만 그 밖의 칸에는 새지 않는다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 매끄러운 주기 함수의 도함수를 스펙트럴 방법으로 계산할 때 오차의 거동은?</p><div class="opts">
+        <button class="opt">\(O(h^2)\)</button>
+        <button class="opt">\(O(h^4)\)</button>
+        <button class="opt" data-correct>N에 대해 지수적으로 감소하다가 반올림 바닥에 닿는다</button>
+        <button class="opt">N과 무관하게 일정하다</button>
+      </div><div class="quiz-exp">해석적 주기 함수의 푸리에 계수는 기하급수로 줄기 때문에, 계수를 N/2까지 쓰는 스펙트럴 미분의 오차도 지수적으로 준다. 예제 8.5에서 e^(sin x)는 N = 32에서 10⁻¹⁵ 수준이었다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+/* ================================================================ 이 장의 도우미 */
+const FF = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (v == null || !isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  /** 짧은 복소수 표기 */
+  cstr(re, im, d = 2) {
+    const r = Number(re.toFixed(d)) || 0, i = Number(im.toFixed(d)) || 0;
+    const rs = String(r).replace("-", "−"), is = String(Math.abs(i));
+    if (i === 0) return rs;
+    if (r === 0) return (i < 0 ? "−" : "") + (Math.abs(i) === 1 ? "" : is) + "i";
+    return rs + (i < 0 ? "−" : "+") + (Math.abs(i) === 1 ? "" : is) + "i";
+  },
+  /** 제자리 기수 2 FFT (회전 인자 표) */
+  fft(re, im, inv = false) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+      let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+      if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    const tc = FF._tw(n), sg = inv ? -1 : 1;
+    for (let len = 2; len <= n; len <<= 1) {
+      const step = n / len;
+      for (let s = 0; s < n; s += len) for (let k = 0; k < len / 2; k++) {
+        const wr = tc.c[k * step], wi = -sg * tc.s[k * step], a = s + k, b = a + len / 2;
+        const xr = re[b] * wr - im[b] * wi, xi = re[b] * wi + im[b] * wr;
+        re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+      }
+    }
+    if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  },
+  _twc: {},
+  _tw(n) {
+    if (FF._twc[n]) return FF._twc[n];
+    const c = new Float64Array(n), s = new Float64Array(n);
+    for (let m = 0; m < n; m++) { c[m] = Math.cos((2 * Math.PI * m) / n); s[m] = Math.sin((2 * Math.PI * m) / n); }
+    return (FF._twc[n] = { c, s });
+  },
+  /** 정의대로의 DFT (임의 N) */
+  dft(re, im, inv = false) {
+    const n = re.length, tc = FF._tw(n), R = new Float64Array(n), I = new Float64Array(n), sg = inv ? -1 : 1;
+    for (let k = 0; k < n; k++) {
+      let r = 0, i = 0;
+      for (let j = 0; j < n; j++) { const m = (j * k) % n, c = tc.c[m], s = -sg * tc.s[m]; r += re[j] * c - (im ? im[j] : 0) * s; i += re[j] * s + (im ? im[j] : 0) * c; }
+      R[k] = inv ? r / n : r; I[k] = inv ? i / n : i;
+    }
+    return [R, I];
+  },
+  rng(seed = 1) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; },
+  randn(r) { let u = 0, v = 0; while (u === 0) u = r(); while (v === 0) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); },
+  stems(ctx, ch, data, color, base, r) {
+    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
+    data.forEach(([x, y]) => { const px = ch.X(x), py = ch.Y(y), pb = ch.Y(base); ctx.beginPath(); ctx.moveTo(px, pb); ctx.lineTo(px, py); ctx.stroke(); if (r) { ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); } });
+    ctx.restore();
+  },
+};
+
+/* ================================================================ 1. 삼각 보간 */
+(function () {
+  const FN = {
+    cos: (x) => 1 + Math.cos(x),
+    esin: (x) => Math.exp(Math.sin(x)),
+    tri: (x) => { const t = MB.mod(x, 2 * Math.PI) / Math.PI; return t < 1 ? 2 * t - 1 : 3 - 2 * t; },
+    sq: (x) => (MB.mod(x, 2 * Math.PI) < Math.PI ? 1 : -1),
+    rand: null,
+  };
+  const TP = 2 * Math.PI;
+  let N = 8, key = "cos", showTrue = true, showPoly = false, F = null;
+  const mkPts = () => {
+    const r = FF.rng(5);
+    return [...Array(N)].map((_, j) => { const x = (TP * j) / N; return { x, y: key === "rand" ? r() * 2.4 - 0.9 : FN[key](x), lock: "x" }; });
+  };
+  const coef = (pts) => { const re = pts.map((p) => p.y), [R, I] = FF.dft(re, null); return { R, I }; };
+  const tval = (x) => { let s = F.R[0]; for (let k = 1; k < N / 2; k++) s += 2 * (F.R[k] * Math.cos(k * x) - F.I[k] * Math.sin(k * x)); s += F.R[N / 2] * Math.cos((N / 2) * x); return s / N; };
+  const pval = (pts, x) => { // 무게중심 보간 (등간격 아님 → 일반 가중치)
+    let num = 0, den = 0;
+    for (let j = 0; j < pts.length; j++) {
+      let w = 1; for (let m = 0; m < pts.length; m++) if (m !== j) w /= pts[j].x - pts[m].x;
+      const d = x - pts[j].x; if (Math.abs(d) < 1e-12) return pts[j].y; num += (w / d) * pts[j].y; den += w / d;
+    }
+    return num / den;
+  };
+  const pl = MB.plane("#ff-ti-cv", {
+    x: [-0.3, TP + 0.3], y: [-1.7, 3.1], aspect: 0.46, minHeight: 220, gridStep: 1,
+    points: mkPts(),
+    draw(P, api) {
+      const C = P.P; F = coef(api.points);
+      P.line(TP, P.y0, TP, P.y1, { color: C.faint, width: 1, dash: [3, 4] });
+      if (showTrue && FN[key]) P.curve(FN[key], { color: C.faint, width: 1.6, dash: [6, 4], from: 0, to: TP });
+      if (showPoly) P.curve((x) => pval(api.points, x), { color: C.bad, width: 1.8, from: 0, to: TP });
+      P.curve(tval, { color: C.accent, width: 2.6, from: -0.3, to: TP + 0.3 });
+      P.dot(TP, api.points[0].y, { r: 5, color: C.faint });
+    },
+    onDrag() { update(); },
+  });
+  const cv2 = MB.canvas("#ff-ti-cv2", (ctx) => {
+    const C = MB.palette(), d = [];
+    for (let k = 0; k <= N / 2; k++) d.push([k, Math.hypot(F.R[k], F.I[k]) / N]);
+    const M = Math.max(0.1, ...d.map((p) => p[1])) * 1.15;
+    const ch = MB.chart(ctx, null, { x: [-0.5, N / 2 + 0.5], y: [0, M], xLabel: "k", xTicks: d.map((p) => p[0]) });
+    FF.stems(ctx, ch, d, C.accent, 0, 4);
+  }, { aspect: 0.26, minHeight: 160, maxHeight: 220 });
+  function update() {
+    pl.redraw(); cv2.redraw();
+    let mk = 1; for (let k = 2; k <= N / 2; k++) if (Math.hypot(F.R[k], F.I[k]) > Math.hypot(F.R[mk], F.I[mk])) mk = k;
+    MB.stat("ff-ti-o0", FF.num(F.R[0] / N, 4));
+    MB.stat("ff-ti-o1", "k = " + mk + ": " + FF.num(Math.hypot(F.R[mk], F.I[mk]) / N, 4));
+    if (FN[key]) { let m = 0; for (let i = 0; i <= 1200; i++) { const x = (TP * i) / 1200; m = Math.max(m, Math.abs(tval(x) - FN[key](x))); } MB.stat("ff-ti-o2", FF.sci(m, 2)); } else MB.stat("ff-ti-o2", "—");
+  }
+  const reset = () => { pl.points = mkPts(); update(); };
+  MB.seg("ff-ti-n", (v) => { N = +v; reset(); });
+  document.getElementById("ff-ti-f").addEventListener("change", (e) => { key = e.target.value; reset(); });
+  MB.check("ff-ti-true", (v) => { showTrue = v; update(); });
+  MB.check("ff-ti-poly", (v) => { showPoly = v; update(); });
+  update();
+})();
+
+/* ================================================================ 2. 신호 합성 → 스펙트럼 */
+(function () {
+  const N = 128, noise = (() => { const r = FF.rng(11); return [...Array(N)].map(() => FF.randn(r)); })();
+  const g = {};
+  let db = false, x = null, A = null;
+  const compute = () => {
+    x = new Float64Array(N);
+    for (let j = 0; j < N; j++) { let s = 0; for (let c = 1; c <= 3; c++) s += g["a" + c]() * Math.cos((2 * Math.PI * g["f" + c]() * j) / N); x[j] = s + g.s() * noise[j]; }
+    const re = Float64Array.from(x), im = new Float64Array(N); FF.fft(re, im);
+    A = []; for (let k = 0; k <= N / 2; k++) A.push((2 * Math.hypot(re[k], im[k])) / N);
+    let e1 = 0, e2 = 0; for (let j = 0; j < N; j++) { e1 += x[j] * x[j]; e2 += re[j] * re[j] + im[j] * im[j]; }
+    A.e = [e1, e2 / N];
+  };
+  const cv = MB.canvas("#ff-sy-cv", (ctx) => {
+    if (!x) return; const C = MB.palette(); let M = 0.5; x.forEach((v) => (M = Math.max(M, Math.abs(v)))); M *= 1.15;
+    const ch = MB.chart(ctx, null, { x: [0, 1], y: [-M, M], xLabel: "t (초)", series: [{ data: [...x].map((v, j) => [j / N, v]), color: C.accent2, width: 1.6 }] });
+    ctx.fillStyle = C.accent2; [...x].forEach((v, j) => { ctx.beginPath(); ctx.arc(ch.X(j / N), ch.Y(v), 1.8, 0, Math.PI * 2); ctx.fill(); });
+  }, { aspect: 0.3, minHeight: 170, maxHeight: 250 });
+  const cv2 = MB.canvas("#ff-sy-cv2", (ctx) => {
+    if (!A) return; const C = MB.palette();
+    if (db) {
+      const d = A.map((v, k) => [k, Math.max(-80, 20 * Math.log10(v + 1e-12))]);
+      const ch = MB.chart(ctx, null, { x: [-1, 65], y: [-80, 10], xLabel: "주파수 (Hz)", yLabel: "dB", xTicks: [0, 8, 16, 24, 32, 40, 48, 56, 64] });
+      FF.stems(ctx, ch, d, C.accent, -80, 2.5);
+    } else {
+      const M = Math.max(0.5, ...A) * 1.15;
+      const ch = MB.chart(ctx, null, { x: [-1, 65], y: [0, M], xLabel: "주파수 (Hz)", xTicks: [0, 8, 16, 24, 32, 40, 48, 56, 64] });
+      FF.stems(ctx, ch, A.map((v, k) => [k, v]), C.accent, 0, 2.5);
+    }
+  }, { aspect: 0.3, minHeight: 170, maxHeight: 250 });
+  const update = () => {
+    compute(); cv.redraw(); cv2.redraw();
+    const idx = A.map((v, k) => k).sort((a, b) => A[b] - A[a]).slice(0, 3);
+    MB.stat("ff-sy-pk", idx.map((k) => k + ": " + FF.num(A[k], 2)).join(" · "));
+    MB.stat("ff-sy-pv", FF.num(A.e[0], 2) + " · " + FF.num(A.e[1], 2));
+  };
+  ["f1", "a1", "f2", "a2", "f3", "a3"].forEach((id) => { g[id] = MB.range("ff-sy-" + id, (v) => (id[0] === "f" ? v + " Hz" : v.toFixed(2)), update); });
+  g.s = MB.range("ff-sy-s", (v) => v.toFixed(2), update);
+  MB.check("ff-sy-db", (v) => { db = v; cv2.redraw(); });
+  update();
+})();
+
+/* ================================================================ 3. 단위근과 DFT 행렬 */
+(function () {
+  let N = 8, k = 2, sig = "cos2";
+  const xs = () => [...Array(N)].map((_, j) => (sig === "cos2" ? Math.cos((2 * Math.PI * 2 * j) / N) : sig === "ones" ? 1 : sig === "imp" ? (j === 0 ? 1 : 0) : j + 1));
+  let chain = [], XK = [0, 0];
+  const compute = () => {
+    const x = xs(); chain = [[0, 0]]; let re = 0, im = 0;
+    for (let j = 0; j < N; j++) { const th = (-2 * Math.PI * j * k) / N; re += x[j] * Math.cos(th); im += x[j] * Math.sin(th); chain.push([re, im]); }
+    XK = [re, im];
+  };
+  compute();
+  const range = () => {
+    let m = 1.2; chain.forEach(([a, b]) => (m = Math.max(m, Math.abs(a) * 1.1, Math.abs(b) * 1.1)));
+    return m;
+  };
+  const pl = MB.plane("#ff-rt-cv", {
+    x: [-1.3, 1.3], y: [-1.3, 1.3], aspect: 0.86, minHeight: 260, maxHeight: 440, grid: false,
+    draw(P) {
+      const C = P.P, s = P.x1 / 1.3;
+      P.circle(0, 0, 1, { color: C.faint, width: 1.2, dash: [4, 4] });
+      for (let j = 0; j < N; j++) { const th = (-2 * Math.PI * j * k) / N; P.dot(Math.cos(th), Math.sin(th), { r: 3, color: C.faint }); }
+      const sc = (v) => v / range() * 1.2 * s; // 체인을 화면에 맞춤
+      for (let j = 0; j < N; j++) { const [a, b] = chain[j], [c, d] = chain[j + 1]; P.arrow(sc(a), sc(b), sc(c), sc(d), { color: C.series[j % 5], width: 2, head: 8 }); }
+      P.arrow(0, 0, sc(XK[0]), sc(XK[1]), { color: C.text, width: 3.2 });
+      P.text("Re", P.x1 * 0.93, 0, { color: C.dim, size: 11, dy: -8 }); P.text("Im", 0, P.y1 * 0.92, { color: C.dim, size: 11, dx: 6 });
+      P.text("축척 1 : " + FF.num(range() / 1.2, 2).replace(/\.?0+$/, ""), P.x0 * 0.95, P.y0 * 0.9, { color: C.dim, size: 11 });
+    },
+  });
+  const cv2 = MB.canvas("#ff-rt-cv2", (ctx, w, h) => {
+    const C = MB.palette(), sz = Math.min(w - 40, h - 40) / N, ox = (w - sz * N) / 2, oy = (h - sz * N) / 2 + 8;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const th = (-2 * Math.PI * ((r * c) % N)) / N, t = MB.mod(th / (2 * Math.PI), 1);
+      ctx.fillStyle = MB.rgb(MB.colormap(t, "phase")); ctx.fillRect(ox + c * sz, oy + r * sz, sz - 1, sz - 1);
+    }
+    ctx.strokeStyle = C.text; ctx.lineWidth = 2.5; ctx.strokeRect(ox - 1, oy + k * sz - 1, sz * N + 1, sz + 1);
+    ctx.fillStyle = C.dim; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText("k=" + k, ox - 4, oy + (k + 0.5) * sz);
+  }, { aspect: 0.86, minHeight: 260, maxHeight: 440 });
+  const update = () => {
+    compute(); pl.redraw(); cv2.redraw();
+    MB.stat("ff-rt-X", FF.cstr(XK[0], XK[1], 3)); MB.stat("ff-rt-A", FF.num(Math.hypot(XK[0], XK[1]), 3));
+    MB.stat("ff-rt-w", FF.cstr(Math.cos((2 * Math.PI) / N), -Math.sin((2 * Math.PI) / N), 3));
+  };
+  const gk = MB.range("ff-rt-k", (v) => String(v), (v) => { k = v; update(); });
+  MB.range("ff-rt-n", (v) => String(v), (v) => { N = v; gk.el.max = N - 1; if (k > N - 1) gk.set(N - 1, false), (k = N - 1); gk.set(k, false); update(); });
+  gk.el.max = N - 1;
+  document.getElementById("ff-rt-x").addEventListener("change", (e) => { sig = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 4. 앨리어싱 */
+(function () {
+  let f = 7, fs = 10, rec = true;
+  const alias = (f, fs) => Math.abs(f - fs * Math.round(f / fs));
+  const cv = MB.canvas("#ff-al-cv", (ctx) => {
+    const C = MB.palette(), fa = alias(f, fs), real = [], app = [];
+    for (let i = 0; i <= 1500; i++) { const t = i / 1500; real.push([t, Math.cos(2 * Math.PI * f * t)]); app.push([t, Math.cos(2 * Math.PI * fa * t)]); }
+    const series = [{ data: real, color: C.faint, width: 1.4 }];
+    if (rec) series.push({ data: app, color: C.accent, width: 2.4, dash: [7, 4] });
+    const pts = []; for (let n = 0; n <= Math.floor(fs); n++) { const t = n / fs; if (t <= 1) pts.push({ x: t, y: Math.cos(2 * Math.PI * f * t), color: C.bad, r: 5 }); }
+    MB.chart(ctx, null, { x: [0, 1], y: [-1.3, 1.3], xLabel: "t (초)", series, points: pts });
+  }, { aspect: 0.32, minHeight: 180, maxHeight: 260 });
+  const cv2 = MB.canvas("#ff-al-cv2", (ctx) => {
+    const C = MB.palette(), d = []; for (let i = 0; i <= 1000; i++) { const x = (25 * i) / 1000; d.push([x, alias(x, fs)]); }
+    const vl = [{ x: fs / 2, color: C.warn, label: "fs/2" }]; for (let m = 1; m * fs <= 25; m++) vl.push({ x: m * fs, color: C.faint, label: m === 1 ? "fs" : m + "fs" });
+    MB.chart(ctx, null, { x: [0, 25], y: [0, Math.max(5, fs / 2) * 1.15], xLabel: "실제 주파수 f (Hz)", yLabel: "겉보기 (Hz)", series: [{ data: d, color: C.accent, width: 2 }], vlines: vl, points: [{ x: f, y: alias(f, fs), color: C.bad, r: 6, label: FF.num(alias(f, fs), 1) + " Hz" }] });
+  }, { aspect: 0.28, minHeight: 170, maxHeight: 240 });
+  const msg = document.getElementById("ff-al-msg");
+  const update = () => {
+    cv.redraw(); cv2.redraw(); const fa = alias(f, fs);
+    MB.stat("ff-al-ny", FF.num(fs / 2, 1) + " Hz"); MB.stat("ff-al-ap", FF.num(fa, 1) + " Hz"); MB.stat("ff-al-pp", FF.num(fs / f, 2));
+    if (f < fs / 2) { msg.className = "ff-msg ok"; msg.innerHTML = `f = ${FF.num(f, 1)} Hz &lt; 나이퀴스트 ${FF.num(fs / 2, 1)} Hz: 표본이 신호를 올바로 나타냅니다.`; }
+    else if (Math.abs(f - fs / 2) < 1e-9) { msg.className = "ff-msg"; msg.innerHTML = `f가 정확히 나이퀴스트 주파수입니다. 위상에 따라 표본이 모두 0이 될 수도 있는 경계입니다.`; }
+    else { msg.className = "ff-msg bad"; msg.innerHTML = `앨리어싱: ${FF.num(f, 1)} Hz가 ${FF.num(fa, 1)} Hz로 보입니다. 표본만으로는 두 신호를 구별할 수 없습니다. f<sub>s</sub> &gt; ${FF.num(2 * f, 1)} Hz가 필요합니다.`; }
+  };
+  MB.range("ff-al-f", (v) => v.toFixed(1) + " Hz", (v) => { f = v; update(); });
+  MB.range("ff-al-fs", (v) => v + " Hz", (v) => { fs = v; update(); });
+  MB.check("ff-al-rec", (v) => { rec = v; update(); });
+  update();
+})();
+
+/* ================================================================ 5. 나비 그림 */
+(function () {
+  const N = 8, BR = [0, 4, 2, 6, 1, 5, 3, 7];
+  const INP = {
+    ramp: [1, 2, 3, 4, 5, 6, 7, 8], ex: [1, 2, 3, 4, 0, 0, 0, 0], imp: [1, 0, 0, 0, 0, 0, 0, 0],
+    cos: [...Array(8)].map((_, j) => Math.cos((2 * Math.PI * j) / 8)), alt: [1, -1, 1, -1, 1, -1, 1, -1],
+  };
+  let key = "ramp", stage = 0, cols = null;
+  const compute = () => {
+    const x = INP[key]; cols = [];
+    let re = BR.map((i) => x[i]), im = re.map(() => 0); cols.push([re.slice(), im.slice()]);
+    for (let s = 1, len = 2; len <= N; s++, len <<= 1) {
+      for (let b = 0; b < N; b += len) for (let k = 0; k < len / 2; k++) {
+        const th = (-2 * Math.PI * k) / len, wr = Math.cos(th), wi = Math.sin(th), a = b + k, c = a + len / 2;
+        const xr = re[c] * wr - im[c] * wi, xi = re[c] * wi + im[c] * wr;
+        re[c] = re[a] - xr; im[c] = im[a] - xi; re[a] += xr; im[a] += xi;
+      }
+      cols.push([re.slice(), im.slice()]);
+    }
+  };
+  compute();
+  const sup = ["⁰", "¹", "²", "³"], sub = { 2: "₂", 4: "₄", 8: "₈" };
+  const cv = MB.canvas("#ff-bf-cv", (ctx, w, h) => {
+    const C = MB.palette(), mono = getComputedStyle(document.body).getPropertyValue("--mono");
+    const bw = Math.min(110, w * 0.17), gap = (w - 4 * bw - 16) / 3, rowH = (h - 40) / N, top = 28;
+    const cx = (c) => 8 + c * (bw + gap), cy = (r) => top + (r + 0.5) * rowH;
+    ctx.font = "600 11px " + mono; ctx.textAlign = "center"; ctx.fillStyle = C.dim; ctx.textBaseline = "middle";
+    ["입력 (비트 반전)", "len 2", "len 4", "len 8 = X"].forEach((t, c) => ctx.fillText(t, cx(c) + bw / 2, 12));
+    for (let s = 1; s <= 3; s++) {
+      const len = 1 << s, on = s === stage;
+      for (let b = 0; b < N; b += len) for (let k = 0; k < len / 2; k++) {
+        const a = b + k, c = a + len / 2, x0 = cx(s - 1) + bw, x1 = cx(s);
+        ctx.strokeStyle = on ? (k % 2 ? C.accent2 : C.accent) : s < stage ? C.faint : C.grid; ctx.lineWidth = on ? 2 : 1.1;
+        [[a, a], [c, a], [a, c], [c, c]].forEach(([r0, r1]) => { ctx.beginPath(); ctx.moveTo(x0, cy(r0)); ctx.lineTo(x1, cy(r1)); ctx.stroke(); });
+        if (on) {
+          ctx.fillStyle = C.text; ctx.font = "11px " + mono; ctx.textAlign = "center";
+          const mx = x0 + (x1 - x0) * 0.22, my = cy(c) + (cy(a) - cy(c)) * 0.22;
+          ctx.fillText("ω" + sub[len] + sup[k], mx, my - 7);
+        }
+      }
+    }
+    for (let c = 0; c <= 3; c++) for (let r = 0; r < N; r++) {
+      const done = c <= stage, x = cx(c), y = cy(r) - rowH * 0.36;
+      ctx.fillStyle = done ? C.surface : C.bg; ctx.strokeStyle = c === stage ? C.accent : C.border; ctx.lineWidth = c === stage ? 1.6 : 1;
+      ctx.beginPath(); ctx.rect(x, y, bw, rowH * 0.72); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = done ? C.text : C.faint; ctx.font = (bw < 80 ? "10px " : "12px ") + mono; ctx.textAlign = "center";
+      const txt = done ? FF.cstr(cols[c][0][r], cols[c][1][r], bw < 80 ? 1 : 2) : "·";
+      ctx.fillText(c === 0 ? "x" + "₀₁₂₃₄₅₆₇"[BR[r]] + "=" + txt : txt, x + bw / 2, cy(r));
+    }
+  }, { aspect: 0.62, minHeight: 300, maxHeight: 460 });
+  const msg = document.getElementById("ff-bf-msg");
+  const update = () => {
+    cv.redraw();
+    let mul = 0; for (let s = 1; s <= stage; s++) { const len = 1 << s; for (let k = 0; k < len / 2; k++) if (((k * N) / len) % (N / 4) !== 0) mul += N / len; }
+    MB.stat("ff-bf-nb", stage ? "4" : "0 (재배열만)"); MB.stat("ff-bf-mul", String(mul));
+    if (stage === 3) {
+      const [R, I] = FF.dft(INP[key], null); let e = 0; for (let k = 0; k < N; k++) e = Math.max(e, Math.hypot(R[k] - cols[3][0][k], I[k] - cols[3][1][k]));
+      MB.stat("ff-bf-err", FF.sci(e, 2)); msg.className = "ff-msg ok"; msg.innerHTML = "완료: 오른쪽 열이 X₀ … X₇(자연 순서)입니다. 나비 12개, 자명하지 않은 복소 곱셈 2번.";
+    } else {
+      MB.stat("ff-bf-err", "—"); msg.className = "ff-msg";
+      msg.innerHTML = stage === 0 ? "입력을 비트 반전 순서로 놓았습니다. 이웃한 두 칸이 길이 2 DFT의 짝·홀 쌍입니다." : `단계 ${stage}: 길이 ${1 << stage}짜리 DFT ${N >> stage}개가 만들어졌습니다. 각 나비는 위 = a + ωb, 아래 = a − ωb.`;
+    }
+  };
+  const seg = MB.seg("ff-bf-st", (v) => { stage = +v; update(); });
+  document.getElementById("ff-bf-next").addEventListener("click", () => { seg.set(String(Math.min(3, stage + 1))); });
+  document.getElementById("ff-bf-reset").addEventListener("click", () => { seg.set("0"); });
+  document.getElementById("ff-bf-x").addEventListener("change", (e) => { key = e.target.value; compute(); update(); });
+  update();
+})();
+
+/* ================================================================ 6. 시간 측정 */
+(function () {
+  let maxP = 11, ref = true, res = [], running = false, started = false;
+  const sim = document.getElementById("sim-ff-timing"), msg = document.getElementById("ff-tm-msg");
+  const time = (fn) => { let reps = 0; const t0 = performance.now(); let t = t0; do { fn(); reps++; t = performance.now(); } while (t - t0 < 5 && reps < 1e5); return (t - t0) / reps; };
+  const cv = MB.canvas("#ff-tm-cv", (ctx) => {
+    const C = MB.palette(), d0 = res.filter((r) => r.dft != null).map((r) => [r.N, r.dft]), d1 = res.map((r) => [r.N, r.fft]);
+    const series = [];
+    if (ref && d1.length) {
+      const a = d1[d1.length - 1], c1 = a[1] / (a[0] * Math.log2(a[0]));
+      series.push({ data: [8, 16, 64, 256, 1024, 4096, 16384, 65536, 262144].map((n) => [n, c1 * n * Math.log2(n)]), color: C.faint, width: 1.2, dash: [5, 4] });
+      if (d0.length) { const b = d0[d0.length - 1], c0 = b[1] / (b[0] * b[0]); series.push({ data: [[8, c0 * 64], [262144, c0 * 262144 * 262144]], color: C.faint, width: 1.2, dash: [5, 4] }); }
+    }
+    series.push({ data: d0, color: C.bad, width: 2.4 }, { data: d1, color: C.accent, width: 2.4 });
+    const pts = []; d0.forEach(([x, y]) => pts.push({ x, y, color: C.bad, r: 3.5 })); d1.forEach(([x, y]) => pts.push({ x, y, color: C.accent, r: 3.5 }));
+    MB.chart(ctx, null, { x: [8, 262144], y: [1e-5, 1e4], logX: true, logY: true, xLabel: "N", yLabel: "시간 (ms)", xTicks: [8, 64, 512, 4096, 32768, 262144], xFmt: (v) => (v >= 1024 ? "2" + String(Math.round(Math.log2(v))).split("").map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]).join("") : String(v)), series, points: pts });
+  }, { aspect: 0.62, minHeight: 260 });
+  const slope = (arr) => { const p = arr.filter((q) => q[0] >= 128); if (p.length < 2) return NaN; const xs = p.map((q) => Math.log(q[0])), ys = p.map((q) => Math.log(q[1])), mx = MB.mean(xs), my = MB.mean(ys); let a = 0, b = 0; xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; }); return a / b; };
+  const report = () => {
+    cv.redraw();
+    const d0 = res.filter((r) => r.dft != null).map((r) => [r.N, r.dft]), d1 = res.map((r) => [r.N, r.fft]);
+    MB.stat("ff-tm-s0", FF.num(slope(d0), 2)); MB.stat("ff-tm-s1", FF.num(slope(d1), 2));
+    const last = res.filter((r) => r.dft != null).pop();
+    MB.stat("ff-tm-r", last ? "N = 2^" + Math.log2(last.N) + ": " + FF.num(last.dft / last.fft, 0) + "배" : "—");
+  };
+  const run = () => {
+    if (running) return; running = true; res = []; let p = 3;
+    msg.className = "ff-msg"; msg.innerHTML = "측정 중…";
+    const stepFn = () => {
+      const N = 1 << p, re = new Float64Array(N), im = new Float64Array(N);
+      for (let i = 0; i < N; i++) re[i] = Math.sin(i * 0.37) + Math.cos(i * 1.3);
+      FF._tw(N);
+      const tf = time(() => { const a = Float64Array.from(re), b = new Float64Array(N); FF.fft(a, b); });
+      const td = p <= maxP ? time(() => FF.dft(re, im)) : null;
+      res.push({ N, fft: tf, dft: td }); report();
+      p++;
+      if (p <= 18) setTimeout(stepFn, 0);
+      else { running = false; const l = res.filter((r) => r.dft != null).pop(); msg.className = "ff-msg ok"; msg.innerHTML = `측정 완료. N = ${l.N}에서 직접 DFT ${FF.num(l.dft, 2)} ms, FFT ${FF.num(l.fft, 4)} ms. FFT는 N = 2¹⁸ = 262,144에서도 ${FF.num(res[res.length - 1].fft, 1)} ms입니다.`; }
+    };
+    setTimeout(stepFn, 0);
+  };
+  MB.range("ff-tm-max", (v) => "2^" + v + " = " + (1 << v), (v) => { maxP = v; });
+  MB.check("ff-tm-ref", (v) => { ref = v; cv.redraw(); });
+  document.getElementById("ff-tm-run").addEventListener("click", run);
+  if (window.IntersectionObserver) new IntersectionObserver((es) => { if (es[0].isIntersecting && !started) { started = true; run(); } }).observe(sim);
+  else { started = true; run(); }
+})();
+
+/* ================================================================ 7. FFT 합성곱 */
+(function () {
+  let mode = "poly", nopad = false, w = 9;
+  const inA = document.getElementById("ff-cv-a"), inB = document.getElementById("ff-cv-b");
+  const DEF = { poly: ["1, 2, 3", "4, 5"], int: ["31415926535897932384626433832795", "27182818284590452353602874713527"] };
+  const sigMA = (() => { const r = FF.rng(3); return [...Array(64)].map((_, j) => (j >= 20 && j < 44 ? 1 : 0) + 0.3 * Math.sin(j / 5) + 0.25 * FF.randn(r)); })();
+  const direct = (a, b) => { const c = new Array(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => (c[i + j] += x * y))); return c; };
+  const fftConv = (a, b) => {
+    if (nopad) { // 원형, 길이 L = max(n, m)
+      const L = Math.max(a.length, b.length), ar = new Float64Array(L), br = new Float64Array(L); a.forEach((v, i) => (ar[i] = v)); b.forEach((v, i) => (br[i] = v));
+      const [A1, A2] = FF.dft(ar, null), [B1, B2] = FF.dft(br, null), Cr = new Float64Array(L), Ci = new Float64Array(L);
+      for (let k = 0; k < L; k++) { Cr[k] = A1[k] * B1[k] - A2[k] * B2[k]; Ci[k] = A1[k] * B2[k] + A2[k] * B1[k]; }
+      const [c] = FF.dft(Cr, Ci, true); return { c: [...c], N: L };
+    }
+    const need = a.length + b.length - 1; let N = 1; while (N < need) N <<= 1;
+    const ar = new Float64Array(N), ai = new Float64Array(N), br = new Float64Array(N), bi = new Float64Array(N);
+    a.forEach((v, i) => (ar[i] = v)); b.forEach((v, i) => (br[i] = v));
+    FF.fft(ar, ai); FF.fft(br, bi);
+    for (let k = 0; k < N; k++) { const r = ar[k] * br[k] - ai[k] * bi[k], i = ar[k] * bi[k] + ai[k] * br[k]; ar[k] = r; ai[k] = i; }
+    FF.fft(ar, ai, true); return { c: [...ar].slice(0, need), N };
+  };
+  let R = null;
+  const compute = () => {
+    if (mode === "ma") {
+      const ker = new Array(w).fill(1 / w), out = fftConv(sigMA, ker), dir = direct(sigMA, ker), h = (w - 1) / 2;
+      const y = sigMA.map((_, j) => (nopad ? out.c[(j + h) % 64] : out.c[j + h]));
+      const yd = sigMA.map((_, j) => dir[j + h]);
+      R = { y, yd, N: out.N, err: Math.max(...y.map((v, j) => Math.abs(v - yd[j]))) }; return;
+    }
+    const parse = (s) => mode === "int" ? s.replace(/[^0-9]/g, "").split("").reverse().map(Number) : s.split(/[,\s]+/).filter((t) => t !== "").map(Number).filter(isFinite);
+    let a = parse(inA.value), b = parse(inB.value); if (!a.length) a = [0]; if (!b.length) b = [0];
+    const out = fftConv(a, b), dir = direct(a, b);
+    let c = out.c.map((v) => (mode === "int" ? Math.round(v) : v));
+    let err = 0; dir.forEach((v, i) => (err = Math.max(err, Math.abs((out.c[i] || 0) - v))));
+    let str;
+    if (mode === "int") {
+      const dg = c.slice(); let carry = 0; for (let i = 0; i < dg.length; i++) { const t = dg[i] + carry; dg[i] = MB.mod(t, 10); carry = Math.floor(t / 10); } while (carry > 0) { dg.push(carry % 10); carry = Math.floor(carry / 10); }
+      str = dg.reverse().join("").replace(/^0+(?=\d)/, "");
+      let ok = null; try { ok = (BigInt(inA.value.replace(/[^0-9]/g, "") || "0") * BigInt(inB.value.replace(/[^0-9]/g, "") || "0")).toString(); } catch (e) {}
+      R = { a, b, c, dir, N: out.N, err, str, ok };
+    } else {
+      str = c.map((v, i) => { const s = FF.num(v, 3).replace(/\.?0+$/, ""); return i === 0 ? s : s + (i === 1 ? "x" : "x<sup>" + i + "</sup>"); }).join(" + ").replace(/\+ −/g, "− ");
+      R = { a, b, c, dir, N: out.N, err, str };
+    }
+  };
+  const cv = MB.canvas("#ff-cv-cv", (ctx, W, H) => {
+    if (!R) return; const C = MB.palette();
+    if (mode === "ma") {
+      const pts = sigMA.map((v, j) => ({ x: j, y: v, color: C.faint, r: 2.5 }));
+      const ch = MB.chart(ctx, null, { x: [0, 63], y: [-1, 2], xLabel: "j", series: [{ data: R.yd.map((v, j) => [j, v]), color: C.faint, width: 1.4, dash: [5, 4] }, { data: R.y.map((v, j) => [j, v]), color: C.accent, width: 2.6 }], points: pts });
+      if (nopad) { const hw = (w - 1) / 2; ctx.save(); ctx.globalAlpha = 0.15; ctx.fillStyle = C.bad; ctx.fillRect(ch.X(0), ch.box.y, ch.X(hw) - ch.X(0), ch.box.h); ctx.fillRect(ch.X(63 - hw), ch.box.y, ch.X(63) - ch.X(63 - hw), ch.box.h); ctx.restore(); }
+      return;
+    }
+    const rows = [["a", R.a, C.accent2], ["b", R.b, C.warn], ["c = a * b", R.c, C.accent]], n = Math.max(R.c.length, R.dir.length, 3), hh = (H - 30) / 3;
+    rows.forEach(([lb, arr, col], r) => {
+      const M = Math.max(1, ...arr.map(Math.abs), ...(r === 2 ? R.dir.map(Math.abs) : [])) * 1.25;
+      const box = { x: 50, y: 10 + r * hh, w: W - 66, h: hh - 30 };
+      const ch = MB.chart(ctx, box, { x: [-0.6, n - 0.4], y: [0, M], xTicks: n <= 16 ? [...Array(n)].map((_, i) => i) : [0, Math.floor(n / 2), n - 1], yTicks: [0, Math.round(M / 1.25)] });
+      ctx.fillStyle = C.dim; ctx.font = "600 12px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText(lb, box.x + 6, box.y + 2);
+      if (r === 2) { ctx.strokeStyle = C.faint; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.4; R.dir.forEach((v, i) => { ctx.strokeRect(ch.X(i) - 7, ch.Y(v), 14, ch.Y(0) - ch.Y(v)); }); ctx.setLineDash([]); }
+      const bw = Math.min(18, (box.w / n) * 0.6); ctx.fillStyle = col;
+      arr.forEach((v, i) => { const y = ch.Y(Math.max(0, v)), y0 = ch.Y(Math.min(0, v)); ctx.fillRect(ch.X(i) - bw / 2, y, bw, Math.max(1, y0 - y)); });
+      if (n <= 12) { ctx.fillStyle = C.text; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono"); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; arr.forEach((v, i) => ctx.fillText(FF.num(v, 2).replace(/\.?0+$/, ""), ch.X(i), ch.Y(Math.max(0, v)) - 2)); }
+    });
+  }, { aspect: 0.66, minHeight: 300, maxHeight: 460 });
+  const msg = document.getElementById("ff-cv-msg");
+  const update = () => {
+    compute(); cv.redraw();
+    MB.stat("ff-cv-N", String(R.N) + (nopad ? " (원형)" : ""));
+    MB.stat("ff-cv-err", FF.sci(R.err, 2));
+    if (mode === "ma") { MB.stat("ff-cv-res", "폭 " + w + " 이동 평균"); msg.className = nopad ? "ff-msg bad" : "ff-msg"; msg.innerHTML = nopad ? "원형 합성곱: 양 끝(빨간 띠)에서 반대쪽 끝의 값이 감겨 들어와 점선(올바른 선형 합성곱)과 달라집니다." : `선형 합성곱(길이 ${64 + w - 1} → FFT 길이 ${R.N}). 회색 점은 잡음 섞인 신호, 초록 선은 평활 결과입니다.`; return; }
+    if (mode === "int") {
+      MB.stat("ff-cv-res", R.str.length > 40 ? R.str.slice(0, 18) + "…" + R.str.slice(-18) + " (" + R.str.length + "자리)" : R.str);
+      const good = R.ok === R.str; msg.className = good ? "ff-msg ok" : "ff-msg bad";
+      msg.innerHTML = good ? `BigInt 직접 곱셈과 일치: ${R.a.length}자리 × ${R.b.length}자리 = ${R.str.length}자리. 자릿수 합성곱 → 반올림 → 받아올림.` : `BigInt 결과와 다릅니다${nopad ? "(원형 합성곱의 감김)" : ""}. 올바른 값: ${R.ok && R.ok.length > 40 ? R.ok.slice(0, 18) + "…" + R.ok.slice(-18) : R.ok}`;
+    } else {
+      MB.stat("ff-cv-res", R.str);
+      msg.className = R.err > 1e-9 ? "ff-msg bad" : "ff-msg ok";
+      msg.innerHTML = R.err > 1e-9 ? "제로 패딩이 모자라 끝 항이 앞으로 감겼습니다. 점선 상자가 올바른 계수입니다." : `길이 ${R.a.length} + ${R.b.length} − 1 = ${R.c.length}을 담을 FFT 길이 ${R.N}. FFT 세 번 + 곱셈 ${R.N}번.`;
+    }
+  };
+  const lab = () => {
+    document.getElementById("ff-cv-la").textContent = mode === "int" ? "첫째 수" : mode === "poly" ? "a (계수, 낮은 차수부터)" : "a (신호는 고정)";
+    document.getElementById("ff-cv-lb").textContent = mode === "int" ? "둘째 수" : "b";
+    inA.disabled = inB.disabled = mode === "ma";
+  };
+  MB.seg("ff-cv-mode", (v) => { mode = v; if (DEF[v]) { inA.value = DEF[v][0]; inB.value = DEF[v][1]; } lab(); update(); });
+  MB.range("ff-cv-w", (v) => String(v), (v) => { w = v; if (mode === "ma") update(); });
+  MB.check("ff-cv-nopad", (v) => { nopad = v; update(); });
+  inA.addEventListener("input", update); inB.addEventListener("input", update);
+  lab(); update();
+})();
+
+/* ================================================================ 8. 창 함수와 누설 */
+(function () {
+  const N = 64;
+  const WIN = { rect: () => 1, hann: (j) => 0.5 - 0.5 * Math.cos((2 * Math.PI * j) / N), black: (j) => 0.42 - 0.5 * Math.cos((2 * Math.PI * j) / N) + 0.08 * Math.cos((4 * Math.PI * j) / N) };
+  let f1 = 10.5, df = 6, a2db = -40, win = "hann", zp = 16, S = null;
+  const spec = (amp2) => {
+    const L = N * zp, re = new Float64Array(L), im = new Float64Array(L), wf = WIN[win]; let ws = 0;
+    for (let j = 0; j < N; j++) { const wj = wf(j); ws += wj; re[j] = wj * (Math.cos((2 * Math.PI * f1 * j) / N) + amp2 * Math.cos((2 * Math.PI * (f1 + df) * j) / N + 0.7)); }
+    FF.fft(re, im); const out = []; for (let k = 0; k <= L / 2; k++) out.push(Math.max(-140, 20 * Math.log10((2 * Math.hypot(re[k], im[k])) / ws + 1e-14)));
+    return out;
+  };
+  const compute = () => { const a2 = Math.pow(10, a2db / 20); S = { full: spec(a2), strong: spec(0), a2 }; };
+  compute();
+  const cv = MB.canvas("#ff-wn-cv", (ctx) => {
+    const C = MB.palette(), wf = WIN[win], d = [], env = [];
+    for (let j = 0; j < N; j++) { const wj = wf(j); d.push([j, wj * (Math.cos((2 * Math.PI * f1 * j) / N) + S.a2 * Math.cos((2 * Math.PI * (f1 + df) * j) / N + 0.7))]); env.push([j, wj]); }
+    const ch = MB.chart(ctx, null, { x: [0, N], y: [-1.3, 1.3], xLabel: "j", series: [{ data: env, color: C.faint, width: 1.2, dash: [5, 4] }, { data: env.map(([j, v]) => [j, -v]), color: C.faint, width: 1.2, dash: [5, 4] }, { data: d, color: C.accent2, width: 1.6 }] });
+    ctx.fillStyle = C.accent2; d.forEach(([j, v]) => { ctx.beginPath(); ctx.arc(ch.X(j), ch.Y(v), 2, 0, Math.PI * 2); ctx.fill(); });
+  }, { aspect: 0.26, minHeight: 160, maxHeight: 220 });
+  const cv2 = MB.canvas("#ff-wn-cv2", (ctx) => {
+    const C = MB.palette(), L = N * zp, d = S.full.map((v, k) => [k / zp, v]);
+    const pts = []; for (let k = 0; k <= N / 2; k++) pts.push({ x: k, y: Math.max(-118, S.full[k * zp]), color: C.bad, r: 3 });
+    MB.chart(ctx, null, { x: [0, 32], y: [-120, 6], xLabel: "주파수 (칸 = 1/T)", yLabel: "dB", xTicks: [0, 4, 8, 12, 16, 20, 24, 28, 32], yTicks: [-120, -100, -80, -60, -40, -20, 0],
+      series: [{ data: d, color: C.accent, width: 1.8 }], points: pts,
+      vlines: [{ x: f1, color: C.warn, dash: [3, 3] }, { x: f1 + df, color: C.warn, dash: [3, 3] }] });
+  }, { aspect: 0.36, minHeight: 210, maxHeight: 300 });
+  const msg = document.getElementById("ff-wn-msg");
+  const update = () => {
+    compute(); cv.redraw(); cv2.redraw();
+    const lo = Math.max(0, Math.round((f1 - 1.5) * zp)), hi = Math.min(S.full.length - 1, Math.round((f1 + 1.5) * zp)); let bi = lo;
+    for (let k = lo; k <= hi; k++) if (S.full[k] > S.full[bi]) bi = k;
+    MB.stat("ff-wn-pf", FF.num(bi / zp, 3) + " 칸 (참 " + FF.num(f1, 2) + ")"); MB.stat("ff-wn-pa", FF.num(S.full[bi], 2) + " dB");
+    let leak = -140; for (let k = Math.round((f1 + df - 0.5) * zp); k <= Math.round((f1 + df + 0.5) * zp); k++) if (k >= 0 && k < S.strong.length) leak = Math.max(leak, S.strong[k]);
+    MB.stat("ff-wn-lk", FF.num(leak, 1) + " dB");
+    if (df < (win === "rect" ? 1 : win === "hann" ? 2 : 3) && a2db > -12) { msg.className = "ff-msg"; msg.innerHTML = `두 성분이 ${FF.num(df, 2)}칸 떨어져 있습니다. 이 창의 주엽 반폭보다 가까워 한 봉우리로 뭉칩니다. 제로 패딩으로는 갈라지지 않습니다.`; }
+    else if (a2db > leak + 6) { msg.className = "ff-msg ok"; msg.innerHTML = `약한 성분(${a2db} dB)이 그 자리의 누설 바닥(${FF.num(leak, 1)} dB)보다 높아 봉우리로 드러납니다.`; }
+    else { msg.className = "ff-msg bad"; msg.innerHTML = `약한 성분(${a2db} dB)이 강한 성분의 누설(${FF.num(leak, 1)} dB)에 묻혔습니다. 부엽이 낮은 창을 써 보세요.`; }
+  };
+  MB.range("ff-wn-f1", (v) => v.toFixed(2), (v) => { f1 = v; update(); });
+  MB.range("ff-wn-df", (v) => v.toFixed(2), (v) => { df = v; update(); });
+  MB.range("ff-wn-a2", (v) => v + " dB", (v) => { a2db = v; update(); });
+  MB.seg("ff-wn-w", (v) => { win = v; update(); });
+  MB.seg("ff-wn-zp", (v) => { zp = +v; update(); });
+  update();
+})();
+
+</script>
+</body>
+</html>

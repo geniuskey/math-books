@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>고유값의 수치 계산 · NumericalBook</title>
+<meta name="description" content="특성 다항식 없이 고유값을 구하는 법. 거듭제곱법과 |λ₂/λ₁|, 이동 역반복과 레일리 몫 반복의 3차 수렴, 게르시고린 원판, 수축, 헤센베르크·이동 QR 알고리즘, 야코비 회전, 특이값 계산, 페이지랭크와 진동 모드.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ev-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ev-two > div { position: relative; min-width: 0; }
+  .ev-two > div + div { border-top: 1px solid var(--border); }
+  .ev-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ev-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ev-msg b { color: var(--text); }
+  .ev-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ev-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ev-num td, .ev-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .ev-num td:first-child, .ev-num th:first-child { text-align: center; font-family: inherit; }
+  .ev-tbl { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; max-height: 270px; overflow: auto; }
+  .ev-tbl table { font-size: 12.5px; }
+  .ev-tbl td, .ev-tbl th { font-family: var(--mono); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  .ev-tbl td:first-child, .ev-tbl th:first-child { text-align: center; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="eigenvalues">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 14</div>
+    <h1 data-no-glossary>고유값의 수치 계산</h1>
+    <p class="lead">선형대수 교과서는 고유값을 \(\det(A - \lambda I) = 0\)의 근으로 구합니다. 2 × 2나 3 × 3에서는 좋은 방법이지만, 컴퓨터는 이 길을 거의 가지 않습니다. 5차 이상 다항식에는 근의 공식이 없고, 계수에서 근을 구하는 문제는 조건이 끔찍하게 나쁘기 때문입니다. 그래서 고유값은 언제나 <b>반복</b>으로 구합니다. 이 장은 벡터에 행렬을 계속 곱하는 거듭제곱법에서 출발해, 이동과 역행렬로 원하는 고유값을 골라 잡는 역반복, 맞는 자릿수가 매번 세 배가 되는 레일리 몫 반복, 계산 없이 고유값의 위치를 가두는 게르시고린 원판, 그리고 MATLAB의 <code>eig</code>가 실제로 부르는 이동 QR 알고리즘과 대칭 행렬의 야코비 회전까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>특성 다항식으로 고유값을 구하면 왜 정확도를 잃는지 설명하고, 바우어–파이크 정리로 고유값의 민감도를 판단한다.</li>
+      <li>거듭제곱법의 수렴 속도 \(|\lambda_2/\lambda_1|\)를 유도하고, 이동 역반복으로 원하는 고유값을 골라 수렴 속도를 바꾼다.</li>
+      <li>레일리 몫 반복이 대칭 행렬에서 3차 수렴함을 반복 표로 확인한다.</li>
+      <li>게르시고린 원판으로 고유값의 위치를 가두고, 대각 닮음 변환으로 원판을 줄인다.</li>
+      <li>헤센베르크 축소, 이동(레일리·윌킨슨), 수축을 결합한 실용 QR 알고리즘의 구조를 이해한다.</li>
+      <li>야코비 회전, 특이값 계산의 원리, 그리고 페이지랭크·진동 모드·양자 에너지 준위에서 고유값 계산이 쓰이는 방식을 안다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>검색 순위와 다리의 고유 진동수</b></div>
+      <div class="o-body"><p>웹 페이지의 중요도를 링크 구조만으로 매기는 페이지랭크는 수십억 차원 행렬의 가장 큰 고유값에 대한 고유벡터입니다. 다리·건물·비행기 날개의 위험한 공진 진동수는 질량·강성 행렬의 일반화 고유값 문제에서 나오고, 분자의 에너지 준위는 슈뢰딩거 방정식을 이산화한 행렬의 고유값입니다. 이 행렬들은 크기가 수천에서 수십억이라 특성 다항식은 아예 적을 수도 없습니다.</p>
+        <p>모든 고유값을 한꺼번에 구하는 표준 방법인 QR 알고리즘은 1961년 무렵 영국의 프랜시스<span class="en">(John G. F. Francis)</span>와 소련의 쿠블라놉스카야<span class="en">(Vera Kublanovskaya)</span>가 각각 독립적으로 발표했고, 20세기의 가장 영향력 있는 알고리즘 가운데 하나로 꼽힙니다. 대칭 행렬의 회전법은 이보다 훨씬 앞선 1846년 야코비의 논문까지 거슬러 올라갑니다.</p>
+        <div class="o-chain"><span>Av = λv</span><i>→</i><span>특성 다항식은 불안정</span><i>→</i><span class="tool">닮음 변환을 반복해 삼각 행렬로</span><i>→</i><span>순위 · 진동수 · 에너지 준위</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="charpoly">
+    <h2>특성 다항식으로 구하면 안 되는 이유</h2>
+    <div class="problem"><strong>고유값이 1, 2, …, 20인 행렬</strong>
+      <p>대각 원소가 1부터 20까지인 대각 행렬의 고유값은 보는 그대로입니다. 이 행렬의 특성 다항식 \(p(\lambda) = (\lambda - 1)(\lambda - 2)\cdots(\lambda - 20)\)을 전개해 계수를 배정밀도로 저장한 뒤 근을 구하면 어떻게 될까요? 계수는 \(-210\)부터 \(20! \approx 2.4\times10^{18}\)까지입니다.</p></div>
+    <p>이것이 2장(<a href="conditioning.html">조건수와 안정성</a>)에서 본 윌킨슨 다항식입니다. 계수를 배정밀도로 <b>저장만</b> 해도(전개 계산 자체는 정확히 해도) 반올림 오차가 생기고, 그 근을 정확히 구해도 \(\lambda = 12, 13, 14\) 근처에서 오차가 \(6\times10^{-4}\) 정도가 되고, 근을 배정밀도로 계산하면 오차가 더 커집니다. 윌킨슨이 1959년에 보인 대로 \(\lambda^{19}\)의 계수 \(-210\)을 \(2^{-23} \approx 1.2\times10^{-7}\)만큼만 바꾸면 근 열 개가 복소수 쌍이 되고, \(16.73 \pm 2.81i\) 같은 근이 나타납니다. 다항식의 근은 계수에 대해 조건이 나쁜 문제입니다.</p>
+    <p>그런데 행렬의 고유값 자체는 그렇지 않을 수 있습니다. 문제를 "다항식의 근"으로 바꾸는 순간 원래 문제보다 훨씬 예민한 문제로 바꾼 것입니다. 행렬 쪽의 민감도는 다음 정리가 말해 줍니다.</p>
+    <div class="callout deep"><strong>정리 14.1 (바우어–파이크)</strong> \(A = V\Lambda V^{-1}\)가 대각화 가능하면, \(A + E\)의 모든 고유값 \(\mu\)에 대해 \(A\)의 어떤 고유값 \(\lambda\)가 있어
+      <div class="formula">$$|\mu - \lambda| \le \kappa_2(V)\,\|E\|_2,\qquad \kappa_2(V) = \|V\|_2\|V^{-1}\|_2.$$</div>
+      특히 \(A\)가 대칭(정규)이면 \(V\)를 직교 행렬로 고를 수 있어 \(\kappa_2(V) = 1\)이고, 고유값은 \(\|E\|_2\)보다 많이 움직이지 않는다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(\mu\)가 \(A\)의 고유값이 아니면 \(A + E - \mu I = V(\Lambda - \mu I)\bigl(I + (\Lambda - \mu I)^{-1}V^{-1}EV\bigr)V^{-1}\)이 특이하므로 \(\|(\Lambda - \mu I)^{-1}V^{-1}EV\|_2 \ge 1\). 왼쪽은 \(\kappa_2(V)\|E\|_2/\min_i|\lambda_i - \mu|\) 이하다. ∎</p></div>
+    <div class="callout"><strong>예제 14.1 (비대칭 행렬의 예민함)</strong> \(A = \begin{bmatrix}1 & 10^4\\ \varepsilon & 2\end{bmatrix}\)의 고유값은 \(\lambda = 1.5 \pm \sqrt{0.25 + 10^4\varepsilon}\)이다.
+      <ol>
+        <li>\(\varepsilon = 0\): 고유값 1, 2. 고유벡터 \((1, 0)\)과 \((10^4, 1)\)은 거의 평행하다(\(\kappa_2(V) \approx 2\times10^4\)).</li>
+        <li>\(\varepsilon = 10^{-6}\): 고유값 0.990098, 2.009902. 원소 하나를 \(10^{-6}\) 바꿨는데 고유값이 \(9.9\times10^{-3}\), 곧 만 배 가까이 움직였다.</li>
+        <li>같은 크기의 교란을 대칭 행렬에 주면 고유값은 \(10^{-6}\) 이하로만 움직인다. 대칭 고유값 문제는 언제나 조건이 좋다.</li>
+      </ol></div>
+    <p>이제 결론이 분명합니다. 고유값을 구하는 좋은 알고리즘은 다항식을 거치지 않고, 행렬에 <b>직교 닮음 변환</b> \(A \mapsto Q^{\mathsf T}AQ\)만 쌓아서 고유값을 읽을 수 있는 꼴(삼각·대각)로 만듭니다. 직교 변환은 노름을 보존하므로 반올림 오차가 커지지 않고, 결과는 "\(\|E\| \approx \varepsilon_{\text{mach}}\|A\|\)만큼 교란된 행렬의 정확한 고유값"이 됩니다(후방 안정). 그다음 정확도는 바우어–파이크가 말하는 문제 자체의 조건에만 달려 있습니다.</p>
+    <div class="callout tip"><strong>거꾸로 쓰기: 다항식의 근을 고유값으로</strong> 실제로는 반대 방향이 쓰입니다. 다항식 \(p(x) = x^n + c_{n-1}x^{n-1} + \cdots + c_0\)의 근은 동반 행렬<span class="en">(companion matrix)</span>의 고유값과 같으므로, MATLAB의 <code>roots</code>와 NumPy의 <code>roots</code>는 동반 행렬을 만들어 QR 알고리즘으로 고유값을 구합니다(<a href="nonlinear-systems.html">4장</a>).</div>
+
+    <div class="sim" id="sim-ev-charpoly">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>특성 다항식의 근 vs 직교 닮음 변환: 고유값 1, 2, …, n</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-cp-cv"></canvas><span class="ev-cap">복소평면: ○ 참 고유값, ● 다항식의 근</span></div>
+          <div><canvas id="ev-cp-ch"></canvas><span class="ev-cap">최대 오차 vs n (로그 눈금)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬 크기 n <output id="ev-cp-n-out"></output></span><input type="range" id="ev-cp-n" min="4" max="20" step="1" value="16"></label>
+          <label class="check"><input type="checkbox" id="ev-cp-pert"> λ<sup>n−1</sup> 계수에 2⁻²³ 더하기 (윌킨슨)</label>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--bad)"></i>다항식 계수 → 근 (뒤랑–케르너)</span><span><i style="background:var(--accent-2)"></i>직교 닮음 행렬 → 야코비 회전</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">가장 큰 계수</span><span class="v" id="ev-cp-c">—</span></div>
+        <div class="stat"><span class="k">다항식 근의 최대 오차</span><span class="v" id="ev-cp-e1">—</span></div>
+        <div class="stat"><span class="k">야코비 회전의 최대 오차</span><span class="v" id="ev-cp-e2">—</span></div>
+        <div class="stat"><span class="k">최대 |허수부|</span><span class="v" id="ev-cp-im">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① n = 8에서 다항식 쪽 오차는 10⁻¹¹ 정도이지만 n이 하나 늘 때마다 대략 열 배씩 커져 n = 20이면 10⁻²에 이릅니다. 야코비 회전 쪽(보라)은 n에 관계없이 10⁻¹⁴–10⁻¹³ 근처입니다. ② n = 20에서 윌킨슨 교란을 켜면 근 10개가 복소수 쌍으로 떨어져 나갑니다. 행렬 원소를 같은 크기로 바꿔도 대칭 행렬의 고유값은 10⁻⁷ 정도만 움직입니다. 모델: 계수는 (λ − 1)⋯(λ − n)을 배정밀도로 전개, 근은 뒤랑–케르너 동시 반복. 행렬은 Q diag(1, …, n) Qᵀ (Q는 하우스홀더 반사).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="power">
+    <h2>거듭제곱법과 수렴 속도</h2>
+    <div class="problem"><strong>곱하기만 해서 가장 큰 고유값을</strong>
+      <p>행렬을 저장하지 않고 "벡터를 주면 \(A\mathbf x\)를 돌려주는" 함수만 있다고 합시다. 페이지랭크의 링크 행렬이나 유한 요소 강성 행렬이 그렇습니다. 이것만으로 가장 큰 고유값과 고유벡터를 얻을 수 있을까요?</p></div>
+    <p>\(A\)가 고유벡터 \(\mathbf v_1, \dots, \mathbf v_n\)으로 대각화되고 \(|\lambda_1| \gt |\lambda_2| \ge \cdots \ge |\lambda_n|\)이라 합시다. 시작 벡터 \(\mathbf x_0 = \sum c_i\mathbf v_i\)에 \(A\)를 \(k\)번 곱하면</p>
+    <div class="formula">$$A^k\mathbf x_0 = \lambda_1^k\Bigl(c_1\mathbf v_1 + \sum_{i\ge2} c_i\Bigl(\frac{\lambda_i}{\lambda_1}\Bigr)^k\mathbf v_i\Bigr).$$
+      <div class="where">괄호 안의 둘째 항부터는 \(|\lambda_i/\lambda_1|^k \to 0\). 넘침·사라짐을 막기 위해 매번 정규화하면 방향만 \(\mathbf v_1\)로 모인다. 이것이 <span class="term">거듭제곱법</span><span class="en">(power iteration)</span>이다.</div></div>
+<pre class="code"><span class="k">function</span> power_iteration(A, x, tol, maxit)
+  x = x / norm(x)
+  <span class="k">for</span> k = 1 .. maxit
+    y = A x                                <span class="c">// 반복당 행렬–벡터 곱 한 번</span>
+    lam = dot(x, y)                        <span class="c">// 레일리 몫 xᵀAx (‖x‖ = 1)</span>
+    <span class="k">if</span> norm(y - lam * x) &lt;= tol * abs(lam) <span class="k">then return</span> (lam, x)
+    x = y / norm(y)
+  <span class="k">return</span> (lam, x)</pre>
+    <div class="callout deep"><strong>정리 14.2 (거듭제곱법의 수렴)</strong> \(|\lambda_1| \gt |\lambda_2|\)이고 \(c_1 \ne 0\)이면 정규화한 반복 벡터와 \(\pm\mathbf v_1\) 사이의 각은 \(O(|\lambda_2/\lambda_1|^k)\)로 줄고, 고유값 추정의 오차도 \(O(|\lambda_2/\lambda_1|^k)\)이다. \(A\)가 대칭이면 <span class="term">레일리 몫</span><span class="en">(Rayleigh quotient)</span> \(r(\mathbf x) = \mathbf x^{\mathsf T}A\mathbf x/\mathbf x^{\mathsf T}\mathbf x\)의 오차는 \(O(|\lambda_2/\lambda_1|^{2k})\)로 두 배 빨리 준다.
+      <p style="margin:8px 0 0"><b>대칭일 때 제곱이 되는 이유.</b> \(\mathbf x = \mathbf v_1 + \boldsymbol\delta\), \(\boldsymbol\delta \perp \mathbf v_1\)이면 \(r(\mathbf x) - \lambda_1 = \dfrac{\boldsymbol\delta^{\mathsf T}(A - \lambda_1I)\boldsymbol\delta}{1 + \|\boldsymbol\delta\|^2} = O(\|\boldsymbol\delta\|^2)\). 레일리 몫은 고유벡터에서 정류점이라 벡터 오차의 제곱만큼만 틀린다. ∎</p></div>
+    <div class="callout"><strong>예제 14.2 (비대칭 2 × 2)</strong> \(A = \begin{bmatrix}4 & 1\\ 2 & 3\end{bmatrix}\)의 고유값은 5, 2, 고유벡터는 \((1, 1)\), \((1, -2)\)이다. \(\mathbf x_0 = (1, 0)\)에서 출발해 첫 성분이 1이 되도록 정규화한다.
+      <ol>
+        <li>\(A\mathbf x_0 = (4, 2)\) → \(\mathbf x_1 = (1, 0.5)\). 고유값 추정(첫 성분의 비) 4.</li>
+        <li>\(A\mathbf x_1 = (4.5, 3.5)\) → \(\mathbf x_2 = (1, 0.7778)\). 추정 4.5. 다음은 \((1, 0.9070)\)과 4.7778, \((1, 0.9621)\)과 4.9070.</li>
+        <li>둘째 성분의 오차 \(1 - x_2\)는 0.5, 0.2222, 0.0930, 0.0379, 0.0153으로 비가 0.444, 0.419, 0.408, 0.403 → \(|\lambda_2/\lambda_1| = 0.4\)에 다가간다. 비대칭이라 고유값 추정의 오차도 같은 0.4배씩 준다(0.5, 0.222, 0.093, …).</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ev-power">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거듭제곱법: 벡터가 지배 고유벡터 쪽으로 돈다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-pw-cv"></canvas><span class="ev-cap">시작 벡터(점)를 끌기</span></div>
+          <div><canvas id="ev-pw-ch"></canvas><span class="ev-cap">log₁₀ 오차 vs k</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>λ₂ / λ₁ (λ₁ = 2) <output id="ev-pw-r-out"></output></span><input type="range" id="ev-pw-r" min="-0.95" max="0.95" step="0.05" value="0.6"></label>
+          <label class="ctrl"><span>두 고유벡터 사이 각 <output id="ev-pw-a-out"></output></span><input type="range" id="ev-pw-a" min="20" max="90" step="5" value="90"></label>
+          <label class="ctrl"><span>반복 수 k <output id="ev-pw-k-out"></output></span><input type="range" id="ev-pw-k" min="0" max="40" step="1" value="6"></label>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--accent)"></i>반복 벡터 xₖ</span><span><i style="background:var(--text-dim)"></i>고유벡터 방향</span><span><i style="background:var(--bad)"></i>각 오차 sin θₖ</span><span><i style="background:var(--accent-2)"></i>레일리 몫 오차</span><span><i style="background:var(--text-faint)"></i>|λ₂/λ₁|ᵏ, |λ₂/λ₁|²ᵏ</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">레일리 몫 rₖ</span><span class="v" id="ev-pw-q">—</span></div>
+        <div class="stat"><span class="k">sin θₖ</span><span class="v" id="ev-pw-s">—</span></div>
+        <div class="stat"><span class="k">|rₖ − λ₁|</span><span class="v" id="ev-pw-e">—</span></div>
+        <div class="stat"><span class="k">10⁻¹⁰까지 반복 (벡터)</span><span class="v" id="ev-pw-n">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 각이 90°(대칭 행렬)이면 레일리 몫 오차(보라)의 기울기가 각 오차(빨강)의 두 배입니다. 각을 45°로 줄이면(비대칭) 두 기울기가 같아집니다. ② λ₂/λ₁ = 0.95로 두면 40번으로도 소수 둘째 자리를 겨우 맞춥니다. 수렴 속도는 고유값의 간격이 정합니다. ③ λ₂/λ₁을 음수로 하면 벡터가 지배 방향의 양옆을 번갈아 오가며 수렴합니다. ④ 시작 벡터를 v₂ 방향에 정확히 두면(c₁ = 0) 반올림 오차가 없는 한 v₁을 찾지 못합니다. 모델: A = V diag(2, 2r) V⁻¹, v₁은 20° 방향.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="inverse">
+    <h2>역반복, 이동, 레일리 몫 반복</h2>
+    <div class="problem"><strong>가장 큰 것 말고 3.2 근처의 고유값</strong>
+      <p>구조물의 진동 해석에서 필요한 것은 가장 큰 고유값이 아니라 가진 주파수 근처의 고유값, 혹은 가장 작은 몇 개입니다. 거듭제곱법은 언제나 크기가 가장 큰 고유값으로 갑니다. 원하는 고유값을 "가장 큰" 것으로 만드는 변환이 있을까요?</p></div>
+    <p>\(A\mathbf v = \lambda\mathbf v\)이면 \((A - \sigma I)^{-1}\mathbf v = \frac{1}{\lambda - \sigma}\mathbf v\)입니다. 고유벡터는 그대로이고 고유값만 \(1/(\lambda_i - \sigma)\)로 바뀝니다. 이동량 \(\sigma\)에 <b>가장 가까운</b> 고유값이 절댓값이 가장 큰 고유값이 되므로, 이 행렬에 거듭제곱법을 쓰면 그 고유벡터로 갑니다. 역행렬을 만들지 않고 매번 \((A - \sigma I)\mathbf y = \mathbf x\)를 풀며, LU 분해는 처음 한 번만 하면 됩니다.</p>
+    <div class="callout deep"><strong>정리 14.3 (이동 역반복)</strong> \(\lambda_J\)가 \(\sigma\)에 가장 가깝고 \(\lambda_K\)가 그다음으로 가까우면, <span class="term">이동 역반복</span><span class="en">(shifted inverse iteration)</span>의 수렴비는
+      <div class="formula">$$\frac{|\lambda_J - \sigma|}{|\lambda_K - \sigma|}$$</div>
+      이다. \(\sigma\)가 \(\lambda_J\)에 가까울수록 비가 0에 가까워져 한두 번 만에 고유벡터를 얻는다. \(A - \sigma I\)가 거의 특이해 연립방정식의 해가 크게 틀릴 것 같지만, 그 오차는 거의 전부 원하는 고유벡터 방향이라 정규화하면 해가 없다.</div>
+    <p>한 걸음 더 나가면 매 단계 \(\sigma\)를 지금의 가장 좋은 추정, 곧 레일리 몫으로 바꿀 수 있습니다. 이것이 <span class="term">레일리 몫 반복</span><span class="en">(Rayleigh quotient iteration, RQI)</span>입니다.</p>
+<pre class="code"><span class="k">function</span> rayleigh_quotient_iteration(A, x, tol)
+  x = x / norm(x);  rho = dot(x, A x)
+  <span class="k">repeat</span>
+    y = solve(A - rho I, y = x)            <span class="c">// 매번 새 행렬 분해: 비싸다</span>
+    x = y / norm(y)
+    rho = dot(x, A x)                      <span class="c">// 이동량을 갱신</span>
+  <span class="k">until</span> norm(A x - rho x) &lt;= tol * norm(A)
+  <span class="k">return</span> (rho, x)</pre>
+    <div class="callout deep"><strong>정리 14.4 (레일리 몫 반복의 수렴 차수)</strong> \(A\)가 대칭이고 RQI가 단순 고유값 \(\lambda\)로 수렴하면, 벡터 오차 \(\epsilon_k = \sin\theta_k\)는 \(\epsilon_{k+1} = O(\epsilon_k^3)\), 곧 <b>3차 수렴</b>한다. 비대칭이면 2차다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> 역반복 한 번은 벡터 오차에 \(|\lambda - \sigma|/|\lambda_K - \sigma|\)를 곱한다. 대칭이면 정리 14.2의 증명대로 레일리 몫의 오차 \(|\lambda - \sigma| = O(\epsilon_k^2)\)이므로 \(\epsilon_{k+1} = O(\epsilon_k^2)\cdot\epsilon_k = O(\epsilon_k^3)\). 비대칭이면 레일리 몫이 \(O(\epsilon_k)\)만큼만 맞아서 2차가 된다. ∎</p></div>
+    <div class="callout"><strong>예제 14.3 (RQI 대 고정 이동 역반복)</strong> \(A = \begin{bmatrix}2 & 1 & 0\\ 1 & 3 & 1\\ 0 & 1 & 4\end{bmatrix}\)(고유값 \(3 - \sqrt3,\ 3,\ 3 + \sqrt3 = 4.7320508\)), \(\mathbf x_0 = (1, 1, 1)/\sqrt3\), \(\rho_0 = 13/3 = 4.3333\). 고정 이동 역반복은 \(\sigma = \rho_0\)을 끝까지 쓴다.
+      <div class="table-wrap"><table class="ev-num">
+        <thead><tr><th>k</th><th>RQI ρₖ</th><th>|ρₖ − λ|</th><th>고정 σ 역반복 ρₖ</th><th>|ρₖ − λ|</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>4.3333333333</td><td>3.99×10⁻¹</td><td>4.3333333333</td><td>3.99×10⁻¹</td></tr>
+          <tr><td>1</td><td>4.7074171797</td><td>2.46×10⁻²</td><td>4.7074171797</td><td>2.46×10⁻²</td></tr>
+          <tr><td>2</td><td>4.7320462724</td><td>4.54×10⁻⁶</td><td>4.7301260987</td><td>1.92×10⁻³</td></tr>
+          <tr><td>3</td><td>4.7320508076</td><td>&lt; 10⁻¹⁵</td><td>4.7318836826</td><td>1.67×10⁻⁴</td></tr>
+          <tr><td>5</td><td>—</td><td>—</td><td>4.7320494803</td><td>1.33×10⁻⁶</td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>고정 이동의 고유값 오차는 매번 약 0.089배로 준다. 벡터의 수렴비 \(|\lambda - \sigma|/|3 - \sigma| = 0.399/1.333 = 0.299\)의 제곱(대칭이라 레일리 몫은 제곱 속도)이다.</li>
+        <li>RQI의 고유값 오차는 \(2.46\times10^{-2}\) → \(4.54\times10^{-6}\) → 기계 정밀도. \(4.54\times10^{-6}/(2.46\times10^{-2})^3 = 0.30\)으로 세제곱 관계가 보인다. 고유값 오차가 벡터 오차의 제곱이므로 고유값으로 보면 자릿수가 매번 약 세 배가 된다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ev-shift">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이동량 σ와 수렴 속도: 원하는 고유값 골라 잡기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-sh-cv"></canvas><span class="ev-cap">고유값과 이동량 σ (σ를 끌기)</span></div>
+          <div><canvas id="ev-sh-ch"></canvas><span class="ev-cap">log₁₀ sin θₖ vs k</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="btn-row"><button class="btn" id="ev-sh-p1">σ = 0 (가장 작은 것)</button><button class="btn" id="ev-sh-p2">σ = 3.9</button><button class="btn" id="ev-sh-p3">σ = 5.4 (중간 근처)</button></div>
+          <label class="check"><input type="checkbox" id="ev-sh-pw" checked> 거듭제곱법도 그리기</label>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--accent-2)"></i>이동 역반복</span><span><i style="background:var(--bad)"></i>거듭제곱법 (λ = 10으로)</span><span><i style="background:var(--warn)"></i>σ</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">수렴하는 고유값</span><span class="v" id="ev-sh-l">—</span></div>
+        <div class="stat"><span class="k">수렴비 |λ<sub>J</sub> − σ| / |λ<sub>K</sub> − σ|</span><span class="v" id="ev-sh-r">—</span></div>
+        <div class="stat"><span class="k">10⁻¹⁰까지 반복</span><span class="v" id="ev-sh-n">—</span></div>
+        <div class="stat"><span class="k">거듭제곱법 (비 0.7)</span><span class="v" id="ev-sh-np">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① σ를 고유값 4 바로 옆(3.9)에 두면 수렴비가 0.1/0.9 ≈ 0.11이라 열 번 남짓이면 끝납니다. ② σ를 두 고유값 4와 7의 한가운데 근처(5.4)에 두면 비가 1.4/1.6 = 0.875로 1에 가까워 오래 걸립니다. 5.5를 넘기면 가는 쪽이 4에서 7로 바뀝니다. ③ σ = 0은 순수 역반복으로, 가장 작은 고유값 1로 갑니다. 수렴비 1/3. 모델: 5 × 5 대칭 행렬 Q diag(1, 3, 4, 7, 10) Qᵀ, 매 단계 (A − σI)y = x를 부분 피벗 LU로 풉니다.</div>
+    </div>
+
+    <div class="sim" id="sim-ev-rqi">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>레일리 몫 반복의 수렴 표: 자릿수가 세 배씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ev-rq-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬</span><div class="seg" id="ev-rq-m"><button data-value="sym" class="on">대칭 (예제 14.3)</button><button data-value="ns">비대칭</button></div></div>
+          <div class="ctrl"><span>시작 벡터 x₀</span><div class="seg" id="ev-rq-x"><button data-value="0" class="on">(1, 1, 1)</button><button data-value="1">(1, 0, 0)</button><button data-value="2">(1, −2, 1)</button><button data-value="3">(0, 1, 3)</button></div></div>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--accent-2)"></i>RQI</span><span><i style="background:var(--warn)"></i>고정 이동 역반복 (σ = ρ₀)</span><span><i style="background:var(--bad)"></i>거듭제곱법</span></div>
+      <div class="table-wrap ev-tbl"><table>
+        <thead><tr><th>k</th><th>RQI ρₖ</th><th>|Axₖ − ρₖxₖ|</th><th>추정 차수</th><th>고정 σ 잔차</th></tr></thead>
+        <tbody id="ev-rq-tb"></tbody></table></div>
+      <div class="ev-msg" id="ev-rq-msg"></div>
+      <div class="sim-note">해볼 것: ① 대칭 행렬에서 '추정 차수' 열(log rₖ₊₁ / log rₖ)이 3 근처로 나옵니다. 비대칭으로 바꾸면 2 근처입니다. ② 시작 벡터를 바꾸면 RQI가 <b>다른</b> 고유값으로 갈 수 있습니다. 어느 고유값으로 갈지는 시작점이 정하고, 그래서 실무에서는 역반복 몇 번으로 원하는 고유값 근처에 먼저 간 뒤 RQI로 마무리합니다. 모델: 비대칭 행렬은 [[2, 1, 0], [0.5, 3, 1], [0, 0.4, 4]]. 잔차가 10⁻¹⁴ 아래로 가면 멈춥니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="gershgorin">
+    <h2>게르시고린 원판: 계산 없이 고유값 가두기</h2>
+    <div class="problem"><strong>반복을 시작하기 전에</strong>
+      <p>이동량 \(\sigma\)를 고르려면 고유값이 대략 어디 있는지 알아야 합니다. 행렬이 양정치인지, 반복법이 수렴하는지(13장의 \(\rho(G) \lt 1\)) 판단할 때도 마찬가지입니다. 원소만 보고 고유값의 위치를 가둘 수 있을까요?</p></div>
+    <div class="callout deep"><strong>정리 14.5 (게르시고린 원판 정리)</strong> \(n \times n\) 복소 행렬 \(A\)의 각 행에 대해 <span class="term">게르시고린 원판</span><span class="en">(Gershgorin disc)</span>
+      <div class="formula">$$D_i = \Bigl\{ z \in \mathbb C : |z - a_{ii}| \le R_i \Bigr\},\qquad R_i = \sum_{j\ne i}|a_{ij}|$$</div>
+      을 잡으면 모든 고유값은 \(D_1 \cup \cdots \cup D_n\) 안에 있다. 또 원판 \(k\)개의 합집합이 나머지 원판과 떨어져 있으면, 그 합집합 안에는 고유값이 정확히 \(k\)개(중복도 포함) 있다. \(A^{\mathsf T}\)도 같은 고유값을 가지므로 열 합으로 만든 원판에도 같은 결론이 성립한다.
+      <p style="margin:8px 0 0"><b>증명.</b> \(A\mathbf v = \lambda\mathbf v\)에서 \(|v_i|\)가 가장 큰 성분 \(i\)를 고르면 \((\lambda - a_{ii})v_i = \sum_{j\ne i}a_{ij}v_j\)이므로 \(|\lambda - a_{ii}| \le \sum_{j\ne i}|a_{ij}||v_j|/|v_i| \le R_i\). 개수에 대한 주장은 \(A(t) = D + t(A - D)\)의 고유값이 \(t\)에 연속이라는 사실(원판이 \(t\)와 함께 커진다)에서 나온다. ∎</p></div>
+    <p>13장의 엄격한 대각 우세는 모든 원판이 원점을 포함하지 않는다는 뜻이고, 그래서 대각 우세 행렬은 가역입니다. 대각이 양수인 대칭 대각 우세 행렬은 모든 고유값이 양수, 곧 양정치입니다. 원판이 너무 크면 대각 닮음 변환 \(DAD^{-1}\)(고유값은 같다)으로 \(i\)행의 비대각 원소를 \(d_i\)배, \(i\)열을 \(1/d_i\)배 해서 원하는 원판을 줄일 수 있습니다.</p>
+    <div class="callout"><strong>예제 14.4 (세 원판, 세 고유값)</strong> \(A = \begin{bmatrix}10 & 1 & -1\\ 0.5 & 4 & 0.5\\ 1 & -2 & -3\end{bmatrix}\).
+      <ol>
+        <li>원판: \(D_1\)은 중심 10, 반지름 2 → 실수축 \([8, 12]\). \(D_2\)는 중심 4, 반지름 1 → \([3, 5]\). \(D_3\)는 중심 −3, 반지름 3 → \([-6, 0]\).</li>
+        <li>세 원판이 서로 떨어져 있으므로 각 원판에 고유값이 하나씩 있다. 복소 고유값은 켤레 쌍으로 나와야 하는데 원판마다 하나뿐이니 셋 다 실수다.</li>
+        <li>실제 고유값은 10.0250, 3.7297, −2.7547로 각 원판 안에 있다. 행렬이 가역이고(0은 \(D_3\)의 경계에 있지만 고유값 −2.75는 0이 아니다), \(\sigma = 4\)로 역반복하면 3.73으로 간다는 것도 미리 알 수 있다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ev-gersh">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>게르시고린 원판 편집기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ev-gs-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>행렬 A (원소 편집)</span>
+            <div class="mat" style="--n:3">
+              <input id="ev-gs-a11" value="10"><input id="ev-gs-a12" value="1"><input id="ev-gs-a13" value="-1">
+              <input id="ev-gs-a21" value="0.5"><input id="ev-gs-a22" value="4"><input id="ev-gs-a23" value="0.5">
+              <input id="ev-gs-a31" value="1"><input id="ev-gs-a32" value="-2"><input id="ev-gs-a33" value="-3">
+            </div></div>
+          <label class="ctrl"><span>3행 스케일 d₃ (DAD⁻¹) <output id="ev-gs-d-out"></output></span><input type="range" id="ev-gs-d" min="0.2" max="2" step="0.05" value="1"></label>
+          <label class="check"><input type="checkbox" id="ev-gs-col"> 열 원판도 보기</label>
+          <div class="btn-row"><button class="btn" id="ev-gs-p1">예제 14.4</button><button class="btn" id="ev-gs-p2">회전 (복소 고유값)</button><button class="btn" id="ev-gs-p3">겹치는 원판</button></div>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--accent)"></i>행 원판</span><span><i style="background:var(--accent-2)"></i>열 원판</span><span><i style="background:var(--bad)"></i>실제 고유값</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">고유값</span><span class="v" id="ev-gs-ev">—</span></div>
+        <div class="stat"><span class="k">원판 (중심, 반지름)</span><span class="v" id="ev-gs-dk">—</span></div>
+        <div class="stat"><span class="k">판정</span><span class="v" id="ev-gs-v">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 예제 14.4에서 d₃를 줄여 보세요. 3행의 비대각 원소가 d₃배가 되어 D₃이 작아지고, 대신 1·2행의 원판이 조금 커집니다. 고유값(빨강)은 전혀 움직이지 않습니다. d₃ ≈ 0.5이면 0이 D₃ 밖으로 나가 A가 가역임이 원판만으로 증명됩니다. ② '회전'은 대각이 0이라 원판 두 개가 원점에서 겹치고, 고유값 ±i가 그 안에 있습니다. ③ 원소를 직접 고쳐 원판을 겹치게 하면 고유값 두 개가 한 합집합 안에서 복소 쌍이 될 수도 있습니다. 모델: 3 × 3 고유값은 특성 다항식의 뒤랑–케르너 반복(3차라 안전).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="deflation">
+    <h2>수축: 찾은 고유값을 치우기</h2>
+    <p>거듭제곱법으로 \(\lambda_1, \mathbf v_1\)을 찾았다면 다음 고유값은 어떻게 찾을까요? 찾은 것을 행렬에서 "치워" 두 번째 것이 가장 크게 만드는 과정을 <span class="term">수축</span><span class="en">(deflation)</span>이라 합니다.</p>
+    <div class="callout deep"><strong>정의 14.6 (호텔링 수축과 비란트 수축)</strong>
+      <ul style="margin:6px 0 0">
+        <li><b>호텔링</b>(대칭 \(A\), \(\|\mathbf v_1\| = 1\)): \(A_1 = A - \lambda_1\mathbf v_1\mathbf v_1^{\mathsf T}\). 고유벡터는 그대로이고 \(\lambda_1\)만 0으로 바뀐다(나머지 고유벡터가 \(\mathbf v_1\)과 직교하므로).</li>
+        <li><b>비란트</b>(일반 \(A\)): \(\mathbf u^{\mathsf T}\mathbf v_1 = 1\)인 \(\mathbf u\)로 \(A_1 = A - \lambda_1\mathbf v_1\mathbf u^{\mathsf T}\). 고유값 \(\lambda_1\)만 0이 되고 나머지 고유값은 유지된다.</li>
+        <li><b>직교 닮음 수축</b>: \(\mathbf v_1\)을 첫 열로 하는 직교 행렬 \(Q\)(하우스홀더 반사)로 \(Q^{\mathsf T}AQ = \begin{bmatrix}\lambda_1 & \mathbf w^{\mathsf T}\\ \mathbf 0 & A_2\end{bmatrix}\). 나머지 고유값은 \((n-1)\)차 행렬 \(A_2\)의 고유값이다.</li>
+      </ul></div>
+    <p>예를 들어 \(A = \begin{bmatrix}2 & 1\\ 1 & 2\end{bmatrix}\)에서 \(\lambda_1 = 3\), \(\mathbf v_1 = (1, 1)/\sqrt2\)이면 \(A_1 = A - 3\mathbf v_1\mathbf v_1^{\mathsf T} = \begin{bmatrix}0.5 & -0.5\\ -0.5 & 0.5\end{bmatrix}\)이고, 고유값은 0과 1입니다. 남은 고유값 1을 거듭제곱법으로 바로 얻습니다.</p>
+    <div class="callout warn"><strong>주의: 오차가 쌓인다</strong> \(\mathbf v_1\)이 \(10^{-6}\)만큼 틀리면 \(A_1\)에 크기 \(\lambda_1\cdot10^{-6}\) 정도의 오차가 섞이고, 이 오차는 다음 고유값들에 그대로 넘어갑니다. 고유값을 여러 개 수축으로 구하면 뒤로 갈수록 정확도가 떨어지므로, 명시적 수축은 고유값 몇 개만 필요할 때 씁니다. QR 알고리즘의 수축은 이와 달리 대각 아래 원소가 반올림 수준이 되었을 때 행렬을 블록으로 <b>자르는</b> 것이라 정확도를 잃지 않습니다.</div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="qr">
+    <h2>QR 알고리즘: 모든 고유값을 한꺼번에</h2>
+    <div class="problem"><strong>eig(A)는 실제로 무엇을 하는가</strong>
+      <p>LinearBook(<a href="../../linear/chapters/numerical.html">수치 선형대수</a>)에서 이동 없는 QR 알고리즘 \(A_k = Q_kR_k\), \(A_{k+1} = R_kQ_k\)가 대각 아래를 \(|\lambda_{i+1}/\lambda_i|^k\)로 지운다는 것을 보았습니다. 그런데 가까운 고유값이 있으면 수백 번이 걸리고, 한 번에 \(O(n^3)\)이 듭니다. 라이브러리는 어떻게 \(n = 1000\)짜리를 1초 안에 푸는 걸까요?</p></div>
+    <p>먼저 기본 성질입니다. \(R_k = Q_k^{\mathsf T}A_k\)이므로 \(A_{k+1} = Q_k^{\mathsf T}A_kQ_k\), 직교 닮음이라 고유값이 보존됩니다. 그리고 \(\bar Q_k = Q_0Q_1\cdots Q_{k-1}\)의 열들은 \(A^k\)의 열에 그람–슈미트를 한 결과와 같습니다. 곧 <span class="term">QR 알고리즘</span><span class="en">(QR algorithm)</span>은 \(n\)개 벡터에 거듭제곱법을 동시에 하며 서로 직교하게 유지하는 <b>동시 반복</b>입니다. 실용 알고리즘은 여기에 세 가지를 더합니다.</p>
+    <div class="callout deep"><strong>정리 14.7 (헤센베르크 축소)</strong> 모든 정사각 행렬은 하우스홀더 반사 \(n - 2\)개의 직교 닮음으로 <span class="term">헤센베르크 행렬</span><span class="en">(Hessenberg matrix)</span>, 곧 \(i \gt j + 1\)이면 \(h_{ij} = 0\)인 꼴로 바뀐다(약 \(\tfrac{10}{3}n^3\) flop). 대칭이면 결과는 삼중대각이다. QR 단계는 헤센베르크 꼴을 보존하고, 헤센베르크 행렬의 QR 단계는 기븐스 회전 \(n - 1\)개로 \(O(n^2)\)(삼중대각이면 \(O(n)\))에 끝난다.
+      <p style="margin:8px 0 0"><b>왜 삼각이 아니라 헤센베르크인가.</b> 반사 \(H_1\)로 첫 열의 둘째 원소 아래를 지우면 \(H_1A\)의 첫 열은 좋지만, 닮음을 위해 오른쪽에서 \(H_1\)을 곱하면 첫 열이 다시 채워진다. 반사가 둘째 행부터만 건드리게 하면(\(H_1 = \mathrm{diag}(1, \tilde H_1)\)) 오른쪽 곱이 첫 열을 건드리지 않는다. 대각 바로 아래 한 줄이 그 대가다. 유한 단계로 삼각 꼴까지 가는 것은 5차 이상 근의 공식이 없다는 사실과 모순이므로 불가능하다. ∎</p></div>
+<pre class="code"><span class="k">function</span> shifted_qr_eigenvalues(A)
+  H = hessenberg(A)                        <span class="c">// 하우스홀더, 한 번만: 10n³/3</span>
+  m = n
+  <span class="k">while</span> m &gt; 1
+    mu = wilkinson_shift(H[m-1..m, m-1..m])  <span class="c">// 오른쪽 아래 2×2의 고유값 중 h_mm에 가까운 것</span>
+    Q R = qr(H[1..m,1..m] - mu I)            <span class="c">// 기븐스 m-1개: O(m²)</span>
+    H[1..m,1..m] = R Q + mu I
+    <span class="k">if</span> |H[m][m-1]| &lt;= eps * (|H[m][m]| + |H[m-1][m-1]|)
+      H[m][m-1] = 0;  m = m - 1                <span class="c">// 수축: 고유값 H[m][m] 확정</span>
+  <span class="k">return</span> diag(H)</pre>
+    <p><b>이동</b>이 두 번째 열쇠입니다. \(A_k - \mu_kI = Q_kR_k\), \(A_{k+1} = R_kQ_k + \mu_kI\)는 여전히 닮음 변환이고, 마지막 대각 아래 원소는 대략 \(|\lambda_n - \mu|/|\lambda_{n-1} - \mu|\)의 비율로 줄어듭니다. 역반복과 똑같은 구조입니다. 실제로 이동 QR의 마지막 행은 \(\mathbf e_n\)에 이동 역반복을 하는 것과 같습니다. \(\mu = h_{nn}\)(<b>레일리 이동</b>)을 쓰면 RQI처럼 2차(대칭이면 3차) 수렴합니다. 레일리 이동은 대칭적인 경우에 막힐 수 있어서, 오른쪽 아래 2 × 2 블록의 고유값 중 \(h_{nn}\)에 가까운 것을 쓰는 <span class="term">윌킨슨 이동</span><span class="en">(Wilkinson shift)</span>이 표준이며, 대칭 삼중대각 행렬에서는 항상 수렴함이 증명되어 있습니다. 세 번째 열쇠는 <b>수축</b>입니다. \(h_{m,m-1}\)이 반올림 수준이 되면 잘라 내고 \((m-1)\)차로 계속합니다.</p>
+    <div class="table-wrap"><table class="ev-num">
+      <thead><tr><th>QR 단계 수 (수축 허용 10⁻¹⁴)</th><th>이동 없음</th><th>레일리 이동</th><th>윌킨슨 이동</th></tr></thead>
+      <tbody>
+        <tr><td>대칭 6 × 6, 고유값 1 … 6</td><td>160</td><td>18</td><td>11</td></tr>
+        <tr><td>대칭, 가까운 고유값 3, 2.9, …</td><td>831</td><td>18</td><td>11</td></tr>
+        <tr><td>비대칭 6 × 6, 실수 고유값</td><td>129</td><td>19</td><td>15</td></tr>
+        <tr><td>반대각 4 × 4 (고유값 ±1)</td><td>멈춤</td><td>멈춤</td><td>3</td></tr>
+      </tbody></table></div>
+    <p>표의 마지막 줄이 윌킨슨 이동이 필요한 이유입니다. 반대각 행렬은 \(h_{nn} = 0\)이고 고유값 \(\pm1\)이 0에서 같은 거리에 있어, 이동이 없거나 레일리 이동이면 QR 단계가 행렬을 전혀 바꾸지 못합니다. 고유값이 고유값 하나당 평균 두세 단계 만에 확정되므로 전체 비용은 축소 비용이 지배하고, 비대칭 행렬의 고유값 전부가 약 \(10n^3\) flop, 대칭이면 약 \(\tfrac43n^3\) flop에 나옵니다. 실수 비대칭 행렬의 복소 고유값 쌍은 켤레 이동 두 개를 실수 연산으로 한 번에 적용하는 프랜시스의 <b>이중 이동</b>으로 처리하며, 결과는 대각에 2 × 2 블록이 남는 실수 슈르 꼴입니다.</p>
+
+    <div class="sim" id="sim-ev-qr">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>QR 반복 히트맵: 대각 아래가 사라지는 속도</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-qr-cv"></canvas><span class="ev-cap">log₁₀|aᵢⱼ| (밝을수록 큼)</span></div>
+          <div><canvas id="ev-qr-ch"></canvas><span class="ev-cap">log₁₀|aᵢ₊₁,ᵢ| vs 단계</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬</span><select id="ev-qr-pre">
+            <option value="sym">대칭 6 × 6, 고유값 6 … 1</option>
+            <option value="close">대칭, 가까운 고유값 3, 2.9</option>
+            <option value="nons">비대칭 6 × 6</option>
+            <option value="anti">반대각 4 × 4</option>
+          </select></label>
+          <div class="ctrl"><span>이동</span><div class="seg" id="ev-qr-sh"><button data-value="none">없음</button><button data-value="rayleigh">레일리</button><button data-value="wilkinson" class="on">윌킨슨</button></div></div>
+          <label class="check"><input type="checkbox" id="ev-qr-h" checked> 먼저 헤센베르크로 축소</label>
+          <div class="btn-row"><button class="btn primary" id="ev-qr-1">QR 한 단계</button><button class="btn" id="ev-qr-10">10단계</button><button class="btn" id="ev-qr-0">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 k</span><span class="v" id="ev-qr-k">0</span></div>
+        <div class="stat"><span class="k">활성 블록 크기 m</span><span class="v" id="ev-qr-m">—</span></div>
+        <div class="stat"><span class="k">확정된 고유값</span><span class="v" id="ev-qr-ev">—</span></div>
+        <div class="stat"><span class="k">이동 μ</span><span class="v" id="ev-qr-mu">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '이동 없음'에서 10단계씩 누르면 대각 아래가 위에서부터 천천히 어두워집니다. 비율 |λᵢ₊₁/λᵢ|가 1에 가까운 칸이 가장 늦습니다. ② '윌킨슨'으로 바꾸면 오른쪽 아래 원소가 두세 단계 만에 10⁻¹⁵ 아래로 떨어지고, 수축이 일어나 활성 블록(노란 테두리)이 한 칸씩 줄어듭니다. ③ '반대각'에서 이동 없음·레일리는 아무리 눌러도 변화가 없습니다. ④ 헤센베르크 축소를 끄면 처음 행렬이 꽉 차 있지만, QR 단계는 결국 같은 고유값을 냅니다(단지 단계마다 O(n³)). 모델: 활성 블록에 그람–슈미트 QR, 수축 기준 |aₘ,ₘ₋₁| ≤ 10⁻¹⁴(|aₘₘ| + |aₘ₋₁,ₘ₋₁|).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="jacobi">
+    <h2>대칭 행렬과 야코비 회전</h2>
+    <p>대칭 행렬에는 훨씬 오래된, 그리고 지금도 쓰이는 방법이 있습니다. 비대각 원소 하나 \(a_{pq}\)를 골라, \(p, q\) 좌표 평면의 회전 \(J\)로 \(J^{\mathsf T}AJ\)의 \((p, q)\) 원소를 0으로 만듭니다. 2 × 2 대칭 행렬을 대각화하는 회전각은 언제나 있습니다.</p>
+    <div class="callout deep"><strong>정리 14.8 (야코비 회전)</strong> \(\theta = (a_{qq} - a_{pp})/(2a_{pq})\), \(t = \mathrm{sign}(\theta)/(|\theta| + \sqrt{\theta^2 + 1})\), \(c = 1/\sqrt{1 + t^2}\), \(s = tc\)로 \(p, q\) 평면의 회전을 잡으면 \(A' = J^{\mathsf T}AJ\)의 \(a'_{pq} = 0\)이고, 비대각 원소의 제곱합 \(\mathrm{off}(A)^2 = \sum_{i\ne j}a_{ij}^2\)은
+      <div class="formula">$$\mathrm{off}(A')^2 = \mathrm{off}(A)^2 - 2a_{pq}^2$$</div>
+      만큼 정확히 준다. 가장 큰 \(|a_{pq}|\)를 고르는 고전 야코비에서는 \(\mathrm{off}(A')^2 \le (1 - \tfrac{2}{n(n-1)})\mathrm{off}(A)^2\)이라 선형 수렴이 보장되고, 모든 \((p, q)\)를 차례로 도는 순환 야코비는 몇 번의 스윕 뒤 2차 수렴한다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> 직교 닮음은 프로베니우스 노름을 보존하고, \(p, q\) 행·열 밖의 원소의 제곱합은 회전 전후가 같다. 그런데 \(2\times2\) 블록에서 비대각 \(a_{pq}^2\)의 두 배만큼이 대각 \(a_{pp}^2 + a_{qq}^2\)으로 옮겨 간다. 다른 0이었던 원소는 회전으로 다시 0이 아닐 수 있지만 전체 off는 줄기만 한다. \(t\)를 절댓값이 작은 근으로 고르면 회전각이 \(|\phi| \le \pi/4\)라 수치적으로 안정하다. ∎</p></div>
+    <div class="callout"><strong>예제 14.5 (회전 한 번)</strong> \(A = \begin{bmatrix}4 & 1 & 2\\ 1 & 3 & 0\\ 2 & 0 & 1\end{bmatrix}\), \(\mathrm{off}(A)^2 = 2(1 + 4 + 0) = 10\). 가장 큰 비대각 \(a_{13} = 2\)를 지운다.
+      <ol>
+        <li>\(\theta = (1 - 4)/(2\cdot 2) = -0.75\), \(t = -1/(0.75 + 1.25) = -0.5\), \(c = 0.8944\), \(s = -0.4472\).</li>
+        <li>\(A' = \begin{bmatrix}5 & 0.8944 & 0\\ 0.8944 & 3 & -0.4472\\ 0 & -0.4472 & 0\end{bmatrix}\). \(\mathrm{off}(A')^2 = 2(0.8 + 0.2) = 2 = 10 - 2\cdot2^2\). 0이었던 \(a_{23}\)이 \(-0.4472\)로 채워졌다.</li>
+        <li>계속하면 고유값 5.3465, 2.7222, −0.0687로 간다. 고유값 6 … 1인 6 × 6 행렬의 순환 스윕에서는 off가 3.45 → 1.69 → 0.558 → 3.5×10⁻² → 1.8×10⁻⁵ → 7.7×10⁻¹⁶으로, 마지막 스윕들에서 지수가 두 배씩 되는 2차 수렴이 보인다.</li>
+      </ol></div>
+    <p>야코비는 QR보다 몇 배 느리지만, 작은 고유값까지 <b>상대 정확도</b>가 높고(양정치 행렬에서 특히), 회전 하나하나가 독립적이라 병렬화하기 쉽습니다. 고유벡터는 회전들의 곱 \(V = J_1J_2\cdots\)으로 저절로 나옵니다. 엔진의 <code>MB.mat.eigSym</code>도 이 방법입니다.</p>
+
+    <div class="sim" id="sim-ev-jacobi">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>야코비 회전: 비대각이 한 칸씩 사라진다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-jc-cv"></canvas><span class="ev-cap">A (색 = 원소 값, 테두리 = 다음에 지울 칸)</span></div>
+          <div><canvas id="ev-jc-ch"></canvas><span class="ev-cap">log₁₀ off(A) vs 회전 수</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>고르는 법</span><div class="seg" id="ev-jc-s"><button data-value="max" class="on">가장 큰 칸 (고전)</button><button data-value="cyc">순서대로 (순환)</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ev-jc-1">회전 한 번</button><button class="btn" id="ev-jc-sw">스윕 (10번)</button><button class="btn" id="ev-jc-0">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">회전 수</span><span class="v" id="ev-jc-k">0</span></div>
+        <div class="stat"><span class="k">off(A)</span><span class="v" id="ev-jc-off">—</span></div>
+        <div class="stat"><span class="k">방금 지운 칸 · 감소량 2a²</span><span class="v" id="ev-jc-pq">—</span></div>
+        <div class="stat"><span class="k">대각</span><span class="v" id="ev-jc-d">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 회전 한 번마다 테두리 칸이 0이 되지만 같은 행·열의 다른 칸이 다시 채워지는 것을 보세요. off²는 그래도 정확히 2a²<sub>pq</sub>만큼 줍니다. ② 스윕(5 × 5에서 회전 10번)을 몇 번 누르면 그래프의 기울기가 점점 가팔라집니다(2차 수렴). ③ 끝나면 대각이 고유값 9, 6, 4, 2, 1(순서는 섞일 수 있음)입니다. 모델: Q diag(9, 6, 4, 2, 1) Qᵀ.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="svd">
+    <h2>특이값 계산과 저계수 근사</h2>
+    <p>\(m \times n\) 행렬 \(A\)의 특이값 \(\sigma_i\)는 \(A^{\mathsf T}A\)의 고유값의 제곱근입니다(<a href="../../linear/chapters/svd.html">LinearBook: SVD</a>). 그렇다고 \(A^{\mathsf T}A\)를 만들어 고유값을 구하면 안 됩니다. 조건수가 제곱되기 때문입니다.</p>
+    <div class="callout"><strong>예제 14.6 (AᵀA를 만들면 사라지는 특이값)</strong> \(A = \begin{bmatrix}1 & 1\\ \delta & 0\\ 0 & \delta\end{bmatrix}\), \(\delta = 10^{-8}\). 참 특이값은 \(\sqrt{2 + \delta^2} \approx 1.414\)와 \(\delta = 10^{-8}\)이다.
+      <ol>
+        <li>\(A^{\mathsf T}A = \begin{bmatrix}1 + \delta^2 & 1\\ 1 & 1 + \delta^2\end{bmatrix}\)인데 \(\delta^2 = 10^{-16}\)은 반올림 단위 \(1.1\times10^{-16}\)보다 작아 배정밀도에서 \(1 + \delta^2 = 1\)이 된다(JavaScript로 확인: <code>1 + 1e-16 === 1</code>).</li>
+        <li>저장된 \(A^{\mathsf T}A = \begin{bmatrix}1 & 1\\ 1 & 1\end{bmatrix}\)의 고유값은 2와 0, 따라서 작은 특이값이 정확히 0으로 나온다. 정보가 완전히 사라졌다.</li>
+        <li>\(A\)에 직접 직교 변환을 쓰는 방법은 \(\sigma_2\)를 상대 정확도 \(10^{-8}\) 수준 이상으로 얻는다.</li>
+      </ol></div>
+    <p>표준 알고리즘(골럽–카한)은 \(A\)의 왼쪽과 오른쪽에 서로 다른 하우스홀더 반사를 번갈아 곱해 <b>이중대각</b> 행렬 \(B = U_1^{\mathsf T}AV_1\)을 만들고(\(O(mn^2)\)), \(B\)에 \(B^{\mathsf T}B\)를 만들지 않은 채 암묵적 이동 QR을 적용합니다. \(A^{\mathsf T}A\)에 대한 대칭 QR 알고리즘을 \(A\) 자체에서 흉내 내는 것입니다. 한쪽 야코비 회전으로 \(A\)의 열을 서로 직교하게 만드는 방법도 쓰입니다.</p>
+    <div class="callout deep"><strong>정리 14.9 (에카르트–영, 최적 저계수 근사)</strong> \(A = \sum_i\sigma_i\mathbf u_i\mathbf v_i^{\mathsf T}\)일 때 \(A_k = \sum_{i\le k}\sigma_i\mathbf u_i\mathbf v_i^{\mathsf T}\)은 계수 \(k\) 이하 행렬 중 \(A\)에 가장 가깝고, \(\|A - A_k\|_2 = \sigma_{k+1}\), \(\|A - A_k\|_F = \sqrt{\sigma_{k+1}^2 + \cdots}\)이다.</div>
+    <p>예를 들어 5 × 5 힐베르트 행렬 \(h_{ij} = 1/(i + j - 1)\)의 특이값은 1.567, 0.2085, 0.01141, 3.06×10⁻⁴, 3.29×10⁻⁶입니다. 계수 2의 근사도 2-노름 오차 0.0114, 곧 \(\|A\|_2\)의 0.7%로 맞습니다. 특이값이 빨리 줄어드는 행렬은 적은 수의 벡터로 압축되며, 이것이 영상 압축, 추천 시스템, 주성분 분석의 수학입니다. 아주 큰 행렬에서는 무작위 벡터 \(k + 10\)개 정도에 \(A\)를 곱해 치역을 근사한 뒤 작은 SVD를 하는 무작위 SVD가 쓰입니다.</p>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="applications">
+    <h2>응용: 페이지랭크, 진동 모드, 에너지 준위</h2>
+    <div class="problem"><strong>링크만 보고 중요한 페이지 고르기</strong>
+      <p>웹 페이지 \(n\)개와 그 사이의 링크가 있습니다. "중요한 페이지가 많이 가리키는 페이지가 중요하다"는 순환 정의를 어떻게 숫자로 만들까요? 무작위로 링크를 따라 떠도는 사람이 오래 머문 뒤 각 페이지에 있을 확률로 정의하면, 그 확률 벡터는 전이 행렬의 고유값 1에 대한 고유벡터입니다.</p></div>
+    <p>페이지 \(j\)에서 나가는 링크가 \(d_j\)개면 \(P_{ij} = 1/d_j\)(\(j \to i\) 링크가 있을 때). 나가는 링크가 없는 페이지는 모든 페이지로 균등하게 간다고 둡니다. 서퍼는 확률 \(\alpha\)(감쇠 인자, 보통 0.85)로 링크를 따르고 \(1 - \alpha\)로 아무 페이지로나 순간 이동합니다.</p>
+    <div class="formula">$$G = \alpha P + \frac{1 - \alpha}{n}\mathbf 1\mathbf 1^{\mathsf T},\qquad G\mathbf r = \mathbf r,\quad \sum_i r_i = 1.$$
+      <div class="where">\(G\)는 열 합이 1인 양의 행렬이라 페론–프로베니우스 정리에 의해 가장 큰 고유값 1이 단순하고 고유벡터가 양수다. 둘째 고유값은 \(|\lambda_2| \le \alpha\)이므로 거듭제곱법의 오차는 매번 \(\alpha\)배 이하로 준다.</div></div>
+    <p>\(G\)는 꽉 찬 행렬이지만 만들 필요가 없습니다. \(G\mathbf r = \alpha P\mathbf r + \frac{1 - \alpha}{n}\mathbf 1\)(\(\sum r_i = 1\)일 때)이므로 희소 행렬 \(P\)와의 곱 한 번이면 됩니다. \(\alpha = 0.85\)이면 \(0.85^k = 10^{-8}\)에서 \(k \approx 113\)번, 웹 전체 규모에서도 같은 횟수입니다.</p>
+    <div class="callout"><strong>예제 14.7 (페이지 네 개)</strong> 링크 1 → 2, 3; 2 → 3; 3 → 1; 4 → 1, 3. \(\alpha = 0.85\), \(\mathbf r_0 = (0.25, 0.25, 0.25, 0.25)\).
+      <ol>
+        <li>한 번: \(r_1 = 0.0375 + 0.85(0.25 + 0.125) = 0.3563\), \(r_2 = 0.0375 + 0.85\cdot0.125 = 0.1437\), \(r_3 = 0.0375 + 0.85(0.125 + 0.25 + 0.125) = 0.4625\), \(r_4 = 0.0375\).</li>
+        <li>수렴값은 \(\mathbf r = (0.3797,\ 0.1989,\ 0.3839,\ 0.0375)\). 아무도 가리키지 않는 페이지 4는 순간 이동 몫 \(0.15/4\)만 받는다. 링크를 가장 많이 받는 3이 1위지만, 3이 자기 몫을 전부 넘겨 주는 1도 거의 같다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ev-pagerank">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>작은 웹 그래프의 페이지랭크: 거듭제곱법</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ev-two">
+          <div><canvas id="ev-pr-cv"></canvas><span class="ev-cap">페이지를 눌러 고르고, 다른 페이지를 눌러 링크 켜기/끄기</span></div>
+          <div><canvas id="ev-pr-ch"></canvas><span class="ev-cap">log₁₀ ‖rₖ − rₖ₋₁‖₁ vs k</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>감쇠 인자 α <output id="ev-pr-a-out"></output></span><input type="range" id="ev-pr-a" min="0.5" max="0.99" step="0.01" value="0.85"></label>
+          <div class="btn-row"><button class="btn primary" id="ev-pr-1">한 번 곱하기</button><button class="btn" id="ev-pr-all">수렴까지</button><button class="btn" id="ev-pr-0">처음으로</button></div>
+          <div class="btn-row"><button class="btn" id="ev-pr-g1">예제 그래프</button><button class="btn" id="ev-pr-g2">고리 + 허브</button></div>
+        </div>
+      </div>
+      <div class="ev-legend"><span><i style="background:var(--accent)"></i>원 크기 ∝ 순위 rᵢ</span><span><i style="background:var(--warn)"></i>선택한 페이지</span><span><i style="background:var(--text-faint)"></i>αᵏ 기준선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="ev-pr-k">0</span></div>
+        <div class="stat"><span class="k">1위 페이지 (rᵢ)</span><span class="v" id="ev-pr-top">—</span></div>
+        <div class="stat"><span class="k">변화 ‖rₖ − rₖ₋₁‖₁</span><span class="v" id="ev-pr-d">—</span></div>
+        <div class="stat"><span class="k">10⁻¹⁰까지 반복</span><span class="v" id="ev-pr-n">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '수렴까지'를 누르면 변화량이 αᵏ 기준선과 평행하거나 더 빨리 내려갑니다. α를 0.99로 올리면 수렴이 크게 느려집니다(|λ₂| ≤ α). ② 링크 하나를 추가해 순위가 어떻게 바뀌는지 보세요. 1위 페이지가 가리키는 페이지는 함께 올라갑니다. ③ 나가는 링크를 모두 끈 페이지(막다른 페이지)는 모든 페이지로 균등하게 나눠 줍니다. 모델: 열 확률 행렬 P, 막다른 열은 1/n로 채움, r₀ = 균등.</div>
+    </div>
+
+    <p><b>진동 모드.</b> 질량 \(m\)인 물체 \(n\)개를 강성 \(k\)인 용수철로 일렬로 잇고 양 끝을 고정하면 운동 방정식은 \(M\ddot{\mathbf x} = -K\mathbf x\), \(K = k\,\mathrm{tridiag}(-1, 2, -1)\)이고, \(\mathbf x = \mathbf v\cos\omega t\)를 넣으면 \(K\mathbf v = \omega^2M\mathbf v\), 곧 일반화 고유값 문제입니다. 이 사슬에서는 \(\omega_j^2 = \frac{k}{m}\bigl(2 - 2\cos\frac{j\pi}{n+1}\bigr)\)를 정확히 알지만, 실제 구조물의 유한 요소 모델은 크기가 수십만이고 필요한 것은 가장 낮은 진동수 몇십 개입니다. 그래서 \(\sigma = 0\) 근처의 이동 역반복을 크릴로프 공간과 결합한 이동–역 란초시 방법(ARPACK, MATLAB <code>eigs</code>)이 쓰입니다(<a href="../../linear/chapters/eigen.html">LinearBook: 고유값</a>).</p>
+    <p><b>주성분 분석.</b> 데이터 행렬의 공분산 \(C = X^{\mathsf T}X/(N - 1)\)의 가장 큰 고유벡터들이 데이터가 가장 많이 퍼진 방향입니다(<a href="../../linear/chapters/pca.html">LinearBook: PCA</a>). 수치적으로는 예제 14.6의 교훈대로 \(C\)를 만들지 않고 중심화한 \(X\)의 SVD를 구합니다.</p>
+    <p><b>양자 에너지 준위.</b> 1차원 조화 진동자 \(-\tfrac12\psi'' + \tfrac12x^2\psi = E\psi\)(단위를 골라 정확한 준위는 \(E_j = j + \tfrac12\))를 2배 하여 \(-\psi'' + x^2\psi = 2E\psi\)로 쓰고, \([-6, 6]\)을 \(n\)개 내부점으로 나눠 2차 중앙 차분을 쓰면 대칭 삼중대각 행렬의 고유값 문제가 됩니다. 2E의 정확한 값 1, 3, 5, 7, …과 비교하면</p>
+    <div class="table-wrap"><table class="ev-num">
+      <thead><tr><th>n (격자 간격 h)</th><th>2E₀ (참 1)</th><th>2E₁ (3)</th><th>2E₂ (5)</th><th>2E₃ (7)</th><th>2E₉ (19)</th></tr></thead>
+      <tbody>
+        <tr><td>50 (0.235)</td><td>0.99653</td><td>2.98259</td><td>4.95459</td><td>6.91237</td><td>18.35113</td></tr>
+        <tr><td>100 (0.119)</td><td>0.99912</td><td>2.99558</td><td>4.98850</td><td>6.97787</td><td>18.83902</td></tr>
+        <tr><td>200 (0.060)</td><td>0.99978</td><td>2.99889</td><td>4.99710</td><td>6.99443</td><td>18.95969</td></tr>
+        <tr><td>400 (0.030)</td><td>0.99994</td><td>2.99972</td><td>4.99927</td><td>6.99860</td><td>18.98996</td></tr>
+      </tbody></table></div>
+    <p>바닥 상태의 오차는 0.00347, 0.00088, 0.00022, 0.00006으로 \(h\)가 반이 될 때마다 1/4, 곧 차분의 \(O(h^2)\)를 그대로 따릅니다. 높은 준위일수록 파동 함수가 빨리 진동해 같은 격자에서 오차가 큽니다. 고유값 계산은 스투름 수열을 쓴 이분법(삼중대각 대칭 행렬에서 \(\lambda\)보다 작은 고유값의 수를 \(O(n)\)에 센다)으로 했습니다.</p>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>상황</th><th>알맞은 방법</th><th>대표 도구</th></tr></thead>
+      <tbody>
+        <tr><td>밀집 행렬, 고유값 전부</td><td>헤센베르크(삼중대각) + 이동 QR</td><td>LAPACK <code>dgeev</code>/<code>dsyev</code>, <code>numpy.linalg.eig</code>, MATLAB <code>eig</code></td></tr>
+        <tr><td>큰 희소 행렬, 몇 개만</td><td>란초시·아놀디(크릴로프), 이동–역 변환</td><td>ARPACK, <code>scipy.sparse.linalg.eigsh</code>, MATLAB <code>eigs</code></td></tr>
+        <tr><td>지배 고유벡터 하나, 곱만 가능</td><td>거듭제곱법</td><td>페이지랭크, 마르코프 연쇄의 정상 분포</td></tr>
+        <tr><td>근사값을 이미 알 때 다듬기</td><td>역반복, 레일리 몫 반복</td><td>구조 해석의 모드 갱신, 고유벡터 재계산</td></tr>
+        <tr><td>특이값, 저계수 근사</td><td>골럽–카한 이중대각화, 무작위 SVD</td><td>PCA, 영상 압축, 추천 시스템</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="iterative.html"><small>13장 · 반복 해법</small>스펙트럼 반지름과 크릴로프<br><span>반복법의 수렴은 반복 행렬의 고유값이 정하고, CG·GMRES의 크릴로프 공간은 란초시·아놀디와 같은 공간이다.</span></a>
+      <a href="nonlinear-systems.html"><small>4장 · 비선형 연립방정식과 다항식의 근</small>동반 행렬<br><span>다항식의 근은 동반 행렬의 고유값으로 구한다. 이 장의 QR 알고리즘이 roots의 실체다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · 미분방정식의 수치 해법</small>강성과 안정성 영역<br><span>야코비안의 고유값 hλ가 안정성 영역 안에 있어야 한다. 강성비는 고유값의 크기 비다.</span></a>
+      <a href="pde-numerics.html"><small>16장 · 편미분방정식의 수치 해법</small>폰 노이만 분석<br><span>차분 연산자의 고유값(증폭 인자)이 1을 넘지 않아야 안정하다.</span></a>
+      <a href="../../linear/chapters/eigen.html"><small>LINEARBOOK</small>고유값과 고유벡터<br><span>특성 다항식, 대각화, 진동 모드의 기초. 이 장은 그것을 큰 행렬에서 계산하는 법이다.</span></a>
+      <a href="../../linear/chapters/svd.html"><small>LINEARBOOK</small>특이값 분해<br><span>저계수 근사와 영상 압축. 특이값은 AᵀA를 만들지 않고 구한다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>특성 다항식의 근은 계수에 대해 조건이 아주 나쁘다(윌킨슨). 좋은 알고리즘은 직교 닮음 변환만 쌓아 후방 안정하게 고유값을 구한다. 바우어–파이크: 오차 ≤ κ(V)‖E‖, 대칭이면 κ(V) = 1.</li>
+      <li>거듭제곱법은 \(|\lambda_2/\lambda_1|^k\)로 지배 고유벡터에 수렴한다. 대칭이면 레일리 몫의 고유값 오차는 그 제곱으로 준다.</li>
+      <li>이동 역반복 \((A - \sigma I)^{-1}\)은 \(\sigma\)에 가장 가까운 고유값을 골라 잡고, 수렴비는 가장 가까운 것과 두 번째로 가까운 것의 거리 비다.</li>
+      <li>레일리 몫 반복은 매번 이동을 레일리 몫으로 갱신해 대칭 행렬에서 3차, 비대칭에서 2차로 수렴한다. 대신 어느 고유값으로 갈지는 시작점이 정한다.</li>
+      <li>게르시고린 원판 \(|z - a_{ii}| \le \sum_{j\ne i}|a_{ij}|\)의 합집합에 모든 고유값이 있고, 떨어진 원판 묶음에는 원판 수만큼의 고유값이 있다. \(DAD^{-1}\)로 원판을 줄일 수 있다.</li>
+      <li>수축은 찾은 고유값을 치운다. 명시적 수축은 오차가 쌓이고, QR의 수축은 작아진 대각 아래 원소에서 행렬을 자르는 것이라 안전하다.</li>
+      <li>실용 QR = 헤센베르크 축소(\(\tfrac{10}{3}n^3\)) + 윌킨슨 이동(고유값당 두세 단계) + 수축. 비대칭 전체 약 \(10n^3\), 대칭 약 \(\tfrac43n^3\) flop.</li>
+      <li>야코비 회전은 \(\mathrm{off}^2\)를 정확히 \(2a_{pq}^2\)씩 줄이고 순환 스윕에서 2차 수렴한다. 특이값은 \(A^{\mathsf T}A\)를 만들지 않고 이중대각화로 구하며, 페이지랭크는 \(\alpha\)배씩 수렴하는 거듭제곱법이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 대칭 행렬의 고유값이 10, 9, 1이다. 거듭제곱법으로 고유값 10을 구할 때 레일리 몫의 오차는 반복마다 대략 몇 배로 주는가?</p><div class="opts">
+        <button class="opt">0.1</button>
+        <button class="opt">0.9</button>
+        <button class="opt" data-correct>0.81</button>
+        <button class="opt">0.01</button>
+      </div><div class="quiz-exp">벡터의 각 오차는 \(|\lambda_2/\lambda_1| = 0.9\)배, 대칭 행렬의 레일리 몫은 그 제곱 \(0.81\)배로 준다. 간격이 좁아 느리다. 이동 역반복을 쓰면 크게 빨라진다.</div></div>
+
+      <div class="quiz-q"><p>Q2. 고유값이 1, 3, 4, 7, 10인 행렬에 이동 σ = 3.8의 역반복을 쓰면 어느 고유값으로, 어떤 비율로 수렴하는가?</p><div class="opts">
+        <button class="opt">10으로, 0.7</button>
+        <button class="opt">3으로, 0.25</button>
+        <button class="opt" data-correct>4로, 0.25</button>
+        <button class="opt">4로, 0.05</button>
+      </div><div class="quiz-exp">σ = 3.8에 가장 가까운 고유값은 4(거리 0.2), 두 번째는 3(거리 0.8). 수렴비는 0.2/0.8 = 0.25.</div></div>
+
+      <div class="quiz-q"><p>Q3. 레일리 몫 반복에서 대칭 행렬의 벡터 오차가 \(10^{-2}\)이었다. 다음 단계의 벡터 오차는 대략?</p><div class="opts">
+        <button class="opt">\(10^{-3}\)</button>
+        <button class="opt">\(10^{-4}\)</button>
+        <button class="opt" data-correct>\(10^{-6}\)</button>
+        <button class="opt">\(10^{-12}\)</button>
+      </div><div class="quiz-exp">대칭이면 3차 수렴이라 \(\epsilon_{k+1} \approx C\epsilon_k^3 = 10^{-6}\) (상수 C가 1 정도일 때). 비대칭이면 2차라 \(10^{-4}\)쯤이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. \(A = \begin{bmatrix}5 & 1 & 0\\ 1 & -2 & 0.5\\ 0 & 0.5 & 8\end{bmatrix}\)의 게르시고린 원판으로 알 수 있는 것은?</p><div class="opts">
+        <button class="opt">A는 양정치다</button>
+        <button class="opt" data-correct>A는 가역이고 음의 고유값이 정확히 하나 있다</button>
+        <button class="opt">고유값이 모두 [−2, 8] 안의 정수다</button>
+        <button class="opt">아무것도 알 수 없다</button>
+      </div><div class="quiz-exp">원판은 중심 5 반지름 1 → [4, 6], 중심 −2 반지름 1.5 → [−3.5, −0.5], 중심 8 반지름 0.5 → [7.5, 8.5]. 셋 다 떨어져 있어 각각 고유값 하나씩(대칭이라 실수). 0은 어느 원판에도 없으니 가역이고, [−3.5, −0.5]의 고유값 하나만 음수다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 실용 QR 알고리즘이 먼저 헤센베르크 꼴로 축소하는 주된 이유는?</p><div class="opts">
+        <button class="opt">헤센베르크 행렬의 고유값은 대각에서 바로 읽힌다</button>
+        <button class="opt" data-correct>QR 단계가 헤센베르크 꼴을 보존하고, 한 단계 비용이 O(n³)에서 O(n²)로 준다</button>
+        <button class="opt">이동 없이도 2차 수렴하게 된다</button>
+        <button class="opt">유한 번의 단계로 삼각 꼴을 만들 수 있다</button>
+      </div><div class="quiz-exp">헤센베르크 꼴은 QR 반복에서 유지되고, 기븐스 회전 n − 1개로 한 단계를 O(n²)에 할 수 있다. 축소는 한 번만 \(\tfrac{10}{3}n^3\)이 든다. 유한 단계의 삼각화는 근의 공식이 없으므로 불가능하다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 대칭 행렬에서 \(a_{pq} = 3\)을 야코비 회전으로 지웠다. \(\mathrm{off}(A)^2\)은 얼마나 주는가?</p><div class="opts">
+        <button class="opt">3</button>
+        <button class="opt">9</button>
+        <button class="opt" data-correct>18</button>
+        <button class="opt">경우에 따라 늘 수도 있다</button>
+      </div><div class="quiz-exp">\(\mathrm{off}(A')^2 = \mathrm{off}(A)^2 - 2a_{pq}^2 = \mathrm{off}(A)^2 - 18\). \(a_{pq}\)와 \(a_{qp}\) 두 칸의 제곱이 대각으로 옮겨 간다. 다른 칸이 다시 채워져도 전체는 정확히 이만큼 준다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 행렬 \(A\)의 특이값을 구하려고 \(A^{\mathsf T}A\)의 고유값을 계산하는 것의 문제는?</p><div class="opts">
+        <button class="opt">\(A^{\mathsf T}A\)는 대칭이 아니다</button>
+        <button class="opt">계산량이 지수적으로 늘어난다</button>
+        <button class="opt" data-correct>조건수가 제곱되어 작은 특이값이 반올림에 묻힌다</button>
+        <button class="opt">큰 특이값의 부호가 틀린다</button>
+      </div><div class="quiz-exp">\(\kappa(A^{\mathsf T}A) = \kappa(A)^2\). \(\sigma = 10^{-8}\)이면 \(\sigma^2 = 10^{-16}\)이 1과 더해지는 순간 사라진다(예제 14.6). 표준 방법은 A 자체를 이중대각화한다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 감쇠 인자 α = 0.9인 페이지랭크를 거듭제곱법으로 오차 \(10^{-6}\)까지 구하려면 대략 몇 번 곱해야 하는가?</p><div class="opts">
+        <button class="opt">약 6번</button>
+        <button class="opt">약 60번</button>
+        <button class="opt" data-correct>약 131번</button>
+        <button class="opt">웹 페이지 수에 비례한다</button>
+      </div><div class="quiz-exp">\(|\lambda_2| \le \alpha\)이므로 \(0.9^k = 10^{-6}\), \(k = 6/0.0458 \approx 131\). 횟수는 그래프 크기와 무관하고, 한 번의 비용만 링크 수에 비례한다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const EV = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  font() { return getComputedStyle(document.body).getPropertyValue("--mono"); },
+  dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; },
+  nrm(a) { return Math.sqrt(EV.dot(a, a)); },
+  mv(A, x) { return A.map((r) => EV.dot(r, x)); },
+  mul(A, B) { return A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0))); },
+  T(A) { return A[0].map((_, j) => A.map((r) => r[j])); },
+  /** 부분 피벗 가우스 소거로 Ax = b */
+  solve(A, b) {
+    const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+    for (let k = 0; k < n; k++) {
+      let p = k; for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      [M[k], M[p]] = [M[p], M[k]]; if (M[k][k] === 0) M[k][k] = 1e-300;
+      for (let i = k + 1; i < n; i++) { const f = M[i][k] / M[k][k]; for (let j = k; j <= n; j++) M[i][j] -= f * M[k][j]; }
+    }
+    const x = new Array(n); for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+    return x;
+  },
+  /** Q diag(λ) Qᵀ, Q = I − 2vvᵀ/vᵀv (하우스홀더 반사) */
+  sym(lam, seed) {
+    const v = lam.map((_, i) => Math.sin(1.3 * i + seed) + 0.3), vv = EV.dot(v, v);
+    const Q = lam.map((_, i) => lam.map((_, j) => (i === j ? 1 : 0) - 2 * v[i] * v[j] / vv));
+    return Q.map((r, i) => lam.map((_, j) => r.reduce((s, q, k) => s + q * lam[k] * Q[j][k], 0)));
+  },
+  /** 야코비 회전 (p, q): 제자리 */
+  rotate(A, p, q) {
+    if (Math.abs(A[p][q]) < 1e-300) return;
+    const n = A.length, th = (A[q][q] - A[p][p]) / (2 * A[p][q]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+    for (let k = 0; k < n; k++) { const a = A[k][p], b = A[k][q]; A[k][p] = c * a - s * b; A[k][q] = s * a + c * b; }
+    for (let k = 0; k < n; k++) { const a = A[p][k], b = A[q][k]; A[p][k] = c * a - s * b; A[q][k] = s * a + c * b; }
+  },
+  off(A) { let s = 0; A.forEach((r, i) => r.forEach((x, j) => { if (i !== j) s += x * x; })); return Math.sqrt(s); },
+  jacobiEig(A0) { const A = A0.map((r) => r.slice()), n = A.length; for (let sw = 0; sw < 30 && EV.off(A) > 1e-15 * n; sw++) for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) EV.rotate(A, p, q); return A.map((r, i) => r[i]); },
+  /* 복소수 [re, im] */
+  cmul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+  cdiv: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+  /** 뒤랑–케르너: 단항 다항식 c[0] = 1 (최고차) */
+  roots(c) {
+    const n = c.length - 1;
+    let z = Array.from({ length: n }, (_, k) => { const r = 1 + n / 2, t = 2 * Math.PI * k / n + 0.4; return [r * Math.cos(t), r * Math.sin(t)]; });
+    const ev = (x) => { let s = [c[0], 0]; for (let i = 1; i <= n; i++) { s = EV.cmul(s, x); s[0] += c[i]; } return s; };
+    for (let it = 0; it < 3000; it++) {
+      let mx = 0;
+      for (let i = 0; i < n; i++) { let d = [1, 0]; for (let j = 0; j < n; j++) if (j !== i) d = EV.cmul(d, [z[i][0] - z[j][0], z[i][1] - z[j][1]]); const dz = EV.cdiv(ev(z[i]), d); z[i] = [z[i][0] - dz[0], z[i][1] - dz[1]]; mx = Math.max(mx, Math.hypot(dz[0], dz[1])); }
+      if (mx < 1e-15) break;
+    }
+    return z;
+  },
+  eig3(A) {
+    const tr = A[0][0] + A[1][1] + A[2][2], m2 = (a, b) => A[a][a] * A[b][b] - A[a][b] * A[b][a], c2 = m2(0, 1) + m2(0, 2) + m2(1, 2);
+    const det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+    return EV.roots([1, -tr, c2, -det]).map((z) => (Math.abs(z[1]) < 1e-9 ? [z[0], 0] : z));
+  },
+  /** 그람–슈미트 QR (n × n) */
+  qr(A) {
+    const n = A.length, Q = A.map(() => new Array(n).fill(0)), R = A.map(() => new Array(n).fill(0));
+    for (let j = 0; j < n; j++) {
+      let v = A.map((r) => r[j]);
+      for (let i = 0; i < j; i++) { const q = Q.map((r) => r[i]), d = EV.dot(q, v); R[i][j] = d; v = v.map((x, t) => x - d * q[t]); }
+      for (let i = 0; i < j; i++) { const q = Q.map((r) => r[i]), d = EV.dot(q, v); R[i][j] += d; v = v.map((x, t) => x - d * q[t]); }
+      const nv = EV.nrm(v); R[j][j] = nv; v.forEach((x, t) => (Q[t][j] = nv ? x / nv : t === j ? 1 : 0));
+    }
+    return { Q, R };
+  },
+  hess(A) {
+    const n = A.length, H = A.map((r) => r.slice());
+    for (let k = 0; k < n - 2; k++) {
+      let a = 0; for (let i = k + 1; i < n; i++) a += H[i][k] ** 2; a = Math.sqrt(a); if (a < 1e-300) continue;
+      const v = new Array(n).fill(0); v[k + 1] = H[k + 1][k] + (H[k + 1][k] >= 0 ? 1 : -1) * a; for (let i = k + 2; i < n; i++) v[i] = H[i][k];
+      const vv = EV.dot(v, v); if (vv < 1e-300) continue;
+      for (let j = 0; j < n; j++) { let d = 0; for (let i = k + 1; i < n; i++) d += v[i] * H[i][j]; d = 2 * d / vv; for (let i = k + 1; i < n; i++) H[i][j] -= d * v[i]; }
+      for (let i = 0; i < n; i++) { let d = 0; for (let j = k + 1; j < n; j++) d += H[i][j] * v[j]; d = 2 * d / vv; for (let j = k + 1; j < n; j++) H[i][j] -= d * v[j]; }
+      for (let i = k + 2; i < n; i++) H[i][k] = 0;
+    }
+    return H;
+  },
+  /** 2 × 2 고유값(실수부만) */
+  eig2(a, b, c, d) { const t = (a + d) / 2, disc = ((a - d) / 2) ** 2 + b * c; if (disc < 0) return null; const s = Math.sqrt(disc); return [t + s, t - s]; },
+};
+
+/* ================================================================ 1. 특성 다항식 vs 직교 닮음 */
+(function () {
+  const poly = (n) => { let c = [1]; for (let k = 1; k <= n; k++) { const d = new Array(c.length + 1).fill(0); for (let i = 0; i < c.length; i++) { d[i] += c[i]; d[i + 1] -= k * c[i]; } c = d; } return c; };
+  const matchErr = (z, n) => { let e = 0; for (let k = 1; k <= n; k++) { let b = 1e9; z.forEach((w) => (b = Math.min(b, Math.hypot(w[0] - k, w[1])))); e = Math.max(e, b); } return e; };
+  const cache = {};
+  const errs = [];
+  for (let n = 4; n <= 20; n++) {
+    const z = EV.roots(poly(n)), lam = Array.from({ length: n }, (_, i) => i + 1);
+    const jv = EV.jacobiEig(EV.sym(lam, 0.4)).sort((a, b) => a - b);
+    cache[n] = z; errs.push([n, Math.max(matchErr(z, n), 1e-17), Math.max(Math.max(...jv.map((v, i) => Math.abs(v - (i + 1)))), 1e-17)]);
+  }
+  let n = 16, pert = false, Z = cache[16];
+  const calc = () => { if (!pert) { Z = cache[n]; return; } const c = poly(n); c[1] += Math.pow(2, -23); Z = EV.roots(c); };
+  const pl = MB.plane("#ev-cp-cv", {
+    x: [-0.5, 22], y: [-4.2, 4.2], aspect: 0.48, minHeight: 200, gridStep: 2,
+    draw(P) {
+      const C = P.P;
+      for (let k = 1; k <= n; k++) P.circle(k, 0, 0.32, { color: C.text, width: 1.5 });
+      Z.forEach((w) => P.dot(w[0], w[1], { r: 3.6, color: C.bad }));
+    },
+  });
+  const ch = MB.canvas("#ev-cp-ch", (ctx, W, H) => {
+    const C = MB.palette();
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [4, 20], y: [1e-16, 1], logY: true, xLabel: "n", yLabel: "최대 오차", yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      series: [{ data: errs.map((e) => [e[0], e[1]]), color: C.bad, width: 2.2 }, { data: errs.map((e) => [e[0], e[2]]), color: C.accent2, width: 2.2 }],
+      points: [{ x: n, y: errs[n - 4][1], color: C.bad, r: 5 }, { x: n, y: errs[n - 4][2], color: C.accent2, r: 5 }] });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 280 });
+  const update = () => {
+    calc(); pl.redraw(); ch.redraw();
+    const c = poly(n); MB.stat("ev-cp-c", EV.sci(Math.max(...c.map(Math.abs)), 2));
+    MB.stat("ev-cp-e1", EV.sci(matchErr(Z, n), 2)); MB.stat("ev-cp-e2", EV.sci(errs[n - 4][2], 2));
+    const im = Math.max(...Z.map((w) => Math.abs(w[1]))); MB.stat("ev-cp-im", im < 1e-12 ? "0" : EV.sci(im, 2));
+  };
+  MB.range("ev-cp-n", (v) => String(v), (v) => { n = v; update(); });
+  MB.check("ev-cp-pert", (v) => { pert = v; update(); });
+  update();
+})();
+
+/* ================================================================ 2. 거듭제곱법 */
+(function () {
+  let r = 0.6, ang = 90, K = 6;
+  const pt = { x: Math.cos(2.8), y: Math.sin(2.8), r: 8, constrain(p) { const m = Math.hypot(p.x, p.y) || 1; p.x /= m; p.y /= m; } };
+  const t1 = 20 * Math.PI / 180;
+  let A, v1, v2, run;
+  const build = () => {
+    const t2 = t1 + ang * Math.PI / 180; v1 = [Math.cos(t1), Math.sin(t1)]; v2 = [Math.cos(t2), Math.sin(t2)];
+    const V = [[v1[0], v2[0]], [v1[1], v2[1]]], d = V[0][0] * V[1][1] - V[0][1] * V[1][0], Vi = [[V[1][1] / d, -V[0][1] / d], [-V[1][0] / d, V[0][0] / d]];
+    A = EV.mul(EV.mul(V, [[2, 0], [0, 2 * r]]), Vi);
+    run = []; let x = [pt.x, pt.y];
+    for (let k = 0; k <= 200; k++) {
+      const s = Math.abs(x[0] * v1[1] - x[1] * v1[0]), q = EV.dot(x, EV.mv(A, x));
+      run.push({ x, s, e: Math.abs(q - 2), q });
+      const y = EV.mv(A, x), m = EV.nrm(y); x = [y[0] / m, y[1] / m];
+    }
+  };
+  build();
+  const pl = MB.plane("#ev-pw-cv", {
+    x: [-1.5, 1.5], y: [-1.25, 1.25], aspect: 0.62, minHeight: 240, points: [pt],
+    draw(P) {
+      const C = P.P;
+      P.circle(0, 0, 1, { color: C.faint, width: 1 });
+      [v1, v2].forEach((v, i) => P.line(-1.4 * v[0], -1.4 * v[1], 1.4 * v[0], 1.4 * v[1], { color: C.dim, width: i ? 1.2 : 2, dash: i ? [5, 4] : [] }));
+      P.text("v₁", 1.3 * v1[0] + 0.05, 1.3 * v1[1] + 0.08, { color: C.dim });
+      P.text("v₂", 1.25 * v2[0] + 0.05, 1.25 * v2[1] + 0.08, { color: C.dim });
+      for (let k = 1; k <= K; k++) { const x = run[k].x; P.arrow(0, 0, x[0], x[1], { color: C.accent, width: k === K ? 3 : 1.4, alpha: k === K ? 1 : 0.25 + 0.5 * k / K }); }
+      pt.color = C.text;
+    },
+    onDrag() { build(); update(); },
+  });
+  const ch = MB.canvas("#ev-pw-ch", (ctx, W, H) => {
+    const C = MB.palette(), a = Math.abs(r), s0 = run[0].s || 1e-3, e0 = run[0].e || 1e-3;
+    const ref1 = [], ref2 = []; for (let k = 0; k <= 40; k++) { ref1.push([k, s0 * Math.pow(a, k)]); ref2.push([k, e0 * Math.pow(a, 2 * k)]); }
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, 40], y: [1e-16, 10], logY: true, xLabel: "반복 k", yTicks: [1e-15, 1e-10, 1e-5, 1],
+      series: [{ data: ref1, color: C.faint, dash: [5, 4], width: 1.2 }, { data: ref2, color: C.faint, dash: [2, 3], width: 1.2 },
+        { data: run.slice(0, 41).map((o, k) => [k, Math.max(o.s, 1e-17)]), color: C.bad, width: 2.2 }, { data: run.slice(0, 41).map((o, k) => [k, Math.max(o.e, 1e-17)]), color: C.accent2, width: 2.2 }],
+      vlines: [{ x: K, color: C.accent, dash: [3, 3] }] });
+  }, { aspect: 0.45, minHeight: 180, maxHeight: 280 });
+  const update = () => {
+    pl.redraw(); ch.redraw(); const o = run[K];
+    MB.stat("ev-pw-q", EV.num(o.q, 6)); MB.stat("ev-pw-s", EV.sci(o.s, 2)); MB.stat("ev-pw-e", EV.sci(o.e, 2));
+    const i = run.findIndex((q) => q.s < 1e-10); MB.stat("ev-pw-n", i < 0 ? "> 200" : String(i));
+  };
+  MB.range("ev-pw-r", (v) => v.toFixed(2), (v) => { r = v; build(); update(); });
+  MB.range("ev-pw-a", (v) => v + "°", (v) => { ang = v; build(); update(); });
+  MB.range("ev-pw-k", (v) => String(v), (v) => { K = v; update(); });
+  update();
+})();
+
+/* ================================================================ 3. 이동 역반복 */
+(function () {
+  const LAM = [1, 3, 4, 7, 10], A = EV.sym(LAM, 1.1), n = 5;
+  const hv = LAM.map((_, i) => Math.sin(1.3 * i + 1.1) + 0.3), hvv = EV.dot(hv, hv);
+  const V = LAM.map((_, j) => LAM.map((_, i) => (i === j ? 1 : 0) - 2 * hv[i] * hv[j] / hvv)); // Q의 열 = 고유벡터
+  let sig = 3.9, showP = true;
+  const sp = { x: sig, y: 0, r: 8, lock: "y", constrain(p) { p.x = MB.clamp(p.x, -1, 12); } };
+  const sinTo = (x, v) => { const c = EV.dot(x, v); return EV.nrm(x.map((t, i) => t - c * v[i])); };
+  const run = (inv) => {
+    let x = [1, 1, 1, 1, 1].map((v) => v / Math.sqrt(5)); const out = [];
+    const M = A.map((r, i) => r.map((a, j) => a - (i === j ? sig : 0)));
+    const d = LAM.map((l) => Math.abs(l - sig)), J = inv ? d.indexOf(Math.min(...d)) : 4;
+    for (let k = 0; k <= 80; k++) { out.push([k, Math.max(sinTo(x, V[J]), 1e-17)]); const y = inv ? EV.solve(M, x) : EV.mv(A, x), m = EV.nrm(y); x = y.map((v) => v / m); }
+    return { out, J };
+  };
+  const pl = MB.plane("#ev-sh-cv", {
+    x: [-1, 12], y: [-1, 1.6], aspect: 0.3, minHeight: 130, grid: false, axes: false, points: [sp],
+    draw(P) {
+      const C = P.P; P.line(-1, 0, 12, 0, { color: C.axis, width: 1.2 });
+      const d = LAM.map((l) => Math.abs(l - sp.x)), J = d.indexOf(Math.min(...d));
+      LAM.forEach((l, i) => { P.dot(l, 0, { r: 6, color: i === J ? C.accent2 : C.text }); P.text("λ = " + l, l, 0.75, { color: C.dim, align: "center" }); P.line(sp.x, 0.25, l, 0.25, { color: i === J ? C.accent2 : C.faint, width: i === J ? 2 : 1 }); });
+      sp.color = C.warn;
+    },
+    onDrag(p) { sig = p.x; update(); },
+  });
+  const ch = MB.canvas("#ev-sh-ch", (ctx, W, H) => {
+    const C = MB.palette(), a = run(true), series = [];
+    if (showP) series.push({ data: run(false).out, color: C.bad, width: 1.8 });
+    series.push({ data: a.out, color: C.accent2, width: 2.4 });
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, 80], y: [1e-16, 2], logY: true, xLabel: "반복 k", yLabel: "sin θ", yTicks: [1e-15, 1e-10, 1e-5, 1], series, hlines: [{ y: 1e-10, color: C.faint }] });
+  }, { aspect: 0.45, minHeight: 190, maxHeight: 300 });
+  const update = () => {
+    const d = LAM.map((l) => Math.abs(l - sig)).map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+    const a = run(true), p = run(false), it = (o) => { const i = o.out.findIndex((q) => q[1] < 1e-10); return i < 0 ? "> 80" : String(i); };
+    MB.stat("ev-sh-l", "λ = " + LAM[d[0][1]] + " (σ = " + EV.num(sig, 2) + ")"); MB.stat("ev-sh-r", EV.num(d[0][0] / d[1][0], 3));
+    MB.stat("ev-sh-n", it(a)); MB.stat("ev-sh-np", it(p));
+    pl.redraw(); ch.redraw();
+  };
+  const set = (v) => { sig = v; sp.x = v; update(); };
+  document.getElementById("ev-sh-p1").addEventListener("click", () => set(0));
+  document.getElementById("ev-sh-p2").addEventListener("click", () => set(3.9));
+  document.getElementById("ev-sh-p3").addEventListener("click", () => set(5.4));
+  MB.check("ev-sh-pw", (v) => { showP = v; ch.redraw(); });
+  update();
+})();
+
+/* ================================================================ 4. 레일리 몫 반복 표 */
+(function () {
+  const MS = { sym: [[2, 1, 0], [1, 3, 1], [0, 1, 4]], ns: [[2, 1, 0], [0.5, 3, 1], [0, 0.4, 4]] };
+  const XS = [[1, 1, 1], [1, 0, 0], [1, -2, 1], [0, 1, 3]];
+  let mk = "sym", xi = 0, R = null;
+  const res = (A, x, r) => { const y = EV.mv(A, x); return EV.nrm(y.map((v, i) => v - r * x[i])); };
+  const calc = () => {
+    const A = MS[mk]; let x = XS[xi].slice(); const m0 = EV.nrm(x); x = x.map((v) => v / m0);
+    const rows = [], s0 = EV.dot(x, EV.mv(A, x)) / EV.dot(x, x); let z = x.slice(), p = x.slice();
+    let r = s0;
+    for (let k = 0; k < 8; k++) {
+      r = EV.dot(x, EV.mv(A, x)); const rr = res(A, x, r);
+      const rz = EV.dot(z, EV.mv(A, z)), rp = EV.dot(p, EV.mv(A, p));
+      rows.push({ k, r, rr, fz: res(A, z, rz), fp: res(A, p, rp) });
+      if (rr > 1e-14) { const y = EV.solve(A.map((row, i) => row.map((a, j) => a - (i === j ? r : 0))), x), m = EV.nrm(y); x = y.map((v) => v / m); }
+      const y2 = EV.solve(A.map((row, i) => row.map((a, j) => a - (i === j ? s0 : 0))), z), m2 = EV.nrm(y2); z = y2.map((v) => v / m2);
+      const y3 = EV.mv(A, p), m3 = EV.nrm(y3); p = y3.map((v) => v / m3);
+    }
+    R = rows;
+  };
+  calc();
+  const cv = MB.canvas("#ev-rq-cv", (ctx, W, H) => {
+    const C = MB.palette(), f = (key) => R.map((o) => [o.k, Math.max(o[key], 1e-17)]);
+    MB.chart(ctx, { x: 58, y: 16, w: W - 58 - 16, h: H - 16 - 44 }, { x: [0, 7], y: [1e-17, 10], logY: true, xLabel: "반복 k", yLabel: "잔차 ‖Ax − ρx‖", yTicks: [1e-15, 1e-10, 1e-5, 1],
+      series: [{ data: f("fp"), color: C.bad, width: 1.8 }, { data: f("fz"), color: C.warn, width: 2 }, { data: f("rr"), color: C.accent2, width: 2.6 }],
+      points: f("rr").map(([x, y]) => ({ x, y, r: 3.5, color: C.accent2 })) });
+  }, { aspect: 0.45, minHeight: 190, maxHeight: 300 });
+  const update = () => {
+    calc(); cv.redraw();
+    const tb = document.getElementById("ev-rq-tb"); let h = "", stop = false;
+    R.forEach((o, i) => {
+      if (stop) return;
+      const prev = R[i - 1], ord = prev && o.rr > 1e-13 && prev.rr < 0.5 && prev.rr > 1e-16 ? EV.num(Math.log(o.rr) / Math.log(prev.rr), 2) : "—";
+      h += `<tr><td>${o.k}</td><td>${o.r.toFixed(12)}</td><td>${EV.sci(o.rr, 2)}</td><td>${ord}</td><td>${EV.sci(o.fz, 2)}</td></tr>`;
+      if (o.rr <= 1e-14) stop = true;
+    });
+    tb.innerHTML = h;
+    const last = R.find((o) => o.rr <= 1e-14) || R[R.length - 1];
+    document.getElementById("ev-rq-msg").innerHTML = `RQI는 고유값 <b>${last.r.toFixed(10)}</b>에 <b>${last.k}</b>번 만에 닿았습니다. 같은 시작점의 고정 이동 역반복(σ = ρ₀)은 7번 뒤에도 잔차가 ${EV.sci(R[7].fz, 1)}입니다.`;
+  };
+  MB.seg("ev-rq-m", (v) => { mk = v; update(); });
+  MB.seg("ev-rq-x", (v) => { xi = Number(v); update(); });
+  update();
+})();
+
+/* ================================================================ 5. 게르시고린 원판 */
+(function () {
+  const ids = [[11, 12, 13], [21, 22, 23], [31, 32, 33]].map((r) => r.map((k) => document.getElementById("ev-gs-a" + k)));
+  const PRE = { p1: [[10, 1, -1], [0.5, 4, 0.5], [1, -2, -3]], p2: [[0, 1, 0], [-1, 0, 0], [0, 0, 2]], p3: [[2, 1.5, 0.5], [1, 3, 1], [0.5, 1.5, 2.5]] };
+  let d3 = 1, col = false, A = PRE.p1, E = [], discs = [], cdiscs = [];
+  const read = () => { A = ids.map((r) => r.map((el) => { const v = Number(el.value); return isFinite(v) ? v : 0; })); };
+  const calc = () => {
+    const D = [1, 1, d3], B = A.map((r, i) => r.map((a, j) => a * D[i] / D[j]));
+    discs = B.map((r, i) => [r[i], r.reduce((s, a, j) => s + (j === i ? 0 : Math.abs(a)), 0)]);
+    cdiscs = B.map((_, j) => [B[j][j], B.reduce((s, r, i) => s + (i === j ? 0 : Math.abs(r[j])), 0)]);
+    E = EV.eig3(A);
+  };
+  calc();
+  const pl = MB.plane("#ev-gs-cv", {
+    x: [-8, 14], y: null, aspect: 0.6, minHeight: 250,
+    draw(P) {
+      const C = P.P;
+      discs.forEach(([c, r]) => { P.circle(c, 0, Math.max(r, 0.02), { color: C.accent, width: 2, fill: C.accent, alpha: 0.18 }); P.circle(c, 0, Math.max(r, 0.02), { color: C.accent, width: 2 }); P.dot(c, 0, { r: 3, color: C.accent }); });
+      if (col) cdiscs.forEach(([c, r]) => P.circle(c, 0, Math.max(r, 0.02), { color: C.accent2, width: 2, dash: [6, 4] }));
+      E.forEach((z) => P.dot(z[0], z[1], { r: 5.5, color: C.bad }));
+    },
+  });
+  const fit = () => {
+    let lo = Infinity, hi = -Infinity, im = 1;
+    discs.concat(col ? cdiscs : []).forEach(([c, r]) => { lo = Math.min(lo, c - r); hi = Math.max(hi, c + r); im = Math.max(im, r); });
+    E.forEach((z) => { lo = Math.min(lo, z[0]); hi = Math.max(hi, z[0]); im = Math.max(im, Math.abs(z[1])); });
+    const pad = 0.15 * (hi - lo) + 1; lo -= pad; hi += pad;
+    const w = hi - lo, hh = Math.max(w * 0.6, 2.4 * im + 1);
+    pl.view({ x: [lo, lo + Math.max(w, hh / 0.6)], y: [-hh / 2, hh / 2] });
+  };
+  const update = () => {
+    calc(); fit(); pl.redraw();
+    MB.stat("ev-gs-ev", E.map((z) => EV.num(z[0], 3) + (Math.abs(z[1]) > 1e-9 ? (z[1] > 0 ? " + " : " − ") + EV.num(Math.abs(z[1]), 3) + "i" : "")).join(", "));
+    MB.stat("ev-gs-dk", discs.map(([c, r]) => `(${EV.num(c, 2)}, ${EV.num(r, 2)})`).join(" "));
+    const zeroIn = discs.some(([c, r]) => Math.abs(c) <= r + 1e-12);
+    const sep = discs.every(([c, r], i) => discs.every(([c2, r2], j) => i === j || Math.abs(c - c2) > r + r2));
+    MB.stat("ev-gs-v", (sep ? "원판이 모두 떨어짐: 하나씩" : "겹치는 원판 있음") + " · " + (zeroIn ? "0이 원판 안" : "0이 밖 → 가역"));
+  };
+  ids.flat().forEach((el) => el.addEventListener("input", () => { read(); update(); }));
+  const dr = MB.range("ev-gs-d", (v) => v.toFixed(2), (v) => { d3 = v; update(); });
+  MB.check("ev-gs-col", (v) => { col = v; update(); });
+  Object.keys(PRE).forEach((k) => document.getElementById("ev-gs-" + k).addEventListener("click", () => { PRE[k].forEach((r, i) => r.forEach((v, j) => (ids[i][j].value = v))); read(); d3 = 1; dr.set(1); update(); }));
+  read(); update();
+})();
+
+/* ================================================================ 6. QR 반복 히트맵 */
+(function () {
+  const PRE = {
+    sym: () => EV.sym([6, 5, 4, 3, 2, 1], 0.2), close: () => EV.sym([3, 2.9, 2, 1.5, 1, 0.5], 0.7),
+    anti: () => [[0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]],
+    nons: () => {
+      const T = [[5, 2, 1, -1, 3, 0], [0, 4, 1, 2, -1, 1], [0, 0, 3, 1, 1, 2], [0, 0, 0, -2, 1, 1], [0, 0, 0, 0, 1.5, 2], [0, 0, 0, 0, 0, 0.5]], n = 6;
+      const S = T.map((r, i) => r.map((_, j) => (i === j ? 1 : i > j ? 0.3 * Math.sin(i + 2 * j) : 0))), Si = S.map(() => new Array(n).fill(0));
+      for (let c = 0; c < n; c++) for (let i = 0; i < n; i++) { let s = i === c ? 1 : 0; for (let k = 0; k < i; k++) s -= S[i][k] * Si[k][c]; Si[i][c] = s; }
+      return EV.mul(EV.mul(S, T), Si);
+    },
+  };
+  let key = "sym", shift = "wilkinson", useH = true, H, m, k, hist, done, mu = 0;
+  const reset = () => { const A = PRE[key](); H = useH ? EV.hess(A) : A.map((r) => r.slice()); m = H.length; k = 0; done = []; mu = 0; hist = H.slice(1).map((r, i) => [[0, Math.max(Math.abs(H[i + 1][i]), 1e-17)]]); };
+  const chooseShift = () => {
+    if (shift === "none") return 0;
+    const d = H[m - 1][m - 1]; if (shift === "rayleigh" || m < 2) return d;
+    const e = EV.eig2(H[m - 2][m - 2], H[m - 2][m - 1], H[m - 1][m - 2], d); if (!e) return d;
+    return Math.abs(e[0] - d) < Math.abs(e[1] - d) ? e[0] : e[1];
+  };
+  const step = () => {
+    if (m <= 1) return;
+    mu = chooseShift();
+    const B = H.slice(0, m).map((r, i) => r.slice(0, m).map((a, j) => a - (i === j ? mu : 0)));
+    const { Q, R } = EV.qr(B), RQ = EV.mul(R, Q);
+    // 활성 블록 밖(위쪽 오른편)도 닮음 변환에 맞게 갱신: H[0..m, m..] ← Qᵀ H[0..m, m..]
+    const n = H.length;
+    for (let j = m; j < n; j++) { const col = H.slice(0, m).map((r) => r[j]); const nc = EV.mv(EV.T(Q), col); for (let i = 0; i < m; i++) H[i][j] = nc[i]; }
+    for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) H[i][j] = RQ[i][j] + (i === j ? mu : 0);
+    k++;
+    let left = 0; for (let j = 0; j < m - 1; j++) left = Math.max(left, Math.abs(H[m - 1][j]));
+    if (left <= 1e-14 * (Math.abs(H[m - 1][m - 1]) + Math.abs(H[m - 2][m - 2]))) { for (let j = 0; j < m - 1; j++) H[m - 1][j] = 0; done.push(H[m - 1][m - 1]); m--; if (m === 1) done.push(H[0][0]); }
+    H.slice(1).forEach((r, i) => hist[i].push([k, Math.max(Math.abs(H[i + 1][i]), 1e-17)]));
+  };
+  reset();
+  const cv = MB.canvas("#ev-qr-cv", (ctx, W, Hh) => {
+    const C = MB.palette(), n = H.length, s = Math.min(Hh - 36, W - 40), cs = s / n, x0 = (W - s) / 2, y0 = 30;
+    ctx.font = (n > 4 ? 10 : 12) + "px " + EV.font(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const v = Math.abs(H[i][j]), t = v < 1e-16 ? 0 : MB.clamp((Math.log10(v) + 16) / 17, 0, 1);
+      ctx.fillStyle = MB.rgb(MB.colormap(t, "viridis")); ctx.fillRect(x0 + j * cs, y0 + i * cs, cs - 1, cs - 1);
+      ctx.fillStyle = t > 0.65 ? "#222" : "#eee";
+      ctx.fillText(v < 1e-16 ? "0" : String(Math.round(Math.log10(v)) || 0), x0 + (j + 0.5) * cs, y0 + (i + 0.5) * cs);
+    }
+    ctx.strokeStyle = C.warn; ctx.lineWidth = 3; ctx.strokeRect(x0, y0, m * cs - 1, m * cs - 1);
+  }, { aspect: 0.6, minHeight: 230, maxHeight: 360 });
+  const ch = MB.canvas("#ev-qr-ch", (ctx, W, Hh) => {
+    const C = MB.palette(), xm = Math.max(12, k + 2);
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: Hh - 26 - 44 }, { x: [0, xm], y: [1e-17, 10], logY: true, xLabel: "QR 단계", yTicks: [1e-15, 1e-10, 1e-5, 1],
+      series: hist.map((h, i) => ({ data: h, color: C.series[i % C.series.length], width: 2 })), hlines: [{ y: 1e-14, color: C.faint }] });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 280 });
+  const update = () => {
+    cv.redraw(); ch.redraw();
+    MB.stat("ev-qr-k", String(k)); MB.stat("ev-qr-m", String(m));
+    MB.stat("ev-qr-ev", done.length ? done.map((v) => EV.num(v, 4)).join(", ") : "—"); MB.stat("ev-qr-mu", EV.num(mu, 4));
+  };
+  document.getElementById("ev-qr-1").addEventListener("click", () => { step(); update(); });
+  document.getElementById("ev-qr-10").addEventListener("click", () => { for (let i = 0; i < 10; i++) step(); update(); });
+  document.getElementById("ev-qr-0").addEventListener("click", () => { reset(); update(); });
+  document.getElementById("ev-qr-pre").addEventListener("change", (e) => { key = e.target.value; reset(); update(); });
+  MB.seg("ev-qr-sh", (v) => { shift = v; reset(); update(); });
+  MB.check("ev-qr-h", (v) => { useH = v; reset(); update(); });
+  for (let i = 0; i < 3; i++) step();
+  update();
+})();
+
+/* ================================================================ 7. 야코비 회전 */
+(function () {
+  const A0 = EV.sym([9, 6, 4, 2, 1], 0.5), n = 5;
+  let A, cnt, hist, strat = "max", cyc = 0, last = null;
+  const reset = () => { A = A0.map((r) => r.slice()); cnt = 0; cyc = 0; last = null; hist = [[0, EV.off(A)]]; };
+  const next = () => {
+    if (strat === "max") { let b = [0, 1], v = -1; for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) if (Math.abs(A[p][q]) > v) { v = Math.abs(A[p][q]); b = [p, q]; } return b; }
+    const pairs = []; for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) pairs.push([p, q]); return pairs[cyc % pairs.length];
+  };
+  const step = () => { const [p, q] = next(); const a = A[p][q]; EV.rotate(A, p, q); cyc++; cnt++; last = [p, q, 2 * a * a]; hist.push([cnt, Math.max(EV.off(A), 1e-17)]); };
+  reset(); step(); step();
+  const cv = MB.canvas("#ev-jc-cv", (ctx, W, H) => {
+    const C = MB.palette(), s = Math.min(H - 36, W - 40), cs = s / n, x0 = (W - s) / 2, y0 = 30, [np, nq] = next();
+    ctx.font = "11px " + EV.font(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const v = A[i][j], t = MB.clamp(0.5 + v / 6, 0, 1);
+      const tt = i === j ? 0.5 + 0.5 * MB.clamp(v / 10, -1, 1) : t;
+      ctx.fillStyle = MB.rgb(MB.colormap(tt, "diverge")); ctx.fillRect(x0 + j * cs, y0 + i * cs, cs - 1, cs - 1);
+      ctx.fillStyle = Math.abs(tt - 0.5) > 0.3 ? "#fff" : "#222"; ctx.fillText(Math.abs(v) < 5e-5 ? "0" : v.toFixed(Math.abs(v) < 0.01 ? 4 : 2), x0 + (j + 0.5) * cs, y0 + (i + 0.5) * cs);
+    }
+    if (EV.off(A) > 1e-13) { ctx.strokeStyle = C.warn; ctx.lineWidth = 3; [[np, nq], [nq, np]].forEach(([i, j]) => ctx.strokeRect(x0 + j * cs + 1, y0 + i * cs + 1, cs - 3, cs - 3)); }
+  }, { aspect: 0.6, minHeight: 230, maxHeight: 360 });
+  const ch = MB.canvas("#ev-jc-ch", (ctx, W, H) => {
+    const C = MB.palette();
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, Math.max(30, cnt + 2)], y: [1e-16, 10], logY: true, xLabel: "회전 수", yTicks: [1e-15, 1e-10, 1e-5, 1],
+      series: [{ data: hist, color: C.accent2, width: 2.4 }], points: hist.map(([x, y]) => ({ x, y, r: 2.4, color: C.accent2 })), vlines: [10, 20, 30, 40].filter((x) => x <= Math.max(30, cnt + 2)).map((x) => ({ x, color: C.faint, dash: [2, 4] })) });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 280 });
+  const update = () => {
+    cv.redraw(); ch.redraw();
+    MB.stat("ev-jc-k", String(cnt)); MB.stat("ev-jc-off", EV.sci(EV.off(A), 2));
+    MB.stat("ev-jc-pq", last ? `(${last[0] + 1}, ${last[1] + 1}) · ${EV.sci(last[2], 2)}` : "—");
+    MB.stat("ev-jc-d", A.map((r, i) => EV.num(r[i], 3)).join(", "));
+  };
+  document.getElementById("ev-jc-1").addEventListener("click", () => { step(); update(); });
+  document.getElementById("ev-jc-sw").addEventListener("click", () => { for (let i = 0; i < 10; i++) step(); update(); });
+  document.getElementById("ev-jc-0").addEventListener("click", () => { reset(); update(); });
+  MB.seg("ev-jc-s", (v) => { strat = v; reset(); update(); });
+  update();
+})();
+
+/* ================================================================ 8. 페이지랭크 */
+(function () {
+  const G1 = { n: 4, L: [[0, 1], [0, 2], [1, 2], [2, 0], [3, 0], [3, 2]] };
+  const G2 = { n: 7, L: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [6, 0], [6, 2], [6, 4], [1, 6], [3, 6], [5, 6]] };
+  let n, links, al = 0.85, r, k, hist, sel = -1;
+  const load = (g) => { n = g.n; links = new Set(g.L.map(([a, b]) => a + ">" + b)); restart(); };
+  const has = (a, b) => links.has(a + ">" + b);
+  const mult = (x) => {
+    const y = new Array(n).fill((1 - al) / n), out = Array.from({ length: n }, (_, i) => [...Array(n).keys()].filter((j) => has(i, j)));
+    for (let i = 0; i < n; i++) { if (out[i].length) out[i].forEach((j) => (y[j] += al * x[i] / out[i].length)); else for (let j = 0; j < n; j++) y[j] += al * x[i] / n; }
+    return y;
+  };
+  const restart = () => { r = new Array(n).fill(1 / n); k = 0; hist = []; };
+  const step = () => { const y = mult(r); const d = y.reduce((s, v, i) => s + Math.abs(v - r[i]), 0); r = y; k++; hist.push([k, Math.max(d, 1e-17)]); };
+  const need = () => { let x = new Array(n).fill(1 / n); for (let i = 1; i <= 3000; i++) { const y = mult(x); const d = y.reduce((s, v, j) => s + Math.abs(v - x[j]), 0); x = y; if (d < 1e-10) return String(i); } return "> 3000"; };
+  const pos = (i) => { const t = Math.PI / 2 - 2 * Math.PI * i / n; return n === 7 && i === 6 ? [0, 0] : [Math.cos(t), Math.sin(t)]; };
+  load(G1);
+  const pl = MB.plane("#ev-pr-cv", {
+    x: [-1.7, 1.7], y: [-1.42, 1.5], aspect: 0.62, minHeight: 240, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, mx = Math.max(...r);
+      for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) if (has(a, b)) {
+        const [x1, y1] = pos(a), [x2, y2] = pos(b), d = Math.hypot(x2 - x1, y2 - y1), ox = -(y2 - y1) / d * 0.05, oy = (x2 - x1) / d * 0.05, rb = 0.07 + 0.1 * Math.sqrt(r[b] / mx);
+        P.arrow(x1 + ox + (x2 - x1) / d * 0.12, y1 + oy + (y2 - y1) / d * 0.12, x2 + ox - (x2 - x1) / d * rb, y2 + oy - (y2 - y1) / d * rb, { color: C.dim, width: 1.5 });
+      }
+      for (let i = 0; i < n; i++) { const [x, y] = pos(i), rad = 0.07 + 0.1 * Math.sqrt(r[i] / mx); P.circle(x, y, rad, { color: i === sel ? C.warn : C.accent, width: i === sel ? 4 : 2, fill: C.accent, alpha: 0.85 }); P.text(String(i + 1), x, y, { color: "#fff", align: "center", baseline: "middle", bold: true }); P.text(r[i].toFixed(3), x, y - rad - 0.09, { color: C.text, align: "center", size: 11 }); }
+    },
+    onPointer(x, y, type) {
+      if (type !== "down") return;
+      let b = -1, bd = 0.25; for (let i = 0; i < n; i++) { const [px, py] = pos(i), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; b = i; } }
+      if (b < 0) { sel = -1; } else if (sel < 0) sel = b; else if (sel === b) sel = -1; else { const key = sel + ">" + b; links.has(key) ? links.delete(key) : links.add(key); sel = -1; restart(); }
+      update();
+    },
+  });
+  const ch = MB.canvas("#ev-pr-ch", (ctx, W, H) => {
+    const C = MB.palette(), xm = Math.max(30, k + 2), ref = []; const d0 = hist.length ? hist[0][1] : 0.3;
+    for (let i = 1; i <= xm; i++) ref.push([i, d0 * Math.pow(al, i - 1)]);
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, xm], y: [1e-12, 2], logY: true, xLabel: "반복 k", yTicks: [1e-12, 1e-9, 1e-6, 1e-3, 1],
+      series: [{ data: ref, color: C.faint, dash: [5, 4], width: 1.4 }, { data: hist, color: C.accent, width: 2.4 }], hlines: [{ y: 1e-10, color: C.faint }] });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 280 });
+  const update = () => {
+    pl.redraw(); ch.redraw();
+    const top = r.indexOf(Math.max(...r));
+    MB.stat("ev-pr-k", String(k)); MB.stat("ev-pr-top", `${top + 1} (${r[top].toFixed(4)})`);
+    MB.stat("ev-pr-d", hist.length ? EV.sci(hist[hist.length - 1][1], 2) : "—"); MB.stat("ev-pr-n", need());
+  };
+  document.getElementById("ev-pr-1").addEventListener("click", () => { step(); update(); });
+  document.getElementById("ev-pr-all").addEventListener("click", () => { for (let i = 0; i < 2000; i++) { step(); if (hist[hist.length - 1][1] < 1e-12) break; } update(); });
+  document.getElementById("ev-pr-0").addEventListener("click", () => { restart(); update(); });
+  document.getElementById("ev-pr-g1").addEventListener("click", () => { sel = -1; load(G1); update(); });
+  document.getElementById("ev-pr-g2").addEventListener("click", () => { sel = -1; load(G2); update(); });
+  MB.range("ev-pr-a", (v) => v.toFixed(2), (v) => { al = v; restart(); update(); });
+  for (let i = 0; i < 3; i++) step();
+  update();
+})();
+</script>
+</body>
+</html>

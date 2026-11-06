@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>비선형 연립방정식과 다항식의 근 · NumericalBook</title>
+<meta name="description" content="F(x) = 0을 벡터로 푸는 법. 야코비안과 다변수 뉴턴, 감쇠 뉴턴의 직선 탐색, 브로이든 준뉴턴, 호너 방법과 수축, 동반 행렬의 고유값, 뉴턴 프랙털, 연속법, 회로·로봇 팔·GPS 응용.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .ns-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .ns-two > div { position: relative; min-width: 0; }
+  .ns-two > div + div { border-top: 1px solid var(--border); }
+  .ns-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .ns-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .ns-msg b { color: var(--text); }
+  .ns-msg.ok { color: var(--ok); font-weight: 600; }
+  .ns-msg.bad { color: var(--bad); font-weight: 600; }
+  .ns-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .ns-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .ns-tbl { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; max-height: 260px; overflow: auto; }
+  .ns-tbl table { font-size: 12.5px; }
+  .ns-tbl td, .ns-tbl th { font-family: var(--mono); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  .ns-tbl td:first-child, .ns-tbl th:first-child { text-align: center; }
+  .ns-tbl tr.cur td { color: var(--accent); font-weight: 700; }
+  .ns-tbl td.hl { color: var(--accent); font-weight: 700; }
+  .ns-num td, .ns-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .ns-num td:first-child, .ns-num th:first-child { text-align: center; }
+  .ns-in { width: 100%; font: 13px var(--mono); padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="nonlinear-systems">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 04</div>
+    <h1 data-no-glossary>비선형 연립방정식과 다항식의 근</h1>
+    <p class="lead">3장의 \(f(x) = 0\)은 미지수가 하나였습니다. 회로의 마디 전압, 로봇 팔의 관절 각, GPS 수신기의 위치와 시계 오차는 미지수가 여럿이고 방정식도 여럿입니다. 이 장은 \(\mathbf F(\mathbf x) = \mathbf 0\)을 푸는 법입니다. 도함수는 <b>야코비안 행렬</b>이 되고, 나눗셈은 <b>선형계 풀기</b>가 됩니다. 뉴턴 방법이 그대로 일반화되지만, 다차원에서는 근을 가둘 수 없으므로 출발점에서 멀 때 길을 잃지 않게 하는 장치(감쇠, 연속법)와 야코비안을 아끼는 방법(브로이든)이 필요합니다. 후반부는 특별한 비선형 방정식인 <b>다항식</b>을 다룹니다. 값을 싸게 계산하는 호너 방법, 근을 하나씩 떼어 내는 수축, 모든 근을 한꺼번에 주는 동반 행렬, 그리고 복소평면에서 뉴턴 방법이 그리는 프랙털입니다.</p>
+    <ul class="objectives">
+      <li>야코비안으로 \(\mathbf F\)를 선형화해 다변수 뉴턴 방법을 유도하고, 한 단계를 선형계 \(J\mathbf s = -\mathbf F\)로 계산한다.</li>
+      <li>뉴턴 방향이 \(\|\mathbf F\|^2\)의 하강 방향임을 보이고, 직선 탐색을 단 감쇠 뉴턴으로 먼 출발점에서도 수렴시킨다.</li>
+      <li>할선 조건과 브로이든 갱신으로 야코비안 계산 없이 초선형 수렴을 얻고, 비용을 함수 계산 수로 비교한다.</li>
+      <li>호너 방법으로 다항식과 도함수를 \(n\)번의 곱셈으로 계산하고, 수축 순서가 근의 정확도를 좌우하는 이유를 안다.</li>
+      <li>동반 행렬의 고유값이 다항식의 근임을 보이고, 복소 뉴턴 방법의 끌개 영역과 그 프랙털 경계를 설명한다.</li>
+      <li>호모토피 연속법으로 쉬운 문제에서 어려운 문제로 해를 따라가고, 회로·로봇 팔·GPS 문제를 세운다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>회로 시뮬레이터와 GPS 수신기</b></div>
+      <div class="o-body"><p>트랜지스터 수만 개짜리 칩을 만들기 전에 엔지니어는 SPICE 같은 회로 시뮬레이터로 동작을 확인합니다. 시뮬레이터가 맨 먼저 하는 일은 직류 동작점, 곧 모든 마디의 키르히호프 전류 법칙을 동시에 만족하는 전압을 찾는 일이고, 다이오드와 트랜지스터의 지수 특성 때문에 이것은 미지수 수만 개의 비선형 연립방정식입니다. 시뮬레이터는 이를 뉴턴–랩슨 방법으로 풉니다. 매 반복 거대한 희소 선형계(<a href="direct-solvers.html">12장</a>)를 풀고, 지수 함수가 폭주하지 않게 걸음을 제한합니다.</p>
+        <p>주머니 속 GPS 수신기도 같은 일을 합니다. 위성 네 개 이상까지의 의사거리를 재면, 수신기의 위치 세 좌표와 시계 오차 하나를 미지수로 하는 비선형 방정식이 생깁니다. 거리 \(\sqrt{(x - x_i)^2 + \cdots}\)가 제곱근이라 선형이 아니고, 수신기는 이것을 매초 뉴턴(가우스–뉴턴) 반복 몇 번으로 풉니다.</p>
+        <div class="o-chain"><span>F(x) = 0 (n개의 식)</span><i>→</i><span>야코비안으로 선형화</span><i>→</i><span class="tool">J(xₖ) sₖ = −F(xₖ), xₖ₊₁ = xₖ + sₖ</span><i>→</i><span>동작점·관절 각·위치</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="intersection">
+    <h2>두 곡선의 교점</h2>
+    <div class="problem"><strong>원과 지수 곡선이 만나는 곳</strong>
+      <p>원 \(x^2 + y^2 = 4\)와 곡선 \(y = 1 - e^x\)은 두 점에서 만납니다. 둘 다 그래프로는 쉽게 보이지만, 식을 하나로 합쳐 \(x\)만의 방정식으로 만들기는 번거롭고, 미지수가 셋, 백, 만 개가 되면 아예 불가능합니다. 방정식 여러 개를 <b>동시에</b> 고쳐 나가는 방법이 필요합니다.</p></div>
+    <p>미지수 \(n\)개, 방정식 \(n\)개를 벡터로 씁니다. \(\mathbf x = (x_1, \dots, x_n)\), \(\mathbf F(\mathbf x) = (f_1(\mathbf x), \dots, f_n(\mathbf x))\)이고 \(\mathbf F(\mathbf x) = \mathbf 0\)을 푸는 것이 목표입니다. 이 장의 기본 예제는</p>
+    <div class="formula">$$\mathbf F(x, y) = \begin{bmatrix} x^2 + y^2 - 4 \\ e^x + y - 1 \end{bmatrix} = \mathbf 0$$
+      <div class="where">근은 \(\mathbf r_1 = (1.0041687385,\ -1.7296372870)\)과 \(\mathbf r_2 = (-1.8162640688,\ 0.8373677999)\) 두 개다(아래에서 계산).</div></div>
+    <p>1차원과 결정적으로 다른 점이 하나 있습니다. <b>근을 가둘 수 없습니다.</b> 1차원에서는 부호가 바뀌는 구간이 근을 보장했지만, 평면에서 \(f_1\)과 \(f_2\)의 부호 조합만으로는 두 곡선의 교점을 가두는 간단한 방법이 없습니다. 그래서 다차원의 근 찾기는 거의 모두 뉴턴 방법과 그 변형이고, 좋은 출발점과 전역 수렴 장치가 중요해집니다.</p>
+    <p>3장의 고정점 반복도 그대로 일반화됩니다. \(\mathbf x = \mathbf G(\mathbf x)\) 꼴로 고쳐 쓰고 반복하면, 고정점 근처에서 \(\mathbf G\)의 야코비안 노름이 1보다 작을 때(더 정확히는 스펙트럼 반지름 \(\rho(G'(\mathbf r)) \lt 1\)일 때) 선형으로 수렴합니다. 13장의 야코비·가우스–자이델 반복은 이 틀을 선형계에 쓴 것입니다.</p>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="newton">
+    <h2>다변수 뉴턴 방법과 야코비안</h2>
+    <p>1차원 뉴턴 방법은 \(f\)를 접선으로 바꿨습니다. 다변수에서는 각 \(f_i\)를 <b>접평면</b>으로 바꿉니다(<a href="../../calculus/chapters/partial.html#tangent-plane">CalculusBook 13장: 접평면</a>). 모든 \(f_i\)의 1차 테일러 전개를 한꺼번에 쓰면 행렬 하나가 나옵니다.</p>
+    <div class="callout deep"><strong>정의 4.1 (야코비안 행렬)</strong> \(\mathbf F: \mathbb R^n \to \mathbb R^n\)의 <span class="term">야코비안</span><span class="en">(Jacobian matrix)</span>은 편도함수를 늘어놓은 \(n\times n\) 행렬
+      <div class="formula">$$J(\mathbf x) = \begin{bmatrix} \partial f_1/\partial x_1 & \cdots & \partial f_1/\partial x_n \\ \vdots & & \vdots \\ \partial f_n/\partial x_1 & \cdots & \partial f_n/\partial x_n \end{bmatrix}$$</div>
+      이다. \(i\)번째 행은 \(\nabla f_i\)이고, \(\mathbf F(\mathbf x + \mathbf s) = \mathbf F(\mathbf x) + J(\mathbf x)\mathbf s + O(\|\mathbf s\|^2)\)이다.</div>
+    <p>선형 근사가 0이 되는 \(\mathbf s\)를 찾으면 됩니다. \(\mathbf F(\mathbf x_k) + J(\mathbf x_k)\mathbf s = \mathbf 0\), 곧 선형 연립방정식입니다.</p>
+    <div class="callout deep"><strong>정의 4.2 (다변수 뉴턴 방법)</strong> 어림값 \(\mathbf x_0\)에서
+      <div class="formula">$$J(\mathbf x_k)\,\mathbf s_k = -\mathbf F(\mathbf x_k), \qquad \mathbf x_{k+1} = \mathbf x_k + \mathbf s_k$$</div>
+      를 되풀이한다. 식으로는 \(\mathbf x_{k+1} = \mathbf x_k - J(\mathbf x_k)^{-1}\mathbf F(\mathbf x_k)\)이지만, 역행렬을 만들지 않고 <b>선형계를 푼다</b>(LU 분해, <a href="../../linear/chapters/lu.html">LinearBook: LU 분해</a>).</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="두 곡선의 교점과 뉴턴 한 단계의 선형화 직선">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <path d="M120 270 C150 150 260 60 400 50 C540 60 640 140 660 260" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+        <path d="M80 70 C240 110 380 170 470 200 S640 250 720 262" fill="none" style="stroke:var(--accent-2);stroke-width:2.6"/>
+        <line x1="210" y1="290" x2="560" y2="22" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4"/>
+        <line x1="120" y1="70" x2="720" y2="232" style="stroke:var(--accent-2);stroke-width:1.5;stroke-dasharray:6 4"/>
+        <circle cx="330" cy="200" r="6" style="fill:var(--text)"/>
+        <text x="300" y="226" class="t-mono">xₖ</text>
+        <circle cx="475" cy="173" r="6" style="fill:var(--warn)"/>
+        <text x="486" y="166" class="t-mono" style="fill:var(--warn)">xₖ₊₁</text>
+        <circle cx="497" cy="208" r="5" style="fill:var(--ok)"/>
+        <text x="506" y="226" class="t-mono" style="fill:var(--ok)">r</text>
+        <text x="560" y="50" class="t" style="fill:var(--accent)">f₁ = 0</text>
+        <text x="640" y="290" class="t" style="fill:var(--accent-2)" text-anchor="end">f₂ = 0</text>
+        <text x="40" y="36" class="t-dim">점선: xₖ에서 f₁, f₂를 선형화한 직선 (접평면의 0 등고선)</text>
+        <text x="40" y="58" class="t-dim">두 직선의 교점이 다음 어림값</text>
+      </svg>
+      <figcaption><b>그림 4-1.</b> 2변수 뉴턴 한 단계. 각 \(f_i\)의 접평면이 높이 0에서 만드는 직선(점선)은 곡선 \(f_i = 0\)의 근사다. 두 직선의 교점, 곧 선형계 \(J\mathbf s = -\mathbf F\)의 해가 \(\mathbf x_{k+1}\)이다. 1차원에서 접선이 \(x\)축과 만나는 점을 고른 것과 같은 생각이다.</figcaption>
+    </figure>
+<pre class="code"><span class="k">function</span> newton_system(F, J, x, tol, maxit)
+  <span class="k">for</span> k = 1 .. maxit
+    Fx = F(x)
+    <span class="k">if</span> norm(Fx) &lt;= tol <span class="k">then return</span> x
+    A  = J(x)                     <span class="c">// n x n, 편도함수 n^2개</span>
+    s  = lu_solve(A, -Fx)         <span class="c">// 역행렬 대신 LU: 약 (2/3) n^3 번 연산</span>
+    x  = x + s
+    <span class="k">if</span> norm(s) &lt;= tol * (1 + norm(x)) <span class="k">then return</span> x
+  fail(<span class="c">"수렴하지 않음"</span>)</pre>
+    <div class="callout deep"><strong>정리 4.3 (다변수 뉴턴의 2차 수렴)</strong> \(\mathbf F\)가 근 \(\mathbf r\) 근처에서 연속 미분 가능하고, 야코비안이 립시츠 연속(\(\|J(\mathbf x) - J(\mathbf y)\| \le \gamma\|\mathbf x - \mathbf y\|\))이며 \(J(\mathbf r)\)이 가역이면, \(\mathbf r\)에 충분히 가까운 \(\mathbf x_0\)에서 뉴턴 방법은 수렴하고
+      <div class="formula">$$\|\mathbf x_{k+1} - \mathbf r\| \le \gamma\,\|J(\mathbf x_k)^{-1}\|\,\|\mathbf x_k - \mathbf r\|^2.$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(\mathbf e_k = \mathbf x_k - \mathbf r\)이라 하면 \(\mathbf e_{k+1} = \mathbf e_k - J_k^{-1}\mathbf F(\mathbf x_k) = J_k^{-1}\bigl[J_k\mathbf e_k - (\mathbf F(\mathbf x_k) - \mathbf F(\mathbf r))\bigr]\). 적분형 평균값 정리 \(\mathbf F(\mathbf x_k) - \mathbf F(\mathbf r) = \int_0^1 J(\mathbf r + \tau\mathbf e_k)\,d\tau\;\mathbf e_k\)를 넣으면 괄호 안은 \(\int_0^1 [J_k - J(\mathbf r + \tau\mathbf e_k)]\,d\tau\,\mathbf e_k\)이고, 립시츠 조건으로 크기가 \(\tfrac{\gamma}{2}\|\mathbf e_k\|^2\) 이하다. 근 근처에서 \(\|J_k^{-1}\|\)이 유계이므로 2차 수렴이다. ∎</p></div>
+    <p>상수에 \(\|J^{-1}\|\)이 들어 있다는 점이 1차원의 \(1/|f'(r)|\)에 해당합니다. 야코비안이 특이 행렬에 가까우면(두 곡선이 거의 접하면) 수렴 반경이 좁고 근 자체의 조건수도 나쁩니다. 1차원 중근의 다차원판입니다.</p>
+    <div class="callout"><strong>예제 4.1 (2변수 뉴턴 손 계산)</strong> 위의 \(\mathbf F\)를 \(\mathbf x_0 = (1, -1)\)에서 풀어라. 야코비안은 \(J = \begin{bmatrix} 2x & 2y \\ e^x & 1 \end{bmatrix}\)이다.
+      <ol>
+        <li>\(\mathbf F(1, -1) = (-2,\ 0.7182818)\), \(J(1, -1) = \begin{bmatrix} 2 & -2 \\ 2.7182818 & 1 \end{bmatrix}\), \(\det J = 2 + 2e = 7.4366\).</li>
+        <li>\(J\mathbf s = (2, -0.7182818)\)을 풀면 \(\mathbf s_0 = (0.0757657,\ -0.9242343)\), \(\mathbf x_1 = (1.0757657,\ -1.9242343)\).</li>
+      </ol>
+      <div class="table-wrap"><table class="ns-num">
+        <thead><tr><th>k</th><th>xₖ</th><th>yₖ</th><th>‖F(xₖ)‖</th><th>‖xₖ − r₁‖</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>1</td><td>−1</td><td>2.13</td><td>7.30×10⁻¹</td></tr>
+          <tr><td>1</td><td>1.075765685479980</td><td>−1.924234314520020</td><td>8.60×10⁻¹</td><td>2.07×10⁻¹</td></tr>
+          <tr><td>2</td><td>1.009470792610993</td><td>−1.737844860783089</td><td>3.96×10⁻²</td><td>9.77×10⁻³</td></tr>
+          <tr><td>3</td><td>1.004188579848761</td><td>−1.729653231334540</td><td>1.02×10⁻⁴</td><td>2.55×10⁻⁵</td></tr>
+          <tr><td>4</td><td>1.004168738693554</td><td>−1.729637287086078</td><td>8.42×10⁻¹⁰</td><td>2.27×10⁻¹⁰</td></tr>
+          <tr><td>5</td><td>1.004168738474659</td><td>−1.729637287025870</td><td>0</td><td>0</td></tr>
+        </tbody></table></div>
+      오차 지수가 \(-0.7, -2.0, -4.6, -9.6\)으로 거의 두 배씩 자란다. \((-1, 1)\)에서 출발하면 \((-2, 1)\), \((-1.8292, 0.8416)\), \((-1.8163, 0.8374)\)을 거쳐 5번 만에 다른 근 \(\mathbf r_2\)에 닿는다.</div>
+    <p>비용을 세어 봅시다. 한 번의 뉴턴 반복은 \(\mathbf F\) 한 번(\(n\)개 함수), 야코비안 한 번(\(n^2\)개 편도함수), LU 분해 약 \(\tfrac23 n^3\) 연산입니다. \(n = 1000\)이면 LU 분해만 수억 연산이라, 큰 문제에서는 야코비안의 희소 구조를 살리고(<a href="direct-solvers.html">12장</a>, <a href="iterative.html">13장</a>), 야코비안을 덜 자주 계산하는 방법(다음 절들)을 씁니다.</p>
+
+    <div class="sim" id="sim-ns-newton2d">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2변수 뉴턴: 두 등고선과 선형화 직선의 교점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-nw-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>연립방정식</span><select id="ns-nw-pre">
+            <option value="circ">x² + y² = 4,  eˣ + y = 1</option>
+            <option value="cube">x³ − 3xy² = 1,  3x²y − y³ = 0 (z³ = 1)</option>
+          </select></label>
+          <label class="ctrl"><span>반복 수 k <output id="ns-nw-k-out"></output></span><input type="range" id="ns-nw-k" min="0" max="20" step="1" value="1"></label>
+          <label class="check"><input type="checkbox" id="ns-nw-lin" checked> 마지막 단계의 선형화 직선</label>
+          <label class="check"><input type="checkbox" id="ns-nw-damp"> 감쇠 (직선 탐색)</label>
+          <label class="check"><input type="checkbox" id="ns-nw-basin"> 끌개 영역 색칠</label>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--accent)"></i>f₁ = 0</span><span><i style="background:var(--accent-2)"></i>f₂ = 0</span><span><i style="background:var(--warn)"></i>뉴턴 경로</span><span><i style="background:var(--text-faint)"></i>선형화 직선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">출발점 x₀ (끌기)</span><span class="v" id="ns-nw-x0">—</span></div>
+        <div class="stat"><span class="k">xₖ</span><span class="v" id="ns-nw-xk">—</span></div>
+        <div class="stat"><span class="k">‖F(xₖ)‖</span><span class="v" id="ns-nw-f">—</span></div>
+        <div class="stat"><span class="k">det J(xₖ)</span><span class="v" id="ns-nw-det">—</span></div>
+      </div>
+      <div class="table-wrap ns-tbl" id="ns-nw-tbl"></div>
+      <div class="sim-note">해볼 것: ① k = 1에서 점선 두 개(f₁, f₂의 선형화)의 교점이 다음 점이 되는 것을 확인하고, k를 올리며 표의 ‖F‖가 제곱으로 줄어드는 것을 보세요. ② 출발점을 (0.1, −0.1) 근처로 끌면 첫 걸음이 화면 밖 (9.5, −10.5)로 튑니다. '감쇠'를 켜면 걸음이 1/8로 줄어 가까운 근으로 갑니다(표의 t 열). ③ '끌개 영역 색칠'로 각 출발점이 어느 근으로 가는지 보세요. z³ = 1 꼴에서는 경계가 프랙털입니다(뒤의 뉴턴 프랙털 절). 모델: 등고선은 격자 위 부호 바뀜으로 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="damped">
+    <h2>감쇠 뉴턴: 직선 탐색으로 길 잃지 않기</h2>
+    <div class="problem"><strong>한 걸음에 잔차가 3500배</strong>
+      <p>예제의 \(\mathbf F\)를 \((0.1, -0.1)\)에서 풀면 뉴턴의 첫 걸음이 \((9.55, -10.55)\)로 날아가 \(\|\mathbf F\|\)가 3.98에서 14041로 커집니다. 방향은 맞을지 모르는데 걸음이 너무 큰 것은 아닐까요? 1차원이라면 가둠 구간으로 막았겠지만 다차원에는 그런 울타리가 없습니다.</p></div>
+    <p>무엇을 기준으로 "나아졌다"고 할지 정해야 합니다. 자연스러운 잣대는 잔차의 크기, 곧 <span class="term">가치 함수</span><span class="en">(merit function)</span> \(\phi(\mathbf x) = \tfrac12\|\mathbf F(\mathbf x)\|^2\)입니다. 근에서 \(\phi = 0\)이고 그 밖에서는 양수입니다. 다행히 뉴턴 방향은 언제나 \(\phi\)를 줄이는 방향입니다.</p>
+    <div class="callout deep"><strong>정리 4.4 (뉴턴 방향은 하강 방향)</strong> \(J(\mathbf x)\)가 가역이고 \(\mathbf F(\mathbf x) \ne \mathbf 0\)이면 뉴턴 걸음 \(\mathbf s = -J^{-1}\mathbf F\)는
+      <div class="formula">$$\nabla\phi(\mathbf x)\cdot\mathbf s = (J^T\mathbf F)\cdot\mathbf s = \mathbf F^T J\,(-J^{-1}\mathbf F) = -\|\mathbf F\|^2 \lt 0$$</div>
+      를 만족한다. 따라서 충분히 작은 \(t > 0\)에 대해 \(\phi(\mathbf x + t\mathbf s) \lt \phi(\mathbf x)\)이다.</div>
+    <p>그러니 방향은 그대로 두고 <b>걸음 길이</b> \(t \in (0, 1]\)만 고르면 됩니다. \(t = 1\)부터 시도해서 잔차가 충분히 줄지 않으면 반으로 줄이는 <span class="term">직선 탐색</span><span class="en">(line search, backtracking)</span>이 표준입니다. "충분히"의 기준이 아르미호 조건으로, 15장 최적화에서 다시 만납니다.</p>
+<pre class="code"><span class="k">function</span> damped_newton(F, J, x, tol)
+  <span class="k">loop</span>
+    Fx = F(x);  <span class="k">if</span> norm(Fx) &lt;= tol <span class="k">then return</span> x
+    s  = lu_solve(J(x), -Fx)
+    t  = 1
+    <span class="k">while</span> norm(F(x + t*s)) &gt; (1 - 1e-4 * t) * norm(Fx)   <span class="c">// 아르미호식 충분 감소</span>
+      t = t / 2
+      <span class="k">if</span> t &lt; 1e-10 <span class="k">then</span> fail(<span class="c">"‖F‖의 국소 최솟값에 갇힘?"</span>)
+    x = x + t * s                <span class="c">// 근 근처에서는 t = 1, 곧 순수 뉴턴</span></pre>
+    <div class="callout"><strong>예제 4.2 (감쇠가 바꾸는 것)</strong> \(\mathbf x_0 = (0.1, -0.1)\), \(\|\mathbf F(\mathbf x_0)\| = 3.980\). 뉴턴 걸음 \(\mathbf s = (9.4505, -10.4495)\).
+      <ol>
+        <li>\(t = 1\): \(\|\mathbf F\| = 14041\). \(t = 0.5\): 127.5. \(t = 0.25\): 12.37. \(t = 0.125\): 1.254 < 3.98이므로 받아들인다. \(\mathbf x_1 = (1.2813, -1.4062)\).</li>
+        <li>그 뒤로는 \(t = 1\)이 계속 받아들여져 순수 뉴턴이 된다. \(\|\mathbf F\|\): 1.25, 0.200, \(3.4\times10^{-3}\), \(1.5\times10^{-6}\), \(3.2\times10^{-13}\), 0. 6번 만에 가까운 근 \(\mathbf r_1\)에 닿는다.</li>
+        <li>감쇠 없는 뉴턴은 \((9.55, -10.55)\), \((8.55, -2.05)\), \((7.55, 11.68)\), …으로 크게 돌아다니다가 16번째에 <b>먼 근</b> \(\mathbf r_2\)에 닿는다.</li>
+      </ol>
+      감쇠는 만능이 아니다. 프로이덴슈타인–로스 시험 문제 \(f_1 = -13 + x + ((5 - y)y - 2)y\), \(f_2 = -29 + x + ((y + 1)y - 14)y\)(근 \((5, 4)\))를 \((0.5, -2)\)에서 풀면, 감쇠 뉴턴은 \(y \approx -0.897\)의 골짜기에 갇혀 60번 뒤에도 \(\|\mathbf F\| = 7.6\)에서 멈춘다. \(\phi\)의 국소 최솟값 근처에서는 \(J\)가 특이에 가까워 하강 방향이 거의 쓸모없어진다. 이때는 신뢰 영역 방법, 연속법, 다른 출발점이 필요하다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="broyden">
+    <h2>브로이든 방법: 야코비안 없이</h2>
+    <div class="problem"><strong>편도함수 2500개를 매번?</strong>
+      <p>미지수가 50개면 야코비안은 편도함수 2500개입니다. 식으로 미분하기 어려우면 차분으로 근사하는데, 그러려면 \(\mathbf F\)를 한 번 반복에 51번 계산해야 합니다. 1차원 할선법이 도함수를 지난 두 점의 기울기로 바꿨듯이, 지난 걸음의 정보로 야코비안을 <b>고쳐 쓸</b> 수 있을까요?</p></div>
+    <p>1차원 할선 기울기 \(b_{k+1}\)는 \(b_{k+1}(x_{k+1} - x_k) = f(x_{k+1}) - f(x_k)\)를 만족했습니다. 다차원판은 \(\mathbf s_k = \mathbf x_{k+1} - \mathbf x_k\), \(\mathbf y_k = \mathbf F(\mathbf x_{k+1}) - \mathbf F(\mathbf x_k)\)에 대한 <span class="term">할선 조건</span><span class="en">(secant condition)</span></p>
+    <div class="formula">$$B_{k+1}\,\mathbf s_k = \mathbf y_k$$
+      <div class="where">\(n\)개의 식으로 \(n^2\)개 성분을 정할 수 없으므로, 할선 조건을 만족하는 행렬 가운데 \(B_k\)에서 <b>가장 적게 바꾼</b> 것을 고른다.</div></div>
+    <div class="callout deep"><strong>정리 4.5 (브로이든 갱신)</strong> 할선 조건 \(B\mathbf s_k = \mathbf y_k\)를 만족하는 행렬 가운데 프로베니우스 노름 \(\|B - B_k\|_F\)를 최소로 하는 것은
+      <div class="formula">$$B_{k+1} = B_k + \frac{(\mathbf y_k - B_k\mathbf s_k)\,\mathbf s_k^T}{\mathbf s_k^T\mathbf s_k}$$</div>
+      이다. 이 계수 1 수정(rank-one update)으로 반복하는 방법을 <span class="term">브로이든 방법</span><span class="en">(Broyden's method)</span>이라 한다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 할선 조건을 만족하는 임의의 \(B\)에 대해 \(B_{k+1} - B_k = (B - B_k)\dfrac{\mathbf s\mathbf s^T}{\mathbf s^T\mathbf s}\)이고, \(\mathbf s\mathbf s^T/\mathbf s^T\mathbf s\)는 사영 행렬이라 노름이 1이다. 따라서 \(\|B_{k+1} - B_k\|_F \le \|B - B_k\|_F\). \(\mathbf s\)에 수직인 방향에서는 \(B_{k+1}\)이 \(B_k\)와 똑같이 작용한다. ∎</p></div>
+    <p>브로이든 방법은 매 반복 \(\mathbf F\)를 <b>한 번만</b> 계산합니다. 셔먼–모리슨 공식으로 \(B^{-1}\)을 직접 갱신하면 선형계 풀기도 \(O(n^2)\)으로 줄어듭니다. 대가는 수렴 속도입니다. 근 근처에서 \(B_k\)가 참 야코비안으로 수렴한다는 보장은 없지만, 걸음 방향에서만큼은 충분히 정확해져 <b>초선형</b>으로 수렴한다는 것이 알려져 있습니다(2차는 아니다). 같은 이유로 처음 \(B_0\)이 나쁘면(예: 단위 행렬) 느려지거나 실패할 수 있어, 보통 \(B_0\)만은 차분 야코비안으로 만듭니다.</p>
+    <div class="callout"><strong>예제 4.3 (브로이든 대 뉴턴)</strong> 예제 4.1과 같은 문제, \(\mathbf x_0 = (1, -1)\), \(B_0 = J(\mathbf x_0)\).
+      <ol>
+        <li>첫 걸음은 뉴턴과 같다: \(\mathbf x_1 = (1.0757657, -1.9242343)\). 그 뒤로는 \(J\)를 다시 계산하지 않고 갱신한다.</li>
+        <li>오차 \(\|\mathbf x_k - \mathbf r_1\|\): \(7.30\times10^{-1}\), \(2.07\times10^{-1}\), \(4.06\times10^{-2}\), \(2.10\times10^{-3}\), \(9.13\times10^{-6}\), \(5.62\times10^{-7}\), \(1.05\times10^{-8}\), \(2.46\times10^{-12}\), \(0\). 8번 반복. 오차 비율이 0.28, 0.20, 0.052, 0.0043, …로 0을 향하지만 한 번에 고르지 않다(0.062, 0.019로 되올라가기도 한다). 초선형 수렴의 전형이다.</li>
+        <li>마지막 \(B_8 = \begin{bmatrix} 2.068 & -3.442 \\ 2.726 & 0.999 \end{bmatrix}\), 참 \(J(\mathbf r_1) = \begin{bmatrix} 2.008 & -3.459 \\ 2.730 & 1 \end{bmatrix}\). 가깝지만 같지는 않다.</li>
+      </ol>
+      비용(\(\mathbf F\) 계산 횟수, 야코비안은 차분으로 계산한다고 할 때, \(\|\mathbf F\| \lt 10^{-10}\)까지): 2변수 문제에서 차분 뉴턴 5번 반복에 16회, 브로이든(\(B_0\) 차분) 7번 반복에 10회, 야코비안을 처음 것으로 고정한 코드 방법은 38번 반복에 41회. 미지수 20개인 브라투 문제(\(u'' + e^u = 0\)을 격자 20개로 나눈 것)에서는 차분 뉴턴 3번 반복에 64회, 브로이든 4번 반복에 25회다. 미지수가 많을수록 야코비안을 아끼는 효과가 커진다.</div>
+
+    <div class="sim" id="sim-ns-broyden">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>뉴턴 vs 차분 뉴턴 vs 브로이든: 반복 수와 계산 비용</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-br-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="ns-br-pre">
+            <option value="s2">2변수: 원과 지수 곡선, x₀ = (1, −1)</option>
+            <option value="s2b">2변수: 같은 문제, x₀ = (2, 0.5)</option>
+            <option value="bratu">브라투 u″ + λeᵘ = 0, 미지수 n개</option>
+          </select></label>
+          <label class="ctrl"><span>브라투 미지수 n <output id="ns-br-n-out"></output></span><input type="range" id="ns-br-n" min="5" max="80" step="5" value="20"></label>
+          <label class="ctrl"><span>브라투 λ <output id="ns-br-l-out"></output></span><input type="range" id="ns-br-l" min="0.5" max="3.4" step="0.1" value="1"></label>
+          <div class="ctrl"><span>가로축</span><div class="seg" id="ns-br-axis"><button data-value="k" class="on">반복 k</button><button data-value="ev">F 계산 수</button></div></div>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--accent)"></i>뉴턴 (해석적 J)</span><span><i style="background:var(--blue)"></i>뉴턴 (차분 J)</span><span><i style="background:var(--warn)"></i>브로이든 (B₀ 차분)</span><span><i style="background:var(--bad)"></i>브로이든 (B₀ = I)</span><span><i style="background:var(--text-faint)"></i>코드 (J 고정)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">10⁻¹⁰까지 F 계산: 차분 뉴턴</span><span class="v" id="ns-br-c0">—</span></div>
+        <div class="stat"><span class="k">브로이든</span><span class="v" id="ns-br-c1">—</span></div>
+        <div class="stat"><span class="k">코드</span><span class="v" id="ns-br-c2">—</span></div>
+        <div class="stat"><span class="k">‖B − J‖/‖J‖ (끝)</span><span class="v" id="ns-br-bj">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 가로축을 'F 계산 수'로 바꾸고 브라투 n을 5 → 80으로 올려 보세요. 차분 뉴턴은 반복마다 n + 1번이 들어 오른쪽으로 밀려나지만, 브로이든은 거의 그대로입니다. ② B₀ = I(빨강)는 2변수에서는 결국 수렴하지만 브라투 문제에서는 실패합니다. 첫 행렬이 중요합니다. ③ λ를 3.4 근처로 올리면 해가 사라지는 접힘점(λ ≈ 3.51) 가까이라 J가 특이에 가까워지고 모든 방법이 느려집니다. 모델: 차분 간격 10⁻⁷(1 + |xⱼ|), ‖F‖ 로그 눈금.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="horner">
+    <h2>다항식: 호너 방법</h2>
+    <div class="problem"><strong>다항식 값 하나에 곱셈 몇 번?</strong>
+      <p>\(p(x) = a_n x^n + \cdots + a_1 x + a_0\)을 그대로 계산하면 \(x^k\)마다 곱셈 \(k\)번, 모두 \(n(n+1)/2\)번입니다. 거듭제곱을 앞에서 이어 받아도 \(2n - 1\)번이 듭니다. 뉴턴 방법은 반복마다 \(p\)와 \(p'\)이 필요하고, 차수 수십의 다항식을 수백만 번 계산하는 일(그래픽스, 신호 처리, 라이브러리 함수 근사)도 흔합니다.</p></div>
+    <p>괄호를 안쪽부터 묶으면 됩니다. \(2x^4 - 3x^3 + x - 5 = (((2x - 3)x + 0)x + 1)x - 5\). 이것이 <span class="term">호너 방법</span><span class="en">(Horner's method)</span>입니다.</p>
+    <div class="callout deep"><strong>정리 4.6 (호너 방법과 조립제법)</strong> \(b_n = a_n\), \(b_k = a_k + x_0\,b_{k+1}\)(\(k = n-1, \dots, 0\))으로 계산하면 \(p(x_0) = b_0\)이고, 동시에
+      <div class="formula">$$p(x) = (x - x_0)\,q(x) + b_0, \qquad q(x) = b_n x^{n-1} + b_{n-1}x^{n-2} + \cdots + b_1$$</div>
+      이다. 곱셈 \(n\)번, 덧셈 \(n\)번이 든다. 같은 계산을 \(q\)에 한 번 더 하면 \(p'(x_0) = q(x_0)\)이다.
+      <p style="margin:8px 0 0"><b>증명.</b> \((x - x_0)q(x) + b_0\)을 전개해 \(x^k\)의 계수를 비교하면 \(b_k - x_0 b_{k+1} = a_k\)로 점화식과 같다. 미분하면 \(p'(x) = q(x) + (x - x_0)q'(x)\)이라 \(p'(x_0) = q(x_0)\). ∎</p></div>
+    <p>일반적인 다항식에 대해서는 곱셈 \(n\)번보다 적게 쓰는 방법이 없다는 것이 증명되어 있습니다. 반올림 오차도 작아서, 계산값은 계수를 상대적으로 약 \(2n\varepsilon\)만큼 흔든 다항식의 정확한 값입니다(후방 안정, <a href="conditioning.html">2장</a>). 3장 예제 3.7의 \((x - 1)^7\) 잡음은 호너의 잘못이 아니라 전개된 계수의 크기 \(\sum|a_k x^k| = 128\)이 값 \(|p(x)|\)보다 엄청나게 크기 때문이었습니다.</p>
+<pre class="code"><span class="k">function</span> horner2(a, x)            <span class="c">// a[n], ..., a[0]: 높은 차수부터</span>
+  p = a[n]; d = 0
+  <span class="k">for</span> k = n-1 <span class="k">down to</span> 0
+    d = d * x + p                <span class="c">// q의 호너 → p'(x)</span>
+    p = p * x + a[k]             <span class="c">// p의 호너</span>
+  <span class="k">return</span> (p, d)                  <span class="c">// 곱셈 2n번으로 p와 p'</span></pre>
+    <div class="callout"><strong>예제 4.4 (조립제법과 뉴턴–호너)</strong> \(p(x) = 2x^4 - 3x^3 + 0x^2 + x - 5\), \(x_0 = 2\).
+      <div class="table-wrap"><table class="ns-num">
+        <thead><tr><th></th><th>x⁴</th><th>x³</th><th>x²</th><th>x</th><th>1</th></tr></thead>
+        <tbody>
+          <tr><td>계수 aₖ</td><td>2</td><td>−3</td><td>0</td><td>1</td><td>−5</td></tr>
+          <tr><td>bₖ = aₖ + 2bₖ₊₁</td><td>2</td><td>1</td><td>2</td><td>5</td><td>5 = p(2)</td></tr>
+          <tr><td>cₖ = bₖ + 2cₖ₊₁</td><td>2</td><td>5</td><td>12</td><td>29 = p′(2)</td><td></td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>\(p(2) = 5\), 몫 \(q(x) = 2x^3 + x^2 + 2x + 5\). 확인: \(32 - 24 + 2 - 5 = 5\).</li>
+        <li>\(p'(2) = q(2) = 29\). 확인: \(p' = 8x^3 - 9x^2 + 1\), \(64 - 36 + 1 = 29\).</li>
+        <li>뉴턴 걸음 \(x_1 = 2 - 5/29 = 1.8275862\). 계속하면 1.7857659, 1.7834986, 1.7834921400, 1.78349213996292. 매 반복이 호너 두 줄이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ns-horner">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>호너 방법 한 칸씩: 조립제법 표와 뉴턴–호너</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-hn-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>계수 (높은 차수부터, 쉼표)</span><input class="ns-in" id="ns-hn-c" value="2, -3, 0, 1, -5"></label>
+          <label class="ctrl"><span>x₀ <output id="ns-hn-x-out"></output></span><input type="range" id="ns-hn-x" min="-3" max="3" step="0.01" value="2"></label>
+          <div class="btn-row"><button class="btn primary" id="ns-hn-step">다음 칸</button><button class="btn" id="ns-hn-all">끝까지</button><button class="btn" id="ns-hn-nw">뉴턴 한 걸음</button></div>
+        </div>
+      </div>
+      <div class="table-wrap ns-tbl" id="ns-hn-tbl"></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">p(x₀)</span><span class="v" id="ns-hn-p">—</span></div>
+        <div class="stat"><span class="k">p′(x₀)</span><span class="v" id="ns-hn-d">—</span></div>
+        <div class="stat"><span class="k">곱셈 수: 호너 / 그대로</span><span class="v" id="ns-hn-ops">—</span></div>
+        <div class="stat"><span class="k">몫 q(x)</span><span class="v" id="ns-hn-q">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① '다음 칸'을 누르며 b<sub>k</sub> = a<sub>k</sub> + x₀·b<sub>k+1</sub>이 왼쪽에서 오른쪽으로 채워지는 것을 보세요. 마지막 칸이 p(x₀), 앞의 칸들이 몫의 계수입니다. ② '뉴턴 한 걸음'을 반복하면 x₀가 x₀ − p/p′로 옮겨 가며 근(그래프의 빨간 점)에 붙습니다. 근에 닿으면 마지막 칸이 0이 되고 몫이 수축된 다항식입니다. ③ 계수를 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, −1(차수 10)로 바꾸면 그대로 계산할 때 곱셈 55번, 호너 10번입니다. 모델: 그래프의 접선은 p′(x₀)로 그립니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="deflation">
+    <h2>수축: 근을 하나씩 떼어 내기와 그 오차</h2>
+    <p>근 \(r\)을 하나 찾으면 조립제법의 몫 \(q(x) = p(x)/(x - r)\)은 차수가 하나 낮고 나머지 근을 모두 가집니다. 이제 \(q\)의 근을 찾고, 또 나누고… 이렇게 차수를 줄여 가는 것을 <span class="term">수축</span><span class="en">(deflation)</span>이라 합니다. 문제는 찾은 \(r\)이 정확하지 않다는 데 있습니다. \(r\)의 작은 오차가 \(q\)의 계수를 흔들고, 그 흔들림이 다음 근들로 옮아갑니다.</p>
+    <p>윌킨슨<span class="en">(James H. Wilkinson)</span>의 분석에 따르면 높은 차수부터 계수를 만드는 앞쪽 수축(조립제법)은 <b>크기가 작은 근부터</b> 떼어 낼 때 안정하고, 큰 근부터 떼면 작은 근들이 크게 망가질 수 있습니다. 실무에서는 두 가지를 더 합니다. ① 수축된 다항식에서 찾은 근을 <b>원래 다항식</b>에 대고 뉴턴 몇 번으로 다듬는다(polishing). ② 가능하면 수축 대신 아래의 동반 행렬처럼 모든 근을 한꺼번에 구한다.</p>
+    <div class="callout"><strong>예제 4.5 (수축 순서)</strong> 근이 \(1, \tfrac12, \tfrac14, \dots, 2^{-15}\)인 16차 다항식을 계수로 전개한 뒤, 뉴턴–호너와 조립제법 수축으로 근을 하나씩 구하라.
+      <ol>
+        <li><b>작은 근부터</b>(매번 \(x_0 = 0\)에서 뉴턴): \(2^{-15} = 3.05\times10^{-5}\)부터 1까지 차례로 나오고, 16개 모두의 상대 오차가 \(2.2\times10^{-15}\) 이하다.</li>
+        <li><b>큰 근부터</b>(매번 \(x_0 = 1 + \max|a_k|\)에서 뉴턴): 1, 0.5, 0.25, 0.125까지는 상대 오차 \(3.5\times10^{-6}\) 이하로 맞지만 다섯째가 0.06332(참값 0.0625, 1.3% 오차)이고, 그 뒤로는 \(-0.0273\), \(0.641\), \(-0.623\), \(-0.854\), \(\dots\), \(109.2\) 같은 엉뚱한 값이 나온다. 수축된 다항식이 더 이상 원래 근을 갖지 않고(복소근이 생겨), 실수 출발점의 뉴턴이 1000번 안에 멈추지 못하는 단계도 생긴다.</li>
+        <li>큰 근부터 뗀 결과를 원래 다항식으로 다듬어도 소용없다. 엉뚱한 출발점에서 다듬은 뉴턴은 이미 찾은 근으로 다시 가 버려, 같은 근이 두 번 나오고 어떤 근은 빠진다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-ns-deflate">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>수축 순서와 근의 오차: 작은 근부터 vs 큰 근부터</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-df-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>근의 모양</span><select id="ns-df-pre">
+            <option value="geo">2⁻ᵏ (k = 0 … n − 1)</option>
+            <option value="int">1, 2, …, n (윌킨슨형)</option>
+          </select></label>
+          <label class="ctrl"><span>차수 n <output id="ns-df-n-out"></output></span><input type="range" id="ns-df-n" min="4" max="20" step="1" value="16"></label>
+          <div class="ctrl"><span>떼어 내는 순서</span><div class="seg" id="ns-df-ord"><button data-value="small" class="on">작은 근부터</button><button data-value="large">큰 근부터</button></div></div>
+          <label class="check"><input type="checkbox" id="ns-df-pol"> 원래 다항식으로 다듬기</label>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--accent)"></i>상대 오차 (근 k)</span><span><i style="background:var(--bad)"></i>실패 / 10⁻² 초과</span><span><i style="background:var(--text-faint)"></i>기계 엡실론</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최대 상대 오차</span><span class="v" id="ns-df-max">—</span></div>
+        <div class="stat"><span class="k">10⁻⁸보다 정확한 근</span><span class="v" id="ns-df-good">—</span></div>
+        <div class="stat"><span class="k">떼어 낸 차례 (앞 6개)</span><span class="v" id="ns-df-seq">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 2⁻ᵏ, n = 16에서 '큰 근부터'를 고르면 다섯째 근부터 막대가 치솟습니다. '작은 근부터'로 바꾸면 모두 10⁻¹⁵ 근처입니다. ② n을 12 → 14 → 15로 올려 큰 근부터 수축이 무너지기 시작하는 차수를 찾으세요. ③ '1, 2, …, n'은 근 자체의 조건수가 나쁜 윌킨슨형이라 순서와 상관없이 n이 커지면 정확도가 떨어집니다(2장). 모델: 뉴턴–호너, 상대 걸음 10⁻¹⁵에서 멈춤, 큰 근의 출발점은 1 + max|aₖ|.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="companion">
+    <h2>동반 행렬: 모든 근을 고유값으로</h2>
+    <p>방향을 거꾸로 생각해 봅시다. 행렬의 고유값은 특성 다항식의 근입니다. 그렇다면 주어진 다항식을 특성 다항식으로 갖는 행렬을 만들고, 그 고유값을 안정한 행렬 알고리즘으로 구하면 다항식의 근이 <b>모두</b> 나옵니다. 14장에서 보듯 고유값을 특성 다항식으로 구하는 것은 나쁜 생각이지만, 이 반대 방향은 좋은 생각입니다.</p>
+    <div class="callout deep"><strong>정의 4.7 (동반 행렬)</strong> 최고차 계수가 1인 \(p(z) = z^n + a_{n-1}z^{n-1} + \cdots + a_1 z + a_0\)의 <span class="term">동반 행렬</span><span class="en">(companion matrix)</span>은
+      <div class="formula">$$C = \begin{bmatrix} -a_{n-1} & -a_{n-2} & \cdots & -a_1 & -a_0 \\ 1 & 0 & \cdots & 0 & 0 \\ 0 & 1 & \cdots & 0 & 0 \\ \vdots & & \ddots & & \vdots \\ 0 & 0 & \cdots & 1 & 0 \end{bmatrix}$$</div>
+      이다. 첫 행에 계수, 바로 아래 대각선에 1이 있는 상헤센베르크 행렬이다.</div>
+    <div class="callout deep"><strong>정리 4.8</strong> \(\det(zI - C) = p(z)\). 따라서 \(C\)의 고유값은 \(p\)의 근(중복도 포함)과 같다. 근 \(r\)에 대한 고유벡터는 \((r^{n-1}, r^{n-2}, \dots, r, 1)\)이다.
+      <p style="margin:8px 0 0"><b>확인.</b> \(\mathbf v = (r^{n-1}, \dots, 1)\)이면 \(C\mathbf v\)의 둘째 성분부터는 \(r^{n-1}, \dots, r\), 곧 \(r\mathbf v\)의 성분이다. 첫 성분은 \(-a_{n-1}r^{n-1} - \cdots - a_0 = r^n - p(r)\)이므로 \(p(r) = 0\)이면 \(C\mathbf v = r\mathbf v\). ∎</p></div>
+    <p>MATLAB의 <code>roots</code>와 NumPy의 <code>numpy.roots</code>가 바로 이렇게 동반 행렬의 고유값을 계산합니다. 고유값은 <b>이동 QR 알고리즘</b>으로 구합니다(<a href="eigenvalues.html">14장</a>). \(H - \mu I = QR\)로 분해하고 \(H \leftarrow RQ + \mu I\)로 바꾸는 닮음 변환을 되풀이하면 아래 대각 성분이 0으로 가고 대각에 고유값이 드러납니다. 동반 행렬은 이미 헤센베르크 꼴이라 한 단계가 \(O(n^2)\)이고 전체 비용은 \(O(n^3)\), 대신 출발점 걱정도 수축 순서 걱정도 없습니다.</p>
+    <div class="callout"><strong>예제 4.6 (x³ − 2x − 5의 동반 행렬)</strong> \(a_2 = 0\), \(a_1 = -2\), \(a_0 = -5\)이므로 \(C = \begin{bmatrix} 0 & 2 & 5 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \end{bmatrix}\). 복소 이동(윌킨슨 이동) QR을 돌리면 마지막 아래 대각 성분 \(|h_{32}|\)이 1, 1.24, 0.684, 0.486, \(5.87\times10^{-3}\), \(1.06\times10^{-6}\), \(2.81\times10^{-14}\)으로 줄어 7단계 만에 고유값 \(-1.0472757 - 1.1359399i\)가 떨어져 나온다(끝의 세 값은 2차 수렴). 남은 2×2 블록에서 한 단계 더 하면 \(2.0945514815\)와 \(-1.0472757 + 1.1359399i\)가 나온다. 근이 \(1, 2, \dots, 10\)인 다항식이면 QR 27단계로 모든 근이 상대 오차 \(1.2\times10^{-10}\) 이하로 나온다.</div>
+
+    <div class="sim" id="sim-ns-companion">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>동반 행렬의 QR 반복: 대각선이 근으로 모인다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view ns-two">
+          <div><canvas id="ns-cm-cv"></canvas><span class="ns-cap">복소평면: 근(끌기) ○ 와 대각 성분 hᵢᵢ ●</span></div>
+          <div><canvas id="ns-cm-hm"></canvas><span class="ns-cap">|hᵢⱼ| 히트맵 (로그)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>차수 n</span><div class="seg" id="ns-cm-n"><button data-value="3">3</button><button data-value="4" class="on">4</button><button data-value="5">5</button><button data-value="6">6</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="ns-cm-step">QR 한 단계</button><button class="btn" id="ns-cm-play">▶ 자동</button><button class="btn" id="ns-cm-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">QR 단계</span><span class="v" id="ns-cm-it">—</span></div>
+        <div class="stat"><span class="k">떨어져 나온 고유값</span><span class="v" id="ns-cm-def">—</span></div>
+        <div class="stat"><span class="k">마지막 활성 |hₘ,ₘ₋₁|</span><span class="v" id="ns-cm-sub">—</span></div>
+        <div class="stat"><span class="k">p(z) 계수</span><span class="v" id="ns-cm-p">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 'QR 한 단계'를 누르며 히트맵의 아래 대각 칸이 오른쪽 아래부터 어두워지고(0으로), 그때마다 대각 성분 하나가 근(빈 원)에 정확히 겹치는 것을 보세요. ② 근을 끌어 켤레 쌍을 만들어도 복소 이동 덕분에 수렴합니다. ③ 두 근을 거의 겹쳐 놓으면(중근 근처) 수렴이 느려지고 정확도가 떨어집니다. 근의 조건수가 나쁘기 때문입니다. 모델: 복소 산술의 기븐스 회전 QR, 윌킨슨 이동, |h| &lt; 10⁻¹⁴(|hₘₘ| + |hₘ₋₁,ₘ₋₁|)이면 수축.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="fractal">
+    <h2>복소 평면의 뉴턴 방법과 프랙털</h2>
+    <p>뉴턴 방법은 복소수에서도 똑같이 쓸 수 있습니다. \(z_{k+1} = z_k - p(z_k)/p'(z_k)\). 실근이 없는 \(z^2 + 1\)도 복소 출발점에서 \(\pm i\)로 수렴합니다. 사실 이것은 2변수 뉴턴과 같은 것입니다. \(z = x + iy\), \(p = u + iv\)로 쓰면 \(p(z) = 0\)은 \(u(x, y) = 0\), \(v(x, y) = 0\)의 연립방정식이고, 코시–리만 방정식 \(u_x = v_y\), \(u_y = -v_x\) 때문에 그 야코비안 \(\begin{bmatrix} u_x & u_y \\ v_x & v_y\end{bmatrix}\)은 복소수 \(p'(z)\)를 곱하는 회전·확대 행렬이 됩니다(<a href="../../foundations/chapters/complex.html">MathBook: 복소수</a>). 2변수 뉴턴 시뮬레이터의 둘째 연립방정식이 바로 \(z^3 = 1\)의 실수·허수 부분입니다.</p>
+    <div class="callout deep"><strong>정의 4.9 (끌개 영역)</strong> 근 \(r\)의 <span class="term">끌개 영역</span><span class="en">(basin of attraction)</span>은 뉴턴 반복이 \(r\)로 수렴하는 출발점 \(z_0\) 전체의 집합이다. 단순근은 정리 3.8에 의해 둘레에 작은 원판을 포함한다.</div>
+    <p>\(z^3 - 1\)의 세 근 \(1\), \(e^{\pm 2\pi i/3}\)의 끌개 영역을 색칠하면 놀라운 그림이 나옵니다. 근 가까이에서는 각 영역이 넓고 매끄럽지만 경계에서는 세 색이 끝없이 뒤섞입니다. 이 질문은 케일리<span class="en">(Arthur Cayley)</span>가 1879년에 2차식은 쉽고 3차식은 어렵다고 적으며 던진 것으로 알려져 있고, 컴퓨터 그래픽이 생긴 뒤에야 그 모양이 보였습니다. 이유는 복소 동역학의 정리가 말해 줍니다. 유리 함수 반복에서 <b>각 끌개 영역의 경계는 모두 같은 집합(쥘리아 집합)</b>이라서, 경계의 어느 점이든 그 아무리 작은 근방에도 세 영역이 모두 들어 있습니다.</p>
+    <ul>
+      <li>실수축 위의 출발점은 실수축을 떠나지 않으므로 실근 1로 간다(0과 0으로 가는 점들 제외). \(z_0 = -1\)이면 \(-0.3333\), \(2.7778\), \(1.8950\), \(1.3562\), \(1.0854\), \(1.0065\), \(1.00004\).</li>
+      <li>\(z_0 = 1 + i\)는 \(0.6667 + 0.5i\), \(0.5788 - 0.1275i\), \(1.2470 + 0.3136i\), \(1.0090 + 0.1137i\), \(\dots\)로 돌아서 1로 가고, \(z_0 = 0.1 + 0.01i\)는 0 가까이라 \(p'\)이 작아 첫 걸음에 \(32.4 - 6.53i\)로 크게 튄 뒤 13번 만에 1로 돌아온다.</li>
+      <li>\(z^3 - 2z + 2\)에서는 3장의 순환 \(0 \to 1 \to 0\)이 <b>끌어당기는</b> 주기 궤도라서, 그 둘레에 어떤 근으로도 수렴하지 않는 출발점의 열린 영역이 생긴다(시뮬레이터의 회색 영역).</li>
+    </ul>
+
+    <div class="sim" id="sim-ns-fractal">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>뉴턴 프랙털: 복소평면의 끌개 영역</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-fr-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식</span><select id="ns-fr-pre">
+            <option value="c3">z³ − 1</option>
+            <option value="c4">z⁴ − 1</option>
+            <option value="cyc">z³ − 2z + 2 (끌개 순환)</option>
+            <option value="c5">z⁵ − 1</option>
+          </select></label>
+          <label class="ctrl"><span>완화 계수 a (z − a·p/p′) <output id="ns-fr-a-out"></output></span><input type="range" id="ns-fr-a" min="0.5" max="1.9" step="0.05" value="1"></label>
+          <label class="ctrl"><span>확대 <output id="ns-fr-z-out"></output></span><input type="range" id="ns-fr-z" min="0" max="8" step="1" value="0"></label>
+          <label class="check"><input type="checkbox" id="ns-fr-shade" checked> 반복 수로 명암</label>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--text)"></i>클릭한 점의 궤도</span><span><i style="background:var(--text-faint)"></i>회색: 50번 안에 수렴 안 함</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">클릭한 z₀</span><span class="v" id="ns-fr-z0">—</span></div>
+        <div class="stat"><span class="k">도착한 근</span><span class="v" id="ns-fr-root">—</span></div>
+        <div class="stat"><span class="k">반복 수</span><span class="v" id="ns-fr-it">—</span></div>
+        <div class="stat"><span class="k">보기 중심 / 폭</span><span class="v" id="ns-fr-view">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 근 근처를 클릭하면 궤도가 곧장 들어가고, 세 색의 경계를 클릭하면 크게 돌아다닙니다. 확대 슬라이더를 올리면 마지막으로 클릭한 점을 중심으로 2배씩 확대합니다. 경계 어디를 확대해도 세 색이 다시 나옵니다. ② z³ − 2z + 2를 고르면 0과 1 둘레의 회색 영역이 보입니다. 이 출발점들은 끌어당기는 2주기 순환에 갇힙니다. ③ 완화 계수 a를 바꾸면(a = 1이 뉴턴) 경계 모양이 달라지고, a &gt; 1에서는 근 근처의 2차 수렴이 1차로 바뀌어 명암 띠가 촘촘해집니다. 모델: 수렴 판정 |z − r| &lt; 10⁻⁶, 최대 50번.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="continuation">
+    <h2>연속법: 쉬운 문제에서 어려운 문제로</h2>
+    <div class="problem"><strong>좋은 출발점이 없을 때</strong>
+      <p>뉴턴 방법은 출발점이 근에 가까워야 합니다. 그런데 근을 모르니 출발점도 모릅니다. 답을 아는 쉬운 문제에서 시작해 문제를 조금씩 바꿔 가며, 바뀐 문제의 해를 바로 앞 해에서 출발한 뉴턴으로 따라가면 어떨까요?</p></div>
+    <p>매개변수 \(t \in [0, 1]\)로 두 문제를 잇는 <span class="term">호모토피</span><span class="en">(homotopy)</span> \(\mathbf H(\mathbf x, t)\)를 만듭니다. \(t = 0\)에서는 해를 알고, \(t = 1\)에서는 원래 문제 \(\mathbf F\)가 됩니다. 대표적인 두 가지는</p>
+    <div class="formula">$$\mathbf H_N(\mathbf x, t) = \mathbf F(\mathbf x) - (1 - t)\,\mathbf F(\mathbf x_0), \qquad \mathbf H_C(\mathbf x, t) = t\,\mathbf F(\mathbf x) + (1 - t)(\mathbf x - \mathbf x_0)$$
+      <div class="where">뉴턴 호모토피 \(\mathbf H_N\)과 볼록 호모토피 \(\mathbf H_C\). 둘 다 \(t = 0\)에서 해가 \(\mathbf x_0\)이다.</div></div>
+    <p>해 \(\mathbf x(t)\)는 \(\mathbf H(\mathbf x(t), t) = \mathbf 0\)을 만족하는 곡선(해 경로)을 그립니다. <span class="term">연속법</span><span class="en">(continuation method)</span>은 이 경로를 작은 걸음으로 따라갑니다. 각 걸음은 <b>예측</b>(앞 해, 또는 접선 방향으로 외삽)과 <b>수정</b>(그 점에서 \(\mathbf H(\cdot, t_{k+1}) = 0\)에 대한 뉴턴 몇 번)입니다. 뉴턴 호모토피를 \(t\)로 미분하면 \(J\dot{\mathbf x} + \mathbf F(\mathbf x_0) = 0\), 곧 \(\dot{\mathbf x} = -J^{-1}\mathbf F(\mathbf x_0)\)입니다. 경로를 따라 잔차가 \(\mathbf F(\mathbf x(t)) = (1 - t)\mathbf F(\mathbf x_0)\)로 방향을 바꾸지 않고 줄어드니, 연속법은 뉴턴 방향을 아주 작은 걸음으로 따라가는 "연속 뉴턴"인 셈입니다.</p>
+<pre class="code"><span class="k">function</span> continuation(H, Hx, x0, N)
+  x = x0                           <span class="c">// H(x0, 0) = 0</span>
+  <span class="k">for</span> k = 1 .. N
+    t = k / N
+    <span class="k">repeat</span> 3~5 <span class="k">times</span>                 <span class="c">// 수정자: t를 고정한 뉴턴</span>
+      x = x - lu_solve(Hx(x, t), H(x, t))
+  <span class="k">return</span> x                         <span class="c">// t = 1: F(x) = 0의 해</span></pre>
+    <p>\(t\)를 단조롭게 늘리는 이 단순한 방법은 경로가 <b>되돌아갈 때</b>(\(t\)가 최댓값을 찍고 줄어드는 전환점) 실패합니다. 전환점에서는 \(\partial\mathbf H/\partial\mathbf x = J\)가 특이 행렬이 되어 \(t\)를 더 늘린 문제에 가까운 해가 없습니다. 해결책은 \(t\)도 미지수로 보고 경로의 <b>호의 길이</b>를 매개변수로 삼는 의사 호 길이 연속법입니다. 아래 시뮬레이터가 이 방법을 씁니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="1변수 뉴턴 호모토피의 해 경로와 전환점">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="60" y1="150" x2="720" y2="150" class="s-axis"/><line x1="300" y1="30" x2="300" y2="270" class="s-axis"/>
+        <line x1="560" y1="30" x2="560" y2="270" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <path d="M120 262 C200 190 250 175 300 150 C340 130 360 118 365 112 C370 106 360 96 300 90 C240 84 250 62 560 38" fill="none" style="stroke:var(--accent);stroke-width:2.6"/>
+        <circle cx="300" cy="150" r="5" style="fill:var(--text)"/>
+        <circle cx="366" cy="108" r="5" style="fill:var(--bad)"/>
+        <circle cx="560" cy="38" r="5" style="fill:var(--ok)"/>
+        <text x="306" y="168" class="t-mono">(t, x) = (0, 0)</text>
+        <text x="376" y="112" class="t" style="fill:var(--bad)">전환점: t가 최대 0.218, F′(x) = 0</text>
+        <text x="572" y="44" class="t" style="fill:var(--ok)">t = 1, x = 2.0946</text>
+        <text x="560" y="286" class="t-mono" text-anchor="middle">t = 1</text>
+        <text x="712" y="140" class="t-mono" text-anchor="end">t</text><text x="290" y="40" class="t-mono" text-anchor="end">x</text>
+        <text x="70" y="40" class="t-dim">x³ − 2x − 5 = (1 − t)·(−5)</text>
+        <text x="70" y="62" class="t-dim">곧 t = (x³ − 2x)/5</text>
+      </svg>
+      <figcaption><b>그림 4-2.</b> 1변수 뉴턴 호모토피의 해 경로 (개념도, 축척은 정확하지 않음). \(x^3 - 2x - 5\)를 \(x_0 = 0\)에서 출발하면 경로 \(t = (x^3 - 2x)/5\)는 \(t\)를 늘리는 쪽(\(x\)가 줄어드는 쪽)으로 가다가 \(x = -0.8165\), \(t = 0.218\)에서 꺾여 되돌아간다. 근에 이르는 가지는 반대 방향, 곧 \(t\)가 \(-0.218\)까지 <b>줄었다가</b> 다시 1로 오르는 쪽이다. 3장 실패 갤러리의 "평평한 곳"이 연속법에서는 전환점으로 나타난다.</figcaption>
+    </figure>
+    <div class="callout"><strong>예제 4.7 (연속법으로 가까운 근 찾기)</strong> 예제 4.2의 \(\mathbf x_0 = (0.1, -0.1)\)에서 뉴턴 호모토피를 호 길이 0.1 걸음으로 따라가면 경로가 \(t = 0.1, 0.2, 0.4, 0.7\)에서 \((0.409, -0.501)\), \((0.545, -0.720)\), \((0.718, -1.047)\), \((0.885, -1.422)\)을 거쳐 22걸음 만에 \(t = 1\)에서 \(\mathbf r_1 = (1.0041687, -1.7296373)\)에 닿는다. 순수 뉴턴이 크게 돌아 먼 근으로 간 것과 달리, 출발점과 "이어진" 근을 찾는다. 이 문제에서는 여러 출발점에서 시험해 봐도 전환점이 없었다. 프로이덴슈타인–로스 문제를 \((0.5, -2)\)에서 뉴턴 호모토피로 따라가면 경로가 \(t \approx 0.59\)에서 꺾여 무한대로 달아난다. 호모토피를 잘 고르는 것도 기술이다.</div>
+
+    <div class="sim" id="sim-ns-homotopy">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>연속법 경로: 문제를 바꾸며 해를 따라가기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-ho-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>t <output id="ns-ho-t-out"></output></span><input type="range" id="ns-ho-t" min="0" max="1" step="0.01" value="0.5"></label>
+          <div class="btn-row"><button class="btn primary" id="ns-ho-play">▶ t = 0 → 1</button></div>
+          <label class="check"><input type="checkbox" id="ns-ho-nw" checked> 순수 뉴턴 경로 비교</label>
+          <label class="check"><input type="checkbox" id="ns-ho-def" checked> 변형된 곡선 H(x, t) = 0</label>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--accent)"></i>f₁ = (1 − t)f₁(x₀)</span><span><i style="background:var(--accent-2)"></i>f₂ = (1 − t)f₂(x₀)</span><span><i style="background:var(--warn)"></i>해 경로 x(t)</span><span><i style="background:var(--bad)"></i>순수 뉴턴</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x₀ (끌기)</span><span class="v" id="ns-ho-x0">—</span></div>
+        <div class="stat"><span class="k">x(t)</span><span class="v" id="ns-ho-xt">—</span></div>
+        <div class="stat"><span class="k">경로 걸음 / 끝점</span><span class="v" id="ns-ho-end">—</span></div>
+        <div class="stat"><span class="k">순수 뉴턴 끝점 (반복)</span><span class="v" id="ns-ho-nwend">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① t 슬라이더를 0에서 1로 움직이면, 출발점을 지나도록 옮겨 놓은 두 곡선이 원래 곡선으로 변형되며 교점이 노란 경로를 따라 움직입니다. ② 출발점을 (0.1, −0.1)로 두면 순수 뉴턴(빨간 점선)은 화면 밖으로 크게 돌지만 경로는 가까운 근으로 곧장 갑니다. ③ 출발점을 여러 곳으로 끌어 보며 경로가 어느 근에 닿는지와 끌개 영역(2변수 뉴턴 시뮬레이터)을 비교하세요. 모델: 뉴턴 호모토피, 의사 호 길이 연속법(걸음 0.05, 수정 뉴턴 최대 8번).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="applications">
+    <h2>응용: 회로의 동작점, 로봇 팔, GPS</h2>
+    <h3>회로의 동작점: 지수 함수와 걸음 제한</h3>
+    <p>5 V 전원 — 저항 \(R_1 = 1\) kΩ — 마디 1 — 다이오드 \(D_1\) — 접지, 그리고 마디 1 — \(R_2 = 1\) kΩ — 마디 2 — \(D_2\) — 접지인 회로를 생각합니다. 다이오드 전류는 \(I_D = I_s(e^{V/V_T} - 1)\)(\(I_s = 10^{-14}\) A, \(V_T = 25.852\) mV)이고, 마디마다 들어오고 나가는 전류의 합이 0입니다(KCL).</p>
+    <div class="formula">$$\mathbf F(v_1, v_2) = \begin{bmatrix} (v_1 - 5)/R_1 + I_D(v_1) + (v_1 - v_2)/R_2 \\ (v_2 - v_1)/R_2 + I_D(v_2) \end{bmatrix} = \mathbf 0$$
+      <div class="where">야코비안은 컨덕턴스 행렬이다. 대각에 \(1/R + I_s e^{v/V_T}/V_T\)(다이오드의 소신호 컨덕턴스)가 들어간다. 이것이 회로 시뮬레이터가 매 반복 조립하는 행렬이다.</div></div>
+    <div class="callout"><strong>예제 4.8 (지수 함수가 뉴턴을 괴롭힐 때)</strong> \((v_1, v_2) = (0, 0)\)에서 출발하라.
+      <ol>
+        <li>순수 뉴턴: 다이오드가 꺼진 것처럼 보이는 첫 걸음이 \((5, 5)\) V로 간다. \(e^{5/0.0259} \approx e^{193}\)이라 \(\|\mathbf F\| = 1.4\times10^{70}\). 그 뒤로는 매 반복 전압이 거의 정확히 \(V_T = 0.0259\) V씩만 내려와(지수 함수에 뉴턴을 쓰면 멀리서는 한 걸음이 \(V_T\)), <b>175번</b> 만에 수렴한다(\(\|\mathbf F\| \lt 10^{-12}\) A 기준).</li>
+        <li>감쇠 뉴턴(정리 4.4의 직선 탐색): 첫 걸음을 \(t = 1/8\)로 줄여 \((0.625, 0.625)\)에서 시작하고 <b>7번</b>에 수렴한다.</li>
+        <li>걸음 제한(\(|\Delta v| \le 0.1\) V로 자르기, 회로 시뮬레이터가 쓰는 전압 제한의 단순판): 0.1, 0.2, 0.3 V로 올라가 <b>15번</b>.</li>
+        <li>답: \(v_1 = 0.69196\) V, \(v_2 = 0.59458\) V, \(R_1\) 전류 4.308 mA, \(D_2\) 전류 0.0974 mA.</li>
+      </ol></div>
+
+    <h3>로봇 팔의 역기구학</h3>
+    <p>두 마디 팔(길이 \(L_1, L_2\), 관절 각 \(\theta_1, \theta_2\))의 끝 위치는 \(x = L_1\cos\theta_1 + L_2\cos(\theta_1 + \theta_2)\), \(y = L_1\sin\theta_1 + L_2\sin(\theta_1 + \theta_2)\)입니다(정기구학). 원하는 위치 \((p_x, p_y)\)를 주고 각을 구하는 역기구학은 \(\mathbf F(\theta_1, \theta_2) = (x - p_x, y - p_y) = \mathbf 0\)이고, 야코비안의 행렬식은 \(\det J = L_1L_2\sin\theta_2\)입니다. 팔이 완전히 펴지거나 접히면(\(\theta_2 = 0, \pi\)) 특이 자세라 뉴턴이 불안정해집니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 260" role="img" aria-label="두 마디 로봇 팔의 관절 각">
+        <rect x="10" y="10" width="740" height="240" rx="10" class="f-surface"/>
+        <line x1="100" y1="210" x2="420" y2="210" class="s-axis"/>
+        <line x1="140" y1="210" x2="290" y2="110" style="stroke:var(--accent);stroke-width:6;stroke-linecap:round"/>
+        <line x1="290" y1="110" x2="400" y2="150" style="stroke:var(--accent-2);stroke-width:6;stroke-linecap:round"/>
+        <circle cx="140" cy="210" r="8" style="fill:var(--text)"/><circle cx="290" cy="110" r="7" style="fill:var(--text)"/><circle cx="400" cy="150" r="6" style="fill:var(--warn)"/>
+        <path d="M180 210 A40 40 0 0 0 173 188" fill="none" style="stroke:var(--text-dim);stroke-width:1.5"/>
+        <text x="186" y="198" class="t-mono">θ₁</text>
+        <line x1="290" y1="110" x2="350" y2="70" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <path d="M325 87 A40 40 0 0 1 328 124" fill="none" style="stroke:var(--text-dim);stroke-width:1.5"/>
+        <text x="336" y="106" class="t-mono">θ₂</text>
+        <text x="200" y="150" class="t" style="fill:var(--accent)">L₁</text><text x="350" y="146" class="t" style="fill:var(--accent-2)">L₂</text>
+        <text x="410" y="168" class="t-mono" style="fill:var(--warn)">(x, y)</text>
+        <text x="470" y="60" class="t">정기구학: 각 → 위치 (공식)</text>
+        <text x="470" y="84" class="t">역기구학: 위치 → 각 (F(θ) = 0)</text>
+        <text x="470" y="118" class="t-dim">det J = L₁L₂ sin θ₂</text>
+        <text x="470" y="140" class="t-dim">θ₂ = 0 (펴짐), π (접힘): 특이 자세</text>
+        <text x="470" y="170" class="t-dim">해는 보통 두 개: 팔꿈치 위/아래</text>
+      </svg>
+      <figcaption><b>그림 4-3.</b> 두 마디 팔. 각에서 위치는 공식으로 바로 나오지만, 위치에서 각을 구하는 것은 비선형 연립방정식이다. 실시간 제어에서는 직전 시각의 각을 출발점으로 뉴턴 한두 번을 하는데, 목표가 조금씩 움직이므로 이것이 바로 연속법이다.</figcaption>
+    </figure>
+    <p>\(L_1 = L_2 = 1\), 목표 \((1, 1)\), 출발 \((\theta_1, \theta_2) = (0.3, 1.0)\)이면 뉴턴 반복은 \((-0.0675, 1.7115)\), \((-0.00243, 1.5752)\), \((-1.96\times10^{-6}, 1.570801)\), \((-4.3\times10^{-12}, 1.5707963268)\)으로 4번 만에 \((0, \pi/2)\)에 닿습니다. 목표가 팔이 닿지 않는 곳이면 해가 없고 뉴턴은 진동합니다. 이때는 \(\|\mathbf F\|^2\)를 최소화하는 감쇠 최소제곱 걸음 \((J^TJ + \lambda I)\mathbf s = -J^T\mathbf F\)(레벤버그–마쿼트, <a href="optimization.html">15장</a>)가 팔을 목표 쪽으로 쭉 뻗게 해 줍니다.</p>
+
+    <div class="sim" id="sim-ns-robot">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>로봇 팔 역기구학: 목표를 끌면 뉴턴이 따라간다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="ns-rb-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법</span><div class="seg" id="ns-rb-m"><button data-value="newton" class="on">뉴턴</button><button data-value="lm">감쇠 최소제곱</button></div></div>
+          <label class="ctrl"><span>L₂ / L₁ <output id="ns-rb-l-out"></output></span><input type="range" id="ns-rb-l" min="0.3" max="1.2" step="0.05" value="0.8"></label>
+          <div class="btn-row"><button class="btn" id="ns-rb-flip">팔꿈치 뒤집기</button><button class="btn" id="ns-rb-circ">▶ 원 그리기</button></div>
+          <label class="check"><input type="checkbox" id="ns-rb-cold"> 매번 같은 출발점 (연속법 끄기)</label>
+        </div>
+      </div>
+      <div class="ns-legend"><span><i style="background:var(--accent)"></i>팔 L₁</span><span><i style="background:var(--accent-2)"></i>팔 L₂</span><span><i style="background:var(--warn)"></i>목표 (끌기)</span><span><i style="background:var(--text-faint)"></i>닿는 영역</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">θ₁, θ₂ (도)</span><span class="v" id="ns-rb-th">—</span></div>
+        <div class="stat"><span class="k">반복 수</span><span class="v" id="ns-rb-it">—</span></div>
+        <div class="stat"><span class="k">‖F‖ (끝점 − 목표)</span><span class="v" id="ns-rb-f">—</span></div>
+        <div class="stat"><span class="k">det J = L₁L₂ sin θ₂</span><span class="v" id="ns-rb-det">—</span></div>
+      </div>
+      <div class="ns-msg" id="ns-rb-msg"></div>
+      <div class="sim-note">해볼 것: ① 노란 목표를 천천히 끌면 반복 1~3번으로 따라갑니다. 직전 각이 좋은 출발점이기 때문입니다. '매번 같은 출발점'을 켜면 반복이 늘고 가끔 팔꿈치가 뒤집힙니다. ② 목표를 닿는 영역(회색 고리) 밖으로 끌면 뉴턴은 실패하고, '감쇠 최소제곱'은 팔을 목표 방향으로 쭉 폅니다. ③ 목표를 고리의 바깥 경계 가까이 두면 det J가 0에 가까워집니다(특이 자세). 모델: L₁ = 1, 뉴턴 최대 30번, ‖F‖ &lt; 10⁻¹²에서 멈춤, λ = 10⁻³‖F‖.</div>
+    </div>
+
+    <h3>GPS: 의사거리 방정식</h3>
+    <p>위성 \(i\)의 위치 \(\mathbf s_i\)를 알고 신호의 도착 시각으로 거리 \(\rho_i\)를 재는데, 수신기의 값싼 시계에는 오차 \(b\)(거리로 환산)가 있습니다. 미지수는 위치 \(\mathbf x\)와 \(b\)이고, \(f_i(\mathbf x, b) = \|\mathbf x - \mathbf s_i\| + b - \rho_i = 0\)입니다. 3차원이면 미지수 4개라 위성이 4개 이상 필요합니다. 야코비안의 \(i\)번째 행은 \((\text{위성에서 수신기로의 단위 벡터}, 1)\)입니다. 위성이 더 많으면 최소제곱(가우스–뉴턴, 7장·15장)으로 풉니다.</p>
+    <div class="callout"><strong>예제 4.9 (평면 GPS)</strong> 평면에서 위성 세 개 \((0, 10)\), \((8, 6)\), \((-7, 7)\)과 의사거리 \(\rho = (8.562258,\ 8.562258,\ 9.933981)\)(참 위치 \((1, 2)\), 시계 오차 \(b = 0.5\)로 만든 값)이 있다. \((x, y, b) = (0, 0, 0)\)에서 뉴턴 방법을 쓰면
+      <ol>
+        <li>\((1.138708,\ 2.277417,\ 0.839675)\), \(\|\mathbf F\| = 0.337\)</li>
+        <li>\((1.001843,\ 2.003686,\ 0.505336)\), \(\|\mathbf F\| = 5.6\times10^{-3}\)</li>
+        <li>\((1.0000003,\ 2.0000007,\ 0.5000010)\), \(\|\mathbf F\| = 1.0\times10^{-6}\)</li>
+        <li>\((1, 2, 0.5)\), \(\|\mathbf F\| = 3.3\times10^{-14}\)</li>
+      </ol>
+      지구 중심에서 출발해도 몇 번이면 되는 까닭은 위성이 멀어서 거리 함수가 수신기 근처에서 거의 선형이기 때문이다. 위성들이 하늘의 한쪽에 몰려 있으면 야코비안의 행들이 비슷해져 조건수가 커지고, 거리 측정 오차가 위치 오차로 크게 증폭된다. GPS의 "정밀도 저하율(DOP)"이 이 조건수를 나타내는 값이다.</div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>방정식</th><th>방법</th></tr></thead>
+      <tbody>
+        <tr><td>회로 시뮬레이션 (SPICE)</td><td>마디 해석 KCL, 미지수 수만 개</td><td>뉴턴 + 전압 제한 + 희소 LU, 실패하면 전원·온도 연속법</td></tr>
+        <tr><td>로봇·애니메이션</td><td>역기구학</td><td>뉴턴, 감쇠 최소제곱, 직전 해에서 출발(연속법)</td></tr>
+        <tr><td>항법</td><td>GPS 의사거리</td><td>가우스–뉴턴, 칼만 필터의 선형화</td></tr>
+        <tr><td>구조·유체 해석</td><td>비선형 유한 요소 방정식</td><td>뉴턴–크릴로프, 하중 증분(연속법)</td></tr>
+        <tr><td>화학 평형, 열역학</td><td>질량 작용 법칙, 상평형</td><td>감쇠 뉴턴, 호모토피</td></tr>
+        <tr><td>다항식 근</td><td>특성 방정식, 필터 설계의 극·영점</td><td>동반 행렬의 QR(<code>roots</code>), 뉴턴–호너 다듬기</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="roots.html"><small>3장 · 방정식의 근 찾기</small>1변수 뉴턴과 실패 사례<br><span>2차 수렴, 중근, 순환과 발산. 이 장의 모든 방법이 그 다변수판이다.</span></a>
+      <a href="direct-solvers.html"><small>12장 · 직접 해법</small>매 반복의 선형계<br><span>J s = −F를 LU로 푼다. 큰 문제에서는 희소성과 피벗팅이 비용과 정확도를 정한다.</span></a>
+      <a href="eigenvalues.html"><small>14장 · 고유값의 수치 계산</small>QR 알고리즘<br><span>동반 행렬의 근 찾기는 고유값 알고리즘을 다항식에 쓴 것이다.</span></a>
+      <a href="optimization.html"><small>15장 · 수치 최적화</small>∇f = 0과 준뉴턴<br><span>최적화의 뉴턴은 헤세 행렬을 쓰는 이 장의 뉴턴이고, BFGS는 브로이든 갱신의 대칭판이다.</span></a>
+      <a href="../../linear/chapters/lu.html"><small>LINEARBOOK</small>LU 분해와 회로망<br><span>뉴턴 반복의 선형 부분. 회로의 마디 해석이 처음 나온 곳이다.</span></a>
+      <a href="../../ode/chapters/nonlinear.html"><small>ODEBOOK</small>비선형 계의 선형화<br><span>평형점의 야코비안이 안정성을 정한다. 같은 야코비안이 뉴턴 방법의 엔진이다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>\(\mathbf F(\mathbf x) = \mathbf 0\)의 다변수 뉴턴은 \(J(\mathbf x_k)\mathbf s_k = -\mathbf F(\mathbf x_k)\)를 풀어 \(\mathbf x_{k+1} = \mathbf x_k + \mathbf s_k\). 역행렬이 아니라 선형계를 푼다. \(J(\mathbf r)\)이 가역이면 2차 수렴, 상수에 \(\|J^{-1}\|\)이 들어간다.</li>
+      <li>다차원에서는 근을 가둘 수 없다. 뉴턴 방향은 \(\tfrac12\|\mathbf F\|^2\)의 하강 방향(\(\nabla\phi\cdot\mathbf s = -\|\mathbf F\|^2\))이므로, 걸음을 반씩 줄이는 직선 탐색(감쇠 뉴턴)으로 먼 출발점에서도 수렴을 돕는다. 다만 \(\|\mathbf F\|\)의 국소 최솟값에 갇힐 수 있다.</li>
+      <li>브로이든 방법은 할선 조건 \(B_{k+1}\mathbf s_k = \mathbf y_k\)를 만족하는 최소 변경 계수 1 갱신으로 야코비안을 대신한다. 반복마다 \(\mathbf F\) 한 번, 초선형 수렴. 미지수가 많을수록 차분 뉴턴보다 싸다.</li>
+      <li>호너 방법은 \(b_k = a_k + x_0 b_{k+1}\)로 곱셈 \(n\)번에 \(p(x_0)\)을 주고, 같은 표가 몫 \(p(x)/(x - x_0)\)이다. 한 번 더 하면 \(p'(x_0)\). 뉴턴–호너는 반복마다 호너 두 줄이다.</li>
+      <li>수축은 작은 근부터 떼어 내야 안정하다. 큰 근부터 떼면 작은 근들이 망가질 수 있고, 찾은 근은 원래 다항식으로 다듬는다.</li>
+      <li>동반 행렬의 고유값은 다항식의 근이다. <code>roots</code>는 이동 QR 알고리즘으로 모든 근을 \(O(n^3)\)에 출발점 없이 구한다.</li>
+      <li>복소 뉴턴은 코시–리만 덕분에 2변수 뉴턴과 같다. \(z^3 - 1\)의 끌개 영역 경계는 프랙털(쥘리아 집합)이라 경계 근처의 출발점은 어느 근으로 갈지 예측하기 어렵다. 끌어당기는 순환이 있으면 수렴하지 않는 열린 영역이 생긴다.</li>
+      <li>연속법은 해를 아는 쉬운 문제에서 원래 문제로 \(\mathbf H(\mathbf x, t)\)를 바꾸며 해 경로를 예측–수정으로 따라간다. 전환점에서는 \(J\)가 특이해지므로 호 길이 매개변수를 쓴다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 다변수 뉴턴 방법의 한 반복에서 실제로 계산하는 것은?</p><div class="opts">
+        <button class="opt">\(J^{-1}\)을 구해 \(\mathbf F\)에 곱한다</button>
+        <button class="opt" data-correct>선형계 \(J(\mathbf x_k)\mathbf s = -\mathbf F(\mathbf x_k)\)를 LU 등으로 푼다</button>
+        <button class="opt">각 성분 \(x_i\)에 1변수 뉴턴을 따로 쓴다</button>
+        <button class="opt">\(\|\mathbf F\|^2\)의 기울기 방향으로 한 걸음 간다</button>
+      </div><div class="quiz-exp">식으로는 x − J⁻¹F지만, 역행렬을 만드는 것은 LU 풀기보다 약 3배 비싸고 덜 정확하다. 성분별 뉴턴은 방정식 사이의 결합을 무시해 일반적으로 수렴하지 않는다. 기울기 방향 J<sup>T</sup>F는 최급 강하(15장)다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(\mathbf F(x, y) = (x^2 + y^2 - 4,\ e^x + y - 1)\)의 \((1, -1)\)에서의 야코비안 행렬식은?</p><div class="opts">
+        <button class="opt">\(2 - 2e\)</button>
+        <button class="opt" data-correct>\(2 + 2e \approx 7.437\)</button>
+        <button class="opt">\(4\)</button>
+        <button class="opt">\(0\)</button>
+      </div><div class="quiz-exp">J = [[2x, 2y], [eˣ, 1]] = [[2, −2], [e, 1]]. 행렬식 2·1 − (−2)·e = 2 + 2e = 7.437. 0이 아니므로 뉴턴 걸음이 하나로 정해진다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 감쇠 뉴턴에서 뉴턴 걸음 \(\mathbf s = -J^{-1}\mathbf F\)가 \(\phi = \tfrac12\|\mathbf F\|^2\)을 줄이는 방향인 이유는?</p><div class="opts">
+        <button class="opt">\(J\)가 대칭 양정치라서</button>
+        <button class="opt" data-correct>\(\nabla\phi\cdot\mathbf s = \mathbf F^TJ\mathbf s = -\|\mathbf F\|^2 \lt 0\)이라서</button>
+        <button class="opt">\(\mathbf s\)가 늘 \(\nabla\phi\)와 평행해서</button>
+        <button class="opt">그렇지 않다, 운이 좋을 때만 줄인다</button>
+      </div><div class="quiz-exp">∇φ = J<sup>T</sup>F이므로 ∇φ·s = F<sup>T</sup>J(−J⁻¹F) = −‖F‖². J가 가역이고 F ≠ 0이면 언제나 음수, 충분히 작은 걸음은 반드시 잔차를 줄인다. J의 대칭성은 필요 없다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 브로이든 갱신된 행렬 \(B_{k+1}\)이 반드시 만족하는 것은?</p><div class="opts">
+        <button class="opt">\(B_{k+1} = J(\mathbf x_{k+1})\)</button>
+        <button class="opt" data-correct>\(B_{k+1}\mathbf s_k = \mathbf F(\mathbf x_{k+1}) - \mathbf F(\mathbf x_k)\)</button>
+        <button class="opt">\(B_{k+1}\)은 대칭이다</button>
+        <button class="opt">\(\det B_{k+1} = \det B_k\)</button>
+      </div><div class="quiz-exp">할선 조건 B s = y. 이것을 만족하는 행렬 중 B<sub>k</sub>에서 프로베니우스 노름으로 가장 적게 바꾼 것이 브로이든 갱신이다. 참 야코비안과 같아진다는 보장은 없다(예제 4.3).</div></div>
+
+      <div class="quiz-q"><p>Q5. 차수 10인 일반 다항식의 값을 호너 방법으로 계산할 때 곱셈과 덧셈의 수는?</p><div class="opts">
+        <button class="opt">곱셈 55, 덧셈 10</button>
+        <button class="opt">곱셈 19, 덧셈 10</button>
+        <button class="opt" data-correct>곱셈 10, 덧셈 10</button>
+        <button class="opt">곱셈 5, 덧셈 10</button>
+      </div><div class="quiz-exp">bₖ = aₖ + x·bₖ₊₁을 10번, 각각 곱셈 하나와 덧셈 하나. 항마다 거듭제곱을 새로 계산하면 1 + 2 + … + 10 = 55번, 거듭제곱을 이어 받으면 19번이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. \(p(x) = x^3 - 6x^2 + 11x - 6\)의 근 \(x = 1\)로 조립제법 수축을 하면 몫은?</p><div class="opts">
+        <button class="opt">\(x^2 - 6x + 11\)</button>
+        <button class="opt" data-correct>\(x^2 - 5x + 6\)</button>
+        <button class="opt">\(x^2 - 7x + 18\)</button>
+        <button class="opt">\(x^2 + 5x + 6\)</button>
+      </div><div class="quiz-exp">b = 1, −6 + 1 = −5, 11 − 5 = 6, −6 + 6 = 0. 마지막이 0이라 1이 근이고, 몫 x² − 5x + 6 = (x − 2)(x − 3)이 나머지 근 2, 3을 가진다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 행렬 \(\begin{bmatrix} 3 & -2 \\ 1 & 0 \end{bmatrix}\)의 고유값은?</p><div class="opts">
+        <button class="opt">3과 0</button>
+        <button class="opt" data-correct>1과 2</button>
+        <button class="opt">−1과 −2</button>
+        <button class="opt">\(\pm\sqrt2\)</button>
+      </div><div class="quiz-exp">z² + a₁z + a₀의 동반 행렬 첫 행이 [−a₁, −a₀] = [3, −2]이므로 a₁ = −3, a₀ = 2, 곧 z² − 3z + 2 = (z − 1)(z − 2). 직접 det(zI − C) = z(z − 3) + 2로 확인할 수 있다.</div></div>
+
+      <div class="quiz-q"><p>Q8. \(z^3 - 1\)에 대한 뉴턴 방법의 끌개 영역에 대해 옳은 것은?</p><div class="opts">
+        <button class="opt">세 영역은 원점에서 뻗는 세 부채꼴로 깔끔하게 나뉜다</button>
+        <button class="opt">실수축 위의 음수 출발점은 모두 복소근으로 간다</button>
+        <button class="opt" data-correct>경계의 어느 점이든 그 근방에 세 끌개 영역이 모두 들어 있다</button>
+        <button class="opt">어떤 출발점도 수렴하지 않는 열린 영역이 있다</button>
+      </div><div class="quiz-exp">세 영역의 경계는 같은 쥘리아 집합이라 경계 근처에서 세 색이 끝없이 섞인다. 실수 출발점은 실수축에 머물러 1로 간다. 수렴하지 않는 열린 영역은 z³ − 2z + 2처럼 끌어당기는 순환이 있을 때 생긴다.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+/* ================================================================ 이 장의 도우미 */
+const NS = {
+  sci(v, d = 2) {
+    if (v === 0) return "0";
+    if (!isFinite(v)) return "—";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  fix(v, d = 10) { if (!isFinite(v)) return "—"; return String(Number(v.toPrecision(d))).replace("-", "−"); },
+  pt(p, d = 5) { return "(" + p.map((v) => NS.fix(v, d)).join(", ") + ")"; },
+  /** 복소수 [re, im] → "a + bi" */
+  cs(z, d = 5) {
+    const re = Math.abs(z[0]) < 1e-13 ? 0 : z[0], im = Math.abs(z[1]) < 1e-13 ? 0 : z[1];
+    if (im === 0) return NS.fix(re, d);
+    const ims = NS.fix(Math.abs(im), d) + "i";
+    if (re === 0) return (im < 0 ? "−" : "") + ims;
+    return NS.fix(re, d) + (im < 0 ? " − " : " + ") + ims;
+  },
+  norm(v) { let s = 0; for (const x of v) s += x * x; return Math.sqrt(s); },
+  /** 부분 피벗 LU로 A x = b 풀기 (A, b는 바꾸지 않는다). 특이하면 null */
+  solve(A, b) {
+    const n = b.length, M = A.map((r) => r.slice()), x = b.slice();
+    for (let k = 0; k < n; k++) {
+      let p = k;
+      for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > Math.abs(M[p][k])) p = i;
+      if (M[p][k] === 0 || !isFinite(M[p][k])) return null;
+      if (p !== k) { const t = M[k]; M[k] = M[p]; M[p] = t; const u = x[k]; x[k] = x[p]; x[p] = u; }
+      for (let i = k + 1; i < n; i++) {
+        const m = M[i][k] / M[k][k]; if (m === 0) continue;
+        for (let j = k; j < n; j++) M[i][j] -= m * M[k][j];
+        x[i] -= m * x[k];
+      }
+    }
+    for (let i = n - 1; i >= 0; i--) { let s = x[i]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+    return x.every(isFinite) ? x : null;
+  },
+  /** 2×2 선형계 (크래머) */
+  solve2(A, b) {
+    const d = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+    if (d === 0 || !isFinite(d)) return null;
+    return [(b[0] * A[1][1] - A[0][1] * b[1]) / d, (A[0][0] * b[1] - A[1][0] * b[0]) / d];
+  },
+  /** 등고선 f(x, y) = level을 격자 위 부호 바뀜(마칭 스퀘어)으로 그린다 */
+  contour(P, f, level, o = {}) {
+    const step = o.cell || 5, nx = Math.ceil(P.w / step) + 1, ny = Math.ceil(P.h / step) + 1, g = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const v = f(P.ix(i * step), P.iy(j * step)) - level; g[j * nx + i] = isFinite(v) ? v : NaN; }
+    const ctx = P.ctx; ctx.save(); ctx.strokeStyle = o.color; ctx.lineWidth = o.width || 2.4; ctx.globalAlpha = o.alpha != null ? o.alpha : 1; ctx.setLineDash(o.dash || []); ctx.beginPath();
+    const lerp = (a, b) => a / (a - b);
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const a = g[j * nx + i], b = g[j * nx + i + 1], c = g[(j + 1) * nx + i + 1], d = g[(j + 1) * nx + i];
+      if (!(isFinite(a) && isFinite(b) && isFinite(c) && isFinite(d))) continue;
+      const x0 = i * step, y0 = j * step, pts = [];
+      if ((a > 0) !== (b > 0)) pts.push([x0 + step * lerp(a, b), y0]);
+      if ((b > 0) !== (c > 0)) pts.push([x0 + step, y0 + step * lerp(b, c)]);
+      if ((d > 0) !== (c > 0)) pts.push([x0 + step * lerp(d, c), y0 + step]);
+      if ((a > 0) !== (d > 0)) pts.push([x0, y0 + step * lerp(a, d)]);
+      if (pts.length >= 2) { ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); }
+      if (pts.length === 4) { ctx.moveTo(pts[2][0], pts[2][1]); ctx.lineTo(pts[3][0], pts[3][1]); }
+    }
+    ctx.stroke(); ctx.restore();
+  },
+  /** 직선 a x + b y = c를 화면 끝에서 끝까지 */
+  infLine(P, a, b, c, o) {
+    if (Math.abs(b) > Math.abs(a)) P.line(P.x0, (c - a * P.x0) / b, P.x1, (c - a * P.x1) / b, o);
+    else if (a !== 0) P.line((c - b * P.y0) / a, P.y0, (c - b * P.y1) / a, P.y1, o);
+  },
+  /** CSS 색 → [r, g, b] */
+  rgb(color) {
+    const c = NS._c || (NS._c = document.createElement("canvas").getContext("2d"));
+    c.fillStyle = "#000"; c.fillStyle = color; const s = c.fillStyle;
+    if (s[0] === "#") return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+    const m = s.match(/[\d.]+/g) || [0, 0, 0]; return [+m[0], +m[1], +m[2]];
+  },
+  /** 화면 좌표가 너무 크면 잘라서 캔버스에 넘긴다 */
+  cl(v) { return MB.clamp(v, -1e4, 1e4); },
+  /** 복소 산술 [re, im] */
+  c: {
+    add: (a, b) => [a[0] + b[0], a[1] + b[1]],
+    sub: (a, b) => [a[0] - b[0], a[1] - b[1]],
+    mul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+    div: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+    sc: (a, s) => [a[0] * s, a[1] * s],
+    conj: (a) => [a[0], -a[1]],
+    abs: (a) => Math.hypot(a[0], a[1]),
+    sqrt(a) { const r = Math.hypot(a[0], a[1]); const re = Math.sqrt(Math.max(0, (r + a[0]) / 2)); let im = Math.sqrt(Math.max(0, (r - a[0]) / 2)); if (a[1] < 0) im = -im; return [re, im]; },
+  },
+};
+
+/* ================================================================ 1. 2변수 뉴턴 */
+(function () {
+  const SYS = {
+    circ: {
+      F: ([x, y]) => [x * x + y * y - 4, Math.exp(x) + y - 1],
+      J: ([x, y]) => [[2 * x, 2 * y], [Math.exp(x), 1]],
+      roots: [[1.0041687384746592, -1.72963728702587], [-1.8162640688251506, 0.8373677998912478]],
+      x: [-3.4, 3.4], x0: [1, -1],
+    },
+    cube: {
+      F: ([x, y]) => [x * x * x - 3 * x * y * y - 1, 3 * x * x * y - y * y * y],
+      J: ([x, y]) => [[3 * x * x - 3 * y * y, -6 * x * y], [6 * x * y, 3 * x * x - 3 * y * y]],
+      roots: [[1, 0], [-0.5, Math.sqrt(3) / 2], [-0.5, -Math.sqrt(3) / 2]],
+      x: [-2.2, 2.2], x0: [-0.4, 0.5],
+    },
+  };
+  let sys = SYS.circ, K = 1, lin = true, damp = false, basin = false, its = [];
+  const p0 = { x: sys.x0[0], y: sys.x0[1], r: 8 };
+  const tbl = document.getElementById("ns-nw-tbl");
+  /** 뉴턴(감쇠 선택) 반복: [{x, f, t}] — t는 그 점에 오기까지 쓴 걸음 길이 */
+  const run = (x, N, useDamp, S = sys) => {
+    const out = [{ x: x.slice(), f: NS.norm(S.F(x)), t: NaN }];
+    for (let k = 0; k < N; k++) {
+      const Fx = S.F(x), n0 = NS.norm(Fx);
+      if (n0 === 0) break;
+      const s = NS.solve2(S.J(x), [-Fx[0], -Fx[1]]);
+      if (!s) break;
+      let t = 1;
+      if (useDamp) {
+        while (NS.norm(S.F([x[0] + t * s[0], x[1] + t * s[1]])) > (1 - 1e-4 * t) * n0) { t /= 2; if (t < 1e-10) break; }
+        if (t < 1e-10) break;
+      }
+      x = [x[0] + t * s[0], x[1] + t * s[1]];
+      if (!isFinite(x[0]) || !isFinite(x[1]) || Math.abs(x[0]) + Math.abs(x[1]) > 1e12) break;
+      out.push({ x: x.slice(), f: NS.norm(S.F(x)), t });
+    }
+    return out;
+  };
+  const nearest = (x) => { let best = Infinity, bi = -1; sys.roots.forEach((r, i) => { const d = Math.hypot(x[0] - r[0], x[1] - r[1]); if (d < best) { best = d; bi = i; } }); return { d: best, i: bi }; };
+  /* 끌개 영역 그림 (캐시) */
+  let bImg = null, bKey = "";
+  const basinImage = (P) => {
+    const C = P.P, cell = 3, cols = Math.ceil(P.w / cell), rows = Math.ceil(P.h / cell);
+    const key = [sys === SYS.circ, damp, P.x0, P.x1, P.y0, P.y1, cols, rows, C.accent, C.bg].join("|");
+    if (bKey === key) return bImg;
+    const cols3 = [C.accent, C.accent2, C.warn].map(NS.rgb), gray = NS.rgb(C.faint), bg = NS.rgb(C.bg);
+    const cv = document.createElement("canvas"); cv.width = cols; cv.height = rows;
+    const cx = cv.getContext("2d"), img = cx.createImageData(cols, rows);
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      let x = [P.ix((i + 0.5) * cell), P.iy((j + 0.5) * cell)], hit = -1, k = 0;
+      for (; k < 40; k++) {
+        const n = nearest(x); if (n.d < 1e-6) { hit = n.i; break; }
+        const Fx = sys.F(x), s = NS.solve2(sys.J(x), [-Fx[0], -Fx[1]]); if (!s) break;
+        let t = 1;
+        if (damp) { const n0 = NS.norm(Fx); while (t > 1e-6 && NS.norm(sys.F([x[0] + t * s[0], x[1] + t * s[1]])) > (1 - 1e-4 * t) * n0) t /= 2; }
+        x = [x[0] + t * s[0], x[1] + t * s[1]];
+        if (!isFinite(x[0]) || !isFinite(x[1])) break;
+      }
+      const col = hit < 0 ? gray : cols3[hit], sh = hit < 0 ? 0.5 : 0.85 - 0.5 * Math.min(k, 20) / 20, q = (j * cols + i) * 4;
+      for (let c = 0; c < 3; c++) img.data[q + c] = Math.round(bg[c] + (col[c] - bg[c]) * sh * 0.55);
+      img.data[q + 3] = 255;
+    }
+    cx.putImageData(img, 0, 0); bImg = cv; bKey = key; return cv;
+  };
+  const pl = MB.plane("#ns-nw-cv", {
+    x: sys.x, y: null, aspect: 0.66, minHeight: 260, points: [p0], gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      if (basin) { const ctx = P.ctx; ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(basinImage(P), 0, 0, Math.ceil(P.w / 3) * 3, Math.ceil(P.h / 3) * 3); ctx.restore(); P.grid({ step: 1, alpha: 0.5 }); P.axes({ step: 1 }); }
+      NS.contour(P, (x, y) => sys.F([x, y])[0], 0, { color: C.accent });
+      NS.contour(P, (x, y) => sys.F([x, y])[1], 0, { color: C.accent2 });
+      sys.roots.forEach((r) => P.dot(r[0], r[1], { r: 4.5, color: C.ok }));
+      const shown = its.slice(0, K + 1);
+      if (lin && shown.length >= 2) {
+        const xp = shown[shown.length - 2].x, Fx = sys.F(xp), Jx = sys.J(xp);
+        for (let i = 0; i < 2; i++) NS.infLine(P, Jx[i][0], Jx[i][1], Jx[i][0] * xp[0] + Jx[i][1] * xp[1] - Fx[i], { color: i ? C.accent2 : C.accent, width: 1.4, dash: [6, 4], alpha: 0.85 });
+      }
+      for (let k = 1; k < shown.length; k++) {
+        const a = shown[k - 1].x, b = shown[k].x;
+        P.line(NS.cl(a[0]), NS.cl(a[1]), NS.cl(b[0]), NS.cl(b[1]), { color: C.warn, width: k === shown.length - 1 ? 2.4 : 1.6 });
+        P.dot(NS.cl(b[0]), NS.cl(b[1]), { r: k === shown.length - 1 ? 5.5 : 3.5, color: C.warn });
+      }
+      p0.color = C.text;
+    },
+    onDrag() { update(); },
+  });
+  const update = () => {
+    its = run([p0.x, p0.y], 20, damp);
+    pl.redraw();
+    const k = Math.min(K, its.length - 1), cur = its[k], Jx = sys.J(cur.x);
+    MB.stat("ns-nw-x0", NS.pt([p0.x, p0.y], 3));
+    MB.stat("ns-nw-xk", NS.pt(cur.x, 8) + (k < K ? ` <small>(k = ${k}에서 멈춤)</small>` : ""));
+    MB.stat("ns-nw-f", NS.sci(cur.f, 3));
+    MB.stat("ns-nw-det", NS.sci(Jx[0][0] * Jx[1][1] - Jx[0][1] * Jx[1][0], 4));
+    let h = `<table><thead><tr><th>k</th><th>xₖ</th><th>yₖ</th><th>‖F(xₖ)‖</th><th>t</th><th>‖xₖ − r‖ (가까운 근)</th></tr></thead><tbody>`;
+    its.slice(0, k + 1).forEach((q, i) => {
+      h += `<tr${i === k ? ' class="cur"' : ""}><td>${i}</td><td>${NS.fix(q.x[0], 12)}</td><td>${NS.fix(q.x[1], 12)}</td><td>${NS.sci(q.f, 3)}</td><td>${isFinite(q.t) ? (q.t === 1 ? "1" : "1/" + Math.round(1 / q.t)) : ""}</td><td>${NS.sci(nearest(q.x).d, 3)}</td></tr>`;
+    });
+    tbl.innerHTML = h + "</tbody></table>"; tbl.scrollTop = tbl.scrollHeight;
+  };
+  MB.range("ns-nw-k", (v) => String(v), (v) => { K = v; update(); });
+  MB.check("ns-nw-lin", (v) => { lin = v; update(); });
+  MB.check("ns-nw-damp", (v) => { damp = v; update(); });
+  MB.check("ns-nw-basin", (v) => { basin = v; update(); });
+  document.getElementById("ns-nw-pre").addEventListener("change", (e) => { sys = SYS[e.target.value]; p0.x = sys.x0[0]; p0.y = sys.x0[1]; pl.view({ x: sys.x, y: null }); update(); });
+  update();
+})();
+
+/* ================================================================ 2. 뉴턴 · 차분 뉴턴 · 브로이든 · 코드 */
+(function () {
+  let pre = "s2", nB = 20, lam = 1, axis = "k";
+  const S2 = { F: ([x, y]) => [x * x + y * y - 4, Math.exp(x) + y - 1], J: ([x, y]) => [[2 * x, 2 * y], [Math.exp(x), 1]] };
+  /** 브라투 u″ + λeᵘ = 0, u(0) = u(1) = 0, 내부 격자 n개 */
+  const bratu = (n, L) => {
+    const h = 1 / (n + 1), c = 1 / (h * h);
+    return {
+      F: (u) => u.map((v, i) => ((i ? u[i - 1] : 0) - 2 * v + (i < n - 1 ? u[i + 1] : 0)) * c + L * Math.exp(v)),
+      J: (u) => u.map((v, i) => u.map((_, j) => (j === i ? -2 * c + L * Math.exp(v) : Math.abs(i - j) === 1 ? c : 0))),
+      x0: new Array(n).fill(0),
+    };
+  };
+  const problem = () => (pre === "bratu" ? bratu(nB, lam) : { ...S2, x0: pre === "s2" ? [1, -1] : [2, 0.5] });
+  /** 차분 야코비안: n번의 추가 F 계산 */
+  const fdJ = (F, x, fx) => {
+    const n = x.length, J = x.map(() => new Array(n));
+    for (let j = 0; j < n; j++) { const h = 1e-7 * (1 + Math.abs(x[j])), xp = x.slice(); xp[j] += h; const fp = F(xp); for (let i = 0; i < n; i++) J[i][j] = (fp[i] - fx[i]) / h; }
+    return J;
+  };
+  /** method: newton | fd | bfd | bI | chord. 기록 [{k, ev, f}] */
+  const run = (P, method, maxit = 60) => {
+    let x = P.x0.slice(), fx = P.F(x), ev = 1, B = null;
+    const hist = [{ k: 0, ev, f: NS.norm(fx) }];
+    if (method === "bfd" || method === "chord") { B = fdJ(P.F, x, fx); ev += x.length; }
+    if (method === "bI") B = x.map((_, i) => x.map((__, j) => (i === j ? 1 : 0)));
+    for (let k = 1; k <= maxit; k++) {
+      if (NS.norm(fx) < 1e-13 * Math.max(1, hist[0].f) || NS.norm(fx) === 0) break;
+      let A;
+      if (method === "newton") A = P.J(x);
+      else if (method === "fd") { A = fdJ(P.F, x, fx); ev += x.length; }
+      else A = B;
+      const s = NS.solve(A, fx.map((v) => -v)); if (!s) break;
+      const xn = x.map((v, i) => v + s[i]), fn = P.F(xn); ev++;
+      if (method === "bfd" || method === "bI") {
+        // 브로이든: B ← B + (y − B s) sᵀ / (sᵀ s)
+        const ss = s.reduce((a, v) => a + v * v, 0); if (ss === 0) break;
+        const r = fn.map((v, i) => v - fx[i] - B[i].reduce((a, b, j) => a + b * s[j], 0));
+        B = B.map((row, i) => row.map((v, j) => v + (r[i] * s[j]) / ss));
+      }
+      x = xn; fx = fn;
+      const f = NS.norm(fx); hist.push({ k, ev, f });
+      if (!isFinite(f) || f > 1e14) break;
+    }
+    return { hist, B, x };
+  };
+  const at = (R, tol = 1e-10) => { const h = R.hist.find((q) => q.f < tol); return h || null; };
+  let RES = {};
+  const METHODS = [["newton", "accent"], ["fd", "blue"], ["bfd", "warn"], ["bI", "bad"], ["chord", "faint"]];
+  const cv = MB.canvas("#ns-br-cv", (ctx, w, h) => {
+    if (!RES.newton) return;
+    const C = MB.palette();
+    const xmax = Math.max(4, ...METHODS.map(([m]) => { const H = RES[m].hist; const e = at(RES[m], 1e-14); return (e || H[H.length - 1])[axis]; }));
+    const series = METHODS.map(([m, col]) => ({ data: RES[m].hist.map((q) => [q[axis], Math.max(q.f, 1e-16)]), color: C[col], width: m === "chord" ? 1.8 : 2.2, dash: m === "bI" ? [6, 4] : null }));
+    const pts = [];
+    METHODS.forEach(([m, col]) => RES[m].hist.forEach((q) => pts.push({ x: q[axis], y: MB.clamp(Math.max(q.f, 1e-16), 1e-16, 1e8), r: 2.4, color: C[col] })));
+    MB.chart(ctx, { x: 52, y: 14, w: w - 52 - 14, h: h - 14 - 44 }, {
+      x: [0, Math.min(xmax * 1.04, 400)], y: [1e-16, 1e8], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1, 1e4, 1e8],
+      xLabel: axis === "k" ? "반복 k" : "F 계산 횟수 (차분 야코비안 포함)", series, points: pts,
+      hlines: [{ y: 1e-10, color: C.dim, label: "10⁻¹⁰" }],
+    });
+  }, { aspect: 0.56, minHeight: 240, maxHeight: 420 });
+  const update = () => {
+    const P = problem();
+    METHODS.forEach(([m]) => { RES[m] = run(P, m); });
+    cv.redraw();
+    const show = (m) => { const e = at(RES[m]); return e ? `${e.ev}회 <small>(${e.k}번)</small>` : "실패"; };
+    MB.stat("ns-br-c0", show("fd"));
+    MB.stat("ns-br-c1", show("bfd"));
+    MB.stat("ns-br-c2", show("chord"));
+    const R = RES.bfd, Jt = P.J(R.x);
+    let d = 0, t = 0; Jt.forEach((row, i) => row.forEach((v, j) => { d += (R.B[i][j] - v) ** 2; t += v * v; }));
+    MB.stat("ns-br-bj", NS.norm(R.x) < 1e6 && isFinite(d) ? NS.sci(Math.sqrt(d / t), 3) : "—");
+  };
+  MB.range("ns-br-n", (v) => String(v), (v) => { nB = v; if (pre === "bratu") update(); });
+  MB.range("ns-br-l", (v) => v.toFixed(1), (v) => { lam = v; if (pre === "bratu") update(); });
+  MB.seg("ns-br-axis", (v) => { axis = v; cv.redraw(); });
+  document.getElementById("ns-br-pre").addEventListener("change", (e) => { pre = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 3. 호너 방법 */
+(function () {
+  let a = [2, -3, 0, 1, -5], x0 = 2, filled = 0, err = "";
+  const inp = document.getElementById("ns-hn-c"), tbl = document.getElementById("ns-hn-tbl");
+  const n = () => a.length - 1;
+  const total = () => 2 * n() + 1; // b 칸 n + 1개, c 칸 n개
+  /** 호너 두 줄: b(몫과 p), c(p′) */
+  const rowsAt = (x) => {
+    const b = [a[0]], c = [a[0]];
+    for (let k = 1; k <= n(); k++) b.push(a[k] + x * b[k - 1]);
+    for (let k = 1; k < n(); k++) c.push(b[k] + x * c[k - 1]);
+    return { b, c };
+  };
+  const pv = (x) => { let p = a[0]; for (let k = 1; k < a.length; k++) p = p * x + a[k]; return p; };
+  const realRoots = () => {
+    const out = [], N = 1200, A = -3.2, B = 3.2;
+    let xp = A, fp = pv(A);
+    for (let i = 1; i <= N; i++) {
+      const x = A + ((B - A) * i) / N, f = pv(x);
+      if (f === 0) out.push(x);
+      else if (fp * f < 0) { let lo = xp, hi = x, flo = fp; for (let it = 0; it < 60; it++) { const m = (lo + hi) / 2, fm = pv(m); if ((fm < 0) === (flo < 0)) { lo = m; flo = fm; } else hi = m; } out.push((lo + hi) / 2); }
+      xp = x; fp = f;
+    }
+    return out;
+  };
+  const yRange = () => {
+    const v = []; for (let i = 0; i <= 300; i++) { const y = pv(-3.2 + (6.4 * i) / 300); if (isFinite(y)) v.push(y); }
+    v.sort((p, q) => p - q);
+    let lo = Math.min(0, v[Math.floor(v.length * 0.08)], pv(x0)), hi = Math.max(0, v[Math.floor(v.length * 0.92)], pv(x0));
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const s = hi - lo; return [lo - 0.15 * s, hi + 0.15 * s];
+  };
+  const px = { x: x0, y: 0, lock: "y", r: 8 };
+  let roots = realRoots();
+  const pl = MB.plane("#ns-hn-cv", {
+    x: [-3.2, 3.2], y: yRange(), aspect: 0.6, minHeight: 240, points: [px], grid: false, axes: false,
+    draw(P) {
+      const C = P.P;
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 });
+      for (let x = -3; x <= 3; x++) P.text(String(x).replace("-", "−"), x, 0, { color: C.faint, size: 10, dy: 10, align: "center" });
+      P.curve(pv, { color: C.text, width: 2.4 });
+      roots.forEach((r) => P.dot(r, 0, { r: 5, color: C.bad }));
+      const p = pv(x0), { c } = rowsAt(x0), d = n() ? c[n() - 1] : 0;
+      P.line(P.x0, p + d * (P.x0 - x0), P.x1, p + d * (P.x1 - x0), { color: C.warn, width: 1.5, dash: [6, 4] });
+      P.line(x0, 0, x0, p, { color: C.faint, width: 1, dash: [3, 3] });
+      P.dot(x0, p, { r: 5, color: C.warn });
+      px.x = x0; px.color = C.accent;
+    },
+    onDrag(p) { x0 = p.x; xr.set(Math.round(x0 * 100) / 100, false); outX(); update(); },
+  });
+  const outX = () => { document.getElementById("ns-hn-x-out").textContent = NS.fix(x0, 10); };
+  const cell = (v) => NS.fix(v, 8);
+  const update = () => {
+    pl.view({ y: yRange() });
+    if (err) { tbl.innerHTML = `<table><tbody><tr><td style="text-align:left">${err}</td></tr></tbody></table>`; ["ns-hn-p", "ns-hn-d", "ns-hn-ops", "ns-hn-q"].forEach((id) => MB.stat(id, "—")); return; }
+    const N = n(), { b, c } = rowsAt(x0), nb = Math.min(filled, N + 1), nc = Math.max(0, filled - (N + 1));
+    const lab = (k) => (k === 0 ? "1" : k === 1 ? "x" : "x" + String(k).split("").map((d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d]).join(""));
+    let h = "<table><thead><tr><th></th>";
+    for (let k = N; k >= 0; k--) h += `<th>${lab(k)}</th>`;
+    h += "</tr></thead><tbody><tr><td>aₖ</td>" + a.map((v) => `<td>${cell(v)}</td>`).join("") + "</tr>";
+    h += "<tr><td>bₖ = aₖ + x₀bₖ₊₁</td>";
+    for (let i = 0; i <= N; i++) h += `<td${i === nb - 1 && nc === 0 ? ' class="hl"' : ""}>${i < nb ? cell(b[i]) + (i === N ? " = p(x₀)" : "") : ""}</td>`;
+    h += "</tr><tr><td>cₖ = bₖ + x₀cₖ₊₁</td>";
+    for (let i = 0; i <= N; i++) h += `<td${i === nc - 1 ? ' class="hl"' : ""}>${i < nc ? cell(c[i]) + (i === N - 1 ? " = p′(x₀)" : "") : ""}</td>`;
+    tbl.innerHTML = h + "</tr></tbody></table>";
+    MB.stat("ns-hn-p", nb === N + 1 ? NS.sci(b[N], 6) : "—");
+    MB.stat("ns-hn-d", nc === N ? NS.sci(c[N - 1], 6) : "—");
+    MB.stat("ns-hn-ops", `${N} / ${(N * (N + 1)) / 2}`);
+    if (nb === N + 1) {
+      const q = b.slice(0, N), terms = [];
+      q.forEach((v, i) => { const k = N - 1 - i; if (v === 0 && q.length > 1) return; const s = NS.fix(Math.abs(v), 6), mono = k === 0 ? "" : k === 1 ? "x" : "x<sup>" + k + "</sup>"; terms.push([v < 0 ? "−" : "+", (s === "1" && k > 0 ? "" : s) + mono]); });
+      MB.stat("ns-hn-q", terms.length ? terms.map((t, i) => (i === 0 ? (t[0] === "−" ? "−" : "") : " " + t[0] + " ") + t[1]).join("") : "0");
+    } else MB.stat("ns-hn-q", "—");
+  };
+  const parse = () => {
+    const v = inp.value.replace(/−/g, "-").split(/[,\s]+/).filter((s) => s !== "").map(Number);
+    if (!v.length || v.some((x) => !isFinite(x))) { err = "계수를 쉼표로 구분한 숫자로 적어 주세요."; return; }
+    while (v.length > 1 && v[0] === 0) v.shift();
+    if (v.length < 2) { err = "차수가 1 이상이어야 합니다."; return; }
+    if (v.length > 21) { err = "차수는 20까지 받습니다."; return; }
+    err = ""; a = v; roots = realRoots();
+  };
+  const xr = MB.range("ns-hn-x", (v) => v.toFixed(2), (v) => { x0 = v; filled = 0; update(); });
+  document.getElementById("ns-hn-step").addEventListener("click", () => { if (!err && filled < total()) { filled++; update(); } });
+  document.getElementById("ns-hn-all").addEventListener("click", () => { filled = total(); update(); });
+  document.getElementById("ns-hn-nw").addEventListener("click", () => {
+    if (err) return;
+    const { b, c } = rowsAt(x0), d = c[n() - 1];
+    if (d === 0 || !isFinite(d)) return;
+    x0 = MB.clamp(x0 - b[n()] / d, -3, 3); xr.set(Math.round(x0 * 100) / 100, false); outX();
+    filled = total(); update();
+  });
+  inp.addEventListener("input", () => { parse(); filled = 0; update(); });
+  update();
+})();
+
+/* ================================================================ 4. 수축 순서 */
+(function () {
+  let pre = "geo", N = 16, ord = "small", pol = false;
+  const horner2 = (a, x) => { let p = a[0], d = 0; for (let k = 1; k < a.length; k++) { d = d * x + p; p = p * x + a[k]; } return [p, d]; };
+  const fromRoots = (r) => { let c = [1]; for (const z of r) { const m = c.concat([0]); for (let i = 1; i < m.length; i++) m[i] -= z * c[i - 1]; c = m; } return c; };
+  /** 뉴턴–호너: 상대 걸음 10⁻¹⁵에서 멈춤, 최대 1000번 */
+  const newton = (a, x) => {
+    for (let it = 0; it < 1000; it++) {
+      const [p, d] = horner2(a, x);
+      if (p === 0) return { x, ok: true };
+      if (d === 0) return { x, ok: false };
+      const s = p / d; x -= s;
+      if (!isFinite(x)) return { x, ok: false };
+      if (Math.abs(s) <= 1e-15 * Math.abs(x)) return { x, ok: true };
+    }
+    return { x, ok: false };
+  };
+  let R = null;
+  const compute = () => {
+    const truth = pre === "geo" ? [...Array(N)].map((_, k) => Math.pow(2, -k)) : [...Array(N)].map((_, k) => k + 1);
+    const a0 = fromRoots(truth); let a = a0.slice(); const found = [];
+    while (a.length > 1) {
+      const start = ord === "small" ? 0 : 1 + Math.max(...a.slice(1).map(Math.abs)) / Math.abs(a[0]);
+      let r = newton(a, start);
+      if (pol && isFinite(r.x)) { const q = newton(a0, r.x); r = { x: q.x, ok: r.ok && q.ok }; }
+      found.push(r);
+      if (!isFinite(r.x)) break;
+      const b = [a[0]]; for (let k = 1; k < a.length - 1; k++) b.push(a[k] + r.x * b[k - 1]); // 조립제법 몫
+      a = b;
+    }
+    const xs = found.map((f) => f.x).filter(isFinite);
+    const err = truth.map((t) => (xs.length ? Math.min(...xs.map((x) => Math.abs(x - t))) / Math.abs(t) : Infinity));
+    R = { truth, found, err };
+  };
+  const cv = MB.canvas("#ns-df-cv", (ctx, w, h) => {
+    if (!R) return;
+    const C = MB.palette(), box = { x: 52, y: 14, w: w - 52 - 14, h: h - 14 - 44 };
+    const ch = MB.chart(ctx, box, {
+      x: [-0.5, N - 0.5], y: [1e-17, 1e3], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1],
+      xTicks: [...Array(N)].map((_, k) => k).filter((k) => N <= 12 || k % 2 === 0), xFmt: (v) => String(pre === "geo" ? v : v + 1),
+      xLabel: pre === "geo" ? "근 2⁻ᵏ의 k (오른쪽일수록 작은 근)" : "근 k",
+      hlines: [{ y: 2.22e-16, color: C.faint, label: "ε" }, { y: 1e-8, color: C.dim, dash: [2, 4] }],
+    });
+    const bw = Math.max(3, (box.w / N) * 0.62);
+    ctx.save();
+    R.err.forEach((e, k) => {
+      const v = isFinite(e) ? MB.clamp(Math.max(e, 1e-17), 1e-17, 1e3) : 1e3, x = ch.X(k), y = ch.Y(v);
+      ctx.fillStyle = !isFinite(e) || e > 1e-2 ? C.bad : C.accent;
+      ctx.fillRect(x - bw / 2, y, bw, box.y + box.h - y);
+    });
+    ctx.restore();
+  }, { aspect: 0.5, minHeight: 230, maxHeight: 380 });
+  const update = () => {
+    compute(); cv.redraw();
+    const fin = R.err.filter(isFinite), mx = fin.length < R.err.length ? Infinity : Math.max(...fin);
+    MB.stat("ns-df-max", isFinite(mx) ? NS.sci(mx, 2) : "실패 포함");
+    MB.stat("ns-df-good", `${R.err.filter((e) => e < 1e-8).length} / ${N}`);
+    MB.stat("ns-df-seq", R.found.slice(0, 6).map((f) => (isFinite(f.x) ? NS.fix(f.x, 4) : "NaN") + (f.ok ? "" : "✗")).join(", ") + (R.found.some((f) => !f.ok) ? " <small>(✗: 1000번 안에 멈추지 않음)</small>" : ""));
+  };
+  MB.range("ns-df-n", (v) => String(v), (v) => { N = v; update(); });
+  MB.seg("ns-df-ord", (v) => { ord = v; update(); });
+  MB.check("ns-df-pol", (v) => { pol = v; update(); });
+  document.getElementById("ns-df-pre").addEventListener("change", (e) => { pre = e.target.value; update(); });
+  update();
+})();
+
+/* ================================================================ 5. 동반 행렬의 이동 QR */
+(function () {
+  const C = NS.c;
+  const DEF = {
+    3: [[2.0945514815, 0], [-1.0472757408, 1.1359398891], [-1.0472757408, -1.1359398891]],
+    4: [[1.6, 0], [0.5, 0], [-1.1, 0.8], [-1.1, -0.8]],
+    5: [[1.8, 0], [0.9, 0], [-0.3, 0], [-1.2, 1], [-1.2, -1]],
+    6: [[1.9, 0], [1, 0], [0.2, 0], [-0.6, 0], [-1.3, 0.9], [-1.3, -0.9]],
+  };
+  let roots = DEF[4].map((r) => r.slice()), H = [], m = 0, steps = 0, eig = [], coef = [], timer = 0, drag = -1;
+  const fromRoots = (r) => { let c = [[1, 0]]; for (const z of r) { const n = c.concat([[0, 0]]); for (let i = 1; i < n.length; i++) n[i] = C.sub(n[i], C.mul(z, c[i - 1])); c = n; } return c; };
+  const reset = () => {
+    coef = fromRoots(roots); const n = roots.length;
+    H = [...Array(n)].map((_, i) => [...Array(n)].map((__, j) => (i === 0 ? C.sc(coef[j + 1], -1) : i === j + 1 ? [1, 0] : [0, 0])));
+    m = n; steps = 0; eig = []; deflate();
+  };
+  const small = () => m > 1 && C.abs(H[m - 1][m - 2]) < 1e-14 * (C.abs(H[m - 1][m - 1]) + C.abs(H[m - 2][m - 2]));
+  const deflate = () => { while (small()) { H[m - 1][m - 2] = [0, 0]; eig.push(H[m - 1][m - 1]); m--; } if (m === 1) { eig.push(H[0][0]); m = 0; } };
+  /** 윌킨슨 이동: 활성 블록 오른쪽 아래 2×2의 고유값 중 hₘₘ에 가까운 것 */
+  const shift = () => {
+    const a = H[m - 2][m - 2], b = H[m - 2][m - 1], c = H[m - 1][m - 2], d = H[m - 1][m - 1];
+    const half = C.sc(C.add(a, d), 0.5), det = C.sub(C.mul(a, d), C.mul(b, c));
+    const disc = C.sqrt(C.sub(C.mul(half, half), det)), l1 = C.add(half, disc), l2 = C.sub(half, disc);
+    return C.abs(C.sub(l1, d)) < C.abs(C.sub(l2, d)) ? l1 : l2;
+  };
+  /** 한 단계: H − μI = QR (기븐스 회전), H ← RQ + μI. 활성 블록 0..m−1에만 */
+  const qrStep = () => {
+    if (m < 2) return;
+    const mu = shift(), G = [];
+    for (let i = 0; i < m; i++) H[i][i] = C.sub(H[i][i], mu);
+    for (let k = 0; k < m - 1; k++) {
+      const a = H[k][k], b = H[k + 1][k], r = Math.hypot(C.abs(a), C.abs(b));
+      const c = r === 0 ? [1, 0] : C.sc(a, 1 / r), s = r === 0 ? [0, 0] : C.sc(b, 1 / r);
+      for (let j = k; j < m; j++) { const x = H[k][j], y = H[k + 1][j]; H[k][j] = C.add(C.mul(C.conj(c), x), C.mul(C.conj(s), y)); H[k + 1][j] = C.sub(C.mul(c, y), C.mul(s, x)); }
+      G.push([c, s]);
+    }
+    for (let k = 0; k < m - 1; k++) {
+      const [c, s] = G[k];
+      for (let i = 0; i <= Math.min(k + 1, m - 1); i++) { const x = H[i][k], y = H[i][k + 1]; H[i][k] = C.add(C.mul(x, c), C.mul(y, s)); H[i][k + 1] = C.sub(C.mul(y, C.conj(c)), C.mul(x, C.conj(s))); }
+    }
+    for (let i = 0; i < m; i++) H[i][i] = C.add(H[i][i], mu);
+    steps++; deflate();
+  };
+  const pl = MB.plane("#ns-cm-cv", {
+    x: [-2.6, 2.6], y: null, aspect: 0.75, minHeight: 230, gridStep: 1,
+    draw(P) {
+      const Pc = P.P;
+      roots.forEach((r) => P.circle(r[0], r[1], 9 / P.unit, { color: Pc.accent, width: 2.4 }));
+      const n = H.length;
+      for (let i = 0; i < n; i++) { const z = H[i][i], done = i >= m; P.dot(NS.cl(z[0]), NS.cl(z[1]), { r: done ? 4.5 : 3.5, color: done ? Pc.ok : Pc.warn }); }
+    },
+    onPointer(x, y, phase) {
+      const P = pl.P; if (!P) return;
+      if (phase === "down") { drag = -1; let bd = 22; roots.forEach((r, i) => { const d = Math.hypot(P.X(r[0]) - P.X(x), P.Y(r[1]) - P.Y(y)); if (d < bd) { bd = d; drag = i; } }); }
+      if (drag >= 0 && phase !== "up") { roots[drag] = [MB.clamp(x, P.x0, P.x1), MB.clamp(y, P.y0, P.y1)]; stop(); reset(); update(); }
+      if (phase === "up") drag = -1;
+    },
+  });
+  const hm = MB.canvas("#ns-cm-hm", (ctx, w, h) => {
+    const Pc = MB.palette(), n = H.length; if (!n) return;
+    const top = 28, side = Math.min(w - 24, h - top - 10), cs = side / n, x0 = (w - side) / 2;
+    ctx.font = `${Math.max(9, Math.min(12, cs / 4.2))}px ${getComputedStyle(document.body).getPropertyValue("--mono")}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const v = C.abs(H[i][j]), t = v === 0 ? 0 : MB.clamp((Math.log10(v) + 16) / 17, 0, 1);
+      ctx.fillStyle = MB.rgb(MB.colormap(t, "viridis")); ctx.fillRect(x0 + j * cs + 1, top + i * cs + 1, cs - 2, cs - 2);
+      ctx.fillStyle = t > 0.6 ? "#000" : "#fff";
+      ctx.fillText(v === 0 ? "0" : v >= 0.01 && v < 1000 ? v.toFixed(2) : v.toExponential(0).replace("e", "e").replace("-", "−"), x0 + (j + 0.5) * cs, top + (i + 0.5) * cs);
+    }
+    if (m > 0) { ctx.strokeStyle = Pc.warn; ctx.lineWidth = 2; ctx.strokeRect(x0 + 0.5, top + 0.5, m * cs - 1, m * cs - 1); }
+    ctx.fillStyle = Pc.dim; ctx.textAlign = "right"; ctx.textBaseline = "alphabetic"; ctx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--font");
+    ctx.fillText("노란 테두리: 아직 남은 활성 블록", w - 10, 18);
+  }, { aspect: 0.75, minHeight: 230, maxHeight: 420 });
+  const update = () => {
+    pl.redraw(); hm.redraw();
+    MB.stat("ns-cm-it", String(steps) + (m === 0 ? " (끝)" : ""));
+    MB.stat("ns-cm-def", eig.length ? eig.map((z) => NS.cs(z, 6)).join(", ") : "—");
+    MB.stat("ns-cm-sub", m > 1 ? NS.sci(C.abs(H[m - 1][m - 2]), 3) : "—");
+    const terms = coef.map((c, i) => { const k = coef.length - 1 - i, mono = k === 0 ? "" : k === 1 ? "z" : "z<sup>" + k + "</sup>"; if (i === 0) return mono; const s = NS.cs(c, 3); return s === "0" ? "" : (c[1] !== 0 && Math.abs(c[1]) > 1e-13 ? " + (" + s + ")" : s[0] === "−" ? " − " + s.slice(1) : " + " + s) + mono; });
+    MB.stat("ns-cm-p", terms.join(""));
+  };
+  const stop = () => { clearInterval(timer); timer = 0; play.set(false); };
+  const play = MB.playButton("ns-cm-play", () => { timer = setInterval(() => { if (m === 0 || steps > 200) stop(); else { qrStep(); update(); } }, 600); }, () => stop(), ["▶ 자동", "■ 멈춤"]);
+  document.getElementById("ns-cm-step").addEventListener("click", () => { if (m > 0 && steps < 200) { qrStep(); update(); } });
+  document.getElementById("ns-cm-reset").addEventListener("click", () => { stop(); reset(); update(); });
+  MB.seg("ns-cm-n", (v) => { stop(); roots = DEF[v].map((r) => r.slice()); reset(); update(); });
+  reset(); update();
+})();
+
+/* ================================================================ 6. 뉴턴 프랙털 */
+(function () {
+  /** 최고차 계수 1, 실수 계수(높은 차수부터)와 근 */
+  const unity = (n) => [...Array(n)].map((_, k) => [Math.cos((2 * Math.PI * k) / n), Math.sin((2 * Math.PI * k) / n)]);
+  const PRE = {
+    c3: { a: [1, 0, 0, -1], roots: unity(3) },
+    c4: { a: [1, 0, 0, 0, -1], roots: unity(4) },
+    cyc: { a: [1, 0, -2, 2], roots: [[-1.7692923542386314, 0], [0.8846461771193157, 0.5897428050222055], [0.8846461771193157, -0.5897428050222055]] },
+    c5: { a: [1, 0, 0, 0, 0, -1], roots: unity(5) },
+  };
+  let pre = PRE.c3, relax = 1, zoom = 0, shade = true, center = [0, 0], click = null, orbit = [], img = null, key = "";
+  const W0 = 4.4;
+  /** 복소 뉴턴 한 걸음 z ← z − a·p(z)/p′(z) (호너로 p, p′) */
+  const stepZ = (zr, zi) => {
+    const a = pre.a; let pr = a[0], pi = 0, dr = 0, di = 0;
+    for (let k = 1; k < a.length; k++) {
+      const ndr = dr * zr - di * zi + pr, ndi = dr * zi + di * zr + pi; dr = ndr; di = ndi;
+      const npr = pr * zr - pi * zi + a[k], npi = pr * zi + pi * zr; pr = npr; pi = npi;
+    }
+    const d = dr * dr + di * di; if (d === 0) return null;
+    return [zr - relax * (pr * dr + pi * di) / d, zi - relax * (pi * dr - pr * di) / d];
+  };
+  const which = (zr, zi) => { for (let i = 0; i < pre.roots.length; i++) { const r = pre.roots[i]; if ((zr - r[0]) ** 2 + (zi - r[1]) ** 2 < 1e-12) return i; } return -1; };
+  const track = (z) => {
+    const pts = [z.slice()];
+    for (let it = 0; it < 50; it++) { const i = which(z[0], z[1]); if (i >= 0) return { pts, root: i, it }; const n = stepZ(z[0], z[1]); if (!n || !isFinite(n[0])) break; z = n; pts.push(z); }
+    const i = which(z[0], z[1]); return { pts, root: i, it: i >= 0 ? 50 : -1 };
+  };
+  const view = () => { const w = W0 / Math.pow(2, zoom); return { cx: center[0], cy: center[1], w }; };
+  const render = (w, h, C) => {
+    const V = view(), k = [pre.a.join(","), relax, V.cx, V.cy, V.w, w, h, shade, C.accent, C.bg].join("|");
+    if (k === key) return img;
+    const cols = [C.accent, C.accent2, C.warn, C.blue, C.ok].map(NS.rgb), gray = NS.rgb(C.faint), bg = NS.rgb(C.bg);
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d"), id = cx.createImageData(w, h), D = id.data, sc = V.w / w;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      let zr = V.cx + (i + 0.5 - w / 2) * sc, zi = V.cy - (j + 0.5 - h / 2) * sc, hit = -1, it = 0;
+      for (; it < 50; it++) { hit = which(zr, zi); if (hit >= 0) break; const n = stepZ(zr, zi); if (!n) break; zr = n[0]; zi = n[1]; if (!isFinite(zr)) break; }
+      const col = hit < 0 ? gray : cols[hit], f = hit < 0 ? 0.55 : shade ? 1 - 0.75 * Math.min(it, 24) / 24 : 0.9, q = (j * w + i) * 4;
+      D[q] = bg[0] + (col[0] - bg[0]) * f; D[q + 1] = bg[1] + (col[1] - bg[1]) * f; D[q + 2] = bg[2] + (col[2] - bg[2]) * f; D[q + 3] = 255;
+    }
+    cx.putImageData(id, 0, 0); img = cv; key = k; return cv;
+  };
+  let map = null;
+  const cv = MB.canvas("#ns-fr-cv", (ctx, w, h) => {
+    const C = MB.palette(), V = view(), sc = V.w / w;
+    ctx.drawImage(render(Math.round(w), Math.round(h), C), 0, 0, w, h);
+    const X = (x) => w / 2 + (x - V.cx) / sc, Y = (y) => h / 2 - (y - V.cy) / sc;
+    map = { ix: (px) => V.cx + (px - w / 2) * sc, iy: (py) => V.cy - (py - h / 2) * sc };
+    pre.roots.forEach((r) => { ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(X(r[0]), Y(r[1]), 5, 0, 7); ctx.fill(); ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.stroke(); });
+    if (orbit.length) {
+      ctx.strokeStyle = C.text; ctx.lineWidth = 1.6; ctx.beginPath();
+      orbit.forEach((z, i) => { const px = MB.clamp(X(z[0]), -1e4, 1e4), py = MB.clamp(Y(z[1]), -1e4, 1e4); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }); ctx.stroke();
+      orbit.forEach((z, i) => { ctx.fillStyle = i ? C.text : C.bg; ctx.beginPath(); ctx.arc(X(z[0]), Y(z[1]), i ? 2.8 : 5, 0, 7); ctx.fill(); if (!i) { ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.stroke(); } });
+    }
+  }, { aspect: 0.66, minHeight: 250, maxHeight: 460 });
+  cv.canvas.style.cursor = "crosshair";
+  const update = () => {
+    if (click) {
+      const T = track(click.slice()); orbit = T.pts;
+      MB.stat("ns-fr-z0", NS.cs(click, 4));
+      MB.stat("ns-fr-root", T.root >= 0 ? NS.cs(pre.roots[T.root], 4) : "수렴 안 함");
+      MB.stat("ns-fr-it", T.root >= 0 ? String(T.it) : "50번 넘음");
+    }
+    const V = view(); MB.stat("ns-fr-view", `${NS.cs([V.cx, V.cy], 4)} / ${NS.sci(V.w, 2)}`);
+    cv.redraw();
+  };
+  cv.canvas.addEventListener("pointerdown", (e) => { if (!map) return; const r = cv.canvas.getBoundingClientRect(); click = [map.ix(e.clientX - r.left), map.iy(e.clientY - r.top)]; update(); });
+  MB.range("ns-fr-a", (v) => v.toFixed(2), MB.throttle(() => { relax = Number(document.getElementById("ns-fr-a").value); update(); }));
+  MB.range("ns-fr-z", (v) => (v ? "×" + Math.pow(2, v) : "×1"), (v) => { zoom = v; if (click) center = click.slice(); if (!v) center = [0, 0]; update(); });
+  MB.check("ns-fr-shade", (v) => { shade = v; update(); });
+  document.getElementById("ns-fr-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  click = [1, 1]; update();
+})();
+
+/* ================================================================ 7. 연속법 (의사 호 길이) */
+(function () {
+  const F = ([x, y]) => [x * x + y * y - 4, Math.exp(x) + y - 1];
+  const J = ([x, y]) => [[2 * x, 2 * y], [Math.exp(x), 1]];
+  const ROOTS = [[1.0041687384746592, -1.72963728702587], [-1.8162640688251506, 0.8373677998912478]];
+  let t = 0.5, showNw = true, showDef = true, path = [], nw = [], g = [0, 0], landed = false, steps = 0;
+  const p0 = { x: 0.1, y: -0.1, r: 8 };
+  /** 뉴턴 호모토피 H(x, t) = F(x) − (1 − t)F(x₀)를 (x, y, t) 공간의 곡선으로 따라간다 */
+  const trace = () => {
+    const x0 = [p0.x, p0.y], h = 0.05; g = F(x0);
+    const H = (u) => { const f = F(u); return [f[0] - (1 - u[2]) * g[0], f[1] - (1 - u[2]) * g[1]]; };
+    const tangent = (u) => { // [J | F(x₀)]의 영공간 = 두 행의 외적
+      const A = J(u), r1 = [A[0][0], A[0][1], g[0]], r2 = [A[1][0], A[1][1], g[1]];
+      const c = [r1[1] * r2[2] - r1[2] * r2[1], r1[2] * r2[0] - r1[0] * r2[2], r1[0] * r2[1] - r1[1] * r2[0]], n = NS.norm(c);
+      return n ? c.map((v) => v / n) : null;
+    };
+    let u = [x0[0], x0[1], 0], tau = tangent(u); path = [u.slice()]; landed = false; steps = 0;
+    if (!tau) return; if (tau[2] < 0) tau = tau.map((v) => -v);
+    for (; steps < 400; steps++) {
+      const pred = u.map((v, i) => v + h * tau[i]); let v = pred.slice(), ok = false;
+      for (let it = 0; it < 8; it++) { // 수정자: H = 0과 τ·(v − 예측) = 0
+        const Hv = H(v), A = J(v);
+        const d = NS.solve([[A[0][0], A[0][1], g[0]], [A[1][0], A[1][1], g[1]], tau], [-Hv[0], -Hv[1], -tau.reduce((s, w, i) => s + w * (v[i] - pred[i]), 0)]);
+        if (!d) break; v = v.map((w, i) => w + d[i]);
+        if (NS.norm(d) < 1e-12) { ok = true; break; }
+      }
+      if (!v.every(isFinite)) break;
+      let nt = tangent(v); if (!nt) break;
+      if (nt[0] * tau[0] + nt[1] * tau[1] + nt[2] * tau[2] < 0) nt = nt.map((w) => -w);
+      if (v[2] >= 1) { // t = 1 넘음: 끼워 넣은 점에서 F = 0으로 마무리
+        const s = (1 - u[2]) / (v[2] - u[2]); let x = [u[0] + s * (v[0] - u[0]), u[1] + s * (v[1] - u[1])];
+        for (let i = 0; i < 8; i++) { const Fx = F(x), d = NS.solve2(J(x), [-Fx[0], -Fx[1]]); if (!d) break; x = [x[0] + d[0], x[1] + d[1]]; }
+        path.push([x[0], x[1], 1]); landed = true; steps++; break;
+      }
+      u = v; tau = nt; path.push(u.slice());
+      if (Math.abs(u[0]) + Math.abs(u[1]) > 50 || !ok && it8fail(u)) break;
+    }
+  };
+  const it8fail = (u) => NS.norm(H0(u)) > 1e-6;
+  const H0 = (u) => { const f = F(u); return [f[0] - (1 - u[2]) * g[0], f[1] - (1 - u[2]) * g[1]]; };
+  const newtonPath = () => {
+    let x = [p0.x, p0.y]; nw = [x.slice()];
+    for (let k = 0; k < 40; k++) { const Fx = F(x); if (NS.norm(Fx) < 1e-13) break; const s = NS.solve2(J(x), [-Fx[0], -Fx[1]]); if (!s) break; x = [x[0] + s[0], x[1] + s[1]]; if (!isFinite(x[0])) break; nw.push(x.slice()); }
+  };
+  /** 슬라이더 t에서의 해: 경로에서 t를 처음 넘는 구간을 찾아 끼우고 뉴턴으로 다듬는다 */
+  const xAt = (tt) => {
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i];
+      if ((a[2] - tt) * (b[2] - tt) <= 0 && a[2] !== b[2]) {
+        const s = (tt - a[2]) / (b[2] - a[2]); let x = [a[0] + s * (b[0] - a[0]), a[1] + s * (b[1] - a[1])];
+        for (let k = 0; k < 6; k++) { const f = F(x), r = [f[0] - (1 - tt) * g[0], f[1] - (1 - tt) * g[1]], d = NS.solve2(J(x), [-r[0], -r[1]]); if (!d) break; x = [x[0] + d[0], x[1] + d[1]]; }
+        return x;
+      }
+    }
+    return tt === 0 ? [p0.x, p0.y] : null;
+  };
+  const pl = MB.plane("#ns-ho-cv", {
+    x: [-3.4, 3.4], y: null, aspect: 0.66, minHeight: 260, points: [p0], gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      NS.contour(P, (x, y) => F([x, y])[0], 0, { color: C.accent, width: 1.4, alpha: showDef ? 0.35 : 1 });
+      NS.contour(P, (x, y) => F([x, y])[1], 0, { color: C.accent2, width: 1.4, alpha: showDef ? 0.35 : 1 });
+      if (showDef) {
+        NS.contour(P, (x, y) => F([x, y])[0], (1 - t) * g[0], { color: C.accent, width: 2.4 });
+        NS.contour(P, (x, y) => F([x, y])[1], (1 - t) * g[1], { color: C.accent2, width: 2.4 });
+      }
+      ROOTS.forEach((r) => P.dot(r[0], r[1], { r: 4.5, color: C.ok }));
+      if (showNw && nw.length > 1) {
+        for (let k = 1; k < nw.length; k++) P.line(NS.cl(nw[k - 1][0]), NS.cl(nw[k - 1][1]), NS.cl(nw[k][0]), NS.cl(nw[k][1]), { color: C.bad, width: 1.6, dash: [5, 4] });
+        nw.slice(1).forEach((q) => P.dot(NS.cl(q[0]), NS.cl(q[1]), { r: 3, color: C.bad }));
+      }
+      if (path.length > 1) {
+        const ctx = P.ctx; ctx.save(); ctx.strokeStyle = C.warn; ctx.lineWidth = 2.6; ctx.beginPath();
+        path.forEach((q, i) => (i ? ctx.lineTo(P.X(q[0]), P.Y(q[1])) : ctx.moveTo(P.X(q[0]), P.Y(q[1])))); ctx.stroke(); ctx.restore();
+        path.forEach((q, i) => { if (i && i % 4 === 0) P.dot(q[0], q[1], { r: 2.2, color: C.warn }); });
+      }
+      const xt = xAt(t); if (xt) P.dot(xt[0], xt[1], { r: 6, color: C.warn, stroke: C.bg });
+      p0.color = C.text;
+    },
+    onDrag() { recompute(); },
+  });
+  const recompute = () => { trace(); newtonPath(); update(); };
+  const update = () => {
+    pl.redraw();
+    MB.stat("ns-ho-x0", NS.pt([p0.x, p0.y], 3));
+    const xt = xAt(t);
+    MB.stat("ns-ho-xt", xt ? NS.pt(xt, 6) : `경로가 t = ${NS.fix(Math.max(...path.map((q) => q[2])), 3)}에서 꺾여 닿지 않음`);
+    const e = path[path.length - 1];
+    MB.stat("ns-ho-end", landed ? `${steps}걸음 → ${NS.pt([e[0], e[1]], 6)}` : `${steps}걸음, t = 1에 닿지 못함`);
+    const z = nw[nw.length - 1], ok = NS.norm(F(z)) < 1e-10;
+    MB.stat("ns-ho-nwend", ok ? `${NS.pt(z, 6)} (${nw.length - 1}번)` : `수렴 안 함 (${nw.length - 1}번)`);
+  };
+  const tr = MB.range("ns-ho-t", (v) => v.toFixed(2), (v) => { t = v; stopPlay(); update(); });
+  const loop = MB.loop(document.getElementById("sim-ns-homotopy"), (dt) => { t = Math.min(1, t + dt / 3); tr.set(Math.round(t * 100) / 100, false); document.getElementById("ns-ho-t-out").textContent = t.toFixed(2); update(); if (t >= 1) stopPlay(); });
+  loop.stop();
+  const play = MB.playButton("ns-ho-play", () => { t = 0; loop.start(); }, () => loop.stop(), ["▶ t = 0 → 1", "■ 멈춤"]);
+  const stopPlay = () => { if (loop.running) { loop.stop(); play.set(false); } };
+  MB.check("ns-ho-nw", (v) => { showNw = v; update(); });
+  MB.check("ns-ho-def", (v) => { showDef = v; update(); });
+  recompute();
+})();
+
+/* ================================================================ 8. 로봇 팔 역기구학 */
+(function () {
+  const L1 = 1; let L2 = 0.8, method = "newton", cold = false, th = [0.3, 1.0], last = { it: 0, f: 0, ok: true }, circT = 0;
+  const tgt = { x: 1.1, y: 0.7, r: 9 };
+  const fk = ([a, b]) => [L1 * Math.cos(a) + L2 * Math.cos(a + b), L1 * Math.sin(a) + L2 * Math.sin(a + b)];
+  const jac = ([a, b]) => [[-L1 * Math.sin(a) - L2 * Math.sin(a + b), -L2 * Math.sin(a + b)], [L1 * Math.cos(a) + L2 * Math.cos(a + b), L2 * Math.cos(a + b)]];
+  const msg = document.getElementById("ns-rb-msg");
+  /** 뉴턴(J s = −F) 또는 감쇠 최소제곱((JᵀJ + λI)s = −JᵀF, λ = 10⁻³‖F‖) */
+  const solve = () => {
+    let x = cold ? [0.3, 1.0] : th.slice(), it = 0, f = Infinity, ok = false;
+    const maxit = method === "newton" ? 30 : 100;
+    for (; it < maxit; it++) {
+      const p = fk(x), F = [p[0] - tgt.x, p[1] - tgt.y]; f = NS.norm(F);
+      if (f < 1e-12) { ok = true; break; }
+      const A = jac(x); let s;
+      if (method === "newton") s = NS.solve2(A, [-F[0], -F[1]]);
+      else {
+        const lam = 1e-3 * f, a = A[0][0] * A[0][0] + A[1][0] * A[1][0] + lam, b = A[0][0] * A[0][1] + A[1][0] * A[1][1], d = A[0][1] * A[0][1] + A[1][1] * A[1][1] + lam;
+        s = NS.solve2([[a, b], [b, d]], [-(A[0][0] * F[0] + A[1][0] * F[1]), -(A[0][1] * F[0] + A[1][1] * F[1])]);
+      }
+      if (!s || !isFinite(s[0]) || !isFinite(s[1])) break;
+      x = [x[0] + s[0], x[1] + s[1]];
+      if (method === "lm" && NS.norm(s) < 1e-13) { const p2 = fk(x); f = Math.hypot(p2[0] - tgt.x, p2[1] - tgt.y); it++; ok = "ls"; break; }
+    }
+    if (isFinite(x[0]) && isFinite(x[1])) { const w = (v) => Math.atan2(Math.sin(v), Math.cos(v)); th = [w(x[0]), w(x[1])]; }
+    const p = fk(th); f = Math.hypot(p[0] - tgt.x, p[1] - tgt.y);
+    last = { it, f, ok };
+  };
+  const pl = MB.plane("#ns-rb-cv", {
+    x: [-2.5, 2.5], y: null, aspect: 0.72, minHeight: 260, points: [tgt], gridStep: 1,
+    draw(P) {
+      const C = P.P, ctx = P.ctx, R = L1 + L2, r = Math.abs(L1 - L2);
+      ctx.save(); ctx.fillStyle = C.faint; ctx.globalAlpha = 0.16; ctx.beginPath(); ctx.arc(P.X(0), P.Y(0), R * P.unit, 0, 7); ctx.arc(P.X(0), P.Y(0), r * P.unit, 0, 7, true); ctx.fill("evenodd"); ctx.restore();
+      P.circle(0, 0, R, { color: C.faint, width: 1 }); if (r > 1e-9) P.circle(0, 0, r, { color: C.faint, width: 1 });
+      const e = [L1 * Math.cos(th[0]), L1 * Math.sin(th[0])], p = fk(th);
+      P.line(0, 0, e[0], e[1], { color: C.accent, width: 7 });
+      P.line(e[0], e[1], p[0], p[1], { color: C.accent2, width: 6 });
+      P.dot(0, 0, { r: 7, color: C.text }); P.dot(e[0], e[1], { r: 6, color: C.text }); P.dot(p[0], p[1], { r: 4, color: C.text });
+      tgt.color = C.warn;
+    },
+    onDrag() { solve(); update(); },
+  });
+  const deg = (v) => (v * 180 / Math.PI).toFixed(1).replace("-", "−") + "°";
+  const update = () => {
+    pl.redraw();
+    MB.stat("ns-rb-th", `${deg(th[0])}, ${deg(th[1])}`);
+    MB.stat("ns-rb-it", String(last.it));
+    MB.stat("ns-rb-f", NS.sci(last.f, 2));
+    MB.stat("ns-rb-det", NS.sci(L1 * L2 * Math.sin(th[1]), 3));
+    const d = Math.hypot(tgt.x, tgt.y), reach = d <= L1 + L2 && d >= Math.abs(L1 - L2);
+    if (last.ok === true) { msg.className = "ns-msg ok"; msg.innerHTML = `${last.it}번 반복으로 수렴. ${Math.abs(Math.sin(th[1])) < 0.08 ? "θ₂가 0 또는 π에 가까워 특이 자세 근처입니다(det J ≈ 0)." : cold ? "같은 출발점 (17.2°, 57.3°)에서 매번 새로 풉니다." : "직전 각이 출발점이라 반복이 적습니다(연속법)."}`; }
+    else if (!reach && method === "lm") { msg.className = "ns-msg"; msg.innerHTML = `목표가 닿는 영역 밖입니다. 감쇠 최소제곱은 ‖F‖<sup>2</sup>을 최소로 하는 자세, 곧 팔을 목표 방향으로 뻗은 자세로 갑니다(남은 거리 ${NS.fix(last.f, 4)}).`; }
+    else if (!reach) { msg.className = "ns-msg bad"; msg.innerHTML = `목표가 닿는 영역 밖이라 해가 없습니다. 뉴턴은 ${last.it}번 동안 수렴하지 못하고 흔들립니다. '감쇠 최소제곱'을 골라 보세요.`; }
+    else { msg.className = "ns-msg bad"; msg.innerHTML = `${last.it}번 안에 ‖F‖ &lt; 10⁻¹²에 닿지 못했습니다. 특이 자세 근처이거나 출발점이 나쁩니다.`; }
+  };
+  MB.seg("ns-rb-m", (v) => { method = v; solve(); update(); });
+  MB.range("ns-rb-l", (v) => v.toFixed(2), (v) => { L2 = v; solve(); update(); });
+  MB.check("ns-rb-cold", (v) => { cold = v; solve(); update(); });
+  document.getElementById("ns-rb-flip").addEventListener("click", () => {
+    const b = -th[1], d = Math.hypot(tgt.x, tgt.y);
+    th = [Math.atan2(tgt.y, tgt.x) - Math.atan2(L2 * Math.sin(b), L1 + L2 * Math.cos(b)), b];
+    if (d > L1 + L2 || d < Math.abs(L1 - L2)) th = [2 * Math.atan2(tgt.y, tgt.x) - th[0], b];
+    const c = cold; cold = false; solve(); cold = c; update();
+  });
+  const loop = MB.loop(document.getElementById("sim-ns-robot"), (dt) => {
+    circT += dt * 1.2; const s = (L1 + L2) / 1.8;
+    tgt.x = s * (0.75 + 0.55 * Math.cos(circT)); tgt.y = s * (0.35 + 0.55 * Math.sin(circT));
+    solve(); update();
+  });
+  loop.stop();
+  MB.playButton("ns-rb-circ", () => loop.start(), () => loop.stop(), ["▶ 원 그리기", "■ 멈춤"]);
+  solve(); update();
+})();
+</script>
+</body>
+</html>

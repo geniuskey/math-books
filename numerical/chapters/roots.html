@@ -1,0 +1,1321 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>방정식의 근 찾기 · NumericalBook</title>
+<meta name="description" content="f(x) = 0을 숫자로 푸는 법. 이분법의 오차 한계, 고정점 반복과 축소 사상, 수렴 차수의 측정, 뉴턴 방법의 2차 수렴과 중근, 할선법의 황금비 차수, 가위치법과 일리노이 수정, 브렌트 방법, 멈춤 조건, 실패 사례와 케플러 방정식.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .rt-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .rt-two > div { position: relative; min-width: 0; }
+  .rt-two > div + div { border-top: 1px solid var(--border); }
+  .rt-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .rt-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .rt-msg b { color: var(--text); }
+  .rt-msg.ok { color: var(--ok); font-weight: 600; }
+  .rt-msg.bad { color: var(--bad); font-weight: 600; }
+  .rt-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .rt-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .rt-tbl { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; max-height: 270px; overflow: auto; }
+  .rt-tbl table { font-size: 12.5px; }
+  .rt-tbl td, .rt-tbl th { font-family: var(--mono); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  .rt-tbl td:first-child, .rt-tbl th:first-child { text-align: center; }
+  .rt-tbl tr.cur td { color: var(--accent); font-weight: 700; }
+  .rt-num td, .rt-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .rt-num td:first-child, .rt-num th:first-child { text-align: center; }
+  .rt-k { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--surface); }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="roots">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 03</div>
+    <h1 data-no-glossary>방정식의 근 찾기</h1>
+    <p class="lead">\(x^3 - 2x - 5 = 0\)에는 근의 공식이 있지만 쓰기 번거롭고, \(x = \cos x\)나 케플러 방정식 \(M = E - e\sin E\)에는 아예 공식이 없습니다. 공학의 방정식 대부분이 이런 꼴입니다. 이 장은 \(f(x) = 0\)을 <b>반복</b>으로 푸는 법을 다룹니다. 구간을 반씩 줄이는 가장 안전한 방법(이분법)에서 출발해, 방정식을 \(x = g(x)\)로 고쳐 쓰는 고정점 반복, 접선으로 한 번에 다가가는 뉴턴 방법, 도함수 없이 비슷한 속도를 내는 할선법, 그리고 안전과 속도를 함께 얻는 브렌트 방법까지 갑니다. 모든 방법을 같은 잣대, 곧 <b>오차가 한 단계마다 어떤 법칙으로 줄어드는가(수렴 차수)</b>로 비교하고, 언제 멈춰야 하는지, 어떻게 실패하는지도 직접 봅니다.</p>
+    <ul class="objectives">
+      <li>이분법의 오차 한계로 필요한 반복 수를 미리 계산하고, 부호 판정만으로 근을 가두는 원리를 설명한다.</li>
+      <li>고정점 반복이 수렴할 조건 \(|g'| \lt 1\)을 축소 사상 정리로 이해하고, 거미줄 그림으로 수렴·발산을 읽는다.</li>
+      <li>수렴 차수와 점근 상수를 정의하고, 반복 표의 오차에서 차수를 실험으로 측정한다.</li>
+      <li>뉴턴 방법을 유도하고 2차 수렴을 증명하며, 중근에서 1차로 떨어지는 이유와 처방을 안다.</li>
+      <li>할선법의 차수가 황금비 1.618임을 보이고, 가위치법·일리노이 수정·브렌트 방법의 장단점을 비교한다.</li>
+      <li>잔차와 간격에 근거한 멈춤 조건을 고르고, 뉴턴 방법의 실패(순환, 발산, 평평한 곳)를 알아보고 피한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>제곱근 버튼과 행성의 위치</b></div>
+      <div class="o-body"><p>계산기의 √ 버튼, 나눗셈 회로가 없는 프로세서의 나눗셈, 위성의 궤도 예보, 배관의 압력 손실 계산, 회로 시뮬레이터가 다이오드의 동작점을 찾는 일은 모두 같은 일을 합니다. 공식으로 풀 수 없는 방정식 \(f(x) = 0\)을 <b>어림값에서 시작해 고쳐 나가는</b> 일입니다. 오늘날 수치 계산 라이브러리의 근 찾기 함수(MATLAB의 <code>fzero</code>, SciPy의 <code>brentq</code>)는 이 장의 이분법·할선법·역2차 보간을 조합한 방법입니다.</p>
+        <p>고쳐 나가는 생각은 오래되었습니다. 바빌로니아 점토판 YBC 7289에는 \(\sqrt2\)가 60진법으로 1;24,51,10(십진법 1.41421296…)으로 적혀 있습니다. 17세기에 뉴턴<span class="en">(Isaac Newton)</span>과 랩슨<span class="en">(Joseph Raphson)</span>이 다항식 방정식을 푸는 반복법을 내놓았고, 같은 세기 초 케플러<span class="en">(Johannes Kepler)</span>가 행성의 위치를 구하려고 세운 방정식 \(M = E - e\sin E\)는 지금도 궤도 계산 프로그램 안에서 매번 뉴턴 방법으로 풀립니다.</p>
+        <div class="o-chain"><span>f(x) = 0</span><i>→</i><span>근을 가두고, 접선으로 다가가기</span><i>→</i><span class="tool">xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ)</span><i>→</i><span>√, 1/a, 궤도, 마찰 계수</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="bisection">
+    <h2>근 가두기와 이분법</h2>
+    <div class="problem"><strong>부호만 보고 근을 열 자리까지</strong>
+      <p>\(f(x) = x^3 - 2x - 5\)는 \(f(2) = -1\), \(f(3) = 16\)입니다. 연속함수가 음수에서 양수로 바뀌었으니 2와 3 사이 어딘가에 근이 있습니다. 함숫값의 <b>부호</b>만 물어볼 수 있다면, 근을 소수 열째 자리까지 알려면 몇 번 물어봐야 할까요? 그리고 그 횟수를 계산을 시작하기 <b>전에</b> 알 수 있을까요?</p></div>
+    <p>답의 뿌리는 중간값 정리입니다(<a href="../../calculus/chapters/continuity.html#bisection">CalculusBook 2장: 이분법</a>). \(f\)가 \([a, b]\)에서 연속이고 \(f(a)\)와 \(f(b)\)의 부호가 다르면 그 사이에 근이 적어도 하나 있습니다. 이 상태를 근을 가뒀다고 합니다.</p>
+    <div class="callout deep"><strong>정의 3.1 (근 가둠과 이분법)</strong> 연속함수 \(f\)에 대해 \(f(a)f(b) \lt 0\)인 구간 \([a, b]\)를 근의 <span class="term">가둠 구간</span><span class="en">(bracket)</span>이라 한다. <span class="term">이분법</span><span class="en">(bisection method)</span>은 중점 \(m = (a + b)/2\)에서 \(f(m)\)의 부호를 보고, 부호가 바뀌는 쪽 절반 \([a, m]\) 또는 \([m, b]\)를 새 가둠 구간으로 삼는 일을 되풀이한다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="이분법이 구간을 반씩 줄이는 그림">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="40" y1="150" x2="720" y2="150" class="s-axis"/>
+        <path d="M60 230 C200 215 300 190 380 150 S560 40 700 30" fill="none" class="s-line" style="stroke-width:2.6"/>
+        <circle cx="420" cy="128" r="5" style="fill:var(--accent-2)"/>
+        <text x="430" y="122" class="t-mono" style="fill:var(--accent-2)">근 r</text>
+        <line x1="60" y1="185" x2="700" y2="185" style="stroke:var(--accent);stroke-width:6;opacity:.35"/>
+        <line x1="380" y1="205" x2="700" y2="205" style="stroke:var(--accent);stroke-width:6;opacity:.55"/>
+        <line x1="380" y1="225" x2="540" y2="225" style="stroke:var(--accent);stroke-width:6;opacity:.75"/>
+        <line x1="380" y1="245" x2="460" y2="245" style="stroke:var(--accent);stroke-width:6"/>
+        <text x="60" y="176" class="t-mono" text-anchor="middle">a₀</text><text x="700" y="176" class="t-mono" text-anchor="middle">b₀</text>
+        <text x="380" y="140" class="t-mono" text-anchor="middle">m₀</text>
+        <line x1="380" y1="150" x2="380" y2="250" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <line x1="540" y1="150" x2="540" y2="230" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <line x1="460" y1="150" x2="460" y2="250" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <text x="540" y="140" class="t-mono" text-anchor="middle">m₁</text><text x="470" y="166" class="t-mono">m₂</text>
+        <text x="80" y="50" class="t">f(m) &lt; 0 이면 오른쪽 절반,</text>
+        <text x="80" y="72" class="t">f(m) &gt; 0 이면 왼쪽 절반을 남긴다</text>
+        <text x="80" y="102" class="t-dim">한 번에 길이가 정확히 1/2</text>
+        <text x="475" y="252" class="t-dim">길이 (b₀ − a₀)/2ⁿ</text>
+      </svg>
+      <figcaption><b>그림 3-1.</b> 이분법은 함수의 모양을 전혀 쓰지 않는다. 중점의 부호 하나로 근이 있는 절반을 고르므로, 가둠 구간의 길이는 매번 정확히 절반이 된다. 근이 어디 있든 똑같은 속도다.</figcaption>
+    </figure>
+<pre class="code"><span class="k">function</span> bisect(f, a, b, tol)
+  fa = f(a)                          <span class="c">// sign(f(a)) != sign(f(b)) 라고 가정</span>
+  <span class="k">while</span> (b - a) / 2 &gt; tol
+    m  = a + (b - a) / 2             <span class="c">// (a+b)/2 보다 넘침·반올림에 안전</span>
+    fm = f(m)
+    <span class="k">if</span> fm == 0 <span class="k">then return</span> m
+    <span class="k">if</span> sign(fm) == sign(fa) <span class="k">then</span> a = m; fa = fm
+    <span class="k">else</span> b = m
+  <span class="k">return</span> a + (b - a) / 2</pre>
+    <p>부호 판정을 <code>fa*fm &lt; 0</code>으로 쓰면 두 값이 아주 작을 때 곱이 언더플로로 0이 되어 판정이 틀릴 수 있으므로 <code>sign</code>을 비교합니다. 반복마다 \(f\)를 한 번만 계산한다는 것도 기억해 두세요. 비용을 셀 때의 단위입니다.</p>
+    <div class="callout deep"><strong>정리 3.2 (이분법의 오차 한계)</strong> \(f\)가 \([a_0, b_0]\)에서 연속이고 \(f(a_0)f(b_0) \lt 0\)이면, \(n\)번 나눈 뒤의 가둠 구간 \([a_n, b_n]\)에는 근 \(r\)이 있고 그 중점 \(m_n\)은
+      <div class="formula">$$|m_n - r| \le \frac{b_n - a_n}{2} = \frac{b_0 - a_0}{2^{\,n+1}}$$</div>
+      을 만족한다. 따라서 \(|m_n - r| \le \varepsilon\)을 보장하려면 \(n \ge \log_2\dfrac{b_0 - a_0}{\varepsilon} - 1\)이면 된다.
+      <p style="margin:8px 0 0"><b>증명.</b> 매 단계 \(b_{k+1} - a_{k+1} = (b_k - a_k)/2\)이고, 부호가 바뀌는 절반을 남기므로 중간값 정리에 의해 근이 늘 구간 안에 있다. 구간 안의 점과 중점의 거리는 반 길이를 넘지 않는다. ∎</p></div>
+    <p>정리 3.2는 <b>함수와 무관한</b> 한계라는 점이 특별합니다. 근이 어디 있든, 함수가 얼마나 휘었든 같은 식입니다. 구간 [2, 3]에서 오차 \(10^{-10}\)을 보장하려면 \(\log_2 10^{10} - 1 = 32.2\), 곧 33번이면 되고, 근 근처에서 자릿수 하나(10배)를 얻는 데 평균 \(\log_2 10 \approx 3.32\)번이 듭니다. 배정밀도에서는 길이 1인 구간을 약 52번 나누면 더 나눌 수 없을 만큼 좁아집니다(1장의 <a href="floating-point.html">기계 엡실론</a>).</p>
+    <div class="callout"><strong>예제 3.1 (이분법 손 계산)</strong> \(f(x) = x^3 - 2x - 5\)의 근을 \([2, 3]\)에서 이분법으로 찾아라. 참 근은 \(r = 2.0945514815423265\)이다.
+      <div class="table-wrap"><table class="rt-num">
+        <thead><tr><th>n</th><th>aₙ</th><th>bₙ</th><th>중점 m</th><th>f(m)</th><th>|m − r|</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>2</td><td>3</td><td>2.5</td><td>5.6250</td><td>4.05×10⁻¹</td></tr>
+          <tr><td>2</td><td>2</td><td>2.5</td><td>2.25</td><td>1.8906</td><td>1.55×10⁻¹</td></tr>
+          <tr><td>3</td><td>2</td><td>2.25</td><td>2.125</td><td>0.34570</td><td>3.05×10⁻²</td></tr>
+          <tr><td>4</td><td>2</td><td>2.125</td><td>2.0625</td><td>−0.35132</td><td>3.21×10⁻²</td></tr>
+          <tr><td>5</td><td>2.0625</td><td>2.125</td><td>2.09375</td><td>−0.0089417</td><td>8.02×10⁻⁴</td></tr>
+          <tr><td>6</td><td>2.09375</td><td>2.125</td><td>2.109375</td><td>0.16684</td><td>1.48×10⁻²</td></tr>
+          <tr><td>7</td><td>2.09375</td><td>2.109375</td><td>2.1015625</td><td>0.078562</td><td>7.01×10⁻³</td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>\(f(2.5) = 5.625 > 0\)이므로 근은 \([2, 2.5]\)에 있다. 같은 방식으로 \(f(2.25) > 0\), \(f(2.125) > 0\), \(f(2.0625) \lt 0\)이 차례로 구간을 고른다.</li>
+        <li>오차가 단조롭게 줄지는 않는다. 5단계 중점 2.09375는 우연히 근에 매우 가까웠지만(\(8.0\times10^{-4}\)), 6단계 중점은 다시 멀어졌다(\(1.5\times10^{-2}\)). 줄어드는 것은 오차의 <b>상한</b> \(2^{-(n+1)}\)이다.</li>
+        <li>\(f(2.09375) = -0.0089\)로 아주 작았는데도 이분법은 이 정보를 쓰지 못한다. 부호만 보기 때문이다. 함숫값의 크기까지 쓰는 방법이 뒤에 나올 할선법·가위치법이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-rt-bisect">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>이분법 한 단계씩: 가둠 구간이 반으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rt-bi-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="rt-bi-pre">
+            <option value="cubic">x³ − 2x − 5, [2, 3]</option>
+            <option value="cos">cos x − x, [0, 1.5]</option>
+            <option value="x10">x¹⁰ − 1, [0, 1.3]</option>
+            <option value="tan">tan x, [1, 2] (극점!)</option>
+          </select></label>
+          <div class="btn-row"><button class="btn primary" id="rt-bi-step">다음 단계</button><button class="btn" id="rt-bi-play">▶ 자동</button><button class="btn" id="rt-bi-reset">처음으로</button></div>
+          <label class="check"><input type="checkbox" id="rt-bi-zoom" checked> 가둠 구간으로 확대</label>
+          <div class="ctrl"><span>목표 오차 ε</span><div class="seg" id="rt-bi-tol"><button data-value="1e-3">10⁻³</button><button data-value="1e-6" class="on">10⁻⁶</button><button data-value="1e-10">10⁻¹⁰</button></div></div>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--text)"></i>f(x)</span><span><i style="background:var(--accent)"></i>가둠 구간 [a, b]</span><span><i style="background:var(--warn)"></i>중점 m</span><span><i style="background:var(--accent-2)"></i>참 근</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 n</span><span class="v" id="rt-bi-n">—</span></div>
+        <div class="stat"><span class="k">구간 길이 b − a</span><span class="v" id="rt-bi-w">—</span></div>
+        <div class="stat"><span class="k">실제 오차 |m − r|</span><span class="v" id="rt-bi-e">—</span></div>
+        <div class="stat"><span class="k">ε까지 필요한 n (정리 3.2)</span><span class="v" id="rt-bi-need">—</span></div>
+      </div>
+      <div class="table-wrap rt-tbl" id="rt-bi-tbl"></div>
+      <div class="rt-msg" id="rt-bi-msg"></div>
+      <div class="sim-note">해볼 것: ① '다음 단계'를 누르며 구간 길이가 정확히 반씩 줄고, 실제 오차는 들쭉날쭉하지만 언제나 길이의 반 이하인 것을 확인하세요. ② 축 위의 두 끝점 a, b를 끌어 구간을 바꾸면 필요한 반복 수가 log₂(길이/ε)로 바뀝니다. 부호가 같은 구간은 거부됩니다. ③ tan x를 고르면 이분법은 근이 아니라 극점 π/2로 수렴합니다. 부호가 바뀐 이유가 근이 아니라 불연속이기 때문입니다. 모델: 중점 m = a + (b − a)/2, 부호만 판정.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="fixed-point">
+    <h2>고정점 반복과 축소 사상</h2>
+    <div class="problem"><strong>같은 방정식, 다른 운명</strong>
+      <p>\(x^3 - 2x - 5 = 0\)은 \(x = \sqrt[3]{2x + 5}\)로도, \(x = (x^3 - 5)/2\)로도, \(x = 5/(x^2 - 2)\)로도 고쳐 쓸 수 있습니다. 셋 다 오른쪽에 어림값을 넣고 나온 값을 다시 넣는 일을 되풀이할 수 있습니다. 같은 근을 가진 식인데 어떤 것은 근으로 다가가고 어떤 것은 무한대로 달아납니다. 무엇이 운명을 가를까요?</p></div>
+    <div class="callout deep"><strong>정의 3.3 (고정점과 고정점 반복)</strong> \(g(r) = r\)인 점 \(r\)을 \(g\)의 <span class="term">고정점</span><span class="en">(fixed point)</span>이라 한다. 어림값 \(x_0\)에서 \(x_{n+1} = g(x_n)\)을 되풀이하는 방법을 <span class="term">고정점 반복</span><span class="en">(fixed-point iteration)</span>이라 한다. \(f(x) = 0\)을 \(x = g(x)\) 꼴로 고쳐 쓰면 \(f\)의 근이 \(g\)의 고정점이 된다.</div>
+    <p>그림으로 보면 고정점은 곡선 \(y = g(x)\)와 직선 \(y = x\)의 교점입니다. 반복 한 번은 "곡선까지 세로로 가서(\(g(x_n)\)을 계산), 대각선까지 가로로 가는(그 값을 새 \(x\)로)" 일이라서, 궤적이 거미줄이나 계단 모양을 그립니다. 이것을 <span class="term">거미줄 그림</span><span class="en">(cobweb diagram)</span>이라 합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="수렴하는 거미줄 그림과 발산하는 거미줄 그림">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <g transform="translate(30,25)">
+          <line x1="10" y1="240" x2="320" y2="240" class="s-axis"/><line x1="10" y1="240" x2="10" y2="10" class="s-axis"/>
+          <line x1="10" y1="240" x2="240" y2="10" style="stroke:var(--text-faint);stroke-width:1.5"/>
+          <path d="M10 140 L320 60" style="stroke:var(--accent);stroke-width:2.6;fill:none"/>
+          <polyline points="40,240 40,132 105,132 105,115 122,115 122,111 126,111" style="fill:none;stroke:var(--warn);stroke-width:1.8"/>
+          <circle cx="128" cy="110" r="5" style="fill:var(--accent-2)"/>
+          <text x="40" y="258" class="t-mono" text-anchor="middle">x₀</text>
+          <text x="250" y="22" class="t-dim">y = x</text><text x="250" y="66" class="t" style="fill:var(--accent)">y = g(x)</text>
+          <text x="40" y="290" class="t">|g′| &lt; 1: 계단이 고정점으로</text>
+        </g>
+        <g transform="translate(400,25)">
+          <line x1="10" y1="240" x2="320" y2="240" class="s-axis"/><line x1="10" y1="240" x2="10" y2="10" class="s-axis"/>
+          <line x1="10" y1="240" x2="240" y2="10" style="stroke:var(--text-faint);stroke-width:1.5"/>
+          <path d="M70 240 L215 10" style="stroke:var(--bad);stroke-width:2.6;fill:none"/>
+          <polyline points="150,240 150,113 137,113 137,134 124,134 124,155 104,155 104,177 90,177 90,200" style="fill:none;stroke:var(--warn);stroke-width:1.8"/>
+          <circle cx="160" cy="90" r="5" style="fill:var(--accent-2)"/>
+          <text x="150" y="258" class="t-mono" text-anchor="middle">x₀</text>
+          <text x="250" y="22" class="t-dim">y = x</text><text x="222" y="40" class="t" style="fill:var(--bad)">y = g(x)</text>
+          <text x="40" y="290" class="t">|g′| &gt; 1: 계단이 멀어진다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 3-2.</b> 거미줄 그림. 곡선이 대각선보다 완만하면(\(|g'| \lt 1\)) 계단이 고정점으로 빨려 들어가고, 가파르면(\(|g'| > 1\)) 밀려난다. 기울기가 음수면 계단 대신 고정점 둘레를 도는 거미줄이 된다.</figcaption>
+    </figure>
+    <p>고정점 근처에서 평균값 정리를 쓰면 \(x_{n+1} - r = g(x_n) - g(r) = g'(\xi_n)(x_n - r)\)입니다. 한 번 반복할 때마다 오차에 \(g'\)가 곱해지는 셈입니다. 그래서 \(|g'| \lt 1\)이면 오차가 줄고, \(|g'| > 1\)이면 커집니다.</p>
+    <div class="callout deep"><strong>정리 3.4 (축소 사상 정리, 1차원)</strong> \(g\)가 \([a, b]\)를 자기 자신으로 보내고(\(g([a, b]) \subseteq [a, b]\)), 어떤 \(L \lt 1\)에 대해 \([a, b]\)에서 \(|g'(x)| \le L\)이면
+      <ol style="margin:6px 0 0">
+        <li>\(g\)는 \([a, b]\)에 고정점 \(r\)을 <b>정확히 하나</b> 가진다.</li>
+        <li>임의의 \(x_0 \in [a, b]\)에서 \(x_{n+1} = g(x_n)\)은 \(r\)로 수렴하고 \(|x_n - r| \le L^n|x_0 - r|\)이다.</li>
+        <li>사후 오차 추정: \(|x_n - r| \le \dfrac{L}{1 - L}\,|x_n - x_{n-1}|\).</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 존재: \(h(x) = g(x) - x\)는 \(h(a) \ge 0 \ge h(b)\)라 중간값 정리로 근이 있다. 유일성: 고정점이 둘이면 \(|r_1 - r_2| = |g(r_1) - g(r_2)| \le L|r_1 - r_2|\)라 \(r_1 = r_2\). 수렴: 평균값 정리로 \(|x_{n+1} - r| \le L|x_n - r|\). 사후 추정: \(|x_n - r| \le |x_n - x_{n+1}| + |x_{n+1} - r| \le L|x_n - x_{n-1}| + L|x_n - r|\)를 정리한다. ∎</p></div>
+    <p>이런 \(g\)를 <span class="term">축소 사상</span><span class="en">(contraction mapping)</span>이라 합니다. 이 정리는 바나흐<span class="en">(Stefan Banach)</span>의 고정점 정리의 1차원 판이고, 4장의 연립방정식, 미분방정식 해의 존재 증명(피카르 반복), 13장의 반복 해법이 모두 같은 뼈대를 씁니다. 사후 추정 3번은 참 근을 모를 때 멈춤 판정에 쓸 수 있다는 점에서 실용적입니다. \(L = 0.5\)이면 \(|x_n - r| \le |x_n - x_{n-1}|\)이지만, \(L = 0.99\)이면 이웃 반복의 차이보다 오차가 99배까지 클 수 있습니다.</p>
+    <div class="callout"><strong>예제 3.2 (세 가지 고쳐 쓰기)</strong> \(x^3 - 2x - 5 = 0\)의 근 \(r = 2.0945514815\)를 \(x_0 = 2\)에서 세 가지 \(g\)로 반복하라.
+      <ol>
+        <li>\(g_1(x) = (2x + 5)^{1/3}\): \(g_1'(r) = \dfrac{2}{3(2r + 5)^{2/3}} = 0.1520\). 반복값 2.0800838, 2.0923507, 2.0942170, 2.0945007, … 오차가 \(9.46\times10^{-2} \to 1.45\times10^{-2} \to 2.20\times10^{-3} \to 3.35\times10^{-4}\)으로, 매번 정확히 약 0.152배가 된다. 11번이면 \(10^{-10}\) 아래다.</li>
+        <li>\(g_2(x) = (x^3 - 5)/2\): \(g_2'(r) = 3r^2/2 = 6.58\). 반복값 1.5, −0.8125, −2.768, −13.11, −1128.1로 폭주한다.</li>
+        <li>\(g_3(x) = 5/(x^2 - 2)\): \(g_3'(r) = -10r/(r^2 - 2)^2 = -3.68\). 반복값 2.5, 1.176, −8.118, 0.0782, …로 근 둘레를 크게 튀며 벗어난다.</li>
+      </ol>
+      같은 근인데 \(|g'(r)|\)가 1보다 작은 \(g_1\)만 수렴한다. 수렴하는 경우에도 속도는 \(|g'(r)|\)가 정한다. \(x = \cos x\)는 \(|g'(r)| = |\sin 0.7390851| = 0.674\)라서 \(x_0 = 1\)에서 \(10^{-10}\)까지 55번이 걸린다.</div>
+
+    <div class="sim" id="sim-rt-cobweb">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>거미줄 그림: 고정점 반복의 수렴과 발산</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view rt-two">
+          <div><canvas id="rt-cw-cv"></canvas><span class="rt-cap">y = g(x)와 y = x, 반복 궤적</span></div>
+          <div><canvas id="rt-cw-ch"></canvas><span class="rt-cap">|xₙ − r| (로그 눈금)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>g(x)</span><select id="rt-cw-pre">
+            <option value="cbrt">(2x + 5)^(1/3)</option>
+            <option value="cube">(x³ − 5)/2</option>
+            <option value="frac">5/(x² − 2)</option>
+            <option value="cos">cos x</option>
+            <option value="relax">x − λ(x² − 2) (완화)</option>
+          </select></label>
+          <label class="ctrl" id="rt-cw-lam-wrap"><span>완화 계수 λ <output id="rt-cw-lam-out"></output></span><input type="range" id="rt-cw-lam" min="0.05" max="1" step="0.01" value="0.25"></label>
+          <label class="ctrl"><span>반복 수 n <output id="rt-cw-n-out"></output></span><input type="range" id="rt-cw-n" min="1" max="40" step="1" value="12"></label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x₀ (끌기)</span><span class="v" id="rt-cw-x0">—</span></div>
+        <div class="stat"><span class="k">g′(r)</span><span class="v" id="rt-cw-gp">—</span></div>
+        <div class="stat"><span class="k">측정한 |eₙ₊₁/eₙ|</span><span class="v" id="rt-cw-ratio">—</span></div>
+        <div class="stat"><span class="k">xₙ</span><span class="v" id="rt-cw-xn">—</span></div>
+      </div>
+      <div class="rt-msg" id="rt-cw-msg"></div>
+      <div class="sim-note">해볼 것: ① (2x + 5)^(1/3)에서 오른쪽 그래프가 직선(기울기 log 0.152)으로 내려가는 것을 보세요. 선형 수렴입니다. ② (x³ − 5)/2와 5/(x² − 2)는 x₀를 근 가까이 두어도 달아납니다. ③ 완화 반복 x − λ(x² − 2)에서 λ를 움직이면 g′(√2) = 1 − 2√2·λ가 바뀝니다. λ ≈ 0.354(= 1/(2√2))에서 g′ = 0이 되어 오차 그래프가 갑자기 꺾여 내려갑니다. 2차 수렴이고, 뉴턴 방법의 정체입니다. 모델: 축 위의 점 x₀를 끌어 출발점을 바꿉니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="order">
+    <h2>수렴 차수: 오차가 줄어드는 법칙</h2>
+    <p>이분법은 한 번에 오차 상한이 1/2배, \(g_1\) 반복은 0.152배, \(\cos x\) 반복은 0.674배가 되었습니다. 모두 "매번 일정한 비율"로 줄어드는 같은 종류입니다. 거미줄 시뮬레이터의 λ = 0.354처럼 비율 자체가 0으로 가는 더 빠른 종류도 있습니다. 이를 구별하는 언어가 수렴 차수입니다.</p>
+    <div class="callout deep"><strong>정의 3.5 (수렴 차수)</strong> \(x_n \to r\)이고 \(e_n = x_n - r\)이라 하자. 상수 \(p \ge 1\)과 \(C > 0\)이 있어
+      <div class="formula">$$\lim_{n\to\infty}\frac{|e_{n+1}|}{|e_n|^{\,p}} = C$$</div>
+      이면 수열이 <span class="term">수렴 차수</span><span class="en">(order of convergence)</span> \(p\), 점근 상수 \(C\)로 수렴한다고 한다. \(p = 1\)(이때 \(C \lt 1\)이어야 한다)이면 <span class="term">선형 수렴</span><span class="en">(linear convergence)</span>, \(p = 2\)이면 <span class="term">2차 수렴</span><span class="en">(quadratic convergence)</span>, \(|e_{n+1}|/|e_n| \to 0\)이면 <span class="term">초선형 수렴</span><span class="en">(superlinear convergence)</span>이라 한다.</div>
+    <p>차이를 숫자로 느껴 봅시다. 오차 \(10^{-1}\)에서 출발해 \(C = 0.5\)로 선형 수렴하면 \(10^{-16}\)까지 약 50번이 걸립니다. 2차 수렴(\(C = 1\))이면 \(10^{-2}, 10^{-4}, 10^{-8}, 10^{-16}\), 곧 <b>네 번</b>입니다. 2차 수렴은 맞는 자릿수가 매번 두 배가 된다는 뜻입니다.</p>
+    <p>차수를 실험으로 재려면 \(|e_{n+1}| \approx C|e_n|^p\)의 로그를 이웃한 두 단계에서 빼서 \(C\)를 지웁니다.</p>
+    <div class="formula">$$p \approx \frac{\log\left(|e_{n+1}|/|e_n|\right)}{\log\left(|e_n|/|e_{n-1}|\right)}$$
+      <div class="where">참 근을 모르면 \(e_n\) 대신 이웃 반복의 차이 \(x_{n+1} - x_n\)을 쓴다. 초선형 수렴에서는 \(x_{n+1} - x_n \approx -e_n\)이기 때문이다. 오차가 반올림 수준(\(10^{-16}\) 근처)에 닿은 단계는 빼야 한다.</div></div>
+    <p>또 하나의 그림이 있습니다. \(\log|e_n|\)을 \(n\)에 대해 그리면 선형 수렴은 직선(기울기 \(\log C\)), 2차 수렴은 아래로 점점 가팔라지는 곡선입니다. \(\log|e_{n+1}|\)을 \(\log|e_n|\)에 대해 그리면 어떤 방법이든 직선이 되고 그 <b>기울기가 바로 \(p\)</b>입니다. 이 장의 비교 시뮬레이터가 두 그림을 모두 보여 줍니다.</p>
+    <p>고정점 반복의 차수는 \(g\)의 도함수가 근에서 몇 번째까지 0인가로 정해집니다. 이것이 뉴턴 방법이 빠른 이유를 한 줄로 설명합니다.</p>
+    <div class="callout deep"><strong>정리 3.6 (고정점 반복의 차수)</strong> \(g\)가 \(r\) 근처에서 \(p\)번 연속 미분 가능하고 \(g'(r) = \cdots = g^{(p-1)}(r) = 0\), \(g^{(p)}(r) \ne 0\)이면, \(r\)에 충분히 가까운 \(x_0\)에서 고정점 반복은 차수 \(p\)로 수렴하고 \(C = |g^{(p)}(r)|/p!\)이다. \(p = 1\)이면 \(0 \lt |g'(r)| \lt 1\)이어야 하고 \(C = |g'(r)|\)이다.
+      <p style="margin:8px 0 0"><b>증명.</b> 테일러 정리로 \(g(x_n) = g(r) + \dfrac{g^{(p)}(\xi_n)}{p!}(x_n - r)^p\)(앞의 항들은 0). \(g(r) = r\)이므로 \(e_{n+1} = \dfrac{g^{(p)}(\xi_n)}{p!}e_n^p\)이고 \(\xi_n \to r\). ∎</p></div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="newton">
+    <h2>뉴턴 방법: 접선으로 다가가기</h2>
+    <div class="problem"><strong>함숫값과 기울기를 함께 쓰면</strong>
+      <p>이분법은 부호만, 고정점 반복은 \(g\)만 씁니다. 현재 점에서 함숫값 \(f(x_n)\)과 기울기 \(f'(x_n)\)을 안다면 함수를 직선(접선)으로 어림하고 그 직선의 근으로 단숨에 건너갈 수 있습니다. 이것이 얼마나 빠르고, 언제 믿을 수 있을까요?</p></div>
+    <p>CalculusBook에서 접선 근사로 뉴턴 방법을 만났습니다(<a href="../../calculus/chapters/optimization.html#newton">CalculusBook 6장: 뉴턴 방법</a>). 여기서는 오차 분석을 끝까지 합니다. \(x_n\)에서의 테일러 전개를 1차에서 자르면 \(f(x) \approx f(x_n) + f'(x_n)(x - x_n)\)이고, 이 직선이 0이 되는 점을 다음 어림값으로 삼습니다.</p>
+    <div class="callout deep"><strong>정의 3.7 (뉴턴 방법)</strong> \(f'(x_n) \ne 0\)일 때
+      <div class="formula">$$x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}, \qquad n = 0, 1, 2, \dots$$</div>
+      로 반복하는 방법을 <span class="term">뉴턴 방법</span><span class="en">(Newton's method, Newton–Raphson)</span>이라 한다. 한 번에 \(f\)와 \(f'\)을 하나씩 계산한다. 고정점 반복으로 보면 \(g(x) = x - f(x)/f'(x)\)이다.</div>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 290" role="img" aria-label="뉴턴 방법의 접선 단계">
+        <rect x="10" y="10" width="740" height="270" rx="10" class="f-surface"/>
+        <line x1="40" y1="230" x2="720" y2="230" class="s-axis"/>
+        <path d="M80 262 C220 250 330 225 420 190 S600 80 690 30" fill="none" class="s-line" style="stroke-width:2.6"/>
+        <line x1="650" y1="56" x2="520" y2="230" style="stroke:var(--warn);stroke-width:2"/>
+        <line x1="650" y1="56" x2="650" y2="230" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <circle cx="650" cy="56" r="5" style="fill:var(--warn)"/>
+        <line x1="520" y1="230" x2="520" y2="140" style="stroke:var(--text-faint);stroke-dasharray:4 4"/>
+        <circle cx="520" cy="140" r="5" style="fill:var(--ok)"/>
+        <line x1="520" y1="140" x2="452" y2="230" style="stroke:var(--ok);stroke-width:2"/>
+        <circle cx="452" cy="230" r="4" style="fill:var(--ok)"/>
+        <circle cx="440" cy="230" r="5" style="fill:var(--accent-2)"/>
+        <text x="650" y="250" class="t-mono" text-anchor="middle">x₀</text>
+        <text x="520" y="250" class="t-mono" text-anchor="middle">x₁</text>
+        <text x="455" y="250" class="t-mono" text-anchor="start">x₂</text>
+        <text x="420" y="270" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">r</text>
+        <text x="80" y="60" class="t">접선: y = f(xₙ) + f′(xₙ)(x − xₙ)</text>
+        <text x="80" y="84" class="t">그 근: xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ)</text>
+        <text x="80" y="118" class="t-dim">근에 가까울수록 곡선이 접선과 닮아</text>
+        <text x="80" y="140" class="t-dim">오차가 제곱으로 줄어든다</text>
+      </svg>
+      <figcaption><b>그림 3-3.</b> 뉴턴 방법의 두 단계. 현재 점의 접선이 \(x\)축과 만나는 곳이 다음 어림값이다. 곡선과 접선의 차이는 \(\tfrac12 f''\,(x - x_n)^2\) 정도라서, 근에 가까워질수록 접선의 근이 참 근에 제곱으로 가까워진다.</figcaption>
+    </figure>
+<pre class="code"><span class="k">function</span> newton(f, df, x, tol, maxit)
+  <span class="k">for</span> n = 1 .. maxit
+    d = df(x)
+    <span class="k">if</span> d == 0 <span class="k">then</span> fail(<span class="c">"평평한 곳: 접선이 x축과 만나지 않음"</span>)
+    s = f(x) / d
+    x = x - s
+    <span class="k">if</span> |s| &lt;= tol * (1 + |x|) <span class="k">then return</span> x   <span class="c">// 걸음 크기 판정 (멈춤 조건 절 참고)</span>
+  fail(<span class="c">"maxit 안에 수렴하지 않음"</span>)</pre>
+    <div class="callout deep"><strong>정리 3.8 (뉴턴 방법의 2차 수렴)</strong> \(f\)가 근 \(r\) 근처에서 두 번 연속 미분 가능하고 \(f(r) = 0\), \(f'(r) \ne 0\)이면, \(r\)에 충분히 가까운 \(x_0\)에서 뉴턴 방법은 \(r\)로 수렴하고
+      <div class="formula">$$e_{n+1} = \frac{f''(\xi_n)}{2f'(x_n)}\,e_n^2, \qquad \lim_{n\to\infty}\frac{|e_{n+1}|}{e_n^2} = \left|\frac{f''(r)}{2f'(r)}\right|.$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(x_n\)에서 테일러 전개해 \(r\)을 넣으면 \(0 = f(r) = f(x_n) + f'(x_n)(r - x_n) + \tfrac12 f''(\xi_n)(r - x_n)^2\). 양변을 \(f'(x_n)\)으로 나누고 뉴턴 식 \(x_{n+1} = x_n - f(x_n)/f'(x_n)\)을 쓰면 \(x_{n+1} - r = \dfrac{f''(\xi_n)}{2f'(x_n)}(x_n - r)^2\). 근 근처에서 \(|f''/(2f')| \le K\)이고 \(K|e_0| \lt 1\)이면 \(|e_{n+1}| \le (K|e_n|)|e_n|\)이라 오차가 줄고, 줄수록 더 빨리 준다. 정리 3.6으로 보면 \(g'(x) = f(x)f''(x)/f'(x)^2\)이라 \(g'(r) = 0\)이다. ∎</p></div>
+    <p>정리의 "충분히 가까운"이 중요합니다. 뉴턴 방법은 <b>국소적으로</b>만 수렴이 보장됩니다. 상수 \(K = |f''/(2f')|\)가 크면(근에서 기울기가 작거나 곡률이 크면) 2차 수렴이 시작되는 반경 \(1/K\)이 좁습니다. 그 바깥에서는 뒤의 실패 갤러리처럼 무슨 일이든 일어날 수 있습니다.</p>
+    <div class="callout"><strong>예제 3.3 (뉴턴 방법 손 계산)</strong> \(f(x) = x^3 - 2x - 5\), \(f'(x) = 3x^2 - 2\), \(x_0 = 2\).
+      <div class="table-wrap"><table class="rt-num">
+        <thead><tr><th>n</th><th>xₙ</th><th>f(xₙ)</th><th>|eₙ|</th><th>|eₙ|/|eₙ₋₁|²</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>2</td><td>−1</td><td>9.46×10⁻²</td><td></td></tr>
+          <tr><td>1</td><td>2.1</td><td>6.10×10⁻²</td><td>5.45×10⁻³</td><td>0.610</td></tr>
+          <tr><td>2</td><td>2.0945681211041851</td><td>1.86×10⁻⁴</td><td>1.66×10⁻⁵</td><td>0.560</td></tr>
+          <tr><td>3</td><td>2.0945514816981992</td><td>1.74×10⁻⁹</td><td>1.56×10⁻¹⁰</td><td>0.563</td></tr>
+          <tr><td>4</td><td>2.0945514815423265</td><td>−8.9×10⁻¹⁶</td><td>0</td><td></td></tr>
+        </tbody></table></div>
+      <ol>
+        <li>\(x_1 = 2 - (-1)/10 = 2.1\). 첫 단계에서 이미 오차가 17분의 1이다.</li>
+        <li>맞는 자릿수: \(x_1\) 2자리, \(x_2\) 5자리, \(x_3\) 10자리, \(x_4\)는 배정밀도 전부. 매번 거의 두 배다.</li>
+        <li>비율 \(|e_n|/|e_{n-1}|^2\)이 0.563에 모인다. 정리 3.8의 예측 \(f''(r)/(2f'(r)) = 6r/(2(3r^2 - 2)) = 12.567/22.323 = 0.563\)과 같다. 차수를 재는 공식으로는 \(p \approx 2.03,\ 2.00\)이다.</li>
+        <li>\(x_4\)에서 \(f(x_4) = -8.9\times10^{-16}\)은 0이 아니다. \(f\)를 계산할 때의 반올림 때문이고, 이보다 작게 만들 수는 없다(멈춤 조건 절).</li>
+      </ol></div>
+
+    <h3>중근에서는 1차로 떨어진다</h3>
+    <p>정리 3.8은 \(f'(r) \ne 0\)을 가정했습니다. 근에서 곡선이 \(x\)축에 <b>접하면</b>(중근) 무슨 일이 생길까요? \(f(x) = (x - r)^m h(x)\), \(h(r) \ne 0\)이면 근 근처에서 \(f/f' \approx (x - r)/m\)이므로 뉴턴 걸음은 남은 거리의 \(1/m\)만큼만 갑니다.</p>
+    <div class="callout deep"><strong>정리 3.9 (중근에서의 뉴턴 방법)</strong> \(r\)이 \(f\)의 \(m\)중근(\(m \ge 2\))이면 뉴턴 방법은 선형으로 수렴하고 \(\lim |e_{n+1}|/|e_n| = (m - 1)/m\)이다. 중복도 \(m\)을 알면 <b>수정 뉴턴 방법</b> \(x_{n+1} = x_n - m\,f(x_n)/f'(x_n)\)이 2차 수렴을 되찾는다. \(m\)을 모르면 \(u = f/f'\)(단순근만 가진다)에 뉴턴 방법을 쓴다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(g(x) = x - f/f'\)에 \(f = (x - r)^m h\)를 넣어 미분하면 \(g'(r) = 1 - 1/m\)이다. 정리 3.6의 \(p = 1\) 경우다. 수정 방법은 \(g(x) = x - mf/f'\)이라 \(g'(r) = 1 - m/m = 0\)이 된다. ∎</p></div>
+    <div class="callout"><strong>예제 3.4 (이중근)</strong> \(f(x) = x^3 - 3x + 2 = (x - 1)^2(x + 2)\)의 이중근 \(r = 1\)을 \(x_0 = 2\)에서 찾아라.
+      <ol>
+        <li>보통 뉴턴: 오차 \(1 \to 0.556 \to 0.298 \to 0.155 \to 0.0796 \to 0.0403 \to 0.0203\). 비율이 \((m - 1)/m = 1/2\)로 간다. \(10^{-6}\)까지 21번이 걸리고, 27번째에 \(9.7\times10^{-9}\)에서 더 나아가지 못한다.</li>
+        <li>수정 뉴턴(\(m = 2\)): 오차 \(1 \to 0.111 \to 1.95\times10^{-3} \to 6.33\times10^{-7} \to 3.83\times10^{-11}\). 2차 수렴이 돌아왔지만 \(3.8\times10^{-11}\)에서 멈춘다.</li>
+        <li>둘 다 \(10^{-16}\)까지 가지 못하는 이유: 이중근 근처에서 \(f(x) \approx 3(x - 1)^2\)이라 \(|x - 1| = 10^{-8}\)이면 \(f \approx 3\times10^{-16}\), 이미 \(f\)를 계산하는 반올림 오차와 같은 크기다. \(m\)중근은 대략 \(\varepsilon^{1/m}\)까지만 구할 수 있다. 근 자체의 조건수가 나쁜 문제다(<a href="conditioning.html">2장: 조건수</a>).</li>
+      </ol></div>
+
+    <h3>할선법: 도함수 없이</h3>
+    <p>\(f'\)을 식으로 구할 수 없거나 계산이 비싸면(예: \(f\)가 시뮬레이션 한 번), 접선 대신 마지막 두 점을 잇는 <b>할선</b>을 씁니다. 도함수를 차분 몫 \(\dfrac{f(x_n) - f(x_{n-1})}{x_n - x_{n-1}}\)으로 바꾼 뉴턴 방법입니다.</p>
+    <div class="callout deep"><strong>정의 3.10 (할선법)</strong> 어림값 두 개 \(x_0, x_1\)에서 출발해
+      <div class="formula">$$x_{n+1} = x_n - f(x_n)\,\frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}$$</div>
+      로 반복하는 방법을 <span class="term">할선법</span><span class="en">(secant method)</span>이라 한다. 앞 단계의 \(f(x_{n-1})\)을 다시 쓰므로 한 번에 \(f\)를 <b>한 번만</b> 새로 계산한다.</div>
+    <div class="callout deep"><strong>정리 3.11 (할선법의 차수는 황금비)</strong> \(f'(r) \ne 0\), \(f''(r) \ne 0\)이고 \(x_0, x_1\)이 \(r\)에 충분히 가까우면
+      <div class="formula">$$e_{n+1} \approx \frac{f''(r)}{2f'(r)}\,e_n e_{n-1}, \qquad p = \frac{1 + \sqrt5}{2} \approx 1.618.$$</div>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 할선은 \(x_{n-1}, x_n\)을 지나는 1차 보간이고, 보간 오차 공식(<a href="interpolation.html">5장</a>)으로 \(f(x) - \ell(x) = \tfrac12 f''(\xi)(x - x_n)(x - x_{n-1})\). \(x = r\)을 넣고 정리하면 위의 곱 공식이 나온다. \(|e_{n+1}| \approx C|e_n|^p\)라 놓고 \(|e_{n-1}| \approx (|e_n|/C)^{1/p}\)를 넣으면 지수 비교에서 \(p = 1 + 1/p\), 곧 \(p^2 = p + 1\). 양의 근이 황금비다. ∎</p></div>
+    <p>차수 1.618은 뉴턴의 2보다 작지만 한 단계 비용이 절반입니다. 공정한 비교 잣대는 <span class="term">효율 지수</span><span class="en">(efficiency index)</span> \(p^{1/w}\)(\(w\)는 한 단계의 함수 계산 수)입니다. \(f'\)의 비용이 \(f\)와 같다면 뉴턴은 \(2^{1/2} = 1.414\), 할선법은 \(1.618^{1/1} = 1.618\). 함수 계산 한 번당 할선법이 더 많이 줄입니다. 대신 할선법은 \(f(x_n) - f(x_{n-1})\)에서 자릿수 상쇄가 생기고(1장), 근을 가두지 않으므로 뉴턴처럼 달아날 수 있습니다.</p>
+    <div class="callout"><strong>예제 3.5 (할선법)</strong> 같은 \(f = x^3 - 2x - 5\)에 \(x_0 = 2\), \(x_1 = 3\)으로 할선법을 써라.
+      <div class="table-wrap"><table class="rt-num">
+        <thead><tr><th>n</th><th>xₙ</th><th>|eₙ|</th><th>|eₙ|/(|eₙ₋₁||eₙ₋₂|)</th></tr></thead>
+        <tbody>
+          <tr><td>2</td><td>2.0588235294117645</td><td>3.57×10⁻²</td><td></td></tr>
+          <tr><td>3</td><td>2.0812636598450229</td><td>1.33×10⁻²</td><td></td></tr>
+          <tr><td>4</td><td>2.0948241460940524</td><td>2.73×10⁻⁴</td><td>0.574</td></tr>
+          <tr><td>5</td><td>2.0945494310352473</td><td>2.05×10⁻⁶</td><td>0.566</td></tr>
+          <tr><td>6</td><td>2.0945514812275992</td><td>3.15×10⁻¹⁰</td><td>0.563</td></tr>
+          <tr><td>7</td><td>2.0945514815423270</td><td>4.4×10⁻¹⁶</td><td></td></tr>
+        </tbody></table></div>
+      비율 \(|e_{n+1}|/(|e_n||e_{n-1}|)\)이 정리 3.11의 0.563으로 모인다. 오차의 지수 \(-1.4, -1.9, -3.6, -5.7, -9.5\)가 앞의 두 지수의 합에 가깝게 자란다(피보나치 수열처럼). \(f\)를 2 + 6 = 8번 계산해 배정밀도에 닿았다. 뉴턴 방법은 같은 정확도에 \(f\)와 \(f'\)을 4번씩, 합해서 8번 썼다.</div>
+
+    <div class="sim" id="sim-rt-newton">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>뉴턴 접선 · 할선 · 수정 뉴턴 한 단계씩</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rt-nw-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수</span><select id="rt-nw-pre">
+            <option value="cubic">x³ − 2x − 5</option>
+            <option value="double">(x − 1)²(x + 2) (이중근)</option>
+            <option value="cos">cos x − x</option>
+            <option value="exp">eˣ − 2</option>
+          </select></label>
+          <div class="ctrl"><span>방법</span><div class="seg" id="rt-nw-m"><button data-value="newton" class="on">뉴턴</button><button data-value="secant">할선</button><button data-value="mod">수정 (m = 2)</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="rt-nw-step">다음 단계</button><button class="btn" id="rt-nw-reset">처음으로</button></div>
+          <label class="check"><input type="checkbox" id="rt-nw-zoom"> 현재 점 근처로 확대</label>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--text)"></i>f(x)</span><span><i style="background:var(--warn)"></i>접선 / 할선</span><span><i style="background:var(--accent)"></i>반복점</span><span><i style="background:var(--accent-2)"></i>참 근</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 n</span><span class="v" id="rt-nw-n">—</span></div>
+        <div class="stat"><span class="k">xₙ</span><span class="v" id="rt-nw-x">—</span></div>
+        <div class="stat"><span class="k">|eₙ|</span><span class="v" id="rt-nw-e">—</span></div>
+        <div class="stat"><span class="k">측정 차수 p</span><span class="v" id="rt-nw-p">—</span></div>
+      </div>
+      <div class="table-wrap rt-tbl" id="rt-nw-tbl"></div>
+      <div class="sim-note">해볼 것: ① x³ − 2x − 5에서 뉴턴을 4번 누르며 표의 |eₙ|/|eₙ₋₁|²가 0.563으로 모이는 것을 보세요. ② 이중근 함수로 바꾸면 비율 |eₙ|/|eₙ₋₁|이 0.5에 머뭅니다(1차). '수정 (m = 2)'를 고르면 다시 2차입니다. 단순근 함수에서 수정 방법을 쓰면 근을 지나쳐 오히려 1차로 느려집니다. ③ 할선법은 끄는 점이 두 개(x₀, x₁)입니다. 측정 차수가 1.6 근처에 머뭅니다. 모델: 참 근은 미리 고정밀로 구해 둔 값, 측정 차수는 마지막 세 오차로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="regula-falsi">
+    <h2>가위치법과 일리노이 수정</h2>
+    <div class="problem"><strong>할선법의 속도와 이분법의 안전을 함께</strong>
+      <p>할선법은 빠르지만 근을 가두지 않아 달아날 수 있고, 이분법은 안전하지만 함숫값의 크기를 버립니다. 가둠 구간의 두 끝을 잇는 할선을 쓰면 둘을 함께 얻을 수 있지 않을까요? 이 자연스러운 생각에는 함정이 하나 있습니다.</p></div>
+    <p>가둠 구간 \([a, b]\)의 두 끝점 \((a, f(a))\), \((b, f(b))\)를 잇는 직선이 \(x\)축과 만나는 점
+      \(c = \dfrac{a f(b) - b f(a)}{f(b) - f(a)}\)를 중점 대신 쓰고, 부호가 바뀌는 쪽을 남기는 방법이 <span class="term">가위치법</span><span class="en">(regula falsi, method of false position)</span>입니다. 근은 늘 갇혀 있으니 안전합니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 270" role="img" aria-label="가위치법에서 한쪽 끝점이 고정되는 모습">
+        <rect x="10" y="10" width="740" height="250" rx="10" class="f-surface"/>
+        <line x1="40" y1="200" x2="720" y2="200" class="s-axis"/>
+        <path d="M70 230 C260 228 420 210 500 175 S640 70 690 30" fill="none" class="s-line" style="stroke-width:2.6"/>
+        <circle cx="690" cy="30" r="6" style="fill:var(--bad)"/>
+        <text x="680" y="24" class="t-mono" text-anchor="end" style="fill:var(--bad)">b (움직이지 않음)</text>
+        <line x1="70" y1="230" x2="690" y2="30" style="stroke:var(--warn);stroke-width:1.6"/>
+        <line x1="163" y1="229" x2="690" y2="30" style="stroke:var(--warn);stroke-width:1.6;opacity:.8"/>
+        <line x1="240" y1="227" x2="690" y2="30" style="stroke:var(--warn);stroke-width:1.6;opacity:.65"/>
+        <line x1="302" y1="224" x2="690" y2="30" style="stroke:var(--warn);stroke-width:1.6;opacity:.5"/>
+        <circle cx="163" cy="200" r="4" style="fill:var(--accent)"/><circle cx="240" cy="200" r="4" style="fill:var(--accent)"/><circle cx="302" cy="200" r="4" style="fill:var(--accent)"/><circle cx="350" cy="200" r="4" style="fill:var(--accent)"/>
+        <circle cx="530" cy="200" r="5" style="fill:var(--accent-2)"/>
+        <text x="530" y="222" class="t-mono" text-anchor="middle" style="fill:var(--accent-2)">r</text>
+        <text x="70" y="250" class="t-mono" text-anchor="middle">a₀</text>
+        <text x="80" y="50" class="t">볼록한 곡선에서는 c가 늘 근의 왼쪽에 떨어져</text>
+        <text x="80" y="72" class="t">a만 조금씩 움직이고 b는 영원히 남는다</text>
+        <text x="80" y="104" class="t-dim">구간 길이는 0으로 가지 않는다 → 선형 수렴</text>
+      </svg>
+      <figcaption><b>그림 3-4.</b> 가위치법의 함정. 근 근처에서 \(f\)가 볼록(또는 오목)하면 할선의 근이 늘 같은 쪽에 떨어져, 한 끝점이 처음 자리에 묶인다. 묶인 끝점이 멀리 있으니 할선의 기울기가 접선과 달라 매번 일정한 비율밖에 줄지 않는다.</figcaption>
+    </figure>
+    <p>함정은 그림 3-4입니다. 묶인 끝점 \(b\) 때문에 오차가 \(e_{n+1} \approx C e_n\)(선형)으로만 줄고, \(f(b)\)가 클수록 \(C\)가 1에 가까워집니다. 처방은 놀랍도록 간단합니다. <b>같은 끝점이 두 번 연속 남으면 그 끝점의 함숫값을 반으로 줄여</b> 할선을 그쪽으로 눕힙니다. 이것이 <span class="term">일리노이 수정</span><span class="en">(Illinois algorithm)</span>입니다.</p>
+<pre class="code"><span class="k">function</span> illinois(f, a, b, tol)
+  fa = f(a); fb = f(b); side = 0
+  <span class="k">while</span> |b - a| &gt; tol
+    c  = (a*fb - b*fa) / (fb - fa)     <span class="c">// 할선의 근 (가위치)</span>
+    fc = f(c)
+    <span class="k">if</span> sign(fc) == sign(fb)            <span class="c">// c가 b를 대신함, a는 남음</span>
+      b = c; fb = fc
+      <span class="k">if</span> side == -1 <span class="k">then</span> fa = fa / 2  <span class="c">// a가 두 번 연속 남았다</span>
+      side = -1
+    <span class="k">else</span>                              <span class="c">// c가 a를 대신함, b는 남음</span>
+      a = c; fa = fc
+      <span class="k">if</span> side == +1 <span class="k">then</span> fb = fb / 2
+      side = +1
+  <span class="k">return</span> c</pre>
+    <div class="callout"><strong>예제 3.6 (묶인 끝점 풀어 주기)</strong> \(f(x) = x^3 - 2x - 5\), \([2, 3]\).
+      <ol>
+        <li>가위치법: \(c\) = 2.0588235, 2.0812637, 2.0896392, 2.0927396, … 모두 근의 왼쪽이고 \(b = 3\)은 끝까지 그대로다. 오차 비율이 \(0.3719, 0.3697, 0.3689, \dots \to 0.3684\)로 선형이다. \(10^{-10}\)까지 21번.</li>
+        <li>일리노이: 처음 두 번은 같다. 3번째에 \(f(3) = 16\)을 8로 줄인 할선이 \(c = 2.0978634\)로 근의 <b>오른쪽</b>에 떨어져 \(b\)가 드디어 움직인다. 이후 오차 \(2.49\times10^{-5},\ 4.63\times10^{-8},\ 4.62\times10^{-8},\ 8.9\times10^{-16}\). 7번이면 끝난다.</li>
+        <li>이분법은 오차를 보장하려면 33번이 필요하다(이 예에서는 32번째 중점에서 처음 \(10^{-10}\) 아래로 내려간다). 더 볼록한 함수에서 차이가 커진다. \(x^{10} - 1\)을 \([0, 1.3]\)에서 풀면 \(10^{-10}\)까지 가위치법 95번, 일리노이 14번이고, \(e^x - 2\)를 \([0, 4]\)에서 풀면 171번 대 10번이다.</li>
+      </ol>
+      일리노이 방법의 수렴 차수는 약 \(3^{1/3} \approx 1.44\)로 알려져 있다. 반으로 줄이는 단계와 할선 단계가 섞여 있기 때문이다.</div>
+
+    <div class="sim" id="sim-rt-falsi">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>가위치법 vs 일리노이 vs 이분법: 묶인 끝점</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view rt-two">
+          <div><canvas id="rt-rf-cv"></canvas><span class="rt-cap">선택한 방법의 할선과 가둠 구간</span></div>
+          <div><canvas id="rt-rf-ch"></canvas><span class="rt-cap">|오차| vs 반복 n (세 방법)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>함수와 구간</span><select id="rt-rf-pre">
+            <option value="cubic">x³ − 2x − 5, [2, 3]</option>
+            <option value="x10">x¹⁰ − 1, [0, 1.3]</option>
+            <option value="exp">eˣ − 2, [0, 4]</option>
+          </select></label>
+          <div class="ctrl"><span>위 그림에 보일 방법</span><div class="seg" id="rt-rf-m"><button data-value="falsi" class="on">가위치</button><button data-value="ill">일리노이</button><button data-value="bis">이분</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="rt-rf-step">다음 단계</button><button class="btn" id="rt-rf-play">▶ 자동</button><button class="btn" id="rt-rf-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--bad)"></i>가위치법</span><span><i style="background:var(--ok)"></i>일리노이</span><span><i style="background:var(--blue)"></i>이분법</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">단계 n</span><span class="v" id="rt-rf-n">—</span></div>
+        <div class="stat"><span class="k">가위치 |e|</span><span class="v" id="rt-rf-e0">—</span></div>
+        <div class="stat"><span class="k">일리노이 |e|</span><span class="v" id="rt-rf-e1">—</span></div>
+        <div class="stat"><span class="k">이분 |e|</span><span class="v" id="rt-rf-e2">—</span></div>
+      </div>
+      <div class="rt-msg" id="rt-rf-msg"></div>
+      <div class="sim-note">해볼 것: ① 가위치법을 보며 단계를 넘기면 한쪽 끝점(빨간 고리)이 움직이지 않습니다. 오른쪽 그래프에서 빨간 선은 기울기가 일정한 직선(선형 수렴)입니다. ② 일리노이로 바꾸면 반으로 줄인 함숫값(빈 원)이 할선을 눕혀 묶인 끝점을 풀어 줍니다. ③ x¹⁰ − 1은 가위치법이 이분법보다도 훨씬 느린 예입니다. 모델: 반복 최대 60번, 오차는 참 근과의 거리.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="brent">
+    <h2>브렌트 방법: 안전하게, 그러나 빠르게</h2>
+    <p>실무의 근 찾기 함수는 하나의 공식이 아니라 <b>전략</b>입니다. 브렌트 방법<span class="en">(Brent's method)</span>은 데커<span class="en">(T. J. Dekker)</span>의 아이디어를 브렌트<span class="en">(Richard Brent)</span>가 다듬은 것으로, 늘 가둠 구간을 유지하면서 매 단계 가장 빠른 후보를 시도하고, 후보가 미덥지 않으면 이분법으로 물러납니다.</p>
+    <ul>
+      <li><b>후보 1 – 역2차 보간</b>: 최근 세 점 \((a, f_a), (b, f_b), (c, f_c)\)을 지나는 이차식을 \(x\)를 \(y\)의 함수로 보고 세운 뒤(<span class="term">역2차 보간</span><span class="en">(inverse quadratic interpolation)</span>), \(y = 0\)을 넣는다. 근을 구할 필요 없이 값 하나가 나온다. 수렴 차수 약 1.839.</li>
+      <li><b>후보 2 – 할선</b>: 세 점이 없거나 두 값이 같을 때.</li>
+      <li><b>안전장치</b>: 후보가 가둠 구간의 안쪽 3/4 바깥이거나, 걸음이 지지난 걸음의 절반보다 크게 줄지 않으면 이분법 한 걸음을 대신 둔다.</li>
+    </ul>
+    <div class="formula">$$x = \frac{f_b f_c}{(f_a - f_b)(f_a - f_c)}\,a + \frac{f_a f_c}{(f_b - f_a)(f_b - f_c)}\,b + \frac{f_a f_b}{(f_c - f_a)(f_c - f_b)}\,c$$
+      <div class="where">역2차 보간의 라그랑주 형식(5장). 세 \(y\)값이 서로 달라야 한다. 이 \(x\)가 다음 후보다.</div></div>
+<pre class="code"><span class="k">function</span> brent(f, a, b, tol)        <span class="c">// f(a), f(b)의 부호가 다름</span>
+  <span class="k">loop</span>
+    b = 지금까지 |f|가 가장 작은 점, c = b와 부호가 다른 끝점 (가둠 [b, c])
+    <span class="k">if</span> |c - b| / 2 &lt;= tol <span class="k">then return</span> b
+    <span class="k">if</span> 직전 걸음이 충분히 컸다
+      x = 역2차 보간(세 점이 있으면) <span class="k">or</span> 할선
+      <span class="k">if</span> x가 가둠 구간 안쪽이고 걸음이 직전 걸음의 절반보다 작다
+        <span class="k">then</span> 받아들임 <span class="k">else</span> x = 이분 중점
+    <span class="k">else</span> x = 이분 중점
+    f(x) 계산, 가둠 구간 갱신</pre>
+    <p>브렌트 방법은 매끄러운 함수에서 초선형으로 수렴하고, 최악의 경우에도 이분법의 몇 배를 넘지 않도록 설계되어 있습니다(브렌트는 이분법이 \(N\)번 걸리는 문제에서 많아야 약 \(N^2\)번임을 보였다). 아래 비교 시뮬레이터의 구현으로 \(x^3 - 2x - 5\)를 \([2, 3]\)에서 풀면 \(f\)를 8번 계산하고 끝나며, 단계는 할선 → 역2차 → 할선 → 할선 → 역2차 → 할선 순입니다. \(x^{10} - 1\)에서는 처음 할선이 멀리 떨어지자 이분 단계가 두 번 끼어든 뒤 다시 빠른 단계로 돌아가 10번 만에 끝납니다.</p>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="compare">
+    <h2>방법 비교: 오차 그래프의 기울기</h2>
+    <p>지금까지의 방법을 한 그림에 모아 봅시다. 세로축은 로그 눈금의 오차, 가로축은 반복 수 또는 <b>함수 계산 횟수</b>입니다. 반복 한 번의 값이 방법마다 다르므로(뉴턴은 \(f\)와 \(f'\), 나머지는 \(f\) 하나) 공정한 비교는 후자입니다. 두 번째 보기 \(\log|e_{n+1}|\) 대 \(\log|e_n|\)에서는 각 방법이 직선이 되고 그 기울기가 수렴 차수입니다.</p>
+
+    <div class="sim" id="sim-rt-compare">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>여섯 방법의 오차 경주: 수렴 차수를 기울기로 읽기</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rt-cp-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제</span><select id="rt-cp-pre">
+            <option value="cubic">x³ − 2x − 5, [2, 3], x₀ = 2</option>
+            <option value="cos">cos x − x, [0, 1.5], x₀ = 1</option>
+            <option value="x10">x¹⁰ − 1, [0, 1.3], x₀ = 1.3</option>
+            <option value="kep">E − 0.8 sin E − 1, [0, 3], x₀ = 1</option>
+          </select></label>
+          <div class="ctrl"><span>그래프</span><div class="seg" id="rt-cp-axis"><button data-value="n" class="on">반복 n</button><button data-value="ev">f 계산 수</button><button data-value="pp">eₙ₊₁ vs eₙ</button></div></div>
+          <label class="check"><input type="checkbox" id="rt-cp-fp" checked> 고정점 반복 x − f(x)/f′(x₀) 포함</label>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--blue)"></i>이분</span><span><i style="background:var(--text-faint)"></i>고정점(기울기 고정)</span><span><i style="background:var(--bad)"></i>가위치</span><span><i style="background:var(--ok)"></i>일리노이</span><span><i style="background:var(--warn)"></i>할선</span><span><i style="background:var(--text)"></i>뉴턴</span><span><i style="background:var(--accent-2)"></i>브렌트</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">10⁻¹² 도달 f 계산 수: 이분</span><span class="v" id="rt-cp-c0">—</span></div>
+        <div class="stat"><span class="k">일리노이</span><span class="v" id="rt-cp-c1">—</span></div>
+        <div class="stat"><span class="k">할선</span><span class="v" id="rt-cp-c2">—</span></div>
+        <div class="stat"><span class="k">뉴턴 (f + f′)</span><span class="v" id="rt-cp-c3">—</span></div>
+        <div class="stat"><span class="k">브렌트</span><span class="v" id="rt-cp-c4">—</span></div>
+      </div>
+      <div class="rt-msg" id="rt-cp-msg"></div>
+      <div class="sim-note">해볼 것: ① 'eₙ₊₁ vs eₙ'을 고르면 이분·가위치·고정점은 기울기 1, 할선은 약 1.6, 뉴턴은 2의 직선이 됩니다(기준선과 비교). ② 'f 계산 수'로 바꾸면 뉴턴과 할선의 차이가 줄거나 뒤집힙니다. 효율 지수 √2 = 1.41 대 1.62입니다. ③ x¹⁰ − 1에서 x₀ = 1.3의 뉴턴은 처음 몇 단계를 거의 일정한 비율(0.9배)로 기어가다가 근 근처에서 갑자기 2차로 바뀝니다. 브렌트 아래 메시지에서 단계 종류를 보세요. 모델: 고정점 반복은 기울기를 처음 값 f′(x₀)로 고정한 "평행선 방법"입니다.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>방법</th><th>가둠</th><th>필요한 것</th><th>차수 p</th><th>단계당 계산</th><th>효율 지수</th></tr></thead>
+      <tbody>
+        <tr><td>이분법</td><td>예</td><td>f의 부호</td><td>1 (C = 1/2)</td><td>f 1번</td><td>1 (확실)</td></tr>
+        <tr><td>고정점 반복</td><td>아니오</td><td>g, |g′(r)| &lt; 1</td><td>1 (C = |g′(r)|)</td><td>g 1번</td><td>—</td></tr>
+        <tr><td>가위치법</td><td>예</td><td>f</td><td>1 (끝점 묶임)</td><td>f 1번</td><td>—</td></tr>
+        <tr><td>일리노이</td><td>예</td><td>f</td><td>≈ 1.44</td><td>f 1번</td><td>1.44</td></tr>
+        <tr><td>할선법</td><td>아니오</td><td>f, 시작점 2개</td><td>1.618</td><td>f 1번</td><td>1.618</td></tr>
+        <tr><td>뉴턴 방법</td><td>아니오</td><td>f, f′</td><td>2 (단순근)</td><td>f, f′ 1번씩</td><td>1.414</td></tr>
+        <tr><td>브렌트 방법</td><td>예</td><td>f</td><td>초선형(≈ 1.8)</td><td>f 1번</td><td>≈ 1.8, 최악에도 안전</td></tr>
+      </tbody></table></div>
+    <p>규칙은 단순합니다. <b>가둘 수 있으면 브렌트</b>(<code>fzero</code>, <code>brentq</code>), 도함수가 싸고 좋은 어림값이 있으면 <b>뉴턴</b>(케플러 방정식, 제곱근, 음적 ODE 방법의 매 걸음), 다변수라면 4장의 다변수 뉴턴과 그 변형입니다.</p>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="stopping">
+    <h2>언제 멈출까: 잔차와 간격</h2>
+    <div class="problem"><strong>|f(x)|가 10⁻¹⁴인데 오차는 0.01</strong>
+      <p>\(p(x) = (x - 1)^7\)을 전개한 다항식 \(x^7 - 7x^6 + 21x^5 - \cdots - 1\)에서 \(p(1.01) = 8.0\times10^{-15}\)입니다. "\(|f(x)| \lt 10^{-12}\)이면 멈춘다"는 프로그램은 1.01을 근이라고 보고하겠지만 오차는 0.01입니다. 반대로 \(f(x) = 10^{10}(x - 2)\)에서는 오차가 \(10^{-12}\)인 점도 \(|f| = 0.01\)이라 영원히 멈추지 않습니다. 무엇을 기준으로 멈춰야 할까요?</p></div>
+    <p>멈춤 조건에는 세 종류가 있습니다.</p>
+    <ul>
+      <li><b>잔차</b><span class="en">(residual)</span> \(|f(x_n)| \le \varepsilon_f\): \(f\)를 얼마나 0에 가깝게 만들었는가. 근 근처에서 \(f(x) \approx f'(r)(x - r)\)이므로 <b>오차 ≈ 잔차 / |f′(r)|</b>. 기울기가 작으면(평평하면) 잔차가 작아도 오차가 크고, 기울기가 크면 그 반대다. <span class="term">잔차</span>는 2장의 후방 오차, 근의 오차는 전방 오차다.</li>
+      <li><b>걸음</b> \(|x_{n+1} - x_n| \le \varepsilon_{\text{abs}} + \varepsilon_{\text{rel}}|x_{n+1}|\): 초선형 방법에서는 \(|x_{n+1} - x_n| \approx |e_n|\)이라 좋은 오차 추정이다. 절대·상대 허용 오차를 섞는 것은 근이 \(10^{6}\)이든 \(10^{-6}\)이든 의미 있게 하려는 것이다. 선형 수렴에서는 정리 3.4의 \(L/(1 - L)\) 배를 잊지 말 것.</li>
+      <li><b>가둠 구간 길이</b> \(|b - a| \le 2\varepsilon\): 가두는 방법에서만, 하지만 가장 확실하다.</li>
+    </ul>
+    <p>그리고 어떤 조건도 <b>반올림 바닥</b> 아래로는 내려갈 수 없습니다. \(f\)를 계산한 값에는 대략 \(\delta \approx \varepsilon\cdot\sum|a_k x^k|\) 크기의 잡음이 섞이고, \(|f(x)|\)가 그보다 작아지는 근 근처의 구간에서는 계산한 \(f\)의 부호가 무작위가 됩니다. 이 <b>불확실 구간</b>의 반지름은 대략 \(\delta/|f'(r)|\)(단순근), \(m\)중근이면 \((\delta\, m!/|f^{(m)}(r)|)^{1/m}\)입니다. 그래서 허용 오차는 \(4\varepsilon|x|\)보다 작게 잡지 않고, 반복 수 상한(<code>maxit</code>)을 꼭 둡니다.</p>
+    <div class="callout"><strong>예제 3.7 (7중근의 불확실 구간)</strong> \(p(x) = (x - 1)^7\)을 전개한 계수로 호너 방법(4장) 계산하라.
+      <ol>
+        <li>\([0.98, 1.02]\)에서 계산값과 참값 \((x - 1)^7\)의 차이는 최대 \(6.0\times10^{-15}\)이다. 참값이 이보다 작아지는 \(|x - 1| \lt (6\times10^{-15})^{1/7} = 0.0093\)에서는 부호를 믿을 수 없다. 실제로 \([0.99, 1.01]\)을 2000칸으로 나눠 보면 계산한 \(p\)의 부호가 694번 바뀐다.</li>
+        <li>이분법은 여전히 "부호가 바뀌는 점"을 찾아 주지만, 그 점은 근이 아니다. \([0.5, 1.6]\)에서 시작하면 0.99978(오차 \(2.2\times10^{-4}\)), \([0.7, 1.25]\)에서 시작하면 0.99648(오차 \(3.5\times10^{-3}\))을 보고한다.</li>
+        <li>교훈: 문제의 조건수가 나쁘면(\(m\)중근, 평평한 함수) 어떤 알고리즘도 불확실 구간보다 정확할 수 없다. 이때 할 일은 알고리즘이 아니라 문제를 바꾸는 것, 예를 들어 인수 형태 \((x - 1)^7\)을 그대로 계산하는 것이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-rt-noise">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>근 근처의 반올림 잡음: 불확실 구간 확대경</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rt-nz-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>다항식</span><select id="rt-nz-pre">
+            <option value="7">(x − 1)⁷ 전개형</option>
+            <option value="3">(x − 1)³ 전개형</option>
+            <option value="1">(x − 1)(x − 2)(x − 3) 전개형</option>
+          </select></label>
+          <label class="ctrl"><span>확대: 창 반폭 10^k <output id="rt-nz-k-out"></output></span><input type="range" id="rt-nz-k" min="-12" max="-1" step="0.25" value="-1.5"></label>
+          <label class="check"><input type="checkbox" id="rt-nz-fac"> 곱 형태로 계산 (잡음 없음)</label>
+          <div class="btn-row"><button class="btn primary" id="rt-nz-bis">이분법 20번 실행</button><button class="btn" id="rt-nz-clr">지우기</button></div>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--text-faint)"></i>참 곡선</span><span><i style="background:var(--accent)"></i>배정밀도 계산값</span><span><i style="background:var(--warn)"></i>잡음 크기 ±δ</span><span><i style="background:var(--bad)"></i>이분법이 보고한 근</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">잡음 크기 δ (창 안 최대)</span><span class="v" id="rt-nz-d">—</span></div>
+        <div class="stat"><span class="k">불확실 구간 반지름</span><span class="v" id="rt-nz-r">—</span></div>
+        <div class="stat"><span class="k">창 안 부호 바뀜</span><span class="v" id="rt-nz-s">—</span></div>
+        <div class="stat"><span class="k">이분법 결과 오차 범위</span><span class="v" id="rt-nz-b">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① (x − 1)⁷에서 창을 10⁻² 근처로 확대하면 매끄럽던 곡선이 톱니 같은 잡음으로 바뀝니다. 잡음 띠 안에서는 부호가 무작위입니다. ② '이분법 20번 실행'은 무작위 처음 구간 20개로 이분법을 돌려 보고된 근을 빨간 점으로 찍습니다. 점들이 불확실 구간 전체에 흩어집니다. ③ 단순근 (x − 1)(x − 2)(x − 3)에서는 10⁻¹⁵까지 확대해야 잡음이 보입니다. 불확실 구간이 δ/|f′(1)| = δ/2 정도로 작습니다. 모델: 계수로 호너 계산, 참값은 곱 형태.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="failures">
+    <h2>뉴턴 방법이 실패할 때</h2>
+    <p>뉴턴 방법의 수렴은 국소적입니다. 출발점이 나쁘면 다음과 같은 일이 실제로 일어납니다.</p>
+    <ul>
+      <li><b>순환</b>: \(f(x) = x^3 - 2x + 2\)에서 \(x_0 = 0\)이면 \(x_1 = 1\), \(x_2 = 0\), … 영원히 0과 1을 오간다. 실근은 \(-1.7692923542\)인데 근처에도 가지 않는다. \(x_0 = 0.1\)이면 1.0142, 0.0797, 1.0091, 0.0522, …로 순환 근처를 맴돌다가 천천히 벗어난다.</li>
+      <li><b>발산</b>: \(f(x) = \arctan x\)는 근 0이 하나뿐이고 단조인데도, \(|x_0| > 1.3917452\)이면 \(|x_n|\)이 점점 커진다. \(x_0 = 1.5\)이면 \(-1.694,\ 2.321,\ -5.114,\ 32.30,\ -1575\). 경계값은 \(2x = (1 + x^2)\arctan x\)의 근, 곧 2주기 궤도다. \(x_0 = 1.39\)는 경계 안쪽이라 천천히 수렴하고, \(1.4\)는 바깥이라 천천히 발산한다.</li>
+      <li><b>평평한 곳</b>: \(f'(x_n) \approx 0\)이면 접선이 거의 수평이라 아주 멀리 튄다. \(x^3 - 2x - 5\)에서 \(x_0 = 0.82\)(극값 \(\sqrt{2/3} = 0.8165\) 근처)이면 \(x_1 = 354.8\). 그 뒤로는 매번 거리의 약 2/3씩만 돌아온다(멀리서 \(x^3\)에 뉴턴을 쓰는 셈).</li>
+      <li><b>근에서 미분 불가능</b>: \(f(x) = \sqrt[3]{x}\)이면 \(x_{n+1} = x_n - 3x_n = -2x_n\). 어떤 \(x_0 \ne 0\)에서도 매번 두 배로 멀어진다. 정리 3.8의 가정 \(f''\) 연속이 깨졌다.</li>
+      <li><b>엉뚱한 근</b>: 근이 여럿이면 어느 근으로 갈지 출발점이 정하는데, 그 경계가 매우 복잡하다. 4장의 뉴턴 프랙털이 이 현상을 복소평면에서 보여 준다.</li>
+    </ul>
+    <p>처방은 셋입니다. ① 가둠 구간을 알면 <b>안전장치를 단 뉴턴</b>: 뉴턴 걸음이 가둠 구간 밖으로 나가거나 충분히 줄지 않으면 이분 걸음을 대신 둔다(브렌트와 같은 생각, Numerical Recipes의 <code>rtsafe</code>). ② 걸음을 줄이는 <b>감쇠 뉴턴</b>: \(|f|\)가 줄어들 때까지 걸음을 반으로 줄인다(4장). ③ 물리적 직관이나 근사식으로 <b>좋은 출발점</b>을 고른다(케플러 방정식의 \(E_0 = \pi\), 콜브룩 방정식의 하알란 근사).</p>
+
+    <div class="sim" id="sim-rt-fail">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>뉴턴 방법 실패 갤러리와 안전장치</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="rt-fl-cv"></canvas></div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>사례</span><div class="seg" id="rt-fl-case"><button data-value="cycle" class="on">순환</button><button data-value="atan">발산</button><button data-value="flat">평평</button><button data-value="cbrt">∛x</button><button data-value="wander">방랑</button></div></div>
+          <label class="ctrl"><span>반복 수 n <output id="rt-fl-n-out"></output></span><input type="range" id="rt-fl-n" min="1" max="30" step="1" value="6"></label>
+          <label class="check"><input type="checkbox" id="rt-fl-safe"> 안전장치 (가둠 구간 + 이분)</label>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--text)"></i>f(x)</span><span><i style="background:var(--warn)"></i>접선</span><span><i style="background:var(--accent)"></i>반복점</span><span><i style="background:var(--accent-2)"></i>참 근</span><span><i style="background:var(--ok)"></i>가둠 구간</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">x₀ (끌기)</span><span class="v" id="rt-fl-x0">—</span></div>
+        <div class="stat"><span class="k">xₙ</span><span class="v" id="rt-fl-xn">—</span></div>
+        <div class="stat"><span class="k">|f(xₙ)|</span><span class="v" id="rt-fl-fx">—</span></div>
+        <div class="stat"><span class="k">이분 걸음 수</span><span class="v" id="rt-fl-nb">—</span></div>
+      </div>
+      <div class="rt-msg" id="rt-fl-msg"></div>
+      <div class="sim-note">해볼 것: ① '순환'에서 x₀를 0에서 조금씩 움직여 보세요. 대부분은 결국 순환을 벗어나 근 −1.769로 가지만, 0 바로 근처는 오래 갇힙니다. ② '발산'에서 x₀를 1.39와 1.40 사이로 옮기며 수렴과 발산의 경계 1.3917을 찾으세요. ③ 아무 사례에서나 '안전장치'를 켜면 걸음이 가둠 구간 밖으로 나갈 때마다 이분 걸음(초록 구간이 반으로)으로 바뀌어 언제나 근에 닿습니다. 모델: 가둠 구간은 사례마다 미리 정한 부호 바뀜 구간입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 10 -->
+  <section id="applications">
+    <h2>응용: 제곱근, 역수, 케플러 방정식, 콜브룩 방정식</h2>
+    <h3>제곱근과 역수: 하드웨어 안의 뉴턴</h3>
+    <p>\(f(x) = x^2 - a\)에 뉴턴 방법을 쓰면 \(x_{n+1} = x_n - \dfrac{x_n^2 - a}{2x_n} = \dfrac12\left(x_n + \dfrac{a}{x_n}\right)\)입니다. "어림값과 \(a\)/어림값의 평균"이라는 이 식을 흔히 <b>바빌로니아 방법</b>이라 부릅니다. \(\sqrt2\)를 \(x_0 = 1\)에서 구하면 1.5, 1.4166667, 1.4142157, 1.41421356237469, 1.4142135623730949로 오차가 \(8.6\times10^{-2},\ 2.5\times10^{-3},\ 2.1\times10^{-6},\ 1.6\times10^{-12},\ 2.2\times10^{-16}\)입니다. 다섯 번이면 배정밀도 끝입니다.</p>
+    <p>나눗셈도 뉴턴으로 합니다. \(1/a\)를 구하려고 \(f(x) = 1/x - a\)를 고르면 \(f' = -1/x^2\)이고</p>
+    <div class="formula">$$x_{n+1} = x_n - \frac{1/x_n - a}{-1/x_n^2} = x_n(2 - a x_n)$$
+      <div class="where">곱셈과 뺄셈만 쓴다. \(1 - ax_{n+1} = (1 - ax_n)^2\)이라 상대 오차가 매번 정확히 제곱된다. \(0 \lt x_0 \lt 2/a\)이면 수렴한다.</div></div>
+    <p>\(a = 7\), \(x_0 = 0.1\)이면 \(1 - ax_n\)이 \(0.3,\ 0.09,\ 0.0081,\ 6.6\times10^{-5},\ 4.3\times10^{-9}\)이고 다섯 번째에 \(1/7\)이 배정밀도로 나옵니다. 곱셈기는 있지만 나눗셈 회로가 느리거나 없는 하드웨어(GPU, DSP 등)가 표에서 읽은 어림값에 이런 반복을 몇 번 더해 역수와 역제곱근 \(1/\sqrt a\)(반복 \(x(3 - ax^2)/2\))을 만듭니다.</p>
+
+    <h3>케플러 방정식: 행성은 어디에 있는가</h3>
+    <p>이심률 \(e\)인 타원 궤도에서 근일점 통과 후 시간 \(t\)의 위치는 평균 근점 이각 \(M = 2\pi t/T\)(시간에 비례)로부터 이심 근점 이각 \(E\)를 구해 얻습니다. 둘을 잇는 식이 <span class="term">케플러 방정식</span><span class="en">(Kepler's equation)</span>입니다.</p>
+    <div class="formula">$$M = E - e\sin E, \qquad x = a(\cos E - e),\quad y = a\sqrt{1 - e^2}\,\sin E$$
+      <div class="where">\(E\)를 알면 태양(초점)을 원점으로 한 위치가 바로 나온다. \(0 \le e \lt 1\)이면 \(f(E) = E - e\sin E - M\)은 \(f' = 1 - e\cos E > 0\)이라 단조 증가, 근이 하나다.</div></div>
+    <div class="callout"><strong>예제 3.8 (케플러 방정식)</strong> \(M = 1\), \(e = 0.5\)일 때 \(E\)를 구하라.
+      <ol>
+        <li>고정점 반복 \(E = M + e\sin E\)(케플러 자신이 쓴 방식과 같은 꼴): \(g'(E) = e\cos E\)라 \(|g'| \le e \lt 1\), 늘 수렴한다. \(E_0 = 1\)에서 1.4207355, 1.4943810, 1.4985409, 1.4986954, …로 \(|\Delta E| \lt 10^{-15}\)까지 12번.</li>
+        <li>뉴턴 \(E_{n+1} = E_n - \dfrac{E_n - e\sin E_n - M}{1 - e\cos E_n}\), \(E_0 = M\): 1.5764694, 1.5002083, 1.4987017, 1.4987011335178(오차 \(7.8\times10^{-2},\ 1.5\times10^{-3},\ 5.9\times10^{-7},\ 8.9\times10^{-14}\)). 답 \(E = 1.498701133517848\).</li>
+        <li>이심률이 1에 가까우면 사정이 달라진다. \(e = 0.99\), \(M = 0.1\)에서 \(E_0 = M\)으로 뉴턴을 쓰면 \(f'(0.1) = 1 - 0.99\cos 0.1 = 0.015\)로 평평해서 \(E_1 = 6.71\), \(E_2 = -55.3\)으로 튀고 21번 만에 겨우 \(E = 0.8316604\)에 닿는다. \(E_0 = \pi\)에서 시작하면 3.1416, 1.6132, 1.1102, 0.8899, 0.8351, 0.8317로 8번이면 된다. 고정점 반복은 \(|g'| \approx e\)라 50번으로도 모자란다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-rt-kepler">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>케플러 방정식: 궤도 위 행성의 위치를 뉴턴으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view rt-two">
+          <div><canvas id="rt-kp-cv"></canvas><span class="rt-cap">궤도 (초점 = 태양), 보조원 위의 E</span></div>
+          <div><canvas id="rt-kp-ch"></canvas><span class="rt-cap">|f(Eₙ)| vs 반복 n</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>이심률 e <output id="rt-kp-e-out"></output></span><input type="range" id="rt-kp-e" min="0" max="0.99" step="0.01" value="0.5"></label>
+          <label class="ctrl"><span>평균 근점 이각 M <output id="rt-kp-m-out"></output></span><input type="range" id="rt-kp-m" min="0" max="6.28" step="0.01" value="1"></label>
+          <div class="ctrl"><span>뉴턴 출발점 E₀</span><div class="seg" id="rt-kp-e0"><button data-value="M" class="on">E₀ = M</button><button data-value="pi">E₀ = π</button><button data-value="ser">M + e sin M</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="rt-kp-play">▶ 공전</button></div>
+        </div>
+      </div>
+      <div class="rt-legend"><span><i style="background:var(--accent)"></i>뉴턴</span><span><i style="background:var(--warn)"></i>고정점 E = M + e sin E</span><span><i style="background:var(--text-faint)"></i>보조원 · 균일 각 M</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">E</span><span class="v" id="rt-kp-E">—</span></div>
+        <div class="stat"><span class="k">뉴턴 반복 수</span><span class="v" id="rt-kp-nn">—</span></div>
+        <div class="stat"><span class="k">고정점 반복 수</span><span class="v" id="rt-kp-nf">—</span></div>
+        <div class="stat"><span class="k">태양 거리 r = a(1 − e cos E)</span><span class="v" id="rt-kp-r">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① ▶ 공전을 누르면 M이 일정하게 늘지만 행성은 근일점(오른쪽 끝) 근처에서 빠르고 원일점에서 느립니다. 케플러 제2법칙이고, 매 프레임 뉴턴 방법이 E를 풉니다. ② e = 0.99, M = 0.1로 두고 E₀ = M과 E₀ = π의 반복 수를 비교하세요. ③ 고정점 반복은 e가 클수록 느려집니다(점근 비율 e cos E). 모델: 장반경 a = 1, 멈춤 |f(E)| &lt; 10⁻¹⁴ 또는 50번.</div>
+    </div>
+
+    <h3>콜브룩 방정식: 배관의 마찰 계수</h3>
+    <p>난류 배관 유동의 압력 손실은 다르시 마찰 계수 \(f\)로 계산하고, 표준 공학 관계식인 콜브룩<span class="en">(Colebrook)</span> 방정식은 \(f\)에 대한 음함수입니다.</p>
+    <div class="formula">$$\frac{1}{\sqrt f} = -2\log_{10}\!\left(\frac{\varepsilon/D}{3.7} + \frac{2.51}{\mathrm{Re}\,\sqrt f}\right)$$
+      <div class="where">\(\varepsilon/D\)는 상대 거칠기, \(\mathrm{Re}\)는 레이놀즈 수. \(y = 1/\sqrt f\)로 두면 \(y = G(y)\) 꼴의 고정점 문제가 된다.</div></div>
+    <div class="callout"><strong>예제 3.9 (콜브룩 방정식의 고정점 반복)</strong> \(\mathrm{Re} = 10^5\), \(\varepsilon/D = 10^{-4}\)일 때 \(f\)를 구하라.
+      <ol>
+        <li>\(y_0 = 8\)(\(f = 0.0156\))에서 \(y_{n+1} = G(y_n)\): 7.2847895, 7.3560776, 7.3487036, 7.3494635, 7.3493852, 7.3493932.</li>
+        <li>\(G'(y) = -\dfrac{2}{\ln 10}\cdot\dfrac{2.51/\mathrm{Re}}{\varepsilon/(3.7D) + 2.51y/\mathrm{Re}} = -0.103\). 오차가 매번 약 10분의 1이 되며 부호를 바꾼다(근 둘레를 도는 거미줄). 여섯 번이면 \(f = 0.0185139\)로 유효 숫자 6자리다.</li>
+        <li>명시적 근사식인 하알란<span class="en">(Haaland)</span> 식 \(1/\sqrt f = -1.8\log_{10}[(\varepsilon/D/3.7)^{1.11} + 6.9/\mathrm{Re}]\)은 \(f = 0.018265\)로 1.3% 차이다. 좋은 출발점으로 쓰면 반복 두세 번으로 충분하다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>근 찾기는 그 자체로 쓰이기보다 더 큰 알고리즘 안에서 수없이 불립니다. 음적 ODE 방법은 매 걸음 비선형 방정식을, 최적화는 \(\nabla f = 0\)을, 고유값 계산은 특성 방정식의 근을 다른 길로 풉니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>분야</th><th>방정식</th><th>흔히 쓰는 방법</th></tr></thead>
+      <tbody>
+        <tr><td>궤도 역학</td><td>케플러 방정식 M = E − e sin E</td><td>뉴턴(좋은 출발점), 고차 뉴턴 변형</td></tr>
+        <tr><td>유체 공학</td><td>콜브룩 방정식</td><td>고정점 반복, 뉴턴, 명시적 근사식으로 출발</td></tr>
+        <tr><td>회로 시뮬레이션</td><td>다이오드 I = Iₛ(e^(V/Vₜ) − 1)와 KCL</td><td>감쇠·제한 뉴턴(4장)</td></tr>
+        <tr><td>금융</td><td>채권 수익률(내부 수익률), 내재 변동성</td><td>뉴턴, 브렌트</td></tr>
+        <tr><td>컴퓨터 산술</td><td>√a, 1/a, 1/√a</td><td>표 어림값 + 뉴턴 1~3번</td></tr>
+        <tr><td>음적 ODE 적분</td><td>yₙ₊₁ − h f(yₙ₊₁) = yₙ</td><td>뉴턴(야코비안 재사용)</td></tr>
+      </tbody></table></div>
+    <div class="uses">
+      <a href="nonlinear-systems.html"><small>4장 · 비선형 연립방정식</small>다변수 뉴턴과 프랙털<br><span>f′(x)가 야코비안 행렬이 되고, 나눗셈이 선형계 풀기가 된다. 복소평면의 끌개 영역 경계는 프랙털이다.</span></a>
+      <a href="conditioning.html"><small>2장 · 조건수와 안정성</small>근의 조건수<br><span>중근과 평평한 함수의 불확실 구간은 근 찾기 문제 자체의 조건수가 나쁘다는 뜻이다.</span></a>
+      <a href="optimization.html"><small>15장 · 수치 최적화</small>f′(x) = 0 풀기<br><span>뉴턴 방법을 도함수에 쓰면 최적화의 뉴턴 방법, 브렌트의 아이디어는 황금 분할 + 포물선 보간이 된다.</span></a>
+      <a href="ode-solvers.html"><small>11장 · 미분방정식의 수치 해법</small>음적 방법의 매 걸음<br><span>강성 문제의 BDF와 음적 오일러는 매 걸음 비선형 방정식을 뉴턴으로 푼다.</span></a>
+      <a href="../../calculus/chapters/optimization.html"><small>CALCULUSBOOK</small>뉴턴 방법 첫 만남<br><span>접선 근사로 뉴턴 방법을 유도하고 √2를 계산한 곳. 이 장은 그 수렴을 정량화했다.</span></a>
+      <a href="../../foundations/chapters/numerics.html"><small>MATHBOOK</small>컴퓨터는 어떻게 틀리는가<br><span>반올림 바닥과 자릿수 상쇄. 멈춤 조건의 한계가 여기서 온다.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>이분법은 부호만 보고 가둠 구간을 매번 정확히 반으로 줄인다. 오차 \(\le (b_0 - a_0)/2^{n+1}\)이라 반복 수를 미리 안다. 느리지만(자릿수당 3.3번) 연속이고 부호가 바뀌면 반드시 수렴한다.</li>
+      <li>고정점 반복 \(x_{n+1} = g(x_n)\)은 오차에 매번 \(g'\)을 곱한다. \(|g'| \le L \lt 1\)인 축소 사상이면 유일한 고정점으로 수렴하고 \(|x_n - r| \le \frac{L}{1 - L}|x_n - x_{n-1}|\). 같은 방정식도 고쳐 쓰는 방법에 따라 수렴·발산이 갈린다.</li>
+      <li>수렴 차수 \(p\)는 \(|e_{n+1}| \approx C|e_n|^p\)의 지수다. 이웃한 세 오차로 \(p \approx \log(e_{n+1}/e_n)/\log(e_n/e_{n-1})\)를 측정한다. \(g'(r) = \cdots = g^{(p-1)}(r) = 0\)이면 고정점 반복의 차수는 \(p\)다.</li>
+      <li>뉴턴 방법 \(x_{n+1} = x_n - f/f'\)은 단순근에서 2차 수렴, \(e_{n+1} \approx \frac{f''}{2f'}e_n^2\). 맞는 자릿수가 매번 두 배가 된다. \(m\)중근에서는 비율 \((m-1)/m\)의 1차로 떨어지고, \(x - mf/f'\)이 2차를 되찾는다.</li>
+      <li>할선법은 도함수 대신 차분 몫을 써서 차수 \(1.618\)(\(p^2 = p + 1\)). 단계당 계산이 하나라 효율 지수는 뉴턴(1.414)보다 높다.</li>
+      <li>가위치법은 근을 가두지만 한 끝점이 묶여 선형으로 느려진다. 일리노이 수정은 묶인 끝의 함숫값을 반으로 줄여 이를 푼다. 브렌트 방법은 역2차 보간·할선·이분을 조합해 안전과 초선형 속도를 함께 얻는 실무 표준이다.</li>
+      <li>멈춤 조건: 오차 ≈ 잔차/|f′|. 걸음 크기(절대 + 상대 허용 오차)와 가둠 구간 길이를 함께 쓰고, 반올림 바닥이 만드는 불확실 구간보다 작은 허용 오차는 의미가 없다. 반복 수 상한을 늘 둔다.</li>
+      <li>뉴턴 방법은 순환·발산·평평한 곳·미분 불가능한 근에서 실패한다. 가둠 구간 안전장치, 감쇠, 좋은 출발점(케플러의 E₀ = π)이 처방이다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 길이 1인 가둠 구간에서 이분법으로 구간 길이를 \(10^{-6}\) 이하로 줄이려면 적어도 몇 번 나눠야 하는가?</p><div class="opts">
+        <button class="opt">6</button>
+        <button class="opt">10</button>
+        <button class="opt" data-correct>20</button>
+        <button class="opt">1000000</button>
+      </div><div class="quiz-exp">n번 나누면 길이가 2⁻ⁿ. 2⁻ⁿ ≤ 10⁻⁶ ⇔ n ≥ 6 log₂10 = 19.93이므로 20번. 자릿수 하나에 약 3.3번이 든다. 함수 모양과 무관하다는 것이 이분법의 장점이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(x^3 - 2x - 5 = 0\)을 고정점 반복으로 풀 때 근 \(r \approx 2.0946\) 근처에서 수렴하는 것은?</p><div class="opts">
+        <button class="opt" data-correct>\(x = (2x + 5)^{1/3}\)</button>
+        <button class="opt">\(x = (x^3 - 5)/2\)</button>
+        <button class="opt">\(x = 5/(x^2 - 2)\)</button>
+        <button class="opt">셋 다 수렴한다</button>
+      </div><div class="quiz-exp">근에서 |g′(r)|을 보면 각각 0.152, 6.58, 3.68이다. 1보다 작은 첫 번째만 축소 사상이라 수렴하고, 오차가 매번 약 0.152배가 된다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 뉴턴 방법에서 \(|f''(r)/(2f'(r))| = 0.5\)이고 현재 오차가 \(10^{-3}\)이다. 다음 단계의 오차는 대략?</p><div class="opts">
+        <button class="opt">\(5\times10^{-4}\)</button>
+        <button class="opt" data-correct>\(5\times10^{-7}\)</button>
+        <button class="opt">\(10^{-6}\)</button>
+        <button class="opt">\(5\times10^{-10}\)</button>
+      </div><div class="quiz-exp">2차 수렴 |eₙ₊₁| ≈ C|eₙ|² = 0.5 × 10⁻⁶ = 5×10⁻⁷. 그다음은 0.5 × (5×10⁻⁷)² ≈ 1.25×10⁻¹³이다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 삼중근(\(m = 3\))에서 보통 뉴턴 방법의 오차는 매 단계 대략 몇 배가 되는가?</p><div class="opts">
+        <button class="opt">제곱이 된다</button>
+        <button class="opt">1/3배</button>
+        <button class="opt">1/2배</button>
+        <button class="opt" data-correct>2/3배</button>
+      </div><div class="quiz-exp">m중근에서 g′(r) = 1 − 1/m = (m − 1)/m. m = 3이면 2/3배씩 줄어드는 선형 수렴이다. x − 3f/f′로 고치면 2차 수렴을 되찾는다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 할선법의 수렴 차수와, 도함수 계산 비용이 함수 계산과 같을 때 뉴턴 방법과 비교한 결론으로 옳은 것은?</p><div class="opts">
+        <button class="opt">차수 2, 뉴턴과 같다</button>
+        <button class="opt" data-correct>차수 약 1.618, 함수 계산 한 번당으로는 뉴턴보다 효율적이다</button>
+        <button class="opt">차수 1, 이분법과 같다</button>
+        <button class="opt">차수 약 1.618, 언제나 뉴턴보다 느리다</button>
+      </div><div class="quiz-exp">eₙ₊₁ ≈ C eₙ eₙ₋₁에서 p² = p + 1, p = 1.618. 효율 지수는 할선 1.618, 뉴턴 2^(1/2) = 1.414라 계산 횟수로 따지면 할선법이 낫다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 가위치법이 \(x^{10} - 1 = 0\)을 \([0, 1.3]\)에서 이분법보다도 느리게 푸는 이유는?</p><div class="opts">
+        <button class="opt">근을 가두지 못해 달아나기 때문에</button>
+        <button class="opt">도함수가 필요하기 때문에</button>
+        <button class="opt" data-correct>볼록한 함수에서 한 끝점이 묶여 구간이 0으로 줄지 않고 선형으로 느리게 수렴하기 때문에</button>
+        <button class="opt">반올림 오차 때문에</button>
+      </div><div class="quiz-exp">할선의 근이 늘 같은 쪽에 떨어져 b = 1.3이 끝까지 남는다. 10⁻¹⁰까지 95번이 걸린다. 일리노이 수정은 묶인 끝의 f값을 반으로 줄여 14번으로 줄인다.</div></div>
+
+      <div class="quiz-q"><p>Q7. 근에서 \(|f'(r)| = 10^{-6}\)인 함수에서 \(|f(x)| = 10^{-12}\)를 얻었다. 근의 오차는 대략?</p><div class="opts">
+        <button class="opt">\(10^{-18}\)</button>
+        <button class="opt">\(10^{-12}\)</button>
+        <button class="opt" data-correct>\(10^{-6}\)</button>
+        <button class="opt">알 수 없다, 0이다</button>
+      </div><div class="quiz-exp">근 근처에서 f(x) ≈ f′(r)(x − r)이므로 |x − r| ≈ |f(x)|/|f′(r)| = 10⁻¹²/10⁻⁶ = 10⁻⁶. 평평한 함수에서는 잔차가 작아도 오차가 크다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 바빌로니아 방법 \(x_{n+1} = (x_n + 9/x_n)/2\)로 \(\sqrt9\)를 \(x_0 = 1\)에서 구할 때 \(x_2\)는?</p><div class="opts">
+        <button class="opt">3</button>
+        <button class="opt" data-correct>3.4</button>
+        <button class="opt">5</button>
+        <button class="opt">3.02</button>
+      </div><div class="quiz-exp">x₁ = (1 + 9)/2 = 5, x₂ = (5 + 9/5)/2 = (5 + 1.8)/2 = 3.4. 다음은 (3.4 + 2.647)/2 = 3.0235, 그다음 3.00009로 2차 수렴한다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const RT = {
+  sci(v, d = 2) {
+    if (v === 0) return "0";
+    if (!isFinite(v)) return "—";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  fix(v, d = 10) { if (!isFinite(v)) return "—"; return String(Number(v.toPrecision(d))).replace("-", "−"); },
+  sign: (v) => (v > 0 ? 1 : v < 0 ? -1 : 0),
+  /** f의 [a,b] 범위를 샘플링해 y 범위(여백 포함, 잘림) */
+  yrange(f, a, b, lim = 1e9, pad = 0.12) {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= 200; i++) { const v = f(a + ((b - a) * i) / 200); if (isFinite(v) && Math.abs(v) < lim) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+    if (!isFinite(lo)) { lo = -1; hi = 1; }
+    lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+    const s = (hi - lo) || 1; return [lo - s * pad, hi + s * pad];
+  },
+  /** 브렌트 방법(zeroin): 단계마다 {b, kind} 기록 */
+  brent(f, a, b, tol = 1e-15, maxit = 80) {
+    let fa = f(a), fb = f(b); const steps = [];
+    let c = a, fc = fa, d = b - a, e = d;
+    for (let it = 0; it < maxit; it++) {
+      if (fb * fc > 0) { c = a; fc = fa; d = b - a; e = d; }
+      if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
+      const tol1 = 2 * Number.EPSILON * Math.abs(b) + 0.5 * tol, xm = 0.5 * (c - b);
+      if (Math.abs(xm) <= tol1 || fb === 0) break;
+      let kind = "이분";
+      if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+        let p, q, r; const s = fb / fa;
+        if (a === c) { p = 2 * xm * s; q = 1 - s; kind = "할선"; }
+        else { q = fa / fc; r = fb / fc; p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1)); q = (q - 1) * (r - 1) * (s - 1); kind = "역2차"; }
+        if (p > 0) q = -q; p = Math.abs(p);
+        if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) { e = d; d = p / q; } else { d = xm; e = d; kind = "이분"; }
+      } else { d = xm; e = d; }
+      a = b; fa = fb;
+      b += Math.abs(d) > tol1 ? d : xm > 0 ? tol1 : -tol1;
+      fb = f(b); steps.push({ x: b, kind });
+    }
+    return steps;
+  },
+  /** 가위치법(ill=false) / 일리노이(ill=true): 단계 기록 */
+  falsi(f, a, b, ill, N) {
+    let fa = f(a), fb = f(b), side = 0; const out = [];
+    for (let n = 0; n < N; n++) {
+      const c = (a * fb - b * fa) / (fb - fa), fc = f(c);
+      out.push({ a, b, fa, fb, c, fc });
+      if (fc === 0 || !isFinite(c)) break;
+      if (RT.sign(fc) === RT.sign(fb)) { b = c; fb = fc; if (side === -1 && ill) fa *= 0.5; side = -1; }
+      else { a = c; fa = fc; if (side === 1 && ill) fb *= 0.5; side = 1; }
+    }
+    return out;
+  },
+  bisect(f, a, b, N) {
+    let fa = f(a); const out = [];
+    for (let n = 0; n < N; n++) {
+      const m = a + (b - a) / 2, fm = f(m);
+      out.push({ a, b, fa, fb: f(b), c: m, fc: fm });
+      if (fm === 0) break;
+      if (RT.sign(fm) === RT.sign(fa)) { a = m; fa = fm; } else b = m;
+    }
+    return out;
+  },
+  newtonRoot(f, df, x) { for (let i = 0; i < 100; i++) { const s = f(x) / df(x); x -= s; if (Math.abs(s) < 1e-17 * (1 + Math.abs(x))) break; } return x; },
+  mono() { return getComputedStyle(document.body).getPropertyValue("--mono"); },
+};
+
+/* ================================================================ 1. 이분법 */
+(function () {
+  const PRE = {
+    cubic: { f: (x) => x * x * x - 2 * x - 5, a: 2, b: 3, r: 2.0945514815423265, x: [1.2, 3.4] },
+    cos: { f: (x) => Math.cos(x) - x, a: 0, b: 1.5, r: 0.7390851332151607, x: [-0.4, 1.9] },
+    x10: { f: (x) => Math.pow(x, 10) - 1, a: 0, b: 1.3, r: 1, x: [-0.3, 1.6] },
+    tan: { f: (x) => Math.tan(x), a: 1, b: 2, r: Math.PI / 2, pole: true, x: [0.6, 2.4], lim: 6 },
+  };
+  let pre = PRE.cubic, n = 3, zoom = true, tol = 1e-6, timer = 0;
+  const pa = { x: pre.a, y: 0, lock: "y", r: 8 }, pb = { x: pre.b, y: 0, lock: "y", r: 8 };
+  const tbl = document.getElementById("rt-bi-tbl"), msg = document.getElementById("rt-bi-msg");
+  const rows = () => {
+    const out = []; let a = Math.min(pa.x, pb.x), b = Math.max(pa.x, pb.x), fa = pre.f(a);
+    for (let k = 0; k < n; k++) { const m = a + (b - a) / 2, fm = pre.f(m); out.push({ a, b, m, fm }); if (fm === 0) break; if (RT.sign(fm) === RT.sign(fa)) { a = m; fa = fm; } else b = m; }
+    return { out, a, b };
+  };
+  let R = rows();
+  const valid = () => RT.sign(pre.f(pa.x)) * RT.sign(pre.f(pb.x)) < 0;
+  const viewFor = () => {
+    let x0 = pre.x[0], x1 = pre.x[1];
+    if (zoom && n > 0) { const w = R.b - R.a, c = (R.a + R.b) / 2; x0 = c - w * 1.2; x1 = c + w * 1.2; }
+    return { x: [x0, x1], y: RT.yrange(pre.f, x0, x1, pre.lim || 1e9) };
+  };
+  const pl = MB.plane("#rt-bi-cv", {
+    x: pre.x, y: RT.yrange(pre.f, pre.x[0], pre.x[1]), aspect: 0.6, minHeight: 250, points: [pa, pb], grid: false, axes: false,
+    draw(P) {
+      const C = P.P, ctx = P.ctx;
+      ctx.strokeStyle = C.axis; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, P.Y(0)); ctx.lineTo(P.w, P.Y(0)); ctx.stroke();
+      const a = n ? R.a : Math.min(pa.x, pb.x), b = n ? R.b : Math.max(pa.x, pb.x);
+      ctx.fillStyle = C.accent; ctx.globalAlpha = 0.12; ctx.fillRect(P.X(a), 0, P.X(b) - P.X(a), P.h); ctx.globalAlpha = 1;
+      P.line(P.ix(0), 0, P.ix(P.w), 0, { color: C.axis, width: 1.2 });
+      P.line(a, 0, b, 0, { color: C.accent, width: 6, alpha: 0.7 });
+      P.line(pre.r, P.y0, pre.r, P.y1, { color: C.accent2, width: 1.4, dash: [5, 4] });
+      P.curve(pre.f, { color: C.text, width: 2.4 });
+      R.out.forEach((q, i) => { if (i < R.out.length - 1) P.dot(q.m, 0, { r: 3, color: C.dim }); });
+      const last = R.out[R.out.length - 1];
+      if (last) { P.line(last.m, 0, last.m, MB.clamp(last.fm, P.y0, P.y1), { color: C.warn, width: 1.6, dash: [3, 3] }); P.dot(last.m, 0, { r: 5.5, color: C.warn }); }
+      const fmt = (v) => (Math.abs(v) < 1e-3 || Math.abs(v) > 1e4 ? v.toExponential(2) : String(+v.toPrecision(4)));
+      P.text("x 범위 " + fmt(P.x0) + " … " + fmt(P.x1), P.ix(P.w - 10), P.iy(P.h - 14), { color: C.dim, size: 11, align: "right" });
+      pa.hidden = pb.hidden = n > 0; pa.color = pb.color = C.accent;
+    },
+    onDrag() { n = 0; update(); },
+  });
+  const update = () => {
+    R = rows();
+    pl.view(viewFor());
+    const w = (n ? R.b - R.a : Math.abs(pb.x - pa.x)), last = R.out[R.out.length - 1];
+    MB.stat("rt-bi-n", String(n));
+    MB.stat("rt-bi-w", RT.sci(w, 3));
+    MB.stat("rt-bi-e", last ? RT.sci(Math.abs(last.m - pre.r), 3) + (pre.pole ? " (π/2까지)" : "") : "—");
+    MB.stat("rt-bi-need", String(Math.max(0, Math.ceil(Math.log2(Math.abs(pb.x - pa.x) / tol) - 1))));
+    let h = `<table><thead><tr><th>n</th><th>a</th><th>b</th><th>m</th><th>f(m)</th><th>b − a</th></tr></thead><tbody>`;
+    R.out.forEach((q, i) => { h += `<tr${i === R.out.length - 1 ? ' class="cur"' : ""}><td>${i + 1}</td><td>${RT.fix(q.a, 12)}</td><td>${RT.fix(q.b, 12)}</td><td>${RT.fix(q.m, 12)}</td><td>${RT.sci(q.fm, 3)}</td><td>${RT.sci(q.b - q.a, 2)}</td></tr>`; });
+    tbl.innerHTML = h + (R.out.length ? "" : `<tr><td colspan="6" style="text-align:center">'다음 단계'를 누르세요</td></tr>`) + "</tbody></table>";
+    tbl.scrollTop = tbl.scrollHeight;
+    if (!valid()) { msg.className = "rt-msg bad"; msg.innerHTML = "f(a)와 f(b)의 부호가 같습니다. 근이 갇혀 있지 않으니 이분법을 시작할 수 없습니다. 끝점을 옮기세요."; }
+    else if (pre.pole && n > 8) { msg.className = "rt-msg bad"; msg.innerHTML = `|f(m)| = ${RT.sci(Math.abs(last.fm), 2)}: 함숫값이 줄지 않고 커집니다. 부호 바뀜은 근이 아니라 극점 π/2 때문입니다. 연속성 가정이 깨진 것입니다.`; }
+    else if (last && w / 2 <= tol) { msg.className = "rt-msg ok"; msg.innerHTML = `구간 반 길이 ${RT.sci(w / 2, 2)} ≤ ε. ${n}번 만에 오차가 보장되었습니다(정리 3.2의 예측 ${Math.ceil(Math.log2(Math.abs(pb.x - pa.x) / tol) - 1)}번).`; }
+    else { msg.className = "rt-msg"; msg.innerHTML = last ? `f(m) ${last.fm > 0 ? "&gt;" : "&lt;"} 0 → 다음 구간은 ${RT.sign(last.fm) === RT.sign(pre.f(last.a)) ? "오른쪽" : "왼쪽"} 절반. 실제 오차/오차 상한 = <b>${NU2(Math.abs(last.m - pre.r) / ((last.b - last.a) / 2))}</b> (언제나 ≤ 1).` : "구간 [a, b]의 부호가 다르면 근이 갇혀 있습니다."; }
+  };
+  const NU2 = (v) => (isFinite(v) ? v.toFixed(3) : "—");
+  const step = () => { if (!valid()) return; if (n < 55) { n++; update(); } };
+  const stop = () => { clearInterval(timer); timer = 0; play.set(false); };
+  const play = MB.playButton("rt-bi-play", () => { timer = setInterval(() => { if (n >= 40 || !valid()) stop(); else step(); }, 450); }, () => stop(), ["▶ 자동", "■ 멈춤"]);
+  document.getElementById("rt-bi-step").addEventListener("click", step);
+  document.getElementById("rt-bi-reset").addEventListener("click", () => { stop(); n = 0; update(); });
+  MB.check("rt-bi-zoom", (v) => { zoom = v; update(); });
+  MB.seg("rt-bi-tol", (v) => { tol = Number(v); update(); });
+  document.getElementById("rt-bi-pre").addEventListener("change", (e) => { stop(); pre = PRE[e.target.value]; pa.x = pre.a; pb.x = pre.b; n = 0; update(); });
+  update();
+})();
+
+/* ================================================================ 2. 거미줄 그림 */
+(function () {
+  let lam = 0.25;
+  const PRE = {
+    cbrt: { g: (x) => Math.cbrt(2 * x + 5), r: 2.0945514815423265, x: [0, 3.6], x0: 0.4 },
+    cube: { g: (x) => (x * x * x - 5) / 2, r: 2.0945514815423265, x: [-3, 4], x0: 2.05 },
+    frac: { g: (x) => 5 / (x * x - 2), r: 2.0945514815423265, x: [-3, 4], x0: 2.15 },
+    cos: { g: (x) => Math.cos(x), r: 0.7390851332151607, x: [-0.2, 1.6], x0: 0.1 },
+    relax: { g: (x) => x - lam * (x * x - 2), r: Math.SQRT2, x: [0, 2.6], x0: 0.4 },
+  };
+  let pre = PRE.cbrt, N = 12, it = [];
+  const p0 = { x: pre.x0, y: 0, lock: "y", r: 8 };
+  const msg = document.getElementById("rt-cw-msg"), lw = document.getElementById("rt-cw-lam-wrap");
+  const calc = () => { it = [p0.x]; let x = p0.x; for (let k = 0; k < N; k++) { x = pre.g(x); if (!isFinite(x) || Math.abs(x) > 1e8) { it.push(NaN); break; } it.push(x); } };
+  calc();
+  const yv = () => [pre.x[0] - 0.05 * (pre.x[1] - pre.x[0]), pre.x[1]];
+  const pl = MB.plane("#rt-cw-cv", {
+    x: pre.x, y: yv(), aspect: 0.75, minHeight: 250, points: [p0], gridStep: 1,
+    draw(P) {
+      const C = P.P;
+      P.line(P.x0, P.x0, P.x1, P.x1, { color: C.faint, width: 1.5 });
+      P.curve(pre.g, { color: C.accent, width: 2.6 });
+      P.dot(pre.r, pre.r, { r: 5, color: C.accent2 });
+      const cl = (v) => MB.clamp(v, P.y0 - 10, P.y1 + 10);
+      let x = it[0], yPrev = 0;
+      for (let k = 1; k < it.length; k++) {
+        const y = it[k]; if (!isFinite(y)) break;
+        P.line(x, cl(yPrev), x, cl(y), { color: C.warn, width: 1.6, alpha: 0.9 });
+        P.line(x, cl(y), cl(y), cl(y), { color: C.warn, width: 1.6, alpha: 0.9 });
+        yPrev = y; x = y;
+      }
+      p0.color = C.text;
+    },
+    onDrag() { update(); },
+  });
+  const ch = MB.canvas("#rt-cw-ch", (ctx, w, h) => {
+    const C = MB.palette(); const d = it.map((x, k) => [k, Math.max(Math.abs(x - pre.r), 1e-17)]).filter(([, e]) => isFinite(e));
+    MB.chart(ctx, { x: 52, y: 26, w: w - 52 - 14, h: h - 26 - 38 }, { x: [0, N], y: [1e-16, 1e4], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "n", series: [{ data: d, color: C.warn, width: 2 }], points: d.map(([x, y]) => ({ x, y, r: 2.5, color: C.warn })) });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 240 });
+  const update = () => {
+    calc(); pl.redraw(); ch.redraw();
+    const gp = (pre.g(pre.r + 1e-6) - pre.g(pre.r - 1e-6)) / 2e-6;
+    MB.stat("rt-cw-x0", p0.x.toFixed(3).replace("-", "−"));
+    MB.stat("rt-cw-gp", RT.fix(gp, 4));
+    const es = it.map((x) => Math.abs(x - pre.r)); let ratio = NaN;
+    for (let k = es.length - 1; k > 0; k--) if (es[k] > 1e-13 && es[k - 1] > 1e-13 && isFinite(es[k])) { ratio = es[k] / es[k - 1]; break; }
+    MB.stat("rt-cw-ratio", isFinite(ratio) ? RT.fix(ratio, 4) : "—");
+    const xn = it[it.length - 1];
+    MB.stat("rt-cw-xn", isFinite(xn) ? RT.fix(xn, 12) : "발산");
+    if (!isFinite(xn) || es[es.length - 1] > 10) { msg.className = "rt-msg bad"; msg.innerHTML = `|g′(r)| = ${Math.abs(gp).toFixed(3)} &gt; 1: 근 가까이에서 출발해도 오차가 매번 약 ${Math.abs(gp).toFixed(2)}배로 커집니다.`; }
+    else if (Math.abs(gp) < 0.02) { msg.className = "rt-msg ok"; msg.innerHTML = `g′(r) ≈ 0: 오차가 일정 비율이 아니라 <b>제곱</b>으로 줄어 그래프가 아래로 꺾입니다. λ = 1/(2√2)이면 이 반복은 x² − 2에 대한 뉴턴 방법과 근에서 같은 기울기를 가집니다.`; }
+    else { msg.className = "rt-msg"; msg.innerHTML = `|g′(r)| = ${Math.abs(gp).toFixed(3)} &lt; 1: 선형 수렴. 측정한 오차 비율이 g′(r)에 가까워야 합니다. ${gp < 0 ? "g′ &lt; 0이라 궤적이 근 둘레를 도는 거미줄입니다." : "g′ &gt; 0이라 한쪽에서 다가가는 계단입니다."}`; }
+  };
+  const lamR = MB.range("rt-cw-lam", (v) => v.toFixed(2), (v) => { lam = v; update(); });
+  MB.range("rt-cw-n", (v) => String(v), (v) => { N = v; update(); });
+  document.getElementById("rt-cw-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; p0.x = pre.x0; lw.style.display = e.target.value === "relax" ? "" : "none"; pl.view({ x: pre.x, y: yv() }); update(); });
+  lw.style.display = "none"; lam = lamR();
+  update();
+})();
+
+/* ================================================================ 3. 뉴턴 · 할선 · 수정 뉴턴 */
+(function () {
+  const PRE = {
+    cubic: { f: (x) => x * x * x - 2 * x - 5, df: (x) => 3 * x * x - 2, r: 2.0945514815423265, x: [0.6, 3.6], x0: 3.2, x1: 2.6 },
+    double: { f: (x) => x * x * x - 3 * x + 2, df: (x) => 3 * x * x - 3, r: 1, x: [-0.3, 2.6], x0: 2.2, x1: 1.9 },
+    cos: { f: (x) => Math.cos(x) - x, df: (x) => -Math.sin(x) - 1, r: 0.7390851332151607, x: [-0.6, 2.6], x0: 2.2, x1: 1.6 },
+    exp: { f: (x) => Math.exp(x) - 2, df: (x) => Math.exp(x), r: Math.LN2, x: [-1, 3], x0: 2.6, x1: 2 },
+  };
+  let pre = PRE.cubic, m = "newton", n = 2, zoom = false;
+  const p0 = { x: pre.x0, y: 0, lock: "y", r: 8 }, p1 = { x: pre.x1, y: 0, lock: "y", r: 8, hidden: true };
+  const tbl = document.getElementById("rt-nw-tbl");
+  const iterate = () => {
+    const xs = [p0.x]; if (m === "secant") xs.push(p1.x);
+    const base = xs.length;
+    for (let k = 0; k < n; k++) {
+      const x = xs[xs.length - 1]; let y;
+      if (m === "secant") { const xp = xs[xs.length - 2], f1 = pre.f(x), f0 = pre.f(xp); if (f1 === f0) break; y = x - f1 * (x - xp) / (f1 - f0); }
+      else { const d = pre.df(x); if (d === 0) break; y = x - (m === "mod" ? 2 : 1) * pre.f(x) / d; }
+      if (!isFinite(y)) break; xs.push(y);
+    }
+    return { xs, base };
+  };
+  let I = iterate();
+  const pl = MB.plane("#rt-nw-cv", {
+    x: pre.x, y: RT.yrange(pre.f, pre.x[0], pre.x[1]), aspect: 0.62, minHeight: 250, points: [p0, p1], grid: false, axes: false,
+    draw(P) {
+      const C = P.P, xs = I.xs;
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 });
+      P.line(pre.r, P.y0, pre.r, P.y1, { color: C.accent2, width: 1.3, dash: [5, 4] });
+      P.curve(pre.f, { color: C.text, width: 2.4 });
+      const start = m === "secant" ? 2 : 1;
+      for (let k = start; k < xs.length; k++) {
+        const x = xs[k], xp = xs[k - 1], last = k === xs.length - 1, al = last ? 1 : 0.45;
+        if (m === "secant") { const xpp = xs[k - 2]; P.line(xpp, pre.f(xpp), x, 0, { color: C.warn, width: last ? 2.2 : 1.4, alpha: al }); P.dot(xpp, pre.f(xpp), { r: 3, color: C.warn, alpha: al }); }
+        else P.line(xp, pre.f(xp), x, 0, { color: C.warn, width: last ? 2.2 : 1.4, alpha: al });
+        P.dot(xp, pre.f(xp), { r: 3.5, color: C.accent, alpha: al });
+        P.line(x, 0, x, pre.f(x), { color: C.faint, width: 1, dash: [3, 3] });
+        P.dot(x, 0, { r: last ? 5 : 3.5, color: C.accent });
+      }
+      p0.color = C.accent; p1.color = C.warn; p1.hidden = m !== "secant";
+      p0.hidden = p1.hidden2 = false;
+      if (n > 0 && zoom) { p0.hidden = true; p1.hidden = true; }
+    },
+    onDrag() { n = 0; update(); },
+  });
+  const update = () => {
+    I = iterate();
+    const xs = I.xs, xn = xs[xs.length - 1];
+    let v = { x: pre.x, y: null };
+    if (zoom && n > 0) { const w = Math.max(Math.abs(xn - xs[xs.length - 2]) * 3, Math.abs(xn - pre.r) * 4, 1e-9); v.x = [xn - w, xn + w]; }
+    v.y = RT.yrange(pre.f, v.x[0], v.x[1]);
+    pl.view(v);
+    const es = xs.map((x) => Math.abs(x - pre.r));
+    MB.stat("rt-nw-n", String(xs.length - I.base));
+    MB.stat("rt-nw-x", RT.fix(xn, 12));
+    MB.stat("rt-nw-e", RT.sci(es[es.length - 1], 3));
+    const ok = es.filter((e) => e > 1e-15); let p = NaN;
+    if (ok.length >= 3) { const L = ok.length, a = ok[L - 3], b = ok[L - 2], c = ok[L - 1]; p = Math.log(c / b) / Math.log(b / a); }
+    MB.stat("rt-nw-p", isFinite(p) && n >= 3 ? p.toFixed(2) : "—");
+    let h = `<table><thead><tr><th>n</th><th>xₙ</th><th>f(xₙ)</th><th>|eₙ|</th><th>|eₙ|/|eₙ₋₁|</th><th>|eₙ|/|eₙ₋₁|²</th></tr></thead><tbody>`;
+    xs.forEach((x, k) => {
+      const r1 = k > 0 && es[k - 1] > 0 ? es[k] / es[k - 1] : NaN, r2 = k > 0 && es[k - 1] > 0 ? es[k] / (es[k - 1] * es[k - 1]) : NaN;
+      const show = (v) => (isFinite(v) && es[k] > 1e-15 ? RT.fix(v, 4) : "");
+      h += `<tr${k === xs.length - 1 ? ' class="cur"' : ""}><td>${k}</td><td>${RT.fix(x, 16)}</td><td>${RT.sci(pre.f(x), 2)}</td><td>${RT.sci(es[k], 3)}</td><td>${show(r1)}</td><td>${show(r2)}</td></tr>`;
+    });
+    tbl.innerHTML = h + "</tbody></table>"; tbl.scrollTop = tbl.scrollHeight;
+  };
+  document.getElementById("rt-nw-step").addEventListener("click", () => { if (n < 40) { n++; update(); } });
+  document.getElementById("rt-nw-reset").addEventListener("click", () => { n = 0; update(); });
+  MB.seg("rt-nw-m", (v) => { m = v; n = 0; update(); });
+  MB.check("rt-nw-zoom", (v) => { zoom = v; update(); });
+  document.getElementById("rt-nw-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; p0.x = pre.x0; p1.x = pre.x1; n = 0; update(); });
+  update();
+})();
+
+/* ================================================================ 4. 가위치법 vs 일리노이 */
+(function () {
+  const PRE = {
+    cubic: { f: (x) => x * x * x - 2 * x - 5, a: 2, b: 3, r: 2.0945514815423265 },
+    x10: { f: (x) => Math.pow(x, 10) - 1, a: 0, b: 1.3, r: 1 },
+    exp: { f: (x) => Math.exp(x) - 2, a: 0, b: 4, r: Math.LN2 },
+  };
+  const NMAX = 60;
+  let pre = PRE.cubic, show = "falsi", n = 5, S = {}, timer = 0;
+  const msg = document.getElementById("rt-rf-msg");
+  const calc = () => { S = { falsi: RT.falsi(pre.f, pre.a, pre.b, false, NMAX), ill: RT.falsi(pre.f, pre.a, pre.b, true, NMAX), bis: RT.bisect(pre.f, pre.a, pre.b, NMAX) }; };
+  calc();
+  const xr = () => { const w = pre.b - pre.a; return [pre.a - 0.08 * w, pre.b + 0.08 * w]; };
+  const pl = MB.plane("#rt-rf-cv", {
+    x: xr(), y: RT.yrange(pre.f, ...xr()), aspect: 0.5, minHeight: 210, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, ctx = P.ctx, seq = S[show], k = Math.min(n, seq.length) - 1, q = seq[k];
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 });
+      ctx.fillStyle = C.accent; ctx.globalAlpha = 0.1; ctx.fillRect(P.X(Math.min(q.a, q.b)), 0, Math.abs(P.X(q.b) - P.X(q.a)), P.h); ctx.globalAlpha = 1;
+      P.line(pre.r, P.y0, P.y1 > 0 ? pre.r : pre.r, P.y1, { color: C.accent2, width: 1.3, dash: [5, 4] });
+      P.curve(pre.f, { color: C.text, width: 2.4 });
+      if (show !== "bis") { P.line(q.a, q.fa, q.b, q.fb, { color: C.warn, width: 2 }); }
+      const ta = pre.f(q.a), tb = pre.f(q.b);
+      P.dot(q.a, ta, { r: 5, color: C.accent }); P.dot(q.b, tb, { r: 5, color: C.accent });
+      if (show === "ill") { if (Math.abs(q.fa - ta) > 1e-12 * Math.abs(ta)) P.dot(q.a, q.fa, { r: 5, color: C.bg, stroke: C.ok }); if (Math.abs(q.fb - tb) > 1e-12 * Math.abs(tb)) P.dot(q.b, q.fb, { r: 5, color: C.bg, stroke: C.ok }); }
+      // 묶인 끝점: 지난 3단계 동안 바뀌지 않은 끝
+      if (k >= 3) { const p3 = seq[k - 3]; if (p3.a === q.a) P.circle(q.a, ta, 10 / P.unit, { color: C.bad, width: 2.5 }); if (p3.b === q.b) P.circle(q.b, tb, 10 / P.unit, { color: C.bad, width: 2.5 }); }
+      P.dot(q.c, 0, { r: 5, color: C.warn });
+    },
+  });
+  const ch = MB.canvas("#rt-rf-ch", (ctx, w, h) => {
+    const C = MB.palette(), col = { falsi: C.bad, ill: C.ok, bis: C.blue }, X = Math.max(12, n + 2);
+    const series = [];
+    ["bis", "falsi", "ill"].forEach((key) => { const d = S[key].slice(0, n).map((q, i) => [i + 1, Math.max(Math.abs(q.c - pre.r), 1e-17)]); series.push({ data: d, color: col[key], width: key === show ? 2.8 : 1.6 }); });
+    MB.chart(ctx, { x: 52, y: 26, w: w - 52 - 14, h: h - 26 - 38 }, { x: [0, Math.min(X, NMAX)], y: [1e-16, 10], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "반복 n", series });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 240 });
+  const update = () => {
+    pl.redraw(); ch.redraw();
+    MB.stat("rt-rf-n", String(n));
+    ["falsi", "ill", "bis"].forEach((key, i) => { const q = S[key][Math.min(n, S[key].length) - 1]; MB.stat("rt-rf-e" + i, RT.sci(Math.abs(q.c - pre.r), 2)); });
+    const cnt = (key) => { const i = S[key].findIndex((q) => Math.abs(q.c - pre.r) < 1e-10); return i < 0 ? "> " + NMAX : String(i + 1); };
+    const fq = S.falsi[Math.min(n, S.falsi.length) - 1];
+    msg.innerHTML = `오차 10<sup>−10</sup> 도달 반복 수: 가위치 <b>${cnt("falsi")}</b>, 일리노이 <b>${cnt("ill")}</b>, 이분 <b>${cnt("bis")}</b>. 가위치법의 지금 구간 길이 ${RT.sci(Math.abs(fq.b - fq.a), 2)}는 0으로 가지 않습니다.`;
+  };
+  const step = () => { if (n < NMAX) { n++; update(); } };
+  const stop = () => { clearInterval(timer); timer = 0; play.set(false); };
+  const play = MB.playButton("rt-rf-play", () => { timer = setInterval(() => { if (n >= 40) stop(); else step(); }, 350); }, () => stop(), ["▶ 자동", "■ 멈춤"]);
+  document.getElementById("rt-rf-step").addEventListener("click", step);
+  document.getElementById("rt-rf-reset").addEventListener("click", () => { stop(); n = 1; update(); });
+  MB.seg("rt-rf-m", (v) => { show = v; update(); });
+  document.getElementById("rt-rf-pre").addEventListener("change", (e) => { stop(); pre = PRE[e.target.value]; calc(); n = 1; pl.view({ x: xr(), y: RT.yrange(pre.f, ...xr()) }); update(); });
+  update();
+})();
+
+/* ================================================================ 5. 여섯 방법 비교 */
+(function () {
+  const mk = (f, df, a, b, x0) => ({ f, df, a, b, x0, r: RT.newtonRoot(f, df, (a + b) / 2) });
+  const PRE = {
+    cubic: mk((x) => x * x * x - 2 * x - 5, (x) => 3 * x * x - 2, 2, 3, 2),
+    cos: mk((x) => Math.cos(x) - x, (x) => -Math.sin(x) - 1, 0, 1.5, 1),
+    x10: mk((x) => Math.pow(x, 10) - 1, (x) => 10 * Math.pow(x, 9), 0, 1.3, 1.3),
+    kep: mk((x) => x - 0.8 * Math.sin(x) - 1, (x) => 1 - 0.8 * Math.cos(x), 0, 3, 1),
+  };
+  PRE.x10.r = 1;
+  let pre = PRE.cubic, axis = "n", useFp = true, D = null, kinds = [];
+  const msg = document.getElementById("rt-cp-msg");
+  const NM = 60;
+  const run = () => {
+    const f = pre.f, r = pre.r, E = (x) => Math.abs(x - r);
+    const out = {};
+    out.bis = RT.bisect(f, pre.a, pre.b, NM).map((q, i) => ({ ev: i + 3, e: E(q.c) }));
+    out.falsi = RT.falsi(f, pre.a, pre.b, false, NM).map((q, i) => ({ ev: i + 3, e: E(q.c) }));
+    out.ill = RT.falsi(f, pre.a, pre.b, true, NM).map((q, i) => ({ ev: i + 3, e: E(q.c) }));
+    const sec = []; { let x0 = pre.a, x1 = pre.b, f0 = f(x0), f1 = f(x1); for (let k = 0; k < NM; k++) { if (f1 === f0) break; const x2 = x1 - f1 * (x1 - x0) / (f1 - f0); if (!isFinite(x2)) break; x0 = x1; f0 = f1; x1 = x2; f1 = f(x1); sec.push({ ev: k + 3, e: E(x1) }); if (E(x1) === 0) break; } } out.sec = sec;
+    const nw = []; { let x = pre.x0; for (let k = 0; k < NM; k++) { const d = pre.df(x); if (!d) break; x -= f(x) / d; if (!isFinite(x)) break; nw.push({ ev: 2 * (k + 1), e: E(x) }); if (E(x) === 0) break; } } out.nw = nw;
+    const fp = []; { let x = pre.x0; const d = pre.df(pre.x0); for (let k = 0; k < NM; k++) { x -= f(x) / d; if (!isFinite(x) || Math.abs(x) > 1e6) break; fp.push({ ev: k + 1, e: E(x) }); } } out.fp = fp;
+    const bs = RT.brent(f, pre.a, pre.b); kinds = bs.map((s) => s.kind); out.br = bs.map((s, i) => ({ ev: i + 3, e: E(s.x) }));
+    // 0 오차 이후 잘라내기
+    for (const k in out) { const arr = out[k], i = arr.findIndex((p) => p.e === 0); if (i >= 0) out[k] = arr.slice(0, i + 1); }
+    D = out;
+  };
+  run();
+  const cv = MB.canvas("#rt-cp-cv", (ctx, w, h) => {
+    const C = MB.palette();
+    const col = { bis: C.blue, fp: C.faint, falsi: C.bad, ill: C.ok, sec: C.warn, nw: C.text, br: C.accent2 };
+    const keys = ["bis", "fp", "falsi", "ill", "sec", "nw", "br"].filter((k) => useFp || k !== "fp");
+    const box = { x: 62, y: 14, w: w - 62 - 16, h: h - 14 - 46 }, series = [], points = [];
+    const fl = (e) => Math.max(e, 1e-17);
+    if (axis === "pp") {
+      [[1, "p = 1"], [1.618, "p = 1.618"], [2, "p = 2"]].forEach(([p]) => series.push({ data: [[1e-16, Math.pow(1e-16, p)], [1, 1]].map(([x]) => [x, Math.pow(x, p)]).concat([]), color: C.faint, width: 1, dash: [5, 4] }));
+      keys.forEach((k) => { const a = D[k]; const d = []; for (let i = 0; i + 1 < a.length; i++) if (a[i].e > 0 && a[i + 1].e > 0) d.push([a[i].e, a[i + 1].e]); series.push({ data: d, color: col[k], width: 2 }); d.forEach(([x, y]) => points.push({ x, y, r: 2.8, color: col[k] })); });
+      const c = MB.chart(ctx, box, { x: [1e-16, 10], y: [1e-16, 10], logX: true, logY: true, xTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "|eₙ|", yLabel: "|eₙ₊₁|", series, points });
+      ctx.save(); ctx.fillStyle = C.dim; ctx.font = "12px " + RT.mono();
+      [[1, "p = 1", 1e-3], [1.618, "p = 1.618", 1e-6], [2, "p = 2", 1e-6]].forEach(([p, s, x]) => ctx.fillText(s, c.X(x) + 4, c.Y(Math.pow(x, p)) + (p === 1 ? -6 : 14)));
+      ctx.restore();
+      return;
+    }
+    const byEv = axis === "ev";
+    let xmax = 0;
+    keys.forEach((k) => { const d = D[k].map((p, i) => [byEv ? p.ev : i + 1, fl(p.e)]).filter(([x]) => x <= 60); d.forEach(([x]) => { if (x > xmax) xmax = x; }); series.push({ data: d, color: col[k], width: k === "nw" || k === "br" ? 2.6 : 1.8 }); d.forEach(([x, y]) => points.push({ x, y, r: 2.4, color: col[k] })); });
+    MB.chart(ctx, box, { x: [0, Math.min(60, Math.max(12, xmax))], y: [1e-17, 10], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: byEv ? "f 계산 횟수 (뉴턴은 f′ 포함)" : "반복 n", yLabel: "|오차|", series, points, hlines: [{ y: 1e-12, color: C.faint, label: "10⁻¹²" }] });
+  }, { aspect: 0.62, minHeight: 280, maxHeight: 460 });
+  const update = () => {
+    run(); cv.redraw();
+    const need = (k) => { const p = D[k].find((q) => q.e <= 1e-12); return p ? String(p.ev) : "> 60"; };
+    MB.stat("rt-cp-c0", need("bis")); MB.stat("rt-cp-c1", need("ill")); MB.stat("rt-cp-c2", need("sec")); MB.stat("rt-cp-c3", need("nw")); MB.stat("rt-cp-c4", need("br"));
+    msg.innerHTML = `브렌트 단계: ${kinds.map((k) => `<span class="rt-k">${k}</span>`).join(" ")} (처음 f(a), f(b) 두 번 + 단계당 한 번).`;
+  };
+  document.getElementById("rt-cp-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; update(); });
+  MB.seg("rt-cp-axis", (v) => { axis = v; cv.redraw(); });
+  MB.check("rt-cp-fp", (v) => { useFp = v; cv.redraw(); });
+  update();
+})();
+
+/* ================================================================ 6. 반올림 잡음과 불확실 구간 */
+(function () {
+  const binom = (m) => { const c = [1]; for (let k = 0; k < m; k++) { c.push(0); for (let j = c.length - 1; j > 0; j--) c[j] -= c[j - 1]; } return c; };
+  const PRE = {
+    7: { c: binom(7), t: (x) => Math.pow(x - 1, 7), m: 7, lead: 1 },
+    3: { c: binom(3), t: (x) => Math.pow(x - 1, 3), m: 3, lead: 1 },
+    1: { c: [1, -6, 11, -6], t: (x) => (x - 1) * (x - 2) * (x - 3), m: 1, lead: 2 },
+  };
+  let pre = PRE[7], k = -1.5, fac = false, hits = [];
+  const horner = (c, x) => c.reduce((s, a) => s * x + a, 0);
+  const val = (x) => (fac ? pre.t(x) : horner(pre.c, x));
+  const delta = (lo, hi) => { let mx = 0; for (let i = 0; i <= 800; i++) { const x = lo + ((hi - lo) * i) / 800; mx = Math.max(mx, Math.abs(horner(pre.c, x) - pre.t(x))); } return mx; };
+  let ref = delta(0.98, 1.02);
+  const cv = MB.canvas("#rt-nz-cv", (ctx, w, h) => {
+    const C = MB.palette(), W = Math.pow(10, k), N = 700, tr = [], cp = [];
+    let ymax = 0, sc = 0, prev = null, dl = 0;
+    for (let i = 0; i <= N; i++) { const u = -W + (2 * W * i) / N, x = 1 + u, t = pre.t(x), v = val(x); tr.push([u, t]); cp.push([u, v]); ymax = Math.max(ymax, Math.abs(t), Math.abs(v)); dl = Math.max(dl, Math.abs(v - t)); if (prev !== null && v * prev < 0) sc++; if (v !== 0) prev = v; }
+    ymax = ymax * 1.15 || 1e-300;
+    const fx = (v) => (Math.abs(v) < 1e-3 && v !== 0 ? v.toExponential(0).replace("e-", "e−") : String(+v.toPrecision(3)));
+    const bands = [];
+    const c = MB.chart(ctx, { x: 66, y: 14, w: w - 66 - 16, h: h - 14 - 46 }, {
+      x: [-W, W], y: [-ymax, ymax], xLabel: "x − 1", xFmt: fx, yFmt: fx,
+      series: [{ data: tr, color: C.faint, width: 3 }, { data: cp, color: C.accent, width: 1.3 }],
+      hlines: fac ? [] : [{ y: dl, color: C.warn }, { y: -dl, color: C.warn }],
+      points: hits.filter((u) => Math.abs(u) <= W).map((u) => ({ x: u, y: 0, r: 4, color: C.bad })),
+    });
+    MB.stat("rt-nz-d", fac ? "0 (곱 형태)" : RT.sci(dl, 2));
+    MB.stat("rt-nz-s", String(sc));
+  }, { aspect: 0.6, minHeight: 260, maxHeight: 440 });
+  const update = () => {
+    ref = delta(0.98, 1.02);
+    const rad = Math.pow(ref / pre.lead, 1 / pre.m);
+    MB.stat("rt-nz-r", fac ? "—" : "≈ " + RT.sci(rad, 2));
+    cv.redraw();
+    if (hits.length) { const es = hits.map(Math.abs); MB.stat("rt-nz-b", RT.sci(Math.min(...es), 1) + " … " + RT.sci(Math.max(...es), 1)); } else MB.stat("rt-nz-b", "—");
+  };
+  const rng = MB.rng(7);
+  document.getElementById("rt-nz-bis").addEventListener("click", () => {
+    for (let t = 0; t < 20; t++) {
+      let a = rng.range(0.3, 0.95), b = rng.range(1.05, 1.8), fa = val(a);
+      for (let i = 0; i < 80; i++) { const m = a + (b - a) / 2, fm = val(m); if (fm === 0 || m === a || m === b) { a = b = m; break; } if (RT.sign(fm) === RT.sign(fa)) { a = m; fa = fm; } else b = m; }
+      hits.push((a + b) / 2 - 1);
+    }
+    update();
+  });
+  document.getElementById("rt-nz-clr").addEventListener("click", () => { hits = []; update(); });
+  MB.range("rt-nz-k", (v) => v.toFixed(2).replace("-", "−"), (v) => { k = v; update(); });
+  MB.check("rt-nz-fac", (v) => { fac = v; hits = []; update(); });
+  document.getElementById("rt-nz-pre").addEventListener("change", (e) => { pre = PRE[e.target.value]; hits = []; update(); });
+  update();
+})();
+
+/* ================================================================ 7. 뉴턴 실패 갤러리 */
+(function () {
+  const cub = (x) => x * x * x - 2 * x - 5, dcub = (x) => 3 * x * x - 2;
+  const CASES = {
+    cycle: { f: (x) => x * x * x - 2 * x + 2, df: (x) => 3 * x * x - 2, r: -1.7692923542386314, x0: 0, x: [-2.6, 2], br: [-2.5, 1.5], text: "x³ − 2x + 2, x₀ = 0: 접선이 0 → 1 → 0 → 1로 영원히 오갑니다. 근 −1.769는 왼쪽에 있습니다." },
+    atan: { f: Math.atan, df: (x) => 1 / (1 + x * x), r: 0, x0: 1.45, x: [-6, 6], br: [-2, 3], text: "arctan x, |x₀| &gt; 1.3917이면 접선이 반대편으로 점점 더 멀리 던집니다." },
+    flat: { f: cub, df: dcub, r: 2.0945514815423265, x0: 0.82, x: [-1.5, 4], br: [0, 3], text: "x³ − 2x − 5, x₀ = 0.82: 극값 √(2/3) 근처의 거의 수평인 접선이 x₁ ≈ 355로 던집니다." },
+    cbrt: { f: Math.cbrt, df: (x) => 1 / (3 * Math.cbrt(x * x)), r: 0, x0: 0.1, x: [-2, 2], br: [-1, 1.5], text: "∛x: 근에서 기울기가 무한대라 xₙ₊₁ = −2xₙ, 매번 두 배로 멀어집니다." },
+    wander: { f: cub, df: dcub, r: 2.0945514815423265, x0: 0, x: [-5, 4], br: [-1, 3], text: "x³ − 2x − 5, x₀ = 0: 두 극값 사이에서 접선이 이리저리 튀며 한동안 방랑합니다." },
+  };
+  let cs = CASES.cycle, N = 6, safe = false, R = null;
+  const p0 = { x: cs.x0, y: 0, lock: "y", r: 8 };
+  const msg = document.getElementById("rt-fl-msg");
+  const run = () => {
+    let x = p0.x, lo = cs.br[0], hi = cs.br[1], flo = cs.f(lo), nb = 0; const xs = [x], kind = [""], brs = [[lo, hi]];
+    if (safe) { x = MB.clamp(x, lo, hi); xs[0] = x; }
+    for (let k = 0; k < N; k++) {
+      const fx = cs.f(x); if (fx === 0) break;
+      if (safe) { if (RT.sign(fx) === RT.sign(flo)) { lo = x; flo = fx; } else hi = x; }
+      const d = cs.df(x); let y = d ? x - fx / d : NaN, kd = "뉴턴";
+      if (safe && (!isFinite(y) || y <= Math.min(lo, hi) || y >= Math.max(lo, hi))) { y = (lo + hi) / 2; kd = "이분"; nb++; }
+      if (!isFinite(y)) break;
+      x = y; xs.push(x); kind.push(kd); brs.push([lo, hi]);
+    }
+    R = { xs, kind, nb, brs };
+  };
+  run();
+  const pl = MB.plane("#rt-fl-cv", {
+    x: cs.x, y: RT.yrange(cs.f, ...cs.x), aspect: 0.6, minHeight: 250, points: [p0], grid: false, axes: false,
+    draw(P) {
+      const C = P.P, xs = R.xs, ctx = P.ctx;
+      P.line(P.x0, 0, P.x1, 0, { color: C.axis, width: 1.2 });
+      if (safe) { const [lo, hi] = R.brs[R.brs.length - 1]; P.line(lo, 0, hi, 0, { color: C.ok, width: 7, alpha: 0.5 }); }
+      P.line(cs.r, P.y0, cs.r, P.y1, { color: C.accent2, width: 1.3, dash: [5, 4] });
+      P.curve(cs.f, { color: C.text, width: 2.4 });
+      const cx = (v) => MB.clamp(v, P.x0 - (P.x1 - P.x0), P.x1 + (P.x1 - P.x0));
+      for (let k = 1; k < xs.length; k++) {
+        const a = xs[k - 1], b = xs[k], al = 0.35 + 0.65 * (k / xs.length);
+        if (R.kind[k] === "이분") P.line(a, 0, cx(b), 0, { color: C.ok, width: 2, dash: [4, 3], alpha: al });
+        else P.line(a, cs.f(a), cx(b), 0, { color: C.warn, width: 1.8, alpha: al });
+        P.line(a, 0, a, cs.f(a), { color: C.faint, width: 1, dash: [3, 3] });
+        P.dot(a, cs.f(a), { r: 3.2, color: C.accent, alpha: al });
+        if (b < P.x0 || b > P.x1) { const ex = b > P.x1 ? P.x1 : P.x0; P.text((b > 0 ? "→ " : "← ") + "x" + "₀₁₂₃₄₅₆₇₈₉"[Math.min(k, 9)] + " = " + RT.fix(b, 4).replace("&minus;", "−"), ex, P.y1 - (P.y1 - P.y0) * (0.08 + 0.06 * (k % 5)), { color: C.bad, size: 12, align: b > 0 ? "right" : "left", dx: b > 0 ? -6 : 6 }); }
+        else P.dot(b, 0, { r: 3.5, color: C.accent, alpha: al });
+      }
+      p0.color = C.accent;
+    },
+    onDrag() { update(); },
+  });
+  const update = () => {
+    run(); pl.redraw();
+    const xn = R.xs[R.xs.length - 1];
+    MB.stat("rt-fl-x0", RT.fix(p0.x, 5));
+    MB.stat("rt-fl-xn", RT.fix(xn, 10));
+    MB.stat("rt-fl-fx", RT.sci(Math.abs(cs.f(xn)), 2));
+    MB.stat("rt-fl-nb", safe ? String(R.nb) : "—");
+    const ok = Math.abs(xn - cs.r) < 1e-8;
+    msg.className = "rt-msg" + (ok ? " ok" : "");
+    msg.innerHTML = cs.text + (ok ? ` <b>${R.xs.length - 1}번 만에 근에 닿았습니다.</b>` : ` 지금 |xₙ − r| = ${RT.sci(Math.abs(xn - cs.r), 2)}.`);
+  };
+  MB.seg("rt-fl-case", (v) => { cs = CASES[v]; p0.x = cs.x0; pl.view({ x: cs.x, y: RT.yrange(cs.f, ...cs.x) }); update(); });
+  MB.range("rt-fl-n", (v) => String(v), (v) => { N = v; update(); });
+  MB.check("rt-fl-safe", (v) => { safe = v; update(); });
+  update();
+})();
+
+/* ================================================================ 8. 케플러 방정식 */
+(function () {
+  let e = 0.5, M = 1, e0 = "M", playing = false, S = null;
+  const solve = () => {
+    const f = (E) => E - e * Math.sin(E) - M;
+    let E = e0 === "M" ? M : e0 === "pi" ? Math.PI : M + e * Math.sin(M); const nw = [Math.abs(f(E))];
+    for (let k = 0; k < 50 && Math.abs(f(E)) >= 1e-14; k++) { E -= f(E) / (1 - e * Math.cos(E)); nw.push(Math.abs(f(E))); }
+    let G = M; const fp = [Math.abs(f(G))];
+    for (let k = 0; k < 50 && Math.abs(f(G)) >= 1e-14; k++) { G = M + e * Math.sin(G); fp.push(Math.abs(f(G))); }
+    S = { E, nw, fp };
+  };
+  solve();
+  const pl = MB.plane("#rt-kp-cv", {
+    x: [-2.15, 1.25], y: null, aspect: 0.66, minHeight: 230, grid: false, axes: false,
+    draw(P) {
+      const C = P.P, b = Math.sqrt(1 - e * e), E = S.E;
+      P.param((t) => [Math.cos(t) - e, Math.sin(t)], 0, 2 * Math.PI, { color: C.faint, width: 1, dash: [4, 4] });
+      P.line(-2.1, 0, 1.2, 0, { color: C.grid, width: 1 });
+      P.param((t) => [Math.cos(t) - e, b * Math.sin(t)], 0, 2 * Math.PI, { color: C.text, width: 2 });
+      P.dot(0, 0, { r: 7, color: C.warn }); P.text("태양", 0, 0, { color: C.dim, dy: 16, align: "center", size: 11 });
+      P.dot(-e, 0, { r: 2.5, color: C.dim });
+      P.line(-e, 0, Math.cos(M) - e, Math.sin(M), { color: C.faint, width: 1.2, dash: [2, 3] });
+      P.dot(Math.cos(M) - e, Math.sin(M), { r: 3.5, color: C.faint });
+      const qx = Math.cos(E) - e;
+      P.line(-e, 0, qx, Math.sin(E), { color: C.accent, width: 1.4, dash: [5, 3] });
+      P.line(qx, Math.sin(E), qx, b * Math.sin(E), { color: C.accent, width: 1, dash: [2, 2] });
+      P.dot(qx, Math.sin(E), { r: 3.5, color: C.accent });
+      P.line(0, 0, qx, b * Math.sin(E), { color: C.accent2, width: 1.4 });
+      P.dot(qx, b * Math.sin(E), { r: 7, color: C.accent2 });
+      P.text("E", -e + 0.22 * Math.cos(E / 2), 0.22 * Math.sin(E / 2), { color: C.accent, size: 12, bold: true });
+    },
+  });
+  const ch = MB.canvas("#rt-kp-ch", (ctx, w, h) => {
+    const C = MB.palette(), X = Math.max(10, Math.min(50, Math.max(S.nw.length, S.fp.length)));
+    const d1 = S.nw.map((v, i) => [i, Math.max(v, 1e-17)]), d2 = S.fp.map((v, i) => [i, Math.max(v, 1e-17)]);
+    MB.chart(ctx, { x: 52, y: 26, w: w - 52 - 14, h: h - 26 - 38 }, { x: [0, X], y: [1e-17, 100], logY: true, yTicks: [1e-16, 1e-12, 1e-8, 1e-4, 1], xLabel: "반복 n", series: [{ data: d2, color: C.warn, width: 1.8 }, { data: d1, color: C.accent, width: 2.4 }], points: d1.map(([x, y]) => ({ x, y, r: 3, color: C.accent })) });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 240 });
+  const update = () => {
+    solve(); pl.redraw(); ch.redraw();
+    MB.stat("rt-kp-E", RT.fix(S.E, 12));
+    MB.stat("rt-kp-nn", String(S.nw.length - 1) + (S.nw[S.nw.length - 1] >= 1e-14 ? " (미수렴)" : ""));
+    MB.stat("rt-kp-nf", S.fp[S.fp.length - 1] >= 1e-14 ? "> 50" : String(S.fp.length - 1));
+    MB.stat("rt-kp-r", (1 - e * Math.cos(S.E)).toFixed(4));
+  };
+  MB.range("rt-kp-e", (v) => v.toFixed(2), (v) => { e = v; update(); });
+  const mR = MB.range("rt-kp-m", (v) => v.toFixed(2), (v) => { M = v; update(); });
+  MB.seg("rt-kp-e0", (v) => { e0 = v; update(); });
+  const loop = MB.loop(document.getElementById("sim-rt-kepler"), (dt) => { if (!playing) return; M = (M + dt * 0.9) % (2 * Math.PI); mR.set(M, false); update(); });
+  MB.playButton("rt-kp-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 공전", "■ 멈춤"]);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<title>반복 해법 · NumericalBook</title>
+<meta name="description" content="큰 희소 연립방정식을 곱셈만으로 푸는 법. 야코비·가우스–자이델·SOR과 스펙트럼 반지름, 최적 ω, 최급 강하와 켤레 기울기법, 전처리, 크릴로프 부분공간과 GMRES, 다중 격자와 2차원 푸아송 방정식.">
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/common.js"></script>
+<style>
+  .it-two { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .it-two > div { position: relative; min-width: 0; }
+  .it-two > div + div { border-top: 1px solid var(--border); }
+  .it-cap { position: absolute; left: 10px; top: 8px; font: 600 11.5px var(--mono); color: var(--text-dim); pointer-events: none; background: color-mix(in srgb, var(--canvas-bg) 80%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .it-msg { padding: 10px 18px; font-size: 14px; border-top: 1px solid var(--border); background: var(--bg-elev); color: var(--text-dim); min-height: 1.6em; line-height: 1.7; overflow-wrap: anywhere; }
+  .it-msg b { color: var(--text); }
+  .it-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--text-dim); padding: 8px 18px; border-top: 1px solid var(--border); }
+  .it-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .it-num td, .it-num th { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  .it-num td:first-child, .it-num th:first-child { text-align: center; font-family: inherit; }
+</style>
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+<link rel="stylesheet" href="../../shared/css/book-shell.css">
+<script defer src="../../shared/js/book-shell.js" data-book="numerical"></script>
+</head>
+<body data-chapter="iterative">
+<main class="chapter">
+  <header class="chapter-hero">
+    <div class="eyebrow">Chapter 13</div>
+    <h1 data-no-glossary>반복 해법</h1>
+    <p class="lead">12장의 LU 분해는 \(n^3/3\)번의 곱셈과 \(n^2\)칸의 메모리로 연립방정식을 정확히 풉니다. \(n = 10^3\)이면 문제없지만 열전도·구조·유체 시뮬레이션의 \(n\)은 \(10^6\)을 넘고, 행렬은 한 행에 0이 아닌 원소가 다섯 개쯤뿐입니다. 이런 행렬은 분해하는 대신 <b>곱하기만</b> 하면서 해에 다가가는 것이 낫습니다. 이 장은 가장 오래된 반복(야코비, 가우스–자이델)이 왜 수렴하는지를 스펙트럼 반지름으로 정확히 말하고, 매개변수 하나로 수십 배 빨라지는 SOR, 방정식을 그릇의 바닥 찾기로 바꾼 켤레 기울기법, 그 속도를 다시 몇 배 올리는 전처리, 비대칭 행렬의 GMRES, 그리고 격자 크기와 무관한 횟수로 끝나는 다중 격자까지 다룹니다.</p>
+    <ul class="objectives">
+      <li>분할 \(A = M - N\)으로 야코비·가우스–자이델·SOR을 쓰고, 반복 행렬의 스펙트럼 반지름으로 수렴 여부와 속도를 판정한다.</li>
+      <li>대각 우세·대칭 양정치 조건에서 수렴을 증명하고, 영의 정리로 최적 이완 계수 \(\omega^*\)를 계산한다.</li>
+      <li>\(A\mathbf x = \mathbf b\)를 이차 형식의 최소화로 바꾸고, 최급 강하의 지그재그와 켤레 기울기법의 A-직교 방향을 비교한다.</li>
+      <li>CG의 수렴이 조건수 \(\sqrt\kappa\)뿐 아니라 고유값 분포 전체에 달려 있음을 실험으로 확인한다.</li>
+      <li>야코비·불완전 촐레스키 전처리와 GMRES(아놀디 과정, 재시작)의 원리를 설명한다.</li>
+      <li>고주파 오차는 완화로, 저주파 오차는 거친 격자로 없애는 다중 격자의 아이디어를 이해한다.</li>
+    </ul>
+    <div class="origin">
+      <div class="o-head"><small>이 수식이 없었다면</small><b>백만 개의 미지수를 가진 시뮬레이션</b></div>
+      <div class="o-body"><p>자동차 충돌 해석, 일기예보의 압력 방정식, 반도체 소자의 전위 분포, 영상의 매끄러운 합성은 모두 결국 거대한 희소 연립방정식 \(A\mathbf x = \mathbf b\)를 풉니다. 밀집 행렬로 다루면 \(n = 10^6\)에서 저장에만 8 TB, 소거에 \(3\times10^{17}\)번의 곱셈이 듭니다. 반복 해법은 같은 문제를 \(A\)와 벡터의 곱 수백 번, 곧 원소 수십억 번의 연산으로 풉니다.</p>
+        <p>이웃 평균을 되풀이하는 생각은 19세기 가우스와 야코비<span class="en">(Carl Jacobi)</span>까지 거슬러 올라갑니다. 1950년대 컴퓨터와 함께 영<span class="en">(David M. Young)</span>의 SOR 이론, 헤스테네스<span class="en">(Magnus Hestenes)</span>와 슈티펠<span class="en">(Eduard Stiefel)</span>의 켤레 기울기법(1952)이 나왔고, 1986년 사드<span class="en">(Yousef Saad)</span>와 슐츠<span class="en">(Martin Schultz)</span>가 GMRES를 발표했습니다. 오늘날 PETSc, hypre 같은 대형 계산 라이브러리의 중심이 이 방법들입니다.</p>
+        <div class="o-chain"><span>편미분방정식 → 격자</span><i>→</i><span>희소 행렬 A</span><i>→</i><span class="tool">x ← x + (전처리된 잔차 방향)</span><i>→</i><span>곱셈 수백 번으로 해</span></div></div>
+    </div>
+  </header>
+
+  <!-- =============================================================== 1 -->
+  <section id="sparse">
+    <h2>큰 희소 행렬: 왜 분해하지 않는가</h2>
+    <div class="problem"><strong>금속판의 온도, 격자 1000 × 1000</strong>
+      <p>정사각형 판의 가장자리 온도를 정해 두고 안쪽의 정상 상태 온도를 구합니다. 판을 한 변 \(N\)칸으로 나누면 각 격자점의 온도는 상하좌우 네 이웃의 평균이라는 식(라플라스 방정식의 5점 차분, <a href="pde-numerics.html">16장</a>) 하나로 묶입니다. \(N = 1000\)이면 미지수가 \(10^6\)개입니다. 12장의 띠 촐레스키로 풀면 얼마나 들까요?</p></div>
+    <p>격자점을 행 순서로 번호 매기면 \(n = N^2\)차 행렬 \(A\)의 각 행에는 대각 원소 4와 이웃 네 개의 \(-1\)만 있습니다. 0이 아닌 원소 수(nnz)는 약 \(5n\)입니다. 이런 행렬을 <span class="term">희소 행렬</span><span class="en">(sparse matrix)</span>이라 합니다. 문제는 분해입니다. 위아래 이웃이 \(N\)칸 떨어져 있어 띠 폭이 \(N\)이고, 촐레스키 인수는 띠 안을 거의 다 채웁니다(<span class="term">채움</span><span class="en">(fill-in)</span>, <a href="direct-solvers.html">12장</a>).</p>
+    <div class="table-wrap"><table class="it-num">
+      <thead><tr><th>\(n = 10^6\) (N = 1000)</th><th>저장</th><th>연산</th></tr></thead>
+      <tbody>
+        <tr><td>밀집 LU</td><td>\(10^{12}\)칸 = 8 TB</td><td>\(n^3/3 \approx 3\times10^{17}\)</td></tr>
+        <tr><td>띠 촐레스키 (띠 폭 N)</td><td>\(nN = 10^9\)칸 = 8 GB</td><td>\(nN^2/2 = 5\times10^{11}\)</td></tr>
+        <tr><td>반복법 한 번 (행렬–벡터 곱)</td><td>nnz \(\approx 5\times10^6\)칸 = 40 MB</td><td>\(\approx 10^7\)</td></tr>
+      </tbody></table></div>
+    <p>반복법은 \(A\)를 바꾸지 않습니다. 필요한 것은 "벡터 \(\mathbf v\)를 주면 \(A\mathbf v\)를 돌려주는" 함수뿐이고, 한 번의 비용은 nnz에 비례합니다. 그래서 반복 횟수를 \(k\)라 하면 총비용은 \(k\cdot\mathrm{nnz}\)이고, 이 장의 모든 아이디어는 결국 <b>\(k\)를 줄이는 기술</b>입니다. 같은 문제에서 야코비는 수백만 번, 최적 SOR과 CG는 수천 번, 다중 격자는 열 번 안팎의 V-사이클이 필요하다는 것을 이 장 끝에서 보게 됩니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 300" role="img" aria-label="4×4 격자의 번호와 16×16 라플라스 행렬의 희소 패턴">
+        <rect x="10" y="10" width="740" height="280" rx="10" class="f-surface"/>
+        <g transform="translate(40,50)">
+          <g class="s-line" style="stroke-width:1.2">
+            <line x1="0" y1="0" x2="180" y2="0"/><line x1="0" y1="60" x2="180" y2="60"/><line x1="0" y1="120" x2="180" y2="120"/><line x1="0" y1="180" x2="180" y2="180"/>
+            <line x1="0" y1="0" x2="0" y2="180"/><line x1="60" y1="0" x2="60" y2="180"/><line x1="120" y1="0" x2="120" y2="180"/><line x1="180" y1="0" x2="180" y2="180"/>
+          </g>
+          <g id="it-fig-grid"></g>
+          <text x="90" y="215" text-anchor="middle" class="t-dim">격자점 번호: 행 순서</text>
+        </g>
+        <g transform="translate(300,30)" id="it-fig-spy"></g>
+        <g transform="translate(560,60)">
+          <text x="0" y="0" class="t" style="font-weight:700">A의 한 행 (점 6)</text>
+          <text x="0" y="26" class="t-mono">4·u₆ − u₂ − u₅ − u₇ − u₁₀</text>
+          <text x="0" y="56" class="t-dim">대각 · 좌우 이웃(±1)</text>
+          <text x="0" y="78" class="t-dim">위아래 이웃(±N)</text>
+          <text x="0" y="112" class="t-dim">띠 폭 = N</text>
+          <text x="0" y="134" class="t-dim">nnz ≈ 5n, 나머지는 0</text>
+          <text x="0" y="168" class="t" style="fill:var(--bad)">촐레스키 인수는</text>
+          <text x="0" y="190" class="t" style="fill:var(--bad)">띠 안을 거의 채운다</text>
+        </g>
+      </svg>
+      <figcaption><b>그림 13-1.</b> 4 × 4 격자(왼쪽)를 행 순서로 번호 매긴 16차 라플라스 행렬의 희소 패턴(가운데). 검은 칸이 0이 아닌 원소, 연한 칸은 촐레스키 분해에서 새로 생기는 채움이다. 격자가 커질수록 0이 아닌 원소의 비율은 \(5/n\)으로 줄지만, 채움은 \(nN\)으로 늘어난다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- =============================================================== 2 -->
+  <section id="jacobi-gs">
+    <h2>야코비와 가우스–자이델</h2>
+    <div class="problem"><strong>한 식에서 한 미지수씩</strong>
+      <p>\(i\)번째 방정식 \(\sum_j a_{ij}x_j = b_i\)를 \(x_i\)에 대해 풀면 \(x_i = (b_i - \sum_{j\ne i} a_{ij}x_j)/a_{ii}\)입니다. 오른쪽의 다른 미지수에 지금의 추측값을 넣으면 \(x_i\)의 새 추측이 나옵니다. 이것을 되풀이하면 해에 다가갈까요? 그리고 새 값을 언제부터 쓸까요?</p></div>
+    <p>두 가지 선택이 있습니다. 한 바퀴를 도는 동안 <b>이전 값만</b> 쓰는 것이 <span class="term">야코비 방법</span><span class="en">(Jacobi method)</span>, 방금 계산한 \(x_1^{(k+1)}, \dots, x_{i-1}^{(k+1)}\)을 <b>즉시</b> 쓰는 것이 <span class="term">가우스–자이델 방법</span><span class="en">(Gauss–Seidel method)</span>입니다.</p>
+    <div class="callout deep"><strong>정의 13.1 (야코비와 가우스–자이델)</strong> \(a_{ii} \ne 0\)일 때
+      <div class="formula">$$\text{야코비: } x_i^{(k+1)} = \frac{1}{a_{ii}}\Bigl(b_i - \sum_{j\ne i} a_{ij}x_j^{(k)}\Bigr),\qquad \text{G–S: } x_i^{(k+1)} = \frac{1}{a_{ii}}\Bigl(b_i - \sum_{j \lt i} a_{ij}x_j^{(k+1)} - \sum_{j \gt i} a_{ij}x_j^{(k)}\Bigr).$$</div>
+      야코비는 새 벡터를 따로 저장해야 하지만 모든 \(i\)를 동시에(병렬로) 계산할 수 있다. 가우스–자이델은 벡터 하나를 제자리에서 덮어쓰며, 계산 순서가 결과를 바꾼다.</div>
+<pre class="code"><span class="k">function</span> gauss_seidel(A, b, x, tol, maxit)
+  <span class="k">for</span> k = 1 .. maxit
+    <span class="k">for</span> i = 1 .. n                          <span class="c">// 희소 행렬이면 i행의 0 아닌 원소만</span>
+      s = b[i]
+      <span class="k">for</span> j <span class="k">in</span> nonzeros(row i), j != i
+        s = s - A[i][j] * x[j]               <span class="c">// j &lt; i 는 이미 새 값</span>
+      x[i] = s / A[i][i]                     <span class="c">// 야코비는 여기서 xnew[i]에 쓴다</span>
+    <span class="k">if</span> norm(b - A x) &lt;= tol * norm(b) <span class="k">then return</span> x
+  <span class="k">return</span> x                                  <span class="c">// 수렴 실패: 호출자가 확인</span></pre>
+    <p>2 × 2에서 기하가 분명해집니다. 두 방정식은 평면의 두 직선이고 해는 교점입니다. 가우스–자이델의 첫 갱신은 \(x_2\)를 고정한 채 \(x_1\)을 바꿔 <b>첫째 직선 위로 수평 이동</b>하고, 둘째 갱신은 <b>둘째 직선 위로 수직 이동</b>합니다. 계단을 타고 교점으로 내려가는 셈입니다. 야코비는 두 좌표를 동시에 바꾸므로 두 직선 어느 쪽에도 놓이지 않은 점으로 대각선 이동합니다.</p>
+    <div class="callout"><strong>예제 13.1 (3 × 3 손계산)</strong> \(4x_1 - x_2 + x_3 = 5,\ -x_1 + 4x_2 - 2x_3 = 1,\ x_1 - 2x_2 + 5x_3 = 12\)의 해는 \((1, 2, 3)\)이다. \(\mathbf x^{(0)} = \mathbf 0\)에서 출발한다.
+      <ol>
+        <li>야코비 1회: \(x_1 = 5/4 = 1.25\), \(x_2 = 1/4 = 0.25\), \(x_3 = 12/5 = 2.4\).</li>
+        <li>가우스–자이델 1회: \(x_1 = 1.25\), 이 값을 곧바로 써서 \(x_2 = (1 + 1.25)/4 = 0.5625\), \(x_3 = (12 - 1.25 + 2\cdot0.5625)/5 = 2.375\).</li>
+        <li>여덟 번까지의 최대 오차 \(\|\mathbf x^{(k)} - \mathbf x\|_\infty\)는 아래 표와 같다. 가우스–자이델은 매번 약 \(0.16\)배, 야코비는 \(0.5\)–\(0.65\)배씩 준다. 다음 절에서 이 비율이 반복 행렬의 스펙트럼 반지름 \(\rho_J = 0.626\), \(\rho_{GS} = 0.158\)임을 본다.</li>
+      </ol>
+      <div class="table-wrap"><table class="it-num">
+        <thead><tr><th>k</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr></thead>
+        <tbody>
+          <tr><td>야코비</td><td>1.75</td><td>0.750</td><td>0.447</td><td>0.204</td><td>0.128</td><td>0.0620</td><td>0.0406</td><td>0.0207</td></tr>
+          <tr><td>가우스–자이델</td><td>1.44</td><td>0.363</td><td>0.0685</td><td>0.0135</td><td>2.27×10⁻³</td><td>3.14×10⁻⁴</td><td>3.36×10⁻⁵</td><td>2.73×10⁻⁶</td></tr>
+        </tbody></table></div></div>
+
+    <div class="sim" id="sim-it-path">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2 × 2 반복 경로: 야코비 · 가우스–자이델 · SOR</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="it-pa-cv"></canvas><span class="tag-tl">시작점을 끌기 · 해는 (1, 1)</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>행렬 A</span><select id="it-pa-pre">
+            <option value="dd">[[3, 1], [1, 2]] 대각 우세</option>
+            <option value="spd">[[1, 0.8], [0.8, 1]] 결합 강함</option>
+            <option value="ns">[[2, 1.8], [−1, 2]] 비대칭</option>
+            <option value="bad">[[1, 2], [2, 1]] 대각 우세 아님</option>
+          </select></label>
+          <div class="ctrl"><span>방법</span><div class="seg" id="it-pa-m"><button data-value="all" class="on">셋 다</button><button data-value="j">야코비</button><button data-value="gs">G–S</button><button data-value="sor">SOR</button></div></div>
+          <label class="ctrl"><span>SOR 이완 계수 ω <output id="it-pa-w-out"></output></span><input type="range" id="it-pa-w" min="0.2" max="1.95" step="0.05" value="1.25"></label>
+          <label class="ctrl"><span>보일 반복 수 <output id="it-pa-k-out"></output></span><input type="range" id="it-pa-k" min="1" max="30" step="1" value="8"></label>
+        </div>
+      </div>
+      <div class="it-legend"><span><i style="background:var(--text-dim)"></i>두 방정식의 직선</span><span><i style="background:var(--bad)"></i>야코비</span><span><i style="background:var(--accent)"></i>가우스–자이델</span><span><i style="background:var(--accent-2)"></i>SOR</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ρ(G<sub>J</sub>)</span><span class="v" id="it-pa-rj">—</span></div>
+        <div class="stat"><span class="k">ρ(G<sub>GS</sub>)</span><span class="v" id="it-pa-rg">—</span></div>
+        <div class="stat"><span class="k">ρ(G<sub>ω</sub>)</span><span class="v" id="it-pa-rs">—</span></div>
+        <div class="stat"><span class="k">오차 10⁻⁶까지 (J · GS · SOR)</span><span class="v" id="it-pa-n">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 가우스–자이델(초록)의 경로는 수평–수직 계단이고, 꺾이는 점은 언제나 두 직선 위에 있습니다. ② '결합 강함'에서는 두 직선이 거의 평행해 계단이 길고 촘촘해집니다. ρ<sub>GS</sub> = 0.64 = ρ<sub>J</sub>²입니다. 이제 ω를 1.25 근처로 두면 SOR이 훨씬 빨리 갑니다. ③ '대각 우세 아님'은 대칭이지만 양정치가 아니어서(고유값 3, −1) 세 방법이 모두 발산합니다. 모델: b = A(1, 1)ᵀ, 반복 행렬의 고유값은 2 × 2 공식으로 계산합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 -->
+  <section id="convergence">
+    <h2>분할과 반복 행렬, 스펙트럼 반지름</h2>
+    <p>세 방법을 한 틀에 넣습니다. \(A\)를 쉽게 풀리는 부분 \(M\)과 나머지로 <b>분할</b>해 \(A = M - N\)이라 쓰면 \(A\mathbf x = \mathbf b\)는 \(M\mathbf x = N\mathbf x + \mathbf b\)이고, 이를 반복식으로 읽습니다.</p>
+    <div class="callout deep"><strong>정의 13.2 (분할과 반복 행렬)</strong> \(A = M - N\), \(M\)은 가역이고 \(M\mathbf z = \mathbf r\)이 싸게 풀린다고 하자. <span class="term">정상 반복법</span><span class="en">(stationary iterative method)</span>
+      <div class="formula">$$M\mathbf x_{k+1} = N\mathbf x_k + \mathbf b \iff \mathbf x_{k+1} = \mathbf x_k + M^{-1}(\mathbf b - A\mathbf x_k)$$</div>
+      의 <span class="term">반복 행렬</span><span class="en">(iteration matrix)</span>은 \(G = M^{-1}N = I - M^{-1}A\)이다. \(A = D - L - U\)(대각, 순하삼각의 부호 반대, 순상삼각의 부호 반대)로 쓰면 야코비는 \(M = D\), 가우스–자이델은 \(M = D - L\), SOR은 \(M = \frac1\omega D - L\)이다.</div>
+    <p>오른쪽 꼴이 핵심입니다. 모든 정상 반복법은 "잔차 \(\mathbf r_k = \mathbf b - A\mathbf x_k\)를 \(M^{-1}\)로 근사 풀이해 더한다"는 한 줄이고, \(M\)이 \(A\)에 가까울수록 한 번에 많이 나아갑니다. 오차 \(\mathbf e_k = \mathbf x_k - \mathbf x\)는 \(\mathbf b\)와 무관하게 \(\mathbf e_{k+1} = G\mathbf e_k\), 곧 \(\mathbf e_k = G^k\mathbf e_0\)를 따릅니다.</p>
+    <div class="callout deep"><strong>정리 13.3 (수렴의 필요충분조건)</strong> 정상 반복이 모든 \(\mathbf x_0\)에서 수렴할 필요충분조건은 <span class="term">스펙트럼 반지름</span><span class="en">(spectral radius)</span> \(\rho(G) = \max_i|\lambda_i(G)|\)가 1보다 작은 것이다. 또 어떤 노름에서든 \(\lim_{k\to\infty}\|G^k\|^{1/k} = \rho(G)\)이므로, 오차를 \(10^{-m}\)배로 줄이는 데 점근적으로 \(m/(-\log_{10}\rho)\)회가 든다.
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> \(G\)가 대각화 가능하면 \(\mathbf e_0 = \sum c_i\mathbf v_i\)에서 \(G^k\mathbf e_0 = \sum c_i\lambda_i^k\mathbf v_i\)이므로 모든 \(|\lambda_i| \lt 1\)일 때만 모든 \(\mathbf e_0\)가 0으로 간다(\(|\lambda_i| \ge 1\)이면 \(\mathbf e_0 = \mathbf v_i\)가 반례). 일반적인 경우에는 조르당 블록 \(J = \lambda I + E\)의 거듭제곱 \(J^k = \sum_{j} \binom kj \lambda^{k-j}E^j\)가 \(|\lambda| \lt 1\)이면 다항식 × 지수 감소로 0이 된다. ∎</p></div>
+    <p>필요충분조건은 고유값을 알아야 쓸 수 있습니다. 실무에서는 행렬을 보고 바로 판정할 수 있는 충분조건이 더 유용합니다.</p>
+    <div class="callout deep"><strong>정리 13.4 (대각 우세와 대칭 양정치)</strong>
+      <ol style="margin:6px 0 0">
+        <li>\(A\)가 <span class="term">엄격한 대각 우세</span><span class="en">(strictly diagonally dominant)</span>, 곧 모든 행에서 \(|a_{ii}| \gt \sum_{j\ne i}|a_{ij}|\)이면 야코비와 가우스–자이델은 모든 시작점에서 수렴한다.</li>
+        <li>\(A\)가 대칭 양정치(SPD)이면 가우스–자이델, 그리고 \(0 \lt \omega \lt 2\)인 SOR이 수렴한다.</li>
+        <li>(카한) 어떤 행렬이든 \(\rho(G_\omega) \ge |\omega - 1|\)이다. 따라서 SOR이 수렴하려면 \(0 \lt \omega \lt 2\)가 필요하다.</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>①의 증명.</b> 야코비의 \(G_J = D^{-1}(L + U)\)의 \(i\)행 절댓값 합은 \(\sum_{j\ne i}|a_{ij}|/|a_{ii}| \lt 1\)이므로 \(\rho(G_J) \le \|G_J\|_\infty \lt 1\). 가우스–자이델은 \(\mathbf e_{k+1}\)의 성분 중 절댓값이 가장 큰 \(i\)번째를 보면 \(|e_i^{(k+1)}| \le \sum_{j \lt i}\frac{|a_{ij}|}{|a_{ii}|}|e_j^{(k+1)}| + \sum_{j \gt i}\frac{|a_{ij}|}{|a_{ii}|}|e_j^{(k)}|\)에서 같은 결론이 나온다. <b>③의 증명.</b> \(\det G_\omega = \det(D - \omega L)^{-1}\det((1-\omega)D + \omega U) = (1 - \omega)^n\)이고, 행렬식은 고유값의 곱이므로 \(\rho^n \ge |1 - \omega|^n\). ∎</p></div>
+    <div class="callout"><strong>예제 13.2 (예제 13.1의 반복 행렬)</strong> 예제 13.1의 \(A\)는 엄격한 대각 우세다(행마다 \(4 \gt 2\), \(4 \gt 3\), \(5 \gt 3\)).
+      <ol>
+        <li>\(G_J = D^{-1}(L+U)\)의 행 합은 \(2/4,\ 3/4,\ 3/5\)이므로 \(\|G_J\|_\infty = 0.75\). 정리 13.4의 상한이다.</li>
+        <li>실제 스펙트럼 반지름은 \(\rho(G_J) = 0.626\), \(\rho(G_{GS}) = 0.158\)이다(반복 행렬에 거듭제곱을 많이 해서 얻은 값). 오차를 \(10^{-6}\)배 줄이는 데 점근적으로 야코비 \(6/0.203 \approx 30\)회, 가우스–자이델 \(6/0.801 \approx 7.5\)회가 든다. 표의 8회 오차 \(2.7\times10^{-6}\)과 맞다.</li>
+        <li>\(\rho_{GS}\)가 \(\rho_J^2 = 0.392\)보다 작다. \(\rho_{GS} = \rho_J^2\)은 다음 절의 "일관된 순서" 행렬(삼중대각, 5점 격자 등)에서 성립하는 관계이고, 이 \(A\)는 그런 꼴이 아니다.</li>
+      </ol></div>
+    <div class="callout warn"><strong>주의: 잔차와 오차</strong> 반복을 멈추는 기준은 보통 상대 잔차 \(\|\mathbf r_k\|/\|\mathbf b\|\)입니다. 그런데 \(\mathbf e_k = -A^{-1}\mathbf r_k\)이므로 \(\|\mathbf e_k\|/\|\mathbf x\| \le \kappa(A)\,\|\mathbf r_k\|/\|\mathbf b\|\)입니다(<a href="conditioning.html">2장</a>). 조건수가 \(10^6\)이면 잔차가 \(10^{-8}\)이어도 오차는 \(10^{-2}\)일 수 있습니다. 또 \(\rho\)가 1에 가까운 반복에서는 연속한 두 반복값의 차이가 작다고 해서 해에 가깝다는 뜻이 아닙니다. 차이에 \(1/(1 - \rho)\)를 곱한 것이 오차의 크기입니다.</div>
+  </section>
+
+  <!-- =============================================================== 4 -->
+  <section id="sor">
+    <h2>SOR과 최적 이완 계수</h2>
+    <div class="problem"><strong>가우스–자이델이 늘 모자라게 간다면</strong>
+      <p>위 시뮬레이터의 '결합 강함'에서 가우스–자이델은 매번 같은 방향으로 조금씩, 모자라게 갑니다. 그렇다면 G–S가 제안하는 이동을 \(\omega\)배로 <b>과하게</b> 밀어 주면 어떨까요? 얼마나 밀어야 가장 빠를까요?</p></div>
+    <p><span class="term">축차 과이완</span><span class="en">(successive over-relaxation, SOR)</span>은 가우스–자이델 값 \(\tilde x_i\)와 이전 값 \(x_i^{(k)}\)의 가중 평균을 씁니다.</p>
+    <div class="formula">$$x_i^{(k+1)} = (1 - \omega)\,x_i^{(k)} + \omega\,\tilde x_i,\qquad \tilde x_i = \frac{1}{a_{ii}}\Bigl(b_i - \sum_{j \lt i}a_{ij}x_j^{(k+1)} - \sum_{j \gt i}a_{ij}x_j^{(k)}\Bigr).$$
+      <div class="where">\(\omega = 1\)이면 가우스–자이델, \(\omega \gt 1\)은 과이완, \(\omega \lt 1\)은 부족 이완. 반복 행렬은 \(G_\omega = (D - \omega L)^{-1}\bigl((1-\omega)D + \omega U\bigr)\).</div></div>
+    <p>놀랍게도 많은 실용 행렬에서 \(\rho(G_\omega)\)를 \(\omega\)의 함수로 정확히 쓸 수 있습니다. 조건은 행렬이 <b>일관된 순서</b><span class="en">(consistently ordered)</span>를 갖는 것인데, 삼중대각 행렬과 5점 격자 행렬(자연 순서나 적흑 순서)이 여기에 속합니다.</p>
+    <div class="callout deep"><strong>정리 13.5 (영의 정리)</strong> \(A\)가 일관된 순서를 갖고 \(G_J\)의 고유값 \(\mu\)가 모두 실수이며 \(\rho_J = \rho(G_J) \lt 1\)이라 하자. 그러면 \(G_\omega\)의 고유값 \(\lambda\)와 \(\mu\)는
+      <div class="formula">$$(\lambda + \omega - 1)^2 = \lambda\,\omega^2\mu^2$$</div>
+      로 이어지고, 특히 \(\rho_{GS} = \rho_J^2\)이다. \(\rho(G_\omega)\)를 최소로 하는 값과 그때의 스펙트럼 반지름은
+      <div class="formula">$$\omega^* = \frac{2}{1 + \sqrt{1 - \rho_J^2}},\qquad \rho(G_{\omega^*}) = \omega^* - 1.$$</div>
+      \(\omega \ge \omega^*\)에서는 \(\rho(G_\omega) = \omega - 1\)로 직선이고, \(\omega \lt \omega^*\)에서는 \(\rho = \bigl(\tfrac12\omega\rho_J + \sqrt{\tfrac14\omega^2\rho_J^2 - \omega + 1}\bigr)^2\)이다.
+      <p style="margin:8px 0 0"><b>아이디어.</b> 고유값 관계를 \(\lambda\)의 이차방정식 \(\lambda - \omega\mu\sqrt\lambda + (\omega - 1) = 0\)(\(\sqrt\lambda\)에 대해)으로 보면, 판별식이 음수가 되는 \(\omega\)부터 두 근 \(\sqrt\lambda\)가 켤레 복소수가 되어 \(|\sqrt\lambda|^2 = \omega - 1\)(근의 곱), 곧 \(|\lambda| = \omega - 1\)이다. 판별식이 정확히 0이 되는 \(\omega\), 곧 \(\omega^2\rho_J^2 = 4(\omega - 1)\)의 작은 근이 \(\omega^*\)이다. ∎</p></div>
+    <p>2차원 푸아송 문제(한 변 \(N\)점, \(h = 1/(N+1)\))에서는 \(\rho_J = \cos\pi h\)이므로 \(\sqrt{1 - \rho_J^2} = \sin\pi h\)이고</p>
+    <div class="formula">$$\rho_J \approx 1 - \frac{\pi^2h^2}{2},\qquad \rho_{GS} \approx 1 - \pi^2h^2,\qquad \omega^* = \frac{2}{1 + \sin\pi h},\qquad \rho_{SOR} \approx 1 - 2\pi h.$$</div>
+    <p>1에서 떨어진 거리가 \(h^2\)에서 \(h\)로 바뀝니다. 오차를 일정 배 줄이는 반복 수가 \(O(N^2)\)에서 \(O(N)\)으로 줄어든다는 뜻입니다.</p>
+    <div class="callout"><strong>예제 13.3 (N = 31 판의 SOR)</strong> \(h = 1/32\).
+      <ol>
+        <li>\(\rho_J = \cos(\pi/32) = 0.99518\), \(\rho_{GS} = 0.99039\), \(\omega^* = 2/(1 + \sin(\pi/32)) = 1.8215\), \(\rho_{SOR} = 0.8215\).</li>
+        <li>오차를 \(10^{-6}\)배 줄이는 점근적 횟수 \(\ln 10^{-6}/\ln\rho\): 야코비 2863, 가우스–자이델 1432, 최적 SOR 71.</li>
+        <li>무작위 해 \(\mathbf x^*\)로 실험하면 가우스–자이델 1091회, \(\omega^*\)의 SOR 83회였다. 가우스–자이델이 예측보다 빠른 것은 \(\mathbf e_0\)에 가장 느린 모드의 성분이 작기 때문이고, SOR이 조금 느린 것은 \(\omega^*\)에서 \(G_\omega\)가 대각화되지 않아(겹근) 초반에 \(k\rho^k\) 꼴로 줄기 때문이다. 같은 실험에서 가장 적은 횟수(70회)는 \(\omega = 1.77\)에서 나왔다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-it-omega">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>ω 슬라이더와 반복 수: 영의 곡선을 실험으로</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view it-two">
+          <div><canvas id="it-om-cv"></canvas><span class="it-cap">오차 10⁻⁶까지의 반복 수 (점: 실측, 선: 영의 이론)</span></div>
+          <div><canvas id="it-om-ch"></canvas><span class="it-cap">선택한 ω의 오차 감소 log₁₀‖e‖</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>격자 한 변 N</span><div class="seg" id="it-om-n"><button data-value="10">10</button><button data-value="20" class="on">20</button><button data-value="30">30</button></div></div>
+          <label class="ctrl"><span>이완 계수 ω <output id="it-om-w-out"></output></span><input type="range" id="it-om-w" min="1" max="1.98" step="0.02" value="1.5"></label>
+          <div class="btn-row"><button class="btn" id="it-om-best">ω* 로 맞추기</button><button class="btn" id="it-om-gs">ω = 1 (G–S)</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">ω* = 2/(1 + sin πh)</span><span class="v" id="it-om-ws">—</span></div>
+        <div class="stat"><span class="k">이론 ρ(G<sub>ω</sub>)</span><span class="v" id="it-om-rho">—</span></div>
+        <div class="stat"><span class="k">실측 반복 수</span><span class="v" id="it-om-it">—</span></div>
+        <div class="stat"><span class="k">G–S 대비 속도</span><span class="v" id="it-om-sp">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 곡선은 ω*에서 가장 낮고, ω*를 지나면 ρ = ω − 1을 따라 올라갑니다. 이론적으로 ρ(ω)는 ω*의 왼쪽에서 기울기가 무한대로 가파르므로, ω*를 모를 때는 조금 작게보다 조금 크게 잡는 편이 덜 손해입니다. ② N을 10 → 30으로 키우면 G–S의 횟수는 127 → 961로 약 7.6배, 최적 SOR은 28 → 82로 약 3배 늘어납니다. O(N²)와 O(N)의 차이입니다. ③ 실측 최솟값이 ω*보다 약간 왼쪽에 있습니다. 예제 13.3의 겹근 효과입니다. 모델: 5점 라플라스 행렬, 자연 순서, 해 x*는 시드 고정 난수, x₀ = 0, 오차 ‖x − x*‖₂ / ‖x*‖₂ ≤ 10⁻⁶에서 멈춤.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 -->
+  <section id="steepest">
+    <h2>이차 형식과 최급 강하</h2>
+    <div class="problem"><strong>매개변수 없이 빠른 방법</strong>
+      <p>SOR은 \(\omega^*\)를 알 때만 빠르고, \(\omega^*\)는 모델 문제에서나 공식으로 나옵니다. 행렬이 대칭 양정치이기만 하면 아무 매개변수 없이 빠른 방법은 없을까요? 실마리는 연립방정식을 최솟값 문제로 바꾸는 데 있습니다.</p></div>
+    <div class="callout deep"><strong>정리 13.6 (연립방정식 = 이차 함수의 최소화)</strong> \(A\)가 SPD이면 \(A\mathbf x = \mathbf b\)의 해 \(\mathbf x^*\)는
+      <div class="formula">$$\phi(\mathbf x) = \tfrac12\mathbf x^{\mathsf T}A\mathbf x - \mathbf b^{\mathsf T}\mathbf x$$</div>
+      의 유일한 최솟점이다. \(\nabla\phi = A\mathbf x - \mathbf b = -\mathbf r\)이고 \(\phi(\mathbf x) - \phi(\mathbf x^*) = \tfrac12\|\mathbf x - \mathbf x^*\|_A^2\), 여기서 \(\|\mathbf e\|_A = \sqrt{\mathbf e^{\mathsf T}A\mathbf e}\)는 <span class="term">A-노름</span><span class="en">(energy norm)</span>이다.</div>
+    <p>\(\phi\)의 등고선은 \(A\)의 고유벡터를 축으로 하는 타원이고, 긴 축과 짧은 축의 길이 비는 \(\sqrt\kappa\)(\(\kappa = \lambda_{\max}/\lambda_{\min}\))입니다. 잔차 \(\mathbf r\)은 가장 가파른 내리막 방향입니다. 그 방향의 직선 \(\mathbf x + \alpha\mathbf r\) 위에서 \(\phi\)를 최소로 하는 \(\alpha\)는 \(\frac{d}{d\alpha}\phi = -\mathbf r^{\mathsf T}\mathbf r + \alpha\,\mathbf r^{\mathsf T}A\mathbf r = 0\)에서 나옵니다.</p>
+<pre class="code"><span class="k">function</span> steepest_descent(A, b, x, tol)
+  r = b - A x
+  <span class="k">while</span> norm(r) &gt; tol * norm(b)
+    q = A r                                <span class="c">// 반복마다 행렬–벡터 곱 한 번</span>
+    alpha = dot(r, r) / dot(r, q)          <span class="c">// 직선 위의 정확한 최솟점</span>
+    x = x + alpha * r
+    r = r - alpha * q                      <span class="c">// b - A x 를 다시 계산하지 않는다</span>
+  <span class="k">return</span> x</pre>
+    <div class="callout deep"><strong>정리 13.7 (최급 강하의 수렴)</strong> SPD 행렬에서 정확한 직선 탐색을 쓰는 <span class="term">최급 강하법</span><span class="en">(steepest descent)</span>은
+      <div class="formula">$$\|\mathbf e_{k+1}\|_A \le \frac{\kappa - 1}{\kappa + 1}\,\|\mathbf e_k\|_A$$</div>
+      를 만족한다(칸토로비치 부등식에서 나온다). 연속한 두 잔차는 서로 수직이다(\(\mathbf r_{k+1}^{\mathsf T}\mathbf r_k = 0\)). 그래서 길쭉한 골짜기에서는 벽 사이를 오가는 지그재그가 된다.</div>
+    <div class="callout"><strong>예제 13.4 (2 × 2 최급 강하)</strong> \(A = \begin{bmatrix}5 & 2\\ 2 & 2\end{bmatrix}\)(고유값 6, 1, \(\kappa = 6\)), \(\mathbf b = (7, 4)\), 해 \((1, 1)\), \(\mathbf x_0 = \mathbf 0\).
+      <ol>
+        <li>\(\mathbf r_0 = (7, 4)\), \(A\mathbf r_0 = (43, 22)\), \(\alpha_0 = 65/389 = 0.16710\), \(\mathbf x_1 = (1.16967,\ 0.66838)\).</li>
+        <li>\(\mathbf r_1 = (-0.18509,\ 0.32391)\). \(\mathbf r_0^{\mathsf T}\mathbf r_1 = 7(-0.18509) + 4(0.32391) = 0\)으로 수직이다. \(\alpha_1 = 0.98485\), \(\mathbf x_2 = (0.98738,\ 0.98738)\).</li>
+        <li>A-노름 오차는 3.3166, 0.37258, 0.041855, 0.0047020, …로 매번 정확히 0.1123배다. 2차원에서는 지그재그가 두 방향을 번갈아 오가므로 비가 일정하다. 상한 \((\kappa - 1)/(\kappa + 1) = 5/7 = 0.714\)는 최악의 시작점에서 나온다.</li>
+      </ol></div>
+  </section>
+
+  <!-- =============================================================== 6 -->
+  <section id="cg">
+    <h2>켤레 기울기법</h2>
+    <p>지그재그의 원인은 새 방향으로 최소화하면서 이전 방향에서 얻은 최소성을 망치는 데 있습니다. 해결책은 방향들을 \(A\)에 대해 서로 "수직"으로 고르는 것입니다. \(\mathbf p_i^{\mathsf T}A\mathbf p_j = 0\)(\(i \ne j\))이면 \(\mathbf p_i, \mathbf p_j\)를 <span class="term">A-켤레</span><span class="en">(A-conjugate)</span>라 합니다. \(A = R^{\mathsf T}R\)로 좌표를 \(\mathbf y = R\mathbf x\)로 바꾸면 타원 등고선이 원이 되고, A-켤레 방향은 그 좌표에서 평범한 직교 방향입니다. 원 위에서 서로 수직인 방향으로 한 번씩 최소화하면 \(n\)번 만에 중심에 닿습니다.</p>
+    <p>A-켤레 방향을 미리 구하는 것은 비쌉니다(그람–슈미트에 모든 이전 방향이 필요). <span class="term">켤레 기울기법</span><span class="en">(conjugate gradient, CG)</span>의 기적은 새 잔차를 <b>바로 직전 방향 하나</b>에 대해서만 A-켤레로 만들어도 모든 이전 방향과 저절로 A-켤레가 된다는 것입니다.</p>
+<pre class="code"><span class="k">function</span> cg(A, b, x, tol)
+  r = b - A x;  p = r;  rr = dot(r, r)
+  <span class="k">while</span> sqrt(rr) &gt; tol * norm(b)
+    q = A p
+    alpha = rr / dot(p, q)                 <span class="c">// p 방향의 정확한 최소화</span>
+    x = x + alpha * p
+    r = r - alpha * q
+    rr_new = dot(r, r)
+    beta = rr_new / rr                     <span class="c">// 새 방향을 p와 A-켤레로</span>
+    p = r + beta * p
+    rr = rr_new
+  <span class="k">return</span> x                               <span class="c">// 반복당: 곱 1번, 내적 2번, 벡터 갱신 3번</span></pre>
+    <div class="callout deep"><strong>정리 13.8 (CG의 구조)</strong> \(A\)가 SPD이고 \(\mathbf r_k \ne 0\)이면
+      <ol style="margin:6px 0 0">
+        <li>잔차들은 서로 직교하고(\(\mathbf r_i^{\mathsf T}\mathbf r_j = 0\)), 방향들은 서로 A-켤레다(\(\mathbf p_i^{\mathsf T}A\mathbf p_j = 0\)), \(i \ne j\).</li>
+        <li>\(\mathrm{span}\{\mathbf p_0, \dots, \mathbf p_{k-1}\} = \mathrm{span}\{\mathbf r_0, A\mathbf r_0, \dots, A^{k-1}\mathbf r_0\} = \mathcal K_k(A, \mathbf r_0)\), <span class="term">크릴로프 부분공간</span><span class="en">(Krylov subspace)</span>.</li>
+        <li>\(\mathbf x_k\)는 \(\mathbf x_0 + \mathcal K_k\) 안에서 \(\|\mathbf x - \mathbf x^*\|_A\)를 최소로 하는 점이다. 따라서 정확한 산술에서 많아야 \(n\)번에 끝난다.</li>
+      </ol>
+      <p style="margin:8px 0 0"><b>증명의 핵심.</b> 귀납법. \(\mathbf r_{k+1} = \mathbf r_k - \alpha_kA\mathbf p_k\)와 \(\alpha_k\)의 정의로 \(\mathbf r_{k+1} \perp \mathbf r_k\), \(\beta_k\)의 정의로 \(\mathbf p_{k+1} \perp_A \mathbf p_k\)가 바로 나온다. \(j \lt k\)에 대해서는 \(A\mathbf p_j \in \mathcal K_{j+2} = \mathrm{span}\{\mathbf r_0, \dots, \mathbf r_{j+1}\}\)이고 \(\mathbf r_{k+1}\)은 이미 그 모든 잔차와 직교하므로 \(\mathbf r_{k+1}^{\mathsf T}A\mathbf p_j = 0\), 따라서 \(\mathbf p_{k+1}^{\mathsf T}A\mathbf p_j = 0\). 잔차가 \(\mathcal K_k\)에 직교한다는 것이 곧 A-노름 최소의 조건(갈료르킨 조건)이다. ∎</p></div>
+    <p>최소성에서 수렴 속도가 나옵니다. \(\mathbf x_k - \mathbf x^* = P_k(A)(\mathbf x_0 - \mathbf x^*)\)이고 \(P_k\)는 \(P_k(0) = 1\)인 \(k\)차 다항식 중 무엇이든 될 수 있으므로, 고유벡터로 전개하면</p>
+    <div class="formula">$$\frac{\|\mathbf e_k\|_A}{\|\mathbf e_0\|_A} \le \min_{P_k(0) = 1}\ \max_{\lambda \in \sigma(A)} |P_k(\lambda)|.$$
+      <div class="where">\(\sigma(A)\)는 \(A\)의 고유값 집합. CG는 고유값 위에서 작은 값을 갖는 다항식을 스스로 찾는다.</div></div>
+    <div class="callout deep"><strong>정리 13.9 (CG의 수렴 한계)</strong>
+      <ol style="margin:6px 0 0">
+        <li>(조건수) 고유값이 \([\lambda_{\min}, \lambda_{\max}]\)에 있으면, 이 구간에서 체비쇼프 다항식(<a href="approximation.html">7장</a>)을 쓰면
+          \(\|\mathbf e_k\|_A \le 2\Bigl(\dfrac{\sqrt\kappa - 1}{\sqrt\kappa + 1}\Bigr)^k\|\mathbf e_0\|_A\). 오차를 \(10^{-m}\)배 줄이는 데 약 \(1.15\,m\sqrt\kappa\)회.</li>
+        <li>(서로 다른 고유값) \(A\)의 서로 다른 고유값이 \(m\)개뿐이면 \(P(\lambda) = \prod_i(1 - \lambda/\lambda_i)\)가 모든 고유값에서 0이므로 CG는 \(m\)번 만에 끝난다.</li>
+      </ol></div>
+    <p>최급 강하의 \((\kappa - 1)/(\kappa + 1) \approx 1 - 2/\kappa\)가 CG에서는 \(1 - 2/\sqrt\kappa\)로 바뀝니다. \(\kappa = 10^4\)이면 오차를 10배 줄이는 데 최급 강하는 약 11500회, CG는 약 115회입니다. 푸아송 문제의 \(\kappa \approx 4/(\pi h)^2\)를 넣으면 CG의 반복 수는 \(O(N)\), 최적 SOR과 같은 차수이면서 \(\omega\)를 고를 필요가 없습니다.</p>
+    <div class="callout"><strong>예제 13.5 (3 × 3 CG 손계산)</strong> \(A = \begin{bmatrix}4 & 1 & 0\\ 1 & 3 & 1\\ 0 & 1 & 2\end{bmatrix}\)(고유값 \(3 \pm \sqrt3\), 3), \(\mathbf b = (6, 10, 8)\), 해 \((1, 2, 3)\), \(\mathbf x_0 = \mathbf 0\).
+      <ol>
+        <li>\(\mathbf r_0 = \mathbf p_0 = (6, 10, 8)\), \(\mathbf r_0^{\mathsf T}\mathbf r_0 = 200\), \(A\mathbf p_0 = (34, 44, 26)\), \(\mathbf p_0^{\mathsf T}A\mathbf p_0 = 852\), \(\alpha_0 = 200/852 = 0.23474\). \(\mathbf x_1 = (1.4085,\ 2.3474,\ 1.8779)\).</li>
+        <li>\(\mathbf r_1 = (-1.9812,\ -0.3286,\ 1.8967)\), \(\|\mathbf r_1\|^2 = 7.6308\), \(\beta_0 = 7.6308/200 = 0.03815\), \(\mathbf p_1 = (-1.7523,\ 0.0529,\ 2.2019)\). \(\alpha_1 = 0.34630\), \(\mathbf x_2 = (0.8016,\ 2.3657,\ 2.6405)\).</li>
+        <li>\(\|\mathbf r_2\|^2 = 0.5986\), \(\beta_1 = 0.07845\), \(\mathbf p_2 = (0.2903,\ -0.5352,\ 0.5261)\), \(\alpha_2 = 0.68342\). \(\mathbf x_3 = (1, 2, 3)\), 잔차 \(8.4\times10^{-16}\).</li>
+        <li>A-노름 오차 7.071 → 1.747 → 0.640 → 0. 세 번 만에 정확한 해(반올림 오차 범위)에 닿았다. 계산된 \(\mathbf p_0^{\mathsf T}A\mathbf p_1\), \(\mathbf r_0^{\mathsf T}\mathbf r_1\)은 모두 \(10^{-14}\) 이하로 0이다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-it-sdcg">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>최급 강하의 지그재그 vs CG의 두 걸음</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="it-sc-cv"></canvas><span class="tag-tl">시작점을 끌기 · 바닥 = 해</span></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>조건수 κ <output id="it-sc-k-out"></output></span><input type="range" id="it-sc-k"></label>
+          <label class="ctrl"><span>타원의 기울기 θ <output id="it-sc-t-out"></output></span><input type="range" id="it-sc-t" min="0" max="180" step="5" value="30"></label>
+          <div class="ctrl"><span>좌표</span><div class="seg" id="it-sc-view"><button data-value="x" class="on">원래 x</button><button data-value="y">A-좌표 y = A<sup>½</sup>x</button></div></div>
+          <label class="ctrl"><span>보일 걸음 수 <output id="it-sc-n-out"></output></span><input type="range" id="it-sc-n" min="1" max="40" step="1" value="40"></label>
+        </div>
+      </div>
+      <div class="it-legend"><span><i style="background:var(--bad)"></i>최급 강하</span><span><i style="background:var(--accent-2)"></i>켤레 기울기</span><span><i style="background:var(--text-faint)"></i>φ의 등고선</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">최급 강하: A-노름 10⁻⁶까지</span><span class="v" id="it-sc-sd">—</span></div>
+        <div class="stat"><span class="k">CG: 정확한 해까지</span><span class="v" id="it-sc-cg">—</span></div>
+        <div class="stat"><span class="k">최급 강하 실측 비 · 상한 (κ−1)/(κ+1)</span><span class="v" id="it-sc-r">—</span></div>
+        <div class="stat"><span class="k">p₀ᵀA p₁ (A-켤레 확인)</span><span class="v" id="it-sc-pap">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① κ를 키우면 최급 강하(빨강)가 좁은 골짜기를 수십 번 가로지릅니다. 연속한 두 걸음은 언제나 직각입니다. ② CG(보라)는 κ와 시작점에 관계없이 두 걸음에 끝납니다. ③ 'A-좌표'로 바꾸면 타원이 원이 되고, CG의 두 걸음이 직각으로 보입니다. A-켤레는 이 좌표에서의 직교입니다. 최급 강하의 걸음은 이 좌표에서는 더 이상 직각이 아닙니다. ④ 시작점을 타원의 축 위에 두면 두 방법 모두 한 걸음입니다. 모델: A = R diag(κ, 1) Rᵀ, 해 (0, 0).</div>
+    </div>
+
+    <p>2차원에서는 CG가 언제나 두 걸음이니 차이가 극적이지만, 실제로 관심 있는 것은 \(n\)이 클 때 <b>\(n\)보다 훨씬 적은</b> 반복으로 충분히 정확해지는가입니다. 정리 13.9의 두 한계는 같은 \(\kappa\)라도 고유값이 어떻게 흩어져 있느냐에 따라 CG가 아주 다르게 행동한다는 것을 말해 줍니다.</p>
+    <div class="sim" id="sim-it-cgspec">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>CG의 수렴은 고유값 분포가 정한다 (n = 100)</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view it-two">
+          <div><canvas id="it-cs-sp"></canvas><span class="it-cap">고유값 (로그 눈금)</span></div>
+          <div><canvas id="it-cs-cv"></canvas><span class="it-cap">상대 잔차 ‖rₖ‖/‖b‖ vs 반복 k</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>고유값 분포</span><select id="it-cs-pre">
+            <option value="u2">[1, 100]에 고르게</option>
+            <option value="u4">[1, 10⁴]에 고르게</option>
+            <option value="g4">[1, 10⁴]에 로그로 고르게</option>
+            <option value="cl">세 무리 (1, 10, 100 근처)</option>
+            <option value="five">서로 다른 값 5개</option>
+            <option value="out">[1, 2] + 큰 값 3개</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="it-cs-bd" checked> 조건수 한계 2((√κ−1)/(√κ+1))ᵏ</label>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">κ</span><span class="v" id="it-cs-k">—</span></div>
+        <div class="stat"><span class="k">서로 다른 고유값</span><span class="v" id="it-cs-d">—</span></div>
+        <div class="stat"><span class="k">CG 반복 (잔차 10⁻⁸)</span><span class="v" id="it-cs-it">—</span></div>
+        <div class="stat"><span class="k">√κ 한계가 예측한 반복</span><span class="v" id="it-cs-bn">—</span></div>
+      </div>
+      <div class="it-msg" id="it-cs-msg"></div>
+      <div class="sim-note">해볼 것: ① '[1, 100]에 고르게'는 한계(점선)보다 빨리 갑니다. ② '서로 다른 값 5개'는 정확히 5번, '세 무리'는 16번 만에 끝납니다. ③ '[1, 2] + 큰 값 3개'는 κ ≈ 10⁴인데도 21번입니다. CG는 처음 몇 번에 큰 고유값 몇 개를 "잡아 내고" 나머지의 작은 κ로 수렴합니다. ④ '로그로 고르게'는 정확한 산술이라면 100번에 끝나야 하지만 344번이 걸립니다. 반올림으로 방향들의 A-켤레성이 무너지기 때문입니다. 모델: A = diag(λ), b = (1, …, 1)/√n, x₀ = 0. 대각 행렬이어도 CG의 행동은 직교 닮음 Q diag(λ) Qᵀ와 같습니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 -->
+  <section id="precond">
+    <h2>전처리: 문제를 풀기 쉬운 꼴로 바꾸기</h2>
+    <div class="problem"><strong>격자를 두 배로 하면 반복도 두 배</strong>
+      <p>푸아송 문제의 CG 반복 수는 \(\sqrt\kappa \propto N\)에 비례합니다. 3차원 격자 \(200^3\)이면 천 번을 넘고, 재료 상수가 1000배 차이 나는 문제에서는 \(\kappa\)가 함께 커져 반복이 열 배 넘게 늘어납니다(아래 표). \(A\) 대신 조건수가 작은 다른 행렬을 풀 수 있다면?</p></div>
+    <p>\(A\)와 비슷하면서 \(M\mathbf z = \mathbf r\)이 싸게 풀리는 SPD 행렬 \(M\)을 <span class="term">전처리기</span><span class="en">(preconditioner)</span>라 합니다. \(M^{-1}A\mathbf x = M^{-1}\mathbf b\)는 같은 해를 갖고, \(M \approx A\)이면 \(M^{-1}A \approx I\)라 고유값이 1 근처에 모입니다. 대칭을 유지하려면 \(M = LL^{\mathsf T}\)로 쓰고 \(L^{-1}AL^{-\mathsf T}\)에 CG를 적용하는데, 식을 정리하면 \(L\)이 사라지고 매 반복 \(M\mathbf z = \mathbf r\) 하나만 더 푸는 <b>전처리 CG</b>(PCG)가 됩니다.</p>
+<pre class="code"><span class="k">function</span> pcg(A, b, x, M, tol)
+  r = b - A x;  z = solve(M, r);  p = z;  rz = dot(r, z)
+  <span class="k">while</span> norm(r) &gt; tol * norm(b)
+    q = A p
+    alpha = rz / dot(p, q)
+    x = x + alpha * p;  r = r - alpha * q
+    z = solve(M, r)                        <span class="c">// 전처리: M z = r (싸게!)</span>
+    rz_new = dot(r, z);  beta = rz_new / rz
+    p = z + beta * p;  rz = rz_new
+  <span class="k">return</span> x</pre>
+    <p>\(M = A\)면 한 번에 끝나지만 \(M\)을 푸는 것이 원래 문제이고, \(M = I\)면 공짜지만 효과가 없습니다. 쓸모 있는 전처리기는 그 사이의 절충입니다.</p>
+    <div class="callout deep"><strong>정의 13.10 (야코비 전처리와 불완전 촐레스키)</strong>
+      <ul style="margin:6px 0 0">
+        <li><b>야코비(대각) 전처리</b> \(M = D = \mathrm{diag}(A)\). 행과 열의 크기를 맞추는 역할을 하며, 계수가 크게 다른 영역이 섞인 문제에서 효과가 크다. 대각이 상수인 행렬에서는 효과가 없다.</li>
+        <li><b>불완전 촐레스키</b> IC(0): 촐레스키 분해를 하되 \(A\)에서 0이었던 자리에 생기는 채움은 <b>버린다</b>. 인수 \(\tilde L\)은 \(A\)의 하삼각과 같은 희소 패턴을 가져 저장·풀이 비용이 nnz에 비례하고, \(M = \tilde L\tilde L^{\mathsf T} \approx A\)이다. 5점 격자 행렬에서는 대각만 다시 계산하면 된다: \(d_p = a_{pp} - a_{p,p-1}^2/d_{p-1} - a_{p,p-N}^2/d_{p-N}\).</li>
+      </ul></div>
+    <div class="table-wrap"><table class="it-num">
+      <thead><tr><th>PCG 반복 수 (상대 잔차 10⁻⁸)</th><th>N = 16</th><th>N = 32</th><th>N = 64</th></tr></thead>
+      <tbody>
+        <tr><td>푸아송: 없음 / 야코비 / IC(0)</td><td>28 / 28 / 17</td><td>59 / 59 / 29</td><td>119 / 119 / 52</td></tr>
+        <tr><td>가운데 정사각형 계수 1000배: 없음 / 야코비 / IC(0)</td><td>125 / 32 / 22</td><td>503 / 69 / 38</td><td>1592 / 139 / 72</td></tr>
+      </tbody></table></div>
+    <p>표가 전처리의 두 얼굴을 보여 줍니다. 균일한 푸아송 문제에서 야코비 전처리는 대각이 모두 4라 아무 일도 하지 않고, IC(0)는 반복을 절반 아래로 줄이지만 \(N\)에 비례해 느는 성질은 그대로입니다. 계수가 1000배 뛰는 문제에서는 야코비만으로도 반복이 7–11분의 1이 됩니다. 반복 수가 \(N\)과 무관해지는 전처리기는 다음 절의 다중 격자에서 나옵니다.</p>
+
+    <div class="sim" id="sim-it-precond">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>전처리 CG: 없음 · 야코비 · 불완전 촐레스키</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view it-two">
+          <div><canvas id="it-pc-cv"></canvas><span class="it-cap">log₁₀ 상대 잔차 vs 반복</span></div>
+          <div><canvas id="it-pc-km"></canvas><span class="it-cap">확산 계수 k(x, y) · 해 u</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>문제 −∇·(k∇u) = 1</span><select id="it-pc-pre">
+            <option value="pois">균일 (푸아송, k = 1)</option>
+            <option value="jump">가운데 정사각형 k = 1000</option>
+            <option value="layers">가로 띠 k = 1, 100 교대</option>
+          </select></label>
+          <div class="ctrl"><span>격자 한 변 N</span><div class="seg" id="it-pc-n"><button data-value="16">16</button><button data-value="32" class="on">32</button><button data-value="64">64</button></div></div>
+        </div>
+      </div>
+      <div class="it-legend"><span><i style="background:var(--bad)"></i>CG (전처리 없음)</span><span><i style="background:var(--warn)"></i>야코비 PCG</span><span><i style="background:var(--accent-2)"></i>IC(0) PCG</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">CG</span><span class="v" id="it-pc-a">—</span></div>
+        <div class="stat"><span class="k">야코비 PCG</span><span class="v" id="it-pc-b">—</span></div>
+        <div class="stat"><span class="k">IC(0) PCG</span><span class="v" id="it-pc-c">—</span></div>
+        <div class="stat"><span class="k">미지수 n</span><span class="v" id="it-pc-nn">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 균일한 문제에서 빨강과 주황 곡선이 정확히 겹칩니다. 대각이 상수이면 야코비 전처리는 스칼라 배일 뿐입니다. ② '가운데 정사각형'에서 전처리 없는 CG는 계수가 뛰는 경계에서 오래 헤맵니다. ③ N을 두 배로 하면 세 곡선 모두 대략 두 배 길어집니다. 반복 수가 √κ ∝ N에 비례한다는 성질은 IC(0)로도 바뀌지 않습니다. 모델: 셀 중심 계수, 면 계수는 조화 평균, 경계 u = 0, h² 배율의 5점 행렬. 아래 그림의 색은 계수(왼쪽 절반)와 IC(0) PCG로 구한 해(오른쪽 절반)입니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 -->
+  <section id="krylov">
+    <h2>크릴로프 부분공간과 GMRES</h2>
+    <div class="problem"><strong>바람이 부는 열 방정식</strong>
+      <p>오염 물질이 바람에 실려 가며 퍼지는 대류–확산 방정식 \(-\Delta u + \beta u_x = f\)를 격자로 나누면, 대류 항 때문에 행렬이 <b>비대칭</b>이 됩니다. CG는 대칭 양정치를 가정하므로 쓸 수 없습니다. 실제로 억지로 돌리면 잔차가 줄지 않고 커집니다. 비대칭 행렬에서도 크릴로프 공간의 아이디어를 살릴 수 있을까요?</p></div>
+    <p>CG가 한 일을 다시 보면, \(\mathbf x_k\)를 크릴로프 공간 \(\mathbf x_0 + \mathcal K_k(A, \mathbf r_0)\)에서 골랐습니다. 이 공간은 행렬–벡터 곱만으로 만들어지므로 비대칭이어도 쓸 수 있습니다. 바뀌는 것은 "가장 좋은 점"의 기준입니다. A-노름은 SPD에서만 노름이므로, 대신 <b>잔차의 2-노름</b>을 최소화합니다. 이것이 <span class="term">GMRES</span><span class="en">(generalized minimal residual)</span>입니다.</p>
+    <p>이를 위해 먼저 크릴로프 공간의 정규직교 기저를 만듭니다. \(\mathbf r_0, A\mathbf r_0, A^2\mathbf r_0, \dots\)를 그대로 쓰면 거듭제곱법처럼 모두 지배 고유벡터 쪽으로 쏠려 거의 평행해지므로, 새 벡터를 만들 때마다 그람–슈미트로 직교화합니다. 이것이 <span class="term">아놀디 과정</span><span class="en">(Arnoldi iteration)</span>입니다.</p>
+<pre class="code"><span class="k">function</span> gmres(A, b, x0, m, tol)          <span class="c">// m: 재시작 길이</span>
+  r = b - A x0;  beta = norm(r);  v[1] = r / beta
+  <span class="k">for</span> j = 1 .. m                           <span class="c">// 아놀디: A V_m = V_(m+1) H</span>
+    w = A v[j]
+    <span class="k">for</span> i = 1 .. j
+      H[i][j] = dot(w, v[i]);  w = w - H[i][j] * v[i]
+    H[j+1][j] = norm(w);  v[j+1] = w / H[j+1][j]
+    <span class="c">// 작은 최소제곱 문제: min_y ‖beta e1 - H y‖, 기븐스 회전으로 갱신</span>
+    <span class="k">if</span> |잔차 추정| &lt;= tol * norm(b) <span class="k">then break</span>
+  x = x0 + V y
+  <span class="k">if</span> 수렴하지 않았으면 x0 = x 로 다시 시작   <span class="c">// GMRES(m)</span></pre>
+    <div class="callout deep"><strong>정리 13.11 (GMRES)</strong> 아놀디 과정은 \(AV_k = V_{k+1}\bar H_k\)를 만족하는 정규직교 기저 \(V_k\)와 \((k+1)\times k\) 헤센베르크 행렬 \(\bar H_k\)를 만든다. \(\mathbf x_k = \mathbf x_0 + V_k\mathbf y\)로 두면 \(\|\mathbf b - A\mathbf x_k\|_2 = \|\beta\mathbf e_1 - \bar H_k\mathbf y\|_2\)이므로 \(n\)차원 문제가 \((k+1)\times k\) 최소제곱 문제로 줄어든다. 잔차 노름은 단조 감소하며, 정확한 산술에서 많아야 \(n\)번에 끝난다. 한편 \(k\)번째 반복은 벡터 \(k\)개를 저장하고 \(k\)번의 내적을 하므로 비용이 \(k\)에 비례해 커진다.</div>
+    <p>비용이 계속 커지므로 실무에서는 \(m\)번마다 지금까지의 해를 새 출발점으로 삼아 다시 시작합니다. 이 <b>재시작 GMRES(m)</b>은 메모리를 \(m\)개 벡터로 묶는 대가로 크릴로프 공간에 쌓인 정보를 버리므로 더 많은 반복이 필요하고, 때로는 정체합니다. 대칭 행렬에서는 아놀디의 \(H\)가 삼중대각이 되어 직교화가 직전 두 벡터로 충분하며(란초시 과정), 이것이 CG가 짧은 점화식으로 끝나는 이유입니다. 비대칭에서 짧은 점화식을 원하면 BiCGSTAB 같은 방법을 쓰지만 최소성은 포기합니다.</p>
+
+    <div class="sim" id="sim-it-gmres">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>대류–확산 방정식: 완전 GMRES vs 재시작 GMRES(m) vs CG</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view"><canvas id="it-gm-cv"></canvas></div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>대류 세기 β (페클레 수) <output id="it-gm-pe-out"></output></span><input type="range" id="it-gm-pe" min="0" max="60" step="5" value="20"></label>
+          <div class="ctrl"><span>재시작 길이 m</span><div class="seg" id="it-gm-m"><button data-value="5">5</button><button data-value="10" class="on">10</button><button data-value="20">20</button><button data-value="40">40</button></div></div>
+          <label class="check"><input type="checkbox" id="it-gm-cg" checked> CG를 억지로 적용</label>
+        </div>
+      </div>
+      <div class="it-legend"><span><i style="background:var(--accent-2)"></i>완전 GMRES</span><span><i style="background:var(--warn)"></i>GMRES(m)</span><span><i style="background:var(--bad)"></i>CG</span><span><i style="background:var(--text-faint)"></i>재시작 시점</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">완전 GMRES 반복 (10⁻⁸)</span><span class="v" id="it-gm-f">—</span></div>
+        <div class="stat"><span class="k">GMRES(m) 반복</span><span class="v" id="it-gm-r">—</span></div>
+        <div class="stat"><span class="k">저장 벡터 수 (완전 · m)</span><span class="v" id="it-gm-s">—</span></div>
+        <div class="stat"><span class="k">CG 최종 잔차</span><span class="v" id="it-gm-c">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① β = 0(대칭)에서는 CG와 완전 GMRES가 같은 59회에 끝납니다. ② β를 10만 올려도 CG의 잔차는 줄지 않고 커집니다. 비대칭 행렬에서는 CG의 직교성 논리가 성립하지 않습니다. ③ GMRES(m)의 곡선은 재시작(세로 점선)마다 꺾입니다. 재시작 길이를 늘린다고 늘 빨라지지는 않습니다. β = 0에서는 m = 5, 10, 20, 40이 816, 445, 222, 101회로 차례로 빨라지지만, β = 20에서는 121, 128, 217, 195회입니다. 모델: N = 32, 5점 확산 + 중앙 차분 대류(셀 페클레 수 βh/2 ≤ 0.91), f = 1, 경계 u = 0, 최대 900회.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 -->
+  <section id="multigrid">
+    <h2>다중 격자: 매끄러운 오차는 거친 격자에서</h2>
+    <div class="problem"><strong>잔차는 금방 주는데 해는 그대로</strong>
+      <p>가우스–자이델로 판의 온도를 풀면 처음 몇 번은 잔차가 쑥 줄다가 곧 거의 멈춥니다. 남은 오차를 그려 보면 판 전체에 걸친 완만한 언덕 모양입니다. 왜 매끄러운 오차만 남을까요? 그리고 매끄러운 것은 적은 점으로 표현할 수 있다는 사실을 이용할 수 있을까요?</p></div>
+    <p>1차원 모델 \(-u'' = f\)(\(N\)점, \(h = 1/(N+1)\))에서 오차를 사인 모드 \(\sin(k\pi x)\)로 전개해 봅시다. 가중 야코비 \(\mathbf x \leftarrow \mathbf x + \omega D^{-1}\mathbf r\)는 각 모드를 독립적으로 줄이며, 그 배율은</p>
+    <div class="formula">$$g_k = 1 - 2\omega\sin^2\frac{k\pi h}{2},\qquad k = 1, \dots, N.$$
+      <div class="where">\(\omega = 2/3\)이면 고주파 절반(\(k \ge N/2\))에서 \(|g_k| \le 1/3\)이다. 그러나 \(k = 1\)에서는 \(g_1 \approx 1 - \frac{\omega\pi^2h^2}{2}\), \(N = 63\)이면 0.9992로 거의 줄지 않는다.</div></div>
+    <p>그래서 완화 반복은 해법으로는 느리지만 <span class="term">평활화</span><span class="en">(smoothing)</span>로는 훌륭합니다. 몇 번만 돌리면 고주파 오차가 사라지고 매끄러운 오차가 남습니다. 매끄러운 오차는 격자 간격을 두 배로 한 <b>거친 격자</b>에서도 잘 표현되며, 거기서는 같은 모드가 상대적으로 두 배 높은 주파수라 평활화가 다시 효과적입니다. 이 관찰을 재귀로 엮은 것이 <span class="term">다중 격자법</span><span class="en">(multigrid)</span>입니다.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 250" role="img" aria-label="다중 격자 V-사이클의 단계">
+        <rect x="10" y="10" width="740" height="230" rx="10" class="f-surface"/>
+        <g class="t-dim" style="font-size:12px">
+          <text x="30" y="52">h</text><text x="30" y="102">2h</text><text x="30" y="152">4h</text><text x="30" y="202">8h</text>
+        </g>
+        <g class="s-line" style="stroke-width:2">
+          <line x1="90" y1="48" x2="190" y2="98"/><line x1="190" y1="98" x2="290" y2="148"/><line x1="290" y1="148" x2="380" y2="198"/>
+          <line x1="380" y1="198" x2="470" y2="148"/><line x1="470" y1="148" x2="570" y2="98"/><line x1="570" y1="98" x2="670" y2="48"/>
+        </g>
+        <g>
+          <circle cx="90" cy="48" r="9" style="fill:var(--accent)"/><circle cx="190" cy="98" r="9" style="fill:var(--accent)"/><circle cx="290" cy="148" r="9" style="fill:var(--accent)"/>
+          <rect x="370" y="188" width="20" height="20" rx="3" style="fill:var(--accent-2)"/>
+          <circle cx="470" cy="148" r="9" style="fill:var(--warn)"/><circle cx="570" cy="98" r="9" style="fill:var(--warn)"/><circle cx="670" cy="48" r="9" style="fill:var(--warn)"/>
+        </g>
+        <text x="110" y="40" class="t">① 평활화 ν번</text>
+        <text x="150" y="132" class="t-dim">② 잔차를 제한 R</text>
+        <text x="300" y="226" class="t" style="fill:var(--accent-2)">③ 가장 거친 격자에서 정확히 풀기</text>
+        <text x="480" y="132" class="t-dim">④ 보정을 보간 P하여 더하기</text>
+        <text x="530" y="40" class="t">⑤ 다시 평활화 ν번</text>
+      </svg>
+      <figcaption><b>그림 13-2.</b> V-사이클. 각 층에서 평활화로 고주파 오차를 없애고, 남은 잔차를 거친 격자로 내려 보낸다(제한). 가장 거친 격자의 작은 문제를 풀고, 그 보정을 보간해 올라오며 다시 평활화한다. 각 층의 비용이 위 층의 1/4(2차원)이므로 전체 비용은 가장 고운 층의 4/3배다.</figcaption>
+    </figure>
+<pre class="code"><span class="k">function</span> vcycle(h, u, f)
+  <span class="k">if</span> 격자가 가장 거칠면 <span class="k">return</span> solve_exact(A_h, f)
+  u = smooth(A_h, u, f, nu)                <span class="c">// 가우스–자이델 2번: 고주파 제거</span>
+  r = f - A_h u
+  rc = restrict(r)                         <span class="c">// 2h 격자로 (가중 평균)</span>
+  ec = vcycle(2h, 0, rc)                   <span class="c">// 오차 방정식 A_2h e = rc 를 재귀로</span>
+  u = u + prolong(ec)                      <span class="c">// h 격자로 (선형 보간)</span>
+  u = smooth(A_h, u, f, nu)
+  <span class="k">return</span> u</pre>
+    <div class="callout deep"><strong>정리 13.12 (다중 격자의 격자 무관 수렴, 개요)</strong> 푸아송 같은 타원형 문제에서 적절한 평활기와 제한·보간 연산을 쓰면 V-사이클 한 번의 오차 축소율은 \(h\)와 무관한 상수 \(\rho_{MG} \lt 1\)로 묶인다. 한 사이클의 비용은 \(O(n)\)이므로 정해진 정확도까지 총비용이 \(O(n)\), 곧 미지수 하나당 상수 번의 연산이다. 핵심은 두 성질의 결합이다. 평활기가 고주파를 줄이고(평활 성질), 거친 격자가 저주파를 정확히 표현한다(근사 성질).</div>
+    <div class="callout"><strong>예제 13.6 (V-사이클의 축소율 측정)</strong> 2차원 푸아송 \(-\Delta u = 1\), \(u = 0\) 경계, 가우스–자이델 평활 앞뒤 2번, 완전 가중 제한, 쌍선형 보간, 가장 거친 격자 3 × 3.
+      <ol>
+        <li>\(N = 15, 31, 63, 127\)에서 사이클당 잔차 축소율은 0.080, 0.087, 0.089, 0.090. 격자를 8배로 세분해도 거의 그대로다.</li>
+        <li>상대 잔차 \(10^{-8}\)까지 네 경우 모두 8사이클. 같은 문제에서 가우스–자이델 반복 수는 \(N^2\)에, CG는 \(N\)에 비례해 늘어난다.</li>
+      </ol></div>
+
+    <div class="sim" id="sim-it-smooth">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>오차 모드의 평활화: 고주파가 먼저 사라진다</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view it-two">
+          <div><canvas id="it-sm-cv"></canvas><span class="it-cap">오차 e(x) (N = 63)</span></div>
+          <div><canvas id="it-sm-ch"></canvas><span class="it-cap">모드별 크기 |ê<sub>k</sub>| (로그 눈금)</span></div>
+        </div>
+        <div class="sim-controls">
+          <label class="ctrl"><span>처음 오차</span><select id="it-sm-pre">
+            <option value="mix">저주파 k = 2 + 고주파 k = 40</option>
+            <option value="rand">무작위</option>
+            <option value="high">고주파 k = 50만</option>
+          </select></label>
+          <div class="ctrl"><span>평활기</span><div class="seg" id="it-sm-m"><button data-value="wj" class="on">가중 야코비 ω = ⅔</button><button data-value="j">야코비 ω = 1</button><button data-value="gs">G–S</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="it-sm-1">1번 평활</button><button class="btn" id="it-sm-10">10번</button><button class="btn" id="it-sm-0">처음으로</button></div>
+        </div>
+      </div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">평활 횟수</span><span class="v" id="it-sm-k">0</span></div>
+        <div class="stat"><span class="k">‖e‖ / ‖e₀‖</span><span class="v" id="it-sm-e">—</span></div>
+        <div class="stat"><span class="k">고주파(k ≥ 32) 비율</span><span class="v" id="it-sm-hf">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① 처음 오차 '저주파 + 고주파'에서 1번씩 눌러 보세요. 세 번이면 톱니가 사라지고 k = 2의 언덕만 남습니다. 막대 그림에서 오른쪽 절반이 먼저 내려앉습니다. ② ω = 1인 야코비는 가장 높은 모드(k = 63)를 g ≈ −1로 거의 줄이지 못해 톱니가 부호만 바꾸며 남습니다. 가중치 ⅔가 필요한 이유입니다. ③ 10번을 눌러도 k = 1, 2는 거의 그대로입니다. 이것을 없애는 것이 거친 격자의 몫입니다. 모델: 1차원 −u″ = 0(오차 방정식), 경계 0, 모드 크기는 이산 사인 변환.</div>
+    </div>
+
+    <p>마지막으로 판의 온도 문제에서 이 장의 방법을 모두 경주시켜 봅니다. 해만 보면 차이가 잘 보이지 않지만 <b>오차</b>를 보면 각 방법의 성격이 드러납니다. 가우스–자이델의 오차는 매끄러운 언덕으로 남아 천천히 가라앉고, 다중 격자의 오차는 사이클마다 전체가 한 자릿수씩 내려갑니다.</p>
+    <div class="sim" id="sim-it-heat">
+      <div class="sim-head"><span class="sim-tag">SIMULATOR</span><h3>2차원 푸아송 판: 다섯 방법의 경주</h3></div>
+      <div class="sim-body side">
+        <div class="sim-view it-two">
+          <div><canvas id="it-ht-cv"></canvas><span class="it-cap" id="it-ht-cap">온도 u</span></div>
+          <div><canvas id="it-ht-ch"></canvas><span class="it-cap">log₁₀ 상대 잔차 vs 반복 (MG는 V-사이클 수)</span></div>
+        </div>
+        <div class="sim-controls">
+          <div class="ctrl"><span>방법 (그림)</span><div class="seg" id="it-ht-m"><button data-value="j">야코비</button><button data-value="gs" class="on">G–S</button><button data-value="sor">SOR ω*</button><button data-value="cg">CG</button><button data-value="mg">다중 격자</button></div></div>
+          <div class="ctrl"><span>보기</span><div class="seg" id="it-ht-v"><button data-value="u" class="on">해 u</button><button data-value="e">오차 e</button></div></div>
+          <div class="ctrl"><span>격자 한 변 N</span><div class="seg" id="it-ht-n"><button data-value="15">15</button><button data-value="31" class="on">31</button><button data-value="63">63</button></div></div>
+          <div class="btn-row"><button class="btn primary" id="it-ht-play">▶ 반복</button><button class="btn" id="it-ht-step">한 번</button><button class="btn" id="it-ht-reset">처음으로</button></div>
+        </div>
+      </div>
+      <div class="it-legend"><span><i style="background:var(--text-dim)"></i>야코비</span><span><i style="background:var(--bad)"></i>가우스–자이델</span><span><i style="background:var(--warn)"></i>SOR ω*</span><span><i style="background:var(--accent-2)"></i>CG</span><span><i style="background:var(--accent)"></i>다중 격자 V(2,2)</span></div>
+      <div class="sim-readout">
+        <div class="stat"><span class="k">반복 k</span><span class="v" id="it-ht-k">0</span></div>
+        <div class="stat"><span class="k">상대 잔차</span><span class="v" id="it-ht-r">—</span></div>
+        <div class="stat"><span class="k">최대 오차</span><span class="v" id="it-ht-e">—</span></div>
+        <div class="stat"><span class="k">10⁻⁶까지 (J · GS · SOR · CG · MG)</span><span class="v" id="it-ht-all">—</span></div>
+      </div>
+      <div class="sim-note">해볼 것: ① G–S로 '오차'를 보고 ▶를 누르세요. 톱니 무늬는 몇 번 만에 사라지고 판 전체의 둥근 언덕이 오래 남습니다. ② '다중 격자'로 바꾸면 다섯 사이클 만에 오차가 10⁻⁶ 아래로 갑니다. ③ N을 15 → 63으로 키우면 야코비·G–S의 반복 수는 약 13배, SOR·CG는 약 4배 늘지만 다중 격자는 그대로 5입니다. 모델: 위쪽 가장자리 온도 1, 나머지 0, 5점 차분, 시작값 0. 오차는 다중 격자를 10⁻¹³까지 돌린 해와 비교합니다.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== uses -->
+  <section id="uses">
+    <h2>이 도구가 쓰이는 곳</h2>
+    <p>큰 희소 선형계는 편미분방정식, 그래프, 영상, 최적화의 내부 어디에나 있습니다. 어떤 반복법을 고를지는 행렬의 성질이 정합니다.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>행렬</th><th>알맞은 방법</th><th>대표 쓰임</th></tr></thead>
+      <tbody>
+        <tr><td>대칭 양정치 (확산, 탄성, 그래프 라플라시안)</td><td>PCG + IC 또는 대수적 다중 격자</td><td>구조 해석, 열 해석, 압력 푸아송(유체), 회로망</td></tr>
+        <tr><td>비대칭 (대류, 반도체 소자 방정식)</td><td>GMRES(m), BiCGSTAB + ILU</td><td>유체 역학, 소자 시뮬레이션, 화학 공정</td></tr>
+        <tr><td>격자 위의 타원형 문제</td><td>기하적 다중 격자 (단독 또는 CG의 전처리)</td><td>기상 모델, 천체 중력장, 실시간 유체</td></tr>
+        <tr><td>대각 우세, 병렬 기기</td><td>야코비, 적흑 가우스–자이델</td><td>GPU 계산, 다중 격자의 평활기</td></tr>
+      </tbody></table></div>
+    <div class="callout"><strong>예제 13.7 (영상 처리: 구멍 메우기)</strong> 손상된 영상의 빈 픽셀을 주변과 매끄럽게 잇는 가장 단순한 방법은 빈 영역에서 라플라스 방정식 \(\Delta u = 0\)을 풀고, 빈 영역 둘레의 알려진 픽셀을 경계값으로 쓰는 것이다. 이산화하면 "빈 픽셀 = 네 이웃의 평균"이고, 이는 정확히 이 장의 5점 행렬이다. 픽셀 하나하나가 미지수이므로 사진 한 장에서도 미지수가 수십만 개가 되고, 행렬을 만들 필요도 없이 가우스–자이델 스윕을 영상 위에서 직접 돌리면 된다. 붙여 넣은 영상의 경계를 매끄럽게 섞는 푸아송 영상 편집도 같은 방정식에 우변(붙일 영상의 라플라시안)만 더한 것이다.</div>
+    <div class="uses">
+      <a href="direct-solvers.html"><small>12장 · 연립방정식의 직접 해법</small>LU와 채움<br><span>직접법은 정확하지만 채움 때문에 메모리가 터진다. 불완전 분해는 그 채움을 버린 전처리기다.</span></a>
+      <a href="eigenvalues.html"><small>14장 · 고유값의 수치 계산</small>스펙트럼 반지름과 란초시<br><span>반복법의 속도는 고유값이 정한다. CG의 짝인 란초시 과정은 큰 희소 행렬의 고유값을 찾는다.</span></a>
+      <a href="optimization.html"><small>15장 · 수치 최적화</small>경사 하강과 비선형 CG<br><span>최급 강하의 지그재그와 조건수 문제는 최적화의 경사 하강에서 그대로 다시 나온다.</span></a>
+      <a href="pde-numerics.html"><small>16장 · 편미분방정식의 수치 해법</small>5점 스텐실과 음적 방법<br><span>푸아송 방정식과 음적 열 방정식은 매 단계 이 장의 희소 선형계를 푼다.</span></a>
+      <a href="../../linear/chapters/numerical.html"><small>LINEARBOOK</small>수치 선형대수<br><span>야코비·SOR·CG를 처음 만나는 곳. 이 장은 그 수렴 이론과 전처리·GMRES·다중 격자로 더 나아갔다.</span></a>
+      <a href="../../ode/chapters/pde.html"><small>ODEBOOK</small>편미분방정식 입문<br><span>열 방정식과 라플라스 방정식을 격자로 나누는 출발점.</span></a>
+    </div>
+  </section>
+
+  <!-- =============================================================== summary -->
+  <section class="keypoints" id="summary">
+    <h2>핵심 정리</h2>
+    <ol>
+      <li>큰 희소 행렬은 분해하면 채움으로 메모리와 연산이 폭발한다. 반복법은 행렬–벡터 곱(비용 ∝ nnz)만 쓰며, 목표는 반복 횟수를 줄이는 것이다.</li>
+      <li>정상 반복 \(\mathbf x_{k+1} = \mathbf x_k + M^{-1}\mathbf r_k\)의 오차는 \(\mathbf e_{k+1} = G\mathbf e_k\), \(G = I - M^{-1}A\). 수렴의 필요충분조건은 \(\rho(G) \lt 1\)이고, 오차를 \(10^{-m}\)배 줄이는 데 약 \(m/(-\log_{10}\rho)\)회가 든다.</li>
+      <li>엄격한 대각 우세이면 야코비·G–S가, SPD이면 G–S와 \(0 \lt \omega \lt 2\)의 SOR이 수렴한다. 일관된 순서의 행렬에서 \(\rho_{GS} = \rho_J^2\), \(\omega^* = 2/(1 + \sqrt{1 - \rho_J^2})\), \(\rho = \omega^* - 1\).</li>
+      <li>푸아송 문제에서 야코비·G–S는 \(O(N^2)\)회, 최적 SOR과 CG는 \(O(N)\)회, 다중 격자는 \(N\)과 무관한 횟수가 필요하다.</li>
+      <li>SPD 연립방정식은 \(\phi = \tfrac12\mathbf x^{\mathsf T}A\mathbf x - \mathbf b^{\mathsf T}\mathbf x\)의 최소화다. 최급 강하는 \((\kappa - 1)/(\kappa + 1)\)로, CG는 \((\sqrt\kappa - 1)/(\sqrt\kappa + 1)\)로 수렴한다.</li>
+      <li>CG는 크릴로프 공간에서 A-노름 오차를 최소화한다. 서로 다른 고유값이 \(m\)개면 \(m\)번에 끝나고, 몇 개의 큰 고유값은 몇 번의 반복으로 "잡아 낸다". 반올림은 이 성질을 늦춘다.</li>
+      <li>전처리 \(M \approx A\)는 고유값을 1 근처에 모아 반복을 줄인다. 야코비는 계수 크기 차이를, IC(0)는 채움을 버린 분해로 구조를 잡는다.</li>
+      <li>비대칭 행렬에는 아놀디 기저 위에서 잔차를 최소화하는 GMRES를 쓰고, 메모리 때문에 재시작한다. 다중 격자는 평활화로 고주파를, 거친 격자로 저주파를 없애 \(O(n)\) 비용에 푼다.</li>
+    </ol>
+  </section>
+
+  <!-- =============================================================== quiz -->
+  <section class="quiz-sec" id="quiz">
+    <h2>확인 퀴즈</h2>
+    <div class="quiz">
+      <div class="quiz-q"><p>Q1. 반복 행렬의 스펙트럼 반지름이 \(\rho = 0.9\)이다. 오차를 \(10^{-6}\)배로 줄이려면 대략 몇 번 반복해야 하는가?</p><div class="opts">
+        <button class="opt">약 6번</button>
+        <button class="opt">약 54번</button>
+        <button class="opt" data-correct>약 131번</button>
+        <button class="opt">약 900번</button>
+      </div><div class="quiz-exp">\(0.9^k = 10^{-6}\)에서 \(k = 6/(-\log_{10}0.9) = 6/0.0458 \approx 131\). 반복 한 번에 맞는 자릿수가 약 0.046개 늘어나는 셈이다.</div></div>
+
+      <div class="quiz-q"><p>Q2. \(A = \begin{bmatrix}4 & -1\\ -1 & 4\end{bmatrix}\)에 야코비 방법을 쓸 때 \(\rho(G_J)\)와 \(\rho(G_{GS})\)는?</p><div class="opts">
+        <button class="opt">1/4, 1/4</button>
+        <button class="opt" data-correct>1/4, 1/16</button>
+        <button class="opt">1/2, 1/4</button>
+        <button class="opt">4, 16</button>
+      </div><div class="quiz-exp">\(G_J = \begin{bmatrix}0 & 1/4\\ 1/4 & 0\end{bmatrix}\)의 고유값은 \(\pm1/4\). 삼중대각(일관된 순서) 행렬이므로 \(\rho_{GS} = \rho_J^2 = 1/16\). G–S가 같은 정확도에 절반의 반복으로 닿는다.</div></div>
+
+      <div class="quiz-q"><p>Q3. 영의 정리에서 \(\rho_J = 0.8\)이면 최적 이완 계수 \(\omega^*\)와 \(\rho(G_{\omega^*})\)는?</p><div class="opts">
+        <button class="opt">\(\omega^* = 1.2,\ \rho = 0.64\)</button>
+        <button class="opt" data-correct>\(\omega^* = 1.25,\ \rho = 0.25\)</button>
+        <button class="opt">\(\omega^* = 1.6,\ \rho = 0.6\)</button>
+        <button class="opt">\(\omega^* = 2,\ \rho = 0\)</button>
+      </div><div class="quiz-exp">\(\sqrt{1 - 0.64} = 0.6\), \(\omega^* = 2/1.6 = 1.25\), \(\rho = \omega^* - 1 = 0.25\). 가우스–자이델의 \(\rho_J^2 = 0.64\)보다 훨씬 작다. 2 × 2 시뮬레이터의 '결합 강함'이 바로 이 경우다.</div></div>
+
+      <div class="quiz-q"><p>Q4. 100 × 100 SPD 행렬의 고유값이 1, 2, 3, 4 네 값뿐이다. 정확한 산술에서 CG는 많아야 몇 번 만에 끝나는가?</p><div class="opts">
+        <button class="opt">2번</button>
+        <button class="opt" data-correct>4번</button>
+        <button class="opt">\(\sqrt{4}\cdot\)상수 번</button>
+        <button class="opt">100번</button>
+      </div><div class="quiz-exp">\(P(\lambda) = (1 - \lambda)(1 - \lambda/2)(1 - \lambda/3)(1 - \lambda/4)\)는 \(P(0) = 1\)이고 모든 고유값에서 0이다. CG의 오차는 이런 다항식 중 가장 좋은 것으로 줄어드므로 4번째 반복에서 0이 된다.</div></div>
+
+      <div class="quiz-q"><p>Q5. 조건수가 \(\kappa = 10^4\)인 SPD 문제에서 최급 강하와 CG의 "오차 10배 축소당 반복 수"의 비는 대략?</p><div class="opts">
+        <button class="opt">같다</button>
+        <button class="opt">2배</button>
+        <button class="opt" data-correct>100배</button>
+        <button class="opt">10⁴배</button>
+      </div><div class="quiz-exp">최급 강하의 축소율 \(1 - 2/\kappa\), CG의 \(1 - 2/\sqrt\kappa\). 반복 수는 각각 \(\kappa\)와 \(\sqrt\kappa\)에 비례하므로 비는 \(\sqrt\kappa = 100\)이다.</div></div>
+
+      <div class="quiz-q"><p>Q6. 대각 원소가 모두 4인 2차원 푸아송 행렬에 야코비(대각) 전처리를 쓴 PCG의 반복 수는 전처리 없는 CG와 비교해?</p><div class="opts">
+        <button class="opt">절반으로 준다</button>
+        <button class="opt" data-correct>똑같다</button>
+        <button class="opt">√N 배로 준다</button>
+        <button class="opt">발산한다</button>
+      </div><div class="quiz-exp">\(M = 4I\)는 문제 전체를 1/4배 할 뿐 \(M^{-1}A\)의 고유값 분포(비율)를 바꾸지 않는다. 야코비 전처리는 계수가 영역마다 크게 다를 때 효과가 있다.</div></div>
+
+      <div class="quiz-q"><p>Q7. \(N = 63\) 격자에서 가중 야코비(ω = 2/3)가 가장 매끄러운 오차 모드 \(k = 1\)을 한 번에 줄이는 배율은 약 얼마인가?</p><div class="opts">
+        <button class="opt">1/3</button>
+        <button class="opt">0.5</button>
+        <button class="opt">0.95</button>
+        <button class="opt" data-correct>0.9992</button>
+      </div><div class="quiz-exp">\(g_1 = 1 - \tfrac43\sin^2(\pi/128) = 0.9992\). 고주파는 1/3 이하로 줄지만 저주파는 거의 그대로라서, 다중 격자는 이를 거친 격자에서 처리한다.</div></div>
+
+      <div class="quiz-q"><p>Q8. 완전 GMRES 대신 재시작 GMRES(m)를 쓰는 주된 이유는?</p><div class="opts">
+        <button class="opt">완전 GMRES는 비대칭 행렬에서 발산하기 때문</button>
+        <button class="opt">재시작하면 언제나 더 적은 반복으로 수렴하기 때문</button>
+        <button class="opt" data-correct>k번째 반복의 저장(벡터 k개)과 직교화 비용이 k에 비례해 커지기 때문</button>
+        <button class="opt">재시작해야 잔차가 단조 감소하기 때문</button>
+      </div><div class="quiz-exp">완전 GMRES의 잔차는 단조 감소하고 가장 적은 반복으로 끝나지만, 아놀디 기저 전체를 저장하고 매번 모든 벡터와 직교화해야 한다. 재시작은 메모리를 묶는 대신 반복이 늘고 정체할 수도 있다.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================================================================ 이 장의 도우미 */
+const IT = {
+  num(v, d = 3) {
+    if (!isFinite(v)) return "—";
+    const p = Math.pow(10, d); let r = Math.round(v * p) / p;
+    if (Math.abs(r) < 0.5 / p) r = 0;
+    return r.toFixed(d).replace("-", "−");
+  },
+  sci(v, d = 2) {
+    if (!isFinite(v) || Math.abs(v) > 1e15) return "발산";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1e4) return String(Number(v.toPrecision(d + 1))).replace("-", "−");
+    const e = Math.floor(Math.log10(a)), m = v / Math.pow(10, e);
+    return m.toFixed(d - 1).replace("-", "−") + "×10<sup>" + String(e).replace("-", "−") + "</sup>";
+  },
+  rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; },
+  dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; },
+  nrm(a) { return Math.sqrt(IT.dot(a, a)); },
+  /** 2 × 2 행렬의 스펙트럼 반지름 */
+  rho2(G) {
+    const t = G[0][0] + G[1][1], d = G[0][0] * G[1][1] - G[0][1] * G[1][0], disc = t * t / 4 - d;
+    if (disc >= 0) { const s = Math.sqrt(disc); return Math.max(Math.abs(t / 2 + s), Math.abs(t / 2 - s)); }
+    return Math.sqrt(Math.abs(d));
+  },
+  /* ---- 2차원 5점 라플라스 (4u − 이웃), N × N 내부점 ---- */
+  mv(N, x, y) {
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p = j * N + i; let s = 4 * x[p];
+      if (i > 0) s -= x[p - 1]; if (i < N - 1) s -= x[p + 1]; if (j > 0) s -= x[p - N]; if (j < N - 1) s -= x[p + N];
+      y[p] = s;
+    }
+    return y;
+  },
+  sor(N, x, b, w) {
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p = j * N + i; let s = b[p];
+      if (i > 0) s += x[p - 1]; if (i < N - 1) s += x[p + 1]; if (j > 0) s += x[p - N]; if (j < N - 1) s += x[p + N];
+      x[p] += w * (s / 4 - x[p]);
+    }
+  },
+  jac(N, x, b, t) {
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p = j * N + i; let s = b[p];
+      if (i > 0) s += x[p - 1]; if (i < N - 1) s += x[p + 1]; if (j > 0) s += x[p - N]; if (j < N - 1) s += x[p + N];
+      t[p] = s / 4;
+    }
+    x.set(t);
+  },
+  /* ---- 일반 5점 행렬 (계수 배열 c, w, e, s, nn) ---- */
+  diffusion(N, kf) {
+    const n = N * N, M = { N, n, c: new Float64Array(n), w: new Float64Array(n), e: new Float64Array(n), s: new Float64Array(n), nn: new Float64Array(n) };
+    const h = 1 / (N + 1), K = (i, j) => kf((i + 1) * h, (j + 1) * h), hm = (a, b) => 2 * a * b / (a + b);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p = j * N + i, k0 = K(i, j), kw = hm(k0, K(i - 1, j)), ke = hm(k0, K(i + 1, j)), ks = hm(k0, K(i, j - 1)), kn = hm(k0, K(i, j + 1));
+      M.c[p] = kw + ke + ks + kn;
+      if (i > 0) M.w[p] = -kw; if (i < N - 1) M.e[p] = -ke; if (j > 0) M.s[p] = -ks; if (j < N - 1) M.nn[p] = -kn;
+    }
+    return M;
+  },
+  convdiff(N, pe) {
+    const n = N * N, h = 1 / (N + 1), a = pe * h / 2, M = { N, n, c: new Float64Array(n), w: new Float64Array(n), e: new Float64Array(n), s: new Float64Array(n), nn: new Float64Array(n) };
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const p = j * N + i; M.c[p] = 4; if (i > 0) M.w[p] = -1 - a; if (i < N - 1) M.e[p] = -1 + a; if (j > 0) M.s[p] = -1; if (j < N - 1) M.nn[p] = -1; }
+    return M;
+  },
+  mv5(M, x, y) {
+    const N = M.N, n = M.n;
+    for (let p = 0; p < n; p++) { const i = p % N; let v = M.c[p] * x[p]; if (i > 0) v += M.w[p] * x[p - 1]; if (i < N - 1) v += M.e[p] * x[p + 1]; if (p >= N) v += M.s[p] * x[p - N]; if (p < n - N) v += M.nn[p] * x[p + N]; y[p] = v; }
+    return y;
+  },
+  ic0(M) { const N = M.N, d = new Float64Array(M.n); for (let p = 0; p < M.n; p++) { let v = M.c[p]; if (p % N > 0) v -= M.w[p] * M.w[p] / d[p - 1]; if (p >= N) v -= M.s[p] * M.s[p] / d[p - N]; d[p] = v; } return d; },
+  prec(M, kind, d, r, z) {
+    const n = M.n, N = M.N;
+    if (kind === "none") { z.set(r); return z; }
+    if (kind === "jacobi") { for (let p = 0; p < n; p++) z[p] = r[p] / M.c[p]; return z; }
+    for (let p = 0; p < n; p++) { let v = r[p]; if (p % N > 0) v -= M.w[p] * z[p - 1]; if (p >= N) v -= M.s[p] * z[p - N]; z[p] = v / d[p]; }
+    for (let p = n - 1; p >= 0; p--) { let v = 0; if (p % N < N - 1) v += M.e[p] * z[p + 1]; if (p < n - N) v += M.nn[p] * z[p + N]; z[p] -= v / d[p]; }
+    return z;
+  },
+  pcg(M, b, kind, tol, maxit) {
+    const n = M.n, x = new Float64Array(n), r = Float64Array.from(b), z = new Float64Array(n), q = new Float64Array(n);
+    const d = kind === "ic" ? IT.ic0(M) : null; IT.prec(M, kind, d, r, z); const p = Float64Array.from(z);
+    let rz = IT.dot(r, z); const nb = IT.nrm(b), hist = [1];
+    for (let k = 1; k <= maxit; k++) {
+      IT.mv5(M, p, q); const a = rz / IT.dot(p, q);
+      for (let i = 0; i < n; i++) { x[i] += a * p[i]; r[i] -= a * q[i]; }
+      const rel = IT.nrm(r) / nb; hist.push(rel); if (rel < tol || !isFinite(rel) || rel > 1e12) break;
+      IT.prec(M, kind, d, r, z); const rz2 = IT.dot(r, z), be = rz2 / rz; rz = rz2;
+      for (let i = 0; i < n; i++) p[i] = z[i] + be * p[i];
+    }
+    return { x, hist };
+  },
+  gmres(M, b, m, tol, maxit) {
+    const n = M.n, x = new Float64Array(n), r = new Float64Array(n), w = new Float64Array(n), nb = IT.nrm(b), hist = [1], restarts = [];
+    let it = 0;
+    while (it < maxit) {
+      IT.mv5(M, x, r); for (let i = 0; i < n; i++) r[i] = b[i] - r[i];
+      const beta = IT.nrm(r); if (beta / nb < tol) break;
+      if (it > 0) restarts.push(it);
+      const V = [Float64Array.from(r, (v) => v / beta)], H = [], cs = [], sn = [], g = [beta]; let j;
+      for (j = 0; j < m && it < maxit; j++) {
+        it++; IT.mv5(M, V[j], w); const hc = new Float64Array(j + 2);
+        for (let i = 0; i <= j; i++) { const hij = IT.dot(w, V[i]); hc[i] = hij; for (let t = 0; t < n; t++) w[t] -= hij * V[i][t]; }
+        hc[j + 1] = IT.nrm(w); V.push(Float64Array.from(w, (v) => v / (hc[j + 1] || 1)));
+        for (let i = 0; i < j; i++) { const a = cs[i] * hc[i] + sn[i] * hc[i + 1]; hc[i + 1] = -sn[i] * hc[i] + cs[i] * hc[i + 1]; hc[i] = a; }
+        const dd = Math.hypot(hc[j], hc[j + 1]); cs[j] = hc[j] / dd; sn[j] = hc[j + 1] / dd; hc[j] = dd; hc[j + 1] = 0;
+        g[j + 1] = -sn[j] * g[j]; g[j] = cs[j] * g[j]; H.push(hc);
+        hist.push(Math.abs(g[j + 1]) / nb); if (Math.abs(g[j + 1]) / nb < tol) { j++; break; }
+      }
+      const y = new Float64Array(j);
+      for (let i = j - 1; i >= 0; i--) { let s = g[i]; for (let k = i + 1; k < j; k++) s -= H[k][i] * y[k]; y[i] = s / H[i][i]; }
+      for (let k = 0; k < j; k++) for (let t = 0; t < n; t++) x[t] += y[k] * V[k][t];
+      if (hist[hist.length - 1] < tol) break;
+    }
+    return { x, hist, restarts };
+  },
+  /* ---- 다중 격자 (f는 h² 없이: A_h = (4u − 이웃)/h²) ---- */
+  mgResid(N, u, f, r) {
+    const h2 = (N + 1) * (N + 1);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const p = j * N + i; let s = 4 * u[p]; if (i > 0) s -= u[p - 1]; if (i < N - 1) s -= u[p + 1]; if (j > 0) s -= u[p - N]; if (j < N - 1) s -= u[p + N]; r[p] = f[p] - s * h2; }
+    return r;
+  },
+  mgGS(N, u, f, sweeps) {
+    const h2 = 1 / ((N + 1) * (N + 1));
+    for (let k = 0; k < sweeps; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const p = j * N + i; let v = f[p] * h2; if (i > 0) v += u[p - 1]; if (i < N - 1) v += u[p + 1]; if (j > 0) v += u[p - N]; if (j < N - 1) v += u[p + N]; u[p] = v / 4; }
+  },
+  vcycle(N, u, f) {
+    if (N <= 3) { IT.mgGS(N, u, f, 30); return; }
+    IT.mgGS(N, u, f, 2);
+    const r = IT.mgResid(N, u, f, new Float64Array(N * N)), M = (N - 1) / 2, rc = new Float64Array(M * M);
+    const g = (i, j) => (i < 0 || j < 0 || i >= N || j >= N ? 0 : r[j * N + i]);
+    for (let J = 0; J < M; J++) for (let I = 0; I < M; I++) { const i = 2 * I + 1, j = 2 * J + 1; rc[J * M + I] = (4 * g(i, j) + 2 * (g(i - 1, j) + g(i + 1, j) + g(i, j - 1) + g(i, j + 1)) + g(i - 1, j - 1) + g(i + 1, j - 1) + g(i - 1, j + 1) + g(i + 1, j + 1)) / 16; }
+    const ec = new Float64Array(M * M); IT.vcycle(M, ec, rc);
+    const c = (I, J) => (I < 0 || J < 0 || I >= M || J >= M ? 0 : ec[J * M + I]);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const oi = i % 2 === 1, oj = j % 2 === 1, I = (i - 1) / 2, J = (j - 1) / 2, fI = Math.floor(I), cI = Math.ceil(I), fJ = Math.floor(J), cJ = Math.ceil(J);
+      let v;
+      if (oi && oj) v = c(I, J); else if (oi) v = (c(I, fJ) + c(I, cJ)) / 2; else if (oj) v = (c(fI, J) + c(cI, J)) / 2; else v = (c(fI, fJ) + c(cI, fJ) + c(fI, cJ) + c(cI, cJ)) / 4;
+      u[j * N + i] += v;
+    }
+    IT.mgGS(N, u, f, 2);
+  },
+  font() { return getComputedStyle(document.body).getPropertyValue("--mono"); },
+  /** 정사각형 열지도: 값 → 색 */
+  heat(ctx, data, N, x, y, s, map) { MB.drawGray(ctx, data, N, N, x, y, s, s, { map }); },
+};
+
+/* ================================================================ 그림 13-1: 희소 패턴과 채움 */
+(function () {
+  const NS = "http://www.w3.org/2000/svg", N = 4, n = 16;
+  const grid = document.getElementById("it-fig-grid"), spy = document.getElementById("it-fig-spy");
+  const el = (tag, at, txt) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); if (txt) e.textContent = txt; return e; };
+  const nb = [2, 5, 7, 10];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const k = j * N + i + 1, cx = i * 60, cy = j * 60, on = k === 6, nbr = nb.includes(k);
+    grid.appendChild(el("circle", { cx, cy, r: 11, style: `fill:${on ? "var(--accent)" : nbr ? "var(--accent-2)" : "var(--surface)"};stroke:var(--text-dim);stroke-width:1.2` }));
+    grid.appendChild(el("text", { x: cx, y: cy + 4, "text-anchor": "middle", class: "t-mono", style: `font-size:11px;${on || nbr ? "fill:#fff;font-weight:700" : ""}` }, String(k)));
+  }
+  /* 촐레스키 인수의 0 아닌 패턴 계산 */
+  const A = Array.from({ length: n }, () => new Float64Array(n));
+  for (let p = 0; p < n; p++) { A[p][p] = 4; const i = p % N; if (i > 0) A[p][p - 1] = -1; if (i < N - 1) A[p][p + 1] = -1; if (p >= N) A[p][p - N] = -1; if (p < n - N) A[p][p + N] = -1; }
+  const L = A.map((r) => r.slice());
+  for (let k = 0; k < n; k++) { L[k][k] = Math.sqrt(L[k][k]); for (let i = k + 1; i < n; i++) L[i][k] /= L[k][k]; for (let j = k + 1; j < n; j++) for (let i = j; i < n; i++) L[i][j] -= L[i][k] * L[j][k]; }
+  const cs = 14;
+  spy.appendChild(el("rect", { x: -1, y: -1, width: n * cs + 2, height: n * cs + 2, style: "fill:var(--canvas-bg);stroke:var(--border)" }));
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const a = A[i][j] !== 0, f = !a && Math.abs(i >= j ? L[i][j] : L[j][i]) > 1e-12;
+    if (a || f) spy.appendChild(el("rect", { x: j * cs + 1, y: i * cs + 1, width: cs - 2, height: cs - 2, rx: 2, style: a ? "fill:var(--text)" : "fill:var(--accent);opacity:0.35" }));
+  }
+  spy.appendChild(el("text", { x: n * cs / 2, y: n * cs + 22, "text-anchor": "middle", class: "t-dim" }, "16 × 16 행렬 A (연한 칸 = 채움)"));
+})();
+
+/* ================================================================ 1. 2 × 2 반복 경로 */
+(function () {
+  const PRE = { dd: [[3, 1], [1, 2]], spd: [[1, 0.8], [0.8, 1]], ns: [[2, 1.8], [-1, 2]], bad: [[1, 2], [2, 1]] };
+  let A = PRE.dd, b = [4, 3], meth = "all", w = 1.25, K = 8;
+  const start = { x: -1, y: 3, r: 8 };
+  const setA = (M) => { A = M; b = [M[0][0] + M[0][1], M[1][0] + M[1][1]]; };
+  const step = (m, x, y) => { // 반환: 중간점 포함 경로 조각
+    if (m === "j") { const nx = (b[0] - A[0][1] * y) / A[0][0], ny = (b[1] - A[1][0] * x) / A[1][1]; return [[nx, ny]]; }
+    const om = m === "gs" ? 1 : w;
+    const x1 = (1 - om) * x + om * (b[0] - A[0][1] * y) / A[0][0];
+    const y1 = (1 - om) * y + om * (b[1] - A[1][0] * x1) / A[1][1];
+    return [[x1, y], [x1, y1]];
+  };
+  const path = (m, n) => { const out = [[start.x, start.y]]; let x = start.x, y = start.y; for (let k = 0; k < n; k++) { const s = step(m, x, y); s.forEach((p) => out.push(p)); [x, y] = s[s.length - 1]; if (Math.abs(x) + Math.abs(y) > 1e6) break; } return out; };
+  const count = (m) => { let x = start.x, y = start.y; const e0 = Math.hypot(x - 1, y - 1) || 1; for (let k = 1; k <= 5000; k++) { const s = step(m, x, y); [x, y] = s[s.length - 1]; const e = Math.hypot(x - 1, y - 1); if (e / e0 < 1e-6) return String(k); if (!(e < 1e8)) return "발산"; } return "> 5000"; };
+  const G = (om) => { const D0 = A[0][0], D1 = A[1][1], a = A[0][1], c = A[1][0]; // (D − ωL)^{-1}((1−ω)D + ωU), L = −lower, U = −upper
+    const M = [[D0, 0], [om * c, D1]], Nn = [[(1 - om) * D0, -om * a], [0, (1 - om) * D1]];
+    const det = D0 * D1, Mi = [[D1 / det, 0], [-om * c / det, D0 / det]];
+    return [[Mi[0][0] * Nn[0][0] + Mi[0][1] * Nn[1][0], Mi[0][0] * Nn[0][1] + Mi[0][1] * Nn[1][1]], [Mi[1][0] * Nn[0][0] + Mi[1][1] * Nn[1][0], Mi[1][0] * Nn[0][1] + Mi[1][1] * Nn[1][1]]];
+  };
+  const pl = MB.plane("#it-pa-cv", {
+    x: [-2, 4], y: [-1.6, 3.6], aspect: 0.75, minHeight: 280, points: [start],
+    draw(P) {
+      const C = P.P;
+      [[A[0], b[0]], [A[1], b[1]]].forEach(([r, bi]) => {
+        if (Math.abs(r[1]) > 1e-9) P.line(-10, (bi - r[0] * -10) / r[1], 10, (bi - r[0] * 10) / r[1], { color: C.dim, width: 1.8 });
+        else P.line(bi / r[0], -10, bi / r[0], 10, { color: C.dim, width: 1.8 });
+      });
+      P.dot(1, 1, { r: 5, color: C.text });
+      const show = meth === "all" ? ["j", "gs", "sor"] : [meth], col = { j: C.bad, gs: C.accent, sor: C.accent2 };
+      show.forEach((m) => {
+        const pts = path(m, K).map(([x, y]) => [MB.clamp(x, -50, 50), MB.clamp(y, -50, 50)]);
+        P.poly(pts, { color: col[m], width: 2.2, close: false, dash: m === "j" ? [5, 3] : [] });
+        pts.forEach((p, i) => { if (i && (m === "j" || i % 2 === 0)) P.dot(p[0], p[1], { r: 3, color: col[m] }); });
+      });
+      start.color = C.text;
+    },
+    onDrag() { stats(); },
+  });
+  const stats = () => {
+    const rj = Math.sqrt(Math.abs(A[0][1] * A[1][0] / (A[0][0] * A[1][1])));
+    MB.stat("it-pa-rj", IT.num(rj, 3)); MB.stat("it-pa-rg", IT.num(IT.rho2(G(1)), 3)); MB.stat("it-pa-rs", IT.num(IT.rho2(G(w)), 3));
+    MB.stat("it-pa-n", `${count("j")} · ${count("gs")} · ${count("sor")}`);
+  };
+  stats();
+  document.getElementById("it-pa-pre").addEventListener("change", (e) => { setA(PRE[e.target.value]); pl.redraw(); stats(); });
+  MB.seg("it-pa-m", (v) => { meth = v; pl.redraw(); });
+  MB.range("it-pa-w", (v) => v.toFixed(2), (v) => { w = v; pl.redraw(); stats(); });
+  MB.range("it-pa-k", (v) => String(v), (v) => { K = v; pl.redraw(); });
+})();
+
+/* ================================================================ 2. ω와 반복 수 */
+(function () {
+  const WS = []; for (let k = 0; k <= 49; k++) WS.push(1 + 0.02 * k);
+  const cache = {};
+  let N = 20, w = 1.5;
+  const setup = (N) => {
+    const n = N * N, r = IT.rng(7), xs = new Float64Array(n); for (let i = 0; i < n; i++) xs[i] = r() - 0.5;
+    const b = IT.mv(N, xs, new Float64Array(n)), e0 = IT.nrm(xs);
+    const run = (om, keep) => {
+      const x = new Float64Array(n), hist = [1];
+      for (let k = 1; k <= 4000; k++) { IT.sor(N, x, b, om); let e = 0; for (let i = 0; i < n; i++) e += (x[i] - xs[i]) ** 2; e = Math.sqrt(e) / e0; if (keep) hist.push(e); if (e < 1e-6) return { k, hist }; }
+      return { k: 4000, hist };
+    };
+    return { run, counts: WS.map((om) => run(om, false).k) };
+  };
+  const get = () => (cache[N] || (cache[N] = setup(N)));
+  const theory = (om) => {
+    const h = 1 / (N + 1), rj = Math.cos(Math.PI * h), ws = 2 / (1 + Math.sin(Math.PI * h));
+    if (om >= ws) return om - 1;
+    const v = 0.5 * om * rj + Math.sqrt(Math.max(0, 0.25 * om * om * rj * rj - om + 1)); return v * v;
+  };
+  const wstar = () => 2 / (1 + Math.sin(Math.PI / (N + 1)));
+  const top = MB.canvas("#it-om-cv", (ctx, W, H) => {
+    const C = MB.palette(), D = get(), its = (om) => Math.log(1e-6) / Math.log(theory(om));
+    const line = []; for (let om = 1; om <= 1.985; om += 0.005) line.push([om, its(om)]);
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, {
+      x: [1, 2], y: [10, 5000], logY: true, xLabel: "이완 계수 ω", yLabel: "반복 수",
+      series: [{ data: line, color: C.accent2, width: 2 }],
+      points: D.counts.map((k, i) => ({ x: WS[i], y: k, color: Math.abs(WS[i] - w) < 0.005 ? C.bad : C.text, r: Math.abs(WS[i] - w) < 0.005 ? 5 : 2.6 })),
+      vlines: [{ x: wstar(), color: C.warn, label: "ω*" }],
+    });
+  }, { aspect: 0.5, minHeight: 200, maxHeight: 320 });
+  const bot = MB.canvas("#it-om-ch", (ctx, W, H) => {
+    const C = MB.palette(), D = get(), a = D.run(w, true).hist, g = D.run(1, true).hist;
+    const kmax = Math.max(40, Math.min(4000, g.length));
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, {
+      x: [0, kmax], y: [1e-7, 2], logY: true, xLabel: "반복 k", yLabel: "‖e‖/‖e₀‖",
+      series: [{ data: g.map((v, k) => [k, v]), color: C.dim, width: 1.6, dash: [5, 4] }, { data: a.map((v, k) => [k, v]), color: C.bad, width: 2.2 }],
+      hlines: [{ y: 1e-6, color: C.faint }],
+    });
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 280 });
+  const update = () => {
+    const D = get(), i = Math.round((w - 1) / 0.02), k = D.counts[i], kg = D.counts[0];
+    MB.stat("it-om-ws", IT.num(wstar(), 4)); MB.stat("it-om-rho", IT.num(theory(w), 4));
+    MB.stat("it-om-it", k >= 4000 ? "> 4000" : String(k)); MB.stat("it-om-sp", IT.num(kg / k, 1) + "배");
+    top.redraw(); bot.redraw();
+  };
+  const wr = MB.range("it-om-w", (v) => v.toFixed(2), (v) => { w = v; update(); });
+  MB.seg("it-om-n", (v) => { N = Number(v); update(); });
+  document.getElementById("it-om-best").addEventListener("click", () => { w = Math.round(wstar() / 0.02) * 0.02; wr.set(w); update(); });
+  document.getElementById("it-om-gs").addEventListener("click", () => { w = 1; wr.set(1); update(); });
+  update();
+})();
+
+/* ================================================================ 3. 최급 강하 vs CG */
+(function () {
+  let kap = 10, th = 30, view = "x", nShow = 40;
+  const st = { x: -2.4, y: 1.2 };
+  const pt = { x: st.x, y: st.y, r: 8 };
+  let A, Ah, Ahi, sd = [], cg = [];
+  const mvA = (M, v) => [M[0][0] * v[0] + M[0][1] * v[1], M[1][0] * v[0] + M[1][1] * v[1]];
+  const build = () => {
+    const t = th * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+    const R = [[c, -s], [s, c]], f = (d) => [[R[0][0] * d[0] * R[0][0] + R[0][1] * d[1] * R[0][1], R[0][0] * d[0] * R[1][0] + R[0][1] * d[1] * R[1][1]], [R[1][0] * d[0] * R[0][0] + R[1][1] * d[1] * R[0][1], R[1][0] * d[0] * R[1][0] + R[1][1] * d[1] * R[1][1]]];
+    const q = Math.pow(kap, 0.25);
+    A = f([kap, 1]); Ah = f([Math.sqrt(kap) / q, 1 / q]); Ahi = f([q / Math.sqrt(kap), q]);
+  };
+  const eA = (x) => Math.sqrt(x[0] * mvA(A, x)[0] + x[1] * mvA(A, x)[1]);
+  const run = () => {
+    const x0 = [st.x, st.y], e0 = eA(x0) || 1;
+    sd = [x0]; let x = x0.slice();
+    for (let k = 0; k < 3000; k++) { const r = mvA(A, x).map((v) => -v), q = mvA(A, r), rr = r[0] * r[0] + r[1] * r[1]; if (rr < 1e-30) break; const a = rr / (r[0] * q[0] + r[1] * q[1]); x = [x[0] + a * r[0], x[1] + a * r[1]]; sd.push(x); if (eA(x) / e0 < 1e-6) break; }
+    cg = [x0]; x = x0.slice(); let r = mvA(A, x).map((v) => -v), p = r.slice(), P = [];
+    for (let k = 0; k < 2; k++) { const rr = r[0] * r[0] + r[1] * r[1]; if (rr < 1e-24 * (e0 * e0 + 1)) break; const q = mvA(A, p), a = rr / (p[0] * q[0] + p[1] * q[1]); P.push(p.slice()); x = [x[0] + a * p[0], x[1] + a * p[1]]; cg.push(x); const rn = [r[0] - a * q[0], r[1] - a * q[1]], be = (rn[0] * rn[0] + rn[1] * rn[1]) / rr; p = [rn[0] + be * p[0], rn[1] + be * p[1]]; r = rn; }
+    const ratios = []; for (let k = 2; k < Math.min(sd.length, 8); k++) ratios.push(eA(sd[k]) / eA(sd[k - 1]));
+    MB.stat("it-sc-sd", sd.length - 1 >= 3000 ? "> 3000" : (sd.length - 1) + "걸음");
+    MB.stat("it-sc-cg", (cg.length - 1) + "걸음");
+    MB.stat("it-sc-r", (ratios.length ? IT.num(ratios[ratios.length - 1], 3) : "—") + " · " + IT.num((kap - 1) / (kap + 1), 3));
+    MB.stat("it-sc-pap", P.length > 1 ? IT.sci(P[0][0] * mvA(A, P[1])[0] + P[0][1] * mvA(A, P[1])[1], 1) : "(한 걸음에 끝남)");
+  };
+  const T = (v) => (view === "y" ? mvA(Ah, v) : v);
+  build(); run();
+  const pl = MB.plane("#it-sc-cv", {
+    x: [-3.2, 3.2], y: null, aspect: 0.72, minHeight: 280, points: [pt],
+    draw(P) {
+      const C = P.P;
+      const t = th * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+      for (let lev = 1; lev <= 8; lev++) {
+        const rr = 0.45 * lev;
+        P.param((u) => { const a = rr * Math.cos(u) / Math.sqrt(kap), bq = rr * Math.sin(u); return T([c * a - s * bq, s * a + c * bq]); }, 0, 2 * Math.PI, { color: C.faint, width: 1, n: 120 });
+      }
+      P.dot(0, 0, { r: 4, color: C.text });
+      const sp = sd.slice(0, nShow + 1).map(T), cp = cg.map(T);
+      P.poly(sp, { color: C.bad, width: 2, close: false }); sp.forEach((q, i) => i && P.dot(q[0], q[1], { r: 2.6, color: C.bad }));
+      P.poly(cp, { color: C.accent2, width: 3, close: false }); cp.forEach((q, i) => i && P.dot(q[0], q[1], { r: 4, color: C.accent2 }));
+      const s0 = T([st.x, st.y]); pt.x = s0[0]; pt.y = s0[1]; pt.color = C.text;
+    },
+    onDrag(p) { const v = view === "y" ? mvA(Ahi, [p.x, p.y]) : [p.x, p.y]; st.x = MB.clamp(v[0], -3, 3); st.y = MB.clamp(v[1], -3, 3); run(); },
+  });
+  const upd = () => { build(); run(); pl.redraw(); };
+  MB.steps("it-sc-k", [1, 2, 4, 6, 10, 20, 50, 100], (v) => String(v), 10, (v) => { kap = v; upd(); });
+  MB.range("it-sc-t", (v) => v + "°", (v) => { th = v; upd(); });
+  MB.range("it-sc-n", (v) => String(v), (v) => { nShow = v; pl.redraw(); });
+  MB.seg("it-sc-view", (v) => { view = v; pl.redraw(); });
+})();
+
+/* ================================================================ 4. CG와 고유값 분포 */
+(function () {
+  const n = 100;
+  const SPEC = {
+    u2: () => Array.from({ length: n }, (_, i) => 1 + 99 * i / (n - 1)),
+    u4: () => Array.from({ length: n }, (_, i) => 1 + 9999 * i / (n - 1)),
+    g4: () => Array.from({ length: n }, (_, i) => Math.pow(1e4, i / (n - 1))),
+    cl: () => { const r = IT.rng(3); return Array.from({ length: n }, (_, i) => [1, 10, 100][i % 3] * (1 + 0.01 * (r() - 0.5))); },
+    five: () => Array.from({ length: n }, (_, i) => [1, 2, 5, 20, 100][i % 5]),
+    out: () => { const r = IT.rng(5); return Array.from({ length: n }, (_, i) => (i < 3 ? [1000, 3000, 1e4][i] : 1 + r())); },
+  };
+  const MSG = {
+    u2: "고유값이 고르게 퍼져 있으면 CG는 조건수 한계를 따라가되 그보다 조금 빠릅니다.",
+    u4: "κ = 10⁴의 한계는 900번이 넘게 필요하다고 말하지만, n = 100이라 정확한 산술이면 100번 안에 끝나야 하고 실제로도 그 근처입니다.",
+    g4: "작은 고유값이 촘촘한 분포에서는 반올림 때문에 방향의 A-켤레성이 무너져 n = 100번을 훌쩍 넘깁니다. 실무에서 CG를 '직접법'이 아니라 반복법으로 보는 이유입니다.",
+    cl: "고유값 100개가 서로 다르지만 세 무리로 모여 있으면 CG는 무리마다 몇 번씩, 모두 합쳐 16번이면 끝납니다.",
+    five: "서로 다른 고유값이 5개뿐이면 다섯 번째 반복에서 잔차가 반올림 수준이 됩니다(정리 13.9 ②).",
+    out: "큰 고유값 3개가 κ를 10⁴으로 만들었지만, CG는 처음 몇 번에 그 셋을 처리하고 나머지([1, 2], κ ≈ 2)의 속도로 수렴합니다. 전처리가 고유값을 1 근처에 '대부분' 모으기만 해도 효과가 있는 이유입니다.",
+  };
+  const cache = {};
+  let key = "u2", bound = true;
+  const run = (l) => {
+    const b = new Float64Array(n).fill(1 / Math.sqrt(n)), x = new Float64Array(n), r = Float64Array.from(b), p = Float64Array.from(b);
+    let rr = 1; const h = [[0, 1]];
+    for (let k = 1; k <= 2000; k++) {
+      let pAp = 0; for (let i = 0; i < n; i++) pAp += p[i] * l[i] * p[i];
+      const a = rr / pAp; let r2 = 0;
+      for (let i = 0; i < n; i++) { x[i] += a * p[i]; r[i] -= a * l[i] * p[i]; r2 += r[i] * r[i]; }
+      h.push([k, Math.sqrt(r2)]); if (Math.sqrt(r2) < 1e-8) break;
+      const be = r2 / rr; rr = r2; for (let i = 0; i < n; i++) p[i] = r[i] + be * p[i];
+    }
+    return h;
+  };
+  const get = () => { if (!cache[key]) { const l = SPEC[key](); cache[key] = { l, h: run(l) }; } return cache[key]; };
+  const strip = MB.canvas("#it-cs-sp", (ctx, W, H) => {
+    const C = MB.palette(), D = get();
+    const ch = MB.chart(ctx, { x: 58, y: 24, w: W - 58 - 16, h: H - 24 - 30 }, { x: [0.5, 2e4], y: [0, 1], logX: true, yTicks: [], series: [] });
+    ctx.save(); ctx.fillStyle = C.accent; ctx.globalAlpha = 0.75;
+    D.l.forEach((v, i) => { ctx.beginPath(); ctx.arc(ch.X(v), ch.Y(0.25 + 0.5 * ((i * 37) % 100) / 100), 3, 0, 2 * Math.PI); ctx.fill(); });
+    ctx.restore();
+  }, { aspect: 0.2, minHeight: 90, maxHeight: 120 });
+  const cv = MB.canvas("#it-cs-cv", (ctx, W, H) => {
+    const C = MB.palette(), D = get(), mx = Math.max(...D.l), mn = Math.min(...D.l), ka = mx / mn, q = (Math.sqrt(ka) - 1) / (Math.sqrt(ka) + 1);
+    const kmax = Math.max(60, Math.min(400, D.h.length + 10));
+    const series = [];
+    if (bound) { const bd = []; for (let k = 0; k <= kmax; k++) bd.push([k, 2 * Math.pow(q, k)]); series.push({ data: bd, color: C.faint, width: 1.6, dash: [6, 4] }); }
+    series.push({ data: D.h, color: C.accent2, width: 2.4 });
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, kmax], y: [1e-10, 3], logY: true, xLabel: "반복 k", yLabel: "상대 잔차", series, vlines: [{ x: n, color: C.warn, label: "k = n" }], hlines: [{ y: 1e-8, color: C.faint }] });
+  }, { aspect: 0.5, minHeight: 200, maxHeight: 320 });
+  const update = () => {
+    const D = get(), mx = Math.max(...D.l), mn = Math.min(...D.l), ka = mx / mn, q = (Math.sqrt(ka) - 1) / (Math.sqrt(ka) + 1);
+    const distinct = new Set(D.l.map((v) => v.toPrecision(12))).size;
+    MB.stat("it-cs-k", IT.num(ka, 0)); MB.stat("it-cs-d", String(distinct));
+    const last = D.h[D.h.length - 1];
+    MB.stat("it-cs-it", last[1] < 1e-8 ? String(last[0]) : "> 2000");
+    MB.stat("it-cs-bn", String(Math.ceil(Math.log(1e-8 / 2) / Math.log(q))));
+    document.getElementById("it-cs-msg").innerHTML = MSG[key];
+    strip.redraw(); cv.redraw();
+  };
+  document.getElementById("it-cs-pre").addEventListener("change", (e) => { key = e.target.value; update(); });
+  MB.check("it-cs-bd", (v) => { bound = v; cv.redraw(); });
+  update();
+})();
+
+/* ================================================================ 5. 전처리 CG */
+(function () {
+  const KF = { pois: () => 1, jump: (x, y) => (x > 0.25 && x < 0.75 && y > 0.25 && y < 0.75 ? 1000 : 1), layers: (x, y) => (Math.floor(y * 4) % 2 ? 100 : 1) };
+  const cache = {};
+  let pre = "pois", N = 32;
+  const get = () => {
+    const k = pre + N; if (cache[k]) return cache[k];
+    const M = IT.diffusion(N, KF[pre]), b = new Float64Array(M.n).fill(1 / ((N + 1) * (N + 1)));
+    const R = ["none", "jacobi", "ic"].map((kind) => IT.pcg(M, b, kind, 1e-8, 3000));
+    return (cache[k] = { M, R });
+  };
+  const ch = MB.canvas("#it-pc-cv", (ctx, W, H) => {
+    const C = MB.palette(), D = get(), col = [C.bad, C.warn, C.accent2];
+    const kmax = Math.max(...D.R.map((r) => r.hist.length)) + 5;
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0, kmax], y: [1e-9, 10], logY: true, xLabel: "반복 k", yLabel: "상대 잔차", series: D.R.map((r, i) => ({ data: r.hist.map((v, k) => [k, v]), color: col[i], width: i === 1 ? 3.6 : 2.2, dash: i === 1 ? [7, 4] : [] })), hlines: [{ y: 1e-8, color: C.faint }] });
+  }, { aspect: 0.52, minHeight: 210, maxHeight: 330 });
+  const km = MB.canvas("#it-pc-km", (ctx, W, H) => {
+    const D = get(), s = Math.min(H - 52, (W - 40) / 2), x0 = (W - 2 * s - 16) / 2, y0 = 26, n = D.M.n;
+    const kv = new Float64Array(n), h = 1 / (N + 1);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) kv[(N - 1 - j) * N + i] = Math.log10(KF[pre]((i + 1) * h, (j + 1) * h)) / 3;
+    IT.heat(ctx, kv, N, x0, y0, s, (t) => MB.colormap(t, "viridis"));
+    const u = D.R[2].x; let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, u[i]);
+    const uv = new Float64Array(n); for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) uv[(N - 1 - j) * N + i] = u[j * N + i] / (mx || 1);
+    IT.heat(ctx, uv, N, x0 + s + 16, y0, s, (t) => MB.colormap(t, "viridis"));
+    const C = MB.palette(); ctx.fillStyle = C.dim; ctx.font = "11px " + IT.font(); ctx.textAlign = "center";
+    ctx.fillText("k (밝을수록 큼)", x0 + s / 2, y0 + s + 14); ctx.fillText("u / max u", x0 + 1.5 * s + 16, y0 + s + 14);
+  }, { aspect: 0.42, minHeight: 170, maxHeight: 260 });
+  const update = () => {
+    const D = get(), f = (r) => { const h = r.hist; return h[h.length - 1] < 1e-8 ? String(h.length - 1) : "> 3000"; };
+    MB.stat("it-pc-a", f(D.R[0])); MB.stat("it-pc-b", f(D.R[1])); MB.stat("it-pc-c", f(D.R[2])); MB.stat("it-pc-nn", (N * N).toLocaleString());
+    ch.redraw(); km.redraw();
+  };
+  document.getElementById("it-pc-pre").addEventListener("change", (e) => { pre = e.target.value; update(); });
+  MB.seg("it-pc-n", (v) => { N = Number(v); update(); });
+  update();
+})();
+
+/* ================================================================ 6. GMRES */
+(function () {
+  const N = 32, MAX = 900;
+  let pe = 20, m = 10, showCG = true;
+  const cache = {};
+  const get = () => {
+    const k = pe + ":" + m; if (cache[k]) return cache[k];
+    const M = IT.convdiff(N, pe), b = new Float64Array(M.n).fill(1 / ((N + 1) * (N + 1)));
+    const full = cache["f" + pe] || (cache["f" + pe] = IT.gmres(M, b, MAX, 1e-8, MAX));
+    const cg = cache["c" + pe] || (cache["c" + pe] = IT.pcg(M, b, "none", 1e-8, MAX));
+    return (cache[k] = { full, rs: IT.gmres(M, b, m, 1e-8, MAX), cg });
+  };
+  const cv = MB.canvas("#it-gm-cv", (ctx, W, H) => {
+    const C = MB.palette(), D = get();
+    const kmax = Math.min(MAX, Math.max(D.full.hist.length, D.rs.hist.length) + 10);
+    const series = [];
+    if (showCG) series.push({ data: D.cg.hist.slice(0, kmax + 1).map((v, k) => [k, Math.min(v, 1e3)]), color: C.bad, width: 1.8 });
+    series.push({ data: D.rs.hist.map((v, k) => [k, v]), color: C.warn, width: 2.2 });
+    series.push({ data: D.full.hist.map((v, k) => [k, v]), color: C.accent2, width: 2.6 });
+    const vl = D.rs.restarts.length <= 40 ? D.rs.restarts.map((x) => ({ x, color: C.faint, dash: [2, 4], width: 1 })) : [];
+    MB.chart(ctx, { x: 58, y: 16, w: W - 58 - 16, h: H - 16 - 44 }, { x: [0, kmax], y: [1e-9, 1e3], logY: true, xLabel: "반복 k (행렬–벡터 곱 수)", yLabel: "상대 잔차", series, vlines: vl, hlines: [{ y: 1e-8, color: C.faint }] });
+  }, { aspect: 0.62, minHeight: 260, maxHeight: 440 });
+  const update = () => {
+    const D = get(), it = (h) => (h[h.length - 1] < 1e-8 ? String(h.length - 1) : "> " + MAX);
+    MB.stat("it-gm-f", it(D.full.hist)); MB.stat("it-gm-r", it(D.rs.hist));
+    MB.stat("it-gm-s", `${D.full.hist.length} · ${m + 1}`);
+    MB.stat("it-gm-c", IT.sci(D.cg.hist[D.cg.hist.length - 1], 2));
+    cv.redraw();
+  };
+  MB.range("it-gm-pe", (v) => String(v), (v) => { pe = v; update(); });
+  MB.seg("it-gm-m", (v) => { m = Number(v); update(); });
+  MB.check("it-gm-cg", (v) => { showCG = v; cv.redraw(); });
+  update();
+})();
+
+/* ================================================================ 7. 오차 모드 평활화 */
+(function () {
+  const N = 63, H1 = 1 / (N + 1);
+  let pre = "mix", meth = "wj", e = null, e0n = 1, k = 0;
+  const S = []; for (let m = 1; m <= N; m++) { const row = new Float64Array(N); for (let i = 0; i < N; i++) row[i] = Math.sin(m * Math.PI * (i + 1) * H1); S.push(row); }
+  const init = () => {
+    e = new Float64Array(N); const r = IT.rng(11);
+    for (let i = 0; i < N; i++) { const x = (i + 1) * H1; e[i] = pre === "mix" ? Math.sin(2 * Math.PI * x) + 0.6 * Math.sin(40 * Math.PI * x) : pre === "high" ? Math.sin(50 * Math.PI * x) : 2 * r() - 1; }
+    e0n = IT.nrm(e); k = 0;
+  };
+  const smooth = () => {
+    if (meth === "gs") { for (let i = 0; i < N; i++) e[i] = ((i > 0 ? e[i - 1] : 0) + (i < N - 1 ? e[i + 1] : 0)) / 2; }
+    else { const w = meth === "wj" ? 2 / 3 : 1, t = new Float64Array(N); for (let i = 0; i < N; i++) t[i] = (1 - w) * e[i] + w * ((i > 0 ? e[i - 1] : 0) + (i < N - 1 ? e[i + 1] : 0)) / 2; e = t; }
+    k++;
+  };
+  const modes = () => S.map((row) => 2 * H1 * IT.dot(row, e));
+  init();
+  const top = MB.canvas("#it-sm-cv", (ctx, W, H) => {
+    const C = MB.palette(), d = [[0, 0]]; for (let i = 0; i < N; i++) d.push([(i + 1) * H1, e[i]]); d.push([1, 0]);
+    MB.chart(ctx, { x: 50, y: 26, w: W - 50 - 16, h: H - 26 - 40 }, { x: [0, 1], y: [-1.8, 1.8], xLabel: "x", series: [{ data: d, color: C.accent, width: 2.2 }], hlines: [{ y: 0, color: C.faint, dash: [] }], points: d.slice(1, -1).map(([x, y]) => ({ x, y, r: 2.2, color: C.accent })) });
+  }, { aspect: 0.42, minHeight: 180, maxHeight: 280 });
+  const bars = MB.canvas("#it-sm-ch", (ctx, W, H) => {
+    const C = MB.palette(), a = modes();
+    const ch = MB.chart(ctx, { x: 50, y: 26, w: W - 50 - 16, h: H - 26 - 40 }, { x: [0, N + 1], y: [1e-6, 2], logY: true, xLabel: "모드 번호 k (오른쪽일수록 고주파)", series: [], vlines: [{ x: 32, color: C.warn, label: "k = N/2" }] });
+    const bw = Math.max(2, (ch.X(2) - ch.X(1)) * 0.75);
+    a.forEach((v, i) => { const y = Math.max(Math.abs(v), 1.01e-6); ctx.fillStyle = i + 1 >= 32 ? C.bad : C.accent2; const py = ch.Y(Math.min(y, 2)); ctx.fillRect(ch.X(i + 1) - bw / 2, py, bw, ch.Y(1e-6) - py); });
+  }, { aspect: 0.42, minHeight: 180, maxHeight: 280 });
+  const update = () => {
+    const a = modes(); let hi = 0, all = 0; a.forEach((v, i) => { all += v * v; if (i + 1 >= 32) hi += v * v; });
+    MB.stat("it-sm-k", String(k)); MB.stat("it-sm-e", IT.sci(IT.nrm(e) / e0n, 2)); MB.stat("it-sm-hf", all ? IT.num(100 * Math.sqrt(hi / all), 1) + "%" : "—");
+    top.redraw(); bars.redraw();
+  };
+  update();
+  document.getElementById("it-sm-1").addEventListener("click", () => { smooth(); update(); });
+  document.getElementById("it-sm-10").addEventListener("click", () => { for (let i = 0; i < 10; i++) smooth(); update(); });
+  document.getElementById("it-sm-0").addEventListener("click", () => { init(); update(); });
+  document.getElementById("it-sm-pre").addEventListener("change", (ev) => { pre = ev.target.value; init(); update(); });
+  MB.seg("it-sm-m", (v) => { meth = v; init(); update(); });
+})();
+
+/* ================================================================ 8. 2차원 푸아송 경주 */
+(function () {
+  const MAXIT = 8000, METHODS = ["j", "gs", "sor", "cg", "mg"];
+  let N = 31, meth = "gs", view = "u", P = null, S = null, playing = false, acc = 0;
+  const prob = {};
+  /** 한 방법의 상태 기계 */
+  const make = (m, N, b, f) => {
+    const n = N * N, x = new Float64Array(n), t = new Float64Array(n), ws = 2 / (1 + Math.sin(Math.PI / (N + 1)));
+    const o = { m, x, k: 0 };
+    if (m === "cg") { o.r = Float64Array.from(b); o.p = Float64Array.from(b); o.q = new Float64Array(n); o.rr = IT.dot(b, b); }
+    o.step = () => {
+      if (m === "j") IT.jac(N, x, b, t); else if (m === "gs") IT.sor(N, x, b, 1); else if (m === "sor") IT.sor(N, x, b, ws); else if (m === "mg") IT.vcycle(N, x, f);
+      else { if (o.rr < 1e-300) { o.k++; return; } IT.mv(N, o.p, o.q); const a = o.rr / IT.dot(o.p, o.q); for (let i = 0; i < n; i++) { x[i] += a * o.p[i]; o.r[i] -= a * o.q[i]; } const r2 = IT.dot(o.r, o.r), be = r2 / o.rr; o.rr = r2; for (let i = 0; i < n; i++) o.p[i] = o.r[i] + be * o.p[i]; }
+      o.k++;
+    };
+    return o;
+  };
+  const setup = (N) => {
+    if (prob[N]) return prob[N];
+    const n = N * N, b = new Float64Array(n); for (let i = 0; i < N; i++) b[(N - 1) * N + i] = 1;
+    const f = Float64Array.from(b, (v) => v * (N + 1) * (N + 1)), nb = IT.nrm(b), y = new Float64Array(n);
+    const res = (x) => { IT.mv(N, x, y); let s = 0; for (let i = 0; i < n; i++) s += (b[i] - y[i]) ** 2; return Math.sqrt(s) / nb; };
+    const ex = new Float64Array(n); for (let c = 0; c < 30; c++) IT.vcycle(N, ex, f);
+    const hist = {}, need = {};
+    METHODS.forEach((m) => { const o = make(m, N, b, f), h = [[0.7, 1]]; need[m] = null; while (o.k < MAXIT) { o.step(); const r = res(o.x); if (o.k <= 30 || o.k % Math.max(1, Math.floor(o.k / 60)) === 0 || r < 1e-10) h.push([o.k, r]); if (need[m] === null && r < 1e-6) need[m] = o.k; if (r < 1e-10) break; } hist[m] = h; });
+    return (prob[N] = { b, f, res, ex, hist, need });
+  };
+  const reset = () => { P = setup(N); S = make(meth, N, P.b, P.f); acc = 0; };
+  reset(); for (let i = 0; i < 40; i++) S.step();
+  const cv = MB.canvas("#it-ht-cv", (ctx, W, H) => {
+    const C = MB.palette(), n = N * N, s = Math.min(H - 40, W - 40), x0 = (W - s) / 2, y0 = 10, d = new Float64Array(n);
+    let mx = 0;
+    if (view === "e") for (let i = 0; i < n; i++) mx = Math.max(mx, Math.abs(S.x[i] - P.ex[i]));
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const p = j * N + i, q = (N - 1 - j) * N + i; d[q] = view === "u" ? S.x[p] : 0.5 + 0.5 * (S.x[p] - P.ex[p]) / (mx || 1); }
+    IT.heat(ctx, d, N, x0, y0, s, (t) => MB.colormap(t, view === "u" ? "viridis" : "diverge"));
+    ctx.fillStyle = C.dim; ctx.font = "11px " + IT.font(); ctx.textAlign = "center";
+    ctx.fillText(view === "u" ? "위 경계 u = 1 · 색 0 … 1" : "오차 e = u − u* · 색 범위 ±" + (mx ? mx.toExponential(1) : "0"), W / 2, y0 + s + 18);
+  }, { aspect: 0.55, minHeight: 200, maxHeight: 380 });
+  const col = (C) => ({ j: C.dim, gs: C.bad, sor: C.warn, cg: C.accent2, mg: C.accent });
+  const ch = MB.canvas("#it-ht-ch", (ctx, W, H) => {
+    const C = MB.palette(), cc = col(C);
+    const pts = [{ x: Math.max(S.k, 0.7), y: Math.max(P.res(S.x), 1e-12), r: 5, color: cc[meth] }];
+    MB.chart(ctx, { x: 58, y: 26, w: W - 58 - 16, h: H - 26 - 44 }, { x: [0.7, 1e4], y: [1e-10, 2], logX: true, logY: true, xLabel: "반복 k (로그 눈금)", yLabel: "상대 잔차", xTicks: [1, 10, 100, 1000, 10000], series: METHODS.map((m) => ({ data: P.hist[m], color: cc[m], width: m === meth ? 3 : 1.8 })), points: pts, hlines: [{ y: 1e-6, color: C.faint }] });
+  }, { aspect: 0.5, minHeight: 200, maxHeight: 320 });
+  const stats = () => {
+    const r = P.res(S.x); let e = 0; for (let i = 0; i < S.x.length; i++) e = Math.max(e, Math.abs(S.x[i] - P.ex[i]));
+    MB.stat("it-ht-k", String(S.k)); MB.stat("it-ht-r", IT.sci(r, 2)); MB.stat("it-ht-e", IT.sci(e, 2));
+    MB.stat("it-ht-all", METHODS.map((m) => (P.need[m] === null ? "> " + MAXIT : P.need[m])).join(" · "));
+    document.getElementById("it-ht-cap").textContent = view === "u" ? "온도 u" : "오차 e (파랑 −, 빨강 +)";
+  };
+  const draw = () => { cv.redraw(); ch.redraw(); stats(); };
+  draw();
+  const btn = MB.playButton("it-ht-play", () => { playing = true; loop.start(); }, () => { playing = false; }, ["▶ 반복", "■ 멈춤"]);
+  const loop = MB.loop(document.getElementById("sim-it-heat"), (dt) => {
+    if (!playing) return;
+    if (meth === "mg") { acc += dt; if (acc < 0.5) return; acc = 0; S.step(); }
+    else { const n = Math.max(1, Math.floor(S.k / 25)); for (let i = 0; i < n; i++) S.step(); }
+    draw();
+    if (P.res(S.x) < 1e-10 || S.k >= MAXIT) { playing = false; btn.set(false); }
+  });
+  document.getElementById("it-ht-step").addEventListener("click", () => { S.step(); draw(); });
+  document.getElementById("it-ht-reset").addEventListener("click", () => { reset(); draw(); });
+  MB.seg("it-ht-m", (v) => { meth = v; reset(); draw(); });
+  MB.seg("it-ht-v", (v) => { view = v; cv.redraw(); stats(); });
+  MB.seg("it-ht-n", (v) => { N = Number(v); reset(); draw(); });
+})();
+</script>
+</body>
+</html>

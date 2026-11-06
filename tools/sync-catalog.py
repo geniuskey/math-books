@@ -29,6 +29,14 @@ LOCAL_BOOKS = [{
     'status': 'published', 'level': '공대 2학년', 'stage': 'core', 'slug': 'ode', 'legacyUrl': None,
     'color': '#e8590c', 'colorDark': '#ffa94d', 'motif': 'ode',
     'topics': ['방향장·1계 방정식', '수치 해법', '진동·공진', '라플라스·전달 함수', '위상 평면·안정성', '혼돈·편미분방정식'],
+}, {
+    'id': 'numericalbook', 'code': 'NUM', 'title': 'NumericalBook', 'subtitle': '수치해석 교과서',
+    'headline': '컴퓨터가 수학을 근사하는 방법',
+    'description': '부동소수점과 오차, 조건수와 안정성, 근 찾기, 보간·스플라인·최소제곱과 FFT, 수치 미분과 적분, 미분방정식 해법, 직접·반복 선형 해법과 고유값 계산, 수치 최적화, 편미분방정식의 수치 해법까지 — 알고리즘을 한 단계씩 돌려 보며 오차를 재는 수치해석 교과서.',
+    'url': 'https://math.euiyun.com/numerical/', 'repo': 'https://github.com/geniuskey/math-books', 'field': 'math',
+    'status': 'published', 'level': '공대 3학년', 'stage': 'computing', 'slug': 'numerical', 'legacyUrl': None,
+    'color': '#2b8a3e', 'colorDark': '#8ce99a', 'motif': 'numerical',
+    'topics': ['오차·조건수', '근 찾기', '보간·근사·FFT', '수치 미적분', '수치 선형대수', '최적화·PDE'],
 }]
 books = books + LOCAL_BOOKS
 catalog = []
