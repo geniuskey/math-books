@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check deployment metadata, local links, fragments and import completeness."""
+"""Check deployment metadata, local links, fragments and generated metadata."""
 import json
 import re
 from html.parser import HTMLParser
@@ -47,9 +47,5 @@ for path,page in pages.items():
         # Book engines create some chapter anchors dynamically. Check home deep links strictly.
         if path==ROOT/'index.html' and url.fragment and target in pages and unquote(url.fragment) not in pages[target].ids:
             errors.append(f'{rel}: missing fragment {link}')
-state=json.loads((ROOT/'migration/import-state.json').read_text())
-for slug,book in state['books'].items():
-    for file in book['files']:
-        if not (ROOT/slug/file).exists(): errors.append(f'missing imported file {slug}/{file}')
 assert not errors, '\n'.join(errors)
-print(f'Checked {len(pages)} pages, local assets, home deep links, metadata and imported files')
+print(f'Checked {len(pages)} pages, local assets, home deep links, and metadata')

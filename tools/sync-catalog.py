@@ -1,10 +1,44 @@
 #!/usr/bin/env python3
-"""Generate the shelf from imported books and the future-volume roadmap."""
+"""Generate the shelf (catalog.js) from the books below and the future-volume roadmap."""
 import json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
-books = json.loads((ROOT / 'migration/books.json').read_text())['books']
-# Books written here rather than imported. Keep these fields in sync with the book's own book.json.
+# Imported once from geniuskey/mathbook and science-books/probability-statistics; maintained here since 2026-11-06.
+IMPORTED_BOOKS = [{
+    'id': "mathbook",
+    'code': "MTH",
+    'title': "MathBook",
+    'subtitle': "문제에서 출발하는 수학 교과서",
+    'headline': "이 수식이 없었다면 못 만들었을 물건",
+    'description': "전력망에서 복소수를, MRI에서 푸리에를, QR 코드에서 오류 정정 부호를 만납니다. 극한과 급수, 선형대수, 미분방정식, 표본화, 확률, 정보 이론, 최적화, 수치 해석, 기하와 대칭까지 — 정의보다 공학 문제에서 출발해 그림을 직접 끌며 직관을 만들도록 썼습니다.",
+    'status': "published",
+    'level': "공대 학부",
+    'stage': "foundations",
+    'color': "#2b54d4",
+    'colorDark': "#7d9bff",
+    'topics': ["극한·급수", "복소수·페이저", "선형대수·SVD", "미분방정식", "푸리에·표본화", "확률·정보", "최적화·수치 해석", "기하·대칭"],
+    'motif': "matrix",
+    'featured': [{"title": "격자를 휘는 행렬", "desc": "기저 벡터를 끌면 공간 전체가 따라 휜다. 행렬식은 넓이 배율", "link": "chapters/linalg.html#sim-la-grid", "image": "img/sims/mathbook-sim-la-grid.jpg"}, {"title": "해밍 부호로 비트 고치기", "desc": "아무 비트나 뒤집으면 세 검사의 신드롬이 오류 위치를 가리킨다", "link": "chapters/information.html#sim-inf-hamming", "image": "img/sims/mathbook-sim-inf-hamming.jpg"}],
+    'slug': "foundations",
+    'legacyUrl': None,
+}, {
+    'id': "probability-statistics",
+    'code': "PRB",
+    'title': "확률과 통계",
+    'subtitle': "확률과 통계 교과서",
+    'headline': "동전을 던지고 표본을 다시 뽑으며 익히는 추론",
+    'description': "자료 요약과 확률의 기초에서 출발해 조건부 확률과 베이즈 정리, 이산·연속 분포, 중심 극한 정리, 표본 분포와 추정, 가설 검정, 회귀와 분산 분석, 실험 계획, 확률 과정, 통계적 공정 관리, 신뢰성과 수율까지 — 동전을 던지고 공을 떨어뜨리고 표본을 수천 번 다시 뽑으며 눈으로 익히는 인터랙티브 교과서.",
+    'status': "published",
+    'level': "대학 1–2학년",
+    'stage': "computing",
+    'color': "#15803d",
+    'colorDark': "#4ade80",
+    'topics': ["자료와 확률", "확률 변수와 분포", "표본 분포·추정", "가설 검정", "회귀·분산 분석", "확률 과정·SPC"],
+    'motif': "probability-statistics",
+    'slug': "probability",
+    'legacyUrl': None,
+}]
+# Books written in this repository. Keep these fields in sync with the book's own book.json.
 LOCAL_BOOKS = [{
     'id': 'linearbook', 'code': 'LIN', 'title': 'LinearBook', 'subtitle': '선형대수 교과서',
     'headline': '숫자의 표가 아니라 공간을 움직이는 기계',
@@ -38,7 +72,7 @@ LOCAL_BOOKS = [{
     'color': '#2b8a3e', 'colorDark': '#8ce99a', 'motif': 'numerical',
     'topics': ['오차·조건수', '근 찾기', '보간·근사·FFT', '수치 미적분', '수치 선형대수', '최적화·PDE'],
 }]
-books = books + LOCAL_BOOKS
+books = IMPORTED_BOOKS + LOCAL_BOOKS
 catalog = []
 for book in books:
     entry = {k: book[k] for k in ('id','title','subtitle','headline','description','stage','status','color','colorDark','topics','motif','code','legacyUrl','slug')}

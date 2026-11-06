@@ -11,12 +11,12 @@ const book = JSON.parse(await readFile(join(root, 'book.json'), 'utf8'));
 const domain = (await readFile(join(root, 'CNAME'), 'utf8')).trim();
 if (book.domain !== domain) throw new Error('CNAME and book.json domain disagree');
 const origin = `https://${domain}`;
-const excluded = new Set(['.git', '.github', '.book-dist', 'node_modules', 'tools', 'scripts', 'migration', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', '.DS_Store']);
+const excluded = new Set(['.git', '.github', '.book-dist', 'node_modules', 'tools', 'scripts', 'package.json', 'package-lock.json', 'pnpm-lock.yaml', '.DS_Store']);
 
 // Books written in this repository declare `meta` in their book.json. Their sources carry only <title> and
 // description; canonical and Open Graph tags are generated here, and their math is rendered to KaTeX HTML so
-// the pages need only the KaTeX stylesheet. Imported books keep their own tags so that tools/import-books.py
-// can still sync them byte for byte.
+// the pages need only the KaTeX stylesheet. The imported books (foundations/, probability/) keep their own
+// tags and CDN dependencies as they were imported.
 const generated = new Map();
 for (const entry of book.books) {
   const { meta } = JSON.parse(await readFile(join(root, entry), 'utf8'));
