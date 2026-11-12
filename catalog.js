@@ -245,3 +245,16 @@ window.MATH_MAP = {
     ]
   ]
 };
+window.SHELF = Object.assign({
+  "id": "mathbooks",
+  "title": "MathBooks",
+  "url": "https://math.euiyun.com/",
+  "coverTitles": {
+    "mathbook": "공학 수학",
+    "linearbook": "선형대수",
+    "probability-statistics": "확률과 통계",
+    "calculusbook": "미적분",
+    "odebook": "미분방정식",
+    "numericalbook": "수치해석"
+  }
+}, { books: window.MATH_BOOKS, map: window.MATH_MAP });

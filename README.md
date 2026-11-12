@@ -28,12 +28,13 @@ NumericalBook(`numerical/`)도 같은 엔진 위에 색(초록·보라)과 장 �
 ## 구성
 
 ```text
-index.html, shelf.css                  서가 홈: 책장·분야 필터·검색, 대표 실험, 읽는 순서
+index.html                             서가 홈: 책장·분야 필터·검색, 대표 실험, 읽는 순서
+shelf.css                              서가 홈 스타일(공통 파일, 직접 수정하지 않음)
 catalog.js                            생성된 책 목록(직접 수정하지 않음)
 catalog.json                          생성된 책 목록과 서가 지도(books.euiyun.com이 읽음, 직접 수정하지 않음)
 book.json                             서가 메타데이터, 각 책의 book.json 목록
 roadmap.json                          준비 중인 책
-shared/js/shelf.js                    서가 홈의 책장 렌더링·필터
+shared/js/shelf.js                    서가 홈의 책장·필터·지도·실험 덱(공통 파일, 직접 수정하지 않음)
 shared/js/covers.js                   SVG 책 표지(books 포털 코드 + 선형대수·미적분·미분방정식 표지)
 shared/js/book-shell.js               모든 책 상단 바의 ‘수학 서가’ 연결
 {slug}/                               각 책의 본문, 실습 엔진, 용어 데이터
@@ -60,7 +61,7 @@ python3 -m http.server 8000 --directory .book-dist
 
 `book.json`에 `meta`가 있는 책(LinearBook)은 소스에 canonical·Open Graph·KaTeX 태그를 두지 않습니다. 빌드가 태그를 생성하고 수식을 미리 렌더링해 KaTeX 스타일시트만 붙입니다. 가져온 MathBook과 확률과 통계는 가져올 때의 태그와 CDN 의존성(수식·폰트)을 그대로 씁니다.
 
-책·장·시뮬레이터 수가 바뀌면 `npm run catalog`, `npm run sitemap`, `node tools/og.mjs`로 목록과 공유 이미지를 갱신합니다. 서가 지도(분야 버튼과 ‘읽는 순서’ 위의 지도)는 `book.json`의 `map`에서 고칩니다. 묶음 `id`는 책의 `stage`와 같고, 모든 책은 한 묶음에 들어가야 합니다. 바꾼 뒤 books 저장소에서 `python3 tools/sync-books.py`를 실행하면 books.euiyun.com 지식 지도에도 반영됩니다.
+책·장·시뮬레이터 수가 바뀌면 `npm run catalog`, `npm run sitemap`, `node tools/og.mjs`로 목록과 공유 이미지를 갱신합니다. 서가 지도(분야 버튼과 ‘읽는 순서’ 위의 지도)는 `book.json`의 `map`에서 고칩니다. 묶음 `id`는 책의 `stage`와 같고, 모든 책은 한 묶음에 들어가야 합니다. 바꾼 뒤 books 저장소에서 `python3 tools/sync-books.py`를 실행하면 books.euiyun.com 지식 지도에도 반영됩니다. `shelf.css`와 `shared/js/shelf.js`는 books 저장소 `tools/shelf-kit/`의 공통 파일을 `python3 tools/sync-shelf-kit.py`로 복사한 것입니다. 서가마다 다른 값(제목·주소·표지의 짧은 이름 `coverTitles`·지도 `map`)은 `book.json`에 둡니다.
 
 ## 가져온 책
 
