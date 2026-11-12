@@ -159,3 +159,89 @@ window.MATH_BOOKS = [
     "simulators": 127
   }
 ];
+window.MATH_MAP = {
+  "title": "공학 문제를 푸는 수학의 도구",
+  "desc": "MathBooks의 대학 수학 교재입니다. 공학 수학 입문에서 선형대수·미적분·미분방정식으로, 확률·통계와 수치해석으로 이어갑니다.",
+  "groups": [
+    {
+      "id": "foundations",
+      "name": "입문",
+      "en": "Foundations",
+      "desc": "공학 문제에서 출발해 수학 도구 전체를 훑어보기"
+    },
+    {
+      "id": "core",
+      "name": "대수·해석",
+      "en": "Algebra & Analysis",
+      "desc": "공간을 움직이는 행렬, 변화율과 누적, 변화의 법칙"
+    },
+    {
+      "id": "computing",
+      "name": "확률·계산",
+      "en": "Probability & Computing",
+      "desc": "불확실성을 다루는 통계와 컴퓨터로 근사하는 계산"
+    }
+  ],
+  "links": [
+    [
+      "mathbook",
+      "linearbook",
+      "격자를 휘는 행렬에서 소거·부분공간·SVD로"
+    ],
+    [
+      "mathbook",
+      "calculusbook",
+      "극한·급수의 직관에서 미분·적분·다변수로"
+    ],
+    [
+      "mathbook",
+      "odebook",
+      "미분방정식 입문에서 진동·라플라스·위상 평면으로"
+    ],
+    [
+      "mathbook",
+      "probability-statistics",
+      "확률·정보의 기초에서 분포·추정·검정으로"
+    ],
+    [
+      "mathbook",
+      "numericalbook",
+      "수치 해석 맛보기에서 오차·근 찾기·수치 선형대수로"
+    ],
+    [
+      "calculusbook",
+      "odebook",
+      "도함수·적분과 테일러 전개로 미분방정식 풀기"
+    ],
+    [
+      "linearbook",
+      "odebook",
+      "고유값·고유벡터로 연립 방정식과 위상 평면 읽기"
+    ],
+    [
+      "linearbook",
+      "numericalbook",
+      "LU·QR·고유값 분해를 컴퓨터에서 계산하기"
+    ],
+    [
+      "calculusbook",
+      "numericalbook",
+      "테일러 전개로 수치 미분·적분과 오차 분석하기"
+    ],
+    [
+      "odebook",
+      "numericalbook",
+      "오일러·룽게–쿠타 해법과 안정성"
+    ],
+    [
+      "calculusbook",
+      "probability-statistics",
+      "적분으로 정의하는 연속 분포와 기댓값"
+    ],
+    [
+      "linearbook",
+      "probability-statistics",
+      "최소제곱·PCA와 회귀 분석"
+    ]
+  ]
+};
